@@ -17,7 +17,10 @@
 -- of the stack's tracked run and of its run lock, which it writes through
 -- stacksapi in the transaction that moves the run, so stack lists filter,
 -- sort and count by state from this table. Writing any of them changes no
--- version, since no request body carries them.
+-- version, since no request body carries them. vcs_detached marks a stack
+-- whose VCS integration was deleted, which the vcs domain sets, clearing
+-- vcs_integration_id, in the delete's transaction; a write that changes
+-- the stack's source clears it.
 CREATE TABLE stacks (
     account_id                       uuid        NOT NULL,
     id                               uuid        NOT NULL,
@@ -36,6 +39,7 @@ CREATE TABLE stacks (
     runner_image                     text,
     worker_pool_id                   uuid,
     vcs_integration_id               uuid,
+    vcs_detached                     boolean     NOT NULL DEFAULT false,
     vendor                           text        NOT NULL,
     vendor_config                    jsonb       NOT NULL DEFAULT '{}',
     terraform_version                text,

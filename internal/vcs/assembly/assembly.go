@@ -8,16 +8,51 @@ import (
 	"fmt"
 	"os"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/http"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/rawgit"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/source"
 )
+
+// Stream is the domain's migration stream, which internal/app registers
+// after configuration's.
+func Stream() migrate.Stream { return pg.Stream() }
+
+// Held are the vcs columns that hold other domains' rows, for the
+// nightly orphan count.
+func Held() []integrity.Held { return pg.Held() }
+
+// SealedColumns are the vcs domain's sealed columns.
+func SealedColumns() []crypt.Column { return pg.SealedColumns() }
+
+// Entity is the kind of entity the access domain's middleware finds a
+// space for, as the API's x-infraweave-subject names it: an integration,
+// in its own space.
+const Entity = "vcs_integration"
+
+// Providers are the providers whose integrations infraweave stores. Raw
+// Git has none: a stack on it names its repository by URL.
+var Providers = []string{
+	"GITHUB_ENTERPRISE", "GITLAB", "BITBUCKET_CLOUD", "BITBUCKET_DATACENTER", "AZURE_DEVOPS",
+}
+
+// DB is the pool the domain queries and begins its transactions on.
+type DB interface {
+	tx.Querier
+	tx.Beginner
+}
 
 // Settings are the vcs settings: CAFile is a PEM file of certificate
 // authorities trusted beside the system's when reaching a repository's
@@ -29,15 +64,24 @@ type Settings struct {
 // ErrConfig reports a vcs setting the server could not start with.
 var ErrConfig = errors.New("invalid vcs configuration")
 
-// Deps are what the vcs domain needs of the domains built before it.
+// Deps are what the vcs domain needs of the platform and the domains
+// built before it: the database, the keys every integration's secrets are
+// sealed under, the spaces an integration lives in, the authorizer, the
+// stacks it reads and detaches, and its settings.
 type Deps struct {
+	DB       DB
+	Keys     pg.Sealer
+	Spaces   accessapi.Spaces
+	Authz    accessapi.Authorizer
 	Stacks   stacksapi.Stacks
 	Settings Settings
 }
 
 // Domain is the vcs domain, constructed once per process.
 type Domain struct {
-	sources *source.Service
+	sources      *source.Service
+	integrations *integration.Service
+	api          http.Server
 }
 
 // New constructs the domain over d, reading raw Git repositories, served as
@@ -58,9 +102,43 @@ func New(d Deps) (*Domain, error) {
 			return nil, fmt.Errorf("%w: vcs.ca_file %s holds no PEM certificate", ErrConfig, f)
 		}
 	}
-	return &Domain{sources: source.New(d.Stacks, map[string]port.Source{
-		"GIT": rawgit.New(rawgit.Options{RootCAs: roots}),
-	})}, nil
+	integrations := integration.New(integration.Deps{
+		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
+		Stacks: d.Stacks, Providers: Providers,
+	})
+	return &Domain{
+		sources: source.New(d.Stacks, map[string]port.Source{
+			"GIT": rawgit.New(rawgit.Options{RootCAs: roots}),
+		}, integrations),
+		integrations: integrations,
+		api:          http.New(integrations, d.Spaces, nil),
+	}, nil
+}
+
+// SpaceGuard is the domain's say in the access domain's space deletes and
+// moves, which internal/app registers there.
+func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.integrations.SpaceGuard() }
+
+// SpaceOf finds the space of an integration by its ID, which internal/app
+// registers for Entity.
+func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.integrations.SpaceOf }
+
+// StackIntegrations checks the integration a stack's write names, the
+// back edge internal/app binds in the stacks domain.
+func (d *Domain) StackIntegrations() stacksapi.StackIntegrations { return d.integrations }
+
+// PurgeBatch is how many integrations one statement of Purge deletes.
+const PurgeBatch = 500
+
+// Purge deletes the deleted account acct's integrations, PurgeBatch at a
+// time. internal/app runs it for each accessapi.Deleted.
+func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	for {
+		done, err := d.integrations.Purge(ctx, acct, PurgeBatch)
+		if err != nil || done {
+			return err //nolint:wrapcheck // the store names the purge
+		}
+	}
 }
 
 // Sources resolves the commits of a stack's repository for other domains.
@@ -107,4 +185,9 @@ type VCSAPI = http.Server
 
 // API is the domain's partial of the API's strict server; a nil domain's
 // is the zero partial, for tests that construct none.
-func (d *Domain) API() VCSAPI { return VCSAPI{} }
+func (d *Domain) API() VCSAPI {
+	if d == nil {
+		return VCSAPI{}
+	}
+	return d.api
+}

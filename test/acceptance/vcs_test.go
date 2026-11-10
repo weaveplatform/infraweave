@@ -6,6 +6,9 @@ import (
 	"fmt"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 )
 
 // vcsSteps read the commits a stack tracks, against the commits the
@@ -22,6 +25,48 @@ func (v *vcsSteps) register(sc *godog.ScenarioContext) {
 		`^token "(\w+)" eventually reads the stack "([a-z0-9-]+)" tracking the commit kept as "(\w+)" through ([AB])$`,
 		v.eventually,
 	)
+	sc.Step(
+		`^an? ([A-Z_]+) integration "([^"]+)" in the space "([^"]+)"( as the default)? is kept as "(\w+)"$`,
+		v.integration,
+	)
+}
+
+// integration writes an integration of the home account as the vcs
+// domain stores one, its credential and webhook secret sealed, since no
+// operation creates one yet, and keeps its ID as key.
+func (v *vcsSteps) integration(
+	ctx context.Context,
+	provider, name, space, isDefault, key string,
+) error {
+	keys, pool, err := v.o.a.s.keyring(ctx)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	acct, id := uuidOf(tenants["home"].account), kernel.NewULID()
+	sealed := make([][]byte, 2)
+	for i, col := range []string{"credentials_sealed", "webhook_secret_sealed"} {
+		c := crypt.Column{Table: "vcs_integrations", Name: col, Key: []string{"account_id", "id"}}
+		if sealed[i], err = keys.SealColumn(ctx, c, []string{acct, id.UUID()},
+			[]byte(col+" of "+key)); err != nil {
+			return fmt.Errorf("seal the %s of %s: %w", col, key, err)
+		}
+	}
+	tag, err := pool.Exec(ctx, `INSERT INTO vcs_integrations (account_id, id, provider, slug,
+			name, space_id, description, labels, is_default, credentials_sealed,
+			webhook_secret_sealed)
+		SELECT $1, $2, $3, $4, $5, sp.id, $6, '{infra}', $7, $8, $9 FROM spaces sp
+		WHERE sp.account_id = $1 AND sp.slug = $10`,
+		acct, id.UUID(), provider, kernel.SlugFrom(name).String(), name, name+" of the team",
+		isDefault != "", sealed[0], sealed[1], v.o.resolve(space))
+	if err != nil {
+		return fmt.Errorf("write integration %s: %w", key, err)
+	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("%w: no space %q for integration %s", errStep, space, key)
+	}
+	v.o.ids[key] = id.String()
+	return nil
 }
 
 // tracked is what a stack's answer says it tracks.

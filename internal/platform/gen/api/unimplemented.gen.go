@@ -222,6 +222,34 @@ func (UnimplementedStrict) AwarenessSourceSurvey(context.Context, AwarenessSourc
 	return nil, &problem.NotImplementedError{OperationID: "awarenessSourceSurvey", Route: "GET /awareness-source-survey"}
 }
 
+func (UnimplementedStrict) AzureDevOpsRepoIntegrationCreate(context.Context, AzureDevOpsRepoIntegrationCreateRequestObject) (AzureDevOpsRepoIntegrationCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationCreate", Route: "POST /azure-dev-ops-repo-integrations"}
+}
+
+func (UnimplementedStrict) AzureDevOpsRepoIntegrationDelete(context.Context, AzureDevOpsRepoIntegrationDeleteRequestObject) (AzureDevOpsRepoIntegrationDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationDelete", Route: "DELETE /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureDevOpsRepoIntegration(context.Context, AzureDevOpsRepoIntegrationRequestObject) (AzureDevOpsRepoIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegration", Route: "GET /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureDevOpsRepoIntegrationPatch(context.Context, AzureDevOpsRepoIntegrationPatchRequestObject) (AzureDevOpsRepoIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationPatch", Route: "PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureDevOpsRepoIntegrationUpdate(context.Context, AzureDevOpsRepoIntegrationUpdateRequestObject) (AzureDevOpsRepoIntegrationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationUpdate", Route: "PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureDevOpsRepoIntegrationTest(context.Context, AzureDevOpsRepoIntegrationTestRequestObject) (AzureDevOpsRepoIntegrationTestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationTest", Route: "POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test"}
+}
+
+func (UnimplementedStrict) AzureDevOpsWebhooksEndpoint(context.Context, AzureDevOpsWebhooksEndpointRequestObject) (AzureDevOpsWebhooksEndpointResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsWebhooksEndpoint", Route: "GET /azure-dev-ops-webhooks-endpoint"}
+}
+
 func (UnimplementedStrict) BilledExternally(context.Context, BilledExternallyRequestObject) (BilledExternallyResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "billedExternally", Route: "GET /billed-externally"}
 }
@@ -248,6 +276,74 @@ func (UnimplementedStrict) BillingSubscriptionUpdateInfo(context.Context, Billin
 
 func (UnimplementedStrict) BillingSubscriptionUpdateTier(context.Context, BillingSubscriptionUpdateTierRequestObject) (BillingSubscriptionUpdateTierResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "billingSubscriptionUpdateTier", Route: "POST /billing-subscription/update-tier"}
+}
+
+func (UnimplementedStrict) BitbucketCloudIntegrationCreateV2(context.Context, BitbucketCloudIntegrationCreateV2RequestObject) (BitbucketCloudIntegrationCreateV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudIntegrationCreateV2", Route: "POST /bitbucket-cloud-integrations"}
+}
+
+func (UnimplementedStrict) BitbucketCloudIntegrationDelete(context.Context, BitbucketCloudIntegrationDeleteRequestObject) (BitbucketCloudIntegrationDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudIntegrationDelete", Route: "DELETE /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketCloudIntegration(context.Context, BitbucketCloudIntegrationRequestObject) (BitbucketCloudIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudIntegration", Route: "GET /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketCloudIntegrationPatch(context.Context, BitbucketCloudIntegrationPatchRequestObject) (BitbucketCloudIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudIntegrationPatch", Route: "PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketCloudIntegrationUpdateV2(context.Context, BitbucketCloudIntegrationUpdateV2RequestObject) (BitbucketCloudIntegrationUpdateV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudIntegrationUpdateV2", Route: "PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketCloudIntegrationRegenerateWebhookSecret(context.Context, BitbucketCloudIntegrationRegenerateWebhookSecretRequestObject) (BitbucketCloudIntegrationRegenerateWebhookSecretResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudIntegrationRegenerateWebhookSecret", Route: "POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret"}
+}
+
+func (UnimplementedStrict) BitbucketCloudIntegrationTest(context.Context, BitbucketCloudIntegrationTestRequestObject) (BitbucketCloudIntegrationTestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudIntegrationTest", Route: "POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/test"}
+}
+
+func (UnimplementedStrict) BitbucketCloudWebhooksEndpoint(context.Context, BitbucketCloudWebhooksEndpointRequestObject) (BitbucketCloudWebhooksEndpointResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketCloudWebhooksEndpoint", Route: "GET /bitbucket-cloud-webhooks-endpoint"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterIntegrationCreate(context.Context, BitbucketDatacenterIntegrationCreateRequestObject) (BitbucketDatacenterIntegrationCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterIntegrationCreate", Route: "POST /bitbucket-datacenter-integrations"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterIntegrationDelete(context.Context, BitbucketDatacenterIntegrationDeleteRequestObject) (BitbucketDatacenterIntegrationDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterIntegrationDelete", Route: "DELETE /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterIntegration(context.Context, BitbucketDatacenterIntegrationRequestObject) (BitbucketDatacenterIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterIntegration", Route: "GET /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterIntegrationPatch(context.Context, BitbucketDatacenterIntegrationPatchRequestObject) (BitbucketDatacenterIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterIntegrationPatch", Route: "PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterIntegrationUpdate(context.Context, BitbucketDatacenterIntegrationUpdateRequestObject) (BitbucketDatacenterIntegrationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterIntegrationUpdate", Route: "PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterIntegrationRegenerateWebhookSecret(context.Context, BitbucketDatacenterIntegrationRegenerateWebhookSecretRequestObject) (BitbucketDatacenterIntegrationRegenerateWebhookSecretResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterIntegrationRegenerateWebhookSecret", Route: "POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterIntegrationTest(context.Context, BitbucketDatacenterIntegrationTestRequestObject) (BitbucketDatacenterIntegrationTestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterIntegrationTest", Route: "POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/test"}
+}
+
+func (UnimplementedStrict) BitbucketDatacenterWebhooksEndpoint(context.Context, BitbucketDatacenterWebhooksEndpointRequestObject) (BitbucketDatacenterWebhooksEndpointResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "bitbucketDatacenterWebhooksEndpoint", Route: "GET /bitbucket-datacenter-webhooks-endpoint"}
+}
+
+func (UnimplementedStrict) Branches(context.Context, BranchesRequestObject) (BranchesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "branches", Route: "GET /branches"}
 }
 
 func (UnimplementedStrict) ContextDetach(context.Context, ContextDetachRequestObject) (ContextDetachResponseObject, error) {
@@ -324,6 +420,78 @@ func (UnimplementedStrict) ExpressionComplete(context.Context, ExpressionComplet
 
 func (UnimplementedStrict) ExpressionEvaluate(context.Context, ExpressionEvaluateRequestObject) (ExpressionEvaluateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "expressionEvaluate", Route: "POST /expressions/evaluate"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseIntegrationCreate(context.Context, GithubEnterpriseIntegrationCreateRequestObject) (GithubEnterpriseIntegrationCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegrationCreate", Route: "POST /github-enterprise-integrations"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseIntegrationDelete(context.Context, GithubEnterpriseIntegrationDeleteRequestObject) (GithubEnterpriseIntegrationDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegrationDelete", Route: "DELETE /github-enterprise-integrations/{githubEnterpriseIntegrationId}"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseIntegration(context.Context, GithubEnterpriseIntegrationRequestObject) (GithubEnterpriseIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegration", Route: "GET /github-enterprise-integrations/{githubEnterpriseIntegrationId}"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseIntegrationPatch(context.Context, GithubEnterpriseIntegrationPatchRequestObject) (GithubEnterpriseIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegrationPatch", Route: "PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId}"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseIntegrationUpdate(context.Context, GithubEnterpriseIntegrationUpdateRequestObject) (GithubEnterpriseIntegrationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegrationUpdate", Route: "PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId}"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseIntegrationRegenerateWebhookSecret(context.Context, GithubEnterpriseIntegrationRegenerateWebhookSecretRequestObject) (GithubEnterpriseIntegrationRegenerateWebhookSecretResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegrationRegenerateWebhookSecret", Route: "POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseIntegrationTest(context.Context, GithubEnterpriseIntegrationTestRequestObject) (GithubEnterpriseIntegrationTestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegrationTest", Route: "POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/test"}
+}
+
+func (UnimplementedStrict) GithubEnterpriseWebhooksEndpoint(context.Context, GithubEnterpriseWebhooksEndpointRequestObject) (GithubEnterpriseWebhooksEndpointResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseWebhooksEndpoint", Route: "GET /github-enterprise-webhooks-endpoint"}
+}
+
+func (UnimplementedStrict) GithubIntegration(context.Context, GithubIntegrationRequestObject) (GithubIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubIntegration", Route: "GET /github-integration"}
+}
+
+func (UnimplementedStrict) GithubIntegrationUpdate(context.Context, GithubIntegrationUpdateRequestObject) (GithubIntegrationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubIntegrationUpdate", Route: "PUT /github-integration"}
+}
+
+func (UnimplementedStrict) GitlabIntegrationCreate(context.Context, GitlabIntegrationCreateRequestObject) (GitlabIntegrationCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegrationCreate", Route: "POST /gitlab-integrations"}
+}
+
+func (UnimplementedStrict) GitlabIntegrationDelete(context.Context, GitlabIntegrationDeleteRequestObject) (GitlabIntegrationDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegrationDelete", Route: "DELETE /gitlab-integrations/{gitlabIntegrationId}"}
+}
+
+func (UnimplementedStrict) GitlabIntegration(context.Context, GitlabIntegrationRequestObject) (GitlabIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegration", Route: "GET /gitlab-integrations/{gitlabIntegrationId}"}
+}
+
+func (UnimplementedStrict) GitlabIntegrationPatch(context.Context, GitlabIntegrationPatchRequestObject) (GitlabIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegrationPatch", Route: "PATCH /gitlab-integrations/{gitlabIntegrationId}"}
+}
+
+func (UnimplementedStrict) GitlabIntegrationUpdate(context.Context, GitlabIntegrationUpdateRequestObject) (GitlabIntegrationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegrationUpdate", Route: "PUT /gitlab-integrations/{gitlabIntegrationId}"}
+}
+
+func (UnimplementedStrict) GitlabIntegrationRegenerateWebhookSecret(context.Context, GitlabIntegrationRegenerateWebhookSecretRequestObject) (GitlabIntegrationRegenerateWebhookSecretResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegrationRegenerateWebhookSecret", Route: "POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret"}
+}
+
+func (UnimplementedStrict) GitlabIntegrationTest(context.Context, GitlabIntegrationTestRequestObject) (GitlabIntegrationTestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegrationTest", Route: "POST /gitlab-integrations/{gitlabIntegrationId}/test"}
+}
+
+func (UnimplementedStrict) GitlabWebhooksEndpoint(context.Context, GitlabWebhooksEndpointRequestObject) (GitlabWebhooksEndpointResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "gitlabWebhooksEndpoint", Route: "GET /gitlab-webhooks-endpoint"}
 }
 
 func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObject, error) {
@@ -536,6 +704,10 @@ func (UnimplementedStrict) PersonalApiKeysEnabled(context.Context, PersonalApiKe
 
 func (UnimplementedStrict) PersonalApiKeyDisable(context.Context, PersonalApiKeyDisableRequestObject) (PersonalApiKeyDisableResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeyDisable", Route: "POST /personal-api-keys/{personalApiKeyId}/disable"}
+}
+
+func (UnimplementedStrict) Repositories(context.Context, RepositoriesRequestObject) (RepositoriesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "repositories", Route: "GET /repositories"}
 }
 
 func (UnimplementedStrict) Roles(context.Context, RolesRequestObject) (RolesResponseObject, error) {
@@ -1076,6 +1248,34 @@ func (UnimplementedStrict) UsersWithAccessToSpace(context.Context, UsersWithAcce
 
 func (UnimplementedStrict) UsersWithAccessToSpaceSuggestions(context.Context, UsersWithAccessToSpaceSuggestionsRequestObject) (UsersWithAccessToSpaceSuggestionsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "usersWithAccessToSpaceSuggestions", Route: "GET /users-with-access-to-space-suggestions"}
+}
+
+func (UnimplementedStrict) SearchVCSIntegrations(context.Context, SearchVCSIntegrationsRequestObject) (SearchVCSIntegrationsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchVCSIntegrations", Route: "POST /v-cs-integrations/search"}
+}
+
+func (UnimplementedStrict) SearchVCSIntegrationsSuggestions(context.Context, SearchVCSIntegrationsSuggestionsRequestObject) (SearchVCSIntegrationsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchVCSIntegrationsSuggestions", Route: "POST /v-cs-integrations/search/suggestions"}
+}
+
+func (UnimplementedStrict) VcsIntegrations(context.Context, VcsIntegrationsRequestObject) (VcsIntegrationsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsIntegrations", Route: "GET /vcs-integrations"}
+}
+
+func (UnimplementedStrict) VcsIntegration(context.Context, VcsIntegrationRequestObject) (VcsIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsIntegration", Route: "GET /vcs-integrations/{vcsIntegrationId}"}
+}
+
+func (UnimplementedStrict) VcsIntegrationSearchUsers(context.Context, VcsIntegrationSearchUsersRequestObject) (VcsIntegrationSearchUsersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsIntegrationSearchUsers", Route: "GET /vcs-integrations/{vcsIntegrationId}/search-users"}
+}
+
+func (UnimplementedStrict) VcsIntegrationSearchUsersSuggestions(context.Context, VcsIntegrationSearchUsersSuggestionsRequestObject) (VcsIntegrationSearchUsersSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsIntegrationSearchUsersSuggestions", Route: "GET /vcs-integrations/{vcsIntegrationId}/search-users-suggestions"}
+}
+
+func (UnimplementedStrict) VcsIntegrationTest(context.Context, VcsIntegrationTestRequestObject) (VcsIntegrationTestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsIntegrationTest", Route: "GET /vcs-integrations/{vcsIntegrationId}/test"}
 }
 
 func (UnimplementedStrict) Viewer(context.Context, ViewerRequestObject) (ViewerResponseObject, error) {

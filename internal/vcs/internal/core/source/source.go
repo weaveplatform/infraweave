@@ -12,19 +12,37 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
+// Integrations finds the integration a stack uses now, with its secrets
+// opened: its own, id, or its provider's default when id is nil; false
+// when it names none and the provider has no default.
+type Integrations interface {
+	Use(
+		ctx context.Context,
+		acct kernel.AccountID,
+		provider string,
+		id *kernel.ULID,
+	) (port.Integration, bool, error)
+}
+
 // Service implements vcsapi.Sources over the provider of each stack's
 // repository.
 type Service struct {
-	stacks    stacksapi.Stacks
-	providers map[string]port.Source
+	stacks       stacksapi.Stacks
+	providers    map[string]port.Source
+	integrations Integrations
 }
 
 var _ vcsapi.Sources = (*Service)(nil)
 
-// New returns the service reading stacks through stacks, with each
-// provider's Source keyed by its served VCSProvider value.
-func New(stacks stacksapi.Stacks, providers map[string]port.Source) *Service {
-	return &Service{stacks: stacks, providers: providers}
+// New returns the service reading stacks through stacks and their
+// integrations through integrations, with each provider's Source keyed by
+// its served VCSProvider value.
+func New(
+	stacks stacksapi.Stacks,
+	providers map[string]port.Source,
+	integrations Integrations,
+) *Service {
+	return &Service{stacks: stacks, providers: providers, integrations: integrations}
 }
 
 // Resolve implements vcsapi.Sources.
@@ -157,9 +175,21 @@ func (s *Service) source(
 			}},
 		}
 	}
+	if st.VCSDetached {
+		return nil, port.Repository{}, &kernel.Invalid{
+			Detail: "The stack's VCS integration was deleted.",
+		}
+	}
 	repo := port.Repository{Namespace: st.Namespace, Name: st.Repository}
 	if st.RepositoryURL != nil {
 		repo.URL = *st.RepositoryURL
+	}
+	in, ok, err := s.integrations.Use(ctx, acct, st.Provider, st.VCSIntegration)
+	if err != nil {
+		return nil, port.Repository{}, err //nolint:wrapcheck // the store names the read
+	}
+	if ok {
+		repo.Integration = &in
 	}
 	return src, repo, nil
 }

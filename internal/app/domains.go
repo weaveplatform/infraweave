@@ -113,11 +113,21 @@ func newDomains(
 		return Domains{}, err //nolint:wrapcheck // names the surface or the setting
 	}
 	configuration.BindExpressions(registry)
-	vcs, err := vcsassembly.New(vcsassembly.Deps{Stacks: stacks.Stacks(), Settings: c.VCS})
+	vcs, err := vcsassembly.New(vcsassembly.Deps{
+		DB:       db.Primary(),
+		Keys:     keys,
+		Spaces:   access.Spaces(),
+		Authz:    access.Authorizer(),
+		Stacks:   stacks.Stacks(),
+		Settings: c.VCS,
+	})
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
+	access.GuardSpaces(vcs.SpaceGuard())
+	access.ResolveSubjects(vcsassembly.Entity, vcs.SpaceOf())
 	stacks.BindSources(vcs.StackSources())
+	stacks.BindIntegrations(vcs.StackIntegrations())
 	d := Domains{
 		Features:      features,
 		Access:        access,

@@ -101,6 +101,12 @@ func (d *Domain) GuardStacks(g stacksapi.StackGuard) { d.stacks.Guard(g) }
 // the commit operations reach the stack's repository through.
 func (d *Domain) BindSources(src stacksapi.StackSources) { d.stacks.BindSources(src) }
 
+// BindIntegrations binds the vcs domain's check of the VCS integration a
+// stack's write names.
+func (d *Domain) BindIntegrations(in stacksapi.StackIntegrations) {
+	d.stacks.BindIntegrations(in)
+}
+
 // BindConfiguration binds the configuration domain's reader of a stack's
 // contexts and config elements, a back edge internal/app binds after it
 // constructs that domain; until then a stack has neither.

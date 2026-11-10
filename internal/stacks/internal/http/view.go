@@ -66,6 +66,7 @@ func viewOf(
 		TrackedBranchHead:            commitView(st.TrackedBranchHead),
 		TrackedCommit:                commitView(st.TrackedCommit),
 		TrackedCommitSetBy:           st.TrackedCommitSetBy,
+		VcsDetached:                  st.VCSDetached,
 		State:                        api.StackState(st.State),
 		StateIsTerminal:              st.State.Terminal(),
 		Blocked:                      st.Blocked,
@@ -86,6 +87,9 @@ func viewOf(
 		ScheduledDeletes:             []api.ScheduledDelete{},
 		ScheduledRuns:                []api.ScheduledRun{},
 		ScheduledTasks:               []api.ScheduledTask{},
+	}
+	if st.VCSIntegration != nil {
+		v.VcsIntegration = &api.VCSIntegrationRef{Id: st.VCSIntegration.String()}
 	}
 	if l := st.Lock; l != nil {
 		at := unix(l.At.Unix())

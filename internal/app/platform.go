@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
 
@@ -40,6 +41,7 @@ func Streams() []migrate.Stream {
 		stacksassembly.Stream(),
 		configurationassembly.Stream(),
 		runsassembly.Stream(),
+		vcsassembly.Stream(),
 	}
 }
 
@@ -47,7 +49,7 @@ func Streams() []migrate.Stream {
 // which secrets.reseal walks after a data key rotation.
 func SealedColumns() []crypt.Column {
 	return slices.Concat(crypt.Registry(), accessassembly.SealedColumns(),
-		configurationassembly.SealedColumns())
+		configurationassembly.SealedColumns(), vcsassembly.SealedColumns())
 }
 
 // openDatabase opens PostgreSQL and brings its schema to this binary's:

@@ -21,7 +21,10 @@ type spaceSteps struct{ o *orgSteps }
 
 func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's id is the space "(\w+)"$`, s.remember)
-	sc.Step(`^the answer lists the (?:spaces|stacks|contexts|roles) "([^"]*)"$`, s.lists)
+	sc.Step(
+		`^the answer lists the (?:spaces|stacks|contexts|roles|integrations) "([^"]*)"$`,
+		s.lists,
+	)
 	sc.Step(
 		`^the member key is ([a-z0-9-]+) on the space "([^"]+)"$`,
 		s.bind,

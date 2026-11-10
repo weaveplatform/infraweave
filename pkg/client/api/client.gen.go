@@ -2561,6 +2561,48 @@ func (e VCSCheck) Valid() bool {
 	}
 }
 
+// Defines values for VCSIntegrationTestStatus.
+const (
+	FAIL    VCSIntegrationTestStatus = "FAIL"
+	SUCCESS VCSIntegrationTestStatus = "SUCCESS"
+)
+
+// Valid indicates whether the value is a known member of the VCSIntegrationTestStatus enum.
+func (e VCSIntegrationTestStatus) Valid() bool {
+	switch e {
+	case FAIL:
+		return true
+	case SUCCESS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VCSIntegrationTestType.
+const (
+	CONNECTION      VCSIntegrationTestType = "CONNECTION"
+	GITHUBAPPEVENTS VCSIntegrationTestType = "GITHUB_APP_EVENTS"
+	PERMISSIONS     VCSIntegrationTestType = "PERMISSIONS"
+	WEBHOOK         VCSIntegrationTestType = "WEBHOOK"
+)
+
+// Valid indicates whether the value is a known member of the VCSIntegrationTestType enum.
+func (e VCSIntegrationTestType) Valid() bool {
+	switch e {
+	case CONNECTION:
+		return true
+	case GITHUBAPPEVENTS:
+		return true
+	case PERMISSIONS:
+		return true
+	case WEBHOOK:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for VCSProvider.
 const (
 	VCSProviderAZUREDEVOPS         VCSProvider = "AZURE_DEVOPS"
@@ -3274,6 +3316,29 @@ type AzureDevOpsRepoIntegration struct {
 // AzureDevOpsRepoIntegrationKind The concrete type, for union and interface responses.
 type AzureDevOpsRepoIntegrationKind string
 
+// AzureDevOpsRepoIntegrationCreateRequest The arguments of azureDevOpsRepoIntegrationCreate not carried in the path.
+type AzureDevOpsRepoIntegrationCreateRequest struct {
+	// AccessibleProjects Restrict the integration to specific Azure DevOps projects. Leave empty to allow all projects in the organization.
+	AccessibleProjects *[]string       `json:"accessibleProjects,omitempty"`
+	CustomInput        *CustomVCSInput `json:"customInput,omitempty"`
+	OrganizationURL    string          `json:"organizationURL"`
+
+	// PersonalAccessToken The Azure DevOps personal access token
+	PersonalAccessToken string `json:"personalAccessToken"`
+
+	// UserFacingHost User facing host URL. Defaults to the organization URL if not set. Set this when using VCS agents.
+	UserFacingHost *string `json:"userFacingHost,omitempty"`
+}
+
+// AzureDevOpsRepoIntegrationUpdateRequest The arguments of azureDevOpsRepoIntegrationUpdate not carried in the path.
+type AzureDevOpsRepoIntegrationUpdateRequest struct {
+	AccessibleProjects  *[]string                `json:"accessibleProjects,omitempty"`
+	CustomInput         CustomVCSUpdateInputBody `json:"customInput"`
+	OrganizationURL     string                   `json:"organizationURL"`
+	PersonalAccessToken *string                  `json:"personalAccessToken,omitempty"`
+	UserFacingHost      *string                  `json:"userFacingHost,omitempty"`
+}
+
 // AzureIntegration AzureIntegration represents an integration with an Azure AD tenant.
 type AzureIntegration struct {
 	// AdminConsentProvided Indicates whether admin consent has been performed for the AAD Application.
@@ -3561,6 +3626,20 @@ type BitbucketCloudIntegration struct {
 // BitbucketCloudIntegrationKind The concrete type, for union and interface responses.
 type BitbucketCloudIntegrationKind string
 
+// BitbucketCloudIntegrationInput defines model for BitbucketCloudIntegrationInput.
+type BitbucketCloudIntegrationInput struct {
+	ApiToken    string          `json:"apiToken"`
+	CustomInput *CustomVCSInput `json:"customInput,omitempty"`
+	Email       string          `json:"email"`
+}
+
+// BitbucketCloudIntegrationUpdateInputBody defines model for BitbucketCloudIntegrationUpdateInputBody.
+type BitbucketCloudIntegrationUpdateInputBody struct {
+	ApiToken    *string                  `json:"apiToken,omitempty"`
+	CustomInput CustomVCSUpdateInputBody `json:"customInput"`
+	Email       string                   `json:"email"`
+}
+
 // BitbucketDatacenterIntegration BitbucketDatacenterIntegration shows Bitbucket Datacenter integration details.
 type BitbucketDatacenterIntegration struct {
 	// ApiHost The API host where requests will be sent.
@@ -3597,6 +3676,31 @@ type BitbucketDatacenterIntegration struct {
 
 // BitbucketDatacenterIntegrationKind The concrete type, for union and interface responses.
 type BitbucketDatacenterIntegrationKind string
+
+// BitbucketDatacenterIntegrationCreateRequest The arguments of bitbucketDatacenterIntegrationCreate not carried in the path.
+type BitbucketDatacenterIntegrationCreateRequest struct {
+	// AccessToken User access token from Bitbucket
+	AccessToken string `json:"accessToken"`
+
+	// ApiHost The API host where requests will be sent
+	ApiHost     string          `json:"apiHost"`
+	CustomInput *CustomVCSInput `json:"customInput,omitempty"`
+
+	// UserFacingHost The host every user-facing URL infraweave displays uses.
+	UserFacingHost string `json:"userFacingHost"`
+
+	// Username Username which will be used to authenticate requests for cloning repositories
+	Username *string `json:"username,omitempty"`
+}
+
+// BitbucketDatacenterIntegrationUpdateRequest The arguments of bitbucketDatacenterIntegrationUpdate not carried in the path.
+type BitbucketDatacenterIntegrationUpdateRequest struct {
+	AccessToken    *string                  `json:"accessToken,omitempty"`
+	ApiHost        string                   `json:"apiHost"`
+	CustomInput    CustomVCSUpdateInputBody `json:"customInput"`
+	UserFacingHost string                   `json:"userFacingHost"`
+	Username       *string                  `json:"username,omitempty"`
+}
 
 // BlobStorageAuthMethod BlobStorageAuthMethod is how a Blob Storage integration authenticates its reads.
 type BlobStorageAuthMethod string
@@ -3680,6 +3784,14 @@ type BlueprintIntegrationAttachment struct {
 // BlueprintRef A reference to a Blueprint; fetch it with GET /blueprints/{blueprintId}.
 type BlueprintRef struct {
 	Id string `json:"id"`
+}
+
+// BranchesPage One page of a cursor-paginated list.
+type BranchesPage struct {
+	Items []string `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
 // ClaimMapping defines model for ClaimMapping.
@@ -4007,6 +4119,53 @@ type ContextsConnection struct {
 
 	// Node A reference to a Context; fetch it with GET /contexts/{contextId}.
 	Node ContextRef `json:"node"`
+}
+
+// CustomVCSInput defines model for CustomVCSInput.
+type CustomVCSInput struct {
+	// Description Free-form description of the integration.
+	Description *string `json:"description,omitempty"`
+
+	// IsDefault isDefault indicates whether this integration should be used as the default. If not provided, defaults to false.
+	IsDefault *bool `json:"isDefault,omitempty"`
+
+	// Labels Labels for the integration.
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Name The name of the integration
+	Name string `json:"name"`
+
+	// SpaceID The space this VCS integration belongs to.
+	SpaceID string `json:"spaceID"`
+
+	// UseGitCheckout Indicates whether the integration should use git checkout. If false source code will be downloaded using the VCS API.
+	UseGitCheckout *bool `json:"useGitCheckout,omitempty"`
+
+	// VcsCheckOptions Input for configuring additional VCS check options.
+	VcsCheckOptions *VCSCheckOptionsInput `json:"vcsCheckOptions,omitempty"`
+
+	// VcsChecks vcsChecks contains all the VCS checks enabled for this integration. If not provided, defaults to INDIVIDUAL
+	VcsChecks *VCSCheck `json:"vcsChecks,omitempty"`
+}
+
+// CustomVCSUpdateInputBody defines model for CustomVCSUpdateInputBody.
+type CustomVCSUpdateInputBody struct {
+	// Description Free-form description of the integration.
+	Description *string `json:"description,omitempty"`
+
+	// Labels Labels for the integration.
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Space The slug of the space that the integration will belong to after
+	// the update.
+	Space string `json:"space"`
+
+	// UseGitCheckout Indicates whether the integration should use git checkout. If false source code will be downloaded using the VCS API.
+	UseGitCheckout *bool `json:"useGitCheckout,omitempty"`
+
+	// VcsCheckOptions Input for configuring additional VCS check options.
+	VcsCheckOptions *VCSCheckOptionsInput `json:"vcsCheckOptions,omitempty"`
+	VcsChecks       *VCSCheck             `json:"vcsChecks,omitempty"`
 }
 
 // DataPoint defines model for DataPoint.
@@ -4447,6 +4606,16 @@ type GithubEnterpriseIntegration struct {
 // GithubEnterpriseIntegrationKind The concrete type, for union and interface responses.
 type GithubEnterpriseIntegrationKind string
 
+// GithubEnterpriseIntegrationCreateRequest The arguments of githubEnterpriseIntegrationCreate not carried in the path.
+type GithubEnterpriseIntegrationCreateRequest struct {
+	ApiHost        string          `json:"apiHost"`
+	AppID          string          `json:"appID"`
+	CustomInput    *CustomVCSInput `json:"customInput,omitempty"`
+	PrivateKey     string          `json:"privateKey"`
+	UserFacingHost *string         `json:"userFacingHost,omitempty"`
+	WebhookSecret  *string         `json:"webhookSecret,omitempty"`
+}
+
 // GithubEnterpriseIntegrationInstallation GithubEnterpriseIntegrationInstallation represents a single GitHub Enterprise
 // custom app installation.
 type GithubEnterpriseIntegrationInstallation struct {
@@ -4454,6 +4623,15 @@ type GithubEnterpriseIntegrationInstallation struct {
 	AccountType     *string `json:"accountType,omitempty"`
 	InstallationId  string  `json:"installationId"`
 	InstallationUrl *string `json:"installationUrl,omitempty"`
+}
+
+// GithubEnterpriseIntegrationUpdateRequest The arguments of githubEnterpriseIntegrationUpdate not carried in the path.
+type GithubEnterpriseIntegrationUpdateRequest struct {
+	ApiHost        string                   `json:"apiHost"`
+	CustomInput    CustomVCSUpdateInputBody `json:"customInput"`
+	PrivateKey     *string                  `json:"privateKey,omitempty"`
+	UserFacingHost *string                  `json:"userFacingHost,omitempty"`
+	WebhookSecret  string                   `json:"webhookSecret"`
 }
 
 // GithubIntegration GithubIntegration shows build-in GitHub integration details.
@@ -4472,6 +4650,15 @@ type GithubIntegration struct {
 
 // GithubIntegrationKind The concrete type, for union and interface responses.
 type GithubIntegrationKind string
+
+// GithubIntegrationUpdateRequest The arguments of githubIntegrationUpdate not carried in the path.
+type GithubIntegrationUpdateRequest struct {
+	UseGitCheckout *bool `json:"useGitCheckout,omitempty"`
+
+	// VcsCheckOptions Input for configuring additional VCS check options.
+	VcsCheckOptions *VCSCheckOptionsInput `json:"vcsCheckOptions,omitempty"`
+	VcsChecks       VCSCheck              `json:"vcsChecks"`
+}
 
 // GitlabIntegration GitlabIntegration shows Gitlab integration details.
 type GitlabIntegration struct {
@@ -4499,6 +4686,27 @@ type GitlabIntegration struct {
 
 // GitlabIntegrationKind The concrete type, for union and interface responses.
 type GitlabIntegrationKind string
+
+// GitlabIntegrationCreateRequest The arguments of gitlabIntegrationCreate not carried in the path.
+type GitlabIntegrationCreateRequest struct {
+	// ApiHost API host URL
+	ApiHost     string          `json:"apiHost"`
+	CustomInput *CustomVCSInput `json:"customInput,omitempty"`
+
+	// PrivateToken The GitLab API Token
+	PrivateToken string `json:"privateToken"`
+
+	// UserFacingHost User facing host URL.
+	UserFacingHost *string `json:"userFacingHost,omitempty"`
+}
+
+// GitlabIntegrationUpdateRequest The arguments of gitlabIntegrationUpdate not carried in the path.
+type GitlabIntegrationUpdateRequest struct {
+	ApiHost        *string                  `json:"apiHost,omitempty"`
+	CustomInput    CustomVCSUpdateInputBody `json:"customInput"`
+	PrivateToken   *string                  `json:"privateToken,omitempty"`
+	UserFacingHost *string                  `json:"userFacingHost,omitempty"`
+}
 
 // Hooks Hooks represents a collection of hooks extending the standard run lifecycle.
 type Hooks struct {
@@ -5734,6 +5942,23 @@ type PulumiStack struct {
 // PulumiStackKind The concrete type, for union and interface responses.
 type PulumiStackKind string
 
+// Repository GitHub repository with branches.
+type Repository struct {
+	// Id Name of the repository.
+	Id string `json:"id"`
+
+	// Namespace Repository namespace.
+	Namespace string `json:"namespace"`
+}
+
+// RepositoryPage One page of a cursor-paginated list.
+type RepositoryPage struct {
+	Items []Repository `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
 // Role defines model for Role.
 type Role struct {
 	Actions           []Action      `json:"actions"`
@@ -6815,6 +7040,18 @@ type SearchSuggestionsPossibleValuesString struct {
 
 	// Values values are the possible values of the field.
 	Values []string `json:"values"`
+}
+
+// SearchVCSIntegrationUsersOutput defines model for SearchVCSIntegrationUsersOutput.
+type SearchVCSIntegrationUsersOutput struct {
+	Edges    []VCSIntegrationUserConnection `json:"edges"`
+	PageInfo PageInfo                       `json:"pageInfo"`
+}
+
+// SearchVCSIntegrationsOutput defines model for SearchVCSIntegrationsOutput.
+type SearchVCSIntegrationsOutput struct {
+	Edges    []VCSIntegrationsConnection `json:"edges"`
+	PageInfo PageInfo                    `json:"pageInfo"`
 }
 
 // SeatLimit A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
@@ -8867,6 +9104,15 @@ type VCSCheckOptions struct {
 	IndividualSkipUnchanged bool `json:"individualSkipUnchanged"`
 }
 
+// VCSCheckOptionsInput Input for configuring additional VCS check options.
+type VCSCheckOptionsInput struct {
+	// IndividualFailuresOnly When true, individual check runs are only sent when a run reaches a non-success terminal state.
+	IndividualFailuresOnly *bool `json:"individualFailuresOnly,omitempty"`
+
+	// IndividualSkipUnchanged When true, individual check runs are only sent for runs that plan changes; runs with no changes are skipped (failures are still sent).
+	IndividualSkipUnchanged *bool `json:"individualSkipUnchanged,omitempty"`
+}
+
 // VCSIntegration defines model for VCSIntegration.
 type VCSIntegration struct {
 	// CreatedAt CreatedAt is unix timestamp (in seconds) at which the blueprint was created
@@ -8901,6 +9147,13 @@ type VCSIntegration struct {
 	UpdatedAt int32 `json:"updatedAt"`
 }
 
+// VCSIntegrationCheck defines model for VCSIntegrationCheck.
+type VCSIntegrationCheck struct {
+	Metadata *VCSIntegrationTestResultMetadata `json:"metadata,omitempty"`
+	Status   VCSIntegrationTestStatus          `json:"status"`
+	Type     VCSIntegrationTestType            `json:"type"`
+}
+
 // VCSIntegrationDetails defines model for VCSIntegrationDetails.
 type VCSIntegrationDetails struct {
 	union json.RawMessage
@@ -8917,6 +9170,63 @@ type VCSIntegrationPage struct {
 // VCSIntegrationRef A reference to a VCSIntegration; fetch it with GET /vcs-integrations/{vcsIntegrationId}.
 type VCSIntegrationRef struct {
 	Id string `json:"id"`
+}
+
+// VCSIntegrationTestResult defines model for VCSIntegrationTestResult.
+type VCSIntegrationTestResult struct {
+	Checks []VCSIntegrationCheck    `json:"checks"`
+	Status VCSIntegrationTestStatus `json:"status"`
+}
+
+// VCSIntegrationTestResultMetadata defines model for VCSIntegrationTestResultMetadata.
+type VCSIntegrationTestResultMetadata struct {
+	GithubAppEvents []string                                  `json:"githubAppEvents"`
+	Permissions     []string                                  `json:"permissions"`
+	Reason          *string                                   `json:"reason,omitempty"`
+	WebHooks        *VCSIntegrationTestResultMetadataWebhooks `json:"webHooks,omitempty"`
+}
+
+// VCSIntegrationTestResultMetadataWebhooks defines model for VCSIntegrationTestResultMetadataWebhooks.
+type VCSIntegrationTestResultMetadataWebhooks struct {
+	Actual   string `json:"actual"`
+	Expected string `json:"expected"`
+}
+
+// VCSIntegrationTestStatus defines model for VCSIntegrationTestStatus.
+type VCSIntegrationTestStatus string
+
+// VCSIntegrationTestType defines model for VCSIntegrationTestType.
+type VCSIntegrationTestType string
+
+// VCSIntegrationUser VCSIntegrationUser represents a user (module or stacks) of the VCS integration.
+type VCSIntegrationUser struct {
+	// IsModule True if the attached project is a module.
+	IsModule bool `json:"isModule"`
+
+	// SpaceDetails A reference to a Space; fetch it with GET /spaces/{spaceId}.
+	SpaceDetails SpaceRef `json:"spaceDetails"`
+
+	// StackId Slug of the attached stack or module.
+	StackId string `json:"stackId"`
+
+	// StackName Name of the attached stack or module.
+	StackName string `json:"stackName"`
+}
+
+// VCSIntegrationUserConnection VCSIntegrationUserConnection represents a single stack/module in a page of results for a VCS integration.
+type VCSIntegrationUserConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node VCSIntegrationUser represents a user (module or stacks) of the VCS integration.
+	Node VCSIntegrationUser `json:"node"`
+}
+
+// VCSIntegrationsConnection defines model for VCSIntegrationsConnection.
+type VCSIntegrationsConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node A reference to a VCSIntegration; fetch it with GET /vcs-integrations/{vcsIntegrationId}.
+	Node VCSIntegrationRef `json:"node"`
 }
 
 // VCSProvider VCSProvider is the type of VCS provider.
@@ -9532,6 +9842,39 @@ type AvailableUserGroupsParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// AzureDevOpsRepoIntegrationCreateParams defines parameters for AzureDevOpsRepoIntegrationCreate.
+type AzureDevOpsRepoIntegrationCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AzureDevOpsRepoIntegrationDeleteParams defines parameters for AzureDevOpsRepoIntegrationDelete.
+type AzureDevOpsRepoIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AzureDevOpsRepoIntegrationPatchParams defines parameters for AzureDevOpsRepoIntegrationPatch.
+type AzureDevOpsRepoIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AzureDevOpsRepoIntegrationUpdateParams defines parameters for AzureDevOpsRepoIntegrationUpdate.
+type AzureDevOpsRepoIntegrationUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AzureDevOpsRepoIntegrationTestParams defines parameters for AzureDevOpsRepoIntegrationTest.
+type AzureDevOpsRepoIntegrationTestParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // BillingSubscriptionCreateParams defines parameters for BillingSubscriptionCreate.
 type BillingSubscriptionCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -9548,6 +9891,99 @@ type BillingSubscriptionUpdateInfoParams struct {
 type BillingSubscriptionUpdateTierParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BitbucketCloudIntegrationCreateV2Params defines parameters for BitbucketCloudIntegrationCreateV2.
+type BitbucketCloudIntegrationCreateV2Params struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BitbucketCloudIntegrationDeleteParams defines parameters for BitbucketCloudIntegrationDelete.
+type BitbucketCloudIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// BitbucketCloudIntegrationPatchParams defines parameters for BitbucketCloudIntegrationPatch.
+type BitbucketCloudIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// BitbucketCloudIntegrationUpdateV2Params defines parameters for BitbucketCloudIntegrationUpdateV2.
+type BitbucketCloudIntegrationUpdateV2Params struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// BitbucketCloudIntegrationRegenerateWebhookSecretParams defines parameters for BitbucketCloudIntegrationRegenerateWebhookSecret.
+type BitbucketCloudIntegrationRegenerateWebhookSecretParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BitbucketCloudIntegrationTestParams defines parameters for BitbucketCloudIntegrationTest.
+type BitbucketCloudIntegrationTestParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BitbucketDatacenterIntegrationCreateParams defines parameters for BitbucketDatacenterIntegrationCreate.
+type BitbucketDatacenterIntegrationCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BitbucketDatacenterIntegrationDeleteParams defines parameters for BitbucketDatacenterIntegrationDelete.
+type BitbucketDatacenterIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// BitbucketDatacenterIntegrationPatchParams defines parameters for BitbucketDatacenterIntegrationPatch.
+type BitbucketDatacenterIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// BitbucketDatacenterIntegrationUpdateParams defines parameters for BitbucketDatacenterIntegrationUpdate.
+type BitbucketDatacenterIntegrationUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// BitbucketDatacenterIntegrationRegenerateWebhookSecretParams defines parameters for BitbucketDatacenterIntegrationRegenerateWebhookSecret.
+type BitbucketDatacenterIntegrationRegenerateWebhookSecretParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BitbucketDatacenterIntegrationTestParams defines parameters for BitbucketDatacenterIntegrationTest.
+type BitbucketDatacenterIntegrationTestParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// BranchesParams defines parameters for Branches.
+type BranchesParams struct {
+	Provider         VCSProvider `form:"provider" json:"provider"`
+	Namespace        string      `form:"namespace" json:"namespace"`
+	Repository       string      `form:"repository" json:"repository"`
+	RepositoryURL    *string     `form:"repositoryURL,omitempty" json:"repositoryURL,omitempty"`
+	VcsIntegrationID *string     `form:"vcsIntegrationID,omitempty" json:"vcsIntegrationID,omitempty"`
+
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // ContextsParams defines parameters for Contexts.
@@ -9629,6 +10065,89 @@ type ExpressionCompleteParams struct {
 
 // ExpressionEvaluateParams defines parameters for ExpressionEvaluate.
 type ExpressionEvaluateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// GithubEnterpriseIntegrationCreateParams defines parameters for GithubEnterpriseIntegrationCreate.
+type GithubEnterpriseIntegrationCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// GithubEnterpriseIntegrationDeleteParams defines parameters for GithubEnterpriseIntegrationDelete.
+type GithubEnterpriseIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// GithubEnterpriseIntegrationPatchParams defines parameters for GithubEnterpriseIntegrationPatch.
+type GithubEnterpriseIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// GithubEnterpriseIntegrationUpdateParams defines parameters for GithubEnterpriseIntegrationUpdate.
+type GithubEnterpriseIntegrationUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// GithubEnterpriseIntegrationRegenerateWebhookSecretParams defines parameters for GithubEnterpriseIntegrationRegenerateWebhookSecret.
+type GithubEnterpriseIntegrationRegenerateWebhookSecretParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// GithubEnterpriseIntegrationTestParams defines parameters for GithubEnterpriseIntegrationTest.
+type GithubEnterpriseIntegrationTestParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// GithubEnterpriseWebhooksEndpointParams defines parameters for GithubEnterpriseWebhooksEndpoint.
+type GithubEnterpriseWebhooksEndpointParams struct {
+	Id *string `form:"id,omitempty" json:"id,omitempty"`
+}
+
+// GitlabIntegrationCreateParams defines parameters for GitlabIntegrationCreate.
+type GitlabIntegrationCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// GitlabIntegrationDeleteParams defines parameters for GitlabIntegrationDelete.
+type GitlabIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// GitlabIntegrationPatchParams defines parameters for GitlabIntegrationPatch.
+type GitlabIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// GitlabIntegrationUpdateParams defines parameters for GitlabIntegrationUpdate.
+type GitlabIntegrationUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// GitlabIntegrationRegenerateWebhookSecretParams defines parameters for GitlabIntegrationRegenerateWebhookSecret.
+type GitlabIntegrationRegenerateWebhookSecretParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// GitlabIntegrationTestParams defines parameters for GitlabIntegrationTest.
+type GitlabIntegrationTestParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
@@ -9857,6 +10376,19 @@ type PersonalApiKeyCreateParams struct {
 type PersonalApiKeyDisableParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// RepositoriesParams defines parameters for Repositories.
+type RepositoriesParams struct {
+	Provider         *VCSProvider `form:"provider,omitempty" json:"provider,omitempty"`
+	VcsIntegrationID *string      `form:"vcsIntegrationID,omitempty" json:"vcsIntegrationID,omitempty"`
+	Filter           *string      `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // RolesParams defines parameters for Roles.
@@ -10592,6 +11124,35 @@ type UsersWithAccessToSpaceSuggestionsParams struct {
 	Input SearchSuggestionsInput `form:"input" json:"input"`
 }
 
+// VcsIntegrationsParams defines parameters for VcsIntegrations.
+type VcsIntegrationsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// VcsIntegrationParams defines parameters for VcsIntegration.
+type VcsIntegrationParams struct {
+	Provider VCSProvider `form:"provider" json:"provider"`
+}
+
+// VcsIntegrationSearchUsersParams defines parameters for VcsIntegrationSearchUsers.
+type VcsIntegrationSearchUsersParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// VcsIntegrationSearchUsersSuggestionsParams defines parameters for VcsIntegrationSearchUsersSuggestions.
+type VcsIntegrationSearchUsersSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
+// VcsIntegrationTestParams defines parameters for VcsIntegrationTest.
+type VcsIntegrationTestParams struct {
+	Provider VCSProvider `form:"provider" json:"provider"`
+}
+
 // ApiKeyEnableNonAdminManagersJSONRequestBody defines body for ApiKeyEnableNonAdminManagers for application/json ContentType.
 type ApiKeyEnableNonAdminManagersJSONRequestBody = ApiKeyEnableNonAdminManagersRequest
 
@@ -10643,6 +11204,15 @@ type AuthSessionAccountJSONRequestBody = AuthSessionAccountRequest
 // ApiKeyUserJSONRequestBody defines body for ApiKeyUser for application/json ContentType.
 type ApiKeyUserJSONRequestBody = ApiKeyUserRequest
 
+// AzureDevOpsRepoIntegrationCreateJSONRequestBody defines body for AzureDevOpsRepoIntegrationCreate for application/json ContentType.
+type AzureDevOpsRepoIntegrationCreateJSONRequestBody = AzureDevOpsRepoIntegrationCreateRequest
+
+// AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for AzureDevOpsRepoIntegrationPatch for application/merge-patch+json ContentType.
+type AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// AzureDevOpsRepoIntegrationUpdateJSONRequestBody defines body for AzureDevOpsRepoIntegrationUpdate for application/json ContentType.
+type AzureDevOpsRepoIntegrationUpdateJSONRequestBody = AzureDevOpsRepoIntegrationUpdateRequest
+
 // BillingSubscriptionCreateJSONRequestBody defines body for BillingSubscriptionCreate for application/json ContentType.
 type BillingSubscriptionCreateJSONRequestBody = BillingSubscriptionCreateRequest
 
@@ -10654,6 +11224,24 @@ type BillingSubscriptionUpdateInfoJSONRequestBody = SubscriptionInput
 
 // BillingSubscriptionUpdateTierJSONRequestBody defines body for BillingSubscriptionUpdateTier for application/json ContentType.
 type BillingSubscriptionUpdateTierJSONRequestBody = BillingSubscriptionUpdateTierRequest
+
+// BitbucketCloudIntegrationCreateV2JSONRequestBody defines body for BitbucketCloudIntegrationCreateV2 for application/json ContentType.
+type BitbucketCloudIntegrationCreateV2JSONRequestBody = BitbucketCloudIntegrationInput
+
+// BitbucketCloudIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for BitbucketCloudIntegrationPatch for application/merge-patch+json ContentType.
+type BitbucketCloudIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// BitbucketCloudIntegrationUpdateV2JSONRequestBody defines body for BitbucketCloudIntegrationUpdateV2 for application/json ContentType.
+type BitbucketCloudIntegrationUpdateV2JSONRequestBody = BitbucketCloudIntegrationUpdateInputBody
+
+// BitbucketDatacenterIntegrationCreateJSONRequestBody defines body for BitbucketDatacenterIntegrationCreate for application/json ContentType.
+type BitbucketDatacenterIntegrationCreateJSONRequestBody = BitbucketDatacenterIntegrationCreateRequest
+
+// BitbucketDatacenterIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for BitbucketDatacenterIntegrationPatch for application/merge-patch+json ContentType.
+type BitbucketDatacenterIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// BitbucketDatacenterIntegrationUpdateJSONRequestBody defines body for BitbucketDatacenterIntegrationUpdate for application/json ContentType.
+type BitbucketDatacenterIntegrationUpdateJSONRequestBody = BitbucketDatacenterIntegrationUpdateRequest
 
 // ContextCreateV2JSONRequestBody defines body for ContextCreateV2 for application/json ContentType.
 type ContextCreateV2JSONRequestBody = ContextInput
@@ -10684,6 +11272,27 @@ type ExpressionCompleteJSONRequestBody = ExpressionCompleteRequest
 
 // ExpressionEvaluateJSONRequestBody defines body for ExpressionEvaluate for application/json ContentType.
 type ExpressionEvaluateJSONRequestBody = ExpressionEvaluateRequest
+
+// GithubEnterpriseIntegrationCreateJSONRequestBody defines body for GithubEnterpriseIntegrationCreate for application/json ContentType.
+type GithubEnterpriseIntegrationCreateJSONRequestBody = GithubEnterpriseIntegrationCreateRequest
+
+// GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for GithubEnterpriseIntegrationPatch for application/merge-patch+json ContentType.
+type GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// GithubEnterpriseIntegrationUpdateJSONRequestBody defines body for GithubEnterpriseIntegrationUpdate for application/json ContentType.
+type GithubEnterpriseIntegrationUpdateJSONRequestBody = GithubEnterpriseIntegrationUpdateRequest
+
+// GithubIntegrationUpdateJSONRequestBody defines body for GithubIntegrationUpdate for application/json ContentType.
+type GithubIntegrationUpdateJSONRequestBody = GithubIntegrationUpdateRequest
+
+// GitlabIntegrationCreateJSONRequestBody defines body for GitlabIntegrationCreate for application/json ContentType.
+type GitlabIntegrationCreateJSONRequestBody = GitlabIntegrationCreateRequest
+
+// GitlabIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for GitlabIntegrationPatch for application/merge-patch+json ContentType.
+type GitlabIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// GitlabIntegrationUpdateJSONRequestBody defines body for GitlabIntegrationUpdate for application/json ContentType.
+type GitlabIntegrationUpdateJSONRequestBody = GitlabIntegrationUpdateRequest
 
 // ManagedUserGroupCreateV2JSONRequestBody defines body for ManagedUserGroupCreateV2 for application/json ContentType.
 type ManagedUserGroupCreateV2JSONRequestBody = ManagedUserGroupCreateInputV2
@@ -10912,6 +11521,12 @@ type UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // UserRoleBindingUpdateJSONRequestBody defines body for UserRoleBindingUpdate for application/json ContentType.
 type UserRoleBindingUpdateJSONRequestBody = UserRoleBindingInput
+
+// SearchVCSIntegrationsJSONRequestBody defines body for SearchVCSIntegrations for application/json ContentType.
+type SearchVCSIntegrationsJSONRequestBody = SearchInput
+
+// SearchVCSIntegrationsSuggestionsJSONRequestBody defines body for SearchVCSIntegrationsSuggestions for application/json ContentType.
+type SearchVCSIntegrationsSuggestionsJSONRequestBody = SearchSuggestionsInput
 
 // AsAnsibleResource returns the union data inside the AnsibleEntity as a AnsibleResource
 func (t AnsibleEntity) AsAnsibleResource() (AnsibleResource, error) {
@@ -13242,6 +13857,88 @@ type ClientInterface interface {
 	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
 	AwarenessSourceSurvey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AzureDevOpsRepoIntegrationCreateWithBody Create Azure DevOps Integration
+	//
+	// Creates the Azure DevOps Repo integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+	AzureDevOpsRepoIntegrationCreateWithBody(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegrationCreate Create Azure DevOps Integration
+	//
+	// Creates the Azure DevOps Repo integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+	AzureDevOpsRepoIntegrationCreate(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, body AzureDevOpsRepoIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegrationDelete Delete Azure DevOps Integration
+	//
+	// Deletes the Azure DevOps Repo integration.
+	//
+	// Corresponds with DELETE /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationDelete` operationId).
+	AzureDevOpsRepoIntegrationDelete(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegration Get Azure DevOps Integration
+	//
+	// Shows Azure DevOps Repos integration details.
+	//
+	// Corresponds with GET /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegration` operationId).
+	AzureDevOpsRepoIntegration(ctx context.Context, azureDevOpsRepoIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegrationPatchWithBody Patch Azure DevOps Integration
+	//
+	// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+	AzureDevOpsRepoIntegrationPatchWithBody(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Azure DevOps Integration
+	//
+	// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+	AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, body AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegrationUpdateWithBody Update Azure DevOps Integration
+	//
+	// Updates the Azure DevOps Repo integration with new properties.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+	AzureDevOpsRepoIntegrationUpdateWithBody(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegrationUpdate Update Azure DevOps Integration
+	//
+	// Updates the Azure DevOps Repo integration with new properties.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+	AzureDevOpsRepoIntegrationUpdate(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, body AzureDevOpsRepoIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsRepoIntegrationTest Test Azure DevOps Integration
+	//
+	// Tests the Azure DevOps Repo integration.
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test (the `AzureDevOpsRepoIntegrationTest` operationId).
+	AzureDevOpsRepoIntegrationTest(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureDevOpsWebhooksEndpoint Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Azure DevOps webhooks.
+	//
+	// Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
+	AzureDevOpsWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// BilledExternally Billed Externally
 	//
 	// true: no Stripe subscription exists.
@@ -13334,6 +14031,191 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
 	BillingSubscriptionUpdateTier(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationCreateV2WithBody Create Bitbucket Cloud Integration V2
+	//
+	// Creates the Bitbucket Cloud integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+	BitbucketCloudIntegrationCreateV2WithBody(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationCreateV2 Create Bitbucket Cloud Integration V2
+	//
+	// Creates the Bitbucket Cloud integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+	BitbucketCloudIntegrationCreateV2(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, body BitbucketCloudIntegrationCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationDelete Delete Bitbucket Cloud Integration
+	//
+	// Deletes the Bitbucket Cloud integration.
+	//
+	// Corresponds with DELETE /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationDelete` operationId).
+	BitbucketCloudIntegrationDelete(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegration Get Bitbucket Cloud Integration
+	//
+	// Shows Bitbucket Cloud integration details.
+	//
+	// Corresponds with GET /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegration` operationId).
+	BitbucketCloudIntegration(ctx context.Context, bitbucketCloudIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationPatchWithBody Patch Bitbucket Cloud Integration V2
+	//
+	// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+	BitbucketCloudIntegrationPatchWithBody(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Bitbucket Cloud Integration V2
+	//
+	// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+	BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, body BitbucketCloudIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationUpdateV2WithBody Update Bitbucket Cloud Integration V2
+	//
+	// Updates the Bitbucket Cloud integration with new properties.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+	BitbucketCloudIntegrationUpdateV2WithBody(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationUpdateV2 Update Bitbucket Cloud Integration V2
+	//
+	// Updates the Bitbucket Cloud integration with new properties.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+	BitbucketCloudIntegrationUpdateV2(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, body BitbucketCloudIntegrationUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for Bitbucket Cloud integration.
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
+	BitbucketCloudIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudIntegrationTest Test Bitbucket Cloud Integration
+	//
+	// Tests the Bitbucket Cloud integration.
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/test (the `BitbucketCloudIntegrationTest` operationId).
+	BitbucketCloudIntegrationTest(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketCloudWebhooksEndpoint Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Bitbucket Cloud webhooks.
+	//
+	// Corresponds with GET /bitbucket-cloud-webhooks-endpoint (the `BitbucketCloudWebhooksEndpoint` operationId).
+	BitbucketCloudWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationCreateWithBody Create Bitbucket Datacenter Integration
+	//
+	// Creates the Bitbucket Datacenter integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+	BitbucketDatacenterIntegrationCreateWithBody(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationCreate Create Bitbucket Datacenter Integration
+	//
+	// Creates the Bitbucket Datacenter integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+	BitbucketDatacenterIntegrationCreate(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, body BitbucketDatacenterIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationDelete Delete Bitbucket Datacenter Integration
+	//
+	// Deletes the Bitbucket Datacenter integration.
+	//
+	// Corresponds with DELETE /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationDelete` operationId).
+	BitbucketDatacenterIntegrationDelete(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegration Get Bitbucket Datacenter Integration
+	//
+	// Shows Bitbucket Datacenter integration details.
+	//
+	// Corresponds with GET /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegration` operationId).
+	BitbucketDatacenterIntegration(ctx context.Context, bitbucketDatacenterIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationPatchWithBody Patch Bitbucket Datacenter Integration
+	//
+	// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+	BitbucketDatacenterIntegrationPatchWithBody(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Bitbucket Datacenter Integration
+	//
+	// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+	BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, body BitbucketDatacenterIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationUpdateWithBody Update Bitbucket Datacenter Integration
+	//
+	// Updates the Bitbucket Datacenter integration with new properties.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+	BitbucketDatacenterIntegrationUpdateWithBody(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationUpdate Update Bitbucket Datacenter Integration
+	//
+	// Updates the Bitbucket Datacenter integration with new properties.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+	BitbucketDatacenterIntegrationUpdate(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, body BitbucketDatacenterIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for Bitbucket Datacenter integration.
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
+	BitbucketDatacenterIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterIntegrationTest Test Bitbucket Datacenter Integration
+	//
+	// Tests the Bitbucket Datacenter integration.
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/test (the `BitbucketDatacenterIntegrationTest` operationId).
+	BitbucketDatacenterIntegrationTest(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BitbucketDatacenterWebhooksEndpoint Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Bitbucket Datacenter webhooks.
+	//
+	// Corresponds with GET /bitbucket-datacenter-webhooks-endpoint (the `BitbucketDatacenterWebhooksEndpoint` operationId).
+	BitbucketDatacenterWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Branches List Branches
+	//
+	// List of branches for a given repository.
+	//
+	// Corresponds with GET /branches (the `Branches` operationId).
+	Branches(ctx context.Context, params *BranchesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ContextDetach Detach Context
 	//
@@ -13573,6 +14455,211 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 	ExpressionEvaluate(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationCreateWithBody Create GitHub Enterprise Integration
+	//
+	// Creates the GitHub Enterprise integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+	GithubEnterpriseIntegrationCreateWithBody(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationCreate Create GitHub Enterprise Integration
+	//
+	// Creates the GitHub Enterprise integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+	GithubEnterpriseIntegrationCreate(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationDelete Delete GitHub Enterprise Integration
+	//
+	// Deletes the GitHub Enterprise integration.
+	//
+	// Corresponds with DELETE /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationDelete` operationId).
+	GithubEnterpriseIntegrationDelete(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegration Get GitHub Enterprise Integration
+	//
+	// GitHub Enterprise Integration settings. If the id is not provided, it will return
+	// the default GitHub Enterprise Integration.
+	//
+	// Corresponds with GET /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegration` operationId).
+	GithubEnterpriseIntegration(ctx context.Context, githubEnterpriseIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationPatchWithBody Patch GitHub Enterprise Integration
+	//
+	// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+	GithubEnterpriseIntegrationPatchWithBody(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch GitHub Enterprise Integration
+	//
+	// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+	GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, body GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationUpdateWithBody Update GitHub Enterprise Integration
+	//
+	// Updates the GitHub Enterprise integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+	GithubEnterpriseIntegrationUpdateWithBody(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationUpdate Update GitHub Enterprise Integration
+	//
+	// Updates the GitHub Enterprise integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+	GithubEnterpriseIntegrationUpdate(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, body GithubEnterpriseIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for GitHub Enterprise integration.
+	//
+	// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
+	GithubEnterpriseIntegrationRegenerateWebhookSecret(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseIntegrationTest Test GitHub Enterprise Integration
+	//
+	// Tests the GitHub Enterprise integration.
+	//
+	// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/test (the `GithubEnterpriseIntegrationTest` operationId).
+	GithubEnterpriseIntegrationTest(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEnterpriseWebhooksEndpoint Get Webhooks Endpoint
+	//
+	// The webhooks endpoint to use in your GitHub Enterprise App.
+	//
+	// Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
+	GithubEnterpriseWebhooksEndpoint(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubIntegration Get GitHub Integration
+	//
+	// Build-in GitHub Integration settings.
+	//
+	// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
+	GithubIntegration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubIntegrationUpdateWithBody Update GitHub Integration
+	//
+	// Updates the build-in GitHub integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+	GithubIntegrationUpdateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubIntegrationUpdate Update GitHub Integration
+	//
+	// Updates the build-in GitHub integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+	GithubIntegrationUpdate(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationCreateWithBody Create GitLab Integration
+	//
+	// Creates the GitLab integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+	GitlabIntegrationCreateWithBody(ctx context.Context, params *GitlabIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationCreate Create GitLab Integration
+	//
+	// Creates the GitLab integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+	GitlabIntegrationCreate(ctx context.Context, params *GitlabIntegrationCreateParams, body GitlabIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationDelete Delete GitLab Integration
+	//
+	// Deletes the GitLab integration.
+	//
+	// Corresponds with DELETE /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationDelete` operationId).
+	GitlabIntegrationDelete(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegration Get GitLab Integration
+	//
+	// Shows Gitlab integration details. If the id is not provided, it will return
+	// the default Gitlab Integration.
+	//
+	// Corresponds with GET /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegration` operationId).
+	GitlabIntegration(ctx context.Context, gitlabIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationPatchWithBody Patch GitLab Integration
+	//
+	// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+	GitlabIntegrationPatchWithBody(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch GitLab Integration
+	//
+	// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+	GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, body GitlabIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationUpdateWithBody Update GitLab Integration
+	//
+	// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+	GitlabIntegrationUpdateWithBody(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationUpdate Update GitLab Integration
+	//
+	// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+	GitlabIntegrationUpdate(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, body GitlabIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for GitLab integration.
+	//
+	// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
+	GitlabIntegrationRegenerateWebhookSecret(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabIntegrationTest Test GitLab Integration
+	//
+	// Tests the GitLab integration.
+	//
+	// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/test (the `GitlabIntegrationTest` operationId).
+	GitlabIntegrationTest(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GitlabWebhooksEndpoint Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Gitlab webhooks.
+	//
+	// Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
+	GitlabWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Id Id
 	//
@@ -14119,6 +15206,14 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Repositories List Repositories
+	//
+	// List of repositories available to the account.
+	// Optional filter param can be applied for the results returned from VCS.
+	//
+	// Corresponds with GET /repositories (the `Repositories` operationId).
+	Repositories(ctx context.Context, params *RepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Roles List Roles
 	//
@@ -15737,6 +16832,73 @@ type ClientInterface interface {
 	// Corresponds with GET /users-with-access-to-space-suggestions (the `UsersWithAccessToSpaceSuggestions` operationId).
 	UsersWithAccessToSpaceSuggestions(ctx context.Context, params *UsersWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SearchVCSIntegrationsWithBody Search VCS Integrations
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+	SearchVCSIntegrationsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchVCSIntegrations Search VCS Integrations
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+	SearchVCSIntegrations(ctx context.Context, body SearchVCSIntegrationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchVCSIntegrationsSuggestionsWithBody Search VCSIntegrations Suggestions
+	//
+	// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+	SearchVCSIntegrationsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchVCSIntegrationsSuggestions Search VCSIntegrations Suggestions
+	//
+	// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+	SearchVCSIntegrationsSuggestions(ctx context.Context, body SearchVCSIntegrationsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VcsIntegrations List VCS Integrations
+	//
+	// List of all VCS integrations available in the account.
+	//
+	// Corresponds with GET /vcs-integrations (the `VcsIntegrations` operationId).
+	VcsIntegrations(ctx context.Context, params *VcsIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VcsIntegration Get VCS Integration
+	//
+	// Get VCS integrations by provider and id.
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId} (the `VcsIntegration` operationId).
+	VcsIntegration(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VcsIntegrationSearchUsers Vcs integration search users
+	//
+	// Search stacks/modules using this VCS integration.
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users (the `VcsIntegrationSearchUsers` operationId).
+	VcsIntegrationSearchUsers(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VcsIntegrationSearchUsersSuggestions Vcs integration search users suggestions
+	//
+	// Search stacks/modules suggestions using this VCS integration.
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users-suggestions (the `VcsIntegrationSearchUsersSuggestions` operationId).
+	VcsIntegrationSearchUsersSuggestions(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VcsIntegrationTest Test VCS Integration
+	//
+	// Runs a test to check whether the VCS integration is configured correctly.
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/test (the `VcsIntegrationTest` operationId).
+	VcsIntegrationTest(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Viewer Viewer
 	//
 	// Current user, if any.
@@ -17003,6 +18165,188 @@ func (c *Client) AwarenessSourceSurvey(ctx context.Context, reqEditors ...Reques
 	return c.Client.Do(req)
 }
 
+// AzureDevOpsRepoIntegrationCreateWithBody Create Azure DevOps Integration
+//
+// Creates the Azure DevOps Repo integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationCreateWithBody(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegrationCreate Create Azure DevOps Integration
+//
+// Creates the Azure DevOps Repo integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationCreate(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, body AzureDevOpsRepoIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegrationDelete Delete Azure DevOps Integration
+//
+// Deletes the Azure DevOps Repo integration.
+//
+// Corresponds with DELETE /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationDelete` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationDelete(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationDeleteRequest(c.Server, azureDevOpsRepoIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegration Get Azure DevOps Integration
+//
+// Shows Azure DevOps Repos integration details.
+//
+// Corresponds with GET /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegration` operationId).
+func (c *Client) AzureDevOpsRepoIntegration(ctx context.Context, azureDevOpsRepoIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationRequest(c.Server, azureDevOpsRepoIntegrationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegrationPatchWithBody Patch Azure DevOps Integration
+//
+// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationPatchWithBody(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationPatchRequestWithBody(c.Server, azureDevOpsRepoIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Azure DevOps Integration
+//
+// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, body AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, azureDevOpsRepoIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegrationUpdateWithBody Update Azure DevOps Integration
+//
+// Updates the Azure DevOps Repo integration with new properties.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationUpdateWithBody(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationUpdateRequestWithBody(c.Server, azureDevOpsRepoIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegrationUpdate Update Azure DevOps Integration
+//
+// Updates the Azure DevOps Repo integration with new properties.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationUpdate(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, body AzureDevOpsRepoIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationUpdateRequest(c.Server, azureDevOpsRepoIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsRepoIntegrationTest Test Azure DevOps Integration
+//
+// Tests the Azure DevOps Repo integration.
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test (the `AzureDevOpsRepoIntegrationTest` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationTest(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationTestRequest(c.Server, azureDevOpsRepoIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureDevOpsWebhooksEndpoint Get Webhooks Endpoint
+//
+// Endpoint for incoming Azure DevOps webhooks.
+//
+// Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
+func (c *Client) AzureDevOpsWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsWebhooksEndpointRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // BilledExternally Billed Externally
 //
 // true: no Stripe subscription exists.
@@ -17196,6 +18540,421 @@ func (c *Client) BillingSubscriptionUpdateTierWithBody(ctx context.Context, para
 // Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
 func (c *Client) BillingSubscriptionUpdateTier(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBillingSubscriptionUpdateTierRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationCreateV2WithBody Create Bitbucket Cloud Integration V2
+//
+// Creates the Bitbucket Cloud integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+func (c *Client) BitbucketCloudIntegrationCreateV2WithBody(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationCreateV2RequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationCreateV2 Create Bitbucket Cloud Integration V2
+//
+// Creates the Bitbucket Cloud integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+func (c *Client) BitbucketCloudIntegrationCreateV2(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, body BitbucketCloudIntegrationCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationCreateV2Request(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationDelete Delete Bitbucket Cloud Integration
+//
+// Deletes the Bitbucket Cloud integration.
+//
+// Corresponds with DELETE /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationDelete` operationId).
+func (c *Client) BitbucketCloudIntegrationDelete(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationDeleteRequest(c.Server, bitbucketCloudIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegration Get Bitbucket Cloud Integration
+//
+// Shows Bitbucket Cloud integration details.
+//
+// Corresponds with GET /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegration` operationId).
+func (c *Client) BitbucketCloudIntegration(ctx context.Context, bitbucketCloudIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationRequest(c.Server, bitbucketCloudIntegrationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationPatchWithBody Patch Bitbucket Cloud Integration V2
+//
+// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+func (c *Client) BitbucketCloudIntegrationPatchWithBody(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationPatchRequestWithBody(c.Server, bitbucketCloudIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Bitbucket Cloud Integration V2
+//
+// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+func (c *Client) BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, body BitbucketCloudIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, bitbucketCloudIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationUpdateV2WithBody Update Bitbucket Cloud Integration V2
+//
+// Updates the Bitbucket Cloud integration with new properties.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+func (c *Client) BitbucketCloudIntegrationUpdateV2WithBody(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationUpdateV2RequestWithBody(c.Server, bitbucketCloudIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationUpdateV2 Update Bitbucket Cloud Integration V2
+//
+// Updates the Bitbucket Cloud integration with new properties.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+func (c *Client) BitbucketCloudIntegrationUpdateV2(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, body BitbucketCloudIntegrationUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationUpdateV2Request(c.Server, bitbucketCloudIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for Bitbucket Cloud integration.
+//
+// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
+func (c *Client) BitbucketCloudIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationRegenerateWebhookSecretRequest(c.Server, bitbucketCloudIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudIntegrationTest Test Bitbucket Cloud Integration
+//
+// Tests the Bitbucket Cloud integration.
+//
+// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/test (the `BitbucketCloudIntegrationTest` operationId).
+func (c *Client) BitbucketCloudIntegrationTest(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudIntegrationTestRequest(c.Server, bitbucketCloudIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketCloudWebhooksEndpoint Get Webhooks Endpoint
+//
+// Endpoint for incoming Bitbucket Cloud webhooks.
+//
+// Corresponds with GET /bitbucket-cloud-webhooks-endpoint (the `BitbucketCloudWebhooksEndpoint` operationId).
+func (c *Client) BitbucketCloudWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketCloudWebhooksEndpointRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationCreateWithBody Create Bitbucket Datacenter Integration
+//
+// Creates the Bitbucket Datacenter integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+func (c *Client) BitbucketDatacenterIntegrationCreateWithBody(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationCreate Create Bitbucket Datacenter Integration
+//
+// Creates the Bitbucket Datacenter integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+func (c *Client) BitbucketDatacenterIntegrationCreate(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, body BitbucketDatacenterIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationDelete Delete Bitbucket Datacenter Integration
+//
+// Deletes the Bitbucket Datacenter integration.
+//
+// Corresponds with DELETE /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationDelete` operationId).
+func (c *Client) BitbucketDatacenterIntegrationDelete(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationDeleteRequest(c.Server, bitbucketDatacenterIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegration Get Bitbucket Datacenter Integration
+//
+// Shows Bitbucket Datacenter integration details.
+//
+// Corresponds with GET /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegration` operationId).
+func (c *Client) BitbucketDatacenterIntegration(ctx context.Context, bitbucketDatacenterIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationRequest(c.Server, bitbucketDatacenterIntegrationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationPatchWithBody Patch Bitbucket Datacenter Integration
+//
+// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+func (c *Client) BitbucketDatacenterIntegrationPatchWithBody(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationPatchRequestWithBody(c.Server, bitbucketDatacenterIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Bitbucket Datacenter Integration
+//
+// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+func (c *Client) BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, body BitbucketDatacenterIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, bitbucketDatacenterIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationUpdateWithBody Update Bitbucket Datacenter Integration
+//
+// Updates the Bitbucket Datacenter integration with new properties.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+func (c *Client) BitbucketDatacenterIntegrationUpdateWithBody(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationUpdateRequestWithBody(c.Server, bitbucketDatacenterIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationUpdate Update Bitbucket Datacenter Integration
+//
+// Updates the Bitbucket Datacenter integration with new properties.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+func (c *Client) BitbucketDatacenterIntegrationUpdate(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, body BitbucketDatacenterIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationUpdateRequest(c.Server, bitbucketDatacenterIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for Bitbucket Datacenter integration.
+//
+// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
+func (c *Client) BitbucketDatacenterIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationRegenerateWebhookSecretRequest(c.Server, bitbucketDatacenterIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterIntegrationTest Test Bitbucket Datacenter Integration
+//
+// Tests the Bitbucket Datacenter integration.
+//
+// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/test (the `BitbucketDatacenterIntegrationTest` operationId).
+func (c *Client) BitbucketDatacenterIntegrationTest(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterIntegrationTestRequest(c.Server, bitbucketDatacenterIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BitbucketDatacenterWebhooksEndpoint Get Webhooks Endpoint
+//
+// Endpoint for incoming Bitbucket Datacenter webhooks.
+//
+// Corresponds with GET /bitbucket-datacenter-webhooks-endpoint (the `BitbucketDatacenterWebhooksEndpoint` operationId).
+func (c *Client) BitbucketDatacenterWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBitbucketDatacenterWebhooksEndpointRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Branches List Branches
+//
+// List of branches for a given repository.
+//
+// Corresponds with GET /branches (the `Branches` operationId).
+func (c *Client) Branches(ctx context.Context, params *BranchesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBranchesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -17725,6 +19484,461 @@ func (c *Client) ExpressionEvaluateWithBody(ctx context.Context, params *Express
 // Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 func (c *Client) ExpressionEvaluate(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewExpressionEvaluateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationCreateWithBody Create GitHub Enterprise Integration
+//
+// Creates the GitHub Enterprise integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+func (c *Client) GithubEnterpriseIntegrationCreateWithBody(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationCreate Create GitHub Enterprise Integration
+//
+// Creates the GitHub Enterprise integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+func (c *Client) GithubEnterpriseIntegrationCreate(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationDelete Delete GitHub Enterprise Integration
+//
+// Deletes the GitHub Enterprise integration.
+//
+// Corresponds with DELETE /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationDelete` operationId).
+func (c *Client) GithubEnterpriseIntegrationDelete(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationDeleteRequest(c.Server, githubEnterpriseIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegration Get GitHub Enterprise Integration
+//
+// GitHub Enterprise Integration settings. If the id is not provided, it will return
+// the default GitHub Enterprise Integration.
+//
+// Corresponds with GET /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegration` operationId).
+func (c *Client) GithubEnterpriseIntegration(ctx context.Context, githubEnterpriseIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationRequest(c.Server, githubEnterpriseIntegrationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationPatchWithBody Patch GitHub Enterprise Integration
+//
+// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+func (c *Client) GithubEnterpriseIntegrationPatchWithBody(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationPatchRequestWithBody(c.Server, githubEnterpriseIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch GitHub Enterprise Integration
+//
+// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+func (c *Client) GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, body GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, githubEnterpriseIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationUpdateWithBody Update GitHub Enterprise Integration
+//
+// Updates the GitHub Enterprise integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+func (c *Client) GithubEnterpriseIntegrationUpdateWithBody(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationUpdateRequestWithBody(c.Server, githubEnterpriseIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationUpdate Update GitHub Enterprise Integration
+//
+// Updates the GitHub Enterprise integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+func (c *Client) GithubEnterpriseIntegrationUpdate(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, body GithubEnterpriseIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationUpdateRequest(c.Server, githubEnterpriseIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for GitHub Enterprise integration.
+//
+// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
+func (c *Client) GithubEnterpriseIntegrationRegenerateWebhookSecret(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationRegenerateWebhookSecretRequest(c.Server, githubEnterpriseIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseIntegrationTest Test GitHub Enterprise Integration
+//
+// Tests the GitHub Enterprise integration.
+//
+// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/test (the `GithubEnterpriseIntegrationTest` operationId).
+func (c *Client) GithubEnterpriseIntegrationTest(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseIntegrationTestRequest(c.Server, githubEnterpriseIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubEnterpriseWebhooksEndpoint Get Webhooks Endpoint
+//
+// The webhooks endpoint to use in your GitHub Enterprise App.
+//
+// Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
+func (c *Client) GithubEnterpriseWebhooksEndpoint(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEnterpriseWebhooksEndpointRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubIntegration Get GitHub Integration
+//
+// Build-in GitHub Integration settings.
+//
+// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
+func (c *Client) GithubIntegration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubIntegrationRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubIntegrationUpdateWithBody Update GitHub Integration
+//
+// Updates the build-in GitHub integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+func (c *Client) GithubIntegrationUpdateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubIntegrationUpdateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubIntegrationUpdate Update GitHub Integration
+//
+// Updates the build-in GitHub integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+func (c *Client) GithubIntegrationUpdate(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubIntegrationUpdateRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationCreateWithBody Create GitLab Integration
+//
+// Creates the GitLab integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+func (c *Client) GitlabIntegrationCreateWithBody(ctx context.Context, params *GitlabIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationCreate Create GitLab Integration
+//
+// Creates the GitLab integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+func (c *Client) GitlabIntegrationCreate(ctx context.Context, params *GitlabIntegrationCreateParams, body GitlabIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationDelete Delete GitLab Integration
+//
+// Deletes the GitLab integration.
+//
+// Corresponds with DELETE /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationDelete` operationId).
+func (c *Client) GitlabIntegrationDelete(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationDeleteRequest(c.Server, gitlabIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegration Get GitLab Integration
+//
+// Shows Gitlab integration details. If the id is not provided, it will return
+// the default Gitlab Integration.
+//
+// Corresponds with GET /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegration` operationId).
+func (c *Client) GitlabIntegration(ctx context.Context, gitlabIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationRequest(c.Server, gitlabIntegrationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationPatchWithBody Patch GitLab Integration
+//
+// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+func (c *Client) GitlabIntegrationPatchWithBody(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationPatchRequestWithBody(c.Server, gitlabIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch GitLab Integration
+//
+// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+func (c *Client) GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, body GitlabIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, gitlabIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationUpdateWithBody Update GitLab Integration
+//
+// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+func (c *Client) GitlabIntegrationUpdateWithBody(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationUpdateRequestWithBody(c.Server, gitlabIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationUpdate Update GitLab Integration
+//
+// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+func (c *Client) GitlabIntegrationUpdate(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, body GitlabIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationUpdateRequest(c.Server, gitlabIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for GitLab integration.
+//
+// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
+func (c *Client) GitlabIntegrationRegenerateWebhookSecret(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationRegenerateWebhookSecretRequest(c.Server, gitlabIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabIntegrationTest Test GitLab Integration
+//
+// Tests the GitLab integration.
+//
+// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/test (the `GitlabIntegrationTest` operationId).
+func (c *Client) GitlabIntegrationTest(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabIntegrationTestRequest(c.Server, gitlabIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GitlabWebhooksEndpoint Get Webhooks Endpoint
+//
+// Endpoint for incoming Gitlab webhooks.
+//
+// Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
+func (c *Client) GitlabWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGitlabWebhooksEndpointRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -18941,6 +21155,24 @@ func (c *Client) PersonalApiKeysEnabled(ctx context.Context, reqEditors ...Reque
 // Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 func (c *Client) PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPersonalApiKeyDisableRequest(c.Server, personalApiKeyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Repositories List Repositories
+//
+// List of repositories available to the account.
+// Optional filter param can be applied for the results returned from VCS.
+//
+// Corresponds with GET /repositories (the `Repositories` operationId).
+func (c *Client) Repositories(ctx context.Context, params *RepositoriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRepositoriesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -22538,6 +24770,163 @@ func (c *Client) UsersWithAccessToSpaceSuggestions(ctx context.Context, params *
 	return c.Client.Do(req)
 }
 
+// SearchVCSIntegrationsWithBody Search VCS Integrations
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+func (c *Client) SearchVCSIntegrationsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVCSIntegrationsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchVCSIntegrations Search VCS Integrations
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+func (c *Client) SearchVCSIntegrations(ctx context.Context, body SearchVCSIntegrationsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVCSIntegrationsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchVCSIntegrationsSuggestionsWithBody Search VCSIntegrations Suggestions
+//
+// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+func (c *Client) SearchVCSIntegrationsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVCSIntegrationsSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchVCSIntegrationsSuggestions Search VCSIntegrations Suggestions
+//
+// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+func (c *Client) SearchVCSIntegrationsSuggestions(ctx context.Context, body SearchVCSIntegrationsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchVCSIntegrationsSuggestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VcsIntegrations List VCS Integrations
+//
+// List of all VCS integrations available in the account.
+//
+// Corresponds with GET /vcs-integrations (the `VcsIntegrations` operationId).
+func (c *Client) VcsIntegrations(ctx context.Context, params *VcsIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsIntegrationsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VcsIntegration Get VCS Integration
+//
+// Get VCS integrations by provider and id.
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId} (the `VcsIntegration` operationId).
+func (c *Client) VcsIntegration(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsIntegrationRequest(c.Server, vcsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VcsIntegrationSearchUsers Vcs integration search users
+//
+// Search stacks/modules using this VCS integration.
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users (the `VcsIntegrationSearchUsers` operationId).
+func (c *Client) VcsIntegrationSearchUsers(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsIntegrationSearchUsersRequest(c.Server, vcsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VcsIntegrationSearchUsersSuggestions Vcs integration search users suggestions
+//
+// Search stacks/modules suggestions using this VCS integration.
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users-suggestions (the `VcsIntegrationSearchUsersSuggestions` operationId).
+func (c *Client) VcsIntegrationSearchUsersSuggestions(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsIntegrationSearchUsersSuggestionsRequest(c.Server, vcsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VcsIntegrationTest Test VCS Integration
+//
+// Runs a test to check whether the VCS integration is configured correctly.
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/test (the `VcsIntegrationTest` operationId).
+func (c *Client) VcsIntegrationTest(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationTestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsIntegrationTestRequest(c.Server, vcsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Viewer Viewer
 //
 // Current user, if any.
@@ -25230,6 +27619,355 @@ func NewAwarenessSourceSurveyRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewAzureDevOpsRepoIntegrationCreateRequest calls the generic AzureDevOpsRepoIntegrationCreate builder with application/json body
+func NewAzureDevOpsRepoIntegrationCreateRequest(server string, params *AzureDevOpsRepoIntegrationCreateParams, body AzureDevOpsRepoIntegrationCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureDevOpsRepoIntegrationCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAzureDevOpsRepoIntegrationCreateRequestWithBody constructs an http.Request for the AzureDevOpsRepoIntegrationCreate method, with any body, and a specified content type
+func NewAzureDevOpsRepoIntegrationCreateRequestWithBody(server string, params *AzureDevOpsRepoIntegrationCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-repo-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureDevOpsRepoIntegrationDeleteRequest constructs an http.Request for the AzureDevOpsRepoIntegrationDelete method
+func NewAzureDevOpsRepoIntegrationDeleteRequest(server string, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureDevOpsRepoIntegrationId", azureDevOpsRepoIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-repo-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureDevOpsRepoIntegrationRequest constructs an http.Request for the AzureDevOpsRepoIntegration method
+func NewAzureDevOpsRepoIntegrationRequest(server string, azureDevOpsRepoIntegrationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureDevOpsRepoIntegrationId", azureDevOpsRepoIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-repo-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureDevOpsRepoIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic AzureDevOpsRepoIntegrationPatch builder with application/merge-patch+json body
+func NewAzureDevOpsRepoIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, body AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureDevOpsRepoIntegrationPatchRequestWithBody(server, azureDevOpsRepoIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewAzureDevOpsRepoIntegrationPatchRequestWithBody constructs an http.Request for the AzureDevOpsRepoIntegrationPatch method, with any body, and a specified content type
+func NewAzureDevOpsRepoIntegrationPatchRequestWithBody(server string, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureDevOpsRepoIntegrationId", azureDevOpsRepoIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-repo-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureDevOpsRepoIntegrationUpdateRequest calls the generic AzureDevOpsRepoIntegrationUpdate builder with application/json body
+func NewAzureDevOpsRepoIntegrationUpdateRequest(server string, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, body AzureDevOpsRepoIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureDevOpsRepoIntegrationUpdateRequestWithBody(server, azureDevOpsRepoIntegrationId, params, "application/json", bodyReader)
+}
+
+// NewAzureDevOpsRepoIntegrationUpdateRequestWithBody constructs an http.Request for the AzureDevOpsRepoIntegrationUpdate method, with any body, and a specified content type
+func NewAzureDevOpsRepoIntegrationUpdateRequestWithBody(server string, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureDevOpsRepoIntegrationId", azureDevOpsRepoIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-repo-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureDevOpsRepoIntegrationTestRequest constructs an http.Request for the AzureDevOpsRepoIntegrationTest method
+func NewAzureDevOpsRepoIntegrationTestRequest(server string, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationTestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureDevOpsRepoIntegrationId", azureDevOpsRepoIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-repo-integrations/%s/test", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureDevOpsWebhooksEndpointRequest constructs an http.Request for the AzureDevOpsWebhooksEndpoint method
+func NewAzureDevOpsWebhooksEndpointRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-webhooks-endpoint")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewBilledExternallyRequest constructs an http.Request for the BilledExternally method
 func NewBilledExternallyRequest(server string) (*http.Request, error) {
 	var err error
@@ -25511,6 +28249,916 @@ func NewBillingSubscriptionUpdateTierRequestWithBody(server string, params *Bill
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudIntegrationCreateV2Request calls the generic BitbucketCloudIntegrationCreateV2 builder with application/json body
+func NewBitbucketCloudIntegrationCreateV2Request(server string, params *BitbucketCloudIntegrationCreateV2Params, body BitbucketCloudIntegrationCreateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBitbucketCloudIntegrationCreateV2RequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewBitbucketCloudIntegrationCreateV2RequestWithBody constructs an http.Request for the BitbucketCloudIntegrationCreateV2 method, with any body, and a specified content type
+func NewBitbucketCloudIntegrationCreateV2RequestWithBody(server string, params *BitbucketCloudIntegrationCreateV2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudIntegrationDeleteRequest constructs an http.Request for the BitbucketCloudIntegrationDelete method
+func NewBitbucketCloudIntegrationDeleteRequest(server string, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketCloudIntegrationId", bitbucketCloudIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudIntegrationRequest constructs an http.Request for the BitbucketCloudIntegration method
+func NewBitbucketCloudIntegrationRequest(server string, bitbucketCloudIntegrationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketCloudIntegrationId", bitbucketCloudIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic BitbucketCloudIntegrationPatch builder with application/merge-patch+json body
+func NewBitbucketCloudIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, body BitbucketCloudIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBitbucketCloudIntegrationPatchRequestWithBody(server, bitbucketCloudIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewBitbucketCloudIntegrationPatchRequestWithBody constructs an http.Request for the BitbucketCloudIntegrationPatch method, with any body, and a specified content type
+func NewBitbucketCloudIntegrationPatchRequestWithBody(server string, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketCloudIntegrationId", bitbucketCloudIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudIntegrationUpdateV2Request calls the generic BitbucketCloudIntegrationUpdateV2 builder with application/json body
+func NewBitbucketCloudIntegrationUpdateV2Request(server string, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, body BitbucketCloudIntegrationUpdateV2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBitbucketCloudIntegrationUpdateV2RequestWithBody(server, bitbucketCloudIntegrationId, params, "application/json", bodyReader)
+}
+
+// NewBitbucketCloudIntegrationUpdateV2RequestWithBody constructs an http.Request for the BitbucketCloudIntegrationUpdateV2 method, with any body, and a specified content type
+func NewBitbucketCloudIntegrationUpdateV2RequestWithBody(server string, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketCloudIntegrationId", bitbucketCloudIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudIntegrationRegenerateWebhookSecretRequest constructs an http.Request for the BitbucketCloudIntegrationRegenerateWebhookSecret method
+func NewBitbucketCloudIntegrationRegenerateWebhookSecretRequest(server string, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketCloudIntegrationId", bitbucketCloudIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-integrations/%s/regenerate-webhook-secret", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudIntegrationTestRequest constructs an http.Request for the BitbucketCloudIntegrationTest method
+func NewBitbucketCloudIntegrationTestRequest(server string, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationTestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketCloudIntegrationId", bitbucketCloudIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-integrations/%s/test", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketCloudWebhooksEndpointRequest constructs an http.Request for the BitbucketCloudWebhooksEndpoint method
+func NewBitbucketCloudWebhooksEndpointRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-cloud-webhooks-endpoint")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterIntegrationCreateRequest calls the generic BitbucketDatacenterIntegrationCreate builder with application/json body
+func NewBitbucketDatacenterIntegrationCreateRequest(server string, params *BitbucketDatacenterIntegrationCreateParams, body BitbucketDatacenterIntegrationCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBitbucketDatacenterIntegrationCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewBitbucketDatacenterIntegrationCreateRequestWithBody constructs an http.Request for the BitbucketDatacenterIntegrationCreate method, with any body, and a specified content type
+func NewBitbucketDatacenterIntegrationCreateRequestWithBody(server string, params *BitbucketDatacenterIntegrationCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterIntegrationDeleteRequest constructs an http.Request for the BitbucketDatacenterIntegrationDelete method
+func NewBitbucketDatacenterIntegrationDeleteRequest(server string, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketDatacenterIntegrationId", bitbucketDatacenterIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterIntegrationRequest constructs an http.Request for the BitbucketDatacenterIntegration method
+func NewBitbucketDatacenterIntegrationRequest(server string, bitbucketDatacenterIntegrationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketDatacenterIntegrationId", bitbucketDatacenterIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic BitbucketDatacenterIntegrationPatch builder with application/merge-patch+json body
+func NewBitbucketDatacenterIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, body BitbucketDatacenterIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBitbucketDatacenterIntegrationPatchRequestWithBody(server, bitbucketDatacenterIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewBitbucketDatacenterIntegrationPatchRequestWithBody constructs an http.Request for the BitbucketDatacenterIntegrationPatch method, with any body, and a specified content type
+func NewBitbucketDatacenterIntegrationPatchRequestWithBody(server string, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketDatacenterIntegrationId", bitbucketDatacenterIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterIntegrationUpdateRequest calls the generic BitbucketDatacenterIntegrationUpdate builder with application/json body
+func NewBitbucketDatacenterIntegrationUpdateRequest(server string, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, body BitbucketDatacenterIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBitbucketDatacenterIntegrationUpdateRequestWithBody(server, bitbucketDatacenterIntegrationId, params, "application/json", bodyReader)
+}
+
+// NewBitbucketDatacenterIntegrationUpdateRequestWithBody constructs an http.Request for the BitbucketDatacenterIntegrationUpdate method, with any body, and a specified content type
+func NewBitbucketDatacenterIntegrationUpdateRequestWithBody(server string, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketDatacenterIntegrationId", bitbucketDatacenterIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterIntegrationRegenerateWebhookSecretRequest constructs an http.Request for the BitbucketDatacenterIntegrationRegenerateWebhookSecret method
+func NewBitbucketDatacenterIntegrationRegenerateWebhookSecretRequest(server string, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketDatacenterIntegrationId", bitbucketDatacenterIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-integrations/%s/regenerate-webhook-secret", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterIntegrationTestRequest constructs an http.Request for the BitbucketDatacenterIntegrationTest method
+func NewBitbucketDatacenterIntegrationTestRequest(server string, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationTestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bitbucketDatacenterIntegrationId", bitbucketDatacenterIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-integrations/%s/test", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewBitbucketDatacenterWebhooksEndpointRequest constructs an http.Request for the BitbucketDatacenterWebhooksEndpoint method
+func NewBitbucketDatacenterWebhooksEndpointRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/bitbucket-datacenter-webhooks-endpoint")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBranchesRequest constructs an http.Request for the Branches method
+func NewBranchesRequest(server string, params *BranchesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/branches")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "provider", params.Provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "namespace", params.Namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "repository", params.Repository, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.RepositoryURL != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "repositoryURL", *params.RepositoryURL, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.VcsIntegrationID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "vcsIntegrationID", *params.VcsIntegrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -26526,6 +30174,896 @@ func NewExpressionEvaluateRequestWithBody(server string, params *ExpressionEvalu
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseIntegrationCreateRequest calls the generic GithubEnterpriseIntegrationCreate builder with application/json body
+func NewGithubEnterpriseIntegrationCreateRequest(server string, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubEnterpriseIntegrationCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewGithubEnterpriseIntegrationCreateRequestWithBody constructs an http.Request for the GithubEnterpriseIntegrationCreate method, with any body, and a specified content type
+func NewGithubEnterpriseIntegrationCreateRequestWithBody(server string, params *GithubEnterpriseIntegrationCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseIntegrationDeleteRequest constructs an http.Request for the GithubEnterpriseIntegrationDelete method
+func NewGithubEnterpriseIntegrationDeleteRequest(server string, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "githubEnterpriseIntegrationId", githubEnterpriseIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseIntegrationRequest constructs an http.Request for the GithubEnterpriseIntegration method
+func NewGithubEnterpriseIntegrationRequest(server string, githubEnterpriseIntegrationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "githubEnterpriseIntegrationId", githubEnterpriseIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic GithubEnterpriseIntegrationPatch builder with application/merge-patch+json body
+func NewGithubEnterpriseIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, body GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubEnterpriseIntegrationPatchRequestWithBody(server, githubEnterpriseIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewGithubEnterpriseIntegrationPatchRequestWithBody constructs an http.Request for the GithubEnterpriseIntegrationPatch method, with any body, and a specified content type
+func NewGithubEnterpriseIntegrationPatchRequestWithBody(server string, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "githubEnterpriseIntegrationId", githubEnterpriseIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseIntegrationUpdateRequest calls the generic GithubEnterpriseIntegrationUpdate builder with application/json body
+func NewGithubEnterpriseIntegrationUpdateRequest(server string, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, body GithubEnterpriseIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubEnterpriseIntegrationUpdateRequestWithBody(server, githubEnterpriseIntegrationId, params, "application/json", bodyReader)
+}
+
+// NewGithubEnterpriseIntegrationUpdateRequestWithBody constructs an http.Request for the GithubEnterpriseIntegrationUpdate method, with any body, and a specified content type
+func NewGithubEnterpriseIntegrationUpdateRequestWithBody(server string, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "githubEnterpriseIntegrationId", githubEnterpriseIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseIntegrationRegenerateWebhookSecretRequest constructs an http.Request for the GithubEnterpriseIntegrationRegenerateWebhookSecret method
+func NewGithubEnterpriseIntegrationRegenerateWebhookSecretRequest(server string, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "githubEnterpriseIntegrationId", githubEnterpriseIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations/%s/regenerate-webhook-secret", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseIntegrationTestRequest constructs an http.Request for the GithubEnterpriseIntegrationTest method
+func NewGithubEnterpriseIntegrationTestRequest(server string, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationTestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "githubEnterpriseIntegrationId", githubEnterpriseIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations/%s/test", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGithubEnterpriseWebhooksEndpointRequest constructs an http.Request for the GithubEnterpriseWebhooksEndpoint method
+func NewGithubEnterpriseWebhooksEndpointRequest(server string, params *GithubEnterpriseWebhooksEndpointParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-webhooks-endpoint")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Id != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", *params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGithubIntegrationRequest constructs an http.Request for the GithubIntegration method
+func NewGithubIntegrationRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-integration")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGithubIntegrationUpdateRequest calls the generic GithubIntegrationUpdate builder with application/json body
+func NewGithubIntegrationUpdateRequest(server string, body GithubIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubIntegrationUpdateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubIntegrationUpdateRequestWithBody constructs an http.Request for the GithubIntegrationUpdate method, with any body, and a specified content type
+func NewGithubIntegrationUpdateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-integration")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGitlabIntegrationCreateRequest calls the generic GitlabIntegrationCreate builder with application/json body
+func NewGitlabIntegrationCreateRequest(server string, params *GitlabIntegrationCreateParams, body GitlabIntegrationCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGitlabIntegrationCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewGitlabIntegrationCreateRequestWithBody constructs an http.Request for the GitlabIntegrationCreate method, with any body, and a specified content type
+func NewGitlabIntegrationCreateRequestWithBody(server string, params *GitlabIntegrationCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGitlabIntegrationDeleteRequest constructs an http.Request for the GitlabIntegrationDelete method
+func NewGitlabIntegrationDeleteRequest(server string, gitlabIntegrationId string, params *GitlabIntegrationDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "gitlabIntegrationId", gitlabIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGitlabIntegrationRequest constructs an http.Request for the GitlabIntegration method
+func NewGitlabIntegrationRequest(server string, gitlabIntegrationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "gitlabIntegrationId", gitlabIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGitlabIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic GitlabIntegrationPatch builder with application/merge-patch+json body
+func NewGitlabIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, body GitlabIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGitlabIntegrationPatchRequestWithBody(server, gitlabIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewGitlabIntegrationPatchRequestWithBody constructs an http.Request for the GitlabIntegrationPatch method, with any body, and a specified content type
+func NewGitlabIntegrationPatchRequestWithBody(server string, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "gitlabIntegrationId", gitlabIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGitlabIntegrationUpdateRequest calls the generic GitlabIntegrationUpdate builder with application/json body
+func NewGitlabIntegrationUpdateRequest(server string, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, body GitlabIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGitlabIntegrationUpdateRequestWithBody(server, gitlabIntegrationId, params, "application/json", bodyReader)
+}
+
+// NewGitlabIntegrationUpdateRequestWithBody constructs an http.Request for the GitlabIntegrationUpdate method, with any body, and a specified content type
+func NewGitlabIntegrationUpdateRequestWithBody(server string, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "gitlabIntegrationId", gitlabIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGitlabIntegrationRegenerateWebhookSecretRequest constructs an http.Request for the GitlabIntegrationRegenerateWebhookSecret method
+func NewGitlabIntegrationRegenerateWebhookSecretRequest(server string, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "gitlabIntegrationId", gitlabIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-integrations/%s/regenerate-webhook-secret", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGitlabIntegrationTestRequest constructs an http.Request for the GitlabIntegrationTest method
+func NewGitlabIntegrationTestRequest(server string, gitlabIntegrationId string, params *GitlabIntegrationTestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "gitlabIntegrationId", gitlabIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-integrations/%s/test", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewGitlabWebhooksEndpointRequest constructs an http.Request for the GitlabWebhooksEndpoint method
+func NewGitlabWebhooksEndpointRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/gitlab-webhooks-endpoint")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -29114,6 +33652,108 @@ func NewPersonalApiKeyDisableRequest(server string, personalApiKeyId string, par
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewRepositoriesRequest constructs an http.Request for the Repositories method
+func NewRepositoriesRequest(server string, params *RepositoriesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repositories")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Provider != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "provider", *params.Provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.VcsIntegrationID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "vcsIntegrationID", *params.VcsIntegrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filter", *params.Filter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -36848,6 +41488,376 @@ func NewUsersWithAccessToSpaceSuggestionsRequest(server string, params *UsersWit
 	return req, nil
 }
 
+// NewSearchVCSIntegrationsRequest calls the generic SearchVCSIntegrations builder with application/json body
+func NewSearchVCSIntegrationsRequest(server string, body SearchVCSIntegrationsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchVCSIntegrationsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchVCSIntegrationsRequestWithBody constructs an http.Request for the SearchVCSIntegrations method, with any body, and a specified content type
+func NewSearchVCSIntegrationsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v-cs-integrations/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchVCSIntegrationsSuggestionsRequest calls the generic SearchVCSIntegrationsSuggestions builder with application/json body
+func NewSearchVCSIntegrationsSuggestionsRequest(server string, body SearchVCSIntegrationsSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchVCSIntegrationsSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchVCSIntegrationsSuggestionsRequestWithBody constructs an http.Request for the SearchVCSIntegrationsSuggestions method, with any body, and a specified content type
+func NewSearchVCSIntegrationsSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v-cs-integrations/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewVcsIntegrationsRequest constructs an http.Request for the VcsIntegrations method
+func NewVcsIntegrationsRequest(server string, params *VcsIntegrationsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewVcsIntegrationRequest constructs an http.Request for the VcsIntegration method
+func NewVcsIntegrationRequest(server string, vcsIntegrationId string, params *VcsIntegrationParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "vcsIntegrationId", vcsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "provider", params.Provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewVcsIntegrationSearchUsersRequest constructs an http.Request for the VcsIntegrationSearchUsers method
+func NewVcsIntegrationSearchUsersRequest(server string, vcsIntegrationId string, params *VcsIntegrationSearchUsersParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "vcsIntegrationId", vcsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-integrations/%s/search-users", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewVcsIntegrationSearchUsersSuggestionsRequest constructs an http.Request for the VcsIntegrationSearchUsersSuggestions method
+func NewVcsIntegrationSearchUsersSuggestionsRequest(server string, vcsIntegrationId string, params *VcsIntegrationSearchUsersSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "vcsIntegrationId", vcsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-integrations/%s/search-users-suggestions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewVcsIntegrationTestRequest constructs an http.Request for the VcsIntegrationTest method
+func NewVcsIntegrationTestRequest(server string, vcsIntegrationId string, params *VcsIntegrationTestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "vcsIntegrationId", vcsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-integrations/%s/test", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "provider", params.Provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewViewerRequest constructs an http.Request for the Viewer method
 func NewViewerRequest(server string) (*http.Request, error) {
 	var err error
@@ -37557,6 +42567,96 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
 	AwarenessSourceSurveyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AwarenessSourceSurveyResponse, error)
 
+	// AzureDevOpsRepoIntegrationCreateWithBodyWithResponse Create Azure DevOps Integration
+	//
+	// Creates the Azure DevOps Repo integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+	AzureDevOpsRepoIntegrationCreateWithBodyWithResponse(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationCreateResponse, error)
+
+	// AzureDevOpsRepoIntegrationCreateWithResponse Create Azure DevOps Integration
+	//
+	// Creates the Azure DevOps Repo integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+	AzureDevOpsRepoIntegrationCreateWithResponse(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, body AzureDevOpsRepoIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationCreateResponse, error)
+
+	// AzureDevOpsRepoIntegrationDeleteWithResponse Delete Azure DevOps Integration
+	//
+	// Deletes the Azure DevOps Repo integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationDelete` operationId).
+	AzureDevOpsRepoIntegrationDeleteWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationDeleteResponse, error)
+
+	// AzureDevOpsRepoIntegrationWithResponse Get Azure DevOps Integration
+	//
+	// Shows Azure DevOps Repos integration details.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegration` operationId).
+	AzureDevOpsRepoIntegrationWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationResponse, error)
+
+	// AzureDevOpsRepoIntegrationPatchWithBodyWithResponse Patch Azure DevOps Integration
+	//
+	// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+	AzureDevOpsRepoIntegrationPatchWithBodyWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationPatchResponse, error)
+
+	// AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Azure DevOps Integration
+	//
+	// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+	AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, body AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationPatchResponse, error)
+
+	// AzureDevOpsRepoIntegrationUpdateWithBodyWithResponse Update Azure DevOps Integration
+	//
+	// Updates the Azure DevOps Repo integration with new properties.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+	AzureDevOpsRepoIntegrationUpdateWithBodyWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationUpdateResponse, error)
+
+	// AzureDevOpsRepoIntegrationUpdateWithResponse Update Azure DevOps Integration
+	//
+	// Updates the Azure DevOps Repo integration with new properties.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+	AzureDevOpsRepoIntegrationUpdateWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, body AzureDevOpsRepoIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationUpdateResponse, error)
+
+	// AzureDevOpsRepoIntegrationTestWithResponse Test Azure DevOps Integration
+	//
+	// Tests the Azure DevOps Repo integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test (the `AzureDevOpsRepoIntegrationTest` operationId).
+	AzureDevOpsRepoIntegrationTestWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationTestParams, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationTestResponse, error)
+
+	// AzureDevOpsWebhooksEndpointWithResponse Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Azure DevOps webhooks.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
+	AzureDevOpsWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AzureDevOpsWebhooksEndpointResponse, error)
+
 	// BilledExternallyWithResponse Billed Externally
 	//
 	// true: no Stripe subscription exists.
@@ -37655,6 +42755,213 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /billing-subscription/update-tier (the `BillingSubscriptionUpdateTier` operationId).
 	BillingSubscriptionUpdateTierWithResponse(ctx context.Context, params *BillingSubscriptionUpdateTierParams, body BillingSubscriptionUpdateTierJSONRequestBody, reqEditors ...RequestEditorFn) (*BillingSubscriptionUpdateTierResponse, error)
+
+	// BitbucketCloudIntegrationCreateV2WithBodyWithResponse Create Bitbucket Cloud Integration V2
+	//
+	// Creates the Bitbucket Cloud integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+	BitbucketCloudIntegrationCreateV2WithBodyWithResponse(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationCreateV2Response, error)
+
+	// BitbucketCloudIntegrationCreateV2WithResponse Create Bitbucket Cloud Integration V2
+	//
+	// Creates the Bitbucket Cloud integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+	BitbucketCloudIntegrationCreateV2WithResponse(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, body BitbucketCloudIntegrationCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationCreateV2Response, error)
+
+	// BitbucketCloudIntegrationDeleteWithResponse Delete Bitbucket Cloud Integration
+	//
+	// Deletes the Bitbucket Cloud integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationDelete` operationId).
+	BitbucketCloudIntegrationDeleteWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationDeleteResponse, error)
+
+	// BitbucketCloudIntegrationWithResponse Get Bitbucket Cloud Integration
+	//
+	// Shows Bitbucket Cloud integration details.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegration` operationId).
+	BitbucketCloudIntegrationWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationResponse, error)
+
+	// BitbucketCloudIntegrationPatchWithBodyWithResponse Patch Bitbucket Cloud Integration V2
+	//
+	// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+	BitbucketCloudIntegrationPatchWithBodyWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationPatchResponse, error)
+
+	// BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Bitbucket Cloud Integration V2
+	//
+	// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+	BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, body BitbucketCloudIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationPatchResponse, error)
+
+	// BitbucketCloudIntegrationUpdateV2WithBodyWithResponse Update Bitbucket Cloud Integration V2
+	//
+	// Updates the Bitbucket Cloud integration with new properties.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+	BitbucketCloudIntegrationUpdateV2WithBodyWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationUpdateV2Response, error)
+
+	// BitbucketCloudIntegrationUpdateV2WithResponse Update Bitbucket Cloud Integration V2
+	//
+	// Updates the Bitbucket Cloud integration with new properties.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+	BitbucketCloudIntegrationUpdateV2WithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, body BitbucketCloudIntegrationUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationUpdateV2Response, error)
+
+	// BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for Bitbucket Cloud integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
+	BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationRegenerateWebhookSecretResponse, error)
+
+	// BitbucketCloudIntegrationTestWithResponse Test Bitbucket Cloud Integration
+	//
+	// Tests the Bitbucket Cloud integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/test (the `BitbucketCloudIntegrationTest` operationId).
+	BitbucketCloudIntegrationTestWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationTestParams, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationTestResponse, error)
+
+	// BitbucketCloudWebhooksEndpointWithResponse Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Bitbucket Cloud webhooks.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /bitbucket-cloud-webhooks-endpoint (the `BitbucketCloudWebhooksEndpoint` operationId).
+	BitbucketCloudWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BitbucketCloudWebhooksEndpointResponse, error)
+
+	// BitbucketDatacenterIntegrationCreateWithBodyWithResponse Create Bitbucket Datacenter Integration
+	//
+	// Creates the Bitbucket Datacenter integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+	BitbucketDatacenterIntegrationCreateWithBodyWithResponse(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationCreateResponse, error)
+
+	// BitbucketDatacenterIntegrationCreateWithResponse Create Bitbucket Datacenter Integration
+	//
+	// Creates the Bitbucket Datacenter integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+	BitbucketDatacenterIntegrationCreateWithResponse(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, body BitbucketDatacenterIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationCreateResponse, error)
+
+	// BitbucketDatacenterIntegrationDeleteWithResponse Delete Bitbucket Datacenter Integration
+	//
+	// Deletes the Bitbucket Datacenter integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationDelete` operationId).
+	BitbucketDatacenterIntegrationDeleteWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationDeleteResponse, error)
+
+	// BitbucketDatacenterIntegrationWithResponse Get Bitbucket Datacenter Integration
+	//
+	// Shows Bitbucket Datacenter integration details.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegration` operationId).
+	BitbucketDatacenterIntegrationWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationResponse, error)
+
+	// BitbucketDatacenterIntegrationPatchWithBodyWithResponse Patch Bitbucket Datacenter Integration
+	//
+	// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+	BitbucketDatacenterIntegrationPatchWithBodyWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationPatchResponse, error)
+
+	// BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Bitbucket Datacenter Integration
+	//
+	// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+	BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, body BitbucketDatacenterIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationPatchResponse, error)
+
+	// BitbucketDatacenterIntegrationUpdateWithBodyWithResponse Update Bitbucket Datacenter Integration
+	//
+	// Updates the Bitbucket Datacenter integration with new properties.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+	BitbucketDatacenterIntegrationUpdateWithBodyWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationUpdateResponse, error)
+
+	// BitbucketDatacenterIntegrationUpdateWithResponse Update Bitbucket Datacenter Integration
+	//
+	// Updates the Bitbucket Datacenter integration with new properties.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+	BitbucketDatacenterIntegrationUpdateWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, body BitbucketDatacenterIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationUpdateResponse, error)
+
+	// BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for Bitbucket Datacenter integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
+	BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse, error)
+
+	// BitbucketDatacenterIntegrationTestWithResponse Test Bitbucket Datacenter Integration
+	//
+	// Tests the Bitbucket Datacenter integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/test (the `BitbucketDatacenterIntegrationTest` operationId).
+	BitbucketDatacenterIntegrationTestWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationTestParams, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationTestResponse, error)
+
+	// BitbucketDatacenterWebhooksEndpointWithResponse Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Bitbucket Datacenter webhooks.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /bitbucket-datacenter-webhooks-endpoint (the `BitbucketDatacenterWebhooksEndpoint` operationId).
+	BitbucketDatacenterWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BitbucketDatacenterWebhooksEndpointResponse, error)
+
+	// BranchesWithResponse List Branches
+	//
+	// List of branches for a given repository.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /branches (the `Branches` operationId).
+	BranchesWithResponse(ctx context.Context, params *BranchesParams, reqEditors ...RequestEditorFn) (*BranchesResponse, error)
 
 	// ContextDetachWithResponse Detach Context
 	//
@@ -37912,6 +43219,233 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 	ExpressionEvaluateWithResponse(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionEvaluateResponse, error)
+
+	// GithubEnterpriseIntegrationCreateWithBodyWithResponse Create GitHub Enterprise Integration
+	//
+	// Creates the GitHub Enterprise integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+	GithubEnterpriseIntegrationCreateWithBodyWithResponse(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationCreateResponse, error)
+
+	// GithubEnterpriseIntegrationCreateWithResponse Create GitHub Enterprise Integration
+	//
+	// Creates the GitHub Enterprise integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+	GithubEnterpriseIntegrationCreateWithResponse(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationCreateResponse, error)
+
+	// GithubEnterpriseIntegrationDeleteWithResponse Delete GitHub Enterprise Integration
+	//
+	// Deletes the GitHub Enterprise integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationDelete` operationId).
+	GithubEnterpriseIntegrationDeleteWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationDeleteResponse, error)
+
+	// GithubEnterpriseIntegrationWithResponse Get GitHub Enterprise Integration
+	//
+	// GitHub Enterprise Integration settings. If the id is not provided, it will return
+	// the default GitHub Enterprise Integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegration` operationId).
+	GithubEnterpriseIntegrationWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationResponse, error)
+
+	// GithubEnterpriseIntegrationPatchWithBodyWithResponse Patch GitHub Enterprise Integration
+	//
+	// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+	GithubEnterpriseIntegrationPatchWithBodyWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationPatchResponse, error)
+
+	// GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch GitHub Enterprise Integration
+	//
+	// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+	GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, body GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationPatchResponse, error)
+
+	// GithubEnterpriseIntegrationUpdateWithBodyWithResponse Update GitHub Enterprise Integration
+	//
+	// Updates the GitHub Enterprise integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+	GithubEnterpriseIntegrationUpdateWithBodyWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationUpdateResponse, error)
+
+	// GithubEnterpriseIntegrationUpdateWithResponse Update GitHub Enterprise Integration
+	//
+	// Updates the GitHub Enterprise integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+	GithubEnterpriseIntegrationUpdateWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, body GithubEnterpriseIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationUpdateResponse, error)
+
+	// GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for GitHub Enterprise integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
+	GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationRegenerateWebhookSecretResponse, error)
+
+	// GithubEnterpriseIntegrationTestWithResponse Test GitHub Enterprise Integration
+	//
+	// Tests the GitHub Enterprise integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/test (the `GithubEnterpriseIntegrationTest` operationId).
+	GithubEnterpriseIntegrationTestWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationTestParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationTestResponse, error)
+
+	// GithubEnterpriseWebhooksEndpointWithResponse Get Webhooks Endpoint
+	//
+	// The webhooks endpoint to use in your GitHub Enterprise App.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
+	GithubEnterpriseWebhooksEndpointWithResponse(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseWebhooksEndpointResponse, error)
+
+	// GithubIntegrationWithResponse Get GitHub Integration
+	//
+	// Build-in GitHub Integration settings.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
+	GithubIntegrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubIntegrationResponse, error)
+
+	// GithubIntegrationUpdateWithBodyWithResponse Update GitHub Integration
+	//
+	// Updates the build-in GitHub integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+	GithubIntegrationUpdateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error)
+
+	// GithubIntegrationUpdateWithResponse Update GitHub Integration
+	//
+	// Updates the build-in GitHub integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+	GithubIntegrationUpdateWithResponse(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error)
+
+	// GitlabIntegrationCreateWithBodyWithResponse Create GitLab Integration
+	//
+	// Creates the GitLab integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+	GitlabIntegrationCreateWithBodyWithResponse(ctx context.Context, params *GitlabIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitlabIntegrationCreateResponse, error)
+
+	// GitlabIntegrationCreateWithResponse Create GitLab Integration
+	//
+	// Creates the GitLab integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+	GitlabIntegrationCreateWithResponse(ctx context.Context, params *GitlabIntegrationCreateParams, body GitlabIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*GitlabIntegrationCreateResponse, error)
+
+	// GitlabIntegrationDeleteWithResponse Delete GitLab Integration
+	//
+	// Deletes the GitLab integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationDelete` operationId).
+	GitlabIntegrationDeleteWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*GitlabIntegrationDeleteResponse, error)
+
+	// GitlabIntegrationWithResponse Get GitLab Integration
+	//
+	// Shows Gitlab integration details. If the id is not provided, it will return
+	// the default Gitlab Integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegration` operationId).
+	GitlabIntegrationWithResponse(ctx context.Context, gitlabIntegrationId string, reqEditors ...RequestEditorFn) (*GitlabIntegrationResponse, error)
+
+	// GitlabIntegrationPatchWithBodyWithResponse Patch GitLab Integration
+	//
+	// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+	GitlabIntegrationPatchWithBodyWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitlabIntegrationPatchResponse, error)
+
+	// GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch GitLab Integration
+	//
+	// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+	GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, body GitlabIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*GitlabIntegrationPatchResponse, error)
+
+	// GitlabIntegrationUpdateWithBodyWithResponse Update GitLab Integration
+	//
+	// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+	GitlabIntegrationUpdateWithBodyWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitlabIntegrationUpdateResponse, error)
+
+	// GitlabIntegrationUpdateWithResponse Update GitLab Integration
+	//
+	// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+	GitlabIntegrationUpdateWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, body GitlabIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GitlabIntegrationUpdateResponse, error)
+
+	// GitlabIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+	//
+	// Regenerates the webhook secret for GitLab integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
+	GitlabIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*GitlabIntegrationRegenerateWebhookSecretResponse, error)
+
+	// GitlabIntegrationTestWithResponse Test GitLab Integration
+	//
+	// Tests the GitLab integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/test (the `GitlabIntegrationTest` operationId).
+	GitlabIntegrationTestWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationTestParams, reqEditors ...RequestEditorFn) (*GitlabIntegrationTestResponse, error)
+
+	// GitlabWebhooksEndpointWithResponse Get Webhooks Endpoint
+	//
+	// Endpoint for incoming Gitlab webhooks.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
+	GitlabWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GitlabWebhooksEndpointResponse, error)
 
 	// IdWithResponse Id
 	//
@@ -38536,6 +44070,16 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisableWithResponse(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*PersonalApiKeyDisableResponse, error)
+
+	// RepositoriesWithResponse List Repositories
+	//
+	// List of repositories available to the account.
+	// Optional filter param can be applied for the results returned from VCS.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /repositories (the `Repositories` operationId).
+	RepositoriesWithResponse(ctx context.Context, params *RepositoriesParams, reqEditors ...RequestEditorFn) (*RepositoriesResponse, error)
 
 	// RolesWithResponse List Roles
 	//
@@ -40299,6 +45843,83 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /users-with-access-to-space-suggestions (the `UsersWithAccessToSpaceSuggestions` operationId).
 	UsersWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *UsersWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*UsersWithAccessToSpaceSuggestionsResponse, error)
+
+	// SearchVCSIntegrationsWithBodyWithResponse Search VCS Integrations
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+	SearchVCSIntegrationsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsResponse, error)
+
+	// SearchVCSIntegrationsWithResponse Search VCS Integrations
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+	SearchVCSIntegrationsWithResponse(ctx context.Context, body SearchVCSIntegrationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsResponse, error)
+
+	// SearchVCSIntegrationsSuggestionsWithBodyWithResponse Search VCSIntegrations Suggestions
+	//
+	// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+	SearchVCSIntegrationsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsSuggestionsResponse, error)
+
+	// SearchVCSIntegrationsSuggestionsWithResponse Search VCSIntegrations Suggestions
+	//
+	// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+	SearchVCSIntegrationsSuggestionsWithResponse(ctx context.Context, body SearchVCSIntegrationsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsSuggestionsResponse, error)
+
+	// VcsIntegrationsWithResponse List VCS Integrations
+	//
+	// List of all VCS integrations available in the account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vcs-integrations (the `VcsIntegrations` operationId).
+	VcsIntegrationsWithResponse(ctx context.Context, params *VcsIntegrationsParams, reqEditors ...RequestEditorFn) (*VcsIntegrationsResponse, error)
+
+	// VcsIntegrationWithResponse Get VCS Integration
+	//
+	// Get VCS integrations by provider and id.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId} (the `VcsIntegration` operationId).
+	VcsIntegrationWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationParams, reqEditors ...RequestEditorFn) (*VcsIntegrationResponse, error)
+
+	// VcsIntegrationSearchUsersWithResponse Vcs integration search users
+	//
+	// Search stacks/modules using this VCS integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users (the `VcsIntegrationSearchUsers` operationId).
+	VcsIntegrationSearchUsersWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersParams, reqEditors ...RequestEditorFn) (*VcsIntegrationSearchUsersResponse, error)
+
+	// VcsIntegrationSearchUsersSuggestionsWithResponse Vcs integration search users suggestions
+	//
+	// Search stacks/modules suggestions using this VCS integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users-suggestions (the `VcsIntegrationSearchUsersSuggestions` operationId).
+	VcsIntegrationSearchUsersSuggestionsWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*VcsIntegrationSearchUsersSuggestionsResponse, error)
+
+	// VcsIntegrationTestWithResponse Test VCS Integration
+	//
+	// Runs a test to check whether the VCS integration is configured correctly.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/test (the `VcsIntegrationTest` operationId).
+	VcsIntegrationTestWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationTestParams, reqEditors ...RequestEditorFn) (*VcsIntegrationTestResponse, error)
 
 	// ViewerWithResponse Viewer
 	//
@@ -45405,6 +51026,723 @@ func (r AwarenessSourceSurveyResponse) ContentType() string {
 	return ""
 }
 
+// AzureDevOpsRepoIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for AzureDevOpsRepoIntegrationCreate
+type AzureDevOpsRepoIntegrationCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationCreateResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsRepoIntegrationCreate
+type AzureDevOpsRepoIntegrationCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationCreateResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsRepoIntegrationCreate
+type AzureDevOpsRepoIntegrationCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsRepoIntegrationCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *AzureDevOpsRepoIntegration
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AzureDevOpsRepoIntegrationCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsRepoIntegrationCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsRepoIntegrationCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AzureDevOpsRepoIntegrationCreateResponse) GetJSON201() *AzureDevOpsRepoIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsRepoIntegrationCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsRepoIntegrationCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsRepoIntegrationCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsRepoIntegrationCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureDevOpsRepoIntegrationDeleteResponse200Headers the declared response headers of an HTTP 200 response for AzureDevOpsRepoIntegrationDelete
+type AzureDevOpsRepoIntegrationDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationDeleteResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsRepoIntegrationDelete
+type AzureDevOpsRepoIntegrationDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationDeleteResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsRepoIntegrationDelete
+type AzureDevOpsRepoIntegrationDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsRepoIntegrationDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureDevOpsRepoIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureDevOpsRepoIntegrationDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsRepoIntegrationDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsRepoIntegrationDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureDevOpsRepoIntegrationDeleteResponse) GetJSON200() *AzureDevOpsRepoIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsRepoIntegrationDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsRepoIntegrationDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsRepoIntegrationDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsRepoIntegrationDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureDevOpsRepoIntegrationResponse200Headers the declared response headers of an HTTP 200 response for AzureDevOpsRepoIntegration
+type AzureDevOpsRepoIntegrationResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsRepoIntegration
+type AzureDevOpsRepoIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsRepoIntegration
+type AzureDevOpsRepoIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsRepoIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureDevOpsRepoIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureDevOpsRepoIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsRepoIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsRepoIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureDevOpsRepoIntegrationResponse) GetJSON200() *AzureDevOpsRepoIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsRepoIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsRepoIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsRepoIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsRepoIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureDevOpsRepoIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for AzureDevOpsRepoIntegrationPatch
+type AzureDevOpsRepoIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsRepoIntegrationPatch
+type AzureDevOpsRepoIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsRepoIntegrationPatch
+type AzureDevOpsRepoIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsRepoIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureDevOpsRepoIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureDevOpsRepoIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsRepoIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsRepoIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetJSON200() *AzureDevOpsRepoIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsRepoIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsRepoIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsRepoIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsRepoIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureDevOpsRepoIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for AzureDevOpsRepoIntegrationUpdate
+type AzureDevOpsRepoIntegrationUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsRepoIntegrationUpdate
+type AzureDevOpsRepoIntegrationUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsRepoIntegrationUpdate
+type AzureDevOpsRepoIntegrationUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsRepoIntegrationUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureDevOpsRepoIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureDevOpsRepoIntegrationUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsRepoIntegrationUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsRepoIntegrationUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureDevOpsRepoIntegrationUpdateResponse) GetJSON200() *AzureDevOpsRepoIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsRepoIntegrationUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsRepoIntegrationUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsRepoIntegrationUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsRepoIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureDevOpsRepoIntegrationTestResponse200Headers the declared response headers of an HTTP 200 response for AzureDevOpsRepoIntegrationTest
+type AzureDevOpsRepoIntegrationTestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationTestResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsRepoIntegrationTest
+type AzureDevOpsRepoIntegrationTestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationTestResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsRepoIntegrationTest
+type AzureDevOpsRepoIntegrationTestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsRepoIntegrationTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureDevOpsRepoIntegrationTestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsRepoIntegrationTestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsRepoIntegrationTestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureDevOpsRepoIntegrationTestResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationTestResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationTestResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationTestResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationTestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationTestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationTestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsRepoIntegrationTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsRepoIntegrationTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsRepoIntegrationTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsRepoIntegrationTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureDevOpsWebhooksEndpointResponse200Headers the declared response headers of an HTTP 200 response for AzureDevOpsWebhooksEndpoint
+type AzureDevOpsWebhooksEndpointResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsWebhooksEndpointResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsWebhooksEndpoint
+type AzureDevOpsWebhooksEndpointResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsWebhooksEndpointResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsWebhooksEndpoint
+type AzureDevOpsWebhooksEndpointResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsWebhooksEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureDevOpsWebhooksEndpointResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsWebhooksEndpointResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsWebhooksEndpointResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureDevOpsWebhooksEndpointResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsWebhooksEndpointResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsWebhooksEndpointResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsWebhooksEndpointResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsWebhooksEndpointResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsWebhooksEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsWebhooksEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsWebhooksEndpointResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // BilledExternallyResponse200Headers the declared response headers of an HTTP 200 response for BilledExternally
 type BilledExternallyResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -46057,6 +52395,1753 @@ func (r BillingSubscriptionUpdateTierResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r BillingSubscriptionUpdateTierResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudIntegrationCreateV2Response201Headers the declared response headers of an HTTP 201 response for BitbucketCloudIntegrationCreateV2
+type BitbucketCloudIntegrationCreateV2Response201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationCreateV2Response429Headers the declared response headers of an HTTP 429 response for BitbucketCloudIntegrationCreateV2
+type BitbucketCloudIntegrationCreateV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationCreateV2Response503Headers the declared response headers of an HTTP 503 response for BitbucketCloudIntegrationCreateV2
+type BitbucketCloudIntegrationCreateV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudIntegrationCreateV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *BitbucketCloudIntegration
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *BitbucketCloudIntegrationCreateV2Response201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudIntegrationCreateV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudIntegrationCreateV2Response503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r BitbucketCloudIntegrationCreateV2Response) GetJSON201() *BitbucketCloudIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketCloudIntegrationCreateV2Response) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketCloudIntegrationCreateV2Response) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudIntegrationCreateV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudIntegrationCreateV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudIntegrationCreateV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudIntegrationCreateV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudIntegrationCreateV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudIntegrationCreateV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudIntegrationCreateV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudIntegrationDeleteResponse200Headers the declared response headers of an HTTP 200 response for BitbucketCloudIntegrationDelete
+type BitbucketCloudIntegrationDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationDeleteResponse429Headers the declared response headers of an HTTP 429 response for BitbucketCloudIntegrationDelete
+type BitbucketCloudIntegrationDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationDeleteResponse503Headers the declared response headers of an HTTP 503 response for BitbucketCloudIntegrationDelete
+type BitbucketCloudIntegrationDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudIntegrationDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketCloudIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketCloudIntegrationDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudIntegrationDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudIntegrationDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketCloudIntegrationDeleteResponse) GetJSON200() *BitbucketCloudIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketCloudIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r BitbucketCloudIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudIntegrationDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudIntegrationDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudIntegrationDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudIntegrationDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudIntegrationDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudIntegrationDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudIntegrationDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudIntegrationResponse200Headers the declared response headers of an HTTP 200 response for BitbucketCloudIntegration
+type BitbucketCloudIntegrationResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationResponse429Headers the declared response headers of an HTTP 429 response for BitbucketCloudIntegration
+type BitbucketCloudIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationResponse503Headers the declared response headers of an HTTP 503 response for BitbucketCloudIntegration
+type BitbucketCloudIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketCloudIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketCloudIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketCloudIntegrationResponse) GetJSON200() *BitbucketCloudIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketCloudIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for BitbucketCloudIntegrationPatch
+type BitbucketCloudIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for BitbucketCloudIntegrationPatch
+type BitbucketCloudIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for BitbucketCloudIntegrationPatch
+type BitbucketCloudIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketCloudIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketCloudIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetJSON200() *BitbucketCloudIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudIntegrationUpdateV2Response200Headers the declared response headers of an HTTP 200 response for BitbucketCloudIntegrationUpdateV2
+type BitbucketCloudIntegrationUpdateV2Response200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationUpdateV2Response429Headers the declared response headers of an HTTP 429 response for BitbucketCloudIntegrationUpdateV2
+type BitbucketCloudIntegrationUpdateV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationUpdateV2Response503Headers the declared response headers of an HTTP 503 response for BitbucketCloudIntegrationUpdateV2
+type BitbucketCloudIntegrationUpdateV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudIntegrationUpdateV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketCloudIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketCloudIntegrationUpdateV2Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudIntegrationUpdateV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudIntegrationUpdateV2Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketCloudIntegrationUpdateV2Response) GetJSON200() *BitbucketCloudIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketCloudIntegrationUpdateV2Response) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r BitbucketCloudIntegrationUpdateV2Response) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudIntegrationUpdateV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudIntegrationUpdateV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudIntegrationUpdateV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudIntegrationUpdateV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudIntegrationUpdateV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudIntegrationUpdateV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudIntegrationUpdateV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudIntegrationRegenerateWebhookSecretResponse200Headers the declared response headers of an HTTP 200 response for BitbucketCloudIntegrationRegenerateWebhookSecret
+type BitbucketCloudIntegrationRegenerateWebhookSecretResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationRegenerateWebhookSecretResponse429Headers the declared response headers of an HTTP 429 response for BitbucketCloudIntegrationRegenerateWebhookSecret
+type BitbucketCloudIntegrationRegenerateWebhookSecretResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationRegenerateWebhookSecretResponse503Headers the declared response headers of an HTTP 503 response for BitbucketCloudIntegrationRegenerateWebhookSecret
+type BitbucketCloudIntegrationRegenerateWebhookSecretResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudIntegrationRegenerateWebhookSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketCloudIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketCloudIntegrationRegenerateWebhookSecretResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudIntegrationRegenerateWebhookSecretResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudIntegrationRegenerateWebhookSecretResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetJSON200() *BitbucketCloudIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudIntegrationRegenerateWebhookSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudIntegrationTestResponse200Headers the declared response headers of an HTTP 200 response for BitbucketCloudIntegrationTest
+type BitbucketCloudIntegrationTestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationTestResponse429Headers the declared response headers of an HTTP 429 response for BitbucketCloudIntegrationTest
+type BitbucketCloudIntegrationTestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudIntegrationTestResponse503Headers the declared response headers of an HTTP 503 response for BitbucketCloudIntegrationTest
+type BitbucketCloudIntegrationTestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudIntegrationTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketCloudIntegrationTestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudIntegrationTestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudIntegrationTestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketCloudIntegrationTestResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketCloudIntegrationTestResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketCloudIntegrationTestResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketCloudIntegrationTestResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudIntegrationTestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudIntegrationTestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudIntegrationTestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudIntegrationTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudIntegrationTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudIntegrationTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudIntegrationTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketCloudWebhooksEndpointResponse200Headers the declared response headers of an HTTP 200 response for BitbucketCloudWebhooksEndpoint
+type BitbucketCloudWebhooksEndpointResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudWebhooksEndpointResponse429Headers the declared response headers of an HTTP 429 response for BitbucketCloudWebhooksEndpoint
+type BitbucketCloudWebhooksEndpointResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketCloudWebhooksEndpointResponse503Headers the declared response headers of an HTTP 503 response for BitbucketCloudWebhooksEndpoint
+type BitbucketCloudWebhooksEndpointResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketCloudWebhooksEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketCloudWebhooksEndpointResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketCloudWebhooksEndpointResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketCloudWebhooksEndpointResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketCloudWebhooksEndpointResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketCloudWebhooksEndpointResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketCloudWebhooksEndpointResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketCloudWebhooksEndpointResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketCloudWebhooksEndpointResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketCloudWebhooksEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketCloudWebhooksEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketCloudWebhooksEndpointResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for BitbucketDatacenterIntegrationCreate
+type BitbucketDatacenterIntegrationCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationCreateResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterIntegrationCreate
+type BitbucketDatacenterIntegrationCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationCreateResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterIntegrationCreate
+type BitbucketDatacenterIntegrationCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterIntegrationCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *BitbucketDatacenterIntegration
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *BitbucketDatacenterIntegrationCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterIntegrationCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterIntegrationCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r BitbucketDatacenterIntegrationCreateResponse) GetJSON201() *BitbucketDatacenterIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterIntegrationCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterIntegrationCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterIntegrationCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterIntegrationCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterIntegrationCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterIntegrationDeleteResponse200Headers the declared response headers of an HTTP 200 response for BitbucketDatacenterIntegrationDelete
+type BitbucketDatacenterIntegrationDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationDeleteResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterIntegrationDelete
+type BitbucketDatacenterIntegrationDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationDeleteResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterIntegrationDelete
+type BitbucketDatacenterIntegrationDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterIntegrationDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketDatacenterIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketDatacenterIntegrationDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterIntegrationDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterIntegrationDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketDatacenterIntegrationDeleteResponse) GetJSON200() *BitbucketDatacenterIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterIntegrationDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterIntegrationDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterIntegrationDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterIntegrationDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterIntegrationDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterIntegrationResponse200Headers the declared response headers of an HTTP 200 response for BitbucketDatacenterIntegration
+type BitbucketDatacenterIntegrationResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterIntegration
+type BitbucketDatacenterIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterIntegration
+type BitbucketDatacenterIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketDatacenterIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketDatacenterIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketDatacenterIntegrationResponse) GetJSON200() *BitbucketDatacenterIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for BitbucketDatacenterIntegrationPatch
+type BitbucketDatacenterIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterIntegrationPatch
+type BitbucketDatacenterIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterIntegrationPatch
+type BitbucketDatacenterIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketDatacenterIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketDatacenterIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetJSON200() *BitbucketDatacenterIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for BitbucketDatacenterIntegrationUpdate
+type BitbucketDatacenterIntegrationUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterIntegrationUpdate
+type BitbucketDatacenterIntegrationUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterIntegrationUpdate
+type BitbucketDatacenterIntegrationUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterIntegrationUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketDatacenterIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketDatacenterIntegrationUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterIntegrationUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterIntegrationUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketDatacenterIntegrationUpdateResponse) GetJSON200() *BitbucketDatacenterIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterIntegrationUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterIntegrationUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterIntegrationUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse200Headers the declared response headers of an HTTP 200 response for BitbucketDatacenterIntegrationRegenerateWebhookSecret
+type BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterIntegrationRegenerateWebhookSecret
+type BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterIntegrationRegenerateWebhookSecret
+type BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BitbucketDatacenterIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetJSON200() *BitbucketDatacenterIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterIntegrationTestResponse200Headers the declared response headers of an HTTP 200 response for BitbucketDatacenterIntegrationTest
+type BitbucketDatacenterIntegrationTestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationTestResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterIntegrationTest
+type BitbucketDatacenterIntegrationTestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterIntegrationTestResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterIntegrationTest
+type BitbucketDatacenterIntegrationTestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterIntegrationTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketDatacenterIntegrationTestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterIntegrationTestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterIntegrationTestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketDatacenterIntegrationTestResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationTestResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationTestResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationTestResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationTestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterIntegrationTestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterIntegrationTestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterIntegrationTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterIntegrationTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterIntegrationTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterIntegrationTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BitbucketDatacenterWebhooksEndpointResponse200Headers the declared response headers of an HTTP 200 response for BitbucketDatacenterWebhooksEndpoint
+type BitbucketDatacenterWebhooksEndpointResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterWebhooksEndpointResponse429Headers the declared response headers of an HTTP 429 response for BitbucketDatacenterWebhooksEndpoint
+type BitbucketDatacenterWebhooksEndpointResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BitbucketDatacenterWebhooksEndpointResponse503Headers the declared response headers of an HTTP 503 response for BitbucketDatacenterWebhooksEndpoint
+type BitbucketDatacenterWebhooksEndpointResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BitbucketDatacenterWebhooksEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BitbucketDatacenterWebhooksEndpointResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BitbucketDatacenterWebhooksEndpointResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BitbucketDatacenterWebhooksEndpointResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BitbucketDatacenterWebhooksEndpointResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BitbucketDatacenterWebhooksEndpointResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BitbucketDatacenterWebhooksEndpointResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BitbucketDatacenterWebhooksEndpointResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BitbucketDatacenterWebhooksEndpointResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BitbucketDatacenterWebhooksEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BitbucketDatacenterWebhooksEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BitbucketDatacenterWebhooksEndpointResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// BranchesResponse200Headers the declared response headers of an HTTP 200 response for Branches
+type BranchesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BranchesResponse429Headers the declared response headers of an HTTP 429 response for Branches
+type BranchesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// BranchesResponse503Headers the declared response headers of an HTTP 503 response for Branches
+type BranchesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type BranchesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BranchesPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *BranchesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *BranchesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *BranchesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BranchesResponse) GetJSON200() *BranchesPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r BranchesResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r BranchesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r BranchesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r BranchesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r BranchesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BranchesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BranchesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BranchesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -47974,6 +56059,1834 @@ func (r ExpressionEvaluateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ExpressionEvaluateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for GithubEnterpriseIntegrationCreate
+type GithubEnterpriseIntegrationCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationCreateResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseIntegrationCreate
+type GithubEnterpriseIntegrationCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationCreateResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseIntegrationCreate
+type GithubEnterpriseIntegrationCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseIntegrationCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *GithubEnterpriseIntegration
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *GithubEnterpriseIntegrationCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseIntegrationCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseIntegrationCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r GithubEnterpriseIntegrationCreateResponse) GetJSON201() *GithubEnterpriseIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GithubEnterpriseIntegrationCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GithubEnterpriseIntegrationCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseIntegrationCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseIntegrationCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseIntegrationCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseIntegrationCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseIntegrationCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseIntegrationCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseIntegrationCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseIntegrationDeleteResponse200Headers the declared response headers of an HTTP 200 response for GithubEnterpriseIntegrationDelete
+type GithubEnterpriseIntegrationDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationDeleteResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseIntegrationDelete
+type GithubEnterpriseIntegrationDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationDeleteResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseIntegrationDelete
+type GithubEnterpriseIntegrationDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseIntegrationDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GithubEnterpriseIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubEnterpriseIntegrationDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseIntegrationDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseIntegrationDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubEnterpriseIntegrationDeleteResponse) GetJSON200() *GithubEnterpriseIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GithubEnterpriseIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r GithubEnterpriseIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseIntegrationDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseIntegrationDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseIntegrationDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseIntegrationDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseIntegrationDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseIntegrationDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseIntegrationDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseIntegrationResponse200Headers the declared response headers of an HTTP 200 response for GithubEnterpriseIntegration
+type GithubEnterpriseIntegrationResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseIntegration
+type GithubEnterpriseIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseIntegration
+type GithubEnterpriseIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GithubEnterpriseIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubEnterpriseIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubEnterpriseIntegrationResponse) GetJSON200() *GithubEnterpriseIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GithubEnterpriseIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for GithubEnterpriseIntegrationPatch
+type GithubEnterpriseIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseIntegrationPatch
+type GithubEnterpriseIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseIntegrationPatch
+type GithubEnterpriseIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GithubEnterpriseIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubEnterpriseIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetJSON200() *GithubEnterpriseIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for GithubEnterpriseIntegrationUpdate
+type GithubEnterpriseIntegrationUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseIntegrationUpdate
+type GithubEnterpriseIntegrationUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseIntegrationUpdate
+type GithubEnterpriseIntegrationUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseIntegrationUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GithubEnterpriseIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubEnterpriseIntegrationUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseIntegrationUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseIntegrationUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubEnterpriseIntegrationUpdateResponse) GetJSON200() *GithubEnterpriseIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GithubEnterpriseIntegrationUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r GithubEnterpriseIntegrationUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseIntegrationUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseIntegrationUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseIntegrationUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseIntegrationRegenerateWebhookSecretResponse200Headers the declared response headers of an HTTP 200 response for GithubEnterpriseIntegrationRegenerateWebhookSecret
+type GithubEnterpriseIntegrationRegenerateWebhookSecretResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationRegenerateWebhookSecretResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseIntegrationRegenerateWebhookSecret
+type GithubEnterpriseIntegrationRegenerateWebhookSecretResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationRegenerateWebhookSecretResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseIntegrationRegenerateWebhookSecret
+type GithubEnterpriseIntegrationRegenerateWebhookSecretResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseIntegrationRegenerateWebhookSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GithubEnterpriseIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubEnterpriseIntegrationRegenerateWebhookSecretResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseIntegrationRegenerateWebhookSecretResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseIntegrationRegenerateWebhookSecretResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetJSON200() *GithubEnterpriseIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseIntegrationRegenerateWebhookSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseIntegrationTestResponse200Headers the declared response headers of an HTTP 200 response for GithubEnterpriseIntegrationTest
+type GithubEnterpriseIntegrationTestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationTestResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseIntegrationTest
+type GithubEnterpriseIntegrationTestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseIntegrationTestResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseIntegrationTest
+type GithubEnterpriseIntegrationTestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseIntegrationTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubEnterpriseIntegrationTestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseIntegrationTestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseIntegrationTestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubEnterpriseIntegrationTestResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GithubEnterpriseIntegrationTestResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GithubEnterpriseIntegrationTestResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GithubEnterpriseIntegrationTestResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseIntegrationTestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseIntegrationTestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseIntegrationTestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseIntegrationTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseIntegrationTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseIntegrationTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseIntegrationTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubEnterpriseWebhooksEndpointResponse200Headers the declared response headers of an HTTP 200 response for GithubEnterpriseWebhooksEndpoint
+type GithubEnterpriseWebhooksEndpointResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseWebhooksEndpointResponse429Headers the declared response headers of an HTTP 429 response for GithubEnterpriseWebhooksEndpoint
+type GithubEnterpriseWebhooksEndpointResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubEnterpriseWebhooksEndpointResponse503Headers the declared response headers of an HTTP 503 response for GithubEnterpriseWebhooksEndpoint
+type GithubEnterpriseWebhooksEndpointResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubEnterpriseWebhooksEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubEnterpriseWebhooksEndpointResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubEnterpriseWebhooksEndpointResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubEnterpriseWebhooksEndpointResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubEnterpriseWebhooksEndpointResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubEnterpriseWebhooksEndpointResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubEnterpriseWebhooksEndpointResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubEnterpriseWebhooksEndpointResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubEnterpriseWebhooksEndpointResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEnterpriseWebhooksEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEnterpriseWebhooksEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubEnterpriseWebhooksEndpointResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubIntegrationResponse200Headers the declared response headers of an HTTP 200 response for GithubIntegration
+type GithubIntegrationResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubIntegrationResponse429Headers the declared response headers of an HTTP 429 response for GithubIntegration
+type GithubIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubIntegrationResponse503Headers the declared response headers of an HTTP 503 response for GithubIntegration
+type GithubIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GithubIntegration
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubIntegrationResponse) GetJSON200() *GithubIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for GithubIntegrationUpdate
+type GithubIntegrationUpdateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for GithubIntegrationUpdate
+type GithubIntegrationUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for GithubIntegrationUpdate
+type GithubIntegrationUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubIntegrationUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GithubIntegration
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubIntegrationUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubIntegrationUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubIntegrationUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubIntegrationUpdateResponse) GetJSON200() *GithubIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubIntegrationUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubIntegrationUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubIntegrationUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for GitlabIntegrationCreate
+type GitlabIntegrationCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationCreateResponse429Headers the declared response headers of an HTTP 429 response for GitlabIntegrationCreate
+type GitlabIntegrationCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationCreateResponse503Headers the declared response headers of an HTTP 503 response for GitlabIntegrationCreate
+type GitlabIntegrationCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabIntegrationCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *GitlabIntegration
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *GitlabIntegrationCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabIntegrationCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabIntegrationCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r GitlabIntegrationCreateResponse) GetJSON201() *GitlabIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GitlabIntegrationCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GitlabIntegrationCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabIntegrationCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabIntegrationCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabIntegrationCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabIntegrationCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabIntegrationCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabIntegrationCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabIntegrationCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabIntegrationDeleteResponse200Headers the declared response headers of an HTTP 200 response for GitlabIntegrationDelete
+type GitlabIntegrationDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationDeleteResponse429Headers the declared response headers of an HTTP 429 response for GitlabIntegrationDelete
+type GitlabIntegrationDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationDeleteResponse503Headers the declared response headers of an HTTP 503 response for GitlabIntegrationDelete
+type GitlabIntegrationDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabIntegrationDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GitlabIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitlabIntegrationDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabIntegrationDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabIntegrationDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitlabIntegrationDeleteResponse) GetJSON200() *GitlabIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GitlabIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r GitlabIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabIntegrationDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabIntegrationDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabIntegrationDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabIntegrationDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabIntegrationDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabIntegrationDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabIntegrationDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabIntegrationResponse200Headers the declared response headers of an HTTP 200 response for GitlabIntegration
+type GitlabIntegrationResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationResponse429Headers the declared response headers of an HTTP 429 response for GitlabIntegration
+type GitlabIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationResponse503Headers the declared response headers of an HTTP 503 response for GitlabIntegration
+type GitlabIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GitlabIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitlabIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitlabIntegrationResponse) GetJSON200() *GitlabIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GitlabIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for GitlabIntegrationPatch
+type GitlabIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for GitlabIntegrationPatch
+type GitlabIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for GitlabIntegrationPatch
+type GitlabIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GitlabIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitlabIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitlabIntegrationPatchResponse) GetJSON200() *GitlabIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GitlabIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GitlabIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r GitlabIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GitlabIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for GitlabIntegrationUpdate
+type GitlabIntegrationUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for GitlabIntegrationUpdate
+type GitlabIntegrationUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for GitlabIntegrationUpdate
+type GitlabIntegrationUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabIntegrationUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GitlabIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitlabIntegrationUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabIntegrationUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabIntegrationUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitlabIntegrationUpdateResponse) GetJSON200() *GitlabIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GitlabIntegrationUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r GitlabIntegrationUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabIntegrationUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabIntegrationUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabIntegrationUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabIntegrationRegenerateWebhookSecretResponse200Headers the declared response headers of an HTTP 200 response for GitlabIntegrationRegenerateWebhookSecret
+type GitlabIntegrationRegenerateWebhookSecretResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationRegenerateWebhookSecretResponse429Headers the declared response headers of an HTTP 429 response for GitlabIntegrationRegenerateWebhookSecret
+type GitlabIntegrationRegenerateWebhookSecretResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationRegenerateWebhookSecretResponse503Headers the declared response headers of an HTTP 503 response for GitlabIntegrationRegenerateWebhookSecret
+type GitlabIntegrationRegenerateWebhookSecretResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabIntegrationRegenerateWebhookSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GitlabIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitlabIntegrationRegenerateWebhookSecretResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabIntegrationRegenerateWebhookSecretResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabIntegrationRegenerateWebhookSecretResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetJSON200() *GitlabIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabIntegrationRegenerateWebhookSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabIntegrationTestResponse200Headers the declared response headers of an HTTP 200 response for GitlabIntegrationTest
+type GitlabIntegrationTestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationTestResponse429Headers the declared response headers of an HTTP 429 response for GitlabIntegrationTest
+type GitlabIntegrationTestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabIntegrationTestResponse503Headers the declared response headers of an HTTP 503 response for GitlabIntegrationTest
+type GitlabIntegrationTestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabIntegrationTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitlabIntegrationTestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabIntegrationTestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabIntegrationTestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitlabIntegrationTestResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GitlabIntegrationTestResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r GitlabIntegrationTestResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r GitlabIntegrationTestResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabIntegrationTestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabIntegrationTestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabIntegrationTestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabIntegrationTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabIntegrationTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabIntegrationTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabIntegrationTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GitlabWebhooksEndpointResponse200Headers the declared response headers of an HTTP 200 response for GitlabWebhooksEndpoint
+type GitlabWebhooksEndpointResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabWebhooksEndpointResponse429Headers the declared response headers of an HTTP 429 response for GitlabWebhooksEndpoint
+type GitlabWebhooksEndpointResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GitlabWebhooksEndpointResponse503Headers the declared response headers of an HTTP 503 response for GitlabWebhooksEndpoint
+type GitlabWebhooksEndpointResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GitlabWebhooksEndpointResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GitlabWebhooksEndpointResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GitlabWebhooksEndpointResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GitlabWebhooksEndpointResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GitlabWebhooksEndpointResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GitlabWebhooksEndpointResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GitlabWebhooksEndpointResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GitlabWebhooksEndpointResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GitlabWebhooksEndpointResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GitlabWebhooksEndpointResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GitlabWebhooksEndpointResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GitlabWebhooksEndpointResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -53421,6 +63334,101 @@ func (r PersonalApiKeyDisableResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PersonalApiKeyDisableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RepositoriesResponse200Headers the declared response headers of an HTTP 200 response for Repositories
+type RepositoriesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RepositoriesResponse429Headers the declared response headers of an HTTP 429 response for Repositories
+type RepositoriesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RepositoriesResponse503Headers the declared response headers of an HTTP 503 response for Repositories
+type RepositoriesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RepositoriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RepositoryPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RepositoriesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RepositoriesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RepositoriesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RepositoriesResponse) GetJSON200() *RepositoryPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RepositoriesResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RepositoriesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RepositoriesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RepositoriesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RepositoriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RepositoriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RepositoriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RepositoriesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -66998,6 +77006,657 @@ func (r UsersWithAccessToSpaceSuggestionsResponse) ContentType() string {
 	return ""
 }
 
+// SearchVCSIntegrationsResponse200Headers the declared response headers of an HTTP 200 response for SearchVCSIntegrations
+type SearchVCSIntegrationsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchVCSIntegrationsResponse429Headers the declared response headers of an HTTP 429 response for SearchVCSIntegrations
+type SearchVCSIntegrationsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchVCSIntegrationsResponse503Headers the declared response headers of an HTTP 503 response for SearchVCSIntegrations
+type SearchVCSIntegrationsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchVCSIntegrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchVCSIntegrationsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchVCSIntegrationsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchVCSIntegrationsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchVCSIntegrationsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchVCSIntegrationsResponse) GetJSON200() *SearchVCSIntegrationsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchVCSIntegrationsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchVCSIntegrationsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchVCSIntegrationsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchVCSIntegrationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchVCSIntegrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchVCSIntegrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchVCSIntegrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchVCSIntegrationsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchVCSIntegrationsSuggestions
+type SearchVCSIntegrationsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchVCSIntegrationsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchVCSIntegrationsSuggestions
+type SearchVCSIntegrationsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchVCSIntegrationsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchVCSIntegrationsSuggestions
+type SearchVCSIntegrationsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchVCSIntegrationsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchVCSIntegrationsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchVCSIntegrationsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchVCSIntegrationsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchVCSIntegrationsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchVCSIntegrationsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchVCSIntegrationsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchVCSIntegrationsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchVCSIntegrationsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchVCSIntegrationsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchVCSIntegrationsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchVCSIntegrationsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// VcsIntegrationsResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegrations
+type VcsIntegrationsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationsResponse429Headers the declared response headers of an HTTP 429 response for VcsIntegrations
+type VcsIntegrationsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationsResponse503Headers the declared response headers of an HTTP 503 response for VcsIntegrations
+type VcsIntegrationsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsIntegrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VCSIntegrationPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *VcsIntegrationsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsIntegrationsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsIntegrationsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VcsIntegrationsResponse) GetJSON200() *VCSIntegrationPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r VcsIntegrationsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsIntegrationsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsIntegrationsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsIntegrationsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsIntegrationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsIntegrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsIntegrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsIntegrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// VcsIntegrationResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegration
+type VcsIntegrationResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationResponse429Headers the declared response headers of an HTTP 429 response for VcsIntegration
+type VcsIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationResponse503Headers the declared response headers of an HTTP 503 response for VcsIntegration
+type VcsIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VCSIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *VcsIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VcsIntegrationResponse) GetJSON200() *VCSIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VcsIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// VcsIntegrationSearchUsersResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegrationSearchUsers
+type VcsIntegrationSearchUsersResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationSearchUsersResponse429Headers the declared response headers of an HTTP 429 response for VcsIntegrationSearchUsers
+type VcsIntegrationSearchUsersResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationSearchUsersResponse503Headers the declared response headers of an HTTP 503 response for VcsIntegrationSearchUsers
+type VcsIntegrationSearchUsersResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsIntegrationSearchUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchVCSIntegrationUsersOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *VcsIntegrationSearchUsersResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsIntegrationSearchUsersResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsIntegrationSearchUsersResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VcsIntegrationSearchUsersResponse) GetJSON200() *SearchVCSIntegrationUsersOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VcsIntegrationSearchUsersResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsIntegrationSearchUsersResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsIntegrationSearchUsersResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsIntegrationSearchUsersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsIntegrationSearchUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsIntegrationSearchUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsIntegrationSearchUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsIntegrationSearchUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// VcsIntegrationSearchUsersSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegrationSearchUsersSuggestions
+type VcsIntegrationSearchUsersSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationSearchUsersSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for VcsIntegrationSearchUsersSuggestions
+type VcsIntegrationSearchUsersSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationSearchUsersSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for VcsIntegrationSearchUsersSuggestions
+type VcsIntegrationSearchUsersSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsIntegrationSearchUsersSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *VcsIntegrationSearchUsersSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsIntegrationSearchUsersSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsIntegrationSearchUsersSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VcsIntegrationSearchUsersSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VcsIntegrationSearchUsersSuggestionsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsIntegrationSearchUsersSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsIntegrationSearchUsersSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsIntegrationSearchUsersSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsIntegrationSearchUsersSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsIntegrationSearchUsersSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsIntegrationSearchUsersSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsIntegrationSearchUsersSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// VcsIntegrationTestResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegrationTest
+type VcsIntegrationTestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationTestResponse429Headers the declared response headers of an HTTP 429 response for VcsIntegrationTest
+type VcsIntegrationTestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationTestResponse503Headers the declared response headers of an HTTP 503 response for VcsIntegrationTest
+type VcsIntegrationTestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsIntegrationTestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VCSIntegrationTestResult
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *VcsIntegrationTestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsIntegrationTestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsIntegrationTestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VcsIntegrationTestResponse) GetJSON200() *VCSIntegrationTestResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VcsIntegrationTestResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsIntegrationTestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsIntegrationTestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsIntegrationTestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsIntegrationTestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsIntegrationTestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsIntegrationTestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsIntegrationTestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ViewerResponse200Headers the declared response headers of an HTTP 200 response for Viewer
 type ViewerResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -68138,6 +78797,156 @@ func (c *ClientWithResponses) AwarenessSourceSurveyWithResponse(ctx context.Cont
 	return ParseAwarenessSourceSurveyResponse(rsp)
 }
 
+// AzureDevOpsRepoIntegrationCreateWithBodyWithResponse Create Azure DevOps Integration
+//
+// Creates the Azure DevOps Repo integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationCreateWithBodyWithResponse(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationCreateResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationCreateResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationCreateWithResponse Create Azure DevOps Integration
+//
+// Creates the Azure DevOps Repo integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations (the `AzureDevOpsRepoIntegrationCreate` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationCreateWithResponse(ctx context.Context, params *AzureDevOpsRepoIntegrationCreateParams, body AzureDevOpsRepoIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationCreateResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationCreateResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationDeleteWithResponse Delete Azure DevOps Integration
+//
+// Deletes the Azure DevOps Repo integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationDelete` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationDeleteWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationDeleteResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationDelete(ctx, azureDevOpsRepoIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationDeleteResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationWithResponse Get Azure DevOps Integration
+//
+// Shows Azure DevOps Repos integration details.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegration` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegration(ctx, azureDevOpsRepoIntegrationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationPatchWithBodyWithResponse Patch Azure DevOps Integration
+//
+// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationPatchWithBodyWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationPatchResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationPatchWithBody(ctx, azureDevOpsRepoIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationPatchResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Azure DevOps Integration
+//
+// Change the members of AzureDevOpsRepoIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureDevOpsRepoIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationPatch` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationPatchParams, body AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationPatchResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, azureDevOpsRepoIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationPatchResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationUpdateWithBodyWithResponse Update Azure DevOps Integration
+//
+// Updates the Azure DevOps Repo integration with new properties.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationUpdateWithBodyWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationUpdateResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationUpdateWithBody(ctx, azureDevOpsRepoIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationUpdateResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationUpdateWithResponse Update Azure DevOps Integration
+//
+// Updates the Azure DevOps Repo integration with new properties.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationUpdateWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, body AzureDevOpsRepoIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationUpdateResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationUpdate(ctx, azureDevOpsRepoIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationUpdateResponse(rsp)
+}
+
+// AzureDevOpsRepoIntegrationTestWithResponse Test Azure DevOps Integration
+//
+// Tests the Azure DevOps Repo integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test (the `AzureDevOpsRepoIntegrationTest` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationTestWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationTestParams, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationTestResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationTest(ctx, azureDevOpsRepoIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationTestResponse(rsp)
+}
+
+// AzureDevOpsWebhooksEndpointWithResponse Get Webhooks Endpoint
+//
+// Endpoint for incoming Azure DevOps webhooks.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
+func (c *ClientWithResponses) AzureDevOpsWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AzureDevOpsWebhooksEndpointResponse, error) {
+	rsp, err := c.AzureDevOpsWebhooksEndpoint(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsWebhooksEndpointResponse(rsp)
+}
+
 // BilledExternallyWithResponse Billed Externally
 //
 // true: no Stripe subscription exists.
@@ -68301,6 +79110,351 @@ func (c *ClientWithResponses) BillingSubscriptionUpdateTierWithResponse(ctx cont
 		return nil, err
 	}
 	return ParseBillingSubscriptionUpdateTierResponse(rsp)
+}
+
+// BitbucketCloudIntegrationCreateV2WithBodyWithResponse Create Bitbucket Cloud Integration V2
+//
+// Creates the Bitbucket Cloud integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationCreateV2WithBodyWithResponse(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationCreateV2Response, error) {
+	rsp, err := c.BitbucketCloudIntegrationCreateV2WithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationCreateV2Response(rsp)
+}
+
+// BitbucketCloudIntegrationCreateV2WithResponse Create Bitbucket Cloud Integration V2
+//
+// Creates the Bitbucket Cloud integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-cloud-integrations (the `BitbucketCloudIntegrationCreateV2` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationCreateV2WithResponse(ctx context.Context, params *BitbucketCloudIntegrationCreateV2Params, body BitbucketCloudIntegrationCreateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationCreateV2Response, error) {
+	rsp, err := c.BitbucketCloudIntegrationCreateV2(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationCreateV2Response(rsp)
+}
+
+// BitbucketCloudIntegrationDeleteWithResponse Delete Bitbucket Cloud Integration
+//
+// Deletes the Bitbucket Cloud integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationDelete` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationDeleteWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationDeleteResponse, error) {
+	rsp, err := c.BitbucketCloudIntegrationDelete(ctx, bitbucketCloudIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationDeleteResponse(rsp)
+}
+
+// BitbucketCloudIntegrationWithResponse Get Bitbucket Cloud Integration
+//
+// Shows Bitbucket Cloud integration details.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegration` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationResponse, error) {
+	rsp, err := c.BitbucketCloudIntegration(ctx, bitbucketCloudIntegrationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationResponse(rsp)
+}
+
+// BitbucketCloudIntegrationPatchWithBodyWithResponse Patch Bitbucket Cloud Integration V2
+//
+// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationPatchWithBodyWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationPatchResponse, error) {
+	rsp, err := c.BitbucketCloudIntegrationPatchWithBody(ctx, bitbucketCloudIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationPatchResponse(rsp)
+}
+
+// BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Bitbucket Cloud Integration V2
+//
+// Change the members of BitbucketCloudIntegrationUpdateInputBody that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketCloudIntegrationUpdateV2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationPatch` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationPatchParams, body BitbucketCloudIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationPatchResponse, error) {
+	rsp, err := c.BitbucketCloudIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, bitbucketCloudIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationPatchResponse(rsp)
+}
+
+// BitbucketCloudIntegrationUpdateV2WithBodyWithResponse Update Bitbucket Cloud Integration V2
+//
+// Updates the Bitbucket Cloud integration with new properties.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationUpdateV2WithBodyWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationUpdateV2Response, error) {
+	rsp, err := c.BitbucketCloudIntegrationUpdateV2WithBody(ctx, bitbucketCloudIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationUpdateV2Response(rsp)
+}
+
+// BitbucketCloudIntegrationUpdateV2WithResponse Update Bitbucket Cloud Integration V2
+//
+// Updates the Bitbucket Cloud integration with new properties.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId} (the `BitbucketCloudIntegrationUpdateV2` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationUpdateV2WithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationUpdateV2Params, body BitbucketCloudIntegrationUpdateV2JSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationUpdateV2Response, error) {
+	rsp, err := c.BitbucketCloudIntegrationUpdateV2(ctx, bitbucketCloudIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationUpdateV2Response(rsp)
+}
+
+// BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for Bitbucket Cloud integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationRegenerateWebhookSecretResponse, error) {
+	rsp, err := c.BitbucketCloudIntegrationRegenerateWebhookSecret(ctx, bitbucketCloudIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationRegenerateWebhookSecretResponse(rsp)
+}
+
+// BitbucketCloudIntegrationTestWithResponse Test Bitbucket Cloud Integration
+//
+// Tests the Bitbucket Cloud integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/test (the `BitbucketCloudIntegrationTest` operationId).
+func (c *ClientWithResponses) BitbucketCloudIntegrationTestWithResponse(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationTestParams, reqEditors ...RequestEditorFn) (*BitbucketCloudIntegrationTestResponse, error) {
+	rsp, err := c.BitbucketCloudIntegrationTest(ctx, bitbucketCloudIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudIntegrationTestResponse(rsp)
+}
+
+// BitbucketCloudWebhooksEndpointWithResponse Get Webhooks Endpoint
+//
+// Endpoint for incoming Bitbucket Cloud webhooks.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /bitbucket-cloud-webhooks-endpoint (the `BitbucketCloudWebhooksEndpoint` operationId).
+func (c *ClientWithResponses) BitbucketCloudWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BitbucketCloudWebhooksEndpointResponse, error) {
+	rsp, err := c.BitbucketCloudWebhooksEndpoint(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketCloudWebhooksEndpointResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationCreateWithBodyWithResponse Create Bitbucket Datacenter Integration
+//
+// Creates the Bitbucket Datacenter integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationCreateWithBodyWithResponse(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationCreateResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationCreateResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationCreateWithResponse Create Bitbucket Datacenter Integration
+//
+// Creates the Bitbucket Datacenter integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-datacenter-integrations (the `BitbucketDatacenterIntegrationCreate` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationCreateWithResponse(ctx context.Context, params *BitbucketDatacenterIntegrationCreateParams, body BitbucketDatacenterIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationCreateResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationCreateResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationDeleteWithResponse Delete Bitbucket Datacenter Integration
+//
+// Deletes the Bitbucket Datacenter integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationDelete` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationDeleteWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationDeleteResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationDelete(ctx, bitbucketDatacenterIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationDeleteResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationWithResponse Get Bitbucket Datacenter Integration
+//
+// Shows Bitbucket Datacenter integration details.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegration` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegration(ctx, bitbucketDatacenterIntegrationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationPatchWithBodyWithResponse Patch Bitbucket Datacenter Integration
+//
+// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationPatchWithBodyWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationPatchResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationPatchWithBody(ctx, bitbucketDatacenterIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationPatchResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Bitbucket Datacenter Integration
+//
+// Change the members of BitbucketDatacenterIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through bitbucketDatacenterIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationPatch` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationPatchParams, body BitbucketDatacenterIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationPatchResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, bitbucketDatacenterIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationPatchResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationUpdateWithBodyWithResponse Update Bitbucket Datacenter Integration
+//
+// Updates the Bitbucket Datacenter integration with new properties.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationUpdateWithBodyWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationUpdateResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationUpdateWithBody(ctx, bitbucketDatacenterIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationUpdateResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationUpdateWithResponse Update Bitbucket Datacenter Integration
+//
+// Updates the Bitbucket Datacenter integration with new properties.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId} (the `BitbucketDatacenterIntegrationUpdate` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationUpdateWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationUpdateParams, body BitbucketDatacenterIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationUpdateResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationUpdate(ctx, bitbucketDatacenterIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationUpdateResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for Bitbucket Datacenter integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationRegenerateWebhookSecret(ctx, bitbucketDatacenterIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationRegenerateWebhookSecretResponse(rsp)
+}
+
+// BitbucketDatacenterIntegrationTestWithResponse Test Bitbucket Datacenter Integration
+//
+// Tests the Bitbucket Datacenter integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/test (the `BitbucketDatacenterIntegrationTest` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterIntegrationTestWithResponse(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationTestParams, reqEditors ...RequestEditorFn) (*BitbucketDatacenterIntegrationTestResponse, error) {
+	rsp, err := c.BitbucketDatacenterIntegrationTest(ctx, bitbucketDatacenterIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterIntegrationTestResponse(rsp)
+}
+
+// BitbucketDatacenterWebhooksEndpointWithResponse Get Webhooks Endpoint
+//
+// Endpoint for incoming Bitbucket Datacenter webhooks.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /bitbucket-datacenter-webhooks-endpoint (the `BitbucketDatacenterWebhooksEndpoint` operationId).
+func (c *ClientWithResponses) BitbucketDatacenterWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BitbucketDatacenterWebhooksEndpointResponse, error) {
+	rsp, err := c.BitbucketDatacenterWebhooksEndpoint(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBitbucketDatacenterWebhooksEndpointResponse(rsp)
+}
+
+// BranchesWithResponse List Branches
+//
+// List of branches for a given repository.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /branches (the `Branches` operationId).
+func (c *ClientWithResponses) BranchesWithResponse(ctx context.Context, params *BranchesParams, reqEditors ...RequestEditorFn) (*BranchesResponse, error) {
+	rsp, err := c.Branches(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBranchesResponse(rsp)
 }
 
 // ContextDetachWithResponse Detach Context
@@ -68732,6 +79886,383 @@ func (c *ClientWithResponses) ExpressionEvaluateWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseExpressionEvaluateResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationCreateWithBodyWithResponse Create GitHub Enterprise Integration
+//
+// Creates the GitHub Enterprise integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationCreateWithBodyWithResponse(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationCreateResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationCreateResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationCreateWithResponse Create GitHub Enterprise Integration
+//
+// Creates the GitHub Enterprise integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationCreateWithResponse(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationCreateResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationCreateResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationDeleteWithResponse Delete GitHub Enterprise Integration
+//
+// Deletes the GitHub Enterprise integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationDelete` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationDeleteWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationDeleteResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationDelete(ctx, githubEnterpriseIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationDeleteResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationWithResponse Get GitHub Enterprise Integration
+//
+// GitHub Enterprise Integration settings. If the id is not provided, it will return
+// the default GitHub Enterprise Integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegration` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegration(ctx, githubEnterpriseIntegrationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationPatchWithBodyWithResponse Patch GitHub Enterprise Integration
+//
+// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationPatchWithBodyWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationPatchResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationPatchWithBody(ctx, githubEnterpriseIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationPatchResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch GitHub Enterprise Integration
+//
+// Change the members of GithubEnterpriseIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through githubEnterpriseIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationPatch` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationPatchParams, body GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationPatchResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, githubEnterpriseIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationPatchResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationUpdateWithBodyWithResponse Update GitHub Enterprise Integration
+//
+// Updates the GitHub Enterprise integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationUpdateWithBodyWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationUpdateResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationUpdateWithBody(ctx, githubEnterpriseIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationUpdateResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationUpdateWithResponse Update GitHub Enterprise Integration
+//
+// Updates the GitHub Enterprise integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /github-enterprise-integrations/{githubEnterpriseIntegrationId} (the `GithubEnterpriseIntegrationUpdate` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationUpdateWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationUpdateParams, body GithubEnterpriseIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationUpdateResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationUpdate(ctx, githubEnterpriseIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationUpdateResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for GitHub Enterprise integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationRegenerateWebhookSecretResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationRegenerateWebhookSecret(ctx, githubEnterpriseIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationRegenerateWebhookSecretResponse(rsp)
+}
+
+// GithubEnterpriseIntegrationTestWithResponse Test GitHub Enterprise Integration
+//
+// Tests the GitHub Enterprise integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/test (the `GithubEnterpriseIntegrationTest` operationId).
+func (c *ClientWithResponses) GithubEnterpriseIntegrationTestWithResponse(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationTestParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationTestResponse, error) {
+	rsp, err := c.GithubEnterpriseIntegrationTest(ctx, githubEnterpriseIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseIntegrationTestResponse(rsp)
+}
+
+// GithubEnterpriseWebhooksEndpointWithResponse Get Webhooks Endpoint
+//
+// The webhooks endpoint to use in your GitHub Enterprise App.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
+func (c *ClientWithResponses) GithubEnterpriseWebhooksEndpointWithResponse(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseWebhooksEndpointResponse, error) {
+	rsp, err := c.GithubEnterpriseWebhooksEndpoint(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEnterpriseWebhooksEndpointResponse(rsp)
+}
+
+// GithubIntegrationWithResponse Get GitHub Integration
+//
+// Build-in GitHub Integration settings.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
+func (c *ClientWithResponses) GithubIntegrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubIntegrationResponse, error) {
+	rsp, err := c.GithubIntegration(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubIntegrationResponse(rsp)
+}
+
+// GithubIntegrationUpdateWithBodyWithResponse Update GitHub Integration
+//
+// Updates the build-in GitHub integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+func (c *ClientWithResponses) GithubIntegrationUpdateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error) {
+	rsp, err := c.GithubIntegrationUpdateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubIntegrationUpdateResponse(rsp)
+}
+
+// GithubIntegrationUpdateWithResponse Update GitHub Integration
+//
+// Updates the build-in GitHub integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
+func (c *ClientWithResponses) GithubIntegrationUpdateWithResponse(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error) {
+	rsp, err := c.GithubIntegrationUpdate(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubIntegrationUpdateResponse(rsp)
+}
+
+// GitlabIntegrationCreateWithBodyWithResponse Create GitLab Integration
+//
+// Creates the GitLab integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+func (c *ClientWithResponses) GitlabIntegrationCreateWithBodyWithResponse(ctx context.Context, params *GitlabIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitlabIntegrationCreateResponse, error) {
+	rsp, err := c.GitlabIntegrationCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationCreateResponse(rsp)
+}
+
+// GitlabIntegrationCreateWithResponse Create GitLab Integration
+//
+// Creates the GitLab integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /gitlab-integrations (the `GitlabIntegrationCreate` operationId).
+func (c *ClientWithResponses) GitlabIntegrationCreateWithResponse(ctx context.Context, params *GitlabIntegrationCreateParams, body GitlabIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*GitlabIntegrationCreateResponse, error) {
+	rsp, err := c.GitlabIntegrationCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationCreateResponse(rsp)
+}
+
+// GitlabIntegrationDeleteWithResponse Delete GitLab Integration
+//
+// Deletes the GitLab integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationDelete` operationId).
+func (c *ClientWithResponses) GitlabIntegrationDeleteWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*GitlabIntegrationDeleteResponse, error) {
+	rsp, err := c.GitlabIntegrationDelete(ctx, gitlabIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationDeleteResponse(rsp)
+}
+
+// GitlabIntegrationWithResponse Get GitLab Integration
+//
+// Shows Gitlab integration details. If the id is not provided, it will return
+// the default Gitlab Integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegration` operationId).
+func (c *ClientWithResponses) GitlabIntegrationWithResponse(ctx context.Context, gitlabIntegrationId string, reqEditors ...RequestEditorFn) (*GitlabIntegrationResponse, error) {
+	rsp, err := c.GitlabIntegration(ctx, gitlabIntegrationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationResponse(rsp)
+}
+
+// GitlabIntegrationPatchWithBodyWithResponse Patch GitLab Integration
+//
+// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+func (c *ClientWithResponses) GitlabIntegrationPatchWithBodyWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitlabIntegrationPatchResponse, error) {
+	rsp, err := c.GitlabIntegrationPatchWithBody(ctx, gitlabIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationPatchResponse(rsp)
+}
+
+// GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch GitLab Integration
+//
+// Change the members of GitlabIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through gitlabIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationPatch` operationId).
+func (c *ClientWithResponses) GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationPatchParams, body GitlabIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*GitlabIntegrationPatchResponse, error) {
+	rsp, err := c.GitlabIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, gitlabIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationPatchResponse(rsp)
+}
+
+// GitlabIntegrationUpdateWithBodyWithResponse Update GitLab Integration
+//
+// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+func (c *ClientWithResponses) GitlabIntegrationUpdateWithBodyWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GitlabIntegrationUpdateResponse, error) {
+	rsp, err := c.GitlabIntegrationUpdateWithBody(ctx, gitlabIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationUpdateResponse(rsp)
+}
+
+// GitlabIntegrationUpdateWithResponse Update GitLab Integration
+//
+// Updates the GitLab integration with a new access token and (optionally) API host or User Facing Host.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /gitlab-integrations/{gitlabIntegrationId} (the `GitlabIntegrationUpdate` operationId).
+func (c *ClientWithResponses) GitlabIntegrationUpdateWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationUpdateParams, body GitlabIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GitlabIntegrationUpdateResponse, error) {
+	rsp, err := c.GitlabIntegrationUpdate(ctx, gitlabIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationUpdateResponse(rsp)
+}
+
+// GitlabIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+//
+// Regenerates the webhook secret for GitLab integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
+func (c *ClientWithResponses) GitlabIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*GitlabIntegrationRegenerateWebhookSecretResponse, error) {
+	rsp, err := c.GitlabIntegrationRegenerateWebhookSecret(ctx, gitlabIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationRegenerateWebhookSecretResponse(rsp)
+}
+
+// GitlabIntegrationTestWithResponse Test GitLab Integration
+//
+// Tests the GitLab integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/test (the `GitlabIntegrationTest` operationId).
+func (c *ClientWithResponses) GitlabIntegrationTestWithResponse(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationTestParams, reqEditors ...RequestEditorFn) (*GitlabIntegrationTestResponse, error) {
+	rsp, err := c.GitlabIntegrationTest(ctx, gitlabIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabIntegrationTestResponse(rsp)
+}
+
+// GitlabWebhooksEndpointWithResponse Get Webhooks Endpoint
+//
+// Endpoint for incoming Gitlab webhooks.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
+func (c *ClientWithResponses) GitlabWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GitlabWebhooksEndpointResponse, error) {
+	rsp, err := c.GitlabWebhooksEndpoint(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGitlabWebhooksEndpointResponse(rsp)
 }
 
 // IdWithResponse Id
@@ -69758,6 +81289,22 @@ func (c *ClientWithResponses) PersonalApiKeyDisableWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParsePersonalApiKeyDisableResponse(rsp)
+}
+
+// RepositoriesWithResponse List Repositories
+//
+// List of repositories available to the account.
+// Optional filter param can be applied for the results returned from VCS.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /repositories (the `Repositories` operationId).
+func (c *ClientWithResponses) RepositoriesWithResponse(ctx context.Context, params *RepositoriesParams, reqEditors ...RequestEditorFn) (*RepositoriesResponse, error) {
+	rsp, err := c.Repositories(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositoriesResponse(rsp)
 }
 
 // RolesWithResponse List Roles
@@ -72703,6 +84250,137 @@ func (c *ClientWithResponses) UsersWithAccessToSpaceSuggestionsWithResponse(ctx 
 		return nil, err
 	}
 	return ParseUsersWithAccessToSpaceSuggestionsResponse(rsp)
+}
+
+// SearchVCSIntegrationsWithBodyWithResponse Search VCS Integrations
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+func (c *ClientWithResponses) SearchVCSIntegrationsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsResponse, error) {
+	rsp, err := c.SearchVCSIntegrationsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchVCSIntegrationsResponse(rsp)
+}
+
+// SearchVCSIntegrationsWithResponse Search VCS Integrations
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v-cs-integrations/search (the `SearchVCSIntegrations` operationId).
+func (c *ClientWithResponses) SearchVCSIntegrationsWithResponse(ctx context.Context, body SearchVCSIntegrationsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsResponse, error) {
+	rsp, err := c.SearchVCSIntegrations(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchVCSIntegrationsResponse(rsp)
+}
+
+// SearchVCSIntegrationsSuggestionsWithBodyWithResponse Search VCSIntegrations Suggestions
+//
+// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+func (c *ClientWithResponses) SearchVCSIntegrationsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsSuggestionsResponse, error) {
+	rsp, err := c.SearchVCSIntegrationsSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchVCSIntegrationsSuggestionsResponse(rsp)
+}
+
+// SearchVCSIntegrationsSuggestionsWithResponse Search VCSIntegrations Suggestions
+//
+// The fields a VCS integration search filters and orders by, with the values the integrations the predicates keep hold and how many hold each. Only integrations in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
+func (c *ClientWithResponses) SearchVCSIntegrationsSuggestionsWithResponse(ctx context.Context, body SearchVCSIntegrationsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsSuggestionsResponse, error) {
+	rsp, err := c.SearchVCSIntegrationsSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchVCSIntegrationsSuggestionsResponse(rsp)
+}
+
+// VcsIntegrationsWithResponse List VCS Integrations
+//
+// List of all VCS integrations available in the account.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vcs-integrations (the `VcsIntegrations` operationId).
+func (c *ClientWithResponses) VcsIntegrationsWithResponse(ctx context.Context, params *VcsIntegrationsParams, reqEditors ...RequestEditorFn) (*VcsIntegrationsResponse, error) {
+	rsp, err := c.VcsIntegrations(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsIntegrationsResponse(rsp)
+}
+
+// VcsIntegrationWithResponse Get VCS Integration
+//
+// Get VCS integrations by provider and id.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId} (the `VcsIntegration` operationId).
+func (c *ClientWithResponses) VcsIntegrationWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationParams, reqEditors ...RequestEditorFn) (*VcsIntegrationResponse, error) {
+	rsp, err := c.VcsIntegration(ctx, vcsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsIntegrationResponse(rsp)
+}
+
+// VcsIntegrationSearchUsersWithResponse Vcs integration search users
+//
+// Search stacks/modules using this VCS integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users (the `VcsIntegrationSearchUsers` operationId).
+func (c *ClientWithResponses) VcsIntegrationSearchUsersWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersParams, reqEditors ...RequestEditorFn) (*VcsIntegrationSearchUsersResponse, error) {
+	rsp, err := c.VcsIntegrationSearchUsers(ctx, vcsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsIntegrationSearchUsersResponse(rsp)
+}
+
+// VcsIntegrationSearchUsersSuggestionsWithResponse Vcs integration search users suggestions
+//
+// Search stacks/modules suggestions using this VCS integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/search-users-suggestions (the `VcsIntegrationSearchUsersSuggestions` operationId).
+func (c *ClientWithResponses) VcsIntegrationSearchUsersSuggestionsWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*VcsIntegrationSearchUsersSuggestionsResponse, error) {
+	rsp, err := c.VcsIntegrationSearchUsersSuggestions(ctx, vcsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsIntegrationSearchUsersSuggestionsResponse(rsp)
+}
+
+// VcsIntegrationTestWithResponse Test VCS Integration
+//
+// Runs a test to check whether the VCS integration is configured correctly.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/test (the `VcsIntegrationTest` operationId).
+func (c *ClientWithResponses) VcsIntegrationTestWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationTestParams, reqEditors ...RequestEditorFn) (*VcsIntegrationTestResponse, error) {
+	rsp, err := c.VcsIntegrationTest(ctx, vcsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsIntegrationTestResponse(rsp)
 }
 
 // ViewerWithResponse Viewer
@@ -79267,6 +90945,930 @@ func ParseAwarenessSourceSurveyResponse(rsp *http.Response) (*AwarenessSourceSur
 	return response, nil
 }
 
+// ParseAzureDevOpsRepoIntegrationCreateResponse parses an HTTP response from a AzureDevOpsRepoIntegrationCreateWithResponse call
+func ParseAzureDevOpsRepoIntegrationCreateResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsRepoIntegrationCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AzureDevOpsRepoIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AzureDevOpsRepoIntegrationCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsRepoIntegrationCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsRepoIntegrationCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureDevOpsRepoIntegrationDeleteResponse parses an HTTP response from a AzureDevOpsRepoIntegrationDeleteWithResponse call
+func ParseAzureDevOpsRepoIntegrationDeleteResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsRepoIntegrationDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureDevOpsRepoIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureDevOpsRepoIntegrationDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsRepoIntegrationDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsRepoIntegrationDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureDevOpsRepoIntegrationResponse parses an HTTP response from a AzureDevOpsRepoIntegrationWithResponse call
+func ParseAzureDevOpsRepoIntegrationResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsRepoIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureDevOpsRepoIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureDevOpsRepoIntegrationResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsRepoIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsRepoIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureDevOpsRepoIntegrationPatchResponse parses an HTTP response from a AzureDevOpsRepoIntegrationPatchWithResponse call
+func ParseAzureDevOpsRepoIntegrationPatchResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsRepoIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureDevOpsRepoIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureDevOpsRepoIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsRepoIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsRepoIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureDevOpsRepoIntegrationUpdateResponse parses an HTTP response from a AzureDevOpsRepoIntegrationUpdateWithResponse call
+func ParseAzureDevOpsRepoIntegrationUpdateResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsRepoIntegrationUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureDevOpsRepoIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureDevOpsRepoIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsRepoIntegrationUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsRepoIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureDevOpsRepoIntegrationTestResponse parses an HTTP response from a AzureDevOpsRepoIntegrationTestWithResponse call
+func ParseAzureDevOpsRepoIntegrationTestResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsRepoIntegrationTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureDevOpsRepoIntegrationTestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsRepoIntegrationTestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsRepoIntegrationTestResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureDevOpsWebhooksEndpointResponse parses an HTTP response from a AzureDevOpsWebhooksEndpointWithResponse call
+func ParseAzureDevOpsWebhooksEndpointResponse(rsp *http.Response) (*AzureDevOpsWebhooksEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsWebhooksEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureDevOpsWebhooksEndpointResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsWebhooksEndpointResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsWebhooksEndpointResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseBilledExternallyResponse parses an HTTP response from a BilledExternallyWithResponse call
 func ParseBilledExternallyResponse(rsp *http.Response) (*BilledExternallyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -80101,6 +92703,2248 @@ func ParseBillingSubscriptionUpdateTierResponse(rsp *http.Response) (*BillingSub
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers BillingSubscriptionUpdateTierResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudIntegrationCreateV2Response parses an HTTP response from a BitbucketCloudIntegrationCreateV2WithResponse call
+func ParseBitbucketCloudIntegrationCreateV2Response(rsp *http.Response) (*BitbucketCloudIntegrationCreateV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudIntegrationCreateV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest BitbucketCloudIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers BitbucketCloudIntegrationCreateV2Response201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudIntegrationCreateV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudIntegrationCreateV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudIntegrationDeleteResponse parses an HTTP response from a BitbucketCloudIntegrationDeleteWithResponse call
+func ParseBitbucketCloudIntegrationDeleteResponse(rsp *http.Response) (*BitbucketCloudIntegrationDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudIntegrationDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketCloudIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketCloudIntegrationDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudIntegrationDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudIntegrationDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudIntegrationResponse parses an HTTP response from a BitbucketCloudIntegrationWithResponse call
+func ParseBitbucketCloudIntegrationResponse(rsp *http.Response) (*BitbucketCloudIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketCloudIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketCloudIntegrationResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudIntegrationPatchResponse parses an HTTP response from a BitbucketCloudIntegrationPatchWithResponse call
+func ParseBitbucketCloudIntegrationPatchResponse(rsp *http.Response) (*BitbucketCloudIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketCloudIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketCloudIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudIntegrationUpdateV2Response parses an HTTP response from a BitbucketCloudIntegrationUpdateV2WithResponse call
+func ParseBitbucketCloudIntegrationUpdateV2Response(rsp *http.Response) (*BitbucketCloudIntegrationUpdateV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudIntegrationUpdateV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketCloudIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketCloudIntegrationUpdateV2Response200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudIntegrationUpdateV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudIntegrationUpdateV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudIntegrationRegenerateWebhookSecretResponse parses an HTTP response from a BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse call
+func ParseBitbucketCloudIntegrationRegenerateWebhookSecretResponse(rsp *http.Response) (*BitbucketCloudIntegrationRegenerateWebhookSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudIntegrationRegenerateWebhookSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketCloudIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketCloudIntegrationRegenerateWebhookSecretResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudIntegrationRegenerateWebhookSecretResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudIntegrationRegenerateWebhookSecretResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudIntegrationTestResponse parses an HTTP response from a BitbucketCloudIntegrationTestWithResponse call
+func ParseBitbucketCloudIntegrationTestResponse(rsp *http.Response) (*BitbucketCloudIntegrationTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudIntegrationTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketCloudIntegrationTestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudIntegrationTestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudIntegrationTestResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketCloudWebhooksEndpointResponse parses an HTTP response from a BitbucketCloudWebhooksEndpointWithResponse call
+func ParseBitbucketCloudWebhooksEndpointResponse(rsp *http.Response) (*BitbucketCloudWebhooksEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketCloudWebhooksEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketCloudWebhooksEndpointResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketCloudWebhooksEndpointResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketCloudWebhooksEndpointResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterIntegrationCreateResponse parses an HTTP response from a BitbucketDatacenterIntegrationCreateWithResponse call
+func ParseBitbucketDatacenterIntegrationCreateResponse(rsp *http.Response) (*BitbucketDatacenterIntegrationCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterIntegrationCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest BitbucketDatacenterIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers BitbucketDatacenterIntegrationCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterIntegrationCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterIntegrationCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterIntegrationDeleteResponse parses an HTTP response from a BitbucketDatacenterIntegrationDeleteWithResponse call
+func ParseBitbucketDatacenterIntegrationDeleteResponse(rsp *http.Response) (*BitbucketDatacenterIntegrationDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterIntegrationDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketDatacenterIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketDatacenterIntegrationDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterIntegrationDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterIntegrationDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterIntegrationResponse parses an HTTP response from a BitbucketDatacenterIntegrationWithResponse call
+func ParseBitbucketDatacenterIntegrationResponse(rsp *http.Response) (*BitbucketDatacenterIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketDatacenterIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketDatacenterIntegrationResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterIntegrationPatchResponse parses an HTTP response from a BitbucketDatacenterIntegrationPatchWithResponse call
+func ParseBitbucketDatacenterIntegrationPatchResponse(rsp *http.Response) (*BitbucketDatacenterIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketDatacenterIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketDatacenterIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterIntegrationUpdateResponse parses an HTTP response from a BitbucketDatacenterIntegrationUpdateWithResponse call
+func ParseBitbucketDatacenterIntegrationUpdateResponse(rsp *http.Response) (*BitbucketDatacenterIntegrationUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterIntegrationUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketDatacenterIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketDatacenterIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterIntegrationUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterIntegrationRegenerateWebhookSecretResponse parses an HTTP response from a BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse call
+func ParseBitbucketDatacenterIntegrationRegenerateWebhookSecretResponse(rsp *http.Response) (*BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BitbucketDatacenterIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterIntegrationRegenerateWebhookSecretResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterIntegrationTestResponse parses an HTTP response from a BitbucketDatacenterIntegrationTestWithResponse call
+func ParseBitbucketDatacenterIntegrationTestResponse(rsp *http.Response) (*BitbucketDatacenterIntegrationTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterIntegrationTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketDatacenterIntegrationTestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterIntegrationTestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterIntegrationTestResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBitbucketDatacenterWebhooksEndpointResponse parses an HTTP response from a BitbucketDatacenterWebhooksEndpointWithResponse call
+func ParseBitbucketDatacenterWebhooksEndpointResponse(rsp *http.Response) (*BitbucketDatacenterWebhooksEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BitbucketDatacenterWebhooksEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BitbucketDatacenterWebhooksEndpointResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BitbucketDatacenterWebhooksEndpointResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BitbucketDatacenterWebhooksEndpointResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseBranchesResponse parses an HTTP response from a BranchesWithResponse call
+func ParseBranchesResponse(rsp *http.Response) (*BranchesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BranchesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BranchesPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers BranchesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers BranchesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers BranchesResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -82579,6 +97423,2356 @@ func ParseExpressionEvaluateResponse(rsp *http.Response) (*ExpressionEvaluateRes
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ExpressionEvaluateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseIntegrationCreateResponse parses an HTTP response from a GithubEnterpriseIntegrationCreateWithResponse call
+func ParseGithubEnterpriseIntegrationCreateResponse(rsp *http.Response) (*GithubEnterpriseIntegrationCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseIntegrationCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest GithubEnterpriseIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers GithubEnterpriseIntegrationCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseIntegrationCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseIntegrationCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseIntegrationDeleteResponse parses an HTTP response from a GithubEnterpriseIntegrationDeleteWithResponse call
+func ParseGithubEnterpriseIntegrationDeleteResponse(rsp *http.Response) (*GithubEnterpriseIntegrationDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseIntegrationDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GithubEnterpriseIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubEnterpriseIntegrationDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseIntegrationDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseIntegrationDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseIntegrationResponse parses an HTTP response from a GithubEnterpriseIntegrationWithResponse call
+func ParseGithubEnterpriseIntegrationResponse(rsp *http.Response) (*GithubEnterpriseIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GithubEnterpriseIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubEnterpriseIntegrationResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseIntegrationPatchResponse parses an HTTP response from a GithubEnterpriseIntegrationPatchWithResponse call
+func ParseGithubEnterpriseIntegrationPatchResponse(rsp *http.Response) (*GithubEnterpriseIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GithubEnterpriseIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubEnterpriseIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseIntegrationUpdateResponse parses an HTTP response from a GithubEnterpriseIntegrationUpdateWithResponse call
+func ParseGithubEnterpriseIntegrationUpdateResponse(rsp *http.Response) (*GithubEnterpriseIntegrationUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseIntegrationUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GithubEnterpriseIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubEnterpriseIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseIntegrationUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseIntegrationRegenerateWebhookSecretResponse parses an HTTP response from a GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse call
+func ParseGithubEnterpriseIntegrationRegenerateWebhookSecretResponse(rsp *http.Response) (*GithubEnterpriseIntegrationRegenerateWebhookSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseIntegrationRegenerateWebhookSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GithubEnterpriseIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubEnterpriseIntegrationRegenerateWebhookSecretResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseIntegrationRegenerateWebhookSecretResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseIntegrationRegenerateWebhookSecretResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseIntegrationTestResponse parses an HTTP response from a GithubEnterpriseIntegrationTestWithResponse call
+func ParseGithubEnterpriseIntegrationTestResponse(rsp *http.Response) (*GithubEnterpriseIntegrationTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseIntegrationTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubEnterpriseIntegrationTestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseIntegrationTestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseIntegrationTestResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubEnterpriseWebhooksEndpointResponse parses an HTTP response from a GithubEnterpriseWebhooksEndpointWithResponse call
+func ParseGithubEnterpriseWebhooksEndpointResponse(rsp *http.Response) (*GithubEnterpriseWebhooksEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEnterpriseWebhooksEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubEnterpriseWebhooksEndpointResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubEnterpriseWebhooksEndpointResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubEnterpriseWebhooksEndpointResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubIntegrationResponse parses an HTTP response from a GithubIntegrationWithResponse call
+func ParseGithubIntegrationResponse(rsp *http.Response) (*GithubIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GithubIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubIntegrationResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubIntegrationUpdateResponse parses an HTTP response from a GithubIntegrationUpdateWithResponse call
+func ParseGithubIntegrationUpdateResponse(rsp *http.Response) (*GithubIntegrationUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubIntegrationUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GithubIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubIntegrationUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabIntegrationCreateResponse parses an HTTP response from a GitlabIntegrationCreateWithResponse call
+func ParseGitlabIntegrationCreateResponse(rsp *http.Response) (*GitlabIntegrationCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabIntegrationCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest GitlabIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers GitlabIntegrationCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabIntegrationCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabIntegrationCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabIntegrationDeleteResponse parses an HTTP response from a GitlabIntegrationDeleteWithResponse call
+func ParseGitlabIntegrationDeleteResponse(rsp *http.Response) (*GitlabIntegrationDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabIntegrationDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GitlabIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitlabIntegrationDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabIntegrationDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabIntegrationDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabIntegrationResponse parses an HTTP response from a GitlabIntegrationWithResponse call
+func ParseGitlabIntegrationResponse(rsp *http.Response) (*GitlabIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GitlabIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitlabIntegrationResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabIntegrationPatchResponse parses an HTTP response from a GitlabIntegrationPatchWithResponse call
+func ParseGitlabIntegrationPatchResponse(rsp *http.Response) (*GitlabIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GitlabIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitlabIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabIntegrationUpdateResponse parses an HTTP response from a GitlabIntegrationUpdateWithResponse call
+func ParseGitlabIntegrationUpdateResponse(rsp *http.Response) (*GitlabIntegrationUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabIntegrationUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GitlabIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitlabIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabIntegrationUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabIntegrationRegenerateWebhookSecretResponse parses an HTTP response from a GitlabIntegrationRegenerateWebhookSecretWithResponse call
+func ParseGitlabIntegrationRegenerateWebhookSecretResponse(rsp *http.Response) (*GitlabIntegrationRegenerateWebhookSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabIntegrationRegenerateWebhookSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GitlabIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitlabIntegrationRegenerateWebhookSecretResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabIntegrationRegenerateWebhookSecretResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabIntegrationRegenerateWebhookSecretResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabIntegrationTestResponse parses an HTTP response from a GitlabIntegrationTestWithResponse call
+func ParseGitlabIntegrationTestResponse(rsp *http.Response) (*GitlabIntegrationTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabIntegrationTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitlabIntegrationTestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabIntegrationTestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabIntegrationTestResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGitlabWebhooksEndpointResponse parses an HTTP response from a GitlabWebhooksEndpointWithResponse call
+func ParseGitlabWebhooksEndpointResponse(rsp *http.Response) (*GitlabWebhooksEndpointResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GitlabWebhooksEndpointResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GitlabWebhooksEndpointResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GitlabWebhooksEndpointResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GitlabWebhooksEndpointResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -89493,6 +106687,128 @@ func ParsePersonalApiKeyDisableResponse(rsp *http.Response) (*PersonalApiKeyDisa
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers PersonalApiKeyDisableResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRepositoriesResponse parses an HTTP response from a RepositoriesWithResponse call
+func ParseRepositoriesResponse(rsp *http.Response) (*RepositoriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RepositoriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepositoryPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RepositoriesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RepositoriesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RepositoriesResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -106907,6 +124223,846 @@ func ParseUsersWithAccessToSpaceSuggestionsResponse(rsp *http.Response) (*UsersW
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers UsersWithAccessToSpaceSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchVCSIntegrationsResponse parses an HTTP response from a SearchVCSIntegrationsWithResponse call
+func ParseSearchVCSIntegrationsResponse(rsp *http.Response) (*SearchVCSIntegrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchVCSIntegrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchVCSIntegrationsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchVCSIntegrationsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchVCSIntegrationsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchVCSIntegrationsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchVCSIntegrationsSuggestionsResponse parses an HTTP response from a SearchVCSIntegrationsSuggestionsWithResponse call
+func ParseSearchVCSIntegrationsSuggestionsResponse(rsp *http.Response) (*SearchVCSIntegrationsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchVCSIntegrationsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchVCSIntegrationsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchVCSIntegrationsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchVCSIntegrationsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsIntegrationsResponse parses an HTTP response from a VcsIntegrationsWithResponse call
+func ParseVcsIntegrationsResponse(rsp *http.Response) (*VcsIntegrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsIntegrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VCSIntegrationPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers VcsIntegrationsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsIntegrationsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsIntegrationsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsIntegrationResponse parses an HTTP response from a VcsIntegrationWithResponse call
+func ParseVcsIntegrationResponse(rsp *http.Response) (*VcsIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VCSIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers VcsIntegrationResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsIntegrationSearchUsersResponse parses an HTTP response from a VcsIntegrationSearchUsersWithResponse call
+func ParseVcsIntegrationSearchUsersResponse(rsp *http.Response) (*VcsIntegrationSearchUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsIntegrationSearchUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchVCSIntegrationUsersOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers VcsIntegrationSearchUsersResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsIntegrationSearchUsersResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsIntegrationSearchUsersResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsIntegrationSearchUsersSuggestionsResponse parses an HTTP response from a VcsIntegrationSearchUsersSuggestionsWithResponse call
+func ParseVcsIntegrationSearchUsersSuggestionsResponse(rsp *http.Response) (*VcsIntegrationSearchUsersSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsIntegrationSearchUsersSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers VcsIntegrationSearchUsersSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsIntegrationSearchUsersSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsIntegrationSearchUsersSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsIntegrationTestResponse parses an HTTP response from a VcsIntegrationTestWithResponse call
+func ParseVcsIntegrationTestResponse(rsp *http.Response) (*VcsIntegrationTestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsIntegrationTestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VCSIntegrationTestResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers VcsIntegrationTestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsIntegrationTestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsIntegrationTestResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

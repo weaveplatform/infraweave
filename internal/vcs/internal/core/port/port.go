@@ -21,12 +21,14 @@ var (
 const MaxFileSize = 1 << 20
 
 // Repository is a stack's repository as a Source reaches it: its
-// namespace and name, and URL, the repository URL the stack names, which
-// a provider without an API, such as raw Git, needs to reach it.
+// namespace and name, URL, the repository URL the stack names, which a
+// provider without an API, such as raw Git, needs to reach it, and the
+// integration the stack uses, nil when it uses none.
 type Repository struct {
-	Namespace string
-	Name      string
-	URL       string
+	Namespace   string
+	Name        string
+	URL         string
+	Integration *Integration
 }
 
 // Source reads a provider's repositories. Every provider implements it;
@@ -47,4 +49,51 @@ type Source interface {
 	AffectedFiles(ctx context.Context, repo Repository, base, head string) ([]string, error)
 	// SourceURL is the URL a worker fetches commit of repo from.
 	SourceURL(repo Repository, commit string) string
+}
+
+// Settings are an integration's provider settings, each empty when its
+// provider has none: the API and user-facing hosts, the user and e-mail
+// a token belongs to, an Azure DevOps organization's URL and a GitHub
+// App's ID.
+type Settings struct {
+	APIHost         string `json:"apiHost,omitempty"`
+	UserFacingHost  string `json:"userFacingHost,omitempty"`
+	Username        string `json:"username,omitempty"`
+	Email           string `json:"email,omitempty"`
+	OrganizationURL string `json:"organizationUrl,omitempty"`
+	AppID           string `json:"appId,omitempty"`
+}
+
+// Integration is a VCS integration as a provider's client uses it, with
+// its credential and webhook secret opened. Nothing but the provider's
+// client sees them.
+type Integration struct {
+	Provider      string
+	Settings      Settings
+	Credential    []byte
+	WebhookSecret []byte
+}
+
+// The kinds of check a Tester runs.
+const (
+	CheckConnection      = "CONNECTION"
+	CheckPermissions     = "PERMISSIONS"
+	CheckWebhook         = "WEBHOOK"
+	CheckGithubAppEvents = "GITHUB_APP_EVENTS"
+)
+
+// Check is one check of a test: its kind, whether it passed, and why not.
+type Check struct {
+	Type   string
+	Passed bool
+	Reason string
+}
+
+// Tester checks that an integration reaches its provider with the
+// permissions infraweave needs. A provider it cannot reach is a failed
+// CheckConnection, not an error.
+//
+// ref: decision 0012
+type Tester interface {
+	Test(ctx context.Context, in Integration) ([]Check, error)
 }
