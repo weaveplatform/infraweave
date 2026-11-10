@@ -2,7 +2,8 @@
 Feature: Message queue depth
   An operator reads how many jobs each of the work queue's seven logical
   queues holds: visible jobs are pending and due, in-flight jobs are
-  running. The counts are installation-wide, as the reference serves them.
+  running. The counts are installation-wide, as the reference serves them,
+  so reading them needs ACCOUNT_ADMIN.
   ref: decision 0011
 
   Background:
@@ -20,3 +21,18 @@ Feature: Message queue depth
   @case:success
   Scenario: The queues page by the requested limit
     Then messageQueueStats read 3 at a time lists the seven logical queues in order
+
+  @case:denial
+  Scenario: A key that writes in the top space but does not administer the account reads no queue
+    Given the home key is exchanged through A for token "h"
+    And the member key is exchanged through A for token "m"
+    And token "h" sends "POST /api/v1/api-key-role-bindings" with '{"apiKeyID":"01KACME000000000000000000A","roleID":"space-writer","spaceID":"acme"}' through A
+    When token "m" sends "GET /api/v1/message-queue-stats" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ACCOUNT_ADMIN"'
+
+  @case:failure
+  Scenario: A cursor no page of the queues issued is refused
+    Given the home key is exchanged through A for token "h"
+    When token "h" sends "GET /api/v1/message-queue-stats?cursor=nope" through A
+    Then it answers a 400 problem "invalid-cursor"

@@ -11,7 +11,12 @@ Feature: Account settings
   and never as its organization's last account; its deletion revokes its
   sessions on every replica and is recorded on its organization's trail.
   The other domains' purges then remove the rows they keep of it, such as
-  its stacks and limits, and leave its organization's.
+  its stacks and limits, and leave its organization's. Changing a setting
+  needs ACCOUNT_ADMIN, which space-writer on the top space does not hold;
+  any principal of the account reads the settings and may ask for personal
+  keys, and a session no account admits reaches none of them. The member
+  key, 01KACME000000000000000000A, holds only the bindings a scenario
+  gives it.
 
   Background:
     Given two infraweave servers, A and B, on one database
@@ -90,3 +95,56 @@ Feature: Account settings
     Then "GET /api/v1/account/can-be-deleted" through B with token "admin" answers 'false'
     And "POST /api/v1/account/confirm-delete" through B with token "admin" answers a 409 problem "invalid-state"
     And the viewer through A with token "admin" answers 200
+
+  @op:accountToggleDeletionMark @op:accountSetPersonalApiKeysEnabled @op:accountSetOAuthRedirectAllowlist @op:accountUpdateSecurityEmail @op:accountUpdateAwarenessSourceSurvey @op:markedForDeletion @op:accountCanBeDeleted @op:accountCanBeDeletedAt @op:personalApiKeysEnabled @op:accountRequestPersonalApiKeysEnabling @op:oauthRedirectAllowedHosts @op:securityEmail @op:awarenessSourceSurvey @case:denial @case:success
+  Scenario: A key that writes in the top space but does not administer the account reads the settings and changes none
+    Given the member key is exchanged through A for token "m"
+    And token "admin" sends "POST /api/v1/api-key-role-bindings" with '{"apiKeyID":"01KACME000000000000000000A","roleID":"space-writer","spaceID":"acme"}' through A
+    When token "m" sends "POST /api/v1/account/toggle-deletion-mark" with '{"reason":"moving"}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ACCOUNT_ADMIN"'
+    When token "m" sends "POST /api/v1/account/set-personal-api-keys-enabled" with '{"enabled":false}' through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ACCOUNT_ADMIN"'
+    When token "m" sends "POST /api/v1/account/set-o-auth-redirect-allowlist" with '{"hosts":["apps.example.com"]}' through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "POST /api/v1/account/update-security-email" with '{"securityEmail":"me@example.com"}' through B
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "POST /api/v1/account/update-awareness-source-survey" with '{"completed":true,"response":"me"}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ACCOUNT_ADMIN"'
+    And "GET /api/v1/marked-for-deletion" through B with token "m" answers 'false'
+    And "GET /api/v1/account/can-be-deleted" through A with token "m" answers 'false'
+    And "GET /api/v1/account/can-be-deleted-at" through B with token "m" answers '0'
+    And "GET /api/v1/personal-api-keys-enabled" through A with token "m" answers 'true'
+    And "GET /api/v1/oauth-redirect-allowed-hosts" through B with token "m" answers '{"items":[]}'
+    And "GET /api/v1/security-email" through A with token "m" answers '""'
+    And "GET /api/v1/awareness-source-survey" through B with token "m" answers '{"completed":false}'
+    And "POST /api/v1/account/request-personal-api-keys-enabling" through A with token "m" answers 'true'
+
+  @op:markedForDeletion @op:accountCanBeDeleted @op:accountCanBeDeletedAt @op:personalApiKeysEnabled @op:accountRequestPersonalApiKeysEnabling @op:oauthRedirectAllowedHosts @op:securityEmail @op:awarenessSourceSurvey @case:denial
+  Scenario: A member's session that no account admits reads no account's settings
+    Given a member no account admits has a browser session
+    When the browser sends "GET /api/v1/marked-for-deletion" through A
+    Then it answers a 401 problem "unauthenticated"
+    When the browser sends "GET /api/v1/account/can-be-deleted" through B
+    Then it answers a 401 problem "unauthenticated"
+    When the browser sends "GET /api/v1/account/can-be-deleted-at" through A
+    Then it answers a 401 problem "unauthenticated"
+    When the browser sends "GET /api/v1/personal-api-keys-enabled" through B
+    Then it answers a 401 problem "unauthenticated"
+    When the browser sends "POST /api/v1/account/request-personal-api-keys-enabling" through A
+    Then it answers a 401 problem "unauthenticated"
+    When the browser sends "GET /api/v1/oauth-redirect-allowed-hosts" through B
+    Then it answers a 401 problem "unauthenticated"
+    When the browser sends "GET /api/v1/security-email" through A
+    Then it answers a 401 problem "unauthenticated"
+    When the browser sends "GET /api/v1/awareness-source-survey" through B
+    Then it answers a 401 problem "unauthenticated"
+
+  @op:accountSetPersonalApiKeysEnabled @op:accountUpdateAwarenessSourceSurvey @case:failure
+  Scenario: A setting's body of the wrong type is refused, and the setting keeps its value
+    Then "POST /api/v1/account/set-personal-api-keys-enabled" through A with token "admin" and '{"enabled":"no"}' answers a 400 problem "invalid-request"
+    And "GET /api/v1/personal-api-keys-enabled" through B with token "admin" answers 'true'
+    And "POST /api/v1/account/update-awareness-source-survey" through B with token "admin" and '{"completed":"yes"}' answers a 400 problem "invalid-request"
+    And "GET /api/v1/awareness-source-survey" through A with token "admin" answers '{"completed":false}'
