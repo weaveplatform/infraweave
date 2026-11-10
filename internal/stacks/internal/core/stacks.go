@@ -63,11 +63,13 @@ func vendors() []string {
 
 // Scope is what a stack search sees: the spaces the caller may read, the
 // account's space tree, which the space field reads, and the caller,
-// whose stars the starred field reads.
+// whose stars the starred field reads. Stacks, when it is not nil, holds
+// the search to those stacks, for a space's access view.
 type Scope struct {
 	Reachable []kernel.ULID
 	Spaces    []accessapi.SpaceNode
 	Actor     Actor
+	Stacks    []kernel.ULID
 }
 
 // Store is what the service needs of the stacks' storage. Every method
@@ -172,26 +174,32 @@ type Events interface {
 	Append(ctx context.Context, ev outbox.Event) (outbox.Event, error)
 }
 
-// Deps are what the service is constructed over.
+// Deps are what the service is constructed over. Bindings are the
+// stacks' role bindings, which the access domain keeps, and Grants
+// explains which stacks a space's grants reach.
 type Deps struct {
-	Store  Store
-	DB     tx.Beginner
-	Spaces accessapi.Spaces
-	Authz  accessapi.Authorizer
-	Events Events
-	Now    func() time.Time
+	Store    Store
+	DB       tx.Beginner
+	Spaces   accessapi.Spaces
+	Authz    accessapi.Authorizer
+	Bindings accessapi.Bindings
+	Grants   accessapi.Grants
+	Events   Events
+	Now      func() time.Time
 }
 
 // Service is the stacks domain's logic. Every write runs in one
 // transaction with its outbox event, holding the stack's space so no
 // delete or move removes it first.
 type Service struct {
-	store  Store
-	db     tx.Beginner
-	spaces accessapi.Spaces
-	authz  accessapi.Authorizer
-	events Events
-	now    func() time.Time
+	store    Store
+	db       tx.Beginner
+	spaces   accessapi.Spaces
+	authz    accessapi.Authorizer
+	bindings accessapi.Bindings
+	grants   accessapi.Grants
+	events   Events
+	now      func() time.Time
 
 	mu     sync.RWMutex
 	guards []stacksapi.StackGuard
@@ -204,7 +212,8 @@ func New(d Deps) *Service {
 		now = time.Now
 	}
 	return &Service{
-		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, events: d.Events, now: now,
+		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, bindings: d.Bindings,
+		grants: d.Grants, events: d.Events, now: now,
 	}
 }
 
@@ -616,8 +625,8 @@ func (s *Service) Unlock(ctx context.Context, p kernel.Principal, slug string) (
 
 // Delete deletes p's account's stack slug, when expect accepts its
 // version, and answers it as it was; a stack protected from deletion is
-// refused. Each registered guard deletes its rows of the stack first, in
-// the same transaction.
+// refused. Each registered guard deletes its rows of the stack first, and
+// the access domain its role bindings, in the same transaction.
 func (s *Service) Delete(
 	ctx context.Context,
 	p kernel.Principal,
@@ -641,6 +650,9 @@ func (s *Service) Delete(
 			if err := g.Deleting(ctx, st.Stack); err != nil {
 				return fmt.Errorf("stacks: delete what holds stack %s: %w", st.Slug, err)
 			}
+		}
+		if err := s.bindings.UnbindActor(ctx, st.Account, accessapi.ActorStack, st.ID); err != nil {
+			return err //nolint:wrapcheck // the access domain names the write
 		}
 		if err := s.store.Delete(ctx, st.Account, st.ID); err != nil {
 			return err //nolint:wrapcheck // as above

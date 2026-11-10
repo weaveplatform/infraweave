@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/cucumber/godog"
 )
@@ -20,17 +21,19 @@ var grantViews = map[string]string{
 	"API keys":         "api-keys-with-access-to-space",
 	"user sessions":    "user-sessions-with-access-to-space",
 	"API key sessions": "api-key-sessions-with-access-to-space",
+	"stacks":           "stacks-with-access-to-space",
 }
 
 func (s *grantViewSteps) register(sc *godog.ScenarioContext) {
-	views := `(users|user groups|API keys|user sessions|API key sessions)`
+	views := `(users|user groups|API keys|user sessions|API key sessions|stacks)`
+	mode := `(?: in the mode (RESIDING|ALL_WITH_ACCESS))?`
 	sc.Step(`^(the browser|token "\w+") lists the `+views+
-		` with access to the space "([^"]+)"(?: searching "([^"]*)")?(?: ordered by "(\w+)")? through ([AB])$`, s.list)
+		` with access to the space "([^"]+)"`+mode+`(?: searching "([^"]*)")?(?: ordered by "(\w+)")? through ([AB])$`, s.list)
 	sc.Step(`^(the browser|token "\w+") asks for the suggestions of the `+views+
-		` with access to the space "([^"]+)" through ([AB])$`, s.suggest)
+		` with access to the space "([^"]+)"`+mode+` through ([AB])$`, s.suggest)
 	sc.Step(`^the answer lists (\d+) holders?$`, s.count)
 	sc.Step(
-		`^the holder "([^"]+)" holds the role "([a-z0-9-]+)" on the space "([^"]+)" as (RESIDENT|PROPAGATED|INHERITED)$`,
+		`^the holder "([^"]+)" holds the role "([a-z0-9-]+)" on the space "([^"]+)" as (RESIDENT|PROPAGATED|INHERITED)(?: (by its own read|through the binding "[^"]+"))?$`,
 		s.holds,
 	)
 	sc.Step(
@@ -40,11 +43,11 @@ func (s *grantViewSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the suggestions count (\d+)$`, s.suggestions)
 }
 
-// list reads a page of the view of slug, keeping the rows that contain
-// text and ordered by field when they are given.
+// list reads a page of the view of slug, in mode, keeping the rows that
+// contain text and ordered by field when they are given.
 func (s *grantViewSteps) list(
 	ctx context.Context,
-	who, view, slug, text, field, replica string,
+	who, view, slug, mode, text, field, replica string,
 ) error {
 	in := map[string]any{}
 	if text != "" {
@@ -58,6 +61,9 @@ func (s *grantViewSteps) list(
 		return fmt.Errorf("%w: %w", errStep, err)
 	}
 	q := url.Values{"space": {s.o.resolve(slug)}, "input": {string(raw)}}
+	if mode != "" {
+		q.Set("mode", mode)
+	}
 	return s.o.send(
 		ctx,
 		who,
@@ -68,14 +74,18 @@ func (s *grantViewSteps) list(
 	)
 }
 
-// suggest reads the suggestions of the view of slug.
-func (s *grantViewSteps) suggest(ctx context.Context, who, view, slug, replica string) error {
+// suggest reads the suggestions of the view of slug, in mode.
+func (s *grantViewSteps) suggest(ctx context.Context, who, view, slug, mode, replica string) error {
 	q := url.Values{"space": {s.o.resolve(slug)}, "input": {"{}"}}
+	if mode != "" {
+		q.Set("mode", mode)
+	}
 	return s.o.send(ctx, who, http.MethodGet,
 		"/api/v1/"+grantViews[view]+"-suggestions?"+q.Encode(), "", replica)
 }
 
-// grantRole is a grant as the views answer it.
+// grantRole is a grant as the views answer it: the stacks view names
+// its binding, none for a stack's read of its own space.
 type grantRole struct {
 	Role struct {
 		ID string `json:"id"`
@@ -83,7 +93,22 @@ type grantRole struct {
 	Space struct {
 		ID string `json:"id"`
 	} `json:"space"`
-	Source string `json:"source"`
+	Source  string `json:"source"`
+	Binding *struct {
+		ID string `json:"id"`
+	} `json:"binding"`
+}
+
+// through reports whether g reaches the space by via: its stack's own
+// read, the binding via names, or anything when via is empty.
+func (g grantRole) through(via, binding string) bool {
+	switch via {
+	case "":
+		return true
+	case "by its own read":
+		return g.Binding == nil
+	}
+	return g.Binding != nil && g.Binding.ID == binding
 }
 
 // holderNode is a row of any of the views: the actor it names and its
@@ -99,6 +124,9 @@ type holderNode struct {
 	APIKey struct {
 		ID string `json:"id"`
 	} `json:"apiKey"`
+	Stack struct {
+		ID string `json:"id"`
+	} `json:"stack"`
 	Roles        []grantRole `json:"roles"`
 	SessionCount int         `json:"sessionCount"`
 }
@@ -147,7 +175,8 @@ func (s *grantViewSteps) row(name string) (holderNode, json.RawMessage, error) {
 		if json.Unmarshal(raw, &n) != nil {
 			continue
 		}
-		if id == n.User.ID || id == n.User.Login || id == n.UserGroup.ID || id == n.APIKey.ID {
+		if id == n.User.ID || id == n.User.Login || id == n.UserGroup.ID || id == n.APIKey.ID ||
+			id == n.Stack.ID {
 			return n, raw, nil
 		}
 	}
@@ -172,15 +201,20 @@ func (s *grantViewSteps) count(n int) error {
 }
 
 // holds checks that name's row holds role on slug, reaching the space as
-// source.
-func (s *grantViewSteps) holds(name, role, slug, source string) error {
+// source, by via when it is given: a stack's own read or a binding.
+func (s *grantViewSteps) holds(name, role, slug, source, via string) error {
 	n, _, err := s.row(name)
 	if err != nil {
 		return err
 	}
 	slug = s.o.resolve(slug)
+	binding := ""
+	if _, quoted, ok := strings.Cut(via, `"`); ok {
+		binding = s.o.resolve(strings.TrimSuffix(quoted, `"`))
+	}
 	for _, g := range n.Roles {
-		if g.Role.ID == role && g.Space.ID == slug && g.Source == source {
+		if g.Role.ID == role && g.Space.ID == slug && g.Source == source &&
+			g.through(via, binding) {
 			return nil
 		}
 	}

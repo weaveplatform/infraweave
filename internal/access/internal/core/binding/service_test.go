@@ -415,38 +415,43 @@ func TestUnitServiceWrites(t *testing.T) {
 
 	id := ls[0].ID.String()
 	moved, err := f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.Expect{}, fields,
-		binding.Request{Actor: bob.String(), Role: "space-admin", Space: "top"})
+		binding.Request{Actor: bob.String(), Role: "space-admin", Space: "top"}, nil)
 	if err != nil || moved.RoleID != f.st.roles["space-admin"] || moved.Version != 2 ||
 		f.drops != 3 {
 		t.Errorf("update = %+v, %v", moved, err)
 	}
 	if _, err := f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.ExpectVersions(9), fields,
-		binding.Request{Role: "space-admin", Space: "top"}); !errors.Is(err, kernel.ErrStale) {
+		binding.Request{Role: "space-admin", Space: "top"}, nil); !errors.Is(err, kernel.ErrStale) {
 		t.Errorf("stale update = %v", err)
 	}
+	if _, err := f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.Expect{}, fields,
+		binding.Request{Role: "space-admin", Space: "top"},
+		func(binding.Listed) error { return errDown }); !errors.Is(err, errDown) {
+		t.Errorf("refused update = %v", err)
+	}
 	_, err = f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.Expect{}, fields,
-		binding.Request{Actor: kernel.NewULID().String(), Role: "space-admin", Space: "top"})
+		binding.Request{Actor: kernel.NewULID().String(), Role: "space-admin", Space: "top"}, nil)
 	if got := pointers(t, err); !slices.Equal(got, []string{"/userID"}) {
 		t.Errorf("another actor = %v", got)
 	}
 	_, err = f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.Expect{}, fields,
-		binding.Request{Role: "space-admin", Space: "team"})
+		binding.Request{Role: "space-admin", Space: "team"}, nil)
 	if got := pointers(t, err); !slices.Equal(got, []string{"/spaceID"}) {
 		t.Errorf("unadministered space = %v", got)
 	}
 	if _, err := f.svc.Update(ctx, f.p, binding.ActorUser, "nope", kernel.Expect{}, fields,
-		binding.Request{}); !errors.Is(err, port.ErrNotFound) {
+		binding.Request{}, nil); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("update of none = %v", err)
 	}
 	f.st.fail["UpdateBinding"] = true
 	if _, err := f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.Expect{}, fields,
-		binding.Request{Role: "space-admin", Space: "top"}); !errors.Is(err, errDown) {
+		binding.Request{Role: "space-admin", Space: "top"}, nil); !errors.Is(err, errDown) {
 		t.Errorf("update down = %v", err)
 	}
 	delete(f.st.fail, "UpdateBinding")
 	f.st.fail["RoleID"] = true
 	if _, err := f.svc.Update(ctx, f.p, binding.ActorUser, id, kernel.Expect{}, fields,
-		binding.Request{Role: "space-admin", Space: "top"}); !errors.Is(err, errDown) {
+		binding.Request{Role: "space-admin", Space: "top"}, nil); !errors.Is(err, errDown) {
 		t.Errorf("update's check down = %v", err)
 	}
 	delete(f.st.fail, "RoleID")
@@ -478,6 +483,7 @@ func TestUnitServiceWrites(t *testing.T) {
 		binding.ActorUser,
 		"nope",
 		kernel.Expect{},
+		nil,
 	); !errors.Is(
 		err,
 		port.ErrNotFound,
@@ -490,6 +496,7 @@ func TestUnitServiceWrites(t *testing.T) {
 		binding.ActorUser,
 		id,
 		kernel.ExpectVersions(9),
+		nil,
 	); !errors.Is(
 		err,
 		kernel.ErrStale,
@@ -503,6 +510,7 @@ func TestUnitServiceWrites(t *testing.T) {
 		binding.ActorUser,
 		id,
 		kernel.Expect{},
+		nil,
 	); !errors.Is(
 		err,
 		errDown,

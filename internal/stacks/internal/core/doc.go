@@ -25,7 +25,18 @@
 // some spaces that carry some labels, and none without a space or a
 // label; InSpaces lists every stack in some spaces and Labels some
 // stacks' labels; BySlug and ByIDs read stacks for the domains that
-// attach to them.
+// attach to them. Bind, BindAll, Rebind and Unbind write a stack's role
+// bindings through accessapi.Bindings: each needs STACK_MANAGE on the
+// stack's space and SPACE_ADMIN on the space bound in, the first
+// decided by the route for an operation on one binding, and a binding on
+// the top space needs the stack to live there; each holds the stack, so
+// a delete, which removes the stack's bindings in its transaction, waits
+// for it. A binding stays where it is when its stack moves.
+// BindingSpaceOf is the accessapi.SpaceOf of the entity
+// "stack_role_binding", its stack's space. Holding and SuggestHolding
+// search the stacks a space's access view lists: those that live in the
+// space, or, for a space admin, every stack accessapi.Grants finds a grant
+// of reaching it, its implicit read of its own space among them.
 //
 // # Input and output
 //

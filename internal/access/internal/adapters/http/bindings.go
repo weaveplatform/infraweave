@@ -164,7 +164,7 @@ func updateBinding[I, V any](
 	if err != nil {
 		return zero, nil, err
 	}
-	l, err := s.bindings.Update(ctx, p, k.actor, id, expect, k.fields, k.req(in))
+	l, err := s.bindings.Update(ctx, p, k.actor, id, expect, k.fields, k.req(in), nil)
 	if err != nil {
 		return zero, nil, bindingError(err, "binding", "")
 	}
@@ -227,7 +227,7 @@ func deleteBinding[I, V any](
 	if err != nil {
 		return zero, err
 	}
-	l, err := s.bindings.Delete(ctx, p.AccountID, k.actor, id, strict.IfMatch(ifMatch))
+	l, err := s.bindings.Delete(ctx, p.AccountID, k.actor, id, strict.IfMatch(ifMatch), nil)
 	if err != nil {
 		return zero, bindingError(err, "binding", "")
 	}

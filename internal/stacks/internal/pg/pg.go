@@ -574,12 +574,17 @@ func searchScope(acct kernel.AccountID, scope core.Scope) sqlsearch.Scope {
 	for i, n := range scope.Spaces {
 		spaces[i] = sqlsearch.SpaceNode{Space: n.ID, Parent: n.Parent, ID: n.Slug, Display: n.Name}
 	}
-	return sqlsearch.Scope{
+	out := sqlsearch.Scope{
 		Where:     "s.account_id = $1",
 		Args:      []any{acct, string(scope.Actor.Kind), scope.Actor.ID},
 		Reachable: scope.Reachable,
 		Spaces:    spaces,
 	}
+	if scope.Stacks != nil {
+		out.Where += " AND s.id = ANY($4::uuid[])"
+		out.Args = append(out.Args, scope.Stacks)
+	}
+	return out
 }
 
 // Search reads a page of acct's stacks in the scope that in keeps.

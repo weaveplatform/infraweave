@@ -273,7 +273,7 @@ func (s *Service) Create(
 ) ([]Listed, error) {
 	bs, err := s.Prepare(ctx, p, kind, OriginBinding, pointer, f, reqs)
 	if err != nil && pointer == "" {
-		return nil, unprefixed(err, "The binding is refused.")
+		return nil, Unprefixed(err, "The binding is refused.")
 	}
 	if err != nil {
 		return nil, err
@@ -300,6 +300,19 @@ func (s *Service) Bind(
 	}
 	for i := range bs {
 		bs[i].ActorKind, bs[i].ActorID = kind, id
+	}
+	return s.Record(ctx, acct, bs)
+}
+
+// Record records bs, which Prepare made and whose actors are set, all or
+// none, in the transaction ctx carries when there is one.
+func (s *Service) Record(
+	ctx context.Context,
+	acct kernel.AccountID,
+	bs []Binding,
+) ([]Listed, error) {
+	if len(bs) == 0 {
+		return []Listed{}, nil
 	}
 	out, err := s.store.CreateBindings(ctx, acct, bs)
 	if err != nil {
@@ -438,8 +451,9 @@ func (s *Service) Of(
 }
 
 // Update moves p's account's binding raw names to the role and space r
-// names, when expect accepts its version. Its actor never changes, and
-// the new space needs SPACE_ADMIN as the old one does.
+// names, when expect accepts its version and check, nil for none, accepts
+// the binding as it is under its lock. Its actor never changes, and the
+// new space needs SPACE_ADMIN as the old one does.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
@@ -448,6 +462,7 @@ func (s *Service) Update(
 	expect kernel.Expect,
 	f Fields,
 	r Request,
+	check func(Listed) error,
 ) (Listed, error) {
 	cur, err := s.Binding(ctx, p.AccountID, kind, raw)
 	if err != nil {
@@ -463,7 +478,7 @@ func (s *Service) Update(
 		[]Request{{Role: r.Role, Space: r.Space}},
 	)
 	if err != nil {
-		return Listed{}, unprefixed(err, "The binding change is refused.")
+		return Listed{}, Unprefixed(err, "The binding change is refused.")
 	}
 	if r.Actor != "" && r.Actor != cur.ActorID.String() {
 		return Listed{}, &kernel.Invalid{
@@ -480,8 +495,8 @@ func (s *Service) Update(
 		kind,
 		cur.ID,
 		func(l Listed) (Binding, error) {
-			if err := expect.Check(l.Version); err != nil {
-				return Binding{}, err //nolint:wrapcheck // kernel.ErrStale, answered as it is
+			if err := accepts(l, expect, check); err != nil {
+				return Binding{}, err
 			}
 			b := l.Binding
 			b.RoleID, b.SpaceID = bs[0].RoleID, bs[0].SpaceID
@@ -495,10 +510,10 @@ func (s *Service) Update(
 	return out, nil
 }
 
-// unprefixed is err with each of its field errors' pointers less the
+// Unprefixed is err with each of its field errors' pointers less the
 // element index Prepare gives them, for an input of one binding, and with
 // detail.
-func unprefixed(err error, detail string) error {
+func Unprefixed(err error, detail string) error {
 	inv, ok := errors.AsType[*kernel.Invalid](err)
 	if !ok {
 		return err
@@ -511,24 +526,38 @@ func unprefixed(err error, detail string) error {
 }
 
 // Delete deletes p's account's binding raw names, when expect accepts
-// its version, and answers it as it was.
+// its version and check, nil for none, accepts it as it is under its
+// lock, and answers it as it was.
 func (s *Service) Delete(
 	ctx context.Context,
 	acct kernel.AccountID,
 	kind ActorKind,
 	raw string,
 	expect kernel.Expect,
+	check func(Listed) error,
 ) (Listed, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return Listed{}, fmt.Errorf("%w: binding %q", port.ErrNotFound, raw)
 	}
 	out, err := s.store.DeleteBinding(ctx, acct, kind, id, func(l Listed) error {
-		return expect.Check(l.Version) //nolint:wrapcheck // kernel.ErrStale, answered as it is
+		return accepts(l, expect, check)
 	})
 	if err != nil {
 		return Listed{}, err //nolint:wrapcheck // as above
 	}
 	s.drop(acct)
 	return out, nil
+}
+
+// accepts is nil when expect accepts l's version and check, nil for none,
+// accepts l.
+func accepts(l Listed, expect kernel.Expect, check func(Listed) error) error {
+	if err := expect.Check(l.Version); err != nil {
+		return err //nolint:wrapcheck // kernel.ErrStale, answered as it is
+	}
+	if check == nil {
+		return nil
+	}
+	return check(l)
 }

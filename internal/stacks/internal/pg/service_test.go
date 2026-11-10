@@ -32,8 +32,8 @@ type spaces struct {
 	holds []kernel.ULID
 	// parents names a space's parent by slug; acme when it names none.
 	parents map[string]string
-	// treeErr fails Tree.
-	treeErr error
+	// treeErr fails Tree, and slugsErr Slugs.
+	treeErr, slugsErr error
 }
 
 func (s *spaces) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) error {
@@ -56,6 +56,9 @@ func (s *spaces) Find(_ context.Context, _ kernel.AccountID, slug string) (kerne
 }
 
 func (s *spaces) Slugs(context.Context, kernel.AccountID) (map[kernel.ULID]string, error) {
+	if s.slugsErr != nil {
+		return nil, s.slugsErr
+	}
 	out := map[kernel.ULID]string{}
 	for slug, id := range s.ids {
 		out[id] = slug
@@ -131,6 +134,7 @@ type fixture struct {
 	svc                   *core.Service
 	spaces                *spaces
 	authz                 authz
+	ledger                *ledger
 	acct                  kernel.AccountID
 	team, hidden          kernel.ULID
 	admin, writer, reader kernel.Principal
@@ -164,14 +168,15 @@ func newFixture(t *testing.T) fixture {
 		writer.Caller(): {team: write},
 		reader.Caller(): {team: read},
 	}
+	l := &ledger{spaces: sp, authz: az, rows: map[kernel.ULID]accessapi.RoleBinding{}}
 	svc := core.New(core.Deps{
-		Store: pg.New(db), DB: db, Spaces: sp, Authz: az,
+		Store: pg.New(db), DB: db, Spaces: sp, Authz: az, Bindings: l, Grants: l,
 		Events: outbox.New(db, queue.New(db), kinds),
 		Now:    func() time.Time { return time.Unix(1_800_000_000, 0) },
 	})
 	return fixture{
-		db: db, svc: svc, spaces: sp, authz: az, acct: acct, team: team, hidden: hidden,
-		admin: admin, writer: writer, reader: reader,
+		db: db, svc: svc, spaces: sp, authz: az, ledger: l, acct: acct, team: team,
+		hidden: hidden, admin: admin, writer: writer, reader: reader,
 	}
 }
 

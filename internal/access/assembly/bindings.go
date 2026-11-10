@@ -45,7 +45,6 @@ func (b bindings) Bind(
 	ctx context.Context,
 	p kernel.Principal,
 	actor string,
-	id kernel.ULID,
 	pointer string,
 	reqs []accessapi.BindingRequest,
 ) ([]accessapi.RoleBinding, error) {
@@ -56,11 +55,21 @@ func (b bindings) Bind(
 	kind := binding.ActorKind(actor)
 	bs, err := b.svc.Prepare(ctx, p, kind, binding.OriginBinding, pointer,
 		binding.Fields{Role: "roleID", Space: "spaceID"}, rs)
+	if err != nil && pointer == "" {
+		//nolint:wrapcheck // a refusal, answered as it is
+		return nil, binding.Unprefixed(err, "The binding is refused.")
+	}
 	if err != nil {
 		return nil, err //nolint:wrapcheck // a refusal, answered as it is
 	}
-	ls, err := b.svc.Bind(ctx, p.AccountID, kind, id, bs)
+	for i := range bs {
+		bs[i].ActorID = reqs[i].Actor
+	}
+	ls, err := b.svc.Record(ctx, p.AccountID, bs)
 	if d, ok := errors.AsType[*binding.Duplicate](err); ok {
+		if pointer == "" {
+			return nil, accessapi.ErrBindingHeld
+		}
 		return nil, fmt.Errorf("%w: %s/%d", accessapi.ErrBindingHeld, pointer, d.Index)
 	}
 	if err != nil {
@@ -69,20 +78,70 @@ func (b bindings) Bind(
 	return roleBindings(ls), nil
 }
 
-func (b bindings) Unbind(
+func (b bindings) Binding(
 	ctx context.Context,
 	acct kernel.AccountID,
 	actor string,
 	id kernel.ULID,
 ) (accessapi.RoleBinding, error) {
-	l, err := b.svc.Delete(ctx, acct, binding.ActorKind(actor), id.String(), kernel.Expect{})
-	if errors.Is(err, port.ErrNotFound) {
-		return accessapi.RoleBinding{}, fmt.Errorf("%w: %s", accessapi.ErrNoBinding, id)
-	}
+	l, err := b.svc.Binding(ctx, acct, binding.ActorKind(actor), id.String())
 	if err != nil {
-		return accessapi.RoleBinding{}, err //nolint:wrapcheck // the store names the write
+		return accessapi.RoleBinding{}, noBinding(err, id)
 	}
 	return roleBinding(l), nil
+}
+
+func (b bindings) Rebind(
+	ctx context.Context,
+	p kernel.Principal,
+	actor string,
+	id kernel.ULID,
+	expect kernel.Expect,
+	req accessapi.BindingRequest,
+	check func(accessapi.RoleBinding) error,
+) (accessapi.RoleBinding, error) {
+	l, err := b.svc.Update(ctx, p, binding.ActorKind(actor), id.String(), expect,
+		binding.Fields{Role: "roleID", Space: "spaceID"},
+		binding.Request{Role: req.Role, Space: req.Space}, checked(check))
+	if _, ok := errors.AsType[*binding.Duplicate](err); ok {
+		return accessapi.RoleBinding{}, fmt.Errorf("%w: %s", accessapi.ErrBindingHeld, id)
+	}
+	if err != nil {
+		return accessapi.RoleBinding{}, noBinding(err, id)
+	}
+	return roleBinding(l), nil
+}
+
+func (b bindings) Unbind(
+	ctx context.Context,
+	acct kernel.AccountID,
+	actor string,
+	id kernel.ULID,
+	expect kernel.Expect,
+	check func(accessapi.RoleBinding) error,
+) (accessapi.RoleBinding, error) {
+	l, err := b.svc.Delete(ctx, acct, binding.ActorKind(actor), id.String(), expect, checked(check))
+	if err != nil {
+		return accessapi.RoleBinding{}, noBinding(err, id)
+	}
+	return roleBinding(l), nil
+}
+
+// checked is check, nil for none, over the binding service's bindings.
+func checked(check func(accessapi.RoleBinding) error) func(binding.Listed) error {
+	if check == nil {
+		return nil
+	}
+	return func(l binding.Listed) error { return check(roleBinding(l)) }
+}
+
+// noBinding is err with a binding the account lacks as ErrNoBinding, and
+// err itself otherwise, a refusal answered as it is.
+func noBinding(err error, id kernel.ULID) error {
+	if errors.Is(err, port.ErrNotFound) {
+		return fmt.Errorf("%w: %s", accessapi.ErrNoBinding, id)
+	}
+	return err
 }
 
 func (b bindings) UnbindActor(
@@ -123,6 +182,7 @@ func roleBinding(l binding.Listed) accessapi.RoleBinding {
 	return accessapi.RoleBinding{
 		ID: l.ID, Actor: string(l.ActorKind), ActorID: l.ActorID, Role: l.Role,
 		SpaceID: l.SpaceID, Space: l.Space, CreatedAt: l.CreatedAt, CreatedBy: l.CreatedBy,
+		Version: l.Version,
 	}
 }
 

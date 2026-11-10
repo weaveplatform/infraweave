@@ -735,8 +735,8 @@
         "feature": "`roles`",
         "lowestTier": "Free",
         "phase": "P4b",
-        "state": "partial",
-        "notes": "`roles`, `role`, `roleCreate`, `roleUpdate`, `rolePatch` and `roleDelete` are served (P4b), custom roles holding only assignable actions beside the five system roles, and the user, group and API key role binding operations bind roles in spaces, each needing `SPACE_ADMIN` on its space; the stack role binding operations answer 501 until the stack bindings of P4b serve them"
+        "state": "implemented",
+        "notes": "`roles`, `role`, `roleCreate`, `roleUpdate`, `rolePatch` and `roleDelete` are served (P4b), custom roles holding only assignable actions beside the five system roles, and the user, group and API key role binding operations bind roles in spaces, each needing `SPACE_ADMIN` on its space, and the stack role binding operations bind a stack in a space, each needing `STACK_MANAGE` on the stack's space and `SPACE_ADMIN` on the space it binds in, a binding on the top space needing the stack to live there (P4b)"
       }
     },
     {
@@ -833,7 +833,7 @@
         "phase": "P22",
         "also": "each suggestion operation lands with its search, from P4",
         "state": "partial",
-        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4), and the suggestions of the user, group, API key and session grant views with them (P4b), counting a space's holders alone; each other suggestion operation lands with its search"
+        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4), and the suggestions of the user, group, API key, session and stack grant views with them (P4b), counting a space's holders alone; each other suggestion operation lands with its search"
       }
     },
     {
@@ -893,7 +893,7 @@
         "phase": "P4",
         "also": "P4b, P6, P8, P12, P13, P15, P21, P22",
         "state": "partial",
-        "notes": "`spaces`, `space`, `spaceCreate`, `spaceUpdate`, `spaceDelete` and `searchSpaces` are served (P4), every list and search holding only the reachable spaces; `usersWithAccessToSpace`, `userGroupsWithAccessToSpace`, `apiKeysWithAccessToSpace`, `userSessionsWithAccessToSpace` and `apiKeySessionsWithAccessToSpace` list who holds a space and the grant behind each from the evaluator, each needing `SPACE_ADMIN` on it (P4b); `stacksWithAccessToSpace` arrives with stack bindings in P4b, and the attachable, metrics and search-in-space reads with their entities' phases"
+        "notes": "`spaces`, `space`, `spaceCreate`, `spaceUpdate`, `spaceDelete` and `searchSpaces` are served (P4), every list and search holding only the reachable spaces; `usersWithAccessToSpace`, `userGroupsWithAccessToSpace`, `apiKeysWithAccessToSpace`, `userSessionsWithAccessToSpace` and `apiKeySessionsWithAccessToSpace` list who holds a space and the grant behind each from the evaluator, each needing `SPACE_ADMIN` on it (P4b); `stacksWithAccessToSpace` lists the stacks that live in a space, or, for its admin, every stack whose own read or binding reaches it (P4b); the attachable, metrics and search-in-space reads with their entities' phases"
       }
     },
     {
@@ -914,7 +914,7 @@
         "phase": "P5",
         "also": "P4b (`stackRoleBindings`), P6, P7, P8, P9, P11, P12, P13, P15, P16, P18, P20b, P22",
         "state": "partial",
-        "notes": "`stacks`, `stack`, `stackCreate`, `stackUpdate`, `stackDelete`, `stackReslug`, `stackDisable`, `stackEnable`, `stackLock`, `stackUnlock` and `starSet` are served (P5), the list holding only the stacks of reachable spaces; `stackRuns`, `stackRunsInRange`, `stackProposedRuns` and `stackTasks` answer empty pages and `stackRun` answers 404 until P7 fills them from the runs domain, so they are not evidence of P5's task 1; the rest of P5 serves search, labels, the version catalogue and the vendor options; `stackConfigElement`, `stackConfigAdd`, `stackConfigSet`, `stackConfigDelete` and `stackAttachableContexts` are served by the configuration domain (P6); state, schedules, dependencies and webhooks land with their own phases"
+        "notes": "`stacks`, `stack`, `stackCreate`, `stackUpdate`, `stackDelete`, `stackReslug`, `stackDisable`, `stackEnable`, `stackLock`, `stackUnlock` and `starSet` are served (P5), the list holding only the stacks of reachable spaces; `stackRoleBindings` lists a stack's role bindings (P4b), which stay where they are when the stack moves and go when it is deleted; `stackRuns`, `stackRunsInRange`, `stackProposedRuns` and `stackTasks` answer empty pages and `stackRun` answers 404 until P7 fills them from the runs domain, so they are not evidence of P5's task 1; the rest of P5 serves search, labels, the version catalogue and the vendor options; `stackConfigElement`, `stackConfigAdd`, `stackConfigSet`, `stackConfigDelete` and `stackAttachableContexts` are served by the configuration domain (P6); state, schedules, dependencies and webhooks land with their own phases"
       }
     },
     {
