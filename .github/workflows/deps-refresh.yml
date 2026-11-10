@@ -137,6 +137,7 @@ jobs:
           pin fsouza/fake-gcs-server fsouza/fake-gcs-server '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin hashicorp/vault hashicorp/vault '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin motoserver/moto motoserver/moto '^[0-9]+\.[0-9]+\.[0-9]+$'
+          pin gitea/gitea gitea/gitea '^[0-9]+\.[0-9]+\.[0-9]+$'
           # Azurite publishes to the Microsoft Artifact Registry, not
           # Docker Hub.
           repin mcr.microsoft.com/azure-storage/azurite "$(curl -fsS https://mcr.microsoft.com/v2/azure-storage/azurite/tags/list \

@@ -20,7 +20,7 @@
       "kind": "option",
       "field": "`vcsChecks: AGGREGATED` on a VCS integration",
       "lowestTier": "Business",
-      "phase": "P12"
+      "phase": "P12b"
     },
     {
       "id": "ai-account-controls",
@@ -208,7 +208,7 @@
       "kind": "capability",
       "gates": "`stackSearchRunIgnoredTriggers` and the ignored-run warnings",
       "lowestTier": "Starter+",
-      "phase": "P12"
+      "phase": "P12b"
     },
     {
       "id": "infrastructure",
@@ -260,7 +260,7 @@
       "kind": "option",
       "field": "`isDefault: false` on a VCS integration",
       "lowestTier": "Enterprise",
-      "phase": "P19"
+      "phase": "P12"
     },
     {
       "id": "notification-policies",

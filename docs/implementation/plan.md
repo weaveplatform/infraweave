@@ -148,7 +148,8 @@ and lint is clean.
 | P9 First tracked run end to end | Not started | **M3** |
 | P10 Run lifecycle completeness | Not started | |
 | P11 State management | Not started | |
-| P12 VCS integrations: GitHub | Not started | |
+| P12 VCS integrations | Not started | |
+| P12b VCS events and feedback | Not started | |
 | P13 Policy engine and workflow policies | Not started | **M4** |
 | P13b Login, task and initialization policies, sampling and simulation | Not started | |
 | P14 Public worker pool, Kubernetes workers and signed runs | Not started | |
@@ -160,7 +161,6 @@ and lint is clean.
 | P18b Audit trail and observability | Not started | **M5** |
 | P18c Flows engine and API | Not started | |
 | P18d Flows apps, agents and Deploy blocks | Not started | **M6** |
-| P19 VCS providers: GitLab, Bitbucket and Azure DevOps | Not started | |
 | P19b VCS agent pools and other source providers | Not started | |
 | P20 Other vendors | Not started | |
 | P20b Ansible, OpenTofu migration and plugins | Not started | |
@@ -214,15 +214,18 @@ flowchart LR
   P5 --> P6[P6 Configuration and expressions]
   P5 --> P6b[P6b Sources]
   P6b --> P7[P7 Run machine]
+  P6b --> P12[P12 VCS integrations]
   P7 --> P8[P8 Workers]
   P6 --> P8
   P8 --> P8b[P8b State backend]
   P6 --> P9[P9 First run]
   P8b --> P9
+  P12 --> P9
   P9 --> P10[P10 Run lifecycle]
   P10 --> P11[P11 State management]
-  P10 --> P12[P12 GitHub]
-  P12 --> P13[P13 Policies]
+  P10 --> P12b[P12b VCS events and feedback]
+  P12 --> P12b
+  P12b --> P13[P13 Policies]
   P13 --> P13b[P13b Login and other policies]
   P4b --> P13b
   P13 --> P14[P14 Public worker pool and Kubernetes]
@@ -238,8 +241,7 @@ flowchart LR
   P1d --> P18c
   P18c --> P18d[P18d Flows apps and agents]
   P21 --> P18d
-  P12 --> P19[P19 Other VCS providers]
-  P19 --> P19b[P19b VCS agents and sources]
+  P12b --> P19b[P19b VCS agents and sources]
   P11 --> P20[P20 Vendors]
   P20 --> P20b[P20b Ansible and plugins]
   P16 --> P21[P21 Templates]
@@ -273,14 +275,15 @@ The chart shows the main edges; each phase's **Depends on** line is the full
 list. Numbering does not serialize independent work: a phase starts as soon as
 the phases it depends on are done.
 
-**Critical path:** P0 → P1 → P1b → P1c → P2 → P2c → P2b → P3 → P4 → P5 → P7 →
-P8 → P8b → P9 → P10 → P11 → P20 → P20b → P22 → P22b → P24 → P24b → P24c →
-P27 → P28, the longest chain of **Depends on** edges (24 edges). P6 ties with
-P7 between P5 and P8. From P10 to P24, the Flows chain
-(P12 → P13 → P18 → P18c → P18d) ties with the vendor chain, so a slip in
+**Critical path:** P0 → P1 → P1b → P1c → P2 → P2c → P2b → P3 → P4 → P5 → P6b →
+P7 → P8 → P8b → P9 → P10 → P11 → P20 → P20b → P22 → P22b → P24 → P24b → P24c →
+P27 → P28, the longest chain of **Depends on** edges (25 edges). Between P5
+and P8, P6 is one phase shorter than P6b → P7, and between P6b and P9, P12 is
+two phases shorter than P7 → P8 → P8b. From P10 to P24, the Flows chain
+(P12b → P13 → P18 → P18c → P18d) ties with the vendor chain, so a slip in
 either moves the release. The policy and identity chain
-(P12 → P13 → P13b → P23), the registry chain (P12 → P13 → P17 → P17b) and
-the audit chain (P12 → P13 → P18 → P18b) are each one phase shorter.
+(P12b → P13 → P13b → P23), the registry chain (P12b → P13 → P17 → P17b) and
+the audit chain (P12b → P13 → P18 → P18b) are each one phase shorter.
 
 **Parallel lanes:**
 - P2c comes before P2b, because object storage registers `blob.delete` and
@@ -293,16 +296,19 @@ the audit chain (P12 → P13 → P18 → P18b) are each one phase shorter.
 - P6 and P6b run side by side once P5 lands, and P7 follows P6b, because a
   run is created on its stack's tracked commit. P8 needs P6 and P7, because
   the run handover carries the resolved environment.
+- P12 runs beside P7, P8 and P8b once P6b lands. P9 needs it, because the
+  handover carries the run's source credential, and P12b needs it, because
+  events arrive through integrations.
 - P15 (cloud and OIDC) starts once P9 lands, and Intelligence (P25 → P25b)
   follows it.
 - Once P10 lands, four lanes run independently:
   - state and vendors: P11 → P20 → P20b → P22 → P22b;
-  - VCS and policy: P12 → P13, then P19 → P19b, P13b → P23, P14,
-    P17 → P17b (with P15) and P18 → P18b, each from P13 or P12 as its
+  - VCS and policy: P12b → P13, then P19b, P13b → P23, P14,
+    P17 → P17b (with P15) and P18 → P18b, each from P13 or P12b as its
     **Depends on** line says;
   - events and Flows: P18 → P18c → P18d, once P4b has landed for Flows
     roles and P21 for the Deploy Template and Deploy Blueprint blocks;
-  - scheduling and templates: P16 → P21, where P21 also needs P12.
+  - scheduling and templates: P16 → P21, where P21 also needs P12b.
 - Events (P18 → P18b) start once P13 lands, because notification policies
   route every event.
 - P24 waits for every phase whose operations a provider resource calls; P24b
@@ -332,11 +338,12 @@ assigns a domain to another phase, this plan's assignment holds.
 | Private pools move from P14 to P8; the public worker pool moves from P8 to P14 | Every acceptance run uses a private pool ([0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the pool token CSR of [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) is the private pool's path, and the public worker pool is an optional operator-run pool on the same protocol |
 | P8b inserted before P9 | The first real run writes state through infraweave's `http` backend ([0016](../research/decisions/0016-testing-and-acceptance.md), [0010](../research/decisions/0010-state-backend.md)). P11 keeps import, rollback, external access, the signed URLs and Tofu workspaces. Its acceptance acts as a worker over `/worker/v1` and runs `terraform` and `tofu` itself, so it needs no runner before P9's |
 | P6b inserted before P7; `runTrigger` moves from P9 to P7; `stackSyncCommit` and `stackSetCurrentCommit` move from P12 to P6b | A run is created on its stack's tracked commit, so the commit's source comes before the run machine: `vcs` begins with `Source` and the raw Git provider ([0012](../research/decisions/0012-vcs-integration-model.md)), served in acceptance by Gitea ([0016](../research/decisions/0016-testing-and-acceptance.md)). P7's queue and P8's claim then act on runs `runTrigger` created, and P9 adds their execution |
-| The raw Git `Source` moves from P19 to P9 | The first tracked run needs a source with no webhook; decision [0016](../research/decisions/0016-testing-and-acceptance.md) serves it from Gitea |
+| The raw Git `Source` moves from P19 to P6b | The first tracked run needs a source with no webhook; decision [0016](../research/decisions/0016-testing-and-acceptance.md) serves it from Gitea |
+| P12 moves before P9, after P6b; its webhooks, processing and feedback become P12b after P10; P19's providers join both, and P19 folds into them | Every provider is a peer ([0012](../research/decisions/0012-vcs-integration-model.md)): GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps each gain every capability in the same phase. Integrations need only stacks and P6b's sources, and a private repository needs an integration's credential before its first run, so P12 runs beside P7 to P8b. Webhooks create proposed runs, which P10 completes, so events and feedback wait for it. P19b keeps its name |
 | Login policies and the `LOGIN_POLICIES` scheme move from P4 to P13b | They evaluate through decision [0009](../research/decisions/0009-policy-engine-opa.md)'s engine ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
 | Flows moves from the end of the spine to P18c and P18d | Flows is built on Deploy's events from the start ([0018](../research/decisions/0018-flows-runtime.md)): the engine needs the fan-out of P18 and the queue of P2c, nothing later, and its clients join `infraweavectl` and the provider in P24 and P24b |
 | P24c added for the console | Decision [0023](../research/decisions/0023-console.md) builds a console over the public API only, so it follows the last client phase and covers every surface |
-| P13, P17, P19, P20, P22, P24 and P25 each split in two; P18 splits in four | Size: each part is a few pull requests. P18's parts are events, audit and observability, the Flows engine, and Flows apps and agents |
+| P12, P13, P17, P20, P22, P24 and P25 each split in two; P18 splits in four | Size: each part is a few pull requests. P18's parts are events, audit and observability, the Flows engine, and Flows apps and agents |
 | P28 added | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) replays captures as fixtures, and report [30](../research/reference/30-open-questions.md) lists 269 of them; qualification closes the loop once an authorized account is available |
 | Report 26's provisional Terraform phases remapped | The reference rows `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. [capabilities.json](../data/capabilities.json) is the assignment |
 
@@ -1488,7 +1495,7 @@ before any VCS integration exists.
    `vcs_sources.feature`.
 
 **Exit criteria**
-- `vcs_sources.feature` (`@postgres`, `@vcs`): a `RAW_GIT` stack on a Gitea
+- `vcs_sources.feature` (`@postgres`, `@vcs`): a `GIT` stack on a Gitea
   repository shows the branch head as `trackedBranchHead` and
   `trackedCommit`; after a push `stackSyncCommit` moves both, and
   `stackSetCurrentCommit` pins `trackedCommit` to an older commit.
@@ -1698,7 +1705,7 @@ workspace.
 Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0010](../research/decisions/0010-state-backend.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0012](../research/decisions/0012-vcs-integration-model.md),
 [0020](../research/decisions/0020-reference-deployments-and-packaging.md).
 
-**Depends on:** P6, P8b.
+**Depends on:** P6, P12, P8b.
 
 A tracked Terraform and OpenTofu run goes from trigger to `FINISHED` on a
 private Docker worker: source fetched, phases executed with hooks, logs
@@ -1736,7 +1743,8 @@ through the backend.
    `infraweave_current_stack` and `infraweave_current_space` have their
    data.
 7. The handover asks `vcsapi.Sources`, the back edge P7 binds, for the
-   run's source URL, which the worker fetches itself
+   run's source URL and its source credential, which travels in the run's
+   sealed secret material; the worker fetches the source itself
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
@@ -1834,64 +1842,143 @@ read-only access, signed URLs, Terragrunt workspaces and retention.
   recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P12: VCS integrations: GitHub
+## P12: VCS integrations
+
+Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
+
+**Depends on:** P6b.
+
+GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps
+connect through integrations, as peers: a stack on a private repository of
+any of them shows its branch head and tracked commit, and each run is handed
+a source credential for its repository.
+
+**Tasks**
+1. `internal/vcs` gains its migration stream: `vcs_integrations` with sealed
+   credentials and webhook secrets, one default per provider in the top
+   space, space reach, more than one integration per provider and
+   space-level integrations under `multiple-vcs-integrations`, and
+   detaching on delete through `stacks.vcs_detached`, which `vcs` writes
+   through `stacksapi`; a stack's `vcsIntegrationId` is checked by a guard
+   `internal/app` binds. `vcsapi.Sources` resolves a stack's integration at
+   use time. Operations: `vcsIntegrations`, `vcsIntegration`,
+   `vcsIntegrationTest`, `searchVCSIntegrations`,
+   `searchVCSIntegrationsSuggestions`,
+   `attachableVCSIntegrationsForProviderInSpace`.
+2. `internal/vcs/internal/adapters/github`: `Source`, `Browse` and `Tester`
+   over the operator's GitHub App and per-account custom Apps, with the chi
+   fake `githubfake`. Operations: `githubIntegration`,
+   `githubIntegrationUpdate`, `githubEnterpriseIntegrationCreate`,
+   `githubEnterpriseIntegration`, `githubEnterpriseIntegrationUpdate`,
+   `githubEnterpriseIntegrationDelete`, `githubEnterpriseIntegrationTest`,
+   `githubAppGenerateManifest`, `githubAppCreateFromManifest`.
+3. `internal/vcs/internal/adapters/gitlab`: the same capabilities over a
+   GitLab access token, with `gitlabfake`. Operations:
+   `gitlabIntegrationCreate`, `gitlabIntegration`, `gitlabIntegrationUpdate`,
+   `gitlabIntegrationDelete`, `gitlabIntegrationTest`.
+4. `internal/vcs/internal/adapters/bitbucketcloud` and `bitbucketdc`: the
+   same capabilities over an app password or access token, and over a
+   Bitbucket Data Center HTTP access token, with `bitbucketcloudfake` and
+   `bitbucketdcfake`. Operations: `bitbucketCloudIntegrationCreateV2`,
+   `bitbucketCloudIntegration`, `bitbucketCloudIntegrationUpdateV2`,
+   `bitbucketCloudIntegrationDelete`, `bitbucketCloudIntegrationTest`,
+   `bitbucketDatacenterIntegrationCreate`,
+   `bitbucketDatacenterIntegration`,
+   `bitbucketDatacenterIntegrationUpdate`,
+   `bitbucketDatacenterIntegrationDelete`,
+   `bitbucketDatacenterIntegrationTest`.
+5. `internal/vcs/internal/adapters/azuredevops`: the same capabilities over
+   a personal access token, with `azuredevopsfake`. Operations:
+   `azureDevOpsRepoIntegrationCreate`, `azureDevOpsRepoIntegration`,
+   `azureDevOpsRepoIntegrationUpdate`, `azureDevOpsRepoIntegrationDelete`,
+   `azureDevOpsRepoIntegrationTest`.
+6. `repositories`, `branches`, `vcsIntegrationSearchUsers` and
+   `vcsIntegrationSearchUsersSuggestions` through each integration's
+   `Browse`.
+7. Private stacks and the run's source credential:
+   `vcsapi.Sources.Credential` mints a token for the run's one repository
+   where the provider can (a GitHub installation token, a GitLab project
+   access token, a Bitbucket Data Center repository access token), revoked
+   when the run ends, and hands the integration's token otherwise.
+   Feature: `vcs_sources.feature` gains a private stack on each provider.
+8. The `vcs-cloud` lab: Terraform roots under `test/cloud/vcs/` that create
+   a repository per run on GitHub, GitLab, Bitbucket Cloud and Azure DevOps,
+   a Bitbucket Data Center container the job starts with a licence from its
+   secrets, and the scheduled `vcs-cloud.yml` that applies them, runs
+   `sourcetest` and the `@vcs-cloud` scenarios against them, and destroys
+   them.
+
+**Exit criteria**
+- `vcs_integrations.feature` (`@postgres`, `@vcs`): each provider's
+  integration is created, read, updated, tested and deleted; deleting one in
+  use detaches its stacks; a second default for a provider answers `422`; a
+  credential appears in no answer, log line, audit entry or event.
+- `vcs_sources.feature`: a private stack on each provider shows its branch
+  head through its integration.
+- The operations of tasks 1 to 6 meet decision 0016's evidence rule; the
+  parity baseline drops them.
+- Every provider passes `sourcetest` against its fake, and against a real
+  repository in a green `vcs-cloud` run.
+- `make gate` passes at 95% in total and 90% per package.
+
+## P12b: VCS events and feedback
 
 Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md).
 
-**Depends on:** P10.
+**Depends on:** P10, P12.
 
-GitHub and GitHub Enterprise integrations: webhooks stored before they are
+Every provider of P12, as peers: webhooks stored before they are
 acknowledged, default push behaviour creating tracked and proposed runs,
 checks, pull request comments and deployments.
 
 **Tasks**
-1. `internal/vcs`, wired in P6b, gains its migration stream: `vcs_integrations` with sealed credentials and
-   webhook secrets, one default per provider, space reach, detaching on
-   delete. Operations: `githubIntegration`, `githubIntegrationUpdate`,
-   `githubEnterpriseIntegrationCreate`, `githubEnterpriseIntegration`,
-   `githubEnterpriseIntegrationUpdate`, `githubEnterpriseIntegrationDelete`,
-   `githubEnterpriseIntegrationRegenerateWebhookSecret`,
-   `githubEnterpriseIntegrationTest`, `githubEnterpriseWebhooksEndpoint`,
-   `githubAppGenerateManifest`, `githubAppCreateFromManifest`,
-   `vcsIntegrations`, `vcsIntegration`, `vcsIntegrationTest`,
-   `searchVCSIntegrations`, `searchVCSIntegrationsSuggestions`,
-   `vcsIntegrationSearchUsers`, `vcsIntegrationSearchUsersSuggestions`,
-   `repositories`, `branches`, `attachableVCSIntegrationsForProviderInSpace`.
+1. Webhook secrets and endpoints: `githubEnterpriseIntegrationRegenerateWebhookSecret`,
+   `githubEnterpriseWebhooksEndpoint`,
+   `gitlabIntegrationRegenerateWebhookSecret`, `gitlabWebhooksEndpoint`,
+   `bitbucketCloudIntegrationRegenerateWebhookSecret`,
+   `bitbucketCloudWebhooksEndpoint`,
+   `bitbucketDatacenterIntegrationRegenerateWebhookSecret`,
+   `bitbucketDatacenterWebhooksEndpoint`, `azureDevOpsWebhooksEndpoint`,
+   with the previous secret valid until its expiry.
 2. Intake at `POST /webhooks/vcs/github` and
    `/webhooks/vcs/{provider}/{integrationId}`: body bound, verification
-   against the current and previous secret, filtering, `vcs_deliveries`
-   stored with `vcs.process_delivery` in one transaction. Tests:
-   `internal/vcs/internal/adapters/github/verify_test.go`
-   (`TestUnitGitHubSignature`), `parse_test.go`, and the GitHub chi fake in
-   `githubfake`. Records DV-041 to DV-044.
+   against the current and previous secret by each provider's scheme
+   (decision 0012's table), filtering, `vcs_deliveries` stored with
+   `vcs.process_delivery` in one transaction. Tests: each provider's
+   `verify_test.go` (`TestUnitGitHubSignature` and its peers) and
+   `parse_test.go`, against P12's fakes. Records DV-041 to DV-044.
 3. Processing: `vcs.process_delivery` and `vcs.evaluate_event` with the
    default push behaviour (push policies in P13), run deduplication,
    `vcsEventTriggeredRunsLimit`, `accountUpdateVCSEventTriggeredRunsLimit`,
    ignored triggers (`stackSearchRunIgnoredTriggers`), superseded proposed
-   runs, and a push to a stack's branch moving its tracked commit through
-   P6b's projection.
+   runs, a push to a stack's branch moving its tracked commit through
+   P6b's projection, and a renamed repository followed on every provider by
+   the stable repository ID its events carry.
 4. Feedback: `vcs.report_check` with individual and aggregated checks,
-   check actions (Preview and Deploy), `Comments.Upsert` with the hidden
-   marker, GitHub Deployments. Installation tokens per run for source
-   access. Records DV-047.
+   check actions (Preview and Deploy) as GitHub check-run buttons and as
+   pull request comment commands on every other provider, `Comments.Upsert`
+   with the hidden marker, GitHub Deployments and GitLab environments.
+   Records DV-047.
 5. Features: `vcs_webhooks.feature` and `vcs_feedback.feature` (`@vcs`,
-   Gitea for real webhooks and statuses, the GitHub fake for GitHub-only
-   shapes).
+   Gitea for real webhooks and statuses, each provider's fake for its own
+   shapes, recorded payloads driving a run and a check on every provider),
+   and their `@vcs-cloud` scenarios against P12's lab.
 
 **Exit criteria**
-- A signed push creates one tracked run; a bad signature answers `401` and
-  stores nothing; a duplicate delivery creates nothing; a replica stopped
-  after acknowledging leaves the run to another.
-- The GitHub operations of the VCS Integrations tag meet decision 0016's
-  evidence rule.
-- Captures C72, C73, C79 and C80 replay once recorded.
+- On every provider, a signed push creates one tracked run; a bad signature
+  or secret answers `401` and stores nothing; a duplicate delivery creates
+  nothing; a replica stopped after acknowledging leaves the run to another.
+- A pull request comment command starts a proposed or tracked run on every
+  provider but GitHub, as GitHub's check action does.
+- VCS Integrations meets decision 0016's evidence rule.
+- Captures C72 to C76, C79 and C80 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P13: Policy engine and workflow policies
 
 Decisions: [0009](../research/decisions/0009-policy-engine-opa.md), [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0012](../research/decisions/0012-vcs-integration-model.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
 
-**Depends on:** P12.
+**Depends on:** P12b.
 
 Embedded OPA evaluates plan, approval, push and trigger policies at the run's
 state points, with receipts committed in the transition they justify.
@@ -2310,7 +2397,7 @@ The Flows engine (P18c) adds its own consumer of the same fan-out.
    `managedUserGroupIntegration`, `managedUserGroupIntegrationCreate`,
    `managedUserGroupIntegrationUpdate`,
    `managedUserGroupIntegrationDelete`. Pull request comments from
-   notification policy `pull_request` rules through P12's `Comments`.
+   notification policy `pull_request` rules through P12b's `Comments`.
 6. Notification text: every string a notification policy returns, and
    every default message, is a text template over `event` and
    `logs(phase)` ([0024](../research/decisions/0024-expression-language.md)), rendered in the delivery job. Tests:
@@ -2525,51 +2612,11 @@ the Go app SDK, and Deploy blocks act on runs, templates and blueprints.
 - Captures C229, C231 to C237, C239 and C242 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
-## P19: VCS providers: GitLab, Bitbucket and Azure DevOps
-
-Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
-
-**Depends on:** P12.
-
-The remaining VCS providers, each a package of its own behind the normalised
-event, and more than one integration per provider.
-
-**Tasks**
-1. `internal/vcs/internal/adapters/gitlab` with GitLab environments:
-   `gitlabIntegrationCreate`, `gitlabIntegration`, `gitlabIntegrationUpdate`,
-   `gitlabIntegrationDelete`, `gitlabIntegrationRegenerateWebhookSecret`,
-   `gitlabIntegrationTest`, `gitlabWebhooksEndpoint`.
-2. `bitbucketcloud` and `bitbucketdc`: `bitbucketCloudIntegrationCreateV2`,
-   `bitbucketCloudIntegration`, `bitbucketCloudIntegrationUpdateV2`,
-   `bitbucketCloudIntegrationDelete`,
-   `bitbucketCloudIntegrationRegenerateWebhookSecret`,
-   `bitbucketCloudIntegrationTest`, `bitbucketCloudWebhooksEndpoint`,
-   `bitbucketDatacenterIntegrationCreate`,
-   `bitbucketDatacenterIntegration`,
-   `bitbucketDatacenterIntegrationUpdate`,
-   `bitbucketDatacenterIntegrationDelete`,
-   `bitbucketDatacenterIntegrationRegenerateWebhookSecret`,
-   `bitbucketDatacenterIntegrationTest`,
-   `bitbucketDatacenterWebhooksEndpoint`.
-3. `azuredevops`: `azureDevOpsRepoIntegrationCreate`,
-   `azureDevOpsRepoIntegration`, `azureDevOpsRepoIntegrationUpdate`,
-   `azureDevOpsRepoIntegrationDelete`, `azureDevOpsRepoIntegrationTest`,
-   `azureDevOpsWebhooksEndpoint`.
-4. Each provider's `verify_test.go`, `parse_test.go` and chi fake with
-   fault modes; space-level and multiple integrations per provider.
-   Feature: `vcs_providers.feature` (each provider's recorded payloads
-   drive a run and a check).
-
-**Exit criteria**
-- VCS Integrations meets decision 0016's evidence rule.
-- Captures C74, C75 and C76 replay once recorded.
-- `make gate` passes at 95% in total and 90% per package.
-
 ## P19b: VCS agent pools and other source providers
 
 Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0013](../research/decisions/0013-secrets-at-rest.md).
 
-**Depends on:** P19.
+**Depends on:** P12b.
 
 VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
 `BLOB`, `ORIGIN` and `INFRAWEAVE` source providers.
@@ -2677,7 +2724,7 @@ that run inside runs.
 
 Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0024](../research/decisions/0024-expression-language.md).
 
-**Depends on:** P16, P12.
+**Depends on:** P16, P12b.
 
 Single-body blueprints, templates with versions and deployments, and the
 ServiceNow and Backstage integrations that attach to them.

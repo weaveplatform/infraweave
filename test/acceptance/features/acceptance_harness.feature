@@ -30,6 +30,36 @@ Feature: Acceptance harness
     Given the shared OIDC issuer
     Then a token it mints for subject "user:alice" verifies against its JWKS
 
+  # Both examples create a repository of the same name, so whichever runs
+  # second fails if the two share one, in either order and in parallel.
+  @vcs
+  Scenario Outline: @vcs scenario <n> gets repositories of its own on the shared Gitea
+    Given a Gitea repository "infra" with the files:
+      | main.tf   | terraform {} |
+      | README.md | <n>          |
+    And the head of "main" of "infra" is kept as "seed"
+    When a commit to "main" of "infra" changing "main.tf"
+    Then the head of "main" of "infra" is its last commit
+    And the head of "main" of "infra" is kept as "pushed"
+    And the commits kept as "seed" and "pushed" differ
+
+    Examples:
+      | n      |
+      | first  |
+      | second |
+
+  @vcs
+  Scenario: A @vcs commit to a new branch leaves main where it was
+    Given a Gitea repository "infra" with the files:
+      | main.tf | terraform {} |
+    And the head of "main" of "infra" is kept as "main"
+    When a commit to "feature" of "infra" changing "main.tf"
+    Then the head of "feature" of "infra" is its last commit
+    And the head of "feature" of "infra" is kept as "feature"
+    And the commits kept as "main" and "feature" differ
+    And the head of "main" of "infra" is kept as "main again"
+    And the commits kept as "main" and "main again" are the same
+
   Scenario: Without Docker, a scenario that needs it is skipped and named
     Given the fixture features in "skip"
     When the suite runs them nested without Docker
