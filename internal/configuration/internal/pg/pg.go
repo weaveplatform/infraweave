@@ -622,6 +622,32 @@ func (s *Store) AttachedStacks(ctx context.Context, acct kernel.AccountID) ([]ke
 	return out, nil
 }
 
+// purged are the tables Purge empties of an account, in order: the rows a
+// context's delete would cascade to come first, so no one statement
+// deletes more than its batch.
+var purged = []string{"context_attachments", "config_elements", "contexts"}
+
+// Purge deletes up to batch of the deleted account acct's rows from the
+// first of its attachments, config elements and contexts that has any, in
+// one statement, and reports whether none is left. Each call commits on
+// its own unless ctx carries a transaction, so a purge stopped between
+// calls keeps what it deleted and resumes from there.
+func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {
+	for _, table := range purged {
+		tag, err := tx.Q(ctx, s.db).
+			Exec(ctx, `DELETE FROM `+table+` WHERE account_id = $1 AND id IN (
+			SELECT id FROM `+table+` WHERE account_id = $1 LIMIT $2)`, acct, batch)
+		if err != nil {
+			return false, fmt.Errorf("configuration: purge account %s's %s: %w", acct, table,
+				sql.Unavailable(err))
+		}
+		if tag.RowsAffected() > 0 {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 // DeleteStack deletes stack's attachments and elements.
 func (s *Store) DeleteStack(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error {
 	q := tx.Q(ctx, s.db)

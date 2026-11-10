@@ -21,8 +21,9 @@ import (
 //
 // ref: decision 0004
 const (
-	featuresPurge = "features.purge"
-	stacksPurge   = "stacks.purge"
+	featuresPurge      = "features.purge"
+	stacksPurge        = "stacks.purge"
+	configurationPurge = "configuration.purge"
 )
 
 // subscribePurges subscribes each domain's purge to accessapi.Deleted on
@@ -35,6 +36,9 @@ func subscribePurges(events *outbox.Outbox, d Domains) error {
 		},
 		stacksPurge: func(ctx context.Context, del accessapi.Deleted) error {
 			return d.Stacks.Purge(ctx, kernel.AccountID{ULID: del.Account})
+		},
+		configurationPurge: func(ctx context.Context, del accessapi.Deleted) error {
+			return d.Configuration.Purge(ctx, kernel.AccountID{ULID: del.Account})
 		},
 	} {
 		if err := events.Subscribe(accessapi.DeletedKind, consumer, purge(run)); err != nil {

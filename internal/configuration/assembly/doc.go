@@ -10,7 +10,9 @@
 // which follows each stack change with the stack's automatic attachments;
 // Surfaces declares the environment expression surface, BindExpressions
 // binds the registry internal/app builds from it, and Environment
-// resolves a stack's environment for a run.
+// resolves a stack's environment for a run; Purge deletes a deleted
+// account's contexts, config elements and attachments PurgeBatch rows at
+// a time, which internal/app runs for each accessapi.Deleted.
 //
 // # Input and output
 //

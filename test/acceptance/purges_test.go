@@ -20,19 +20,24 @@ type purgeSteps struct {
 }
 
 func (p *purgeSteps) register(sc *godog.ScenarioContext) {
-	sc.Step(`^the account "([a-z0-9-]+)" holds a stack and an account limit$`, p.holds)
 	sc.Step(
-		`^no stack or limit of the account "([a-z0-9-]+)" remains, and its organization's entitlement does$`,
+		`^the account "([a-z0-9-]+)" holds a stack, a context with elements attached to it, and an account limit$`,
+		p.holds,
+	)
+	sc.Step(
+		`^no stack, context or limit of the account "([a-z0-9-]+)" remains, and its organization's entitlement does$`,
 		p.accountPurged,
 	)
 	sc.Step(
-		`^no stack, limit or entitlement of the account "([a-z0-9-]+)" or its organization remains$`,
+		`^no stack, context, limit or entitlement of the account "([a-z0-9-]+)" or its organization remains$`,
 		p.organizationPurged,
 	)
 }
 
-// holds writes a stack and a seats limit of the account slug names, as
-// the stacks and features domains would, and records its IDs.
+// holds writes a stack, a context with an element attached to the stack,
+// an element of the stack's own and a seats limit of the account slug
+// names, as the stacks, configuration and features domains would, and
+// records its IDs.
 func (p *purgeSteps) holds(ctx context.Context, slug string) error {
 	out, err := p.s.query(ctx, `SELECT organization_id || ' ' || id FROM accounts WHERE slug = `+
 		literal(slug))
@@ -49,22 +54,43 @@ func (p *purgeSteps) holds(ctx context.Context, slug string) error {
 			vendor)
 		VALUES ('%[2]s', gen_random_uuid(), 'infra', gen_random_uuid(), 'Infra', 'infra', 'main',
 			'GITHUB', 'terraform');
+		INSERT INTO contexts (account_id, id, slug, space_id, name)
+		VALUES ('%[2]s', gen_random_uuid(), 'shared', gen_random_uuid(), 'Shared');
+		INSERT INTO config_elements (account_id, id, context_id, stack_id, element, file_mount,
+			value_sealed, checksum, write_only)
+		SELECT c.account_id, gen_random_uuid(), c.id, NULL, 'A', false, '\x00'::bytea, '', false
+			FROM contexts c WHERE c.account_id = '%[2]s'
+		UNION ALL
+		SELECT s.account_id, gen_random_uuid(), NULL, s.id, 'B', false, '\x00'::bytea, '', false
+			FROM stacks s WHERE s.account_id = '%[2]s';
+		INSERT INTO context_attachments (account_id, id, context_id, stack_id)
+		SELECT c.account_id, gen_random_uuid(), c.id, s.id
+			FROM contexts c JOIN stacks s ON s.account_id = c.account_id
+			WHERE c.account_id = '%[2]s';
 		INSERT INTO account_limits (organization_id, account_id, limit_name, value)
 		VALUES ('%[1]s', '%[2]s', 'seats', 1);`, ids[0], ids[1]))
 	return err
 }
 
+// held counts what remains of the account acct in the stacks and
+// configuration domains, and of its limits.
+func held(acct string) string {
+	return fmt.Sprintf(`(SELECT count(*) FROM stacks WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM contexts WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM config_elements WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM context_attachments WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM account_limits WHERE account_id = '%[1]s')`, acct)
+}
+
 // accountPurged waits for the purges of a deleted account to remove its
-// stack and limit, and checks that they left its organization's
-// entitlement.
+// stack, context, elements, attachment and limit, and checks that they
+// left its organization's entitlement.
 func (p *purgeSteps) accountPurged(ctx context.Context, slug string) error {
 	ids, err := p.ids(slug)
 	if err != nil {
 		return err
 	}
-	if err := p.until(ctx, slug, fmt.Sprintf(`SELECT
-		(SELECT count(*) FROM stacks WHERE account_id = '%[1]s')
-		+ (SELECT count(*) FROM account_limits WHERE account_id = '%[1]s')`, ids[1])); err != nil {
+	if err := p.until(ctx, slug, "SELECT "+held(ids[1])); err != nil {
 		return err
 	}
 	n, err := p.count(ctx, fmt.Sprintf(
@@ -76,17 +102,15 @@ func (p *purgeSteps) accountPurged(ctx context.Context, slug string) error {
 }
 
 // organizationPurged waits for the purges of a deleted organization to
-// remove its account's stack and limit and the organization's entitlement.
+// remove what its account holds and the organization's entitlement.
 func (p *purgeSteps) organizationPurged(ctx context.Context, slug string) error {
 	ids, err := p.ids(slug)
 	if err != nil {
 		return err
 	}
-	return p.until(ctx, slug, fmt.Sprintf(`SELECT
-		(SELECT count(*) FROM stacks WHERE account_id = '%[2]s')
-		+ (SELECT count(*) FROM account_limits WHERE account_id = '%[2]s')
-		+ (SELECT count(*) FROM organization_entitlements WHERE organization_id = '%[1]s')`,
-		ids[0], ids[1]))
+	return p.until(ctx, slug, fmt.Sprintf(`SELECT %s
+		+ (SELECT count(*) FROM organization_entitlements WHERE organization_id = '%s')`,
+		held(ids[1]), ids[0]))
 }
 
 func (p *purgeSteps) ids(slug string) ([2]string, error) {
