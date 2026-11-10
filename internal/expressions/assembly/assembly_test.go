@@ -1,10 +1,32 @@
 package assembly
 
-import "testing"
+import (
+	"errors"
+	"reflect"
+	"testing"
 
-// TestUnitDomain checks that the domain's partial serves no operation yet.
+	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
+	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+)
+
+// TestUnitDomain checks that the domain's partial serves over the
+// registry it is given, which declares no surface here, and that a nil
+// domain's is the zero partial.
 func TestUnitDomain(t *testing.T) {
-	if New().API() != (ExpressionsAPI{}) {
-		t.Error("API serves an operation")
+	r, err := expr.NewRegistry(expr.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{})
+	_, err = New(r).API().ExpressionCheck(ctx, api.ExpressionCheckRequestObject{
+		Body: &api.ExpressionCheckRequest{Surface: "environment", Form: "expression", Source: "1"},
+	})
+	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
+		t.Errorf("a surface the registry lacks = %v", err)
+	}
+	var none *Domain
+	if !reflect.ValueOf(none.API()).IsZero() {
+		t.Error("a nil domain's partial is not the zero one")
 	}
 }

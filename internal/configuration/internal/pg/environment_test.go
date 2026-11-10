@@ -10,6 +10,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
+	"github.com/weaveplatform/infraweave/internal/platform/mask"
 )
 
 // TestAccResolve resolves a stack's environment across its own elements,
@@ -181,7 +182,8 @@ func TestAccTemplates(t *testing.T) {
 }
 
 // TestAccSurface describes a stack as the environment surface's context to
-// a caller who reads its space, and checks a source against it.
+// a caller who reads its space, a write-only value masked and env closed
+// to the stack's variables, and checks a source against it.
 func TestAccSurface(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
@@ -201,7 +203,7 @@ func TestAccSurface(t *testing.T) {
 		t.Fatal(err)
 	}
 	if want := map[string]any{
-		"env": map[string]any{"REGION": "eu", "TOKEN": ""},
+		"env": map[string]any{"REGION": "eu", "TOKEN": mask.Replacement},
 		"stack": map[string]any{
 			"id": "web", "name": "Web", "space": "app", "labels": []string{"prod"},
 			"repository": "web", "branch": "main", "projectRoot": "",
@@ -209,24 +211,31 @@ func TestAccSurface(t *testing.T) {
 	}; !reflect.DeepEqual(got.Sample, want) {
 		t.Errorf("sample %v, want %v", got.Sample, want)
 	}
+	if want := map[string][]string{"env": {"REGION", "TOKEN"}}; !reflect.DeepEqual(got.Keys, want) {
+		t.Errorf("keys %v, want %v", got.Keys, want)
+	}
 	r, err := expr.NewRegistry(expr.Defaults(), s)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for src, ok := range map[string]bool{
-		"${{ env.REGION + env.TOKEN }}": true, "${{ stack.nmae }}": false, "${{ stack.labels[0] }}": true,
+		"${{ env.REGION + env.TOKEN }}": true, "${{ stack.nmae }}": false,
+		"${{ stack.labels[0] }}": true, "${{ env.REGOIN }}": false,
 	} {
 		chk, err := r.Check(expr.Request{
-			Surface: s.Name, Variables: got.Variables, Form: expr.FormTemplate, Source: src,
+			Surface: s.Name, Variables: got.Variables, Keys: got.Keys,
+			Form: expr.FormTemplate, Source: src,
 		})
 		if err != nil || chk.OK() != ok {
 			t.Errorf("%s = %+v, %v", src, chk, err)
 		}
 	}
-	if _, err := s.Env(ctx, f.reader, "db"); !missing(err, "stack") {
+	if _, err := s.Env(ctx, f.reader, "db"); !missing(err, "stack") ||
+		!errors.Is(err, expr.ErrNoContext) {
 		t.Errorf("a stack in a space the reader cannot read = %v", err)
 	}
-	if _, err := s.Env(ctx, f.admin, "gone"); !missing(err, "stack") {
+	if _, err := s.Env(ctx, f.admin, "gone"); !missing(err, "stack") ||
+		!errors.Is(err, expr.ErrNoContext) {
 		t.Errorf("a missing stack = %v", err)
 	}
 	f.spaces.err = errors.New("down")

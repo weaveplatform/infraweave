@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
+	"github.com/weaveplatform/infraweave/internal/platform/mask"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -72,13 +74,17 @@ func (s *Service) Surface() expr.Surface {
 
 // surfaceContext describes the stack ref as the surface's context, for
 // p, who must read its space: sample values of the variables it resolves
-// to, a write-only variable's left empty, and of the stack.
+// to, a write-only variable's masked as a run's log masks it, and of the
+// stack, env closed to the names it resolves to. A stack p cannot read is expr.ErrNoContext, as a missing one is.
 func (s *Service) surfaceContext(
 	ctx context.Context,
 	p kernel.Principal,
 	ref string,
 ) (expr.Context, error) {
 	st, err := s.stack(ctx, p.AccountID, ref)
+	if _, ok := errors.AsType[*Missing](err); ok {
+		return expr.Context{}, fmt.Errorf("%w: %w", expr.ErrNoContext, err)
+	}
 	if err != nil {
 		return expr.Context{}, err
 	}
@@ -87,7 +93,8 @@ func (s *Service) surfaceContext(
 	case err != nil:
 		return expr.Context{}, err //nolint:wrapcheck // the snapshot's read names itself
 	case !read:
-		return expr.Context{}, &Missing{Kind: "stack", ID: ref}
+		return expr.Context{}, fmt.Errorf("%w: %w", expr.ErrNoContext,
+			&Missing{Kind: "stack", ID: ref})
 	}
 	sources, settings, err := s.sources(ctx, p.AccountID, st.ID, false)
 	if err != nil {
@@ -98,7 +105,7 @@ func (s *Service) surfaceContext(
 		if e.FileMount {
 			continue
 		}
-		env[e.Name] = ""
+		env[e.Name] = mask.Replacement
 		if !e.WriteOnly && e.Value != nil {
 			env[e.Name] = *e.Value
 		}
@@ -120,6 +127,7 @@ func (s *Service) surfaceContext(
 		stack["projectRoot"] = *settings.ProjectRoot
 	}
 	return expr.Context{
+		Keys:   map[string][]string{envVariable: slices.Sorted(maps.Keys(env))},
 		Sample: map[string]any{envVariable: env, stackVariable: stack},
 	}, nil
 }

@@ -278,6 +278,18 @@ func (UnimplementedStrict) EvaluateFeatureFlags(context.Context, EvaluateFeature
 	return nil, &problem.NotImplementedError{OperationID: "evaluateFeatureFlags", Route: "GET /evaluate-feature-flags"}
 }
 
+func (UnimplementedStrict) ExpressionCheck(context.Context, ExpressionCheckRequestObject) (ExpressionCheckResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "expressionCheck", Route: "POST /expressions/check"}
+}
+
+func (UnimplementedStrict) ExpressionComplete(context.Context, ExpressionCompleteRequestObject) (ExpressionCompleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "expressionComplete", Route: "POST /expressions/complete"}
+}
+
+func (UnimplementedStrict) ExpressionEvaluate(context.Context, ExpressionEvaluateRequestObject) (ExpressionEvaluateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "expressionEvaluate", Route: "POST /expressions/evaluate"}
+}
+
 func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
 }

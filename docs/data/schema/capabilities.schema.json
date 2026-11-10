@@ -112,11 +112,11 @@
           "id": {"type": "string"},
           "kind": {"enum": ["tag", "operation", "resource", "data-source", "tier-feature"]},
           "product": {
-            "description": "The Spacelift product whose reference or provider the row comes from; docscheck holds each reference's tags to its own product's tag records.",
-            "enum": ["deploy", "flows"]
+            "description": "The Spacelift product whose reference or provider the row comes from, or infraweave for a tag of infraweave's own whose every operation carries x-upstream: none, outside the parity surface; docscheck holds each reference's tags to its own product's tag records.",
+            "enum": ["deploy", "flows", "infraweave"]
           },
           "ops": {
-            "description": "Tags: the operations the reference files under the tag.",
+            "description": "Tags: the operations the reference files under the tag, or for infraweave's own tag the served document does.",
             "type": "integer",
             "minimum": 1
           },
@@ -130,13 +130,24 @@
         },
         "allOf": [
           {
-            "if": {"properties": {"kind": {"const": "tag"}}},
+            "if": {"properties": {"kind": {"const": "tag"}, "product": {"enum": ["deploy", "flows"]}}},
             "then": {
               "required": ["ops", "spacelift"],
               "properties": {
                 "id": {"pattern": "^tag:"},
                 "spacelift": {"required": ["inventory", "owningReport", "plan", "tierFeatures"]},
                 "infraweave": {"required": ["feature", "lowestTier", "phase", "state"]}
+              }
+            }
+          },
+          {
+            "if": {"properties": {"kind": {"const": "tag"}, "product": {"const": "infraweave"}}},
+            "then": {
+              "required": ["ops"],
+              "not": {"required": ["spacelift"]},
+              "properties": {
+                "id": {"pattern": "^tag:"},
+                "infraweave": {"required": ["feature", "lowestTier", "phase", "state", "notes"]}
               }
             }
           },

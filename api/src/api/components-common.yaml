@@ -120,6 +120,7 @@ components:
         A place in source text. Lines and columns are counted from 1, and a
         column counts Unicode code points.
       type: object
+      additionalProperties: false
       required: [line, column]
       properties:
         line:

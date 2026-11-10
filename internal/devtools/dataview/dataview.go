@@ -59,15 +59,21 @@ type feature struct {
 type capability struct {
 	ID         string `json:"id"`
 	Kind       string `json:"kind"`
+	Product    string `json:"product"`
 	Infraweave struct {
 		Phase    string `json:"phase"`
 		APIPhase string `json:"apiPhase"`
 	} `json:"infraweave"`
 }
 
+// ownProduct is the product of a capability of infraweave's own, which no
+// reference lists.
+const ownProduct = "infraweave"
+
 // summaryKinds are the capability kinds the phase summary counts, in its
 // column order. Untagged operations are left out: the reference counts them
-// under no tag, and the summary counts the reference's rows.
+// under no tag, and the summary counts the reference's rows, so a tag of
+// infraweave's own is left out too.
 var summaryKinds = []struct{ kind, heading string }{
 	{"tag", "Tags"},
 	{"resource", "Resources (API)"},
@@ -234,7 +240,7 @@ func summary(b *bytes.Buffer, all []capability) error {
 			summaryKinds,
 			func(k struct{ kind, heading string }) bool { return k.kind == c.Kind },
 		)
-		if col < 0 {
+		if col < 0 || c.Product == ownProduct {
 			continue
 		}
 		p := cmp.Or(c.Infraweave.Phase, c.Infraweave.APIPhase)

@@ -22,6 +22,7 @@ const capabilities = `{"records": [
   {"id": "tag:Stacks", "kind": "tag", "infraweave": {"phase": "P5"}},
   {"id": "tag:Runs", "kind": "tag", "infraweave": {"phase": "P10"}},
   {"id": "tag:Audit", "kind": "tag", "infraweave": {"phase": "P3b"}},
+  {"id": "tag:Own", "kind": "tag", "product": "infraweave", "infraweave": {"phase": "P5"}},
   {"id": "operation:x", "kind": "operation", "infraweave": {"phase": "P23"}},
   {"id": "resource:spacelift_stack", "kind": "resource", "infraweave": {"apiPhase": "P5"}},
   {"id": "resource:spacelift_aws_role", "kind": "resource", "infraweave": {"apiPhase": "none"}},

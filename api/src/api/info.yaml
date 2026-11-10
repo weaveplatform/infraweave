@@ -23,6 +23,11 @@ tags:
       attached to stacks by priority so configuration is shared rather than
       copied. Every value is sealed at rest, and a write-only one is
       readable only by runs.
+  - name: Expressions
+    description: >-
+      The editor endpoints for the expressions users write: check a source
+      against a surface, complete it at a cursor and evaluate it against
+      sample values, with every secret masked.
   - name: Runs
     description: >-
       The run lifecycle: trigger, confirm, discard, cancel, stop and retry

@@ -275,6 +275,19 @@
       }
     },
     {
+      "id": "tag:Expressions",
+      "kind": "tag",
+      "product": "infraweave",
+      "ops": 3,
+      "infraweave": {
+        "feature": "`expressions`",
+        "lowestTier": "Free",
+        "phase": "P6",
+        "state": "implemented",
+        "notes": "infraweave's own: check, complete and evaluate an expression or a template against a surface and one of its contexts, starting with `environment`, whose context is a stack read by whoever reads its space; every secret is evaluated masked"
+      }
+    },
+    {
       "id": "tag:External Integrations",
       "kind": "tag",
       "product": "deploy",
