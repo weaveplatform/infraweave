@@ -30,8 +30,11 @@ func (s stacks) Settings(
 // that a nil domain's partial is the zero one.
 func TestUnitDomain(t *testing.T) {
 	for provider, pointer := range map[string]string{"GIT": "/repositoryURL", "GITHUB": "/provider"} {
-		d := New(Deps{Stacks: stacks{provider: provider}})
-		_, err := d.Sources().Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
+		d, err := New(Deps{Stacks: stacks{provider: provider}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = d.Sources().Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
 		if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Pointer != pointer {
 			t.Errorf("Resolve on %s = %v", provider, err)
 		}

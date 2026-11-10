@@ -6,7 +6,8 @@
 // the keyring, with their settings, beside the access domain's
 // Authenticator and OperatorAuthenticator, and the expression registry it
 // builds from the domains' surfaces under the expressions settings and
-// binds back into the configuration domain;
+// binds back into the configuration domain, and the vcs domain's
+// resolution of a stack's refs, which it binds back into the stacks domain;
 // apiServer embeds each domain's partial strict server ahead of
 // api.UnimplementedStrict.
 //
@@ -64,8 +65,8 @@
 // domain appends to and subscribes on Run's one outbox, where
 // subscribePurges subscribes the features, stacks and configuration purges to
 // accessapi.Deleted, since features cannot read access' event itself, and
-// the configuration domain subscribes its automatic attachments to
-// stacksapi.Changed. It stops the ticker, then
+// the configuration domain subscribes its automatic attachments, and the
+// vcs domain its tracking of a stack's commit, to stacksapi.Changed. It stops the ticker, then
 // the workers, after the HTTP drain. MessageQueueStats is the
 // installation's own operation, which no domain owns, as are the operator
 // API's dead-job operations and its data key rotation, the same rotation

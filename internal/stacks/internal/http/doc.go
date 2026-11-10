@@ -1,7 +1,8 @@
 // Package http is the stacks domain's HTTP adapter: Server, the domain's
 // partial of the API's strict server, which serves the Stacks operations
 // that create, read, list, search, change, patch, reslug, disable,
-// enable, lock, unlock, star and delete a stack, and suggest the values a
+// enable, lock, unlock, star and delete a stack, sync its tracked commit
+// to its branch's head or set it to a commit, and suggest the values a
 // stack search filters by. A read, change or patch answers the
 // stack's ETag; a change, patch or delete passes its If-Match to the
 // service. A patch merges its body into the stack's settings as a PUT
@@ -12,7 +13,8 @@
 // there, its attached contexts and config elements from the
 // stacksapi.StackConfiguration BindConfiguration binds, read once for a
 // whole page and empty until one is bound, with a write-only value left
-// out, and the members later phases own at their empty values. The
+// out, its branch head and tracked commit as the vcs domain resolved
+// them, and the members later phases own at their empty values. The
 // service's errors answer as problems: a missing action 403 naming it, a
 // stack locked by another 409 resource-locked naming the holder, a taken
 // slug 409 already-exists, a missing stack or space 404, and a stale

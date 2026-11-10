@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 )
 
@@ -60,6 +61,11 @@ type Config struct {
 	//
 	// ref: decision 0011
 	Vendors vendorsassembly.Settings `mapstructure:"vendors"`
+	// VCS is the vcs domain's: the certificate authorities trusted for a
+	// repository's host.
+	//
+	// ref: decision 0012
+	VCS vcsassembly.Settings `mapstructure:"vcs"`
 }
 
 // Server holds the server settings: the listeners under server.listen,

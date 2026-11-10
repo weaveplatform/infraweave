@@ -203,6 +203,14 @@ func (s *stacks) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) err
 	return nil
 }
 
+// SetTracked is never reached: the configuration domain does not track
+// commits.
+func (*stacks) SetTracked(
+	context.Context, kernel.AccountID, kernel.ULID, *stacksapi.Commit, *stacksapi.Commit, string,
+) error {
+	return nil
+}
+
 func (s *stacks) Settings(
 	_ context.Context,
 	_ kernel.AccountID,

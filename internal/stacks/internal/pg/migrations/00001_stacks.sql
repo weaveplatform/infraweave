@@ -10,7 +10,11 @@
 -- vendor is the vendorConfig member the stack sets and vendor_config that
 -- member's settings, as the iac vendor checked them. lock_holder is the
 -- principal's caller key, which decides who may unlock without force, and
--- locked_by the name the API shows.
+-- locked_by the name the API shows. tracked_branch_head and tracked_commit
+-- are the branch's head and the commit runs use, each a stacksapi.Commit as
+-- JSON, which the vcs domain writes; tracked_commit_set_by names who set
+-- the tracked commit. Writing them changes no version, since no request
+-- body carries them.
 CREATE TABLE stacks (
     account_id                       uuid        NOT NULL,
     id                               uuid        NOT NULL,
@@ -46,6 +50,9 @@ CREATE TABLE stacks (
     lock_holder                      text,
     locked_by                        text,
     lock_note                        text,
+    tracked_branch_head              jsonb,
+    tracked_commit                   jsonb,
+    tracked_commit_set_by            text        NOT NULL DEFAULT '',
     created_at                       timestamptz NOT NULL DEFAULT now(),
     version                          bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),
