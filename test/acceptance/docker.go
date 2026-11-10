@@ -132,7 +132,7 @@ type Dependencies struct {
 	// starts migrated. Nil leaves the template empty.
 	Migrate func(ctx context.Context, dsn string) error
 
-	pgOnce, storeOnce, oidcOnce, vaultOnce sync.Once
+	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce sync.Once
 
 	pg       *Database
 	pgErr    error
@@ -143,6 +143,9 @@ type Dependencies struct {
 	oidcErr  error
 	vault    *Vault
 	vaultErr error
+	gitea    *Gitea
+	giteaErr error
+	repos    atomic.Int64
 	keys     atomic.Int64
 
 	mu      sync.Mutex

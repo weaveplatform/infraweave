@@ -325,6 +325,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	(&observeSteps{w: w}).register(sc)
 	(&startupSteps{w: w}).register(sc)
 	(&harnessSteps{w: w}).register(sc)
+	(&giteaSteps{w: w}).register(sc)
 }
 
 var nonWord = regexp.MustCompile(`[^a-z0-9]+`)
