@@ -11,6 +11,11 @@ Feature: Managed users and groups
   latest sign-in reported the group's name. The role bindings and access
   rules an input carries are stored as role bindings, and one naming a role
   or space the account lacks answers 422 validation-failed at its pointer.
+  Reading users and groups needs MANAGED_USER_READ and
+  MANAGED_USER_GROUP_READ, which space-admin on any space holds and
+  space-writer on the top space does not; changing them needs the
+  change's action on the top space. The member key,
+  01KACME000000000000000000A, holds only the bindings a scenario gives it.
   ref: decision 0007
 
   Background:
@@ -138,3 +143,55 @@ Feature: Managed users and groups
     When token "h" sends "POST /api/v1/managed-users" with '{"username":"carol","roleBindings":[]}' through A
     Then it answers a 403 problem "limit-reached"
     And the problem names the limit "seats" of the organization at 3
+
+  @op:managedUsers @op:managedUser @op:managedUserUpdate @op:managedUserGroups @op:managedUserGroup @op:managedUserGroupCreateV2 @op:managedUserGroupUpdateV2 @op:managedUserGroupDelete @op:managedUserGroupManagedUsers @op:availableUserGroups @case:denial
+  Scenario: A key that writes in the top space but administers no space is refused the account's users and groups, which an admin of a space below the top reads
+    Given the member key is exchanged through A for token "m"
+    And token "h" sends "POST /api/v1/managed-users" with '{"username":"bob","roleBindings":[]}' through A
+    And the answer's id names "bob"
+    And token "h" sends "POST /api/v1/managed-user-groups" with '{"groupName":"ops","roleBindings":[]}' through A
+    And the answer's id names "ops"
+    And token "h" sends "POST /api/v1/api-key-role-bindings" with '{"apiKeyID":"01KACME000000000000000000A","roleID":"space-writer","spaceID":"acme"}' through A
+    And the answer's id names "writer"
+    When token "m" sends "GET /api/v1/managed-users" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_READ"'
+    When token "m" sends "GET /api/v1/managed-users/{bob}" through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "PUT /api/v1/managed-users/{bob}" with '{"accessRules":[],"slackMemberID":"U123"}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_UPDATE"'
+    When token "m" sends "GET /api/v1/managed-user-groups" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_GROUP_READ"'
+    When token "m" sends "GET /api/v1/managed-user-groups/{ops}" through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "GET /api/v1/managed-user-groups/{ops}/managed-users" through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "GET /api/v1/available-user-groups" through A
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "POST /api/v1/managed-user-groups" with '{"groupName":"qa","roleBindings":[]}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_GROUP_CREATE"'
+    When token "m" sends "PUT /api/v1/managed-user-groups/{ops}" with '{"description":"Mine"}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_GROUP_UPDATE"'
+    When token "m" sends "DELETE /api/v1/managed-user-groups/{ops}" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_GROUP_DELETE"'
+    When token "h" sends "DELETE /api/v1/api-key-role-bindings/{writer}" through A
+    And token "h" sends "POST /api/v1/api-key-role-bindings" with '{"apiKeyID":"01KACME000000000000000000A","roleID":"space-admin","spaceID":"legacy"}' through A
+    And token "m" sends "GET /api/v1/managed-users" through A
+    Then the answer lists the managed users "bob"
+    When token "m" sends "GET /api/v1/managed-user-groups/{ops}" through A
+    Then the answer's groupName is '"ops"'
+    When token "m" sends "GET /api/v1/managed-user-groups/{ops}/managed-users" through A
+    Then it answers 200
+    When token "m" sends "GET /api/v1/available-user-groups" through A
+    Then it answers 200
+    When token "m" sends "PUT /api/v1/managed-users/{bob}" with '{"accessRules":[],"slackMemberID":"U123"}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_UPDATE"'
+    When token "m" sends "DELETE /api/v1/managed-user-groups/{ops}" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"MANAGED_USER_GROUP_DELETE"'
