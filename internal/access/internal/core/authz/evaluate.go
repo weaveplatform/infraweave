@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"bytes"
 	"slices"
 	"strings"
 
@@ -42,10 +43,12 @@ const (
 // Grant is one role reaching a space, for the grant views. Binding is
 // zero for a stack's implicit read of its home space, and Role is
 // space-reader for that and for every inherited grant, whatever role the
-// binding names.
+// binding names. Origin is whether the binding is a role binding or an
+// access rule's.
 type Grant struct {
 	Source  Source
 	Binding kernel.ULID
+	Origin  binding.Origin
 	Actor   binding.ActorKind
 	ActorID kernel.ULID
 	Space   kernel.ULID
@@ -154,22 +157,69 @@ func (s *Snapshot) Explain(w Who, space kernel.ULID) []Grant {
 	}
 	var out []Grant
 	for _, b := range s.bound(w) {
-		r := s.roleOf(b)
-		g := Grant{
-			Binding: b.ID, Actor: b.ActorKind, ActorID: b.ActorID, Space: b.SpaceID,
-			RoleID: r.id, Role: r.slug, actions: r.actions,
+		if g, ok := s.grant(b, space); ok {
+			out = append(out, g)
 		}
-		switch {
-		case b.SpaceID == space:
-			g.Source = Resident
-		case s.ancestor(b.SpaceID, space):
-			g.Source = Propagated
-		case s.ancestor(space, b.SpaceID) && s.inheritedBy(b.SpaceID, space):
-			g.Source, g.RoleID, g.Role, g.actions = Inherited, s.reader.id, s.reader.slug, s.reader.actions
-		default:
-			continue
+	}
+	return out
+}
+
+// grant is b as it reaches space, false when it does not.
+func (s *Snapshot) grant(b binding.Binding, space kernel.ULID) (Grant, bool) {
+	r := s.roleOf(b)
+	g := Grant{
+		Binding: b.ID, Origin: b.Origin, Actor: b.ActorKind, ActorID: b.ActorID, Space: b.SpaceID,
+		RoleID: r.id, Role: r.slug, actions: r.actions,
+	}
+	switch {
+	case b.SpaceID == space:
+		g.Source = Resident
+	case s.ancestor(b.SpaceID, space):
+		g.Source = Propagated
+	case s.ancestor(space, b.SpaceID) && s.inheritedBy(b.SpaceID, space):
+		g.Source, g.RoleID, g.Role, g.actions = Inherited, s.reader.id, s.reader.slug, s.reader.actions
+	default:
+		return Grant{}, false
+	}
+	return g, true
+}
+
+// Holder is an actor whose own bindings reach a space, with the grants
+// they give there in binding order. Name is a group's, which a session's
+// teams and a user's latest sign-in match.
+type Holder struct {
+	Actor  binding.ActorKind
+	ID     kernel.ULID
+	Name   string
+	Grants []Grant
+}
+
+// Holders is each actor of the kinds whose own bindings reach space, by
+// kind in the order asked and then by ID. A user's or a key's grants
+// through the groups its teams name are Explain's, which needs its teams.
+func (s *Snapshot) Holders(space kernel.ULID, kinds ...binding.ActorKind) []Holder {
+	if _, ok := s.parent[space]; !ok {
+		return nil
+	}
+	var out []Holder
+	for _, kind := range kinds {
+		var held []Holder
+		for a, bs := range s.bindings {
+			if a.kind != kind {
+				continue
+			}
+			h := Holder{Actor: a.kind, ID: a.id, Name: s.names[a.id]}
+			for _, b := range bs {
+				if g, ok := s.grant(b, space); ok {
+					h.Grants = append(h.Grants, g)
+				}
+			}
+			if len(h.Grants) > 0 {
+				held = append(held, h)
+			}
 		}
-		out = append(out, g)
+		slices.SortFunc(held, func(a, b Holder) int { return bytes.Compare(a.ID[:], b.ID[:]) })
+		out = append(out, held...)
 	}
 	return out
 }

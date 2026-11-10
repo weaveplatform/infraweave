@@ -1168,6 +1168,15 @@
       "why": "An infraweave account is not created for a GitHub owner: it belongs to an organization, which `ORG` describes, and no account is one person's",
       "impact": "A client that branches on `USER` never takes that branch",
       "source": "[0007 Tenancy](../research/decisions/0007-authorization-spaces-and-roles.md#tenancy)"
+    },
+    {
+      "id": "DV-116",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "The user, group and API key grant views answer grants bound on the space or an ancestor, with `propagated`; `userSessionsWithAccessToSpace` and `apiKeySessionsWithAccessToSpace` answer an empty page under `MANAGED_USERS`",
+      "infraweave": "Each grant also answers `source` (`RESIDENT`, `PROPAGATED` or `INHERITED`) and `bindingID`, and a grant bound on an inheriting descendant is listed as `INHERITED` with `space-reader`; an API key's grants include those of the groups its teams name. Under `MANAGED_USERS` the session views list the live sessions whose bindings reach the space, each grant's `origin` `ACCESS_LEVEL` for an access rule's binding and `ASSIGNED_ROLE` for a role binding",
+      "why": "The views answer from the evaluator that decides requests, which reads a grant inherited from a descendant and a key's teams, so a view that left them out would disagree with the decision",
+      "impact": "A client that reads only `propagated` sees an inherited grant as bound on another space, which `source` tells apart; the session views answer rows where Spacelift answers none",
+      "source": "[0007 Evaluation](../research/decisions/0007-authorization-spaces-and-roles.md#evaluation)"
     }
   ]
 }

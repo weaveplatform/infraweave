@@ -19,15 +19,15 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 )
 
-// holder is a SpaceGuard whose rows name every space and whose stacks
+// squatter is a SpaceGuard whose rows name every space and whose stacks
 // reach one entity each move would cut off.
-type holder struct{}
+type squatter struct{}
 
-func (holder) SpaceInUse(context.Context, kernel.AccountID, kernel.ULID) (bool, error) {
+func (squatter) SpaceInUse(context.Context, kernel.AccountID, kernel.ULID) (bool, error) {
 	return true, nil
 }
 
-func (holder) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.LostReach, error) {
+func (squatter) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.LostReach, error) {
 	return []accessapi.LostReach{{Stack: "web", Entity: "context shared"}}, nil
 }
 
@@ -120,7 +120,7 @@ func claimed(t *testing.T, d *Domain, db *sql.DB, a account.Account) kernel.Prin
 func TestAccGuardSpaces(t *testing.T) {
 	ctx := t.Context()
 	d, _, a, dev := devSpace(t)
-	d.GuardSpaces(holder{})
+	d.GuardSpaces(squatter{})
 	_, deleted := d.spaces.Delete(ctx, admin(a.ID), dev.Slug, kernel.Expect{})
 	_, moved := d.spaces.Update(ctx, admin(a.ID), dev.Slug, space.LegacySlug, kernel.Expect{}, dev)
 	for name, err := range map[string]error{"delete": deleted, "move": moved} {

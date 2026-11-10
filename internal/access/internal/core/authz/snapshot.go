@@ -73,6 +73,7 @@ type Snapshot struct {
 	reader   grantRole
 	bindings map[actor][]binding.Binding
 	groups   map[string]kernel.ULID
+	names    map[kernel.ULID]string
 }
 
 // holds reports whether space is in the snapshot's tree.
@@ -93,6 +94,7 @@ func Build(d Data) *Snapshot {
 		roles:    map[kernel.ULID]grantRole{},
 		bindings: map[actor][]binding.Binding{},
 		groups:   map[string]kernel.ULID{},
+		names:    map[kernel.ULID]string{},
 	}
 	for _, sp := range d.Spaces {
 		s.parent[sp.ID] = sp.Parent
@@ -128,6 +130,7 @@ func Build(d Data) *Snapshot {
 	}
 	for _, g := range d.Groups {
 		s.groups[g.Name] = g.ID
+		s.names[g.ID] = g.Name
 	}
 	return s
 }

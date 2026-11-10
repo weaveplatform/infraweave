@@ -61,18 +61,29 @@ components:
       type: object
       x-graphql-type: ApiKeySessionsWithAccessToSpaceOutput
     ApiKeySpaceAccessRoleGrant:
-      description: A role grant giving an API key access to a space, either directly or via an ancestor space.
+      description: |-
+        A role grant giving an API key access to a space: bound on the space,
+        on an ancestor, or on an inheriting descendant, which grants
+        space-reader whatever role it binds. A key's teams name the groups
+        whose grants it holds too.
       properties:
+        bindingID:
+          description: The binding behind the grant.
+          type: string
         propagated:
-          description: True when the grant lives on an ancestor space rather than the queried space.
+          description: True when the grant lives on an ancestor space rather than the queried space; source tells an inherited grant from a resident one.
           type: boolean
         role:
           $ref: '#/components/schemas/RoleRef'
+        source:
+          $ref: '#/components/schemas/StackSpaceAccessGrantSource'
         space:
           $ref: '#/components/schemas/SpaceRef'
       required:
+        - bindingID
         - propagated
         - role
+        - source
         - space
       type: object
       x-graphql-type: ApiKeySpaceAccessRoleGrant
@@ -1018,16 +1029,16 @@ components:
       type: string
       x-enum-descriptions:
         ACCESS_LEVEL: |-
-          Synthesized from the highest space_admin/space_write/space_read level
-          present in the session's precomputed space access.
-        ASSIGNED_ROLE: The login policy assigned this role via its roles rule.
+          From an access level: an access rule's binding, or the highest
+          space_admin/space_write/space_read level a login policy grants.
+        ASSIGNED_ROLE: From a role binding, or a login policy's roles rule.
       x-graphql-type: SessionGrantOrigin
     SessionSpaceAccessRoleGrant:
       description: |-
-        A grant derived from a live session's precomputed space access. There is
-        no space field (always the queried space), no propagated/source field (the
-        snapshot is flattened at login), and no binding (nothing revocable except
-        the sessions themselves).
+        A role a live session holds on the queried space, once whichever of its
+        bindings give it. There is no space, propagated or source field, and no
+        binding: the grant is the session's, as the user and key views explain
+        the bindings behind it.
       properties:
         origin:
           $ref: '#/components/schemas/SessionGrantOrigin'
@@ -1636,16 +1647,23 @@ components:
         A role grant giving a group access to a space. Always a direct binding on
         the group, there is no grantedVia union like UserSpaceAccessRoleGrant.
       properties:
+        bindingID:
+          description: The binding behind the grant.
+          type: string
         propagated:
-          description: True when the grant lives on an ancestor space rather than the queried space.
+          description: True when the grant lives on an ancestor space rather than the queried space; source tells an inherited grant from a resident one.
           type: boolean
         role:
           $ref: '#/components/schemas/RoleRef'
+        source:
+          $ref: '#/components/schemas/StackSpaceAccessGrantSource'
         space:
           $ref: '#/components/schemas/SpaceRef'
       required:
+        - bindingID
         - propagated
         - role
+        - source
         - space
       type: object
       x-graphql-type: UserGroupSpaceAccessRoleGrant
@@ -1755,19 +1773,26 @@ components:
     UserSpaceAccessRoleGrant:
       description: A role grant giving a user access to a space, either directly or via a group they belong to.
       properties:
+        bindingID:
+          description: The binding behind the grant.
+          type: string
         grantedVia:
           $ref: '#/components/schemas/SpaceAccessGrantVia'
         propagated:
-          description: True when the grant lives on an ancestor space rather than the queried space.
+          description: True when the grant lives on an ancestor space rather than the queried space; source tells an inherited grant from a resident one.
           type: boolean
         role:
           $ref: '#/components/schemas/RoleRef'
+        source:
+          $ref: '#/components/schemas/StackSpaceAccessGrantSource'
         space:
           $ref: '#/components/schemas/SpaceRef'
       required:
+        - bindingID
         - grantedVia
         - propagated
         - role
+        - source
         - space
       type: object
       x-graphql-type: UserSpaceAccessRoleGrant
@@ -1965,8 +1990,9 @@ paths:
     get:
       description: |-
         Lists API keys currently holding access to a space through live
-        sessions. The login-policy counterpart of apiKeysWithAccessToSpace:
-        returns an empty page for MANAGED_USERS accounts. Requires space admin.
+        sessions: each key with a live session whose bindings, or whose
+        teams' group bindings, reach the space, with the grants they hold.
+        Requires space admin.
       operationId: apiKeySessionsWithAccessToSpace
       parameters:
         - in: query
@@ -2014,13 +2040,74 @@ paths:
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-116
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: query:space
+      x-rest-style: read
+  /api-key-sessions-with-access-to-space-suggestions:
+    get:
+      description: >-
+        The fields apiKeySessionsWithAccessToSpace filters and orders by, with the values
+        the API keys it lists hold and how many hold each, so nothing past the
+        space's holders is counted. Requires space admin.
+      operationId: apiKeySessionsWithAccessToSpaceSuggestions
+      parameters:
+        - in: query
+          name: space
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: space
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The apiKeySessionsWithAccessToSpaceSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: API Key Sessions With Access To Space Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/API Key Sessions With Access To Space Suggestions.bru
+      x-graphql:
+        field: apiKeySessionsWithAccessToSpaceSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: query:space
       x-rest-style: read
   /api-keys-with-access-to-space:
     get:
-      description: Returns API keys with RBAC access to the space, directly or via an ancestor space, searchable by name.
+      description: >-
+        Returns API keys with RBAC access to the space, directly or through
+        the groups their teams name, bound on the space, an ancestor or an
+        inheriting descendant, searchable by name.
       operationId: apiKeysWithAccessToSpace
       parameters:
         - in: query
@@ -2067,6 +2154,64 @@ paths:
         type: Query
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-116
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: query:space
+      x-rest-style: read
+  /api-keys-with-access-to-space-suggestions:
+    get:
+      description: >-
+        The fields apiKeysWithAccessToSpace filters and orders by, with the values
+        the API keys it lists hold and how many hold each, so nothing past the
+        space's holders is counted. Requires space admin.
+      operationId: apiKeysWithAccessToSpaceSuggestions
+      parameters:
+        - in: query
+          name: space
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: space
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The apiKeysWithAccessToSpaceSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: API Keys With Access To Space Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/API Keys With Access To Space Suggestions.bru
+      x-graphql:
+        field: apiKeysWithAccessToSpaceSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
       x-infraweave-feature: spaces
@@ -3141,7 +3286,9 @@ paths:
       x-rest-style: read
   /user-groups-with-access-to-space:
     get:
-      description: Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
+      description: >-
+        Returns IdP groups with RBAC access to the space, bound on the space,
+        an ancestor or an inheriting descendant, searchable by group name.
       operationId: userGroupsWithAccessToSpace
       parameters:
         - in: query
@@ -3189,6 +3336,64 @@ paths:
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-116
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: query:space
+      x-rest-style: read
+  /user-groups-with-access-to-space-suggestions:
+    get:
+      description: >-
+        The fields userGroupsWithAccessToSpace filters and orders by, with the values
+        the groups it lists hold and how many hold each, so nothing past the
+        space's holders is counted. Requires space admin.
+      operationId: userGroupsWithAccessToSpaceSuggestions
+      parameters:
+        - in: query
+          name: space
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: space
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The userGroupsWithAccessToSpaceSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: User Groups With Access To Space Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/User Groups With Access To Space Suggestions.bru
+      x-graphql:
+        field: userGroupsWithAccessToSpaceSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: query:space
@@ -3197,8 +3402,9 @@ paths:
     get:
       description: |-
         Lists the users currently holding access to a space through live
-        sessions. The login-policy counterpart of usersWithAccessToSpace:
-        returns an empty page for MANAGED_USERS accounts. Requires space admin.
+        sessions: each user with a live session whose bindings, or whose
+        teams' group bindings, reach the space, with the grants they hold.
+        Requires space admin.
       operationId: userSessionsWithAccessToSpace
       parameters:
         - in: query
@@ -3246,13 +3452,75 @@ paths:
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-116
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: query:space
+      x-rest-style: read
+  /user-sessions-with-access-to-space-suggestions:
+    get:
+      description: >-
+        The fields userSessionsWithAccessToSpace filters and orders by, with the values
+        the users it lists hold and how many hold each, so nothing past the
+        space's holders is counted. Requires space admin.
+      operationId: userSessionsWithAccessToSpaceSuggestions
+      parameters:
+        - in: query
+          name: space
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: space
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The userSessionsWithAccessToSpaceSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: User Sessions With Access To Space Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/User Sessions With Access To Space Suggestions.bru
+      x-graphql:
+        field: userSessionsWithAccessToSpaceSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
         - rate-limit
       x-infraweave-feature: spaces
       x-infraweave-subject: query:space
       x-rest-style: read
   /users-with-access-to-space:
     get:
-      description: Returns users with RBAC access to the space, directly or via an ancestor space, searchable by username.
+      description: >-
+        Returns users with RBAC access to the space, directly or through a
+        group the identity provider reported at their latest sign-in, bound
+        on the space, an ancestor or an inheriting descendant, searchable by
+        username.
       operationId: usersWithAccessToSpace
       parameters:
         - in: query
@@ -3299,6 +3567,64 @@ paths:
         type: Query
       x-infraweave-action: SPACE_ADMIN
       x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-116
+        - rate-limit
+      x-infraweave-feature: spaces
+      x-infraweave-subject: query:space
+      x-rest-style: read
+  /users-with-access-to-space-suggestions:
+    get:
+      description: >-
+        The fields usersWithAccessToSpace filters and orders by, with the values
+        the users it lists hold and how many hold each, so nothing past the
+        space's holders is counted. Requires space admin.
+      operationId: usersWithAccessToSpaceSuggestions
+      parameters:
+        - in: query
+          name: space
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: space
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The usersWithAccessToSpaceSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Users With Access To Space Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Users With Access To Space Suggestions.bru
+      x-graphql:
+        field: usersWithAccessToSpaceSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
       x-infraweave-feature: spaces

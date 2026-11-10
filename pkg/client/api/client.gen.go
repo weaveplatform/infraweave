@@ -3004,13 +3004,22 @@ type ApiKeySessionsWithAccessToSpaceOutput struct {
 	PageInfo PageInfo                              `json:"pageInfo"`
 }
 
-// ApiKeySpaceAccessRoleGrant A role grant giving an API key access to a space, either directly or via an ancestor space.
+// ApiKeySpaceAccessRoleGrant A role grant giving an API key access to a space: bound on the space,
+// on an ancestor, or on an inheriting descendant, which grants
+// space-reader whatever role it binds. A key's teams name the groups
+// whose grants it holds too.
 type ApiKeySpaceAccessRoleGrant struct {
-	// Propagated True when the grant lives on an ancestor space rather than the queried space.
+	// BindingID The binding behind the grant.
+	BindingID string `json:"bindingID"`
+
+	// Propagated True when the grant lives on an ancestor space rather than the queried space; source tells an inherited grant from a resident one.
 	Propagated bool `json:"propagated"`
 
 	// Role A reference to a Role; fetch it with GET /roles/{roleId}.
 	Role RoleRef `json:"role"`
+
+	// Source How a grant reaches the queried space, i.e. where its space sits relative to it.
+	Source StackSpaceAccessGrantSource `json:"source"`
 
 	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
 	Space SpaceRef `json:"space"`
@@ -6903,10 +6912,10 @@ type SessionPage struct {
 	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
-// SessionSpaceAccessRoleGrant A grant derived from a live session's precomputed space access. There is
-// no space field (always the queried space), no propagated/source field (the
-// snapshot is flattened at login), and no binding (nothing revocable except
-// the sessions themselves).
+// SessionSpaceAccessRoleGrant A role a live session holds on the queried space, once whichever of its
+// bindings give it. There is no space, propagated or source field, and no
+// binding: the grant is the session's, as the user and key views explain
+// the bindings behind it.
 type SessionSpaceAccessRoleGrant struct {
 	// Origin How a session grant came to be.
 	Origin SessionGrantOrigin `json:"origin"`
@@ -8698,11 +8707,17 @@ type UserGroupRoleBindingInput struct {
 // UserGroupSpaceAccessRoleGrant A role grant giving a group access to a space. Always a direct binding on
 // the group, there is no grantedVia union like UserSpaceAccessRoleGrant.
 type UserGroupSpaceAccessRoleGrant struct {
-	// Propagated True when the grant lives on an ancestor space rather than the queried space.
+	// BindingID The binding behind the grant.
+	BindingID string `json:"bindingID"`
+
+	// Propagated True when the grant lives on an ancestor space rather than the queried space; source tells an inherited grant from a resident one.
 	Propagated bool `json:"propagated"`
 
 	// Role A reference to a Role; fetch it with GET /roles/{roleId}.
 	Role RoleRef `json:"role"`
+
+	// Source How a grant reaches the queried space, i.e. where its space sits relative to it.
+	Source StackSpaceAccessGrantSource `json:"source"`
 
 	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
 	Space SpaceRef `json:"space"`
@@ -8798,14 +8813,20 @@ type UserSessionsWithAccessToSpaceOutput struct {
 
 // UserSpaceAccessRoleGrant A role grant giving a user access to a space, either directly or via a group they belong to.
 type UserSpaceAccessRoleGrant struct {
+	// BindingID The binding behind the grant.
+	BindingID string `json:"bindingID"`
+
 	// GrantedVia UserRoleBinding = granted directly to the user; SpaceAccessGroup = granted through that group.
 	GrantedVia SpaceAccessGrantVia `json:"grantedVia"`
 
-	// Propagated True when the grant lives on an ancestor space rather than the queried space.
+	// Propagated True when the grant lives on an ancestor space rather than the queried space; source tells an inherited grant from a resident one.
 	Propagated bool `json:"propagated"`
 
 	// Role A reference to a Role; fetch it with GET /roles/{roleId}.
 	Role RoleRef `json:"role"`
+
+	// Source How a grant reaches the queried space, i.e. where its space sits relative to it.
+	Source StackSpaceAccessGrantSource `json:"source"`
 
 	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
 	Space SpaceRef `json:"space"`
@@ -9321,6 +9342,12 @@ type ApiKeySessionsWithAccessToSpaceParams struct {
 	Input SearchInput `form:"input" json:"input"`
 }
 
+// ApiKeySessionsWithAccessToSpaceSuggestionsParams defines parameters for ApiKeySessionsWithAccessToSpaceSuggestions.
+type ApiKeySessionsWithAccessToSpaceSuggestionsParams struct {
+	Space string                 `form:"space" json:"space"`
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
 // ApiKeysParams defines parameters for ApiKeys.
 type ApiKeysParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -9340,6 +9367,12 @@ type ApiKeyCreateParams struct {
 type ApiKeysWithAccessToSpaceParams struct {
 	Space string      `form:"space" json:"space"`
 	Input SearchInput `form:"input" json:"input"`
+}
+
+// ApiKeysWithAccessToSpaceSuggestionsParams defines parameters for ApiKeysWithAccessToSpaceSuggestions.
+type ApiKeysWithAccessToSpaceSuggestionsParams struct {
+	Space string                 `form:"space" json:"space"`
+	Input SearchSuggestionsInput `form:"input" json:"input"`
 }
 
 // ApiKeyDeleteParams defines parameters for ApiKeyDelete.
@@ -10489,6 +10522,12 @@ type UserGroupsWithAccessToSpaceParams struct {
 	Input SearchInput `form:"input" json:"input"`
 }
 
+// UserGroupsWithAccessToSpaceSuggestionsParams defines parameters for UserGroupsWithAccessToSpaceSuggestions.
+type UserGroupsWithAccessToSpaceSuggestionsParams struct {
+	Space string                 `form:"space" json:"space"`
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
 // UserRoleBindingBatchCreateParams defines parameters for UserRoleBindingBatchCreate.
 type UserRoleBindingBatchCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -10528,10 +10567,22 @@ type UserSessionsWithAccessToSpaceParams struct {
 	Input SearchInput `form:"input" json:"input"`
 }
 
+// UserSessionsWithAccessToSpaceSuggestionsParams defines parameters for UserSessionsWithAccessToSpaceSuggestions.
+type UserSessionsWithAccessToSpaceSuggestionsParams struct {
+	Space string                 `form:"space" json:"space"`
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
 // UsersWithAccessToSpaceParams defines parameters for UsersWithAccessToSpace.
 type UsersWithAccessToSpaceParams struct {
 	Space string      `form:"space" json:"space"`
 	Input SearchInput `form:"input" json:"input"`
+}
+
+// UsersWithAccessToSpaceSuggestionsParams defines parameters for UsersWithAccessToSpaceSuggestions.
+type UsersWithAccessToSpaceSuggestionsParams struct {
+	Space string                 `form:"space" json:"space"`
+	Input SearchSuggestionsInput `form:"input" json:"input"`
 }
 
 // ApiKeyEnableNonAdminManagersJSONRequestBody defines body for ApiKeyEnableNonAdminManagers for application/json ContentType.
@@ -12859,11 +12910,19 @@ type ClientInterface interface {
 	// ApiKeySessionsWithAccessToSpace API Key Sessions With Access To Space
 	//
 	// Lists API keys currently holding access to a space through live
-	// sessions. The login-policy counterpart of apiKeysWithAccessToSpace:
-	// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+	// sessions: each key with a live session whose bindings, or whose
+	// teams' group bindings, reach the space, with the grants they hold.
+	// Requires space admin.
 	//
 	// Corresponds with GET /api-key-sessions-with-access-to-space (the `ApiKeySessionsWithAccessToSpace` operationId).
 	ApiKeySessionsWithAccessToSpace(ctx context.Context, params *ApiKeySessionsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeySessionsWithAccessToSpaceSuggestions API Key Sessions With Access To Space Suggestions
+	//
+	// The fields apiKeySessionsWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Corresponds with GET /api-key-sessions-with-access-to-space-suggestions (the `ApiKeySessionsWithAccessToSpaceSuggestions` operationId).
+	ApiKeySessionsWithAccessToSpaceSuggestions(ctx context.Context, params *ApiKeySessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeys List API Keys
 	//
@@ -12906,10 +12965,17 @@ type ClientInterface interface {
 
 	// ApiKeysWithAccessToSpace API Keys With Access To Space
 	//
-	// Returns API keys with RBAC access to the space, directly or via an ancestor space, searchable by name.
+	// Returns API keys with RBAC access to the space, directly or through the groups their teams name, bound on the space, an ancestor or an inheriting descendant, searchable by name.
 	//
 	// Corresponds with GET /api-keys-with-access-to-space (the `ApiKeysWithAccessToSpace` operationId).
 	ApiKeysWithAccessToSpace(ctx context.Context, params *ApiKeysWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeysWithAccessToSpaceSuggestions API Keys With Access To Space Suggestions
+	//
+	// The fields apiKeysWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Corresponds with GET /api-keys-with-access-to-space-suggestions (the `ApiKeysWithAccessToSpaceSuggestions` operationId).
+	ApiKeysWithAccessToSpaceSuggestions(ctx context.Context, params *ApiKeysWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeyDelete Delete API Key
 	//
@@ -15542,10 +15608,17 @@ type ClientInterface interface {
 
 	// UserGroupsWithAccessToSpace User Groups With Access To Space
 	//
-	// Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
+	// Returns IdP groups with RBAC access to the space, bound on the space, an ancestor or an inheriting descendant, searchable by group name.
 	//
 	// Corresponds with GET /user-groups-with-access-to-space (the `UserGroupsWithAccessToSpace` operationId).
 	UserGroupsWithAccessToSpace(ctx context.Context, params *UserGroupsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupsWithAccessToSpaceSuggestions User Groups With Access To Space Suggestions
+	//
+	// The fields userGroupsWithAccessToSpace filters and orders by, with the values the groups it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Corresponds with GET /user-groups-with-access-to-space-suggestions (the `UserGroupsWithAccessToSpaceSuggestions` operationId).
+	UserGroupsWithAccessToSpaceSuggestions(ctx context.Context, params *UserGroupsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserRoleBindingBatchCreateWithBody Batch Create User Role Bindings
 	//
@@ -15620,18 +15693,33 @@ type ClientInterface interface {
 	// UserSessionsWithAccessToSpace User Sessions With Access To Space
 	//
 	// Lists the users currently holding access to a space through live
-	// sessions. The login-policy counterpart of usersWithAccessToSpace:
-	// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+	// sessions: each user with a live session whose bindings, or whose
+	// teams' group bindings, reach the space, with the grants they hold.
+	// Requires space admin.
 	//
 	// Corresponds with GET /user-sessions-with-access-to-space (the `UserSessionsWithAccessToSpace` operationId).
 	UserSessionsWithAccessToSpace(ctx context.Context, params *UserSessionsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserSessionsWithAccessToSpaceSuggestions User Sessions With Access To Space Suggestions
+	//
+	// The fields userSessionsWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Corresponds with GET /user-sessions-with-access-to-space-suggestions (the `UserSessionsWithAccessToSpaceSuggestions` operationId).
+	UserSessionsWithAccessToSpaceSuggestions(ctx context.Context, params *UserSessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UsersWithAccessToSpace Users With Access To Space
 	//
-	// Returns users with RBAC access to the space, directly or via an ancestor space, searchable by username.
+	// Returns users with RBAC access to the space, directly or through a group the identity provider reported at their latest sign-in, bound on the space, an ancestor or an inheriting descendant, searchable by username.
 	//
 	// Corresponds with GET /users-with-access-to-space (the `UsersWithAccessToSpace` operationId).
 	UsersWithAccessToSpace(ctx context.Context, params *UsersWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UsersWithAccessToSpaceSuggestions Users With Access To Space Suggestions
+	//
+	// The fields usersWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Corresponds with GET /users-with-access-to-space-suggestions (the `UsersWithAccessToSpaceSuggestions` operationId).
+	UsersWithAccessToSpaceSuggestions(ctx context.Context, params *UsersWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Viewer Viewer
 	//
@@ -16184,12 +16272,30 @@ func (c *Client) ApiKeyRoleBindingUpdate(ctx context.Context, apiKeyRoleBindingI
 // ApiKeySessionsWithAccessToSpace API Key Sessions With Access To Space
 //
 // Lists API keys currently holding access to a space through live
-// sessions. The login-policy counterpart of apiKeysWithAccessToSpace:
-// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+// sessions: each key with a live session whose bindings, or whose
+// teams' group bindings, reach the space, with the grants they hold.
+// Requires space admin.
 //
 // Corresponds with GET /api-key-sessions-with-access-to-space (the `ApiKeySessionsWithAccessToSpace` operationId).
 func (c *Client) ApiKeySessionsWithAccessToSpace(ctx context.Context, params *ApiKeySessionsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewApiKeySessionsWithAccessToSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeySessionsWithAccessToSpaceSuggestions API Key Sessions With Access To Space Suggestions
+//
+// The fields apiKeySessionsWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Corresponds with GET /api-key-sessions-with-access-to-space-suggestions (the `ApiKeySessionsWithAccessToSpaceSuggestions` operationId).
+func (c *Client) ApiKeySessionsWithAccessToSpaceSuggestions(ctx context.Context, params *ApiKeySessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeySessionsWithAccessToSpaceSuggestionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -16291,11 +16397,28 @@ func (c *Client) ApiKeysManagedByNonAdmins(ctx context.Context, reqEditors ...Re
 
 // ApiKeysWithAccessToSpace API Keys With Access To Space
 //
-// Returns API keys with RBAC access to the space, directly or via an ancestor space, searchable by name.
+// Returns API keys with RBAC access to the space, directly or through the groups their teams name, bound on the space, an ancestor or an inheriting descendant, searchable by name.
 //
 // Corresponds with GET /api-keys-with-access-to-space (the `ApiKeysWithAccessToSpace` operationId).
 func (c *Client) ApiKeysWithAccessToSpace(ctx context.Context, params *ApiKeysWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewApiKeysWithAccessToSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeysWithAccessToSpaceSuggestions API Keys With Access To Space Suggestions
+//
+// The fields apiKeysWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Corresponds with GET /api-keys-with-access-to-space-suggestions (the `ApiKeysWithAccessToSpaceSuggestions` operationId).
+func (c *Client) ApiKeysWithAccessToSpaceSuggestions(ctx context.Context, params *ApiKeysWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeysWithAccessToSpaceSuggestionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -22107,11 +22230,28 @@ func (c *Client) UserGroupRoleBindingUpdate(ctx context.Context, userGroupRoleBi
 
 // UserGroupsWithAccessToSpace User Groups With Access To Space
 //
-// Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
+// Returns IdP groups with RBAC access to the space, bound on the space, an ancestor or an inheriting descendant, searchable by group name.
 //
 // Corresponds with GET /user-groups-with-access-to-space (the `UserGroupsWithAccessToSpace` operationId).
 func (c *Client) UserGroupsWithAccessToSpace(ctx context.Context, params *UserGroupsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserGroupsWithAccessToSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupsWithAccessToSpaceSuggestions User Groups With Access To Space Suggestions
+//
+// The fields userGroupsWithAccessToSpace filters and orders by, with the values the groups it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Corresponds with GET /user-groups-with-access-to-space-suggestions (the `UserGroupsWithAccessToSpaceSuggestions` operationId).
+func (c *Client) UserGroupsWithAccessToSpaceSuggestions(ctx context.Context, params *UserGroupsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupsWithAccessToSpaceSuggestionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -22295,8 +22435,9 @@ func (c *Client) UserRoleBindingUpdate(ctx context.Context, userRoleBindingId st
 // UserSessionsWithAccessToSpace User Sessions With Access To Space
 //
 // Lists the users currently holding access to a space through live
-// sessions. The login-policy counterpart of usersWithAccessToSpace:
-// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+// sessions: each user with a live session whose bindings, or whose
+// teams' group bindings, reach the space, with the grants they hold.
+// Requires space admin.
 //
 // Corresponds with GET /user-sessions-with-access-to-space (the `UserSessionsWithAccessToSpace` operationId).
 func (c *Client) UserSessionsWithAccessToSpace(ctx context.Context, params *UserSessionsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22311,13 +22452,47 @@ func (c *Client) UserSessionsWithAccessToSpace(ctx context.Context, params *User
 	return c.Client.Do(req)
 }
 
+// UserSessionsWithAccessToSpaceSuggestions User Sessions With Access To Space Suggestions
+//
+// The fields userSessionsWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Corresponds with GET /user-sessions-with-access-to-space-suggestions (the `UserSessionsWithAccessToSpaceSuggestions` operationId).
+func (c *Client) UserSessionsWithAccessToSpaceSuggestions(ctx context.Context, params *UserSessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserSessionsWithAccessToSpaceSuggestionsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // UsersWithAccessToSpace Users With Access To Space
 //
-// Returns users with RBAC access to the space, directly or via an ancestor space, searchable by username.
+// Returns users with RBAC access to the space, directly or through a group the identity provider reported at their latest sign-in, bound on the space, an ancestor or an inheriting descendant, searchable by username.
 //
 // Corresponds with GET /users-with-access-to-space (the `UsersWithAccessToSpace` operationId).
 func (c *Client) UsersWithAccessToSpace(ctx context.Context, params *UsersWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUsersWithAccessToSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UsersWithAccessToSpaceSuggestions Users With Access To Space Suggestions
+//
+// The fields usersWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Corresponds with GET /users-with-access-to-space-suggestions (the `UsersWithAccessToSpaceSuggestions` operationId).
+func (c *Client) UsersWithAccessToSpaceSuggestions(ctx context.Context, params *UsersWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUsersWithAccessToSpaceSuggestionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -23320,6 +23495,62 @@ func NewApiKeySessionsWithAccessToSpaceRequest(server string, params *ApiKeySess
 	return req, nil
 }
 
+// NewApiKeySessionsWithAccessToSpaceSuggestionsRequest constructs an http.Request for the ApiKeySessionsWithAccessToSpaceSuggestions method
+func NewApiKeySessionsWithAccessToSpaceSuggestionsRequest(server string, params *ApiKeySessionsWithAccessToSpaceSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-key-sessions-with-access-to-space-suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewApiKeysRequest constructs an http.Request for the ApiKeys method
 func NewApiKeysRequest(server string, params *ApiKeysParams) (*http.Request, error) {
 	var err error
@@ -23505,6 +23736,62 @@ func NewApiKeysWithAccessToSpaceRequest(server string, params *ApiKeysWithAccess
 	}
 
 	operationPath := fmt.Sprintf("/api-keys-with-access-to-space")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewApiKeysWithAccessToSpaceSuggestionsRequest constructs an http.Request for the ApiKeysWithAccessToSpaceSuggestions method
+func NewApiKeysWithAccessToSpaceSuggestionsRequest(server string, params *ApiKeysWithAccessToSpaceSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-keys-with-access-to-space-suggestions")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -35850,6 +36137,62 @@ func NewUserGroupsWithAccessToSpaceRequest(server string, params *UserGroupsWith
 	return req, nil
 }
 
+// NewUserGroupsWithAccessToSpaceSuggestionsRequest constructs an http.Request for the UserGroupsWithAccessToSpaceSuggestions method
+func NewUserGroupsWithAccessToSpaceSuggestionsRequest(server string, params *UserGroupsWithAccessToSpaceSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-groups-with-access-to-space-suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUserRoleBindingBatchCreateRequest calls the generic UserRoleBindingBatchCreate builder with application/json body
 func NewUserRoleBindingBatchCreateRequest(server string, params *UserRoleBindingBatchCreateParams, body UserRoleBindingBatchCreateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -36234,6 +36577,62 @@ func NewUserSessionsWithAccessToSpaceRequest(server string, params *UserSessions
 	return req, nil
 }
 
+// NewUserSessionsWithAccessToSpaceSuggestionsRequest constructs an http.Request for the UserSessionsWithAccessToSpaceSuggestions method
+func NewUserSessionsWithAccessToSpaceSuggestionsRequest(server string, params *UserSessionsWithAccessToSpaceSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-sessions-with-access-to-space-suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUsersWithAccessToSpaceRequest constructs an http.Request for the UsersWithAccessToSpace method
 func NewUsersWithAccessToSpaceRequest(server string, params *UsersWithAccessToSpaceParams) (*http.Request, error) {
 	var err error
@@ -36244,6 +36643,62 @@ func NewUsersWithAccessToSpaceRequest(server string, params *UsersWithAccessToSp
 	}
 
 	operationPath := fmt.Sprintf("/users-with-access-to-space")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUsersWithAccessToSpaceSuggestionsRequest constructs an http.Request for the UsersWithAccessToSpaceSuggestions method
+func NewUsersWithAccessToSpaceSuggestionsRequest(server string, params *UsersWithAccessToSpaceSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users-with-access-to-space-suggestions")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -36624,13 +37079,23 @@ type ClientWithResponsesInterface interface {
 	// ApiKeySessionsWithAccessToSpaceWithResponse API Key Sessions With Access To Space
 	//
 	// Lists API keys currently holding access to a space through live
-	// sessions. The login-policy counterpart of apiKeysWithAccessToSpace:
-	// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+	// sessions: each key with a live session whose bindings, or whose
+	// teams' group bindings, reach the space, with the grants they hold.
+	// Requires space admin.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /api-key-sessions-with-access-to-space (the `ApiKeySessionsWithAccessToSpace` operationId).
 	ApiKeySessionsWithAccessToSpaceWithResponse(ctx context.Context, params *ApiKeySessionsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*ApiKeySessionsWithAccessToSpaceResponse, error)
+
+	// ApiKeySessionsWithAccessToSpaceSuggestionsWithResponse API Key Sessions With Access To Space Suggestions
+	//
+	// The fields apiKeySessionsWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api-key-sessions-with-access-to-space-suggestions (the `ApiKeySessionsWithAccessToSpaceSuggestions` operationId).
+	ApiKeySessionsWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *ApiKeySessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*ApiKeySessionsWithAccessToSpaceSuggestionsResponse, error)
 
 	// ApiKeysWithResponse List API Keys
 	//
@@ -36679,12 +37144,21 @@ type ClientWithResponsesInterface interface {
 
 	// ApiKeysWithAccessToSpaceWithResponse API Keys With Access To Space
 	//
-	// Returns API keys with RBAC access to the space, directly or via an ancestor space, searchable by name.
+	// Returns API keys with RBAC access to the space, directly or through the groups their teams name, bound on the space, an ancestor or an inheriting descendant, searchable by name.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /api-keys-with-access-to-space (the `ApiKeysWithAccessToSpace` operationId).
 	ApiKeysWithAccessToSpaceWithResponse(ctx context.Context, params *ApiKeysWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*ApiKeysWithAccessToSpaceResponse, error)
+
+	// ApiKeysWithAccessToSpaceSuggestionsWithResponse API Keys With Access To Space Suggestions
+	//
+	// The fields apiKeysWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api-keys-with-access-to-space-suggestions (the `ApiKeysWithAccessToSpaceSuggestions` operationId).
+	ApiKeysWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *ApiKeysWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*ApiKeysWithAccessToSpaceSuggestionsResponse, error)
 
 	// ApiKeyDeleteWithResponse Delete API Key
 	//
@@ -39583,12 +40057,21 @@ type ClientWithResponsesInterface interface {
 
 	// UserGroupsWithAccessToSpaceWithResponse User Groups With Access To Space
 	//
-	// Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
+	// Returns IdP groups with RBAC access to the space, bound on the space, an ancestor or an inheriting descendant, searchable by group name.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /user-groups-with-access-to-space (the `UserGroupsWithAccessToSpace` operationId).
 	UserGroupsWithAccessToSpaceWithResponse(ctx context.Context, params *UserGroupsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*UserGroupsWithAccessToSpaceResponse, error)
+
+	// UserGroupsWithAccessToSpaceSuggestionsWithResponse User Groups With Access To Space Suggestions
+	//
+	// The fields userGroupsWithAccessToSpace filters and orders by, with the values the groups it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user-groups-with-access-to-space-suggestions (the `UserGroupsWithAccessToSpaceSuggestions` operationId).
+	UserGroupsWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *UserGroupsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*UserGroupsWithAccessToSpaceSuggestionsResponse, error)
 
 	// UserRoleBindingBatchCreateWithBodyWithResponse Batch Create User Role Bindings
 	//
@@ -39667,22 +40150,41 @@ type ClientWithResponsesInterface interface {
 	// UserSessionsWithAccessToSpaceWithResponse User Sessions With Access To Space
 	//
 	// Lists the users currently holding access to a space through live
-	// sessions. The login-policy counterpart of usersWithAccessToSpace:
-	// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+	// sessions: each user with a live session whose bindings, or whose
+	// teams' group bindings, reach the space, with the grants they hold.
+	// Requires space admin.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /user-sessions-with-access-to-space (the `UserSessionsWithAccessToSpace` operationId).
 	UserSessionsWithAccessToSpaceWithResponse(ctx context.Context, params *UserSessionsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*UserSessionsWithAccessToSpaceResponse, error)
 
+	// UserSessionsWithAccessToSpaceSuggestionsWithResponse User Sessions With Access To Space Suggestions
+	//
+	// The fields userSessionsWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user-sessions-with-access-to-space-suggestions (the `UserSessionsWithAccessToSpaceSuggestions` operationId).
+	UserSessionsWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *UserSessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*UserSessionsWithAccessToSpaceSuggestionsResponse, error)
+
 	// UsersWithAccessToSpaceWithResponse Users With Access To Space
 	//
-	// Returns users with RBAC access to the space, directly or via an ancestor space, searchable by username.
+	// Returns users with RBAC access to the space, directly or through a group the identity provider reported at their latest sign-in, bound on the space, an ancestor or an inheriting descendant, searchable by username.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /users-with-access-to-space (the `UsersWithAccessToSpace` operationId).
 	UsersWithAccessToSpaceWithResponse(ctx context.Context, params *UsersWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*UsersWithAccessToSpaceResponse, error)
+
+	// UsersWithAccessToSpaceSuggestionsWithResponse Users With Access To Space Suggestions
+	//
+	// The fields usersWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /users-with-access-to-space-suggestions (the `UsersWithAccessToSpaceSuggestions` operationId).
+	UsersWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *UsersWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*UsersWithAccessToSpaceSuggestionsResponse, error)
 
 	// ViewerWithResponse Viewer
 	//
@@ -41762,6 +42264,94 @@ func (r ApiKeySessionsWithAccessToSpaceResponse) ContentType() string {
 	return ""
 }
 
+// ApiKeySessionsWithAccessToSpaceSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for ApiKeySessionsWithAccessToSpaceSuggestions
+type ApiKeySessionsWithAccessToSpaceSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeySessionsWithAccessToSpaceSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for ApiKeySessionsWithAccessToSpaceSuggestions
+type ApiKeySessionsWithAccessToSpaceSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeySessionsWithAccessToSpaceSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for ApiKeySessionsWithAccessToSpaceSuggestions
+type ApiKeySessionsWithAccessToSpaceSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeySessionsWithAccessToSpaceSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeySessionsWithAccessToSpaceSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeySessionsWithAccessToSpaceSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeySessionsWithAccessToSpaceSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeySessionsWithAccessToSpaceSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ApiKeysResponse200Headers the declared response headers of an HTTP 200 response for ApiKeys
 type ApiKeysResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -42217,6 +42807,94 @@ func (r ApiKeysWithAccessToSpaceResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ApiKeysWithAccessToSpaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeysWithAccessToSpaceSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for ApiKeysWithAccessToSpaceSuggestions
+type ApiKeysWithAccessToSpaceSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeysWithAccessToSpaceSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for ApiKeysWithAccessToSpaceSuggestions
+type ApiKeysWithAccessToSpaceSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeysWithAccessToSpaceSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for ApiKeysWithAccessToSpaceSuggestions
+type ApiKeysWithAccessToSpaceSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeysWithAccessToSpaceSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeysWithAccessToSpaceSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeysWithAccessToSpaceSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeysWithAccessToSpaceSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeysWithAccessToSpaceSuggestionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -65056,6 +65734,94 @@ func (r UserGroupsWithAccessToSpaceResponse) ContentType() string {
 	return ""
 }
 
+// UserGroupsWithAccessToSpaceSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for UserGroupsWithAccessToSpaceSuggestions
+type UserGroupsWithAccessToSpaceSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupsWithAccessToSpaceSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for UserGroupsWithAccessToSpaceSuggestions
+type UserGroupsWithAccessToSpaceSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupsWithAccessToSpaceSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for UserGroupsWithAccessToSpaceSuggestions
+type UserGroupsWithAccessToSpaceSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserGroupsWithAccessToSpaceSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGroupsWithAccessToSpaceSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserGroupsWithAccessToSpaceSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserGroupsWithAccessToSpaceSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGroupsWithAccessToSpaceSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // UserRoleBindingBatchCreateResponse201Headers the declared response headers of an HTTP 201 response for UserRoleBindingBatchCreate
 type UserRoleBindingBatchCreateResponse201Headers struct {
 	XRateLimitLimit     *int
@@ -65766,6 +66532,94 @@ func (r UserSessionsWithAccessToSpaceResponse) ContentType() string {
 	return ""
 }
 
+// UserSessionsWithAccessToSpaceSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for UserSessionsWithAccessToSpaceSuggestions
+type UserSessionsWithAccessToSpaceSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserSessionsWithAccessToSpaceSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for UserSessionsWithAccessToSpaceSuggestions
+type UserSessionsWithAccessToSpaceSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserSessionsWithAccessToSpaceSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for UserSessionsWithAccessToSpaceSuggestions
+type UserSessionsWithAccessToSpaceSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserSessionsWithAccessToSpaceSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserSessionsWithAccessToSpaceSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserSessionsWithAccessToSpaceSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserSessionsWithAccessToSpaceSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserSessionsWithAccessToSpaceSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // UsersWithAccessToSpaceResponse200Headers the declared response headers of an HTTP 200 response for UsersWithAccessToSpace
 type UsersWithAccessToSpaceResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -65848,6 +66702,94 @@ func (r UsersWithAccessToSpaceResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UsersWithAccessToSpaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UsersWithAccessToSpaceSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for UsersWithAccessToSpaceSuggestions
+type UsersWithAccessToSpaceSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UsersWithAccessToSpaceSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for UsersWithAccessToSpaceSuggestions
+type UsersWithAccessToSpaceSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UsersWithAccessToSpaceSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for UsersWithAccessToSpaceSuggestions
+type UsersWithAccessToSpaceSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UsersWithAccessToSpaceSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UsersWithAccessToSpaceSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UsersWithAccessToSpaceSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UsersWithAccessToSpaceSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UsersWithAccessToSpaceSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UsersWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UsersWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UsersWithAccessToSpaceSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UsersWithAccessToSpaceSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UsersWithAccessToSpaceSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UsersWithAccessToSpaceSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UsersWithAccessToSpaceSuggestionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -66385,8 +67327,9 @@ func (c *ClientWithResponses) ApiKeyRoleBindingUpdateWithResponse(ctx context.Co
 // ApiKeySessionsWithAccessToSpaceWithResponse API Key Sessions With Access To Space
 //
 // Lists API keys currently holding access to a space through live
-// sessions. The login-policy counterpart of apiKeysWithAccessToSpace:
-// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+// sessions: each key with a live session whose bindings, or whose
+// teams' group bindings, reach the space, with the grants they hold.
+// Requires space admin.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -66397,6 +67340,21 @@ func (c *ClientWithResponses) ApiKeySessionsWithAccessToSpaceWithResponse(ctx co
 		return nil, err
 	}
 	return ParseApiKeySessionsWithAccessToSpaceResponse(rsp)
+}
+
+// ApiKeySessionsWithAccessToSpaceSuggestionsWithResponse API Key Sessions With Access To Space Suggestions
+//
+// The fields apiKeySessionsWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api-key-sessions-with-access-to-space-suggestions (the `ApiKeySessionsWithAccessToSpaceSuggestions` operationId).
+func (c *ClientWithResponses) ApiKeySessionsWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *ApiKeySessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*ApiKeySessionsWithAccessToSpaceSuggestionsResponse, error) {
+	rsp, err := c.ApiKeySessionsWithAccessToSpaceSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeySessionsWithAccessToSpaceSuggestionsResponse(rsp)
 }
 
 // ApiKeysWithResponse List API Keys
@@ -66476,7 +67434,7 @@ func (c *ClientWithResponses) ApiKeysManagedByNonAdminsWithResponse(ctx context.
 
 // ApiKeysWithAccessToSpaceWithResponse API Keys With Access To Space
 //
-// Returns API keys with RBAC access to the space, directly or via an ancestor space, searchable by name.
+// Returns API keys with RBAC access to the space, directly or through the groups their teams name, bound on the space, an ancestor or an inheriting descendant, searchable by name.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -66487,6 +67445,21 @@ func (c *ClientWithResponses) ApiKeysWithAccessToSpaceWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseApiKeysWithAccessToSpaceResponse(rsp)
+}
+
+// ApiKeysWithAccessToSpaceSuggestionsWithResponse API Keys With Access To Space Suggestions
+//
+// The fields apiKeysWithAccessToSpace filters and orders by, with the values the API keys it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api-keys-with-access-to-space-suggestions (the `ApiKeysWithAccessToSpaceSuggestions` operationId).
+func (c *ClientWithResponses) ApiKeysWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *ApiKeysWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*ApiKeysWithAccessToSpaceSuggestionsResponse, error) {
+	rsp, err := c.ApiKeysWithAccessToSpaceSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeysWithAccessToSpaceSuggestionsResponse(rsp)
 }
 
 // ApiKeyDeleteWithResponse Delete API Key
@@ -71288,7 +72261,7 @@ func (c *ClientWithResponses) UserGroupRoleBindingUpdateWithResponse(ctx context
 
 // UserGroupsWithAccessToSpaceWithResponse User Groups With Access To Space
 //
-// Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
+// Returns IdP groups with RBAC access to the space, bound on the space, an ancestor or an inheriting descendant, searchable by group name.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -71299,6 +72272,21 @@ func (c *ClientWithResponses) UserGroupsWithAccessToSpaceWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseUserGroupsWithAccessToSpaceResponse(rsp)
+}
+
+// UserGroupsWithAccessToSpaceSuggestionsWithResponse User Groups With Access To Space Suggestions
+//
+// The fields userGroupsWithAccessToSpace filters and orders by, with the values the groups it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user-groups-with-access-to-space-suggestions (the `UserGroupsWithAccessToSpaceSuggestions` operationId).
+func (c *ClientWithResponses) UserGroupsWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *UserGroupsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*UserGroupsWithAccessToSpaceSuggestionsResponse, error) {
+	rsp, err := c.UserGroupsWithAccessToSpaceSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupsWithAccessToSpaceSuggestionsResponse(rsp)
 }
 
 // UserRoleBindingBatchCreateWithBodyWithResponse Batch Create User Role Bindings
@@ -71438,8 +72426,9 @@ func (c *ClientWithResponses) UserRoleBindingUpdateWithResponse(ctx context.Cont
 // UserSessionsWithAccessToSpaceWithResponse User Sessions With Access To Space
 //
 // Lists the users currently holding access to a space through live
-// sessions. The login-policy counterpart of usersWithAccessToSpace:
-// returns an empty page for MANAGED_USERS accounts. Requires space admin.
+// sessions: each user with a live session whose bindings, or whose
+// teams' group bindings, reach the space, with the grants they hold.
+// Requires space admin.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -71452,9 +72441,24 @@ func (c *ClientWithResponses) UserSessionsWithAccessToSpaceWithResponse(ctx cont
 	return ParseUserSessionsWithAccessToSpaceResponse(rsp)
 }
 
+// UserSessionsWithAccessToSpaceSuggestionsWithResponse User Sessions With Access To Space Suggestions
+//
+// The fields userSessionsWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user-sessions-with-access-to-space-suggestions (the `UserSessionsWithAccessToSpaceSuggestions` operationId).
+func (c *ClientWithResponses) UserSessionsWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *UserSessionsWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*UserSessionsWithAccessToSpaceSuggestionsResponse, error) {
+	rsp, err := c.UserSessionsWithAccessToSpaceSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserSessionsWithAccessToSpaceSuggestionsResponse(rsp)
+}
+
 // UsersWithAccessToSpaceWithResponse Users With Access To Space
 //
-// Returns users with RBAC access to the space, directly or via an ancestor space, searchable by username.
+// Returns users with RBAC access to the space, directly or through a group the identity provider reported at their latest sign-in, bound on the space, an ancestor or an inheriting descendant, searchable by username.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -71465,6 +72469,21 @@ func (c *ClientWithResponses) UsersWithAccessToSpaceWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseUsersWithAccessToSpaceResponse(rsp)
+}
+
+// UsersWithAccessToSpaceSuggestionsWithResponse Users With Access To Space Suggestions
+//
+// The fields usersWithAccessToSpace filters and orders by, with the values the users it lists hold and how many hold each, so nothing past the space's holders is counted. Requires space admin.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /users-with-access-to-space-suggestions (the `UsersWithAccessToSpaceSuggestions` operationId).
+func (c *ClientWithResponses) UsersWithAccessToSpaceSuggestionsWithResponse(ctx context.Context, params *UsersWithAccessToSpaceSuggestionsParams, reqEditors ...RequestEditorFn) (*UsersWithAccessToSpaceSuggestionsResponse, error) {
+	rsp, err := c.UsersWithAccessToSpaceSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUsersWithAccessToSpaceSuggestionsResponse(rsp)
 }
 
 // ViewerWithResponse Viewer
@@ -74135,6 +75154,121 @@ func ParseApiKeySessionsWithAccessToSpaceResponse(rsp *http.Response) (*ApiKeySe
 	return response, nil
 }
 
+// ParseApiKeySessionsWithAccessToSpaceSuggestionsResponse parses an HTTP response from a ApiKeySessionsWithAccessToSpaceSuggestionsWithResponse call
+func ParseApiKeySessionsWithAccessToSpaceSuggestionsResponse(rsp *http.Response) (*ApiKeySessionsWithAccessToSpaceSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeySessionsWithAccessToSpaceSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeySessionsWithAccessToSpaceSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeySessionsWithAccessToSpaceSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeySessionsWithAccessToSpaceSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseApiKeysResponse parses an HTTP response from a ApiKeysWithResponse call
 func ParseApiKeysResponse(rsp *http.Response) (*ApiKeysResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -74718,6 +75852,121 @@ func ParseApiKeysWithAccessToSpaceResponse(rsp *http.Response) (*ApiKeysWithAcce
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ApiKeysWithAccessToSpaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeysWithAccessToSpaceSuggestionsResponse parses an HTTP response from a ApiKeysWithAccessToSpaceSuggestionsWithResponse call
+func ParseApiKeysWithAccessToSpaceSuggestionsResponse(rsp *http.Response) (*ApiKeysWithAccessToSpaceSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeysWithAccessToSpaceSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeysWithAccessToSpaceSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeysWithAccessToSpaceSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeysWithAccessToSpaceSuggestionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -103960,6 +105209,121 @@ func ParseUserGroupsWithAccessToSpaceResponse(rsp *http.Response) (*UserGroupsWi
 	return response, nil
 }
 
+// ParseUserGroupsWithAccessToSpaceSuggestionsResponse parses an HTTP response from a UserGroupsWithAccessToSpaceSuggestionsWithResponse call
+func ParseUserGroupsWithAccessToSpaceSuggestionsResponse(rsp *http.Response) (*UserGroupsWithAccessToSpaceSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGroupsWithAccessToSpaceSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGroupsWithAccessToSpaceSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserGroupsWithAccessToSpaceSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserGroupsWithAccessToSpaceSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseUserRoleBindingBatchCreateResponse parses an HTTP response from a UserRoleBindingBatchCreateWithResponse call
 func ParseUserRoleBindingBatchCreateResponse(rsp *http.Response) (*UserRoleBindingBatchCreateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -104877,6 +106241,121 @@ func ParseUserSessionsWithAccessToSpaceResponse(rsp *http.Response) (*UserSessio
 	return response, nil
 }
 
+// ParseUserSessionsWithAccessToSpaceSuggestionsResponse parses an HTTP response from a UserSessionsWithAccessToSpaceSuggestionsWithResponse call
+func ParseUserSessionsWithAccessToSpaceSuggestionsResponse(rsp *http.Response) (*UserSessionsWithAccessToSpaceSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserSessionsWithAccessToSpaceSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserSessionsWithAccessToSpaceSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserSessionsWithAccessToSpaceSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserSessionsWithAccessToSpaceSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseUsersWithAccessToSpaceResponse parses an HTTP response from a UsersWithAccessToSpaceWithResponse call
 func ParseUsersWithAccessToSpaceResponse(rsp *http.Response) (*UsersWithAccessToSpaceResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -104979,6 +106458,121 @@ func ParseUsersWithAccessToSpaceResponse(rsp *http.Response) (*UsersWithAccessTo
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers UsersWithAccessToSpaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUsersWithAccessToSpaceSuggestionsResponse parses an HTTP response from a UsersWithAccessToSpaceSuggestionsWithResponse call
+func ParseUsersWithAccessToSpaceSuggestionsResponse(rsp *http.Response) (*UsersWithAccessToSpaceSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UsersWithAccessToSpaceSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UsersWithAccessToSpaceSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UsersWithAccessToSpaceSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UsersWithAccessToSpaceSuggestionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

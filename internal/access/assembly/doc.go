@@ -7,8 +7,9 @@
 // OperatorAPI its partial of the operator API's, aliased
 // AccessOperatorAPI, the API's partial serving the Organization tag
 // through the orgadmin service, the Managed Users tag through the user
-// and group services, the Roles tag through the role service and the role
-// binding operations through the binding service; Bindings is the
+// and group services, the Roles tag through the role service, the role
+// binding operations through the binding service and the grant views
+// through the holder service; Bindings is the
 // accessapi.Bindings through which another domain binds the actors it
 // keeps, such as stacks; OrganizationID finds an organization's ID by its
 // slug, for the features domain's operator partial, and Seats counts an

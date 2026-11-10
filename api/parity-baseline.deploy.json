@@ -392,8 +392,6 @@
       "searchScansSuggestions"
     ],
     "Search Suggestions": [
-      "apiKeySessionsWithAccessToSpaceSuggestions",
-      "apiKeysWithAccessToSpaceSuggestions",
       "openTofuMigrateSuggestions",
       "openTofuMigrationQueueSearchSuggestions",
       "searchAnsibleHostsSuggestions",
@@ -414,10 +412,7 @@
       "searchTofuWorkspacesSuggestions",
       "searchVCSIntegrationsSuggestions",
       "searchWorkerPoolsSuggestions",
-      "stacksWithAccessToSpaceSuggestions",
-      "userGroupsWithAccessToSpaceSuggestions",
-      "userSessionsWithAccessToSpaceSuggestions",
-      "usersWithAccessToSpaceSuggestions"
+      "stacksWithAccessToSpaceSuggestions"
     ],
     "Sessions and Security Keys": [
       "securityKeyDelete",

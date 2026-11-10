@@ -225,3 +225,30 @@ func TestUnitKey(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitServiceHolders(t *testing.T) {
+	ctx := t.Context()
+	x := newAccount()
+	m, key := kernel.NewMemberID(), kernel.NewULID()
+	team := x.group("team")
+	x.bind(binding.ActorGroup, team, role.SpaceWriter, "a")
+	x.bind(binding.ActorAPIKey, key, role.SpaceReader, "top")
+	svc := authz.NewService(&store{x: x})
+
+	held, err := svc.Holders(ctx, x.id, x.spaces["a1"], binding.ActorGroup, binding.ActorAPIKey)
+	if err != nil || len(held) != 2 || held[0].ID != team || held[0].Name != "team" ||
+		held[0].Grants[0].Source != authz.Propagated || held[1].ID != key {
+		t.Fatalf("Holders = %+v, %v", held, err)
+	}
+	if held := authz.Build(x.data).Holders(kernel.NewULID(), binding.ActorGroup); held != nil {
+		t.Errorf("Holders of a space the snapshot lacks = %+v", held)
+	}
+	got, err := svc.ExplainEach(ctx, x.id, x.spaces["a"], []authz.Who{
+		{Kind: kernel.PrincipalUser, Actor: m.ULID, Member: m, Teams: []string{"team"}},
+		{Kind: kernel.PrincipalUser, Actor: m.ULID, Member: m},
+	})
+	if err != nil || len(got) != 2 || len(got[0]) != 1 || got[0][0].Source != authz.Resident ||
+		len(got[1]) != 0 {
+		t.Fatalf("ExplainEach = %+v, %v", got, err)
+	}
+}

@@ -82,6 +82,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	spaces.register(sc)
 	(&roleSteps{o: org}).register(sc)
 	(&bindingSteps{o: org}).register(sc)
+	(&grantViewSteps{o: org}).register(sc)
 	(&stackSearchSteps{s: spaces}).register(sc)
 	(&configSteps{o: org}).register(sc)
 	(&expressionSteps{o: org}).register(sc)
