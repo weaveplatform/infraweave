@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
@@ -313,6 +314,7 @@ type world struct {
 	authz  *grantsOf
 	tree   *spaceTree
 	people *people
+	roles  *roleBook
 }
 
 // public is the route class that takes no credential.
@@ -377,6 +379,7 @@ func newWorld(t *testing.T) *world {
 	w.authz = &grantsOf{on: map[kernel.ULID][]accessapi.Action{w.acct.ULID: all}}
 	w.tree = newSpaceTree(st, st.accounts[w.acct])
 	w.people = newPeople(st, w.acct)
+	w.roles = newRoleBook(st, w.acct)
 	keys := apikey.NewService(apikey.Deps{
 		Store: st, Authz: w.authz, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
@@ -404,6 +407,7 @@ func newWorld(t *testing.T) *world {
 			Groups: group.NewService(group.Deps{
 				Store: w.people, Now: func() time.Time { return t0 },
 			}),
+			Roles: role.NewService(role.Deps{Store: w.roles, Drop: func(kernel.AccountID) {}}),
 		})},
 		nil,
 		api.StrictHTTPServerOptions{

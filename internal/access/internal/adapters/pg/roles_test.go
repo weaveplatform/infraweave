@@ -1,14 +1,19 @@
 package pg_test
 
 import (
+	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -46,7 +51,7 @@ func sameRoles(acct kernel.AccountID, got map[string]role.Role) []string {
 	for _, w := range want {
 		g := got[w.Slug]
 		g.ID = w.ID
-		if g != w {
+		if !reflect.DeepEqual(g, w) {
 			problems = append(problems, w.Slug)
 		}
 	}
@@ -224,6 +229,189 @@ func TestAccRoleDeletion(t *testing.T) {
 	for _, table := range tables {
 		if n := count(t, x, table, x.acct); n != 0 {
 			t.Errorf("%s rows of a deleted organization's account = %d", table, n)
+		}
+	}
+}
+
+// TestAccCustomRoles checks the store under the role service: a custom
+// role is stored with its actions and lists beside the system roles, an
+// update replaces its actions and raises its version, a taken slug is
+// refused, and a role with a binding is not deleted. Each write raises
+// the account's authz_version.
+func TestAccCustomRoles(t *testing.T) {
+	ctx := t.Context()
+	x := seed(t, pool(t), "hooli")
+	svc := role.NewService(role.Deps{Store: x.s, Drop: func(kernel.AccountID) {}})
+	authz := func() int64 {
+		t.Helper()
+		var v int64
+		if err := x.db.QueryRow(ctx, `SELECT authz_version FROM accounts WHERE id = $1`,
+			x.acct).Scan(&v); err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	before := authz()
+	r, err := svc.Create(ctx, x.acct, role.Input{
+		Name:    "Deploy Bots",
+		Actions: []accessapi.Action{"STACK_MANAGE", "SPACE_READ"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Create(ctx, x.acct, role.Input{
+		Name:    "deploy-bots",
+		Actions: []accessapi.Action{},
+	}); !errors.Is(err, port.ErrSlugTaken) {
+		t.Errorf("a taken slug = %v", err)
+	}
+	got, err := svc.Role(ctx, x.acct, "deploy-bots")
+	if err != nil || got.ID != r.ID || got.Version != 1 || got.Bindings != 0 ||
+		!slices.Equal(got.Actions, []accessapi.Action{"SPACE_READ", "STACK_MANAGE"}) {
+		t.Errorf("Role = %+v, %v", got, err)
+	}
+	all, err := svc.Roles(ctx, x.acct, "", 10)
+	if err != nil || len(all) != 6 {
+		t.Fatalf("Roles = %v, %v", all, err)
+	}
+	page, err := svc.Roles(ctx, x.acct, "deploy-bots", 2)
+	if err != nil || len(page) != 2 || page[0].Slug != role.DriftDetectionManager ||
+		page[1].Slug != role.SpaceAdmin || len(page[1].Actions) == 0 {
+		t.Errorf("a page after deploy-bots = %+v, %v", page, err)
+	}
+
+	actions := []accessapi.Action{"SPACE_WRITE"}
+	up, err := svc.Update(ctx, x.acct, "deploy-bots", kernel.ExpectVersions(1),
+		role.Change{Name: new("Deployers"), Actions: &actions})
+	if err != nil || up.Slug != "deploy-bots" || up.Version != 2 {
+		t.Fatalf("Update = %+v, %v", up, err)
+	}
+	got, err = svc.Role(ctx, x.acct, "deploy-bots")
+	if err != nil || got.Name != "Deployers" || !slices.Equal(got.Actions, actions) {
+		t.Errorf("after the update, Role = %+v, %v", got, err)
+	}
+	if _, err := svc.Update(ctx, x.acct, "deploy-bots", kernel.ExpectVersions(1),
+		role.Change{}); !errors.Is(err, kernel.ErrStale) {
+		t.Errorf("a stale update = %v", err)
+	}
+	if _, err := svc.Update(ctx, x.acct, "nobody", kernel.Expect{},
+		role.Change{}); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("a missing role's update = %v", err)
+	}
+
+	if _, err := x.db.Exec(ctx, `INSERT INTO role_bindings (account_id, id, actor_kind,
+			actor_id, role_id, space_id, origin, created_by)
+		VALUES ($1, gen_random_uuid(), 'user', $2, $3, $1, 'binding', 'test')`,
+		x.acct, x.member, r.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Delete(ctx, x.acct, "deploy-bots",
+		kernel.Expect{}); !errors.Is(err, role.ErrInUse) {
+		t.Errorf("a bound role's delete = %v", err)
+	}
+	b, err := svc.Bindings(ctx, x.acct, r)
+	if err != nil || len(b) != 1 || b[0].Space != "hooli" || b[0].ActorKind != role.ActorUser ||
+		b[0].ActorID != x.member.ULID {
+		t.Errorf("Bindings = %+v, %v", b, err)
+	}
+	if _, err := x.db.Exec(ctx, `DELETE FROM role_bindings WHERE role_id = $1`, r.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Delete(ctx, x.acct, "deploy-bots", kernel.ExpectVersions(2)); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	if err := x.db.QueryRow(ctx, `SELECT count(*) FROM role_actions WHERE role_id = $1`,
+		r.ID).Scan(&left); err != nil || left != 0 {
+		t.Errorf("%d actions remain, %v", left, err)
+	}
+	if _, err := svc.Role(ctx, x.acct, "deploy-bots"); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("a deleted role = %v", err)
+	}
+	// The create, the update and the delete each raise it once.
+	if after := authz(); after != before+3 {
+		t.Errorf("authz_version %d, then %d; want 3 more", before, after)
+	}
+}
+
+// TestAccRoleStoreUnavailable checks that a change of a role failing
+// within its transaction changes nothing, and that every read and change
+// fails, and not as not found, when PostgreSQL cannot be reached.
+func TestAccRoleStoreUnavailable(t *testing.T) {
+	ctx := t.Context()
+	x := seed(t, pool(t), "aviato")
+	r := role.Role{
+		AccountID: x.acct, ID: kernel.NewULID(), Slug: "ops", Name: "Ops", Version: 1,
+		Actions: []accessapi.Action{"SPACE_READ"},
+	}
+	if err := x.s.CreateRole(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	// Triggers of this test's own database fail each write within its
+	// transaction: an action named REFUSED, a role renamed refused, and a
+	// role's delete.
+	if _, err := x.db.Exec(ctx, `
+		CREATE FUNCTION refuse() RETURNS trigger LANGUAGE plpgsql AS
+			$$BEGIN RAISE EXCEPTION 'refused'; END$$;
+		CREATE TRIGGER refuse_action BEFORE INSERT ON role_actions FOR EACH ROW
+			WHEN (NEW.action = 'REFUSED') EXECUTE FUNCTION refuse();
+		CREATE TRIGGER refuse_rename BEFORE UPDATE ON roles FOR EACH ROW
+			WHEN (NEW.name = 'refused') EXECUTE FUNCTION refuse();
+		CREATE TRIGGER refuse_delete BEFORE DELETE ON roles FOR EACH ROW
+			EXECUTE FUNCTION refuse();`); err != nil {
+		t.Fatal(err)
+	}
+	refused := r
+	refused.ID, refused.Slug, refused.Actions = kernel.NewULID(), "refused", []accessapi.Action{
+		"REFUSED",
+	}
+	edit := func(name string, actions ...accessapi.Action) func(role.Role) (role.Role, error) {
+		return func(r role.Role) (role.Role, error) {
+			r.Name, r.Actions = name, actions
+			return r, nil
+		}
+	}
+	for name, err := range map[string]error{
+		"create": x.s.CreateRole(ctx, refused),
+		"rename": func() error { _, err := x.s.UpdateRole(ctx, x.acct, "ops", edit("refused")); return err }(),
+		"actions": func() error {
+			_, err := x.s.UpdateRole(ctx, x.acct, "ops", edit("Ops", "REFUSED"))
+			return err
+		}(),
+		"delete": func() error {
+			_, err := x.s.DeleteRole(ctx, x.acct, "ops", func(role.Role) error { return nil })
+			return err
+		}(),
+	} {
+		if err == nil || errors.Is(err, port.ErrNotFound) {
+			t.Errorf("%s failing in its transaction = %v", name, err)
+		}
+	}
+	if got, err := x.s.Role(
+		ctx,
+		x.acct,
+		"ops",
+	); err != nil || got.Name != "Ops" ||
+		got.Version != 1 ||
+		!slices.Equal(got.Actions, r.Actions) {
+		t.Errorf("after the failed writes, ops = %+v, %v", got, err)
+	}
+
+	p := pool(t)
+	s := pg.New(p)
+	p.Close()
+	bg := context.Background()
+	keep := func(r role.Role) (role.Role, error) { return r, nil }
+	for name, err := range map[string]error{
+		"list":     func() error { _, err := s.Roles(bg, x.acct, "", 10); return err }(),
+		"read":     func() error { _, err := s.Role(bg, x.acct, "ops"); return err }(),
+		"create":   s.CreateRole(bg, r),
+		"update":   func() error { _, err := s.UpdateRole(bg, x.acct, "ops", keep); return err }(),
+		"delete":   func() error { _, err := s.DeleteRole(bg, x.acct, "ops", nil); return err }(),
+		"bindings": func() error { _, err := s.RoleBindings(bg, x.acct, r.ID); return err }(),
+	} {
+		if err == nil || errors.Is(err, port.ErrNotFound) {
+			t.Errorf("%s with PostgreSQL closed = %v", name, err)
 		}
 	}
 }

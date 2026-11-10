@@ -578,6 +578,21 @@ func (e ApiKeyDisabledReason) Valid() bool {
 	}
 }
 
+// Defines values for ApiKeyRoleBindingKind.
+const (
+	ApiKeyRoleBindingKindApiKeyRoleBinding ApiKeyRoleBindingKind = "ApiKeyRoleBinding"
+)
+
+// Valid indicates whether the value is a known member of the ApiKeyRoleBindingKind enum.
+func (e ApiKeyRoleBindingKind) Valid() bool {
+	switch e {
+	case ApiKeyRoleBindingKindApiKeyRoleBinding:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AwsIntegrationKind.
 const (
 	AwsIntegrationKindAwsIntegration AwsIntegrationKind = "AwsIntegration"
@@ -2432,6 +2447,21 @@ func (e TerragruntTool) Valid() bool {
 	}
 }
 
+// Defines values for UserGroupRoleBindingKind.
+const (
+	UserGroupRoleBindingKindUserGroupRoleBinding UserGroupRoleBindingKind = "UserGroupRoleBinding"
+)
+
+// Valid indicates whether the value is a known member of the UserGroupRoleBindingKind enum.
+func (e UserGroupRoleBindingKind) Valid() bool {
+	switch e {
+	case UserGroupRoleBindingKindUserGroupRoleBinding:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserGroupStatus.
 const (
 	UserGroupStatusACTIVE   UserGroupStatus = "ACTIVE"
@@ -2907,6 +2937,44 @@ type ApiKeyPage struct {
 // ApiKeyRef A reference to a ApiKey; fetch it with GET /api-keys/{apiKeyId}.
 type ApiKeyRef struct {
 	Id string `json:"id"`
+}
+
+// ApiKeyRoleBinding defines model for ApiKeyRoleBinding.
+type ApiKeyRoleBinding struct {
+	// ApiKey A reference to a ApiKey; fetch it with GET /api-keys/{apiKeyId}.
+	ApiKey   ApiKeyRef `json:"apiKey"`
+	ApiKeyID string    `json:"apiKeyID"`
+	Id       string    `json:"id"`
+
+	// Kind The concrete type, for union and interface responses.
+	Kind ApiKeyRoleBindingKind `json:"kind"`
+
+	// Role A reference to a Role; fetch it with GET /roles/{roleId}.
+	Role RoleRef `json:"role"`
+
+	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
+	Space SpaceRef `json:"space"`
+}
+
+// ApiKeyRoleBindingKind The concrete type, for union and interface responses.
+type ApiKeyRoleBindingKind string
+
+// ApiKeyRoleBindingBatchInput defines model for ApiKeyRoleBindingBatchInput.
+type ApiKeyRoleBindingBatchInput struct {
+	// Bindings List of API key role bindings to create.
+	Bindings []ApiKeyRoleBindingInput `json:"bindings"`
+}
+
+// ApiKeyRoleBindingInput defines model for ApiKeyRoleBindingInput.
+type ApiKeyRoleBindingInput struct {
+	// ApiKeyID ID of the api key.
+	ApiKeyID string `json:"apiKeyID"`
+
+	// RoleID ID of the role.
+	RoleID string `json:"roleID"`
+
+	// SpaceID ID of the space.
+	SpaceID string `json:"spaceID"`
 }
 
 // ApiKeySessionsWithAccessToSpaceEdge defines model for ApiKeySessionsWithAccessToSpaceEdge.
@@ -5652,6 +5720,23 @@ type PulumiStack struct {
 // PulumiStackKind The concrete type, for union and interface responses.
 type PulumiStackKind string
 
+// Role defines model for Role.
+type Role struct {
+	Actions           []Action      `json:"actions"`
+	Description       string        `json:"description"`
+	Id                string        `json:"id"`
+	IsSystem          bool          `json:"isSystem"`
+	Name              string        `json:"name"`
+	RoleBindings      []RoleBinding `json:"roleBindings"`
+	RoleBindingsCount int32         `json:"roleBindingsCount"`
+	Slug              string        `json:"slug"`
+}
+
+// RoleBinding defines model for RoleBinding.
+type RoleBinding struct {
+	union json.RawMessage
+}
+
 // RoleBindingInput defines model for RoleBindingInput.
 type RoleBindingInput struct {
 	// RoleID ID of the role.
@@ -5661,9 +5746,41 @@ type RoleBindingInput struct {
 	SpaceID string `json:"spaceID"`
 }
 
+// RoleInput defines model for RoleInput.
+type RoleInput struct {
+	// Actions Permissions associated with the role.
+	Actions []Action `json:"actions"`
+
+	// Description Human-readable, free-form description.
+	Description *string `json:"description,omitempty"`
+
+	// Name Human-readable, free-form name.
+	Name string `json:"name"`
+}
+
+// RolePage One page of a cursor-paginated list.
+type RolePage struct {
+	Items []Role `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
 // RoleRef A reference to a Role; fetch it with GET /roles/{roleId}.
 type RoleRef struct {
 	Id string `json:"id"`
+}
+
+// RoleUpdateInput defines model for RoleUpdateInput.
+type RoleUpdateInput struct {
+	// Actions Permissions associated with the role.
+	Actions *[]Action `json:"Actions,omitempty"`
+
+	// Description Human-readable, free-form description.
+	Description *string `json:"description,omitempty"`
+
+	// Name Human-readable, free-form name.
+	Name *string `json:"name,omitempty"`
 }
 
 // Run Run represents one execution of a stack.
@@ -8118,6 +8235,24 @@ type StackRoleBinding struct {
 // StackRoleBindingKind The concrete type, for union and interface responses.
 type StackRoleBindingKind string
 
+// StackRoleBindingBatchInput defines model for StackRoleBindingBatchInput.
+type StackRoleBindingBatchInput struct {
+	// Bindings List of stack role bindings to create.
+	Bindings []StackRoleBindingInput `json:"bindings"`
+}
+
+// StackRoleBindingInput defines model for StackRoleBindingInput.
+type StackRoleBindingInput struct {
+	// RoleID ID of the role.
+	RoleID string `json:"roleID"`
+
+	// SpaceID ID of the space.
+	SpaceID string `json:"spaceID"`
+
+	// StackID ID of the stack.
+	StackID string `json:"stackID"`
+}
+
 // StackRoleBindingPage One page of a cursor-paginated list.
 type StackRoleBindingPage struct {
 	Items []StackRoleBinding `json:"items"`
@@ -8129,6 +8264,15 @@ type StackRoleBindingPage struct {
 // StackRoleBindingRef A reference to a StackRoleBinding; fetch it with GET /stack-role-bindings/{stackRoleBindingId}.
 type StackRoleBindingRef struct {
 	Id string `json:"id"`
+}
+
+// StackRoleBindingUpdateInput defines model for StackRoleBindingUpdateInput.
+type StackRoleBindingUpdateInput struct {
+	// RoleID ID of the role.
+	RoleID string `json:"roleID"`
+
+	// SpaceID ID of the space.
+	SpaceID string `json:"spaceID"`
 }
 
 // StackSetCurrentCommitRequest The arguments of stackSetCurrentCommit not carried in the path.
@@ -8510,6 +8654,42 @@ type User struct {
 	ValidUntil int32 `json:"validUntil"`
 }
 
+// UserGroupRoleBinding defines model for UserGroupRoleBinding.
+type UserGroupRoleBinding struct {
+	Id string `json:"id"`
+
+	// Kind The concrete type, for union and interface responses.
+	Kind   UserGroupRoleBindingKind `json:"kind"`
+	RoleID string                   `json:"roleID"`
+
+	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
+	Space SpaceRef `json:"space"`
+
+	// UserGroup A reference to a ManagedUserGroup; fetch it with GET /managed-user-groups/{managedUserGroupId}.
+	UserGroup ManagedUserGroupRef `json:"userGroup"`
+}
+
+// UserGroupRoleBindingKind The concrete type, for union and interface responses.
+type UserGroupRoleBindingKind string
+
+// UserGroupRoleBindingBatchInput defines model for UserGroupRoleBindingBatchInput.
+type UserGroupRoleBindingBatchInput struct {
+	// Bindings List of user group role bindings to create.
+	Bindings []UserGroupRoleBindingInput `json:"bindings"`
+}
+
+// UserGroupRoleBindingInput defines model for UserGroupRoleBindingInput.
+type UserGroupRoleBindingInput struct {
+	// RoleID ID of the role.
+	RoleID string `json:"roleID"`
+
+	// SpaceID ID of the space.
+	SpaceID string `json:"spaceID"`
+
+	// UserGroupID ID of the user group.
+	UserGroupID string `json:"userGroupID"`
+}
+
 // UserGroupSpaceAccessRoleGrant A role grant giving a group access to a space. Always a direct binding on
 // the group, there is no grantedVia union like UserSpaceAccessRoleGrant.
 type UserGroupSpaceAccessRoleGrant struct {
@@ -8570,6 +8750,24 @@ type UserRoleBinding struct {
 
 // UserRoleBindingKind The concrete type, for union and interface responses.
 type UserRoleBindingKind string
+
+// UserRoleBindingBatchInput defines model for UserRoleBindingBatchInput.
+type UserRoleBindingBatchInput struct {
+	// Bindings List of user role bindings to create.
+	Bindings []UserRoleBindingInput `json:"bindings"`
+}
+
+// UserRoleBindingInput defines model for UserRoleBindingInput.
+type UserRoleBindingInput struct {
+	// RoleID ID of the role.
+	RoleID string `json:"roleID"`
+
+	// SpaceID ID of the space.
+	SpaceID string `json:"spaceID"`
+
+	// UserID ID of the user.
+	UserID string `json:"userID"`
+}
 
 // UserSessionsWithAccessToSpaceEdge defines model for UserSessionsWithAccessToSpaceEdge.
 type UserSessionsWithAccessToSpaceEdge struct {
@@ -9077,6 +9275,39 @@ type AccountUpdateAwarenessSourceSurveyParams struct {
 type AccountUpdateSecurityEmailParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ApiKeyRoleBindingBatchCreateParams defines parameters for ApiKeyRoleBindingBatchCreate.
+type ApiKeyRoleBindingBatchCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ApiKeyRoleBindingCreateParams defines parameters for ApiKeyRoleBindingCreate.
+type ApiKeyRoleBindingCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// ApiKeyRoleBindingDeleteParams defines parameters for ApiKeyRoleBindingDelete.
+type ApiKeyRoleBindingDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ApiKeyRoleBindingPatchParams defines parameters for ApiKeyRoleBindingPatch.
+type ApiKeyRoleBindingPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ApiKeyRoleBindingUpdateParams defines parameters for ApiKeyRoleBindingUpdate.
+type ApiKeyRoleBindingUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // ApiKeySessionsWithAccessToSpaceParams defines parameters for ApiKeySessionsWithAccessToSpace.
@@ -9590,6 +9821,42 @@ type PersonalApiKeyDisableParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// RolesParams defines parameters for Roles.
+type RolesParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// RoleCreateParams defines parameters for RoleCreate.
+type RoleCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// RoleDeleteParams defines parameters for RoleDelete.
+type RoleDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// RolePatchParams defines parameters for RolePatch.
+type RolePatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// RoleUpdateParams defines parameters for RoleUpdate.
+type RoleUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // SessionsParams defines parameters for Sessions.
 type SessionsParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -9691,6 +9958,39 @@ type StackDependenciesAddReferencesParams struct {
 // StackDependenciesDeleteReferencesParams defines parameters for StackDependenciesDeleteReferences.
 type StackDependenciesDeleteReferencesParams struct {
 	Ids []string `form:"ids" json:"ids"`
+}
+
+// StackRoleBindingBatchCreateParams defines parameters for StackRoleBindingBatchCreate.
+type StackRoleBindingBatchCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// StackRoleBindingCreateParams defines parameters for StackRoleBindingCreate.
+type StackRoleBindingCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// StackRoleBindingDeleteParams defines parameters for StackRoleBindingDelete.
+type StackRoleBindingDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackRoleBindingPatchParams defines parameters for StackRoleBindingPatch.
+type StackRoleBindingPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// StackRoleBindingUpdateParams defines parameters for StackRoleBindingUpdate.
+type StackRoleBindingUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // StacksParams defines parameters for Stacks.
@@ -10145,10 +10445,76 @@ type TierFeaturesParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// UserGroupRoleBindingBatchCreateParams defines parameters for UserGroupRoleBindingBatchCreate.
+type UserGroupRoleBindingBatchCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// UserGroupRoleBindingCreateParams defines parameters for UserGroupRoleBindingCreate.
+type UserGroupRoleBindingCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// UserGroupRoleBindingDeleteParams defines parameters for UserGroupRoleBindingDelete.
+type UserGroupRoleBindingDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// UserGroupRoleBindingPatchParams defines parameters for UserGroupRoleBindingPatch.
+type UserGroupRoleBindingPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// UserGroupRoleBindingUpdateParams defines parameters for UserGroupRoleBindingUpdate.
+type UserGroupRoleBindingUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // UserGroupsWithAccessToSpaceParams defines parameters for UserGroupsWithAccessToSpace.
 type UserGroupsWithAccessToSpaceParams struct {
 	Space string      `form:"space" json:"space"`
 	Input SearchInput `form:"input" json:"input"`
+}
+
+// UserRoleBindingBatchCreateParams defines parameters for UserRoleBindingBatchCreate.
+type UserRoleBindingBatchCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// UserRoleBindingCreateParams defines parameters for UserRoleBindingCreate.
+type UserRoleBindingCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// UserRoleBindingDeleteParams defines parameters for UserRoleBindingDelete.
+type UserRoleBindingDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// UserRoleBindingPatchParams defines parameters for UserRoleBindingPatch.
+type UserRoleBindingPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// UserRoleBindingUpdateParams defines parameters for UserRoleBindingUpdate.
+type UserRoleBindingUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // UserSessionsWithAccessToSpaceParams defines parameters for UserSessionsWithAccessToSpace.
@@ -10180,6 +10546,18 @@ type AccountUpdateAwarenessSourceSurveyJSONRequestBody = AccountUpdateAwarenessS
 
 // AccountUpdateSecurityEmailJSONRequestBody defines body for AccountUpdateSecurityEmail for application/json ContentType.
 type AccountUpdateSecurityEmailJSONRequestBody = AccountUpdateSecurityEmailRequest
+
+// ApiKeyRoleBindingBatchCreateJSONRequestBody defines body for ApiKeyRoleBindingBatchCreate for application/json ContentType.
+type ApiKeyRoleBindingBatchCreateJSONRequestBody = ApiKeyRoleBindingBatchInput
+
+// ApiKeyRoleBindingCreateJSONRequestBody defines body for ApiKeyRoleBindingCreate for application/json ContentType.
+type ApiKeyRoleBindingCreateJSONRequestBody = ApiKeyRoleBindingInput
+
+// ApiKeyRoleBindingPatchApplicationMergePatchPlusJSONRequestBody defines body for ApiKeyRoleBindingPatch for application/merge-patch+json ContentType.
+type ApiKeyRoleBindingPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// ApiKeyRoleBindingUpdateJSONRequestBody defines body for ApiKeyRoleBindingUpdate for application/json ContentType.
+type ApiKeyRoleBindingUpdateJSONRequestBody = ApiKeyRoleBindingInput
 
 // ApiKeyCreateJSONRequestBody defines body for ApiKeyCreate for application/json ContentType.
 type ApiKeyCreateJSONRequestBody = ApiKeyInput
@@ -10286,6 +10664,15 @@ type OrganizationKeyCreateJSONRequestBody = OrganizationKeyCreateRequest
 // PersonalApiKeyCreateJSONRequestBody defines body for PersonalApiKeyCreate for application/json ContentType.
 type PersonalApiKeyCreateJSONRequestBody = PersonalApiKeyInput
 
+// RoleCreateJSONRequestBody defines body for RoleCreate for application/json ContentType.
+type RoleCreateJSONRequestBody = RoleInput
+
+// RolePatchApplicationMergePatchPlusJSONRequestBody defines body for RolePatch for application/merge-patch+json ContentType.
+type RolePatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// RoleUpdateJSONRequestBody defines body for RoleUpdate for application/json ContentType.
+type RoleUpdateJSONRequestBody = RoleUpdateInput
+
 // SearchSpaceContextsJSONRequestBody defines body for SearchSpaceContexts for application/json ContentType.
 type SearchSpaceContextsJSONRequestBody = SearchSpaceContextsRequest
 
@@ -10336,6 +10723,18 @@ type StackDependenciesUpdateReferencesJSONRequestBody = StackDependenciesUpdateR
 
 // StackDependenciesUpdateReferenceJSONRequestBody defines body for StackDependenciesUpdateReference for application/json ContentType.
 type StackDependenciesUpdateReferenceJSONRequestBody = StackDependencyReferenceUpdateInputBody
+
+// StackRoleBindingBatchCreateJSONRequestBody defines body for StackRoleBindingBatchCreate for application/json ContentType.
+type StackRoleBindingBatchCreateJSONRequestBody = StackRoleBindingBatchInput
+
+// StackRoleBindingCreateJSONRequestBody defines body for StackRoleBindingCreate for application/json ContentType.
+type StackRoleBindingCreateJSONRequestBody = StackRoleBindingInput
+
+// StackRoleBindingPatchApplicationMergePatchPlusJSONRequestBody defines body for StackRoleBindingPatch for application/merge-patch+json ContentType.
+type StackRoleBindingPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// StackRoleBindingUpdateJSONRequestBody defines body for StackRoleBindingUpdate for application/json ContentType.
+type StackRoleBindingUpdateJSONRequestBody = StackRoleBindingUpdateInput
 
 // StackCreateJSONRequestBody defines body for StackCreate for application/json ContentType.
 type StackCreateJSONRequestBody = StackCreateRequest
@@ -10426,6 +10825,30 @@ type WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePat
 
 // WebhooksIntegrationUpdateJSONRequestBody defines body for WebhooksIntegrationUpdate for application/json ContentType.
 type WebhooksIntegrationUpdateJSONRequestBody = WebhooksIntegrationInput
+
+// UserGroupRoleBindingBatchCreateJSONRequestBody defines body for UserGroupRoleBindingBatchCreate for application/json ContentType.
+type UserGroupRoleBindingBatchCreateJSONRequestBody = UserGroupRoleBindingBatchInput
+
+// UserGroupRoleBindingCreateJSONRequestBody defines body for UserGroupRoleBindingCreate for application/json ContentType.
+type UserGroupRoleBindingCreateJSONRequestBody = UserGroupRoleBindingInput
+
+// UserGroupRoleBindingPatchApplicationMergePatchPlusJSONRequestBody defines body for UserGroupRoleBindingPatch for application/merge-patch+json ContentType.
+type UserGroupRoleBindingPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// UserGroupRoleBindingUpdateJSONRequestBody defines body for UserGroupRoleBindingUpdate for application/json ContentType.
+type UserGroupRoleBindingUpdateJSONRequestBody = UserGroupRoleBindingInput
+
+// UserRoleBindingBatchCreateJSONRequestBody defines body for UserRoleBindingBatchCreate for application/json ContentType.
+type UserRoleBindingBatchCreateJSONRequestBody = UserRoleBindingBatchInput
+
+// UserRoleBindingCreateJSONRequestBody defines body for UserRoleBindingCreate for application/json ContentType.
+type UserRoleBindingCreateJSONRequestBody = UserRoleBindingInput
+
+// UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody defines body for UserRoleBindingPatch for application/merge-patch+json ContentType.
+type UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// UserRoleBindingUpdateJSONRequestBody defines body for UserRoleBindingUpdate for application/json ContentType.
+type UserRoleBindingUpdateJSONRequestBody = UserRoleBindingInput
 
 // AsAnsibleResource returns the union data inside the AnsibleEntity as a AnsibleResource
 func (t AnsibleEntity) AsAnsibleResource() (AnsibleResource, error) {
@@ -11101,6 +11524,179 @@ func (t PulumiEntity) MarshalJSON() ([]byte, error) {
 }
 
 func (t *PulumiEntity) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUserRoleBinding returns the union data inside the RoleBinding as a UserRoleBinding
+func (t RoleBinding) AsUserRoleBinding() (UserRoleBinding, error) {
+	var body UserRoleBinding
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUserRoleBinding overwrites any union data inside the RoleBinding as the provided UserRoleBinding
+func (t *RoleBinding) FromUserRoleBinding(v UserRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"UserRoleBinding"}`))
+	t.union = b
+	return err
+}
+
+// MergeUserRoleBinding performs a merge with any union data inside the RoleBinding, using the provided UserRoleBinding
+func (t *RoleBinding) MergeUserRoleBinding(v UserRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"UserRoleBinding"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsApiKeyRoleBinding returns the union data inside the RoleBinding as a ApiKeyRoleBinding
+func (t RoleBinding) AsApiKeyRoleBinding() (ApiKeyRoleBinding, error) {
+	var body ApiKeyRoleBinding
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromApiKeyRoleBinding overwrites any union data inside the RoleBinding as the provided ApiKeyRoleBinding
+func (t *RoleBinding) FromApiKeyRoleBinding(v ApiKeyRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ApiKeyRoleBinding"}`))
+	t.union = b
+	return err
+}
+
+// MergeApiKeyRoleBinding performs a merge with any union data inside the RoleBinding, using the provided ApiKeyRoleBinding
+func (t *RoleBinding) MergeApiKeyRoleBinding(v ApiKeyRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ApiKeyRoleBinding"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUserGroupRoleBinding returns the union data inside the RoleBinding as a UserGroupRoleBinding
+func (t RoleBinding) AsUserGroupRoleBinding() (UserGroupRoleBinding, error) {
+	var body UserGroupRoleBinding
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUserGroupRoleBinding overwrites any union data inside the RoleBinding as the provided UserGroupRoleBinding
+func (t *RoleBinding) FromUserGroupRoleBinding(v UserGroupRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"UserGroupRoleBinding"}`))
+	t.union = b
+	return err
+}
+
+// MergeUserGroupRoleBinding performs a merge with any union data inside the RoleBinding, using the provided UserGroupRoleBinding
+func (t *RoleBinding) MergeUserGroupRoleBinding(v UserGroupRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"UserGroupRoleBinding"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsStackRoleBinding returns the union data inside the RoleBinding as a StackRoleBinding
+func (t RoleBinding) AsStackRoleBinding() (StackRoleBinding, error) {
+	var body StackRoleBinding
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStackRoleBinding overwrites any union data inside the RoleBinding as the provided StackRoleBinding
+func (t *RoleBinding) FromStackRoleBinding(v StackRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"StackRoleBinding"}`))
+	t.union = b
+	return err
+}
+
+// MergeStackRoleBinding performs a merge with any union data inside the RoleBinding, using the provided StackRoleBinding
+func (t *RoleBinding) MergeStackRoleBinding(v StackRoleBinding) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"StackRoleBinding"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t RoleBinding) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"kind"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t RoleBinding) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "ApiKeyRoleBinding":
+		return t.AsApiKeyRoleBinding()
+	case "StackRoleBinding":
+		return t.AsStackRoleBinding()
+	case "UserGroupRoleBinding":
+		return t.AsUserGroupRoleBinding()
+	case "UserRoleBinding":
+		return t.AsUserRoleBinding()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t RoleBinding) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *RoleBinding) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -12184,6 +12780,76 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /allow-non-admin-space-creation (the `AllowNonAdminSpaceCreation` operationId).
 	AllowNonAdminSpaceCreation(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingBatchCreateWithBody Batch Create API Key Role Bindings
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+	ApiKeyRoleBindingBatchCreateWithBody(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingBatchCreate Batch Create API Key Role Bindings
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+	ApiKeyRoleBindingBatchCreate(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, body ApiKeyRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingCreateWithBody Create API Key Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+	ApiKeyRoleBindingCreateWithBody(ctx context.Context, params *ApiKeyRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingCreate Create API Key Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+	ApiKeyRoleBindingCreate(ctx context.Context, params *ApiKeyRoleBindingCreateParams, body ApiKeyRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingDelete Delete API Key Role Binding
+	//
+	// Corresponds with DELETE /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingDelete` operationId).
+	ApiKeyRoleBindingDelete(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBinding Get API Key Role Binding
+	//
+	// Corresponds with GET /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBinding` operationId).
+	ApiKeyRoleBinding(ctx context.Context, apiKeyRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingPatchWithBody Patch API Key Role Binding
+	//
+	// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+	ApiKeyRoleBindingPatchWithBody(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch API Key Role Binding
+	//
+	// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+	ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, body ApiKeyRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingUpdateWithBody Update API Key Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+	ApiKeyRoleBindingUpdateWithBody(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ApiKeyRoleBindingUpdate Update API Key Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+	ApiKeyRoleBindingUpdate(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, body ApiKeyRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ApiKeySessionsWithAccessToSpace API Key Sessions With Access To Space
 	//
@@ -13355,6 +14021,79 @@ type ClientInterface interface {
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// Roles List Roles
+	//
+	// The account's roles, its five system roles and its custom roles, by slug. Any member of the account reads them, since a space admin binds them.
+	//
+	// Corresponds with GET /roles (the `Roles` operationId).
+	Roles(ctx context.Context, params *RolesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RoleCreateWithBody Create Role
+	//
+	// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /roles (the `RoleCreate` operationId).
+	RoleCreateWithBody(ctx context.Context, params *RoleCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RoleCreate Create Role
+	//
+	// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /roles (the `RoleCreate` operationId).
+	RoleCreate(ctx context.Context, params *RoleCreateParams, body RoleCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RoleDelete Delete Role
+	//
+	// Delete a custom role. A system role answers 422 validation-failed, and a role that still has bindings answers 409 invalid-state.
+	//
+	// Corresponds with DELETE /roles/{roleId} (the `RoleDelete` operationId).
+	RoleDelete(ctx context.Context, roleId string, params *RoleDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Role Get Role
+	//
+	// Corresponds with GET /roles/{roleId} (the `Role` operationId).
+	Role(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RolePatchWithBody Patch Role
+	//
+	// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+	RolePatchWithBody(ctx context.Context, roleId string, params *RolePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RolePatchWithApplicationMergePatchPlusJSONBody Patch Role
+	//
+	// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+	RolePatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, roleId string, params *RolePatchParams, body RolePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RoleUpdateWithBody Update Role
+	//
+	// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+	RoleUpdateWithBody(ctx context.Context, roleId string, params *RoleUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RoleUpdate Update Role
+	//
+	// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+	RoleUpdate(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Seats Seats
 	//
 	// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -13738,6 +14477,76 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /stack-dependency-references/{referenceId} (the `StackDependenciesUpdateReference` operationId).
 	StackDependenciesUpdateReference(ctx context.Context, referenceId string, body StackDependenciesUpdateReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingBatchCreateWithBody Batch Create Stack Role Bindings
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+	StackRoleBindingBatchCreateWithBody(ctx context.Context, params *StackRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingBatchCreate Batch Create Stack Role Bindings
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+	StackRoleBindingBatchCreate(ctx context.Context, params *StackRoleBindingBatchCreateParams, body StackRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingCreateWithBody Create Stack Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+	StackRoleBindingCreateWithBody(ctx context.Context, params *StackRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingCreate Create Stack Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+	StackRoleBindingCreate(ctx context.Context, params *StackRoleBindingCreateParams, body StackRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingDelete Delete Stack Role Binding
+	//
+	// Corresponds with DELETE /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingDelete` operationId).
+	StackRoleBindingDelete(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBinding Get Stack Role Binding
+	//
+	// Corresponds with GET /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBinding` operationId).
+	StackRoleBinding(ctx context.Context, stackRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingPatchWithBody Patch Stack Role Binding
+	//
+	// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+	StackRoleBindingPatchWithBody(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch Stack Role Binding
+	//
+	// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+	StackRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, body StackRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingUpdateWithBody Update Stack Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+	StackRoleBindingUpdateWithBody(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackRoleBindingUpdate Update Stack Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+	StackRoleBindingUpdate(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, body StackRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Stacks List Stacks
 	//
@@ -14635,12 +15444,152 @@ type ClientInterface interface {
 	// Corresponds with GET /type (the `Type` operationId).
 	Type(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UserGroupRoleBindingBatchCreateWithBody Batch Create User Group Role Bindings
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+	UserGroupRoleBindingBatchCreateWithBody(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingBatchCreate Batch Create User Group Role Bindings
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+	UserGroupRoleBindingBatchCreate(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, body UserGroupRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingCreateWithBody Create User Group Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+	UserGroupRoleBindingCreateWithBody(ctx context.Context, params *UserGroupRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingCreate Create User Group Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+	UserGroupRoleBindingCreate(ctx context.Context, params *UserGroupRoleBindingCreateParams, body UserGroupRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingDelete Delete User Group Role Binding
+	//
+	// Corresponds with DELETE /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingDelete` operationId).
+	UserGroupRoleBindingDelete(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBinding Get User Group Role Binding
+	//
+	// Corresponds with GET /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBinding` operationId).
+	UserGroupRoleBinding(ctx context.Context, userGroupRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingPatchWithBody Patch User Group Role Binding
+	//
+	// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+	UserGroupRoleBindingPatchWithBody(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch User Group Role Binding
+	//
+	// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+	UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, body UserGroupRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingUpdateWithBody Update User Group Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+	UserGroupRoleBindingUpdateWithBody(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserGroupRoleBindingUpdate Update User Group Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+	UserGroupRoleBindingUpdate(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, body UserGroupRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UserGroupsWithAccessToSpace User Groups With Access To Space
 	//
 	// Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
 	//
 	// Corresponds with GET /user-groups-with-access-to-space (the `UserGroupsWithAccessToSpace` operationId).
 	UserGroupsWithAccessToSpace(ctx context.Context, params *UserGroupsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingBatchCreateWithBody Batch Create User Role Bindings
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+	UserRoleBindingBatchCreateWithBody(ctx context.Context, params *UserRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingBatchCreate Batch Create User Role Bindings
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+	UserRoleBindingBatchCreate(ctx context.Context, params *UserRoleBindingBatchCreateParams, body UserRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingCreateWithBody Create User Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+	UserRoleBindingCreateWithBody(ctx context.Context, params *UserRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingCreate Create User Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+	UserRoleBindingCreate(ctx context.Context, params *UserRoleBindingCreateParams, body UserRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingDelete Delete User Role Binding
+	//
+	// Corresponds with DELETE /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingDelete` operationId).
+	UserRoleBindingDelete(ctx context.Context, userRoleBindingId string, params *UserRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBinding Get User Role Binding
+	//
+	// Corresponds with GET /user-role-bindings/{userRoleBindingId} (the `UserRoleBinding` operationId).
+	UserRoleBinding(ctx context.Context, userRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingPatchWithBody Patch User Role Binding
+	//
+	// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+	UserRoleBindingPatchWithBody(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch User Role Binding
+	//
+	// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+	UserRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, body UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingUpdateWithBody Update User Role Binding
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+	UserRoleBindingUpdateWithBody(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UserRoleBindingUpdate Update User Role Binding
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+	UserRoleBindingUpdate(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, body UserRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UserSessionsWithAccessToSpace User Sessions With Access To Space
 	//
@@ -15026,6 +15975,176 @@ func (c *Client) ActionCatalogue(ctx context.Context, reqEditors ...RequestEdito
 // Corresponds with GET /allow-non-admin-space-creation (the `AllowNonAdminSpaceCreation` operationId).
 func (c *Client) AllowNonAdminSpaceCreation(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAllowNonAdminSpaceCreationRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingBatchCreateWithBody Batch Create API Key Role Bindings
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+func (c *Client) ApiKeyRoleBindingBatchCreateWithBody(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingBatchCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingBatchCreate Batch Create API Key Role Bindings
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+func (c *Client) ApiKeyRoleBindingBatchCreate(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, body ApiKeyRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingBatchCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingCreateWithBody Create API Key Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+func (c *Client) ApiKeyRoleBindingCreateWithBody(ctx context.Context, params *ApiKeyRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingCreate Create API Key Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+func (c *Client) ApiKeyRoleBindingCreate(ctx context.Context, params *ApiKeyRoleBindingCreateParams, body ApiKeyRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingDelete Delete API Key Role Binding
+//
+// Corresponds with DELETE /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingDelete` operationId).
+func (c *Client) ApiKeyRoleBindingDelete(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingDeleteRequest(c.Server, apiKeyRoleBindingId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBinding Get API Key Role Binding
+//
+// Corresponds with GET /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBinding` operationId).
+func (c *Client) ApiKeyRoleBinding(ctx context.Context, apiKeyRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingRequest(c.Server, apiKeyRoleBindingId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingPatchWithBody Patch API Key Role Binding
+//
+// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+func (c *Client) ApiKeyRoleBindingPatchWithBody(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingPatchRequestWithBody(c.Server, apiKeyRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch API Key Role Binding
+//
+// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+func (c *Client) ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, body ApiKeyRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, apiKeyRoleBindingId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingUpdateWithBody Update API Key Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+func (c *Client) ApiKeyRoleBindingUpdateWithBody(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingUpdateRequestWithBody(c.Server, apiKeyRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ApiKeyRoleBindingUpdate Update API Key Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+func (c *Client) ApiKeyRoleBindingUpdate(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, body ApiKeyRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyRoleBindingUpdateRequest(c.Server, apiKeyRoleBindingId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -17616,6 +18735,169 @@ func (c *Client) PersonalApiKeyDisable(ctx context.Context, personalApiKeyId str
 	return c.Client.Do(req)
 }
 
+// Roles List Roles
+//
+// The account's roles, its five system roles and its custom roles, by slug. Any member of the account reads them, since a space admin binds them.
+//
+// Corresponds with GET /roles (the `Roles` operationId).
+func (c *Client) Roles(ctx context.Context, params *RolesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRolesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RoleCreateWithBody Create Role
+//
+// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /roles (the `RoleCreate` operationId).
+func (c *Client) RoleCreateWithBody(ctx context.Context, params *RoleCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRoleCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RoleCreate Create Role
+//
+// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /roles (the `RoleCreate` operationId).
+func (c *Client) RoleCreate(ctx context.Context, params *RoleCreateParams, body RoleCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRoleCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RoleDelete Delete Role
+//
+// Delete a custom role. A system role answers 422 validation-failed, and a role that still has bindings answers 409 invalid-state.
+//
+// Corresponds with DELETE /roles/{roleId} (the `RoleDelete` operationId).
+func (c *Client) RoleDelete(ctx context.Context, roleId string, params *RoleDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRoleDeleteRequest(c.Server, roleId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Role Get Role
+//
+// Corresponds with GET /roles/{roleId} (the `Role` operationId).
+func (c *Client) Role(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRoleRequest(c.Server, roleId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RolePatchWithBody Patch Role
+//
+// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+func (c *Client) RolePatchWithBody(ctx context.Context, roleId string, params *RolePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRolePatchRequestWithBody(c.Server, roleId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RolePatchWithApplicationMergePatchPlusJSONBody Patch Role
+//
+// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+func (c *Client) RolePatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, roleId string, params *RolePatchParams, body RolePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRolePatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, roleId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RoleUpdateWithBody Update Role
+//
+// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+func (c *Client) RoleUpdateWithBody(ctx context.Context, roleId string, params *RoleUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRoleUpdateRequestWithBody(c.Server, roleId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RoleUpdate Update Role
+//
+// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+func (c *Client) RoleUpdate(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRoleUpdateRequest(c.Server, roleId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Seats Seats
 //
 // The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -18440,6 +19722,176 @@ func (c *Client) StackDependenciesUpdateReferenceWithBody(ctx context.Context, r
 // Corresponds with PUT /stack-dependency-references/{referenceId} (the `StackDependenciesUpdateReference` operationId).
 func (c *Client) StackDependenciesUpdateReference(ctx context.Context, referenceId string, body StackDependenciesUpdateReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackDependenciesUpdateReferenceRequest(c.Server, referenceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingBatchCreateWithBody Batch Create Stack Role Bindings
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+func (c *Client) StackRoleBindingBatchCreateWithBody(ctx context.Context, params *StackRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingBatchCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingBatchCreate Batch Create Stack Role Bindings
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+func (c *Client) StackRoleBindingBatchCreate(ctx context.Context, params *StackRoleBindingBatchCreateParams, body StackRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingBatchCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingCreateWithBody Create Stack Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+func (c *Client) StackRoleBindingCreateWithBody(ctx context.Context, params *StackRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingCreate Create Stack Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+func (c *Client) StackRoleBindingCreate(ctx context.Context, params *StackRoleBindingCreateParams, body StackRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingDelete Delete Stack Role Binding
+//
+// Corresponds with DELETE /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingDelete` operationId).
+func (c *Client) StackRoleBindingDelete(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingDeleteRequest(c.Server, stackRoleBindingId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBinding Get Stack Role Binding
+//
+// Corresponds with GET /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBinding` operationId).
+func (c *Client) StackRoleBinding(ctx context.Context, stackRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingRequest(c.Server, stackRoleBindingId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingPatchWithBody Patch Stack Role Binding
+//
+// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+func (c *Client) StackRoleBindingPatchWithBody(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingPatchRequestWithBody(c.Server, stackRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch Stack Role Binding
+//
+// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+func (c *Client) StackRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, body StackRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, stackRoleBindingId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingUpdateWithBody Update Stack Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+func (c *Client) StackRoleBindingUpdateWithBody(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingUpdateRequestWithBody(c.Server, stackRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackRoleBindingUpdate Update Stack Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+func (c *Client) StackRoleBindingUpdate(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, body StackRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackRoleBindingUpdateRequest(c.Server, stackRoleBindingId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -20406,6 +21858,176 @@ func (c *Client) Type(ctx context.Context, reqEditors ...RequestEditorFn) (*http
 	return c.Client.Do(req)
 }
 
+// UserGroupRoleBindingBatchCreateWithBody Batch Create User Group Role Bindings
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+func (c *Client) UserGroupRoleBindingBatchCreateWithBody(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingBatchCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingBatchCreate Batch Create User Group Role Bindings
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+func (c *Client) UserGroupRoleBindingBatchCreate(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, body UserGroupRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingBatchCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingCreateWithBody Create User Group Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+func (c *Client) UserGroupRoleBindingCreateWithBody(ctx context.Context, params *UserGroupRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingCreate Create User Group Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+func (c *Client) UserGroupRoleBindingCreate(ctx context.Context, params *UserGroupRoleBindingCreateParams, body UserGroupRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingDelete Delete User Group Role Binding
+//
+// Corresponds with DELETE /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingDelete` operationId).
+func (c *Client) UserGroupRoleBindingDelete(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingDeleteRequest(c.Server, userGroupRoleBindingId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBinding Get User Group Role Binding
+//
+// Corresponds with GET /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBinding` operationId).
+func (c *Client) UserGroupRoleBinding(ctx context.Context, userGroupRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingRequest(c.Server, userGroupRoleBindingId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingPatchWithBody Patch User Group Role Binding
+//
+// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+func (c *Client) UserGroupRoleBindingPatchWithBody(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingPatchRequestWithBody(c.Server, userGroupRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch User Group Role Binding
+//
+// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+func (c *Client) UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, body UserGroupRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, userGroupRoleBindingId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingUpdateWithBody Update User Group Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+func (c *Client) UserGroupRoleBindingUpdateWithBody(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingUpdateRequestWithBody(c.Server, userGroupRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserGroupRoleBindingUpdate Update User Group Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+func (c *Client) UserGroupRoleBindingUpdate(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, body UserGroupRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserGroupRoleBindingUpdateRequest(c.Server, userGroupRoleBindingId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // UserGroupsWithAccessToSpace User Groups With Access To Space
 //
 // Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
@@ -20413,6 +22035,176 @@ func (c *Client) Type(ctx context.Context, reqEditors ...RequestEditorFn) (*http
 // Corresponds with GET /user-groups-with-access-to-space (the `UserGroupsWithAccessToSpace` operationId).
 func (c *Client) UserGroupsWithAccessToSpace(ctx context.Context, params *UserGroupsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUserGroupsWithAccessToSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingBatchCreateWithBody Batch Create User Role Bindings
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+func (c *Client) UserRoleBindingBatchCreateWithBody(ctx context.Context, params *UserRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingBatchCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingBatchCreate Batch Create User Role Bindings
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+func (c *Client) UserRoleBindingBatchCreate(ctx context.Context, params *UserRoleBindingBatchCreateParams, body UserRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingBatchCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingCreateWithBody Create User Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+func (c *Client) UserRoleBindingCreateWithBody(ctx context.Context, params *UserRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingCreate Create User Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+func (c *Client) UserRoleBindingCreate(ctx context.Context, params *UserRoleBindingCreateParams, body UserRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingDelete Delete User Role Binding
+//
+// Corresponds with DELETE /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingDelete` operationId).
+func (c *Client) UserRoleBindingDelete(ctx context.Context, userRoleBindingId string, params *UserRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingDeleteRequest(c.Server, userRoleBindingId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBinding Get User Role Binding
+//
+// Corresponds with GET /user-role-bindings/{userRoleBindingId} (the `UserRoleBinding` operationId).
+func (c *Client) UserRoleBinding(ctx context.Context, userRoleBindingId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingRequest(c.Server, userRoleBindingId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingPatchWithBody Patch User Role Binding
+//
+// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+func (c *Client) UserRoleBindingPatchWithBody(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingPatchRequestWithBody(c.Server, userRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingPatchWithApplicationMergePatchPlusJSONBody Patch User Role Binding
+//
+// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+func (c *Client) UserRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, body UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, userRoleBindingId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingUpdateWithBody Update User Role Binding
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+func (c *Client) UserRoleBindingUpdateWithBody(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingUpdateRequestWithBody(c.Server, userRoleBindingId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UserRoleBindingUpdate Update User Role Binding
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+func (c *Client) UserRoleBindingUpdate(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, body UserRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUserRoleBindingUpdateRequest(c.Server, userRoleBindingId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -21062,6 +22854,334 @@ func NewAllowNonAdminSpaceCreationRequest(server string) (*http.Request, error) 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewApiKeyRoleBindingBatchCreateRequest calls the generic ApiKeyRoleBindingBatchCreate builder with application/json body
+func NewApiKeyRoleBindingBatchCreateRequest(server string, params *ApiKeyRoleBindingBatchCreateParams, body ApiKeyRoleBindingBatchCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewApiKeyRoleBindingBatchCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewApiKeyRoleBindingBatchCreateRequestWithBody constructs an http.Request for the ApiKeyRoleBindingBatchCreate method, with any body, and a specified content type
+func NewApiKeyRoleBindingBatchCreateRequestWithBody(server string, params *ApiKeyRoleBindingBatchCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-key-role-binding-batches")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewApiKeyRoleBindingCreateRequest calls the generic ApiKeyRoleBindingCreate builder with application/json body
+func NewApiKeyRoleBindingCreateRequest(server string, params *ApiKeyRoleBindingCreateParams, body ApiKeyRoleBindingCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewApiKeyRoleBindingCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewApiKeyRoleBindingCreateRequestWithBody constructs an http.Request for the ApiKeyRoleBindingCreate method, with any body, and a specified content type
+func NewApiKeyRoleBindingCreateRequestWithBody(server string, params *ApiKeyRoleBindingCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-key-role-bindings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewApiKeyRoleBindingDeleteRequest constructs an http.Request for the ApiKeyRoleBindingDelete method
+func NewApiKeyRoleBindingDeleteRequest(server string, apiKeyRoleBindingId string, params *ApiKeyRoleBindingDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "apiKeyRoleBindingId", apiKeyRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-key-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewApiKeyRoleBindingRequest constructs an http.Request for the ApiKeyRoleBinding method
+func NewApiKeyRoleBindingRequest(server string, apiKeyRoleBindingId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "apiKeyRoleBindingId", apiKeyRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-key-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewApiKeyRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic ApiKeyRoleBindingPatch builder with application/merge-patch+json body
+func NewApiKeyRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(server string, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, body ApiKeyRoleBindingPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewApiKeyRoleBindingPatchRequestWithBody(server, apiKeyRoleBindingId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewApiKeyRoleBindingPatchRequestWithBody constructs an http.Request for the ApiKeyRoleBindingPatch method, with any body, and a specified content type
+func NewApiKeyRoleBindingPatchRequestWithBody(server string, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "apiKeyRoleBindingId", apiKeyRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-key-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewApiKeyRoleBindingUpdateRequest calls the generic ApiKeyRoleBindingUpdate builder with application/json body
+func NewApiKeyRoleBindingUpdateRequest(server string, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, body ApiKeyRoleBindingUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewApiKeyRoleBindingUpdateRequestWithBody(server, apiKeyRoleBindingId, params, "application/json", bodyReader)
+}
+
+// NewApiKeyRoleBindingUpdateRequestWithBody constructs an http.Request for the ApiKeyRoleBindingUpdate method, with any body, and a specified content type
+func NewApiKeyRoleBindingUpdateRequestWithBody(server string, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "apiKeyRoleBindingId", apiKeyRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-key-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -26498,6 +28618,345 @@ func NewPersonalApiKeyDisableRequest(server string, personalApiKeyId string, par
 	return req, nil
 }
 
+// NewRolesRequest constructs an http.Request for the Roles method
+func NewRolesRequest(server string, params *RolesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/roles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRoleCreateRequest calls the generic RoleCreate builder with application/json body
+func NewRoleCreateRequest(server string, params *RoleCreateParams, body RoleCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRoleCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewRoleCreateRequestWithBody constructs an http.Request for the RoleCreate method, with any body, and a specified content type
+func NewRoleCreateRequestWithBody(server string, params *RoleCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/roles")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRoleDeleteRequest constructs an http.Request for the RoleDelete method
+func NewRoleDeleteRequest(server string, roleId string, params *RoleDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "roleId", roleId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/roles/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRoleRequest constructs an http.Request for the Role method
+func NewRoleRequest(server string, roleId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "roleId", roleId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/roles/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRolePatchRequestWithApplicationMergePatchPlusJSONBody calls the generic RolePatch builder with application/merge-patch+json body
+func NewRolePatchRequestWithApplicationMergePatchPlusJSONBody(server string, roleId string, params *RolePatchParams, body RolePatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRolePatchRequestWithBody(server, roleId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewRolePatchRequestWithBody constructs an http.Request for the RolePatch method, with any body, and a specified content type
+func NewRolePatchRequestWithBody(server string, roleId string, params *RolePatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "roleId", roleId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/roles/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRoleUpdateRequest calls the generic RoleUpdate builder with application/json body
+func NewRoleUpdateRequest(server string, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRoleUpdateRequestWithBody(server, roleId, params, "application/json", bodyReader)
+}
+
+// NewRoleUpdateRequestWithBody constructs an http.Request for the RoleUpdate method, with any body, and a specified content type
+func NewRoleUpdateRequestWithBody(server string, roleId string, params *RoleUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "roleId", roleId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/roles/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewSeatsRequest constructs an http.Request for the Seats method
 func NewSeatsRequest(server string) (*http.Request, error) {
 	var err error
@@ -27879,6 +30338,334 @@ func NewStackDependenciesUpdateReferenceRequestWithBody(server string, reference
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStackRoleBindingBatchCreateRequest calls the generic StackRoleBindingBatchCreate builder with application/json body
+func NewStackRoleBindingBatchCreateRequest(server string, params *StackRoleBindingBatchCreateParams, body StackRoleBindingBatchCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackRoleBindingBatchCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewStackRoleBindingBatchCreateRequestWithBody constructs an http.Request for the StackRoleBindingBatchCreate method, with any body, and a specified content type
+func NewStackRoleBindingBatchCreateRequestWithBody(server string, params *StackRoleBindingBatchCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stack-role-binding-batches")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackRoleBindingCreateRequest calls the generic StackRoleBindingCreate builder with application/json body
+func NewStackRoleBindingCreateRequest(server string, params *StackRoleBindingCreateParams, body StackRoleBindingCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackRoleBindingCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewStackRoleBindingCreateRequestWithBody constructs an http.Request for the StackRoleBindingCreate method, with any body, and a specified content type
+func NewStackRoleBindingCreateRequestWithBody(server string, params *StackRoleBindingCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stack-role-bindings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackRoleBindingDeleteRequest constructs an http.Request for the StackRoleBindingDelete method
+func NewStackRoleBindingDeleteRequest(server string, stackRoleBindingId string, params *StackRoleBindingDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackRoleBindingId", stackRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stack-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackRoleBindingRequest constructs an http.Request for the StackRoleBinding method
+func NewStackRoleBindingRequest(server string, stackRoleBindingId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackRoleBindingId", stackRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stack-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStackRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic StackRoleBindingPatch builder with application/merge-patch+json body
+func NewStackRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(server string, stackRoleBindingId string, params *StackRoleBindingPatchParams, body StackRoleBindingPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackRoleBindingPatchRequestWithBody(server, stackRoleBindingId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewStackRoleBindingPatchRequestWithBody constructs an http.Request for the StackRoleBindingPatch method, with any body, and a specified content type
+func NewStackRoleBindingPatchRequestWithBody(server string, stackRoleBindingId string, params *StackRoleBindingPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackRoleBindingId", stackRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stack-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewStackRoleBindingUpdateRequest calls the generic StackRoleBindingUpdate builder with application/json body
+func NewStackRoleBindingUpdateRequest(server string, stackRoleBindingId string, params *StackRoleBindingUpdateParams, body StackRoleBindingUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackRoleBindingUpdateRequestWithBody(server, stackRoleBindingId, params, "application/json", bodyReader)
+}
+
+// NewStackRoleBindingUpdateRequestWithBody constructs an http.Request for the StackRoleBindingUpdate method, with any body, and a specified content type
+func NewStackRoleBindingUpdateRequestWithBody(server string, stackRoleBindingId string, params *StackRoleBindingUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackRoleBindingId", stackRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stack-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -32500,6 +35287,334 @@ func NewTypeRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewUserGroupRoleBindingBatchCreateRequest calls the generic UserGroupRoleBindingBatchCreate builder with application/json body
+func NewUserGroupRoleBindingBatchCreateRequest(server string, params *UserGroupRoleBindingBatchCreateParams, body UserGroupRoleBindingBatchCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserGroupRoleBindingBatchCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewUserGroupRoleBindingBatchCreateRequestWithBody constructs an http.Request for the UserGroupRoleBindingBatchCreate method, with any body, and a specified content type
+func NewUserGroupRoleBindingBatchCreateRequestWithBody(server string, params *UserGroupRoleBindingBatchCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-group-role-binding-batches")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserGroupRoleBindingCreateRequest calls the generic UserGroupRoleBindingCreate builder with application/json body
+func NewUserGroupRoleBindingCreateRequest(server string, params *UserGroupRoleBindingCreateParams, body UserGroupRoleBindingCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserGroupRoleBindingCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewUserGroupRoleBindingCreateRequestWithBody constructs an http.Request for the UserGroupRoleBindingCreate method, with any body, and a specified content type
+func NewUserGroupRoleBindingCreateRequestWithBody(server string, params *UserGroupRoleBindingCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-group-role-bindings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserGroupRoleBindingDeleteRequest constructs an http.Request for the UserGroupRoleBindingDelete method
+func NewUserGroupRoleBindingDeleteRequest(server string, userGroupRoleBindingId string, params *UserGroupRoleBindingDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userGroupRoleBindingId", userGroupRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-group-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserGroupRoleBindingRequest constructs an http.Request for the UserGroupRoleBinding method
+func NewUserGroupRoleBindingRequest(server string, userGroupRoleBindingId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userGroupRoleBindingId", userGroupRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-group-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserGroupRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic UserGroupRoleBindingPatch builder with application/merge-patch+json body
+func NewUserGroupRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(server string, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, body UserGroupRoleBindingPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserGroupRoleBindingPatchRequestWithBody(server, userGroupRoleBindingId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewUserGroupRoleBindingPatchRequestWithBody constructs an http.Request for the UserGroupRoleBindingPatch method, with any body, and a specified content type
+func NewUserGroupRoleBindingPatchRequestWithBody(server string, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userGroupRoleBindingId", userGroupRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-group-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserGroupRoleBindingUpdateRequest calls the generic UserGroupRoleBindingUpdate builder with application/json body
+func NewUserGroupRoleBindingUpdateRequest(server string, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, body UserGroupRoleBindingUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserGroupRoleBindingUpdateRequestWithBody(server, userGroupRoleBindingId, params, "application/json", bodyReader)
+}
+
+// NewUserGroupRoleBindingUpdateRequestWithBody constructs an http.Request for the UserGroupRoleBindingUpdate method, with any body, and a specified content type
+func NewUserGroupRoleBindingUpdateRequestWithBody(server string, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userGroupRoleBindingId", userGroupRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-group-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewUserGroupsWithAccessToSpaceRequest constructs an http.Request for the UserGroupsWithAccessToSpace method
 func NewUserGroupsWithAccessToSpaceRequest(server string, params *UserGroupsWithAccessToSpaceParams) (*http.Request, error) {
 	var err error
@@ -32551,6 +35666,334 @@ func NewUserGroupsWithAccessToSpaceRequest(server string, params *UserGroupsWith
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserRoleBindingBatchCreateRequest calls the generic UserRoleBindingBatchCreate builder with application/json body
+func NewUserRoleBindingBatchCreateRequest(server string, params *UserRoleBindingBatchCreateParams, body UserRoleBindingBatchCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserRoleBindingBatchCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewUserRoleBindingBatchCreateRequestWithBody constructs an http.Request for the UserRoleBindingBatchCreate method, with any body, and a specified content type
+func NewUserRoleBindingBatchCreateRequestWithBody(server string, params *UserRoleBindingBatchCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-role-binding-batches")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserRoleBindingCreateRequest calls the generic UserRoleBindingCreate builder with application/json body
+func NewUserRoleBindingCreateRequest(server string, params *UserRoleBindingCreateParams, body UserRoleBindingCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserRoleBindingCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewUserRoleBindingCreateRequestWithBody constructs an http.Request for the UserRoleBindingCreate method, with any body, and a specified content type
+func NewUserRoleBindingCreateRequestWithBody(server string, params *UserRoleBindingCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-role-bindings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserRoleBindingDeleteRequest constructs an http.Request for the UserRoleBindingDelete method
+func NewUserRoleBindingDeleteRequest(server string, userRoleBindingId string, params *UserRoleBindingDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userRoleBindingId", userRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserRoleBindingRequest constructs an http.Request for the UserRoleBinding method
+func NewUserRoleBindingRequest(server string, userRoleBindingId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userRoleBindingId", userRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUserRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic UserRoleBindingPatch builder with application/merge-patch+json body
+func NewUserRoleBindingPatchRequestWithApplicationMergePatchPlusJSONBody(server string, userRoleBindingId string, params *UserRoleBindingPatchParams, body UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserRoleBindingPatchRequestWithBody(server, userRoleBindingId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewUserRoleBindingPatchRequestWithBody constructs an http.Request for the UserRoleBindingPatch method, with any body, and a specified content type
+func NewUserRoleBindingPatchRequestWithBody(server string, userRoleBindingId string, params *UserRoleBindingPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userRoleBindingId", userRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewUserRoleBindingUpdateRequest calls the generic UserRoleBindingUpdate builder with application/json body
+func NewUserRoleBindingUpdateRequest(server string, userRoleBindingId string, params *UserRoleBindingUpdateParams, body UserRoleBindingUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUserRoleBindingUpdateRequestWithBody(server, userRoleBindingId, params, "application/json", bodyReader)
+}
+
+// NewUserRoleBindingUpdateRequestWithBody constructs an http.Request for the UserRoleBindingUpdate method, with any body, and a specified content type
+func NewUserRoleBindingUpdateRequestWithBody(server string, userRoleBindingId string, params *UserRoleBindingUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userRoleBindingId", userRoleBindingId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/user-role-bindings/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -32924,6 +36367,80 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /allow-non-admin-space-creation (the `AllowNonAdminSpaceCreation` operationId).
 	AllowNonAdminSpaceCreationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AllowNonAdminSpaceCreationResponse, error)
+
+	// ApiKeyRoleBindingBatchCreateWithBodyWithResponse Batch Create API Key Role Bindings
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+	ApiKeyRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingBatchCreateResponse, error)
+
+	// ApiKeyRoleBindingBatchCreateWithResponse Batch Create API Key Role Bindings
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+	ApiKeyRoleBindingBatchCreateWithResponse(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, body ApiKeyRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingBatchCreateResponse, error)
+
+	// ApiKeyRoleBindingCreateWithBodyWithResponse Create API Key Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+	ApiKeyRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *ApiKeyRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingCreateResponse, error)
+
+	// ApiKeyRoleBindingCreateWithResponse Create API Key Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+	ApiKeyRoleBindingCreateWithResponse(ctx context.Context, params *ApiKeyRoleBindingCreateParams, body ApiKeyRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingCreateResponse, error)
+
+	// ApiKeyRoleBindingDeleteWithResponse Delete API Key Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingDelete` operationId).
+	ApiKeyRoleBindingDeleteWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingDeleteResponse, error)
+
+	// ApiKeyRoleBindingWithResponse Get API Key Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBinding` operationId).
+	ApiKeyRoleBindingWithResponse(ctx context.Context, apiKeyRoleBindingId string, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingResponse, error)
+
+	// ApiKeyRoleBindingPatchWithBodyWithResponse Patch API Key Role Binding
+	//
+	// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+	ApiKeyRoleBindingPatchWithBodyWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingPatchResponse, error)
+
+	// ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch API Key Role Binding
+	//
+	// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+	ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, body ApiKeyRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingPatchResponse, error)
+
+	// ApiKeyRoleBindingUpdateWithBodyWithResponse Update API Key Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+	ApiKeyRoleBindingUpdateWithBodyWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingUpdateResponse, error)
+
+	// ApiKeyRoleBindingUpdateWithResponse Update API Key Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+	ApiKeyRoleBindingUpdateWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, body ApiKeyRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingUpdateResponse, error)
 
 	// ApiKeySessionsWithAccessToSpaceWithResponse API Key Sessions With Access To Space
 	//
@@ -34237,6 +37754,85 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisableWithResponse(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*PersonalApiKeyDisableResponse, error)
 
+	// RolesWithResponse List Roles
+	//
+	// The account's roles, its five system roles and its custom roles, by slug. Any member of the account reads them, since a space admin binds them.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /roles (the `Roles` operationId).
+	RolesWithResponse(ctx context.Context, params *RolesParams, reqEditors ...RequestEditorFn) (*RolesResponse, error)
+
+	// RoleCreateWithBodyWithResponse Create Role
+	//
+	// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /roles (the `RoleCreate` operationId).
+	RoleCreateWithBodyWithResponse(ctx context.Context, params *RoleCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RoleCreateResponse, error)
+
+	// RoleCreateWithResponse Create Role
+	//
+	// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /roles (the `RoleCreate` operationId).
+	RoleCreateWithResponse(ctx context.Context, params *RoleCreateParams, body RoleCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*RoleCreateResponse, error)
+
+	// RoleDeleteWithResponse Delete Role
+	//
+	// Delete a custom role. A system role answers 422 validation-failed, and a role that still has bindings answers 409 invalid-state.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /roles/{roleId} (the `RoleDelete` operationId).
+	RoleDeleteWithResponse(ctx context.Context, roleId string, params *RoleDeleteParams, reqEditors ...RequestEditorFn) (*RoleDeleteResponse, error)
+
+	// RoleWithResponse Get Role
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /roles/{roleId} (the `Role` operationId).
+	RoleWithResponse(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*RoleResponse, error)
+
+	// RolePatchWithBodyWithResponse Patch Role
+	//
+	// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+	RolePatchWithBodyWithResponse(ctx context.Context, roleId string, params *RolePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RolePatchResponse, error)
+
+	// RolePatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Role
+	//
+	// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+	RolePatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, roleId string, params *RolePatchParams, body RolePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*RolePatchResponse, error)
+
+	// RoleUpdateWithBodyWithResponse Update Role
+	//
+	// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+	RoleUpdateWithBodyWithResponse(ctx context.Context, roleId string, params *RoleUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RoleUpdateResponse, error)
+
+	// RoleUpdateWithResponse Update Role
+	//
+	// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+	RoleUpdateWithResponse(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RoleUpdateResponse, error)
+
 	// SeatsWithResponse Seats
 	//
 	// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -34642,6 +38238,80 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /stack-dependency-references/{referenceId} (the `StackDependenciesUpdateReference` operationId).
 	StackDependenciesUpdateReferenceWithResponse(ctx context.Context, referenceId string, body StackDependenciesUpdateReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*StackDependenciesUpdateReferenceResponse, error)
+
+	// StackRoleBindingBatchCreateWithBodyWithResponse Batch Create Stack Role Bindings
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+	StackRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *StackRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingBatchCreateResponse, error)
+
+	// StackRoleBindingBatchCreateWithResponse Batch Create Stack Role Bindings
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+	StackRoleBindingBatchCreateWithResponse(ctx context.Context, params *StackRoleBindingBatchCreateParams, body StackRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingBatchCreateResponse, error)
+
+	// StackRoleBindingCreateWithBodyWithResponse Create Stack Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+	StackRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *StackRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingCreateResponse, error)
+
+	// StackRoleBindingCreateWithResponse Create Stack Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+	StackRoleBindingCreateWithResponse(ctx context.Context, params *StackRoleBindingCreateParams, body StackRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingCreateResponse, error)
+
+	// StackRoleBindingDeleteWithResponse Delete Stack Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingDelete` operationId).
+	StackRoleBindingDeleteWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*StackRoleBindingDeleteResponse, error)
+
+	// StackRoleBindingWithResponse Get Stack Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBinding` operationId).
+	StackRoleBindingWithResponse(ctx context.Context, stackRoleBindingId string, reqEditors ...RequestEditorFn) (*StackRoleBindingResponse, error)
+
+	// StackRoleBindingPatchWithBodyWithResponse Patch Stack Role Binding
+	//
+	// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+	StackRoleBindingPatchWithBodyWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingPatchResponse, error)
+
+	// StackRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Stack Role Binding
+	//
+	// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+	StackRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, body StackRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingPatchResponse, error)
+
+	// StackRoleBindingUpdateWithBodyWithResponse Update Stack Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+	StackRoleBindingUpdateWithBodyWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingUpdateResponse, error)
+
+	// StackRoleBindingUpdateWithResponse Update Stack Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+	StackRoleBindingUpdateWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, body StackRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingUpdateResponse, error)
 
 	// StacksWithResponse List Stacks
 	//
@@ -35631,6 +39301,80 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /type (the `Type` operationId).
 	TypeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*TypeResponse, error)
 
+	// UserGroupRoleBindingBatchCreateWithBodyWithResponse Batch Create User Group Role Bindings
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+	UserGroupRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingBatchCreateResponse, error)
+
+	// UserGroupRoleBindingBatchCreateWithResponse Batch Create User Group Role Bindings
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+	UserGroupRoleBindingBatchCreateWithResponse(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, body UserGroupRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingBatchCreateResponse, error)
+
+	// UserGroupRoleBindingCreateWithBodyWithResponse Create User Group Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+	UserGroupRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *UserGroupRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingCreateResponse, error)
+
+	// UserGroupRoleBindingCreateWithResponse Create User Group Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+	UserGroupRoleBindingCreateWithResponse(ctx context.Context, params *UserGroupRoleBindingCreateParams, body UserGroupRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingCreateResponse, error)
+
+	// UserGroupRoleBindingDeleteWithResponse Delete User Group Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingDelete` operationId).
+	UserGroupRoleBindingDeleteWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingDeleteResponse, error)
+
+	// UserGroupRoleBindingWithResponse Get User Group Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBinding` operationId).
+	UserGroupRoleBindingWithResponse(ctx context.Context, userGroupRoleBindingId string, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingResponse, error)
+
+	// UserGroupRoleBindingPatchWithBodyWithResponse Patch User Group Role Binding
+	//
+	// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+	UserGroupRoleBindingPatchWithBodyWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingPatchResponse, error)
+
+	// UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch User Group Role Binding
+	//
+	// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+	UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, body UserGroupRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingPatchResponse, error)
+
+	// UserGroupRoleBindingUpdateWithBodyWithResponse Update User Group Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+	UserGroupRoleBindingUpdateWithBodyWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingUpdateResponse, error)
+
+	// UserGroupRoleBindingUpdateWithResponse Update User Group Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+	UserGroupRoleBindingUpdateWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, body UserGroupRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingUpdateResponse, error)
+
 	// UserGroupsWithAccessToSpaceWithResponse User Groups With Access To Space
 	//
 	// Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
@@ -35639,6 +39383,80 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /user-groups-with-access-to-space (the `UserGroupsWithAccessToSpace` operationId).
 	UserGroupsWithAccessToSpaceWithResponse(ctx context.Context, params *UserGroupsWithAccessToSpaceParams, reqEditors ...RequestEditorFn) (*UserGroupsWithAccessToSpaceResponse, error)
+
+	// UserRoleBindingBatchCreateWithBodyWithResponse Batch Create User Role Bindings
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+	UserRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *UserRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingBatchCreateResponse, error)
+
+	// UserRoleBindingBatchCreateWithResponse Batch Create User Role Bindings
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+	UserRoleBindingBatchCreateWithResponse(ctx context.Context, params *UserRoleBindingBatchCreateParams, body UserRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingBatchCreateResponse, error)
+
+	// UserRoleBindingCreateWithBodyWithResponse Create User Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+	UserRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *UserRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingCreateResponse, error)
+
+	// UserRoleBindingCreateWithResponse Create User Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+	UserRoleBindingCreateWithResponse(ctx context.Context, params *UserRoleBindingCreateParams, body UserRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingCreateResponse, error)
+
+	// UserRoleBindingDeleteWithResponse Delete User Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingDelete` operationId).
+	UserRoleBindingDeleteWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*UserRoleBindingDeleteResponse, error)
+
+	// UserRoleBindingWithResponse Get User Role Binding
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /user-role-bindings/{userRoleBindingId} (the `UserRoleBinding` operationId).
+	UserRoleBindingWithResponse(ctx context.Context, userRoleBindingId string, reqEditors ...RequestEditorFn) (*UserRoleBindingResponse, error)
+
+	// UserRoleBindingPatchWithBodyWithResponse Patch User Role Binding
+	//
+	// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+	UserRoleBindingPatchWithBodyWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingPatchResponse, error)
+
+	// UserRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch User Role Binding
+	//
+	// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+	UserRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, body UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingPatchResponse, error)
+
+	// UserRoleBindingUpdateWithBodyWithResponse Update User Role Binding
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+	UserRoleBindingUpdateWithBodyWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingUpdateResponse, error)
+
+	// UserRoleBindingUpdateWithResponse Update User Role Binding
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+	UserRoleBindingUpdateWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, body UserRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingUpdateResponse, error)
 
 	// UserSessionsWithAccessToSpaceWithResponse User Sessions With Access To Space
 	//
@@ -37022,6 +40840,628 @@ func (r AllowNonAdminSpaceCreationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AllowNonAdminSpaceCreationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeyRoleBindingBatchCreateResponse201Headers the declared response headers of an HTTP 201 response for ApiKeyRoleBindingBatchCreate
+type ApiKeyRoleBindingBatchCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingBatchCreateResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyRoleBindingBatchCreate
+type ApiKeyRoleBindingBatchCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingBatchCreateResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyRoleBindingBatchCreate
+type ApiKeyRoleBindingBatchCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyRoleBindingBatchCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *[]ApiKeyRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ApiKeyRoleBindingBatchCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyRoleBindingBatchCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyRoleBindingBatchCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ApiKeyRoleBindingBatchCreateResponse) GetJSON201() *[]ApiKeyRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ApiKeyRoleBindingBatchCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ApiKeyRoleBindingBatchCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyRoleBindingBatchCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyRoleBindingBatchCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyRoleBindingBatchCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyRoleBindingBatchCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyRoleBindingBatchCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyRoleBindingBatchCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyRoleBindingBatchCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeyRoleBindingCreateResponse201Headers the declared response headers of an HTTP 201 response for ApiKeyRoleBindingCreate
+type ApiKeyRoleBindingCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingCreateResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyRoleBindingCreate
+type ApiKeyRoleBindingCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingCreateResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyRoleBindingCreate
+type ApiKeyRoleBindingCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyRoleBindingCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ApiKeyRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *ApiKeyRoleBindingCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyRoleBindingCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyRoleBindingCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r ApiKeyRoleBindingCreateResponse) GetJSON201() *ApiKeyRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ApiKeyRoleBindingCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ApiKeyRoleBindingCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyRoleBindingCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyRoleBindingCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyRoleBindingCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyRoleBindingCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyRoleBindingCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyRoleBindingCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyRoleBindingCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeyRoleBindingDeleteResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyRoleBindingDelete
+type ApiKeyRoleBindingDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingDeleteResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyRoleBindingDelete
+type ApiKeyRoleBindingDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingDeleteResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyRoleBindingDelete
+type ApiKeyRoleBindingDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyRoleBindingDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKeyRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeyRoleBindingDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyRoleBindingDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyRoleBindingDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeyRoleBindingDeleteResponse) GetJSON200() *ApiKeyRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ApiKeyRoleBindingDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ApiKeyRoleBindingDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyRoleBindingDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyRoleBindingDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyRoleBindingDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyRoleBindingDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyRoleBindingDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyRoleBindingDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyRoleBindingDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeyRoleBindingResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyRoleBinding
+type ApiKeyRoleBindingResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyRoleBinding
+type ApiKeyRoleBindingResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyRoleBinding
+type ApiKeyRoleBindingResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyRoleBindingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKeyRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeyRoleBindingResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyRoleBindingResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyRoleBindingResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeyRoleBindingResponse) GetJSON200() *ApiKeyRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ApiKeyRoleBindingResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyRoleBindingResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyRoleBindingResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyRoleBindingResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyRoleBindingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyRoleBindingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyRoleBindingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyRoleBindingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeyRoleBindingPatchResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyRoleBindingPatch
+type ApiKeyRoleBindingPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingPatchResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyRoleBindingPatch
+type ApiKeyRoleBindingPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingPatchResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyRoleBindingPatch
+type ApiKeyRoleBindingPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyRoleBindingPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKeyRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeyRoleBindingPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyRoleBindingPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyRoleBindingPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeyRoleBindingPatchResponse) GetJSON200() *ApiKeyRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ApiKeyRoleBindingPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ApiKeyRoleBindingPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ApiKeyRoleBindingPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r ApiKeyRoleBindingPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyRoleBindingPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyRoleBindingPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyRoleBindingPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyRoleBindingPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyRoleBindingPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyRoleBindingPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyRoleBindingPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeyRoleBindingUpdateResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyRoleBindingUpdate
+type ApiKeyRoleBindingUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingUpdateResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyRoleBindingUpdate
+type ApiKeyRoleBindingUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyRoleBindingUpdateResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyRoleBindingUpdate
+type ApiKeyRoleBindingUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyRoleBindingUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ApiKeyRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeyRoleBindingUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyRoleBindingUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyRoleBindingUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeyRoleBindingUpdateResponse) GetJSON200() *ApiKeyRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ApiKeyRoleBindingUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ApiKeyRoleBindingUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyRoleBindingUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyRoleBindingUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyRoleBindingUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyRoleBindingUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyRoleBindingUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyRoleBindingUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyRoleBindingUpdateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -47704,6 +52144,621 @@ func (r PersonalApiKeyDisableResponse) ContentType() string {
 	return ""
 }
 
+// RolesResponse200Headers the declared response headers of an HTTP 200 response for Roles
+type RolesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RolesResponse429Headers the declared response headers of an HTTP 429 response for Roles
+type RolesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RolesResponse503Headers the declared response headers of an HTTP 503 response for Roles
+type RolesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RolesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RolePage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RolesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RolesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RolesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RolesResponse) GetJSON200() *RolePage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RolesResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RolesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RolesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RolesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RolesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RolesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RolesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RolesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RoleCreateResponse201Headers the declared response headers of an HTTP 201 response for RoleCreate
+type RoleCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleCreateResponse429Headers the declared response headers of an HTTP 429 response for RoleCreate
+type RoleCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleCreateResponse503Headers the declared response headers of an HTTP 503 response for RoleCreate
+type RoleCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RoleCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Role
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *RoleCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RoleCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RoleCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r RoleCreateResponse) GetJSON201() *Role {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RoleCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RoleCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RoleCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RoleCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RoleCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RoleCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RoleCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RoleCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RoleCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RoleDeleteResponse200Headers the declared response headers of an HTTP 200 response for RoleDelete
+type RoleDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleDeleteResponse429Headers the declared response headers of an HTTP 429 response for RoleDelete
+type RoleDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleDeleteResponse503Headers the declared response headers of an HTTP 503 response for RoleDelete
+type RoleDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RoleDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Role
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RoleDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RoleDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RoleDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RoleDeleteResponse) GetJSON200() *Role {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RoleDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r RoleDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RoleDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RoleDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RoleDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RoleDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RoleDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RoleDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RoleDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RoleResponse200Headers the declared response headers of an HTTP 200 response for Role
+type RoleResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleResponse429Headers the declared response headers of an HTTP 429 response for Role
+type RoleResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleResponse503Headers the declared response headers of an HTTP 503 response for Role
+type RoleResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Role
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RoleResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RoleResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RoleResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RoleResponse) GetJSON200() *Role {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RoleResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RoleResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RoleResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RoleResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RolePatchResponse200Headers the declared response headers of an HTTP 200 response for RolePatch
+type RolePatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RolePatchResponse429Headers the declared response headers of an HTTP 429 response for RolePatch
+type RolePatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RolePatchResponse503Headers the declared response headers of an HTTP 503 response for RolePatch
+type RolePatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RolePatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Role
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RolePatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RolePatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RolePatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RolePatchResponse) GetJSON200() *Role {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RolePatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RolePatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r RolePatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RolePatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RolePatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RolePatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RolePatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RolePatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RolePatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RolePatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RolePatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RoleUpdateResponse200Headers the declared response headers of an HTTP 200 response for RoleUpdate
+type RoleUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleUpdateResponse429Headers the declared response headers of an HTTP 429 response for RoleUpdate
+type RoleUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RoleUpdateResponse503Headers the declared response headers of an HTTP 503 response for RoleUpdate
+type RoleUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RoleUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Role
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RoleUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RoleUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RoleUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RoleUpdateResponse) GetJSON200() *Role {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RoleUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r RoleUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RoleUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RoleUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RoleUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RoleUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RoleUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RoleUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RoleUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SeatsResponse200Headers the declared response headers of an HTTP 200 response for Seats
 type SeatsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -50426,6 +55481,628 @@ func (r StackDependenciesUpdateReferenceResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StackDependenciesUpdateReferenceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackRoleBindingBatchCreateResponse201Headers the declared response headers of an HTTP 201 response for StackRoleBindingBatchCreate
+type StackRoleBindingBatchCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingBatchCreateResponse429Headers the declared response headers of an HTTP 429 response for StackRoleBindingBatchCreate
+type StackRoleBindingBatchCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingBatchCreateResponse503Headers the declared response headers of an HTTP 503 response for StackRoleBindingBatchCreate
+type StackRoleBindingBatchCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackRoleBindingBatchCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *[]StackRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StackRoleBindingBatchCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackRoleBindingBatchCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackRoleBindingBatchCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StackRoleBindingBatchCreateResponse) GetJSON201() *[]StackRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackRoleBindingBatchCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackRoleBindingBatchCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackRoleBindingBatchCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackRoleBindingBatchCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackRoleBindingBatchCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackRoleBindingBatchCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackRoleBindingBatchCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackRoleBindingBatchCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackRoleBindingBatchCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackRoleBindingCreateResponse201Headers the declared response headers of an HTTP 201 response for StackRoleBindingCreate
+type StackRoleBindingCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingCreateResponse429Headers the declared response headers of an HTTP 429 response for StackRoleBindingCreate
+type StackRoleBindingCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingCreateResponse503Headers the declared response headers of an HTTP 503 response for StackRoleBindingCreate
+type StackRoleBindingCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackRoleBindingCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *StackRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *StackRoleBindingCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackRoleBindingCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackRoleBindingCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r StackRoleBindingCreateResponse) GetJSON201() *StackRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackRoleBindingCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackRoleBindingCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackRoleBindingCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackRoleBindingCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackRoleBindingCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackRoleBindingCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackRoleBindingCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackRoleBindingCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackRoleBindingCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackRoleBindingDeleteResponse200Headers the declared response headers of an HTTP 200 response for StackRoleBindingDelete
+type StackRoleBindingDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingDeleteResponse429Headers the declared response headers of an HTTP 429 response for StackRoleBindingDelete
+type StackRoleBindingDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingDeleteResponse503Headers the declared response headers of an HTTP 503 response for StackRoleBindingDelete
+type StackRoleBindingDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackRoleBindingDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StackRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackRoleBindingDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackRoleBindingDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackRoleBindingDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackRoleBindingDeleteResponse) GetJSON200() *StackRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackRoleBindingDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackRoleBindingDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackRoleBindingDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackRoleBindingDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackRoleBindingDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackRoleBindingDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackRoleBindingDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackRoleBindingDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackRoleBindingDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackRoleBindingResponse200Headers the declared response headers of an HTTP 200 response for StackRoleBinding
+type StackRoleBindingResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingResponse429Headers the declared response headers of an HTTP 429 response for StackRoleBinding
+type StackRoleBindingResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingResponse503Headers the declared response headers of an HTTP 503 response for StackRoleBinding
+type StackRoleBindingResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackRoleBindingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StackRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackRoleBindingResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackRoleBindingResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackRoleBindingResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackRoleBindingResponse) GetJSON200() *StackRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackRoleBindingResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackRoleBindingResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackRoleBindingResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackRoleBindingResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackRoleBindingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackRoleBindingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackRoleBindingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackRoleBindingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackRoleBindingPatchResponse200Headers the declared response headers of an HTTP 200 response for StackRoleBindingPatch
+type StackRoleBindingPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingPatchResponse429Headers the declared response headers of an HTTP 429 response for StackRoleBindingPatch
+type StackRoleBindingPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingPatchResponse503Headers the declared response headers of an HTTP 503 response for StackRoleBindingPatch
+type StackRoleBindingPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackRoleBindingPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StackRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackRoleBindingPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackRoleBindingPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackRoleBindingPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackRoleBindingPatchResponse) GetJSON200() *StackRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackRoleBindingPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r StackRoleBindingPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackRoleBindingPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r StackRoleBindingPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackRoleBindingPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackRoleBindingPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackRoleBindingPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackRoleBindingPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackRoleBindingPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackRoleBindingPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackRoleBindingPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackRoleBindingUpdateResponse200Headers the declared response headers of an HTTP 200 response for StackRoleBindingUpdate
+type StackRoleBindingUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingUpdateResponse429Headers the declared response headers of an HTTP 429 response for StackRoleBindingUpdate
+type StackRoleBindingUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackRoleBindingUpdateResponse503Headers the declared response headers of an HTTP 503 response for StackRoleBindingUpdate
+type StackRoleBindingUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackRoleBindingUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StackRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackRoleBindingUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackRoleBindingUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackRoleBindingUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackRoleBindingUpdateResponse) GetJSON200() *StackRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackRoleBindingUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r StackRoleBindingUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackRoleBindingUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackRoleBindingUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackRoleBindingUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackRoleBindingUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackRoleBindingUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackRoleBindingUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackRoleBindingUpdateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -58178,6 +63855,628 @@ func (r TypeResponse) ContentType() string {
 	return ""
 }
 
+// UserGroupRoleBindingBatchCreateResponse201Headers the declared response headers of an HTTP 201 response for UserGroupRoleBindingBatchCreate
+type UserGroupRoleBindingBatchCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingBatchCreateResponse429Headers the declared response headers of an HTTP 429 response for UserGroupRoleBindingBatchCreate
+type UserGroupRoleBindingBatchCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingBatchCreateResponse503Headers the declared response headers of an HTTP 503 response for UserGroupRoleBindingBatchCreate
+type UserGroupRoleBindingBatchCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserGroupRoleBindingBatchCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *[]UserGroupRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *UserGroupRoleBindingBatchCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserGroupRoleBindingBatchCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserGroupRoleBindingBatchCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UserGroupRoleBindingBatchCreateResponse) GetJSON201() *[]UserGroupRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserGroupRoleBindingBatchCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserGroupRoleBindingBatchCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserGroupRoleBindingBatchCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserGroupRoleBindingBatchCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserGroupRoleBindingBatchCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGroupRoleBindingBatchCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGroupRoleBindingBatchCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGroupRoleBindingBatchCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGroupRoleBindingBatchCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGroupRoleBindingCreateResponse201Headers the declared response headers of an HTTP 201 response for UserGroupRoleBindingCreate
+type UserGroupRoleBindingCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingCreateResponse429Headers the declared response headers of an HTTP 429 response for UserGroupRoleBindingCreate
+type UserGroupRoleBindingCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingCreateResponse503Headers the declared response headers of an HTTP 503 response for UserGroupRoleBindingCreate
+type UserGroupRoleBindingCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserGroupRoleBindingCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *UserGroupRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *UserGroupRoleBindingCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserGroupRoleBindingCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserGroupRoleBindingCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UserGroupRoleBindingCreateResponse) GetJSON201() *UserGroupRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserGroupRoleBindingCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserGroupRoleBindingCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserGroupRoleBindingCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserGroupRoleBindingCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserGroupRoleBindingCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGroupRoleBindingCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGroupRoleBindingCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGroupRoleBindingCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGroupRoleBindingCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGroupRoleBindingDeleteResponse200Headers the declared response headers of an HTTP 200 response for UserGroupRoleBindingDelete
+type UserGroupRoleBindingDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingDeleteResponse429Headers the declared response headers of an HTTP 429 response for UserGroupRoleBindingDelete
+type UserGroupRoleBindingDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingDeleteResponse503Headers the declared response headers of an HTTP 503 response for UserGroupRoleBindingDelete
+type UserGroupRoleBindingDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserGroupRoleBindingDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserGroupRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGroupRoleBindingDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserGroupRoleBindingDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserGroupRoleBindingDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGroupRoleBindingDeleteResponse) GetJSON200() *UserGroupRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGroupRoleBindingDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UserGroupRoleBindingDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserGroupRoleBindingDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserGroupRoleBindingDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserGroupRoleBindingDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGroupRoleBindingDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGroupRoleBindingDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGroupRoleBindingDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGroupRoleBindingDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGroupRoleBindingResponse200Headers the declared response headers of an HTTP 200 response for UserGroupRoleBinding
+type UserGroupRoleBindingResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingResponse429Headers the declared response headers of an HTTP 429 response for UserGroupRoleBinding
+type UserGroupRoleBindingResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingResponse503Headers the declared response headers of an HTTP 503 response for UserGroupRoleBinding
+type UserGroupRoleBindingResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserGroupRoleBindingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserGroupRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGroupRoleBindingResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserGroupRoleBindingResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserGroupRoleBindingResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGroupRoleBindingResponse) GetJSON200() *UserGroupRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGroupRoleBindingResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserGroupRoleBindingResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserGroupRoleBindingResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserGroupRoleBindingResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGroupRoleBindingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGroupRoleBindingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGroupRoleBindingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGroupRoleBindingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGroupRoleBindingPatchResponse200Headers the declared response headers of an HTTP 200 response for UserGroupRoleBindingPatch
+type UserGroupRoleBindingPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingPatchResponse429Headers the declared response headers of an HTTP 429 response for UserGroupRoleBindingPatch
+type UserGroupRoleBindingPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingPatchResponse503Headers the declared response headers of an HTTP 503 response for UserGroupRoleBindingPatch
+type UserGroupRoleBindingPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserGroupRoleBindingPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserGroupRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGroupRoleBindingPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserGroupRoleBindingPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserGroupRoleBindingPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGroupRoleBindingPatchResponse) GetJSON200() *UserGroupRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGroupRoleBindingPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserGroupRoleBindingPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UserGroupRoleBindingPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserGroupRoleBindingPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserGroupRoleBindingPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserGroupRoleBindingPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserGroupRoleBindingPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGroupRoleBindingPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGroupRoleBindingPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGroupRoleBindingPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGroupRoleBindingPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserGroupRoleBindingUpdateResponse200Headers the declared response headers of an HTTP 200 response for UserGroupRoleBindingUpdate
+type UserGroupRoleBindingUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingUpdateResponse429Headers the declared response headers of an HTTP 429 response for UserGroupRoleBindingUpdate
+type UserGroupRoleBindingUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserGroupRoleBindingUpdateResponse503Headers the declared response headers of an HTTP 503 response for UserGroupRoleBindingUpdate
+type UserGroupRoleBindingUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserGroupRoleBindingUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserGroupRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserGroupRoleBindingUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserGroupRoleBindingUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserGroupRoleBindingUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserGroupRoleBindingUpdateResponse) GetJSON200() *UserGroupRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserGroupRoleBindingUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UserGroupRoleBindingUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserGroupRoleBindingUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserGroupRoleBindingUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserGroupRoleBindingUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserGroupRoleBindingUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserGroupRoleBindingUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserGroupRoleBindingUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserGroupRoleBindingUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // UserGroupsWithAccessToSpaceResponse200Headers the declared response headers of an HTTP 200 response for UserGroupsWithAccessToSpace
 type UserGroupsWithAccessToSpaceResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -58260,6 +64559,628 @@ func (r UserGroupsWithAccessToSpaceResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UserGroupsWithAccessToSpaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserRoleBindingBatchCreateResponse201Headers the declared response headers of an HTTP 201 response for UserRoleBindingBatchCreate
+type UserRoleBindingBatchCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingBatchCreateResponse429Headers the declared response headers of an HTTP 429 response for UserRoleBindingBatchCreate
+type UserRoleBindingBatchCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingBatchCreateResponse503Headers the declared response headers of an HTTP 503 response for UserRoleBindingBatchCreate
+type UserRoleBindingBatchCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserRoleBindingBatchCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *[]UserRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *UserRoleBindingBatchCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserRoleBindingBatchCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserRoleBindingBatchCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UserRoleBindingBatchCreateResponse) GetJSON201() *[]UserRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserRoleBindingBatchCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserRoleBindingBatchCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserRoleBindingBatchCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserRoleBindingBatchCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserRoleBindingBatchCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRoleBindingBatchCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRoleBindingBatchCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRoleBindingBatchCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRoleBindingBatchCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserRoleBindingCreateResponse201Headers the declared response headers of an HTTP 201 response for UserRoleBindingCreate
+type UserRoleBindingCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingCreateResponse429Headers the declared response headers of an HTTP 429 response for UserRoleBindingCreate
+type UserRoleBindingCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingCreateResponse503Headers the declared response headers of an HTTP 503 response for UserRoleBindingCreate
+type UserRoleBindingCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserRoleBindingCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *UserRoleBinding
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *UserRoleBindingCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserRoleBindingCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserRoleBindingCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UserRoleBindingCreateResponse) GetJSON201() *UserRoleBinding {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserRoleBindingCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserRoleBindingCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserRoleBindingCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserRoleBindingCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserRoleBindingCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRoleBindingCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRoleBindingCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRoleBindingCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRoleBindingCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserRoleBindingDeleteResponse200Headers the declared response headers of an HTTP 200 response for UserRoleBindingDelete
+type UserRoleBindingDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingDeleteResponse429Headers the declared response headers of an HTTP 429 response for UserRoleBindingDelete
+type UserRoleBindingDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingDeleteResponse503Headers the declared response headers of an HTTP 503 response for UserRoleBindingDelete
+type UserRoleBindingDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserRoleBindingDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserRoleBindingDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserRoleBindingDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserRoleBindingDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserRoleBindingDeleteResponse) GetJSON200() *UserRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserRoleBindingDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UserRoleBindingDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserRoleBindingDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserRoleBindingDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserRoleBindingDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRoleBindingDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRoleBindingDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRoleBindingDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRoleBindingDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserRoleBindingResponse200Headers the declared response headers of an HTTP 200 response for UserRoleBinding
+type UserRoleBindingResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingResponse429Headers the declared response headers of an HTTP 429 response for UserRoleBinding
+type UserRoleBindingResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingResponse503Headers the declared response headers of an HTTP 503 response for UserRoleBinding
+type UserRoleBindingResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserRoleBindingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserRoleBindingResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserRoleBindingResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserRoleBindingResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserRoleBindingResponse) GetJSON200() *UserRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserRoleBindingResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserRoleBindingResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserRoleBindingResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserRoleBindingResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRoleBindingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRoleBindingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRoleBindingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRoleBindingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserRoleBindingPatchResponse200Headers the declared response headers of an HTTP 200 response for UserRoleBindingPatch
+type UserRoleBindingPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingPatchResponse429Headers the declared response headers of an HTTP 429 response for UserRoleBindingPatch
+type UserRoleBindingPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingPatchResponse503Headers the declared response headers of an HTTP 503 response for UserRoleBindingPatch
+type UserRoleBindingPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserRoleBindingPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserRoleBindingPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserRoleBindingPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserRoleBindingPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserRoleBindingPatchResponse) GetJSON200() *UserRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserRoleBindingPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UserRoleBindingPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UserRoleBindingPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UserRoleBindingPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserRoleBindingPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserRoleBindingPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserRoleBindingPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRoleBindingPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRoleBindingPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRoleBindingPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRoleBindingPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// UserRoleBindingUpdateResponse200Headers the declared response headers of an HTTP 200 response for UserRoleBindingUpdate
+type UserRoleBindingUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingUpdateResponse429Headers the declared response headers of an HTTP 429 response for UserRoleBindingUpdate
+type UserRoleBindingUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UserRoleBindingUpdateResponse503Headers the declared response headers of an HTTP 503 response for UserRoleBindingUpdate
+type UserRoleBindingUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UserRoleBindingUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UserRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *UserRoleBindingUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UserRoleBindingUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UserRoleBindingUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UserRoleBindingUpdateResponse) GetJSON200() *UserRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UserRoleBindingUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UserRoleBindingUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UserRoleBindingUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UserRoleBindingUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UserRoleBindingUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UserRoleBindingUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UserRoleBindingUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UserRoleBindingUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UserRoleBindingUpdateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -58834,6 +65755,140 @@ func (c *ClientWithResponses) AllowNonAdminSpaceCreationWithResponse(ctx context
 		return nil, err
 	}
 	return ParseAllowNonAdminSpaceCreationResponse(rsp)
+}
+
+// ApiKeyRoleBindingBatchCreateWithBodyWithResponse Batch Create API Key Role Bindings
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingBatchCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingBatchCreateResponse(rsp)
+}
+
+// ApiKeyRoleBindingBatchCreateWithResponse Batch Create API Key Role Bindings
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api-key-role-binding-batches (the `ApiKeyRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingBatchCreateWithResponse(ctx context.Context, params *ApiKeyRoleBindingBatchCreateParams, body ApiKeyRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingBatchCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingBatchCreateResponse(rsp)
+}
+
+// ApiKeyRoleBindingCreateWithBodyWithResponse Create API Key Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *ApiKeyRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingCreateResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingCreateResponse(rsp)
+}
+
+// ApiKeyRoleBindingCreateWithResponse Create API Key Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api-key-role-bindings (the `ApiKeyRoleBindingCreate` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingCreateWithResponse(ctx context.Context, params *ApiKeyRoleBindingCreateParams, body ApiKeyRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingCreateResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingCreateResponse(rsp)
+}
+
+// ApiKeyRoleBindingDeleteWithResponse Delete API Key Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingDelete` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingDeleteWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingDeleteResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingDelete(ctx, apiKeyRoleBindingId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingDeleteResponse(rsp)
+}
+
+// ApiKeyRoleBindingWithResponse Get API Key Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBinding` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingWithResponse(ctx context.Context, apiKeyRoleBindingId string, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingResponse, error) {
+	rsp, err := c.ApiKeyRoleBinding(ctx, apiKeyRoleBindingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingResponse(rsp)
+}
+
+// ApiKeyRoleBindingPatchWithBodyWithResponse Patch API Key Role Binding
+//
+// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingPatchWithBodyWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingPatchResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingPatchWithBody(ctx, apiKeyRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingPatchResponse(rsp)
+}
+
+// ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch API Key Role Binding
+//
+// Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingPatch` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingPatchParams, body ApiKeyRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingPatchResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx, apiKeyRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingPatchResponse(rsp)
+}
+
+// ApiKeyRoleBindingUpdateWithBodyWithResponse Update API Key Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingUpdateWithBodyWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingUpdateResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingUpdateWithBody(ctx, apiKeyRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingUpdateResponse(rsp)
+}
+
+// ApiKeyRoleBindingUpdateWithResponse Update API Key Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /api-key-role-bindings/{apiKeyRoleBindingId} (the `ApiKeyRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) ApiKeyRoleBindingUpdateWithResponse(ctx context.Context, apiKeyRoleBindingId string, params *ApiKeyRoleBindingUpdateParams, body ApiKeyRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyRoleBindingUpdateResponse, error) {
+	rsp, err := c.ApiKeyRoleBindingUpdate(ctx, apiKeyRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyRoleBindingUpdateResponse(rsp)
 }
 
 // ApiKeySessionsWithAccessToSpaceWithResponse API Key Sessions With Access To Space
@@ -60994,6 +68049,139 @@ func (c *ClientWithResponses) PersonalApiKeyDisableWithResponse(ctx context.Cont
 	return ParsePersonalApiKeyDisableResponse(rsp)
 }
 
+// RolesWithResponse List Roles
+//
+// The account's roles, its five system roles and its custom roles, by slug. Any member of the account reads them, since a space admin binds them.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /roles (the `Roles` operationId).
+func (c *ClientWithResponses) RolesWithResponse(ctx context.Context, params *RolesParams, reqEditors ...RequestEditorFn) (*RolesResponse, error) {
+	rsp, err := c.Roles(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRolesResponse(rsp)
+}
+
+// RoleCreateWithBodyWithResponse Create Role
+//
+// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /roles (the `RoleCreate` operationId).
+func (c *ClientWithResponses) RoleCreateWithBodyWithResponse(ctx context.Context, params *RoleCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RoleCreateResponse, error) {
+	rsp, err := c.RoleCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRoleCreateResponse(rsp)
+}
+
+// RoleCreateWithResponse Create Role
+//
+// Create a custom role from actions of the catalogue, its slug derived from its name. A disabled action answers 422 validation-failed naming it; a deprecated action, which the Action enum leaves out, answers 400 invalid-request naming it, as any value outside the enum does. A slug the account already has answers 409 already-exists.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /roles (the `RoleCreate` operationId).
+func (c *ClientWithResponses) RoleCreateWithResponse(ctx context.Context, params *RoleCreateParams, body RoleCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*RoleCreateResponse, error) {
+	rsp, err := c.RoleCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRoleCreateResponse(rsp)
+}
+
+// RoleDeleteWithResponse Delete Role
+//
+// Delete a custom role. A system role answers 422 validation-failed, and a role that still has bindings answers 409 invalid-state.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /roles/{roleId} (the `RoleDelete` operationId).
+func (c *ClientWithResponses) RoleDeleteWithResponse(ctx context.Context, roleId string, params *RoleDeleteParams, reqEditors ...RequestEditorFn) (*RoleDeleteResponse, error) {
+	rsp, err := c.RoleDelete(ctx, roleId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRoleDeleteResponse(rsp)
+}
+
+// RoleWithResponse Get Role
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /roles/{roleId} (the `Role` operationId).
+func (c *ClientWithResponses) RoleWithResponse(ctx context.Context, roleId string, reqEditors ...RequestEditorFn) (*RoleResponse, error) {
+	rsp, err := c.Role(ctx, roleId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRoleResponse(rsp)
+}
+
+// RolePatchWithBodyWithResponse Patch Role
+//
+// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+func (c *ClientWithResponses) RolePatchWithBodyWithResponse(ctx context.Context, roleId string, params *RolePatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RolePatchResponse, error) {
+	rsp, err := c.RolePatchWithBody(ctx, roleId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRolePatchResponse(rsp)
+}
+
+// RolePatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Role
+//
+// Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /roles/{roleId} (the `RolePatch` operationId).
+func (c *ClientWithResponses) RolePatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, roleId string, params *RolePatchParams, body RolePatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*RolePatchResponse, error) {
+	rsp, err := c.RolePatchWithApplicationMergePatchPlusJSONBody(ctx, roleId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRolePatchResponse(rsp)
+}
+
+// RoleUpdateWithBodyWithResponse Update Role
+//
+// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+func (c *ClientWithResponses) RoleUpdateWithBodyWithResponse(ctx context.Context, roleId string, params *RoleUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RoleUpdateResponse, error) {
+	rsp, err := c.RoleUpdateWithBody(ctx, roleId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRoleUpdateResponse(rsp)
+}
+
+// RoleUpdateWithResponse Update Role
+//
+// Change a custom role's name, description and actions, keeping each member the body leaves out or sets to null; its slug never changes. A system role answers 422 validation-failed, as a disabled action does; a deprecated action, outside the Action enum, answers 400 invalid-request.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
+func (c *ClientWithResponses) RoleUpdateWithResponse(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RoleUpdateResponse, error) {
+	rsp, err := c.RoleUpdate(ctx, roleId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRoleUpdateResponse(rsp)
+}
+
 // SeatsWithResponse Seats
 //
 // The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -61668,6 +68856,140 @@ func (c *ClientWithResponses) StackDependenciesUpdateReferenceWithResponse(ctx c
 		return nil, err
 	}
 	return ParseStackDependenciesUpdateReferenceResponse(rsp)
+}
+
+// StackRoleBindingBatchCreateWithBodyWithResponse Batch Create Stack Role Bindings
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) StackRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *StackRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.StackRoleBindingBatchCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingBatchCreateResponse(rsp)
+}
+
+// StackRoleBindingBatchCreateWithResponse Batch Create Stack Role Bindings
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stack-role-binding-batches (the `StackRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) StackRoleBindingBatchCreateWithResponse(ctx context.Context, params *StackRoleBindingBatchCreateParams, body StackRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.StackRoleBindingBatchCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingBatchCreateResponse(rsp)
+}
+
+// StackRoleBindingCreateWithBodyWithResponse Create Stack Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+func (c *ClientWithResponses) StackRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *StackRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingCreateResponse, error) {
+	rsp, err := c.StackRoleBindingCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingCreateResponse(rsp)
+}
+
+// StackRoleBindingCreateWithResponse Create Stack Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stack-role-bindings (the `StackRoleBindingCreate` operationId).
+func (c *ClientWithResponses) StackRoleBindingCreateWithResponse(ctx context.Context, params *StackRoleBindingCreateParams, body StackRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingCreateResponse, error) {
+	rsp, err := c.StackRoleBindingCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingCreateResponse(rsp)
+}
+
+// StackRoleBindingDeleteWithResponse Delete Stack Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingDelete` operationId).
+func (c *ClientWithResponses) StackRoleBindingDeleteWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*StackRoleBindingDeleteResponse, error) {
+	rsp, err := c.StackRoleBindingDelete(ctx, stackRoleBindingId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingDeleteResponse(rsp)
+}
+
+// StackRoleBindingWithResponse Get Stack Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBinding` operationId).
+func (c *ClientWithResponses) StackRoleBindingWithResponse(ctx context.Context, stackRoleBindingId string, reqEditors ...RequestEditorFn) (*StackRoleBindingResponse, error) {
+	rsp, err := c.StackRoleBinding(ctx, stackRoleBindingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingResponse(rsp)
+}
+
+// StackRoleBindingPatchWithBodyWithResponse Patch Stack Role Binding
+//
+// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+func (c *ClientWithResponses) StackRoleBindingPatchWithBodyWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingPatchResponse, error) {
+	rsp, err := c.StackRoleBindingPatchWithBody(ctx, stackRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingPatchResponse(rsp)
+}
+
+// StackRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Stack Role Binding
+//
+// Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingPatch` operationId).
+func (c *ClientWithResponses) StackRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingPatchParams, body StackRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingPatchResponse, error) {
+	rsp, err := c.StackRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx, stackRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingPatchResponse(rsp)
+}
+
+// StackRoleBindingUpdateWithBodyWithResponse Update Stack Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) StackRoleBindingUpdateWithBodyWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackRoleBindingUpdateResponse, error) {
+	rsp, err := c.StackRoleBindingUpdateWithBody(ctx, stackRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingUpdateResponse(rsp)
+}
+
+// StackRoleBindingUpdateWithResponse Update Stack Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stack-role-bindings/{stackRoleBindingId} (the `StackRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) StackRoleBindingUpdateWithResponse(ctx context.Context, stackRoleBindingId string, params *StackRoleBindingUpdateParams, body StackRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackRoleBindingUpdateResponse, error) {
+	rsp, err := c.StackRoleBindingUpdate(ctx, stackRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackRoleBindingUpdateResponse(rsp)
 }
 
 // StacksWithResponse List Stacks
@@ -63294,6 +70616,140 @@ func (c *ClientWithResponses) TypeWithResponse(ctx context.Context, reqEditors .
 	return ParseTypeResponse(rsp)
 }
 
+// UserGroupRoleBindingBatchCreateWithBodyWithResponse Batch Create User Group Role Bindings
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.UserGroupRoleBindingBatchCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingBatchCreateResponse(rsp)
+}
+
+// UserGroupRoleBindingBatchCreateWithResponse Batch Create User Group Role Bindings
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-group-role-binding-batches (the `UserGroupRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingBatchCreateWithResponse(ctx context.Context, params *UserGroupRoleBindingBatchCreateParams, body UserGroupRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.UserGroupRoleBindingBatchCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingBatchCreateResponse(rsp)
+}
+
+// UserGroupRoleBindingCreateWithBodyWithResponse Create User Group Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *UserGroupRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingCreateResponse, error) {
+	rsp, err := c.UserGroupRoleBindingCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingCreateResponse(rsp)
+}
+
+// UserGroupRoleBindingCreateWithResponse Create User Group Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-group-role-bindings (the `UserGroupRoleBindingCreate` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingCreateWithResponse(ctx context.Context, params *UserGroupRoleBindingCreateParams, body UserGroupRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingCreateResponse, error) {
+	rsp, err := c.UserGroupRoleBindingCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingCreateResponse(rsp)
+}
+
+// UserGroupRoleBindingDeleteWithResponse Delete User Group Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingDelete` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingDeleteWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingDeleteResponse, error) {
+	rsp, err := c.UserGroupRoleBindingDelete(ctx, userGroupRoleBindingId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingDeleteResponse(rsp)
+}
+
+// UserGroupRoleBindingWithResponse Get User Group Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBinding` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingWithResponse(ctx context.Context, userGroupRoleBindingId string, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingResponse, error) {
+	rsp, err := c.UserGroupRoleBinding(ctx, userGroupRoleBindingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingResponse(rsp)
+}
+
+// UserGroupRoleBindingPatchWithBodyWithResponse Patch User Group Role Binding
+//
+// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingPatchWithBodyWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingPatchResponse, error) {
+	rsp, err := c.UserGroupRoleBindingPatchWithBody(ctx, userGroupRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingPatchResponse(rsp)
+}
+
+// UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch User Group Role Binding
+//
+// Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingPatch` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingPatchParams, body UserGroupRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingPatchResponse, error) {
+	rsp, err := c.UserGroupRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx, userGroupRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingPatchResponse(rsp)
+}
+
+// UserGroupRoleBindingUpdateWithBodyWithResponse Update User Group Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingUpdateWithBodyWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingUpdateResponse, error) {
+	rsp, err := c.UserGroupRoleBindingUpdateWithBody(ctx, userGroupRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingUpdateResponse(rsp)
+}
+
+// UserGroupRoleBindingUpdateWithResponse Update User Group Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /user-group-role-bindings/{userGroupRoleBindingId} (the `UserGroupRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) UserGroupRoleBindingUpdateWithResponse(ctx context.Context, userGroupRoleBindingId string, params *UserGroupRoleBindingUpdateParams, body UserGroupRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserGroupRoleBindingUpdateResponse, error) {
+	rsp, err := c.UserGroupRoleBindingUpdate(ctx, userGroupRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserGroupRoleBindingUpdateResponse(rsp)
+}
+
 // UserGroupsWithAccessToSpaceWithResponse User Groups With Access To Space
 //
 // Returns IdP groups with RBAC access to the space, directly or via an ancestor space, searchable by group name.
@@ -63307,6 +70763,140 @@ func (c *ClientWithResponses) UserGroupsWithAccessToSpaceWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseUserGroupsWithAccessToSpaceResponse(rsp)
+}
+
+// UserRoleBindingBatchCreateWithBodyWithResponse Batch Create User Role Bindings
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) UserRoleBindingBatchCreateWithBodyWithResponse(ctx context.Context, params *UserRoleBindingBatchCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.UserRoleBindingBatchCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingBatchCreateResponse(rsp)
+}
+
+// UserRoleBindingBatchCreateWithResponse Batch Create User Role Bindings
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-role-binding-batches (the `UserRoleBindingBatchCreate` operationId).
+func (c *ClientWithResponses) UserRoleBindingBatchCreateWithResponse(ctx context.Context, params *UserRoleBindingBatchCreateParams, body UserRoleBindingBatchCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingBatchCreateResponse, error) {
+	rsp, err := c.UserRoleBindingBatchCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingBatchCreateResponse(rsp)
+}
+
+// UserRoleBindingCreateWithBodyWithResponse Create User Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+func (c *ClientWithResponses) UserRoleBindingCreateWithBodyWithResponse(ctx context.Context, params *UserRoleBindingCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingCreateResponse, error) {
+	rsp, err := c.UserRoleBindingCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingCreateResponse(rsp)
+}
+
+// UserRoleBindingCreateWithResponse Create User Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /user-role-bindings (the `UserRoleBindingCreate` operationId).
+func (c *ClientWithResponses) UserRoleBindingCreateWithResponse(ctx context.Context, params *UserRoleBindingCreateParams, body UserRoleBindingCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingCreateResponse, error) {
+	rsp, err := c.UserRoleBindingCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingCreateResponse(rsp)
+}
+
+// UserRoleBindingDeleteWithResponse Delete User Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingDelete` operationId).
+func (c *ClientWithResponses) UserRoleBindingDeleteWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingDeleteParams, reqEditors ...RequestEditorFn) (*UserRoleBindingDeleteResponse, error) {
+	rsp, err := c.UserRoleBindingDelete(ctx, userRoleBindingId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingDeleteResponse(rsp)
+}
+
+// UserRoleBindingWithResponse Get User Role Binding
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /user-role-bindings/{userRoleBindingId} (the `UserRoleBinding` operationId).
+func (c *ClientWithResponses) UserRoleBindingWithResponse(ctx context.Context, userRoleBindingId string, reqEditors ...RequestEditorFn) (*UserRoleBindingResponse, error) {
+	rsp, err := c.UserRoleBinding(ctx, userRoleBindingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingResponse(rsp)
+}
+
+// UserRoleBindingPatchWithBodyWithResponse Patch User Role Binding
+//
+// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+func (c *ClientWithResponses) UserRoleBindingPatchWithBodyWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingPatchResponse, error) {
+	rsp, err := c.UserRoleBindingPatchWithBody(ctx, userRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingPatchResponse(rsp)
+}
+
+// UserRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch User Role Binding
+//
+// Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingPatch` operationId).
+func (c *ClientWithResponses) UserRoleBindingPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingPatchParams, body UserRoleBindingPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingPatchResponse, error) {
+	rsp, err := c.UserRoleBindingPatchWithApplicationMergePatchPlusJSONBody(ctx, userRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingPatchResponse(rsp)
+}
+
+// UserRoleBindingUpdateWithBodyWithResponse Update User Role Binding
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) UserRoleBindingUpdateWithBodyWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UserRoleBindingUpdateResponse, error) {
+	rsp, err := c.UserRoleBindingUpdateWithBody(ctx, userRoleBindingId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingUpdateResponse(rsp)
+}
+
+// UserRoleBindingUpdateWithResponse Update User Role Binding
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /user-role-bindings/{userRoleBindingId} (the `UserRoleBindingUpdate` operationId).
+func (c *ClientWithResponses) UserRoleBindingUpdateWithResponse(ctx context.Context, userRoleBindingId string, params *UserRoleBindingUpdateParams, body UserRoleBindingUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*UserRoleBindingUpdateResponse, error) {
+	rsp, err := c.UserRoleBindingUpdate(ctx, userRoleBindingId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUserRoleBindingUpdateResponse(rsp)
 }
 
 // UserSessionsWithAccessToSpaceWithResponse User Sessions With Access To Space
@@ -65079,6 +72669,808 @@ func ParseAllowNonAdminSpaceCreationResponse(rsp *http.Response) (*AllowNonAdmin
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AllowNonAdminSpaceCreationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeyRoleBindingBatchCreateResponse parses an HTTP response from a ApiKeyRoleBindingBatchCreateWithResponse call
+func ParseApiKeyRoleBindingBatchCreateResponse(rsp *http.Response) (*ApiKeyRoleBindingBatchCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyRoleBindingBatchCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest []ApiKeyRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ApiKeyRoleBindingBatchCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyRoleBindingBatchCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyRoleBindingBatchCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeyRoleBindingCreateResponse parses an HTTP response from a ApiKeyRoleBindingCreateWithResponse call
+func ParseApiKeyRoleBindingCreateResponse(rsp *http.Response) (*ApiKeyRoleBindingCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyRoleBindingCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ApiKeyRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers ApiKeyRoleBindingCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyRoleBindingCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyRoleBindingCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeyRoleBindingDeleteResponse parses an HTTP response from a ApiKeyRoleBindingDeleteWithResponse call
+func ParseApiKeyRoleBindingDeleteResponse(rsp *http.Response) (*ApiKeyRoleBindingDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyRoleBindingDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKeyRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeyRoleBindingDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyRoleBindingDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyRoleBindingDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeyRoleBindingResponse parses an HTTP response from a ApiKeyRoleBindingWithResponse call
+func ParseApiKeyRoleBindingResponse(rsp *http.Response) (*ApiKeyRoleBindingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyRoleBindingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKeyRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeyRoleBindingResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyRoleBindingResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyRoleBindingResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeyRoleBindingPatchResponse parses an HTTP response from a ApiKeyRoleBindingPatchWithResponse call
+func ParseApiKeyRoleBindingPatchResponse(rsp *http.Response) (*ApiKeyRoleBindingPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyRoleBindingPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKeyRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeyRoleBindingPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyRoleBindingPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyRoleBindingPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseApiKeyRoleBindingUpdateResponse parses an HTTP response from a ApiKeyRoleBindingUpdateWithResponse call
+func ParseApiKeyRoleBindingUpdateResponse(rsp *http.Response) (*ApiKeyRoleBindingUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyRoleBindingUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApiKeyRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeyRoleBindingUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyRoleBindingUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyRoleBindingUpdateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -78744,6 +87136,801 @@ func ParsePersonalApiKeyDisableResponse(rsp *http.Response) (*PersonalApiKeyDisa
 	return response, nil
 }
 
+// ParseRolesResponse parses an HTTP response from a RolesWithResponse call
+func ParseRolesResponse(rsp *http.Response) (*RolesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RolesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RolePage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RolesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RolesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RolesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRoleCreateResponse parses an HTTP response from a RoleCreateWithResponse call
+func ParseRoleCreateResponse(rsp *http.Response) (*RoleCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RoleCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Role
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers RoleCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers RoleCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RoleCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRoleDeleteResponse parses an HTTP response from a RoleDeleteWithResponse call
+func ParseRoleDeleteResponse(rsp *http.Response) (*RoleDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RoleDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Role
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RoleDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RoleDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RoleDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRoleResponse parses an HTTP response from a RoleWithResponse call
+func ParseRoleResponse(rsp *http.Response) (*RoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Role
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RoleResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RoleResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RoleResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRolePatchResponse parses an HTTP response from a RolePatchWithResponse call
+func ParseRolePatchResponse(rsp *http.Response) (*RolePatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RolePatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Role
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RolePatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RolePatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RolePatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRoleUpdateResponse parses an HTTP response from a RoleUpdateWithResponse call
+func ParseRoleUpdateResponse(rsp *http.Response) (*RoleUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RoleUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Role
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RoleUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RoleUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RoleUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSeatsResponse parses an HTTP response from a SeatsWithResponse call
 func ParseSeatsResponse(rsp *http.Response) (*SeatsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -82245,6 +91432,808 @@ func ParseStackDependenciesUpdateReferenceResponse(rsp *http.Response) (*StackDe
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackDependenciesUpdateReferenceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackRoleBindingBatchCreateResponse parses an HTTP response from a StackRoleBindingBatchCreateWithResponse call
+func ParseStackRoleBindingBatchCreateResponse(rsp *http.Response) (*StackRoleBindingBatchCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackRoleBindingBatchCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest []StackRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StackRoleBindingBatchCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackRoleBindingBatchCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackRoleBindingBatchCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackRoleBindingCreateResponse parses an HTTP response from a StackRoleBindingCreateWithResponse call
+func ParseStackRoleBindingCreateResponse(rsp *http.Response) (*StackRoleBindingCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackRoleBindingCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest StackRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers StackRoleBindingCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackRoleBindingCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackRoleBindingCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackRoleBindingDeleteResponse parses an HTTP response from a StackRoleBindingDeleteWithResponse call
+func ParseStackRoleBindingDeleteResponse(rsp *http.Response) (*StackRoleBindingDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackRoleBindingDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackRoleBindingDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackRoleBindingDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackRoleBindingDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackRoleBindingResponse parses an HTTP response from a StackRoleBindingWithResponse call
+func ParseStackRoleBindingResponse(rsp *http.Response) (*StackRoleBindingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackRoleBindingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackRoleBindingResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackRoleBindingResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackRoleBindingResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackRoleBindingPatchResponse parses an HTTP response from a StackRoleBindingPatchWithResponse call
+func ParseStackRoleBindingPatchResponse(rsp *http.Response) (*StackRoleBindingPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackRoleBindingPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackRoleBindingPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackRoleBindingPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackRoleBindingPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackRoleBindingUpdateResponse parses an HTTP response from a StackRoleBindingUpdateWithResponse call
+func ParseStackRoleBindingUpdateResponse(rsp *http.Response) (*StackRoleBindingUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackRoleBindingUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackRoleBindingUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackRoleBindingUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackRoleBindingUpdateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -92152,6 +102141,808 @@ func ParseTypeResponse(rsp *http.Response) (*TypeResponse, error) {
 	return response, nil
 }
 
+// ParseUserGroupRoleBindingBatchCreateResponse parses an HTTP response from a UserGroupRoleBindingBatchCreateWithResponse call
+func ParseUserGroupRoleBindingBatchCreateResponse(rsp *http.Response) (*UserGroupRoleBindingBatchCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGroupRoleBindingBatchCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest []UserGroupRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers UserGroupRoleBindingBatchCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserGroupRoleBindingBatchCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserGroupRoleBindingBatchCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGroupRoleBindingCreateResponse parses an HTTP response from a UserGroupRoleBindingCreateWithResponse call
+func ParseUserGroupRoleBindingCreateResponse(rsp *http.Response) (*UserGroupRoleBindingCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGroupRoleBindingCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest UserGroupRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers UserGroupRoleBindingCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserGroupRoleBindingCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserGroupRoleBindingCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGroupRoleBindingDeleteResponse parses an HTTP response from a UserGroupRoleBindingDeleteWithResponse call
+func ParseUserGroupRoleBindingDeleteResponse(rsp *http.Response) (*UserGroupRoleBindingDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGroupRoleBindingDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserGroupRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGroupRoleBindingDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserGroupRoleBindingDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserGroupRoleBindingDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGroupRoleBindingResponse parses an HTTP response from a UserGroupRoleBindingWithResponse call
+func ParseUserGroupRoleBindingResponse(rsp *http.Response) (*UserGroupRoleBindingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGroupRoleBindingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserGroupRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGroupRoleBindingResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserGroupRoleBindingResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserGroupRoleBindingResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGroupRoleBindingPatchResponse parses an HTTP response from a UserGroupRoleBindingPatchWithResponse call
+func ParseUserGroupRoleBindingPatchResponse(rsp *http.Response) (*UserGroupRoleBindingPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGroupRoleBindingPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserGroupRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGroupRoleBindingPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserGroupRoleBindingPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserGroupRoleBindingPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserGroupRoleBindingUpdateResponse parses an HTTP response from a UserGroupRoleBindingUpdateWithResponse call
+func ParseUserGroupRoleBindingUpdateResponse(rsp *http.Response) (*UserGroupRoleBindingUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserGroupRoleBindingUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserGroupRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserGroupRoleBindingUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserGroupRoleBindingUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserGroupRoleBindingUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseUserGroupsWithAccessToSpaceResponse parses an HTTP response from a UserGroupsWithAccessToSpaceWithResponse call
 func ParseUserGroupsWithAccessToSpaceResponse(rsp *http.Response) (*UserGroupsWithAccessToSpaceResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -92254,6 +103045,808 @@ func ParseUserGroupsWithAccessToSpaceResponse(rsp *http.Response) (*UserGroupsWi
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers UserGroupsWithAccessToSpaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRoleBindingBatchCreateResponse parses an HTTP response from a UserRoleBindingBatchCreateWithResponse call
+func ParseUserRoleBindingBatchCreateResponse(rsp *http.Response) (*UserRoleBindingBatchCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRoleBindingBatchCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest []UserRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers UserRoleBindingBatchCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserRoleBindingBatchCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserRoleBindingBatchCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRoleBindingCreateResponse parses an HTTP response from a UserRoleBindingCreateWithResponse call
+func ParseUserRoleBindingCreateResponse(rsp *http.Response) (*UserRoleBindingCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRoleBindingCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest UserRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers UserRoleBindingCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserRoleBindingCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserRoleBindingCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRoleBindingDeleteResponse parses an HTTP response from a UserRoleBindingDeleteWithResponse call
+func ParseUserRoleBindingDeleteResponse(rsp *http.Response) (*UserRoleBindingDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRoleBindingDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserRoleBindingDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserRoleBindingDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserRoleBindingDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRoleBindingResponse parses an HTTP response from a UserRoleBindingWithResponse call
+func ParseUserRoleBindingResponse(rsp *http.Response) (*UserRoleBindingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRoleBindingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserRoleBindingResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserRoleBindingResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserRoleBindingResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRoleBindingPatchResponse parses an HTTP response from a UserRoleBindingPatchWithResponse call
+func ParseUserRoleBindingPatchResponse(rsp *http.Response) (*UserRoleBindingPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRoleBindingPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserRoleBindingPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserRoleBindingPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserRoleBindingPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseUserRoleBindingUpdateResponse parses an HTTP response from a UserRoleBindingUpdateWithResponse call
+func ParseUserRoleBindingUpdateResponse(rsp *http.Response) (*UserRoleBindingUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UserRoleBindingUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UserRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers UserRoleBindingUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers UserRoleBindingUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UserRoleBindingUpdateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

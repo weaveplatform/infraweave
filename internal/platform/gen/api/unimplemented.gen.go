@@ -70,6 +70,30 @@ func (UnimplementedStrict) AllowNonAdminSpaceCreation(context.Context, AllowNonA
 	return nil, &problem.NotImplementedError{OperationID: "allowNonAdminSpaceCreation", Route: "GET /allow-non-admin-space-creation"}
 }
 
+func (UnimplementedStrict) ApiKeyRoleBindingBatchCreate(context.Context, ApiKeyRoleBindingBatchCreateRequestObject) (ApiKeyRoleBindingBatchCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyRoleBindingBatchCreate", Route: "POST /api-key-role-binding-batches"}
+}
+
+func (UnimplementedStrict) ApiKeyRoleBindingCreate(context.Context, ApiKeyRoleBindingCreateRequestObject) (ApiKeyRoleBindingCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyRoleBindingCreate", Route: "POST /api-key-role-bindings"}
+}
+
+func (UnimplementedStrict) ApiKeyRoleBindingDelete(context.Context, ApiKeyRoleBindingDeleteRequestObject) (ApiKeyRoleBindingDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyRoleBindingDelete", Route: "DELETE /api-key-role-bindings/{apiKeyRoleBindingId}"}
+}
+
+func (UnimplementedStrict) ApiKeyRoleBinding(context.Context, ApiKeyRoleBindingRequestObject) (ApiKeyRoleBindingResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyRoleBinding", Route: "GET /api-key-role-bindings/{apiKeyRoleBindingId}"}
+}
+
+func (UnimplementedStrict) ApiKeyRoleBindingPatch(context.Context, ApiKeyRoleBindingPatchRequestObject) (ApiKeyRoleBindingPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyRoleBindingPatch", Route: "PATCH /api-key-role-bindings/{apiKeyRoleBindingId}"}
+}
+
+func (UnimplementedStrict) ApiKeyRoleBindingUpdate(context.Context, ApiKeyRoleBindingUpdateRequestObject) (ApiKeyRoleBindingUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeyRoleBindingUpdate", Route: "PUT /api-key-role-bindings/{apiKeyRoleBindingId}"}
+}
+
 func (UnimplementedStrict) ApiKeySessionsWithAccessToSpace(context.Context, ApiKeySessionsWithAccessToSpaceRequestObject) (ApiKeySessionsWithAccessToSpaceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeySessionsWithAccessToSpace", Route: "GET /api-key-sessions-with-access-to-space"}
 }
@@ -494,6 +518,30 @@ func (UnimplementedStrict) PersonalApiKeyDisable(context.Context, PersonalApiKey
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeyDisable", Route: "POST /personal-api-keys/{personalApiKeyId}/disable"}
 }
 
+func (UnimplementedStrict) Roles(context.Context, RolesRequestObject) (RolesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "roles", Route: "GET /roles"}
+}
+
+func (UnimplementedStrict) RoleCreate(context.Context, RoleCreateRequestObject) (RoleCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "roleCreate", Route: "POST /roles"}
+}
+
+func (UnimplementedStrict) RoleDelete(context.Context, RoleDeleteRequestObject) (RoleDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "roleDelete", Route: "DELETE /roles/{roleId}"}
+}
+
+func (UnimplementedStrict) Role(context.Context, RoleRequestObject) (RoleResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "role", Route: "GET /roles/{roleId}"}
+}
+
+func (UnimplementedStrict) RolePatch(context.Context, RolePatchRequestObject) (RolePatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "rolePatch", Route: "PATCH /roles/{roleId}"}
+}
+
+func (UnimplementedStrict) RoleUpdate(context.Context, RoleUpdateRequestObject) (RoleUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "roleUpdate", Route: "PUT /roles/{roleId}"}
+}
+
 func (UnimplementedStrict) Seats(context.Context, SeatsRequestObject) (SeatsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "seats", Route: "GET /seats"}
 }
@@ -604,6 +652,30 @@ func (UnimplementedStrict) StackDependenciesDeleteReference(context.Context, Sta
 
 func (UnimplementedStrict) StackDependenciesUpdateReference(context.Context, StackDependenciesUpdateReferenceRequestObject) (StackDependenciesUpdateReferenceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackDependenciesUpdateReference", Route: "PUT /stack-dependency-references/{referenceId}"}
+}
+
+func (UnimplementedStrict) StackRoleBindingBatchCreate(context.Context, StackRoleBindingBatchCreateRequestObject) (StackRoleBindingBatchCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackRoleBindingBatchCreate", Route: "POST /stack-role-binding-batches"}
+}
+
+func (UnimplementedStrict) StackRoleBindingCreate(context.Context, StackRoleBindingCreateRequestObject) (StackRoleBindingCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackRoleBindingCreate", Route: "POST /stack-role-bindings"}
+}
+
+func (UnimplementedStrict) StackRoleBindingDelete(context.Context, StackRoleBindingDeleteRequestObject) (StackRoleBindingDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackRoleBindingDelete", Route: "DELETE /stack-role-bindings/{stackRoleBindingId}"}
+}
+
+func (UnimplementedStrict) StackRoleBinding(context.Context, StackRoleBindingRequestObject) (StackRoleBindingResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackRoleBinding", Route: "GET /stack-role-bindings/{stackRoleBindingId}"}
+}
+
+func (UnimplementedStrict) StackRoleBindingPatch(context.Context, StackRoleBindingPatchRequestObject) (StackRoleBindingPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackRoleBindingPatch", Route: "PATCH /stack-role-bindings/{stackRoleBindingId}"}
+}
+
+func (UnimplementedStrict) StackRoleBindingUpdate(context.Context, StackRoleBindingUpdateRequestObject) (StackRoleBindingUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackRoleBindingUpdate", Route: "PUT /stack-role-bindings/{stackRoleBindingId}"}
 }
 
 func (UnimplementedStrict) Stacks(context.Context, StacksRequestObject) (StacksResponseObject, error) {
@@ -910,8 +982,56 @@ func (UnimplementedStrict) Type(context.Context, TypeRequestObject) (TypeRespons
 	return nil, &problem.NotImplementedError{OperationID: "type", Route: "GET /type"}
 }
 
+func (UnimplementedStrict) UserGroupRoleBindingBatchCreate(context.Context, UserGroupRoleBindingBatchCreateRequestObject) (UserGroupRoleBindingBatchCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupRoleBindingBatchCreate", Route: "POST /user-group-role-binding-batches"}
+}
+
+func (UnimplementedStrict) UserGroupRoleBindingCreate(context.Context, UserGroupRoleBindingCreateRequestObject) (UserGroupRoleBindingCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupRoleBindingCreate", Route: "POST /user-group-role-bindings"}
+}
+
+func (UnimplementedStrict) UserGroupRoleBindingDelete(context.Context, UserGroupRoleBindingDeleteRequestObject) (UserGroupRoleBindingDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupRoleBindingDelete", Route: "DELETE /user-group-role-bindings/{userGroupRoleBindingId}"}
+}
+
+func (UnimplementedStrict) UserGroupRoleBinding(context.Context, UserGroupRoleBindingRequestObject) (UserGroupRoleBindingResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupRoleBinding", Route: "GET /user-group-role-bindings/{userGroupRoleBindingId}"}
+}
+
+func (UnimplementedStrict) UserGroupRoleBindingPatch(context.Context, UserGroupRoleBindingPatchRequestObject) (UserGroupRoleBindingPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupRoleBindingPatch", Route: "PATCH /user-group-role-bindings/{userGroupRoleBindingId}"}
+}
+
+func (UnimplementedStrict) UserGroupRoleBindingUpdate(context.Context, UserGroupRoleBindingUpdateRequestObject) (UserGroupRoleBindingUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupRoleBindingUpdate", Route: "PUT /user-group-role-bindings/{userGroupRoleBindingId}"}
+}
+
 func (UnimplementedStrict) UserGroupsWithAccessToSpace(context.Context, UserGroupsWithAccessToSpaceRequestObject) (UserGroupsWithAccessToSpaceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "userGroupsWithAccessToSpace", Route: "GET /user-groups-with-access-to-space"}
+}
+
+func (UnimplementedStrict) UserRoleBindingBatchCreate(context.Context, UserRoleBindingBatchCreateRequestObject) (UserRoleBindingBatchCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userRoleBindingBatchCreate", Route: "POST /user-role-binding-batches"}
+}
+
+func (UnimplementedStrict) UserRoleBindingCreate(context.Context, UserRoleBindingCreateRequestObject) (UserRoleBindingCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userRoleBindingCreate", Route: "POST /user-role-bindings"}
+}
+
+func (UnimplementedStrict) UserRoleBindingDelete(context.Context, UserRoleBindingDeleteRequestObject) (UserRoleBindingDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userRoleBindingDelete", Route: "DELETE /user-role-bindings/{userRoleBindingId}"}
+}
+
+func (UnimplementedStrict) UserRoleBinding(context.Context, UserRoleBindingRequestObject) (UserRoleBindingResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userRoleBinding", Route: "GET /user-role-bindings/{userRoleBindingId}"}
+}
+
+func (UnimplementedStrict) UserRoleBindingPatch(context.Context, UserRoleBindingPatchRequestObject) (UserRoleBindingPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userRoleBindingPatch", Route: "PATCH /user-role-bindings/{userRoleBindingId}"}
+}
+
+func (UnimplementedStrict) UserRoleBindingUpdate(context.Context, UserRoleBindingUpdateRequestObject) (UserRoleBindingUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userRoleBindingUpdate", Route: "PUT /user-role-bindings/{userRoleBindingId}"}
 }
 
 func (UnimplementedStrict) UserSessionsWithAccessToSpace(context.Context, UserSessionsWithAccessToSpaceRequestObject) (UserSessionsWithAccessToSpaceResponseObject, error) {

@@ -62,8 +62,14 @@
 // answers 404, a change the service's rule withholds 403 forbidden naming
 // SPACE_ADMIN, and a missing name, labels breaking the label rule or a
 // change the tree refuses 422 validation-failed naming each reason or
-// label. The update routes of spaces, API keys, managed users and managed
-// user groups serve the API's update semantics through httpkit/strict: the
+// label. The Roles operations, through role.Service, list the account's
+// system and custom roles by slug and read, create, replace, patch and
+// delete a custom one, each Role with its actions in catalogue order and
+// its bindings to users, groups and API keys: a role the account lacks
+// answers 404, a slug in use 409 already-exists, a role with bindings
+// 409 invalid-state, and a system role's change or a disabled action 422
+// validation-failed, the action named at its pointer. The update routes
+// of spaces, API keys, managed users, managed user groups and roles serve the API's update semantics through httpkit/strict: the
 // item GET, the PUT and the PATCH answer the version they answer as a
 // strong ETag; PUT and DELETE pass their If-Match to the service, which
 // checks it against the row it locks; a PATCH merges its RFC 7396 patch
