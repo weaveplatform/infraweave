@@ -242,7 +242,7 @@ func TestAccRoleDeletion(t *testing.T) {
 func TestAccCustomRoles(t *testing.T) {
 	ctx := t.Context()
 	x := seed(t, pool(t), "hooli")
-	svc := role.NewService(role.Deps{Store: x.s, Drop: func(kernel.AccountID) {}})
+	svc := role.NewService(role.Deps{Store: x.s})
 	authz := func() int64 {
 		t.Helper()
 		var v int64

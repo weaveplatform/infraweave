@@ -71,6 +71,10 @@ type Store struct {
 	// removes, which the domains that keep the account's rows consume; nil
 	// appends none, and leaves those rows to the nightly orphan count.
 	events *outbox.Outbox
+	// forget drops this replica's authorization snapshot of an account
+	// once a transaction that changes its authorization commits; nil
+	// leaves the snapshot to the account's authz:<account> message.
+	forget func(kernel.AccountID)
 }
 
 var _ port.Tenancy = (*Store)(nil)
@@ -92,18 +96,30 @@ func (s *Store) WithEvents(events *outbox.Outbox) *Store {
 	return s
 }
 
-// deleted appends an accessapi.Deleted for each of org's accounts accts,
-// with whole set when the organization goes with them.
+// WithSnapshots returns s dropping this replica's authorization snapshot
+// of an account through forget once a transaction that changes the
+// account's authorization commits.
+func (s *Store) WithSnapshots(forget func(kernel.AccountID)) *Store {
+	s.forget = forget
+	return s
+}
+
+// deleted has every replica forget the snapshot of each of org's accounts
+// accts, and appends an accessapi.Deleted for each, with whole set when
+// the organization goes with them.
 func (s *Store) deleted(
 	ctx context.Context,
 	org kernel.OrganizationID,
 	accts []kernel.AccountID,
 	whole bool,
 ) error {
-	if s.events == nil {
-		return nil
-	}
 	for _, acct := range accts {
+		if err := s.forgetAuthz(ctx, tx.Q(ctx, s.db), acct); err != nil {
+			return err
+		}
+		if s.events == nil {
+			continue
+		}
 		doc, err := json.Marshal(accessapi.Deleted{
 			Account: acct.ULID, Organization: org.ULID, OrganizationDeleted: whole,
 		})

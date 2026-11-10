@@ -202,7 +202,7 @@ func newOpWorld(t *testing.T) *opWorld {
 				full{Server: NewServer(Services{
 					Auth: auth, Keys: keys, Authz: base.authz, Accounts: base.st,
 					Spaces: space.NewService(space.Deps{
-						Store: base.tree, Authz: base.authz, Drop: func(kernel.AccountID) {},
+						Store: base.tree, Authz: base.authz,
 						Now: func() time.Time { return t0 },
 					}),
 				})},

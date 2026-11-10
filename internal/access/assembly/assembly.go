@@ -166,6 +166,7 @@ func New(d Deps) (*Domain, error) {
 	manual := d.Settings.Signing.Rotation == RotationManual
 	store := pg.New(d.DB).WithFeatures(d.Features).WithEvents(d.Events)
 	decide := authz.NewService(store)
+	store.WithSnapshots(decide.Drop)
 	refs := make([]string, 0, len(d.KMS))
 	for _, k := range d.KMS {
 		refs = append(refs, k.Ref())
@@ -258,14 +259,14 @@ func New(d Deps) (*Domain, error) {
 		),
 		users:  user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
 		groups: group.NewService(group.Deps{Store: store, Now: now}),
-		roles:  role.NewService(role.Deps{Store: store, Drop: decide.Drop}),
+		roles:  role.NewService(role.Deps{Store: store}),
 		bindings: binding.NewService(
-			binding.Deps{Store: store, Authz: decide, Drop: decide.Drop},
+			binding.Deps{Store: store, Authz: decide},
 		),
 		holders: holder.NewService(store, decide),
 		oauth:   grants,
 		spaces: space.NewService(
-			space.Deps{Store: store, Authz: decide, Drop: decide.Drop, Now: now},
+			space.Deps{Store: store, Authz: decide, Now: now},
 		),
 		manual:    manual,
 		publicURL: d.PublicURL,

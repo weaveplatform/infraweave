@@ -77,20 +77,15 @@ type Change struct {
 // ref: decision 0007 § "Roles and the action catalogue"
 type Service struct {
 	store Store
-	drop  func(kernel.AccountID)
 }
 
-// Deps are what the service needs. Drop forgets this replica's
-// authorization snapshot of an account after a change of its roles, so
-// the answer to the change, and the caller's next request here, see it
-// before the change's message arrives.
+// Deps are what the service needs.
 type Deps struct {
 	Store Store
-	Drop  func(kernel.AccountID)
 }
 
 // NewService returns the service over d.
-func NewService(d Deps) *Service { return &Service{store: d.Store, drop: d.Drop} }
+func NewService(d Deps) *Service { return &Service{store: d.Store} }
 
 // Roles lists up to limit of acct's roles after the slug after, by slug.
 func (s *Service) Roles(
@@ -154,7 +149,6 @@ func (s *Service) Create(ctx context.Context, acct kernel.AccountID, in Input) (
 	if err := s.store.CreateRole(ctx, r); err != nil {
 		return Role{}, err //nolint:wrapcheck // the store names the write
 	}
-	s.drop(acct)
 	return r, nil
 }
 
@@ -197,7 +191,6 @@ func (s *Service) Update(
 	if err != nil {
 		return Role{}, err //nolint:wrapcheck // the store names the write; a refusal is answered as it is
 	}
-	s.drop(acct)
 	return withActions(r), nil
 }
 
@@ -219,7 +212,6 @@ func (s *Service) Delete(
 	if err != nil {
 		return Role{}, err //nolint:wrapcheck // the store names the write; a refusal is answered as it is
 	}
-	s.drop(acct)
 	return withActions(r), nil
 }
 

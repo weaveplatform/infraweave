@@ -121,19 +121,16 @@ type Fields struct {
 type Service struct {
 	store Store
 	authz accessapi.Authorizer
-	drop  func(kernel.AccountID)
 }
 
-// Deps are what the service needs. Drop forgets this replica's
-// authorization snapshot of an account after a change of its bindings.
+// Deps are what the service needs.
 type Deps struct {
 	Store Store
 	Authz accessapi.Authorizer
-	Drop  func(kernel.AccountID)
 }
 
 // NewService returns the service over d.
-func NewService(d Deps) *Service { return &Service{store: d.Store, authz: d.Authz, drop: d.Drop} }
+func NewService(d Deps) *Service { return &Service{store: d.Store, authz: d.Authz} }
 
 // Prepare turns reqs, the bindings of actors of kind an input names at
 // pointer, into bindings of origin made by p, refusing each element whose
@@ -282,7 +279,6 @@ func (s *Service) Create(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the write; a duplicate is answered as it is
 	}
-	s.drop(p.AccountID)
 	return out, nil
 }
 
@@ -318,7 +314,6 @@ func (s *Service) Record(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
-	s.drop(acct)
 	return out, nil
 }
 
@@ -337,7 +332,6 @@ func (s *Service) ReplaceRules(
 	if err := s.store.ReplaceAccessRules(ctx, acct, kind, id, bs); err != nil {
 		return err //nolint:wrapcheck // as above
 	}
-	s.drop(acct)
 	return nil
 }
 
@@ -431,7 +425,6 @@ func (s *Service) Unbind(
 	if err := s.store.DeleteActorBindings(ctx, acct, kind, id); err != nil {
 		return err //nolint:wrapcheck // the store names the write
 	}
-	s.drop(acct)
 	return nil
 }
 
@@ -506,7 +499,6 @@ func (s *Service) Update(
 	if err != nil {
 		return Listed{}, err //nolint:wrapcheck // the store names the write; a refusal is answered as it is
 	}
-	s.drop(p.AccountID)
 	return out, nil
 }
 
@@ -546,7 +538,6 @@ func (s *Service) Delete(
 	if err != nil {
 		return Listed{}, err //nolint:wrapcheck // as above
 	}
-	s.drop(acct)
 	return out, nil
 }
 

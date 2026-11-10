@@ -121,27 +121,22 @@ func (d *Denied) Error() string { return d.Reason }
 type Service struct {
 	store Store
 	authz Authorizer
-	drop  func(kernel.AccountID)
 	now   func() time.Time
 
 	mu     sync.RWMutex
 	guards []accessapi.SpaceGuard
 }
 
-// Deps are what the service needs. Drop forgets this replica's
-// authorization snapshot of an account after a change of its tree, so
-// the answer to the change, and the caller's next request here, see it
-// before the change's message arrives.
+// Deps are what the service needs.
 type Deps struct {
 	Store Store
 	Authz Authorizer
-	Drop  func(kernel.AccountID)
 	Now   func() time.Time
 }
 
 // NewService returns the service over d.
 func NewService(d Deps) *Service {
-	return &Service{store: d.Store, authz: d.Authz, drop: d.Drop, now: d.Now}
+	return &Service{store: d.Store, authz: d.Authz, now: d.Now}
 }
 
 // Guard registers g, which every later delete and move consults.
@@ -340,7 +335,6 @@ func (s *Service) Create(
 	if err := s.store.CreateSpace(ctx, in); err != nil {
 		return Space{}, err //nolint:wrapcheck // the store names the write
 	}
-	s.drop(p.AccountID)
 	return in, nil
 }
 
@@ -392,7 +386,6 @@ func (s *Service) Update(
 	if err != nil {
 		return Space{}, err //nolint:wrapcheck // the store names the write
 	}
-	s.drop(p.AccountID)
 	return out, nil
 }
 
@@ -513,6 +506,5 @@ func (s *Service) Delete(
 	if err != nil {
 		return Space{}, err //nolint:wrapcheck // the store names the write
 	}
-	s.drop(p.AccountID)
 	return gone, nil
 }

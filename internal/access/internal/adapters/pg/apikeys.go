@@ -492,7 +492,7 @@ func (s *Store) DeleteAPIKey(
 		if err := unbindActor(ctx, q, acct, binding.ActorAPIKey, id); err != nil {
 			return err
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return apikey.Key{}, nil, err //nolint:wrapcheck // revokeKey and unbindActor name it

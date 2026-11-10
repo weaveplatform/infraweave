@@ -17,17 +17,30 @@ import (
 var _ authz.Store = (*Store)(nil)
 
 // bumpAuthz marks acct's authorization changed in the transaction that
-// changes it: authz_version moves, and authz:<account> goes out on
-// infraweave_invalidate when the transaction commits, so every replica
-// rebuilds its snapshot. Every write to spaces, roles, role_actions,
-// role_bindings or managed_user_groups, and every admission, calls it.
-func bumpAuthz(ctx context.Context, q tx.Querier, acct kernel.AccountID) error {
+// changes it: authz_version moves, and forgetAuthz has every replica
+// rebuild its snapshot once the transaction commits. Every write to
+// spaces, roles, role_actions, role_bindings or managed_user_groups that
+// a snapshot reads, and every admission, calls it.
+func (s *Store) bumpAuthz(ctx context.Context, q tx.Querier, acct kernel.AccountID) error {
 	if _, err := q.Exec(ctx, `UPDATE accounts SET authz_version = authz_version + 1
 		WHERE id = $1`, acct); err != nil {
 		return fmt.Errorf("access: bump authorization: %w", sql.Unavailable(err))
 	}
+	return s.forgetAuthz(ctx, q, acct)
+}
+
+// forgetAuthz sends authz:<account> on infraweave_invalidate, which
+// PostgreSQL delivers when the transaction commits, and has this replica
+// forget its own snapshot of acct at the commit rather than when the
+// message comes back, so the change's own answer and the caller's next
+// request here are decided on the committed rows. A deleted account has
+// no version left to move, so its deletion calls this alone.
+func (s *Store) forgetAuthz(ctx context.Context, q tx.Querier, acct kernel.AccountID) error {
 	if err := notify.Notify(ctx, q, notify.Invalidate, authz.Key(acct)); err != nil {
 		return fmt.Errorf("access: %w", err)
+	}
+	if s.forget != nil {
+		tx.AfterCommit(ctx, func(context.Context) { s.forget(acct) })
 	}
 	return nil
 }

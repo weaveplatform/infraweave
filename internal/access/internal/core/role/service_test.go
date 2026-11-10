@@ -110,18 +110,11 @@ func (s *store) RoleBindings(
 	return []binding.Listed{{Space: "top"}}, s.err
 }
 
-func service(t *testing.T) (*role.Service, *store, kernel.AccountID, *int) {
+func service(t *testing.T) (*role.Service, *store, kernel.AccountID) {
 	t.Helper()
 	acct := kernel.NewAccountID()
 	st := newStore(acct)
-	drops := new(int)
-	svc := role.NewService(role.Deps{Store: st, Drop: func(a kernel.AccountID) {
-		if a != acct {
-			t.Errorf("dropped %s, want %s", a, acct)
-		}
-		*drops++
-	}})
-	return svc, st, acct, drops
+	return role.NewService(role.Deps{Store: st}), st, acct
 }
 
 // pointers is each field error of err's *kernel.Invalid as pointer=reason.
@@ -159,7 +152,7 @@ func TestUnitSlugOf(t *testing.T) {
 // naming the action.
 func TestUnitCreateRole(t *testing.T) {
 	ctx := t.Context()
-	svc, st, acct, drops := service(t)
+	svc, st, acct := service(t)
 	r, err := svc.Create(ctx, acct, role.Input{
 		Name:    "Deploy Bots",
 		Actions: []accessapi.Action{"STACK_MANAGE", "SPACE_READ", "STACK_MANAGE"},
@@ -168,8 +161,8 @@ func TestUnitCreateRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	if r.Slug != "deploy-bots" || r.System || r.Version != 1 || r.Description != "" ||
-		!slices.Equal(r.Actions, []accessapi.Action{"SPACE_READ", "STACK_MANAGE"}) || *drops != 1 {
-		t.Errorf("Create = %+v, %d drops", r, *drops)
+		!slices.Equal(r.Actions, []accessapi.Action{"SPACE_READ", "STACK_MANAGE"}) {
+		t.Errorf("Create = %+v", r)
 	}
 	if _, ok := st.roles["deploy-bots"]; !ok {
 		t.Error("the role is not stored")
@@ -192,9 +185,6 @@ func TestUnitCreateRole(t *testing.T) {
 	if got := pointers(t, err); !slices.Equal(got, want) {
 		t.Errorf("refusals = %q, want %q", got, want)
 	}
-	if *drops != 1 {
-		t.Errorf("a refused create dropped the snapshot: %d drops", *drops)
-	}
 }
 
 // TestUnitUpdateRole checks that an update replaces only the fields it
@@ -202,7 +192,7 @@ func TestUnitCreateRole(t *testing.T) {
 // nameless name and an action no role may hold.
 func TestUnitUpdateRole(t *testing.T) {
 	ctx := t.Context()
-	svc, _, acct, drops := service(t)
+	svc, _, acct := service(t)
 	if _, err := svc.Create(ctx, acct, role.Input{
 		Name: "Ops", Description: new("Operators"),
 		Actions: []accessapi.Action{"SPACE_READ"},
@@ -228,9 +218,6 @@ func TestUnitUpdateRole(t *testing.T) {
 	if err != nil || r.Name != "Operations" || r.Description != "" ||
 		!slices.Equal(r.Actions, []accessapi.Action{"SPACE_WRITE", "STACK_MANAGE"}) {
 		t.Errorf("new actions = %+v, %v", r, err)
-	}
-	if *drops != 3 {
-		t.Errorf("%d drops, want 3", *drops)
 	}
 	if _, err := svc.Update(ctx, acct, "ops", kernel.ExpectVersions(1),
 		role.Change{}); !errors.Is(err, kernel.ErrStale) {
@@ -259,9 +246,6 @@ func TestUnitUpdateRole(t *testing.T) {
 		role.Change{}); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("a missing role's update = %v", err)
 	}
-	if *drops != 3 {
-		t.Errorf("a refused update dropped the snapshot: %d drops", *drops)
-	}
 }
 
 // TestUnitDeleteRole checks that a custom role without bindings is
@@ -269,7 +253,7 @@ func TestUnitUpdateRole(t *testing.T) {
 // bindings are refused.
 func TestUnitDeleteRole(t *testing.T) {
 	ctx := t.Context()
-	svc, st, acct, drops := service(t)
+	svc, st, acct := service(t)
 	for _, name := range []string{"Ops", "Bound"} {
 		if _, err := svc.Create(ctx, acct, role.Input{
 			Name:    name,
@@ -304,8 +288,8 @@ func TestUnitDeleteRole(t *testing.T) {
 	if err != nil || r.Slug != "ops" || !slices.Equal(r.Actions, []accessapi.Action{"SPACE_READ"}) {
 		t.Errorf("delete = %+v, %v", r, err)
 	}
-	if _, ok := st.roles["ops"]; ok || *drops != 3 {
-		t.Errorf("the role remains (%t) or %d drops, want 3", ok, *drops)
+	if _, ok := st.roles["ops"]; ok {
+		t.Errorf("the role remains")
 	}
 }
 
@@ -313,7 +297,7 @@ func TestUnitDeleteRole(t *testing.T) {
 // the catalogue and pass the store's errors on.
 func TestUnitReadRoles(t *testing.T) {
 	ctx := t.Context()
-	svc, st, acct, _ := service(t)
+	svc, st, acct := service(t)
 	rs, err := svc.Roles(ctx, acct, "", 10)
 	if err != nil || len(rs) != 5 {
 		t.Fatalf("Roles = %v, %v", rs, err)

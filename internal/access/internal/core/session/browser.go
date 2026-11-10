@@ -41,8 +41,9 @@ type Admitted struct {
 	Name string
 }
 
-// Admission decides which accounts admit a member: rows of account_users
-// today, which P4b's bindings and P13b's LOGIN policies extend. Both are
+// Admission decides which accounts admit a member: rows of account_users,
+// whatever bindings the member holds there, so a member with none signs
+// in with empty grants; P13b's LOGIN policies extend it. Both are
 // evaluated when read, so a change admits or refuses at the member's next
 // switch.
 //

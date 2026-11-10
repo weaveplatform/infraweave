@@ -158,7 +158,7 @@ func (s *Store) Invite(
 			acct, inv.ID, id, inv.Email, inv.CreatedAt, inv.SentAt); err != nil {
 			return fmt.Errorf("access: record invitation: %w", sql.Unavailable(err))
 		}
-		if err := bumpAuthz(ctx, q, acct); err != nil {
+		if err := s.bumpAuthz(ctx, q, acct); err != nil {
 			return err
 		}
 		e.AffectedResource.ID = id.String()
@@ -349,7 +349,7 @@ func (s *Store) Remove(
 		if err := unbindActor(ctx, q, acct, binding.ActorUser, id.ULID); err != nil {
 			return err
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("remove managed user %s: %w", id, err)
@@ -479,7 +479,7 @@ func (s *Store) CreateGroup(
 			}
 			return fmt.Errorf("access: create group: %w", sql.Unavailable(err))
 		}
-		return bumpAuthz(ctx, q, g.AccountID)
+		return s.bumpAuthz(ctx, q, g.AccountID)
 	})
 	if err != nil {
 		return group.Group{}, fmt.Errorf("create group %q: %w", g.Name, err)
@@ -538,7 +538,7 @@ func (s *Store) DeleteGroup(
 		if err := unbindActor(ctx, q, acct, binding.ActorGroup, id); err != nil {
 			return err
 		}
-		return bumpAuthz(ctx, q, acct)
+		return s.bumpAuthz(ctx, q, acct)
 	})
 	if err != nil {
 		return fmt.Errorf("delete group %s: %w", id, err)

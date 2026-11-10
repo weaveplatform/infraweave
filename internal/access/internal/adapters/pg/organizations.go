@@ -58,7 +58,7 @@ func (s *Store) CreateOrganization(
 		); err != nil {
 			return classify(err, "account")
 		}
-		if err := seedAccount(ctx, q, first); err != nil {
+		if err := s.seedAccount(ctx, q, first); err != nil {
 			return err
 		}
 		if bg != nil {
