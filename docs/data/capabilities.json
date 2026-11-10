@@ -833,7 +833,7 @@
         "phase": "P22",
         "also": "each suggestion operation lands with its search, from P4",
         "state": "partial",
-        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4); each other suggestion operation lands with its search"
+        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4), and the suggestions of the user, group, API key and session grant views with them (P4b), counting a space's holders alone; each other suggestion operation lands with its search"
       }
     },
     {
@@ -893,7 +893,7 @@
         "phase": "P4",
         "also": "P4b, P6, P8, P12, P13, P15, P21, P22",
         "state": "partial",
-        "notes": "`spaces`, `space`, `spaceCreate`, `spaceUpdate`, `spaceDelete` and `searchSpaces` are served (P4), every list and search holding only the reachable spaces; the `… With Access To Space` reads arrive with role bindings in P4b, and the attachable, metrics and search-in-space reads with their entities' phases"
+        "notes": "`spaces`, `space`, `spaceCreate`, `spaceUpdate`, `spaceDelete` and `searchSpaces` are served (P4), every list and search holding only the reachable spaces; `usersWithAccessToSpace`, `userGroupsWithAccessToSpace`, `apiKeysWithAccessToSpace`, `userSessionsWithAccessToSpace` and `apiKeySessionsWithAccessToSpace` list who holds a space and the grant behind each from the evaluator, each needing `SPACE_ADMIN` on it (P4b); `stacksWithAccessToSpace` arrives with stack bindings in P4b, and the attachable, metrics and search-in-space reads with their entities' phases"
       }
     },
     {

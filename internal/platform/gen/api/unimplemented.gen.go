@@ -98,6 +98,10 @@ func (UnimplementedStrict) ApiKeySessionsWithAccessToSpace(context.Context, ApiK
 	return nil, &problem.NotImplementedError{OperationID: "apiKeySessionsWithAccessToSpace", Route: "GET /api-key-sessions-with-access-to-space"}
 }
 
+func (UnimplementedStrict) ApiKeySessionsWithAccessToSpaceSuggestions(context.Context, ApiKeySessionsWithAccessToSpaceSuggestionsRequestObject) (ApiKeySessionsWithAccessToSpaceSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeySessionsWithAccessToSpaceSuggestions", Route: "GET /api-key-sessions-with-access-to-space-suggestions"}
+}
+
 func (UnimplementedStrict) ApiKeys(context.Context, ApiKeysRequestObject) (ApiKeysResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeys", Route: "GET /api-keys"}
 }
@@ -116,6 +120,10 @@ func (UnimplementedStrict) ApiKeysManagedByNonAdmins(context.Context, ApiKeysMan
 
 func (UnimplementedStrict) ApiKeysWithAccessToSpace(context.Context, ApiKeysWithAccessToSpaceRequestObject) (ApiKeysWithAccessToSpaceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeysWithAccessToSpace", Route: "GET /api-keys-with-access-to-space"}
+}
+
+func (UnimplementedStrict) ApiKeysWithAccessToSpaceSuggestions(context.Context, ApiKeysWithAccessToSpaceSuggestionsRequestObject) (ApiKeysWithAccessToSpaceSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "apiKeysWithAccessToSpaceSuggestions", Route: "GET /api-keys-with-access-to-space-suggestions"}
 }
 
 func (UnimplementedStrict) ApiKeyDelete(context.Context, ApiKeyDeleteRequestObject) (ApiKeyDeleteResponseObject, error) {
@@ -1022,6 +1030,10 @@ func (UnimplementedStrict) UserGroupsWithAccessToSpace(context.Context, UserGrou
 	return nil, &problem.NotImplementedError{OperationID: "userGroupsWithAccessToSpace", Route: "GET /user-groups-with-access-to-space"}
 }
 
+func (UnimplementedStrict) UserGroupsWithAccessToSpaceSuggestions(context.Context, UserGroupsWithAccessToSpaceSuggestionsRequestObject) (UserGroupsWithAccessToSpaceSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userGroupsWithAccessToSpaceSuggestions", Route: "GET /user-groups-with-access-to-space-suggestions"}
+}
+
 func (UnimplementedStrict) UserRoleBindingBatchCreate(context.Context, UserRoleBindingBatchCreateRequestObject) (UserRoleBindingBatchCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "userRoleBindingBatchCreate", Route: "POST /user-role-binding-batches"}
 }
@@ -1050,8 +1062,16 @@ func (UnimplementedStrict) UserSessionsWithAccessToSpace(context.Context, UserSe
 	return nil, &problem.NotImplementedError{OperationID: "userSessionsWithAccessToSpace", Route: "GET /user-sessions-with-access-to-space"}
 }
 
+func (UnimplementedStrict) UserSessionsWithAccessToSpaceSuggestions(context.Context, UserSessionsWithAccessToSpaceSuggestionsRequestObject) (UserSessionsWithAccessToSpaceSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "userSessionsWithAccessToSpaceSuggestions", Route: "GET /user-sessions-with-access-to-space-suggestions"}
+}
+
 func (UnimplementedStrict) UsersWithAccessToSpace(context.Context, UsersWithAccessToSpaceRequestObject) (UsersWithAccessToSpaceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "usersWithAccessToSpace", Route: "GET /users-with-access-to-space"}
+}
+
+func (UnimplementedStrict) UsersWithAccessToSpaceSuggestions(context.Context, UsersWithAccessToSpaceSuggestionsRequestObject) (UsersWithAccessToSpaceSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "usersWithAccessToSpaceSuggestions", Route: "GET /users-with-access-to-space-suggestions"}
 }
 
 func (UnimplementedStrict) Viewer(context.Context, ViewerRequestObject) (ViewerResponseObject, error) {

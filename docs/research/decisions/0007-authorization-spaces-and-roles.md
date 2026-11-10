@@ -333,7 +333,14 @@ by anyone (decision [0013](0013-secrets-at-rest.md)).
 `usersWithAccessToSpace`, `stacksWithAccessToSpace` and their siblings) call
 the same evaluator with an explaining variant that returns each grant's
 source (`RESIDENT`, `PROPAGATED`, `INHERITED`), backing binding and, for an
-inherited grant, the synthetic `space-reader` role.
+inherited grant, the synthetic `space-reader` role. The user, group and API key
+views answer each grant's `source` and `bindingID` beside the reference's
+`propagated`, and list an actor whose only grant is inherited (DV-116). The
+holders of a space are, from the snapshot, the groups and API keys bound
+where a grant reaches it, and the users bound there or naming such a group
+among the groups their latest sign-in reported; each view searches only
+those. Under `MANAGED_USERS` the session views list the live sessions whose
+user, key and teams reach the space, as their requests are decided.
 
 The rule extends to every field of a view that says what the caller may do
 or holds, whether a role action decides it or a precondition of one

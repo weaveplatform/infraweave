@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -164,6 +165,50 @@ func (s *Service) Explain(
 	return decideIn(ctx, s, p, space, func(snap *Snapshot, w Who) []Grant {
 		return snap.Explain(w, space)
 	})
+}
+
+// Holders is each actor of the kinds whose own bindings reach acct's
+// space.
+func (s *Service) Holders(
+	ctx context.Context,
+	acct kernel.AccountID,
+	space kernel.ULID,
+	kinds ...binding.ActorKind,
+) ([]Holder, error) {
+	return decideIn(
+		ctx,
+		s,
+		kernel.Principal{AccountID: acct},
+		space,
+		func(snap *Snapshot, _ Who) []Holder {
+			return snap.Holders(space, kinds...)
+		},
+	)
+}
+
+// ExplainEach is, for each of whos, every grant that reaches acct's space,
+// for the grant views of principals other than the caller. Each Who's
+// Account is acct's.
+func (s *Service) ExplainEach(
+	ctx context.Context,
+	acct kernel.AccountID,
+	space kernel.ULID,
+	whos []Who,
+) ([][]Grant, error) {
+	return decideIn(
+		ctx,
+		s,
+		kernel.Principal{AccountID: acct},
+		space,
+		func(snap *Snapshot, _ Who) [][]Grant {
+			out := make([][]Grant, len(whos))
+			for i, w := range whos {
+				w.Account = acct
+				out[i] = snap.Explain(w, space)
+			}
+			return out
+		},
+	)
 }
 
 // Holds reports whether p may perform action in at least one space of

@@ -83,7 +83,14 @@
 // binds in, an element refused at /bindings/<index>/<field> of a batch
 // that writes none, a binding the account holds 409 already-exists, a
 // change of its actor 422 validation-failed, and a binding or actor the
-// account lacks 404. The update routes of spaces, API keys, managed
+// account lacks 404. The grant views, through holder.Service, list the
+// managed users, groups and API keys whose bindings reach a space, and
+// the users and keys whose live sessions do, with their suggestions:
+// each grant names its role and the space it is bound on by slug, its
+// source and binding, a user's through the group that gives it, and a
+// session view each role once by its origin; the route table answers 404
+// for a space the caller cannot read and 403 for one it does not
+// administer. The update routes of spaces, API keys, managed
 // users, managed user groups, roles and role bindings serve the API's update semantics through httpkit/strict: the
 // item GET, the PUT and the PATCH answer the version they answer as a
 // strong ETag; PUT and DELETE pass their If-Match to the service, which

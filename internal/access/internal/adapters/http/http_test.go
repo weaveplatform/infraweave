@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/holder"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -317,6 +318,7 @@ type world struct {
 	people *people
 	roles  *roleBook
 	binds  *bindBook
+	held   *heldBook
 }
 
 // public is the route class that takes no credential.
@@ -383,6 +385,7 @@ func newWorld(t *testing.T) *world {
 	w.people = newPeople(st, w.acct)
 	w.roles = newRoleBook(st, w.acct)
 	w.binds = &bindBook{w: w}
+	w.held = &heldBook{w: w}
 	keys := apikey.NewService(apikey.Deps{
 		Store: st, Authz: w.authz, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
@@ -418,7 +421,8 @@ func newWorld(t *testing.T) *world {
 			Bindings: binding.NewService(binding.Deps{
 				Store: w.binds, Authz: w.authz, Drop: func(kernel.AccountID) {},
 			}),
-			Atomic: func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+			Holders: holder.NewService(w.held, w.held),
+			Atomic:  func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
 		})},
 		nil,
 		api.StrictHTTPServerOptions{

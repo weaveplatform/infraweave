@@ -16,6 +16,11 @@
 // grant and AUTHENTICATED is any principal of the account. Reachable is
 // every space where Authorize allows an action, for list filters, and
 // Explain every grant reaching a space with its source and binding.
+// Holders is, for the grant views, each user, group, API key or stack
+// whose own bindings reach a space with the grants they give there, by
+// the rule Explain applies to each binding; a user's or a key's grants
+// through its teams' groups are Explain's of it with its teams, which
+// Service.ExplainEach answers for principals other than the caller.
 //
 // Service holds one snapshot per account, built on first use, and
 // implements accessapi.Authorizer. Drop forgets an account's snapshot on
@@ -38,6 +43,7 @@
 // # Dependencies
 //
 // It imports accessapi for the action catalogue and the Authorizer port,
-// the role package, internal/kernel and the standard library. The access
-// domain's pg adapter and assembly import it.
+// the binding and role packages, internal/kernel and the standard
+// library. The access domain's pg adapter, assembly and holder package
+// import it.
 package authz
