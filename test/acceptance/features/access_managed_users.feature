@@ -195,3 +195,13 @@ Feature: Managed users and groups
     When token "m" sends "DELETE /api/v1/managed-user-groups/{ops}" through A
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"MANAGED_USER_GROUP_DELETE"'
+
+  @op:managedUserResendInvite @op:managedUserRequestInvite @op:managedUserRequestRoleChange @case:failure
+  Scenario: A resend for no managed user, a request without an address and a change to no access level are refused
+    Given the home account's member has a browser session, admitted to home alone
+    When token "h" sends "POST /api/v1/managed-users/01KACME0000000000000000099/resend-invite" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/managed-user-invite-requests" with '{"email":"nope","userName":"carol"}' through B
+    Then it answers a 422 problem "validation-failed"
+    When the browser sends "POST /api/v1/spaces/legacy/role-change-requests" with '{"requestedAccessLevel":"OWNER"}' through A
+    Then it answers a 400 problem "invalid-request"

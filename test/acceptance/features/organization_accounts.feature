@@ -121,3 +121,14 @@ Feature: Organization accounts, members and keys
     When the browser sends "POST /api/v1/organization/members/{alice}/deactivate" through A
     Then it answers a 403 problem "forbidden"
     And the browser's account switcher through B lists "acme"
+
+  @op:organizationKeys @op:organizationKeyDisable @op:organizationKeyDelete @op:organizationUsage @case:failure
+  Scenario: A key the organization lacks, or a cursor no list of the tag issued, is refused
+    When the browser sends "POST /api/v1/organization/keys/01KACME0000000000000000099/disable" through A
+    Then it answers a 404 problem "not-found"
+    When the browser sends "DELETE /api/v1/organization/keys/01KACME0000000000000000099" through B
+    Then it answers a 404 problem "not-found"
+    When the browser sends "GET /api/v1/organization/keys?cursor=nope" through A
+    Then it answers a 400 problem "invalid-cursor"
+    When the browser sends "GET /api/v1/organization/usage?cursor=nope" through B
+    Then it answers a 400 problem "invalid-cursor"
