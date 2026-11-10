@@ -141,6 +141,7 @@ and lint is clean.
 | P4b Roles and role bindings | Done | Epic [#235](https://github.com/weaveplatform/infraweave/issues/235). Done: [#236](https://github.com/weaveplatform/infraweave/issues/236) custom roles created, read, listed, replaced with `PUT`, patched and deleted from the action catalogue, each slug made from its name and kept, a disabled action refused as `422` naming it and a deprecated one by the `Action` enum as `400`, a system role refused any change and a role with bindings its delete, each write moving the account's `authz_version`; [#237](https://github.com/weaveplatform/infraweave/issues/237) roles bound to managed users, groups and API keys in spaces, one at a time or in all-or-nothing batches, each needing `SPACE_ADMIN` on its space, and the access rules and role bindings that managed users, groups and API keys carry stored as bindings, removed with their actor; [#238](https://github.com/weaveplatform/infraweave/issues/238) the user, group, API key and session grant views and their suggestions, each holder and its grants found by the evaluator that decides requests, `RESIDENT`, `PROPAGATED` or `INHERITED` with `space-reader`, and each view searching its holders alone; [#239](https://github.com/weaveplatform/infraweave/issues/239) roles bound to stacks in other spaces, one at a time or in all-or-nothing batches, each needing `STACK_MANAGE` on the stack's space and `SPACE_ADMIN` on the space bound in, a top-space binding needing the stack to live in the top space, bindings kept when the stack moves and deleted with it, and `stacksWithAccessToSpace` listing a space's residents or, for its admin, every stack whose own read or binding reaches it; [#240](https://github.com/weaveplatform/infraweave/issues/240) a removed binding, a role's changed actions or a deleted group reaching a member's live session on every replica within a second, every write path audited to move the account's `authz_version`, send `authz:<account>` and drop the writing replica's snapshot on commit, and an `ACTIVE` managed user with no binding signing in with empty grants; [#241](https://github.com/weaveplatform/infraweave/issues/241) each Organization tag operation refusing an account admin without the organization role with `403` naming `ORGANIZATION_ADMIN`, and a limit cleared for no account or no limit refused; [#242](https://github.com/weaveplatform/infraweave/issues/242) the managed user, group and API key operations refusing a key bound `space-writer` on the top space with `403` naming each action, and an admin of a space below the top reading the account's users, groups and keys but changing none; [#243](https://github.com/weaveplatform/infraweave/issues/243) the account settings and `messageQueueStats` refusing a key bound `space-writer` on the top space with `403` naming `ACCOUNT_ADMIN`, the settings any principal of the account reads refused to a session no account admits with `401`, and each with its failure case; [#292](https://github.com/weaveplatform/infraweave/pull/292) the success and failure scenarios P3b's operations lacked and `spacePatch`'s denial, Billing's subscription mutations having no success to show because they are always refused |
 | P5 Stacks | Done | **M2**. Epic [#227](https://github.com/weaveplatform/infraweave/issues/227). Done: [#228](https://github.com/weaveplatform/infraweave/issues/228) the `vendors` and `stacks` domains after `access`, the stacks stream, `stacksapi.Stacks`, `accessapi.Spaces.Hold`, and the space guard that refuses deleting a space a stack lives in; [#229](https://github.com/weaveplatform/infraweave/issues/229) `internal/iac` with the `terraform` and `opentofu` settings checks, refused at write time as `422 validation-failed`, the `iactest` contract suite, and the `vendor-terraform` and `vendor-opentofu` options on their `vendorConfig` members; [#230](https://github.com/weaveplatform/infraweave/issues/230) stacks created, read, listed, replaced with `PUT`, moved, reslugged, disabled, enabled, locked, unlocked, starred and deleted in spaces, each change a `stack.changed` event in the outbox; [#231](https://github.com/weaveplatform/infraweave/issues/231) a `PATCH` merge patch beside every update `PUT`, `ETag` on reads and writes, `If-Match` answering `412 precondition-failed` when stale, every input schema refusing an unknown field as `400` with its pointer, and the one label rule on stacks and spaces; [#232](https://github.com/weaveplatform/infraweave/issues/232) `searchStacks` and `searchStacksSuggestions` over the reachable spaces, the space tree read through `accessapi.Spaces.Tree`, and `searchtest.FuzzCompile` holding every entity's search to parameterized SQL; [#233](https://github.com/weaveplatform/infraweave/issues/233) the Version Catalog's `terraformVersions`, `openTofuVersions`, `terraformEffectiveVersion` and `openTofuEffectiveVersion` from `vendor_releases`, which the hourly `vendors.refresh` task reads from HashiCorp's and OpenTofu's release indexes, `vendorsapi.Catalog`, the `indextest` contract suite over fixtures from `make vendors-fixtures`, and the nightly `vendors-upstream` job; [#234](https://github.com/weaveplatform/infraweave/issues/234) `stackRuns`, `stackRunsInRange`, `stackProposedRuns` and `stackTasks` answering empty pages, and `stackRun` answering `404`, on the stack's space until P7; [#257](https://github.com/weaveplatform/infraweave/issues/257) account and organization deletion that deletes `access`' rows at once and appends `account.deleted`, which the `features` and `stacks` purges consume in batches, and the nightly `integrity.orphans` count of held IDs whose row is gone |
 | P6 Contexts, configuration and expressions | Done | Epic [#254](https://github.com/weaveplatform/infraweave/issues/254). Done: [#255](https://github.com/weaveplatform/infraweave/issues/255) each flat domain's logic package named `internal/core`; [#256](https://github.com/weaveplatform/infraweave/issues/256) P6's contracts in the plan and decisions: the masker in `internal/platform/mask`, the error `range`, the `/configs/{configId}` item routes, the expression endpoints, the `environment` surface, the stack guard and back edge, and captures C98 and C101 to C103 moved to P9; [#258](https://github.com/weaveplatform/infraweave/issues/258) the `configuration` domain after `stacks`, with its stream, and the `expressions` domain last, each with its `graph-` rule; [#259](https://github.com/weaveplatform/infraweave/issues/259) decision 0013's masker for literal values in `internal/platform/mask`, which the agent may import; [#260](https://github.com/weaveplatform/infraweave/issues/260) `stacksapi.Stacks.Hold` and `Find`, the `StackGuard` a stack's move and delete ask, `accessapi.SpaceNode.Inherit`, and the stack view's contexts and config elements through the `stacksapi.StackConfiguration` back edge; [#261](https://github.com/weaveplatform/infraweave/issues/261) the expression engine in `internal/platform/expr`, the `expressions` limits, and the error `range`; [#262](https://github.com/weaveplatform/infraweave/issues/262) contexts created, read, listed, searched, replaced with `PUT`, patched and deleted in spaces, their config elements added, set by name and deleted with each value sealed to its row and a write-only value answered only by its checksum, their attachments to stacks within reach, and the space and stack guards that refuse a delete or move leaving an attachment out of reach, each change a `context.changed` event in the outbox; [#263](https://github.com/weaveplatform/infraweave/issues/263) a stack's own config elements, added, set at `PUT /stacks/{stackId}/configs/{configId}`, read and deleted, never answering a write-only value, deleted with the stack, and the contexts a stack may attach; [#264](https://github.com/weaveplatform/infraweave/issues/264) contexts attached automatically to the stacks within reach that carry the label their `autoattach:<label>` names, or every one for `autoattach:*`, following label and space changes on the context's side in its write and on the stack's through a `stack.changed` consumer, under one lock per account, an automatic attachment refused a manual detach; [#265](https://github.com/weaveplatform/infraweave/issues/265) `configurationapi.Environment.Resolve`, a stack's elements by report 13's precedence with every value opened and each phase's hooks in its nesting order, the `environment` expression surface with `env` and `stack` bound from one registry `internal/app` builds, and a value's `${{ … }}` templates checked when it is saved, a stack's read of a variable it does not resolve to refused with its range, a value reading a write-only one made write-only; `expr.Check` reports each literal read with its range; [#266](https://github.com/weaveplatform/infraweave/issues/266) the `Expressions` tag's check, complete and evaluate over every registered surface, starting with `environment`, a stack the caller cannot read answering 404, a context closing `env` to the names its stack resolves to so a misspelt one is an error with its range, a write-only value evaluated masked, and the tag's `capabilities.json` record as infraweave's own product; [#267](https://github.com/weaveplatform/infraweave/issues/267) the `configuration.purge` consumer of `account.deleted`, deleting a deleted account's attachments, config elements and contexts 500 rows a statement, each its own transaction, a purge stopped part way finishing when run again |
+| P6b Sources | Not started | |
 | P7 Run state machine and scheduling | Not started | |
 | P8 Worker protocol, private pools and the Docker launcher | Not started | |
 | P8b Managed state backend | Not started | |
@@ -211,7 +212,8 @@ flowchart LR
   P5 --> P4b[P4b Roles and bindings]
   P3b --> P4b
   P5 --> P6[P6 Configuration and expressions]
-  P5 --> P7[P7 Run machine]
+  P5 --> P6b[P6b Sources]
+  P6b --> P7[P7 Run machine]
   P7 --> P8[P8 Workers]
   P6 --> P8
   P8 --> P8b[P8b State backend]
@@ -288,8 +290,9 @@ the audit chain (P12 → P13 → P18 → P18b) are each one phase shorter.
 - P3b runs beside P4. P4b follows P5, because stack role bindings bind a
   stack. P3b's authorization server is ready long before `/flows/mcp`
   (P18c, through P4b) and `/mcp` (P25) use it.
-- P6 and P7 run side by side once P5 lands; P8 needs both, because the run
-  handover carries the resolved environment.
+- P6 and P6b run side by side once P5 lands, and P7 follows P6b, because a
+  run is created on its stack's tracked commit. P8 needs P6 and P7, because
+  the run handover carries the resolved environment.
 - P15 (cloud and OIDC) starts once P9 lands, and Intelligence (P25 → P25b)
   follows it.
 - Once P10 lands, four lanes run independently:
@@ -327,7 +330,8 @@ assigns a domain to another phase, this plan's assignment holds.
 | The organization level, the feature catalogue, tiers, billing, the `features` operations of the operator API and the OAuth authorization server land in P3b; the operator API's document and its `access` operations land in P3 | Every operation of every served document carries `x-infraweave-feature` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)), so the gate exists before the first domain beyond identity; entitlement and pooled limits belong to the organization, and `seats` counts the members and keys P3b creates across its accounts. The authorization server ([0006](../research/decisions/0006-authentication-and-tokens.md)) needs only P3's sessions and P3b's redirect allowlist, and it stays off the critical path there. The operator API is the only way to create an organization and to set its break-glass credential, so it ships with the break-glass login that needs it |
 | Expressions land in P6 | Environment interpolation is the first surface of decision [0024](../research/decisions/0024-expression-language.md); `internal/platform/expr` and its endpoints exist before workflow files (P10), notification text (P18), templates (P21) and Flows (P18c) need them |
 | Private pools move from P14 to P8; the public worker pool moves from P8 to P14 | Every acceptance run uses a private pool ([0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the pool token CSR of [0008](../research/decisions/0008-run-execution-and-worker-protocol.md) is the private pool's path, and the public worker pool is an optional operator-run pool on the same protocol |
-| P8b inserted before P9 | The first real run writes state through infraweave's `http` backend ([0016](../research/decisions/0016-testing-and-acceptance.md), [0010](../research/decisions/0010-state-backend.md)). P11 keeps import, rollback, external access, the signed URLs and Tofu workspaces |
+| P8b inserted before P9 | The first real run writes state through infraweave's `http` backend ([0016](../research/decisions/0016-testing-and-acceptance.md), [0010](../research/decisions/0010-state-backend.md)). P11 keeps import, rollback, external access, the signed URLs and Tofu workspaces. Its acceptance acts as a worker over `/worker/v1` and runs `terraform` and `tofu` itself, so it needs no runner before P9's |
+| P6b inserted before P7; `runTrigger` moves from P9 to P7; `stackSyncCommit` and `stackSetCurrentCommit` move from P12 to P6b | A run is created on its stack's tracked commit, so the commit's source comes before the run machine: `vcs` begins with `Source` and the raw Git provider ([0012](../research/decisions/0012-vcs-integration-model.md)), served in acceptance by Gitea ([0016](../research/decisions/0016-testing-and-acceptance.md)). P7's queue and P8's claim then act on runs `runTrigger` created, and P9 adds their execution |
 | The raw Git `Source` moves from P19 to P9 | The first tracked run needs a source with no webhook; decision [0016](../research/decisions/0016-testing-and-acceptance.md) serves it from Gitea |
 | Login policies and the `LOGIN_POLICIES` scheme move from P4 to P13b | They evaluate through decision [0009](../research/decisions/0009-policy-engine-opa.md)'s engine ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
 | Flows moves from the end of the spine to P18c and P18d | Flows is built on Deploy's events from the start ([0018](../research/decisions/0018-flows-runtime.md)): the engine needs the fan-out of P18 and the queue of P2c, nothing later, and its clients join `infraweavectl` and the provider in P24 and P24b |
@@ -1451,11 +1455,53 @@ environment, and the expression engine every later surface uses.
   run, and replay with P9.
 - `make gate` passes at 95% in total and 90% per package.
 
+## P6b: Sources
+
+Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0004](../research/decisions/0004-repository-architecture.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
+
+**Depends on:** P5.
+
+The `vcs` domain begins as the source of a stack's commits: a stack on a
+public Git repository shows its branch head and the commit its runs use,
+before any VCS integration exists.
+
+**Tasks**
+1. The [domain wiring](#adding-a-domain) of `vcs`, a hexagon, after
+   `configuration` in `domains.go`; `runs`, `state`, `cloud` and `registry`
+   take their places before it as they arrive. Its edges to `features`,
+   `access` and `stacks`; its `runs` edge lands with P7, its `policies`
+   edge with P13 and its `registry` edge with P17. It has no migration
+   stream until P12's integrations. `vcsapi.Sources` resolves a ref of a
+   stack's repository and names its source URL.
+2. The `@vcs` fixture: a Gitea container with a repository seeded per
+   scenario, served over HTTPS with a CA the `infraweave` subprocess trusts,
+   and steps that push commits and read a branch head.
+3. `internal/vcs/internal/core/port`'s `Source` and the `rawgit` provider
+   (public HTTPS, no credential) in `internal/vcs/internal/adapters/rawgit`:
+   `ResolveRef`, `ReadFile` and `AffectedFiles`; the `sourcetest` contract
+   suite every provider passes.
+4. The tracked commit: `trackedCommit`, `trackedBranchHead` and
+   `trackedCommitSetBy` in `stacks`' table, which `vcs` writes through
+   `stacksapi` when a stack is created or its repository, branch or provider
+   changes, and through `stackSyncCommit` and `stackSetCurrentCommit`, which
+   `vcs`' partial serves since `stacks` imports no `vcs`. Feature:
+   `vcs_sources.feature`.
+
+**Exit criteria**
+- `vcs_sources.feature` (`@postgres`, `@vcs`): a `RAW_GIT` stack on a Gitea
+  repository shows the branch head as `trackedBranchHead` and
+  `trackedCommit`; after a push `stackSyncCommit` moves both, and
+  `stackSetCurrentCommit` pins `trackedCommit` to an older commit.
+- `stackSyncCommit` and `stackSetCurrentCommit` meet decision 0016's
+  evidence rule; the parity baseline drops them.
+- `rawgit` passes `sourcetest` against Gitea.
+- `make gate` passes at 95% in total and 90% per package.
+
 ## P7: Run state machine and scheduling
 
-Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0004](../research/decisions/0004-repository-architecture.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md).
+Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0004](../research/decisions/0004-repository-architecture.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0024](../research/decisions/0024-expression-language.md).
 
-**Depends on:** P5, P2c.
+**Depends on:** P6b, P5, P2c.
 
 The `runs` domain owns every table a run transition writes, and one function
 moves a run between states in one transaction. Runs can be created and
@@ -1486,7 +1532,10 @@ queued; nothing executes them until P8.
    with unique key `stack:<id>`, the stack lock for blocking runs, the
    disabled-stack and dependency gates (approval and dependencies are
    no-ops until P13 and P16), the seven priority levels.
-5. Read and queue operations: `run`, `runStack`, `searchRuns`,
+5. Run creation and the read and queue operations: `runTrigger`, which
+   creates a `TRACKED` or `PROPOSED` run on the commit it names or on the
+   stack's tracked commit (P6b), only the lock owner creating runs on a
+   locked stack; `run`, `runStack`, `searchRuns`,
    `searchRunsSuggestions`, `runCancel`, `runPrioritySet`, and the stack
    run lists left empty by P5, which `runs`' partial serves, since `stacks`
    imports no `runs` package. Feature: `runs_queue.feature` (a blocking
@@ -1494,20 +1543,24 @@ queued; nothing executes them until P8.
    `allowedActions` include only the transitions its state allows.
 6. The [domain wiring](#adding-a-domain) of `runs`, a
    hexagon, after `configuration` in `domains.go` and the migration order:
-   its edges to `features`, `access`, `stacks` and `vendors`, and to
-   `configuration` if P6 has landed (P6 adds it otherwise), with `runs` and
-   `stack_run_locks` referencing `stacks`. Its `workers` edge lands with P8
-   and its `policies` edge with P13. `stacks`
-   reads run state through `runsapi.StackStatus`, a back edge that
-   `internal/app` sets after construction (`SetStackStatus`), adding no
-   import
+   its edges to `features`, `access`, `stacks`, `configuration` and
+   `vendors`, with `runs` and `stack_run_locks` referencing `stacks`, and
+   `vcs`' edge to `runs`. Its `workers` edge lands with P8 and its
+   `policies` edge with P13. `stacks` reads run state through
+   `runsapi.StackStatus`, and `runTrigger` resolves a named commit through
+   `vcsapi.Sources`, back edges that `internal/app` sets after
+   construction (`SetStackStatus`, `SetSources`), adding no import
    ([declared graph](repo-layout.md#declared-graph)).
+7. `runs` adds `run` to the environment surface through its `Surfaces()`
+   ([0024](../research/decisions/0024-expression-language.md)), so a
+   variable's template naming a run field is checked when the variable is
+   saved; P8 renders it at the handover.
 
 **Exit criteria**
 - `runs_queue.feature` passes on two `infraweave all` instances; one
   `run.schedule` evaluation per stack burst.
-- `run`, `runStack`, `searchRuns`, `runCancel` and `runPrioritySet` meet
-  decision 0016's evidence rule.
+- `runTrigger`, `run`, `runStack`, `searchRuns`, `runCancel` and
+  `runPrioritySet` meet decision 0016's evidence rule.
 - Captures C25 and C33 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1632,9 +1685,10 @@ workspace.
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
-- `state_backend.feature` (`@terraform`, `@tofu`): init, plan and apply
-  through the backend, and a second apply blocked by `423` until the first
-  ends.
+- `state_backend.feature` (`@terraform`, `@tofu`): the scenario acts as a
+  worker over `/worker/v1`, claims a run and runs `terraform` and `tofu` in a
+  container with its run token; init, plan and apply go through the
+  backend, and a second apply is blocked by `423` until the first ends.
 - A state with a known secret output is unreadable in the object store.
 - Captures C105 and C111 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
@@ -1667,12 +1721,10 @@ through the backend.
    and indexed in `run_log_chunks`; sealed artifacts with the run's artifact
    key; the encrypted workspace saved for confirmation. Feature:
    `secrets_run_delivery.feature`.
-4. Sources: `internal/vcs` skeleton with the `Source` interface and the
-   `rawgit` provider (public HTTPS clone) in
-   `internal/vcs/internal/adapters/rawgit`, served in acceptance by Gitea as
-   a plain Git host; `uploadLocalWorkspace` and `runProposeLocalWorkspace`
-   for local preview.
-5. Run operations: `runTrigger`, `runConfirm`, `runDiscard`, `runLogs`,
+4. Local workspaces: `uploadLocalWorkspace` and `runProposeLocalWorkspace`
+   for local preview, beside the tracked commit P6b's `rawgit` source
+   resolves.
+5. Run operations: `runConfirm`, `runDiscard`, `runLogs`,
    `runLogsDownloadURL`, `runChangesV2`, `runChangesV3`, plus
    `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns` with
    data. The plan decision after `PLANNING` takes T20 or T21 with no policy
@@ -1683,12 +1735,8 @@ through the backend.
    `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so the provider's
    `infraweave_current_stack` and `infraweave_current_space` have their
    data.
-7. The [domain wiring](#adding-a-domain) of `vcs`, a
-   hexagon, after `state` in `domains.go` and the migration order: its
-   edges to `features`, `access`, `stacks` and `runs`. Its `policies` edge
-   lands with P13 and its `registry` edge with P17. The handover asks
-   `vcsapi.Sources` for the source archive URL, a back edge that
-   `internal/app` sets after construction (`SetSources`), adding no import
+7. The handover asks `vcsapi.Sources`, the back edge P7 binds, for the
+   run's source URL, which the worker fetches itself
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
@@ -1797,7 +1845,7 @@ acknowledged, default push behaviour creating tracked and proposed runs,
 checks, pull request comments and deployments.
 
 **Tasks**
-1. `internal/vcs`, wired in P9: `vcs_integrations` with sealed credentials and
+1. `internal/vcs`, wired in P6b, gains its migration stream: `vcs_integrations` with sealed credentials and
    webhook secrets, one default per provider, space reach, detaching on
    delete. Operations: `githubIntegration`, `githubIntegrationUpdate`,
    `githubEnterpriseIntegrationCreate`, `githubEnterpriseIntegration`,
@@ -1820,7 +1868,8 @@ checks, pull request comments and deployments.
    default push behaviour (push policies in P13), run deduplication,
    `vcsEventTriggeredRunsLimit`, `accountUpdateVCSEventTriggeredRunsLimit`,
    ignored triggers (`stackSearchRunIgnoredTriggers`), superseded proposed
-   runs, `stackSetCurrentCommit`, `stackSyncCommit`.
+   runs, and a push to a stack's branch moving its tracked commit through
+   P6b's projection.
 4. Feedback: `vcs.report_check` with individual and aggregated checks,
    check actions (Preview and Deploy), `Comments.Upsert` with the hidden
    marker, GitHub Deployments. Installation tokens per run for source
