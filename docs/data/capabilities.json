@@ -735,7 +735,8 @@
         "feature": "`roles`",
         "lowestTier": "Free",
         "phase": "P4b",
-        "state": "missing"
+        "state": "partial",
+        "notes": "`roles`, `role`, `roleCreate`, `roleUpdate`, `rolePatch` and `roleDelete` are served (P4b), custom roles holding only assignable actions beside the five system roles; the user, group, API key and stack role binding operations answer 501 until the rest of P4b serves them"
       }
     },
     {

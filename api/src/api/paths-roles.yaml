@@ -1,0 +1,2009 @@
+# Scaffolded by `specref scaffold --tag Roles` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    ApiKeyRoleBinding:
+      properties:
+        apiKey:
+          $ref: '#/components/schemas/ApiKeyRef'
+        apiKeyID:
+          type: string
+        id:
+          type: string
+        kind:
+          description: The concrete type, for union and interface responses.
+          enum:
+            - ApiKeyRoleBinding
+          type: string
+        role:
+          $ref: '#/components/schemas/RoleRef'
+        space:
+          $ref: '#/components/schemas/SpaceRef'
+      required:
+        - apiKey
+        - apiKeyID
+        - id
+        - kind
+        - role
+        - space
+      type: object
+      x-graphql-type: ApiKeyRoleBinding
+    ApiKeyRoleBindingBatchInput:
+      additionalProperties: false
+      properties:
+        bindings:
+          description: List of API key role bindings to create.
+          items:
+            $ref: '#/components/schemas/ApiKeyRoleBindingInput'
+          type: array
+      required:
+        - bindings
+      type: object
+      x-graphql-type: ApiKeyRoleBindingBatchInput
+    ApiKeyRoleBindingInput:
+      additionalProperties: false
+      properties:
+        apiKeyID:
+          description: ID of the api key.
+          type: string
+          x-terraform:
+            - spacelift_role_attachment.api_key_id
+        roleID:
+          description: ID of the role.
+          type: string
+          x-terraform:
+            - spacelift_role_attachment.role_id
+        spaceID:
+          description: ID of the space.
+          type: string
+          x-terraform:
+            - spacelift_role_attachment.space_id
+      required:
+        - apiKeyID
+        - roleID
+        - spaceID
+      type: object
+      x-graphql-type: ApiKeyRoleBindingInput
+    Role:
+      properties:
+        actions:
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
+        description:
+          type: string
+        id:
+          type: string
+        isSystem:
+          type: boolean
+        name:
+          type: string
+        roleBindings:
+          items:
+            $ref: '#/components/schemas/RoleBinding'
+          type: array
+        roleBindingsCount:
+          format: int32
+          type: integer
+        slug:
+          type: string
+      required:
+        - actions
+        - description
+        - id
+        - isSystem
+        - name
+        - roleBindings
+        - roleBindingsCount
+        - slug
+      type: object
+      x-graphql-type: Role
+    RoleBinding:
+      discriminator:
+        mapping:
+          ApiKeyRoleBinding: '#/components/schemas/ApiKeyRoleBinding'
+          StackRoleBinding: '#/components/schemas/StackRoleBinding'
+          UserGroupRoleBinding: '#/components/schemas/UserGroupRoleBinding'
+          UserRoleBinding: '#/components/schemas/UserRoleBinding'
+        propertyName: kind
+      oneOf:
+        - $ref: '#/components/schemas/UserRoleBinding'
+        - $ref: '#/components/schemas/ApiKeyRoleBinding'
+        - $ref: '#/components/schemas/UserGroupRoleBinding'
+        - $ref: '#/components/schemas/StackRoleBinding'
+      x-graphql-kind: UNION
+      x-graphql-type: RoleBinding
+    RoleInput:
+      additionalProperties: false
+      properties:
+        actions:
+          description: Permissions associated with the role.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
+          x-terraform:
+            - spacelift_role.actions
+        description:
+          description: Human-readable, free-form description.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_role.description
+        name:
+          description: Human-readable, free-form name.
+          type: string
+          x-terraform:
+            - spacelift_role.name
+      required:
+        - actions
+        - name
+      type: object
+      x-graphql-type: RoleInput
+    RolePage:
+      description: One page of a cursor-paginated list.
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/Role'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
+    RoleUpdateInput:
+      additionalProperties: false
+      properties:
+        Actions:
+          description: Permissions associated with the role.
+          items:
+            $ref: '#/components/schemas/Action'
+          nullable: true
+          type: array
+        description:
+          description: Human-readable, free-form description.
+          nullable: true
+          type: string
+        name:
+          description: Human-readable, free-form name.
+          nullable: true
+          type: string
+      type: object
+      x-graphql-type: RoleUpdateInput
+    StackRoleBindingBatchInput:
+      additionalProperties: false
+      properties:
+        bindings:
+          description: List of stack role bindings to create.
+          items:
+            $ref: '#/components/schemas/StackRoleBindingInput'
+          type: array
+      required:
+        - bindings
+      type: object
+      x-graphql-type: StackRoleBindingBatchInput
+    StackRoleBindingInput:
+      additionalProperties: false
+      properties:
+        roleID:
+          description: ID of the role.
+          type: string
+        spaceID:
+          description: ID of the space.
+          type: string
+        stackID:
+          description: ID of the stack.
+          type: string
+          x-terraform:
+            - spacelift_role_attachment.stack_id
+      required:
+        - roleID
+        - spaceID
+        - stackID
+      type: object
+      x-graphql-type: StackRoleBindingInput
+    StackRoleBindingUpdateInput:
+      additionalProperties: false
+      properties:
+        roleID:
+          description: ID of the role.
+          type: string
+        spaceID:
+          description: ID of the space.
+          type: string
+      required:
+        - roleID
+        - spaceID
+      type: object
+      x-graphql-type: StackRoleBindingUpdateInput
+    UserGroupRoleBinding:
+      properties:
+        id:
+          type: string
+        kind:
+          description: The concrete type, for union and interface responses.
+          enum:
+            - UserGroupRoleBinding
+          type: string
+        roleID:
+          type: string
+        space:
+          $ref: '#/components/schemas/SpaceRef'
+        userGroup:
+          $ref: '#/components/schemas/ManagedUserGroupRef'
+      required:
+        - id
+        - kind
+        - roleID
+        - space
+        - userGroup
+      type: object
+      x-graphql-type: UserGroupRoleBinding
+    UserGroupRoleBindingBatchInput:
+      additionalProperties: false
+      properties:
+        bindings:
+          description: List of user group role bindings to create.
+          items:
+            $ref: '#/components/schemas/UserGroupRoleBindingInput'
+          type: array
+      required:
+        - bindings
+      type: object
+      x-graphql-type: UserGroupRoleBindingBatchInput
+    UserGroupRoleBindingInput:
+      additionalProperties: false
+      properties:
+        roleID:
+          description: ID of the role.
+          type: string
+        spaceID:
+          description: ID of the space.
+          type: string
+        userGroupID:
+          description: ID of the user group.
+          type: string
+      required:
+        - roleID
+        - spaceID
+        - userGroupID
+      type: object
+      x-graphql-type: UserGroupRoleBindingInput
+    UserRoleBindingBatchInput:
+      additionalProperties: false
+      properties:
+        bindings:
+          description: List of user role bindings to create.
+          items:
+            $ref: '#/components/schemas/UserRoleBindingInput'
+          type: array
+      required:
+        - bindings
+      type: object
+      x-graphql-type: UserRoleBindingBatchInput
+    UserRoleBindingInput:
+      additionalProperties: false
+      properties:
+        roleID:
+          description: ID of the role.
+          type: string
+        spaceID:
+          description: ID of the space.
+          type: string
+        userID:
+          description: ID of the user.
+          type: string
+      required:
+        - roleID
+        - spaceID
+        - userID
+      type: object
+      x-graphql-type: UserRoleBindingInput
+paths:
+  /api-key-role-binding-batches:
+    post:
+      operationId: apiKeyRoleBindingBatchCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: any
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              bindings:
+                - apiKeyID: API_KEY_ID_HERE
+                  roleID: ROLE_ID_HERE
+                  spaceID: root
+            schema:
+              $ref: '#/components/schemas/ApiKeyRoleBindingBatchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ApiKeyRoleBinding'
+                type: array
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Batch Create API Key Role Bindings
+      tags:
+        - Roles
+      x-bruno: Roles/API Key Role Bindings/Batch Create API Key Role Bindings.bru
+      x-graphql:
+        field: apiKeyRoleBindingBatchCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /api-key-role-bindings:
+    post:
+      operationId: apiKeyRoleBindingCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              apiKeyID: API_KEY_ID_HERE
+              roleID: ROLE_ID_HERE
+              spaceID: root
+            schema:
+              $ref: '#/components/schemas/ApiKeyRoleBindingInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyRoleBinding'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create API Key Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/API Key Role Bindings/Create API Key Role Binding.bru
+      x-graphql:
+        field: apiKeyRoleBindingCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /api-key-role-bindings/{apiKeyRoleBindingId}:
+    delete:
+      operationId: apiKeyRoleBindingDelete
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:apiKeyRoleBindingId:api_key_role_binding
+      parameters:
+        - in: path
+          name: apiKeyRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyRoleBinding'
+          description: The apiKeyRoleBindingDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete API Key Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/API Key Role Bindings/Delete API Key Role Binding.bru
+      x-graphql:
+        field: apiKeyRoleBindingDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      operationId: apiKeyRoleBinding
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:apiKeyRoleBindingId:api_key_role_binding
+      parameters:
+        - in: path
+          name: apiKeyRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyRoleBinding'
+          description: The apiKeyRoleBinding result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get API Key Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/API Key Role Bindings/Get API Key Role Binding.bru
+      x-graphql:
+        field: apiKeyRoleBinding
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of ApiKeyRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through apiKeyRoleBindingUpdate, so it validates and persists as the PUT does.
+      operationId: apiKeyRoleBindingPatch
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:apiKeyRoleBindingId:api_key_role_binding
+      parameters:
+        - in: path
+          name: apiKeyRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of ApiKeyRoleBindingInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyRoleBinding'
+          description: The apiKeyRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch API Key Role Binding
+      tags:
+        - Roles
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      operationId: apiKeyRoleBindingUpdate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:apiKeyRoleBindingId:api_key_role_binding
+      parameters:
+        - in: path
+          name: apiKeyRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              apiKeyID: API_KEY_ID_HERE
+              roleID: ROLE_ID_HERE
+              spaceID: root
+            schema:
+              $ref: '#/components/schemas/ApiKeyRoleBindingInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyRoleBinding'
+          description: The apiKeyRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update API Key Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/API Key Role Bindings/Update API Key Role Binding.bru
+      x-graphql:
+        field: apiKeyRoleBindingUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /roles:
+    get:
+      description: >-
+        The account's roles, its five system roles and its custom roles, by
+        slug. Any member of the account reads them, since a space admin binds
+        them.
+      operationId: roles
+      x-infraweave-feature: roles
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolePage'
+          description: The roles result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Roles
+      tags:
+        - Roles
+      x-bruno: Roles/List Roles.bru
+      x-graphql:
+        field: roles
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: >-
+        Create a custom role from actions of the catalogue, its slug derived
+        from its name. A disabled action answers 422 validation-failed naming
+        it; a deprecated action, which the Action enum leaves out, answers 400
+        invalid-request naming it, as any value outside the enum does. A slug
+        the account already has answers 409 already-exists.
+      operationId: roleCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              actions: []
+              description: Custom role
+              name: my-role
+            schema:
+              $ref: '#/components/schemas/RoleInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Role
+      tags:
+        - Roles
+      x-bruno: Roles/Create Role.bru
+      x-graphql:
+        field: roleCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /roles/{roleId}:
+    delete:
+      description: >-
+        Delete a custom role. A system role answers 422 validation-failed,
+        and a role that still has bindings answers 409 invalid-state.
+      operationId: roleDelete
+      x-infraweave-feature: roles
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: The roleDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Role
+      tags:
+        - Roles
+      x-bruno: Roles/Delete Role.bru
+      x-graphql:
+        field: roleDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      operationId: role
+      x-infraweave-feature: roles
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: The role result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Role
+      tags:
+        - Roles
+      x-bruno: Roles/Get Role.bru
+      x-graphql:
+        field: role
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of RoleUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through roleUpdate, so it validates and persists as the PUT does.
+      operationId: rolePatch
+      x-infraweave-feature: roles
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of RoleUpdateInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: The roleUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Role
+      tags:
+        - Roles
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: >-
+        Change a custom role's name, description and actions, keeping each
+        member the body leaves out or sets to null; its slug never changes.
+        A system role answers 422 validation-failed, as a disabled action
+        does; a deprecated action, outside the Action enum, answers 400
+        invalid-request.
+      operationId: roleUpdate
+      x-infraweave-feature: roles
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              Actions: []
+              description: Updated description
+            schema:
+              $ref: '#/components/schemas/RoleUpdateInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+          description: The roleUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Role
+      tags:
+        - Roles
+      x-bruno: Roles/Update Role.bru
+      x-graphql:
+        field: roleUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /stack-role-binding-batches:
+    post:
+      operationId: stackRoleBindingBatchCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: STACK_MANAGE
+      x-infraweave-subject: any
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              bindings:
+                - roleID: ROLE_ID_HERE
+                  spaceID: root
+                  stackID: STACK_ID_HERE
+            schema:
+              $ref: '#/components/schemas/StackRoleBindingBatchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/StackRoleBinding'
+                type: array
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Batch Create Stack Role Bindings
+      tags:
+        - Roles
+      x-bruno: Roles/Stack Role Bindings/Batch Create Stack Role Bindings.bru
+      x-graphql:
+        field: stackRoleBindingBatchCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /stack-role-bindings:
+    post:
+      operationId: stackRoleBindingCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: STACK_MANAGE
+      x-infraweave-subject: body:stackID:stack
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              roleID: ROLE_ID_HERE
+              spaceID: root
+              stackID: STACK_ID_HERE
+            schema:
+              $ref: '#/components/schemas/StackRoleBindingInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackRoleBinding'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Stack Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/Stack Role Bindings/Create Stack Role Binding.bru
+      x-graphql:
+        field: stackRoleBindingCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /stack-role-bindings/{stackRoleBindingId}:
+    delete:
+      operationId: stackRoleBindingDelete
+      x-infraweave-feature: roles
+      x-infraweave-action: STACK_MANAGE
+      x-infraweave-subject: path:stackRoleBindingId:stack_role_binding
+      parameters:
+        - in: path
+          name: stackRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackRoleBinding'
+          description: The stackRoleBindingDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Stack Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/Stack Role Bindings/Delete Stack Role Binding.bru
+      x-graphql:
+        field: stackRoleBindingDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      operationId: stackRoleBinding
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:stackRoleBindingId:stack_role_binding
+      parameters:
+        - in: path
+          name: stackRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackRoleBinding'
+          description: The stackRoleBinding result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Stack Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/Stack Role Bindings/Get Stack Role Binding.bru
+      x-graphql:
+        field: stackRoleBinding
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of StackRoleBindingUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through stackRoleBindingUpdate, so it validates and persists as the PUT does.
+      operationId: stackRoleBindingPatch
+      x-infraweave-feature: roles
+      x-infraweave-action: STACK_MANAGE
+      x-infraweave-subject: path:stackRoleBindingId:stack_role_binding
+      parameters:
+        - in: path
+          name: stackRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of StackRoleBindingUpdateInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackRoleBinding'
+          description: The stackRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Stack Role Binding
+      tags:
+        - Roles
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      operationId: stackRoleBindingUpdate
+      x-infraweave-feature: roles
+      x-infraweave-action: STACK_MANAGE
+      x-infraweave-subject: path:stackRoleBindingId:stack_role_binding
+      parameters:
+        - in: path
+          name: stackRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              roleID: ROLE_ID_HERE
+              spaceID: root
+            schema:
+              $ref: '#/components/schemas/StackRoleBindingUpdateInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackRoleBinding'
+          description: The stackRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Stack Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/Stack Role Bindings/Update Stack Role Binding.bru
+      x-graphql:
+        field: stackRoleBindingUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /user-group-role-binding-batches:
+    post:
+      operationId: userGroupRoleBindingBatchCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: any
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              bindings:
+                - roleID: ROLE_ID_HERE
+                  spaceID: root
+                  userGroupID: USER_GROUP_ID_HERE
+            schema:
+              $ref: '#/components/schemas/UserGroupRoleBindingBatchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserGroupRoleBinding'
+                type: array
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Batch Create User Group Role Bindings
+      tags:
+        - Roles
+      x-bruno: Roles/User Group Role Bindings/Batch Create User Group Role Bindings.bru
+      x-graphql:
+        field: userGroupRoleBindingBatchCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /user-group-role-bindings:
+    post:
+      operationId: userGroupRoleBindingCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              roleID: ROLE_ID_HERE
+              spaceID: root
+              userGroupID: USER_GROUP_ID_HERE
+            schema:
+              $ref: '#/components/schemas/UserGroupRoleBindingInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroupRoleBinding'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create User Group Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Group Role Bindings/Create User Group Role Binding.bru
+      x-graphql:
+        field: userGroupRoleBindingCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /user-group-role-bindings/{userGroupRoleBindingId}:
+    delete:
+      operationId: userGroupRoleBindingDelete
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:userGroupRoleBindingId:user_group_role_binding
+      parameters:
+        - in: path
+          name: userGroupRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroupRoleBinding'
+          description: The userGroupRoleBindingDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete User Group Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Group Role Bindings/Delete User Group Role Binding.bru
+      x-graphql:
+        field: userGroupRoleBindingDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      operationId: userGroupRoleBinding
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:userGroupRoleBindingId:user_group_role_binding
+      parameters:
+        - in: path
+          name: userGroupRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroupRoleBinding'
+          description: The userGroupRoleBinding result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get User Group Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Group Role Bindings/Get User Group Role Binding.bru
+      x-graphql:
+        field: userGroupRoleBinding
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of UserGroupRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userGroupRoleBindingUpdate, so it validates and persists as the PUT does.
+      operationId: userGroupRoleBindingPatch
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:userGroupRoleBindingId:user_group_role_binding
+      parameters:
+        - in: path
+          name: userGroupRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of UserGroupRoleBindingInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroupRoleBinding'
+          description: The userGroupRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch User Group Role Binding
+      tags:
+        - Roles
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      operationId: userGroupRoleBindingUpdate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:userGroupRoleBindingId:user_group_role_binding
+      parameters:
+        - in: path
+          name: userGroupRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              roleID: ROLE_ID_HERE
+              spaceID: root
+              userGroupID: USER_GROUP_ID_HERE
+            schema:
+              $ref: '#/components/schemas/UserGroupRoleBindingInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroupRoleBinding'
+          description: The userGroupRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update User Group Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Group Role Bindings/Update User Group Role Binding.bru
+      x-graphql:
+        field: userGroupRoleBindingUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /user-role-binding-batches:
+    post:
+      operationId: userRoleBindingBatchCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: any
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              bindings:
+                - roleID: ROLE_ID_HERE
+                  spaceID: root
+                  userID: USER_ID_HERE
+            schema:
+              $ref: '#/components/schemas/UserRoleBindingBatchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserRoleBinding'
+                type: array
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Batch Create User Role Bindings
+      tags:
+        - Roles
+      x-bruno: Roles/User Role Bindings/Batch Create User Role Bindings.bru
+      x-graphql:
+        field: userRoleBindingBatchCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /user-role-bindings:
+    post:
+      operationId: userRoleBindingCreate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:spaceID
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              roleID: ROLE_ID_HERE
+              spaceID: root
+              userID: USER_ID_HERE
+            schema:
+              $ref: '#/components/schemas/UserRoleBindingInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRoleBinding'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create User Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Role Bindings/Create User Role Binding.bru
+      x-graphql:
+        field: userRoleBindingCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /user-role-bindings/{userRoleBindingId}:
+    delete:
+      operationId: userRoleBindingDelete
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:userRoleBindingId:user_role_binding
+      parameters:
+        - in: path
+          name: userRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRoleBinding'
+          description: The userRoleBindingDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete User Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Role Bindings/Delete User Role Binding.bru
+      x-graphql:
+        field: userRoleBindingDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      operationId: userRoleBinding
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:userRoleBindingId:user_role_binding
+      parameters:
+        - in: path
+          name: userRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRoleBinding'
+          description: The userRoleBinding result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get User Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Role Bindings/Get User Role Binding.bru
+      x-graphql:
+        field: userRoleBinding
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of UserRoleBindingInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through userRoleBindingUpdate, so it validates and persists as the PUT does.
+      operationId: userRoleBindingPatch
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:userRoleBindingId:user_role_binding
+      parameters:
+        - in: path
+          name: userRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of UserRoleBindingInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRoleBinding'
+          description: The userRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch User Role Binding
+      tags:
+        - Roles
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      operationId: userRoleBindingUpdate
+      x-infraweave-feature: roles
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:userRoleBindingId:user_role_binding
+      parameters:
+        - in: path
+          name: userRoleBindingId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              roleID: ROLE_ID_HERE
+              spaceID: root
+              userID: USER_ID_HERE
+            schema:
+              $ref: '#/components/schemas/UserRoleBindingInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRoleBinding'
+          description: The userRoleBindingUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update User Role Binding
+      tags:
+        - Roles
+      x-bruno: Roles/User Role Bindings/Update User Role Binding.bru
+      x-graphql:
+        field: userRoleBindingUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update

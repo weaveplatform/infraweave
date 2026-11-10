@@ -1,13 +1,13 @@
 // Package assembly constructs the access domain: tenancy (organizations,
 // accounts, members and the members each account admits), identity (API
 // keys, sessions, tokens, signing keys and the break-glass credential), the account settings no other domain
-// owns, each account's managed users and groups, and each account's
-// space tree. New builds the domain on its Deps; API
+// owns, each account's managed users and groups, each account's space
+// tree, and each account's roles. New builds the domain on its Deps; API
 // is its partial of the API's strict server, aliased AccessAPI, and
 // OperatorAPI its partial of the operator API's, aliased
 // AccessOperatorAPI, the API's partial serving the Organization tag
-// through the orgadmin service and the Managed Users tag through the user
-// and group services; OrganizationID finds an organization's ID by its
+// through the orgadmin service, the Managed Users tag through the user
+// and group services and the Roles tag through the role service; OrganizationID finds an organization's ID by its
 // slug, for the features domain's operator partial, and Seats counts an
 // organization's and an account's seats in use, for its seats read;
 // GuardSpaces registers another domain's accessapi.SpaceGuard, which the

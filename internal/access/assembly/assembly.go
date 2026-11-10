@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
@@ -138,6 +139,7 @@ type Domain struct {
 	settings *settings.Service
 	users    *user.Service
 	groups   *group.Service
+	roles    *role.Service
 	oauth    *oauth.Service
 	spaces   *space.Service
 	manual   bool
@@ -249,6 +251,7 @@ func New(d Deps) (*Domain, error) {
 		),
 		users:  user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
 		groups: group.NewService(group.Deps{Store: store, Now: now}),
+		roles:  role.NewService(role.Deps{Store: store, Drop: decide.Drop}),
 		oauth:  grants,
 		spaces: space.NewService(
 			space.Deps{Store: store, Authz: decide, Drop: decide.Drop, Now: now},
@@ -266,7 +269,8 @@ func (d *Domain) API() AccessAPI {
 	}
 	return http.NewServer(http.Services{
 		Auth: d.authn, Keys: d.keys, Authz: d.authz, Spaces: d.spaces, Accounts: d.store,
-		Settings: d.settings, Orgs: d.orgAdmin, Users: d.users, Groups: d.groups, OAuth: d.oauth,
+		Settings: d.settings, Orgs: d.orgAdmin, Users: d.users, Groups: d.groups, Roles: d.roles,
+		OAuth: d.oauth,
 	})
 }
 

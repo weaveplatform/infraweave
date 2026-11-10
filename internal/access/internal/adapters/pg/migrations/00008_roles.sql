@@ -14,6 +14,7 @@ CREATE TABLE roles (
     description text        NOT NULL DEFAULT '',
     is_system   boolean     NOT NULL DEFAULT false,
     created_at  timestamptz NOT NULL DEFAULT now(),
+    version     bigint      NOT NULL DEFAULT 1,
     UNIQUE (account_id, slug),
     UNIQUE (account_id, id)
 );

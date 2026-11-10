@@ -15,6 +15,9 @@
 // organization or by an organization admin, seeds its top space, legacy
 // and system roles in the same transaction, and claiming or creating one
 // binds space-admin on its top space to the account admin it names. A
+// custom role's change locks its row, so a binding written beside a
+// delete, whose foreign key reads the row with a share lock, waits for it
+// and the count of bindings the delete reads stays true. A
 // key's Admin reads whether it holds that binding. Every write to the
 // space tree or a space's inheritance, to roles, role_actions,
 // role_bindings or managed_user_groups, and every admission, moves the
@@ -26,8 +29,8 @@
 // Creating an organization creates its entitlement through
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
 // port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
-// orgadmin.Store, settings.Store, space.Store, user.Store, group.Store and
-// authz.Store, with an
+// orgadmin.Store, settings.Store, space.Store, user.Store, group.Store,
+// role.Store and authz.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same
 // transaction; deleting an organization revokes its live sessions, then

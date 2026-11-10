@@ -80,6 +80,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	(&managedSteps{o: org}).register(sc)
 	spaces := &spaceSteps{o: org}
 	spaces.register(sc)
+	(&roleSteps{o: org}).register(sc)
 	(&stackSearchSteps{s: spaces}).register(sc)
 	(&configSteps{o: org}).register(sc)
 	(&expressionSteps{o: org}).register(sc)

@@ -21,9 +21,9 @@ type spaceSteps struct{ o *orgSteps }
 
 func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's id is the space "(\w+)"$`, s.remember)
-	sc.Step(`^the answer lists the (?:spaces|stacks|contexts) "([^"]*)"$`, s.lists)
+	sc.Step(`^the answer lists the (?:spaces|stacks|contexts|roles) "([^"]*)"$`, s.lists)
 	sc.Step(
-		`^the member key is (space-reader|space-writer|space-admin) on the space "([^"]+)"$`,
+		`^the member key is ([a-z0-9-]+) on the space "([^"]+)"$`,
 		s.bind,
 	)
 	sc.Step(
@@ -60,8 +60,8 @@ func (s *spaceSteps) remember(name string) error {
 	return nil
 }
 
-// lists checks the last answer, a page or a search of spaces, stacks or
-// contexts, against want's slugs, comma-separated, in order.
+// lists checks the last answer, a page or a search of spaces, stacks,
+// contexts or roles, against want's slugs, comma-separated, in order.
 func (s *spaceSteps) lists(want string) error {
 	type ref struct {
 		ID string `json:"id"`

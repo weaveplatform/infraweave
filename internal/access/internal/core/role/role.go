@@ -21,7 +21,8 @@ const (
 // Role is a named set of actions an account binds in its spaces. A system
 // role is seeded with the account and never changes; its actions are not
 // stored but computed from the catalogue, so a catalogue refresh changes
-// every account's at once.
+// every account's at once. Bindings counts the role's bindings of every
+// actor kind; Version rises with each change of a custom role.
 type Role struct {
 	AccountID   kernel.AccountID
 	ID          kernel.ULID
@@ -29,6 +30,9 @@ type Role struct {
 	Name        string
 	Description string
 	System      bool
+	Actions     []accessapi.Action
+	Bindings    int
+	Version     int64
 }
 
 // systemRole is a system role's fixed slug, name and description, and

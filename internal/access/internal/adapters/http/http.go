@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
@@ -41,6 +42,7 @@ type Server struct {
 	orgs     *orgadmin.Service
 	users    *managed.Service
 	groups   *group.Service
+	roles    *role.Service
 	oauth    *oauth.Service
 }
 
@@ -51,8 +53,8 @@ type Accounts interface {
 
 // Services are what the partial serves through: Orgs the Organization
 // tag, Users and Groups the Managed Users tag, OAuth the consent
-// operations of the authorization server, Spaces the Spaces tag, and
-// Authz the actions each view lists.
+// operations of the authorization server, Spaces the Spaces tag, Roles
+// the Roles tag, and Authz the actions each view lists.
 type Services struct {
 	Auth     *authn.Service
 	Keys     *apikey.Service
@@ -63,6 +65,7 @@ type Services struct {
 	Orgs     *orgadmin.Service
 	Users    *managed.Service
 	Groups   *group.Service
+	Roles    *role.Service
 	OAuth    *oauth.Service
 }
 
@@ -71,7 +74,7 @@ func NewServer(sv Services) Server {
 	return Server{
 		auth: sv.Auth, keys: sv.Keys, authz: sv.Authz, spaces: sv.Spaces, accounts: sv.Accounts,
 		settings: sv.Settings, orgs: sv.Orgs,
-		users: sv.Users, groups: sv.Groups, oauth: sv.OAuth,
+		users: sv.Users, groups: sv.Groups, roles: sv.Roles, oauth: sv.OAuth,
 	}
 }
 
