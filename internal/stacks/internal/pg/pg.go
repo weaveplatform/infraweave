@@ -81,7 +81,8 @@ const columns = `s.account_id, s.id, s.slug, s.space_id, s.name, s.description, 
 	s.autoretry, s.protect_from_deletion, s.disabled, s.local_preview_enabled,
 	s.github_action_deploy, s.enable_sensitive_output_upload,
 	s.enable_well_known_secret_masking, s.skip_vendor_binary_download, s.manages_state, s.locked_at,
-	s.lock_holder, s.locked_by, s.lock_note, s.created_at, s.version, s.state, s.blocked,
+	s.lock_holder, s.locked_by, s.lock_note, s.created_at, s.version, s.tracked_branch_head,
+	s.tracked_commit, s.tracked_commit_set_by, s.state, s.blocked,
 	(SELECT coalesce(jsonb_object_agg(phase, commands), '{}') FROM (
 		SELECT h.phase, jsonb_agg(h.command ORDER BY h.position) AS commands FROM stack_hooks h
 		WHERE h.account_id = s.account_id AND h.stack_id = s.id GROUP BY h.phase) AS p),
@@ -93,6 +94,7 @@ func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 	var (
 		st                     core.Stack
 		config, hooks          []byte
+		head, commit           []byte
 		lockedAt               *time.Time
 		holder, lockedBy, note *string
 	)
@@ -104,11 +106,21 @@ func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 		&st.Autoretry, &st.ProtectFromDeletion, &st.Disabled, &st.LocalPreviewEnabled,
 		&st.GithubActionDeploy, &st.EnableSensitiveOutputUpload,
 		&st.EnableWellKnownSecretMasking, &st.SkipVendorBinaryDownload, &st.ManagesState, &lockedAt,
-		&holder, &lockedBy, &note, &st.CreatedAt, &st.Version, &st.State, &st.Blocked, &hooks,
-		&st.Labels,
+		&holder, &lockedBy, &note, &st.CreatedAt, &st.Version, &head, &commit,
+		&st.TrackedCommitSetBy, &st.State, &st.Blocked, &hooks, &st.Labels,
 	}, extra...)...)
 	if err != nil {
 		return core.Stack{}, err //nolint:wrapcheck // callers name the read
+	}
+	for _, c := range []struct {
+		doc []byte
+		to  **stacksapi.Commit
+	}{{head, &st.TrackedBranchHead}, {commit, &st.TrackedCommit}} {
+		if c.doc != nil {
+			if err := json.Unmarshal(c.doc, c.to); err != nil {
+				return core.Stack{}, fmt.Errorf("stacks: tracked commit of %s: %w", st.Slug, err)
+			}
+		}
 	}
 	st.VendorConfig = config
 	if err := json.Unmarshal(hooks, &st.Hooks); err != nil {
@@ -354,6 +366,38 @@ func (s *Store) Labels(
 		return nil, fmt.Errorf("stacks: read stack labels: %w", sql.Unavailable(err))
 	}
 	return out, nil
+}
+
+// SetTracked sets acct's stack id's branch head and tracked commit,
+// leaving either unchanged when nil, and its version as it is.
+func (s *Store) SetTracked(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	head, commit *stacksapi.Commit,
+	setBy string,
+) error {
+	docs := make([][]byte, 2)
+	for i, c := range []*stacksapi.Commit{head, commit} {
+		if c != nil {
+			var err error
+			if docs[i], err = json.Marshal(c); err != nil {
+				return fmt.Errorf("stacks: encode tracked commit of %s: %w", id, err)
+			}
+		}
+	}
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET
+			tracked_branch_head = coalesce($3, tracked_branch_head),
+			tracked_commit = coalesce($4, tracked_commit),
+			tracked_commit_set_by = CASE WHEN $4::jsonb IS NULL THEN tracked_commit_set_by ELSE $5 END
+		WHERE account_id = $1 AND id = $2`, acct, id, docs[0], docs[1], setBy)
+	switch {
+	case err != nil:
+		return fmt.Errorf("stacks: set tracked commit of %s: %w", id, sql.Unavailable(err))
+	case tag.RowsAffected() == 0:
+		return fmt.Errorf("%w: stack %s", stacksapi.ErrNotFound, id)
+	}
+	return nil
 }
 
 // Create writes a new stack with its hooks and labels.

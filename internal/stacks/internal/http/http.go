@@ -319,6 +319,36 @@ func (s Server) StackLock(
 	return api.StackLock200JSONResponse{Body: st}, nil
 }
 
+// StackSyncCommit sets a stack's branch head and tracked commit to its
+// branch's head.
+func (s Server) StackSyncCommit(
+	ctx context.Context,
+	req api.StackSyncCommitRequestObject,
+) (api.StackSyncCommitResponseObject, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
+		return s.stacks.SyncCommit(ctx, p, req.StackId)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return api.StackSyncCommit200JSONResponse{Body: st}, nil
+}
+
+// StackSetCurrentCommit sets a stack's tracked commit to a commit of its
+// repository.
+func (s Server) StackSetCurrentCommit(
+	ctx context.Context,
+	req api.StackSetCurrentCommitRequestObject,
+) (api.StackSetCurrentCommitResponseObject, error) {
+	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
+		return s.stacks.SetCurrentCommit(ctx, p, req.StackId, req.Body.Sha)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return api.StackSetCurrentCommit200JSONResponse{Body: st}, nil
+}
+
 // StackUnlock unlocks a stack.
 func (s Server) StackUnlock(
 	ctx context.Context,

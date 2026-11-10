@@ -86,6 +86,16 @@ type Scope struct {
 // Store is what the service needs of the stacks' storage. Every method
 // joins the transaction its context carries.
 type Store interface {
+	// SetTracked sets acct's stack id's branch head and tracked commit,
+	// leaving either unchanged when nil; stacksapi.ErrNotFound when acct
+	// lacks it.
+	SetTracked(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+		head, commit *stacksapi.Commit,
+		setBy string,
+	) error
 	// Get reads acct's stack id; stacksapi.ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error)
 	// ByIDs reads those of acct's stacks ids that it has, keyed by ID.
@@ -222,8 +232,9 @@ type Service struct {
 	events   Events
 	now      func() time.Time
 
-	mu     sync.RWMutex
-	guards []stacksapi.StackGuard
+	mu      sync.RWMutex
+	guards  []stacksapi.StackGuard
+	sources stacksapi.StackSources
 }
 
 // New returns the service over d.
@@ -248,6 +259,14 @@ func (s *Service) Guard(g stacksapi.StackGuard) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.guards = append(s.guards, g)
+}
+
+// BindSources makes src what the commit operations resolve refs through.
+// It runs during construction, before the service serves a request.
+func (s *Service) BindSources(src stacksapi.StackSources) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sources = src
 }
 
 func (s *Service) registered() []stacksapi.StackGuard {
@@ -302,6 +321,87 @@ func (s *Service) ByIDs(
 		return map[kernel.ULID]stacksapi.Stack{}, nil
 	}
 	return s.store.ByIDs(ctx, acct, ids) //nolint:wrapcheck // the store names the read
+}
+
+// SetTracked sets acct's stack id's branch head and tracked commit.
+func (s *Service) SetTracked(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	head, commit *stacksapi.Commit,
+	setBy string,
+) error {
+	//nolint:wrapcheck // the store names the write
+	return s.store.SetTracked(ctx, acct, id, head, commit, setBy)
+}
+
+// SyncCommit sets p's account's stack slug's branch head and tracked
+// commit to its branch's head, resolved now. The route has decided
+// STACK_SYNC_COMMIT on the stack's space.
+func (s *Service) SyncCommit(ctx context.Context, p kernel.Principal, slug string) (Stack, error) {
+	return s.track(ctx, p, slug, "", "infraweave")
+}
+
+// SetCurrentCommit sets p's account's stack slug's tracked commit to sha,
+// once it resolves on the stack's repository, set by p. The route has
+// decided STACK_SET_CURRENT_COMMIT on the stack's space.
+func (s *Service) SetCurrentCommit(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, sha string,
+) (Stack, error) {
+	return s.track(ctx, p, slug, sha, nameOf(p))
+}
+
+// track resolves the head of p's account's stack slug's branch, and sha
+// when it is not empty, and sets the stack's branch head and its tracked
+// commit, sha's when given, the head's otherwise, set by setBy. The
+// resolves reach the provider outside any transaction.
+func (s *Service) track(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, sha, setBy string,
+) (Stack, error) {
+	st, err := s.store.BySlug(ctx, p.AccountID, slug, false)
+	if err != nil {
+		return Stack{}, err //nolint:wrapcheck // the store names the read
+	}
+	s.mu.RLock()
+	src := s.sources
+	s.mu.RUnlock()
+	if src == nil {
+		return Stack{}, fmt.Errorf("%w: no source is bound", kernel.ErrUnavailable)
+	}
+	head, err := src.Resolve(ctx, p.AccountID, st.ID, st.Branch)
+	if errors.Is(err, stacksapi.ErrRefNotFound) {
+		return Stack{}, &kernel.Invalid{
+			Detail: fmt.Sprintf("The stack's repository has no branch %q.", st.Branch),
+		}
+	}
+	if err != nil {
+		return Stack{}, err //nolint:wrapcheck // the vcs domain names the resolve
+	}
+	commit := head
+	if sha != "" {
+		commit, err = src.Resolve(ctx, p.AccountID, st.ID, sha)
+		if errors.Is(err, stacksapi.ErrRefNotFound) {
+			return Stack{}, &kernel.Invalid{
+				Detail: "The stack's repository has no such commit.",
+				Errors: []kernel.FieldError{{
+					Pointer: "/sha", Reason: kernel.ReasonRule,
+					Message: fmt.Sprintf("No commit %s in the stack's repository.", sha),
+				}},
+			}
+		}
+		if err != nil {
+			return Stack{}, err //nolint:wrapcheck // as above
+		}
+	}
+	if err := s.store.SetTracked(ctx, p.AccountID, st.ID, &head, &commit, setBy); err != nil {
+		return Stack{}, err //nolint:wrapcheck // the store names the write
+	}
+	st.TrackedBranchHead, st.TrackedCommit, st.TrackedCommitSetBy = &head, &commit, setBy
+	return st, nil
 }
 
 // Settings reads acct's stack id's settings.
@@ -525,7 +625,7 @@ func (s *Service) Create(
 		if err := s.store.Create(ctx, st); err != nil {
 			return err //nolint:wrapcheck // the store names the write
 		}
-		return s.changed(ctx, st, stacksapi.ChangeCreated)
+		return s.changed(ctx, st, stacksapi.ChangeCreated, true)
 	})
 	return st, err //nolint:wrapcheck // each step in the transaction names itself
 }
@@ -699,7 +799,7 @@ func (s *Service) Delete(
 			return err //nolint:wrapcheck // as above
 		}
 		st.Version++
-		return s.changed(ctx, st, stacksapi.ChangeDeleted)
+		return s.changed(ctx, st, stacksapi.ChangeDeleted, false)
 	})
 	return st, err //nolint:wrapcheck // each step in the transaction names itself
 }
@@ -791,6 +891,7 @@ func (s *Service) write(
 		if err := expect.Check(st.Version); err != nil {
 			return err //nolint:wrapcheck // kernel.ErrStale is the answer
 		}
+		before := sourceOf(st)
 		if err := change(ctx, &st); err != nil {
 			return err
 		}
@@ -798,7 +899,7 @@ func (s *Service) write(
 		if err := s.store.Write(ctx, st); err != nil {
 			return err //nolint:wrapcheck // the store names the write
 		}
-		return s.changed(ctx, st, what)
+		return s.changed(ctx, st, what, sourceOf(st) != before)
 	})
 	if errors.Is(err, errUnchanged) {
 		return st, nil
@@ -852,8 +953,10 @@ func (s *Service) require(
 }
 
 // changed appends st's Changed event in the context's transaction.
-func (s *Service) changed(ctx context.Context, st Stack, change string) error {
-	doc, err := json.Marshal(stacksapi.Changed{Stack: st.ID, Slug: st.Slug, Change: change})
+func (s *Service) changed(ctx context.Context, st Stack, change string, source bool) error {
+	doc, err := json.Marshal(stacksapi.Changed{
+		Stack: st.ID, Slug: st.Slug, Change: change, Source: source,
+	})
 	if err != nil {
 		return fmt.Errorf("stacks: encode %s event: %w", change, err)
 	}
@@ -867,6 +970,27 @@ func (s *Service) changed(ctx context.Context, st Stack, change string) error {
 		Document:      doc,
 	})
 	return err //nolint:wrapcheck // the outbox names the append
+}
+
+// source is where a stack's commits come from.
+type source struct {
+	provider, namespace, repository, url, branch string
+	integration                                  kernel.ULID
+}
+
+// sourceOf is st's source.
+func sourceOf(st Stack) source {
+	src := source{
+		provider: st.Provider, namespace: st.Namespace, repository: st.Repository,
+		branch: st.Branch,
+	}
+	if st.RepositoryURL != nil {
+		src.url = *st.RepositoryURL
+	}
+	if st.VCSIntegration != nil {
+		src.integration = *st.VCSIntegration
+	}
+	return src
 }
 
 // nameOf is the name a lock shows for p: a member's login or an API key's

@@ -203,13 +203,18 @@ func (s *stacks) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) err
 	return nil
 }
 
-// SetRunState is the runs domain's write, which configuration never makes.
-func (s *stacks) SetRunState(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	kernel.StackState,
-	bool,
+// SetRunState is never reached: the configuration domain does not run
+// stacks.
+func (*stacks) SetRunState(
+	context.Context, kernel.AccountID, kernel.ULID, kernel.StackState, bool,
+) error {
+	return nil
+}
+
+// SetTracked is never reached: the configuration domain does not track
+// commits.
+func (*stacks) SetTracked(
+	context.Context, kernel.AccountID, kernel.ULID, *stacksapi.Commit, *stacksapi.Commit, string,
 ) error {
 	return nil
 }

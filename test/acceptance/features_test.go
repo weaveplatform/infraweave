@@ -280,6 +280,9 @@ type world struct {
 	// vendors is the release indexes every server of the scenario reads;
 	// nil reads offlineIndexes.
 	vendors map[string]any
+	// git seeds the scenario's @vcs repositories, whose CA every server of
+	// a @vcs scenario trusts.
+	git *giteaSteps
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -321,11 +324,13 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	})
 	(&referenceSteps{}).register(sc)
 	(&deploySteps{}).register(sc)
+	git := &giteaSteps{w: w}
+	w.git = git
 	(&servedSteps{w: w}).register(sc)
 	(&observeSteps{w: w}).register(sc)
 	(&startupSteps{w: w}).register(sc)
 	(&harnessSteps{w: w}).register(sc)
-	(&giteaSteps{w: w}).register(sc)
+	git.register(sc)
 }
 
 var nonWord = regexp.MustCompile(`[^a-z0-9]+`)
@@ -423,6 +428,15 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 	}
 	if w.vendors != nil {
 		if config, err = withSection(config, "vendors", w.vendors); err != nil {
+			return nil, err
+		}
+	}
+	if slices.Contains(w.tags, "@vcs") {
+		if err := w.git.start(ctx); err != nil {
+			return nil, err
+		}
+		vcs := map[string]any{"ca_file": w.git.gitea.CAFile}
+		if config, err = withSection(config, "vcs", vcs); err != nil {
 			return nil, err
 		}
 	}

@@ -54,11 +54,26 @@ type Lock struct {
 	At     time.Time
 }
 
+// Commit is a commit of a stack's repository as the stack keeps it:
+// Message is its first line, and AuthorLogin is nil when the provider
+// knows no login for its author.
+type Commit struct {
+	Hash        string    `json:"hash"`
+	Tag         string    `json:"tag,omitempty"`
+	URL         string    `json:"url,omitempty"`
+	Message     string    `json:"message"`
+	AuthorName  string    `json:"authorName"`
+	AuthorLogin *string   `json:"authorLogin,omitempty"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
 // Settings are what a run of the stack reads. Vendor is the iac vendor's
 // kind and VendorConfig its settings as the vendor checked them; Hooks
 // maps each phase that has commands to them, in order. WorkerPool and
-// VCSIntegration are nil when the stack names none. Version counts the
-// stack's writes.
+// VCSIntegration are nil when the stack names none. TrackedBranchHead and
+// TrackedCommit are nil until the vcs domain resolves the branch, and
+// TrackedCommitSetBy names who set TrackedCommit. Version counts the
+// stack's writes, which SetTracked is not.
 type Settings struct {
 	Stack
 	Repository             string
@@ -80,6 +95,9 @@ type Settings struct {
 	Autoretry              bool
 	Disabled               bool
 	Lock                   *Lock
+	TrackedBranchHead      *Commit
+	TrackedCommit          *Commit
+	TrackedCommitSetBy     string
 	Version                int64
 }
 
@@ -147,6 +165,34 @@ type Stacks interface {
 		acct kernel.AccountID,
 		ids []kernel.ULID,
 	) (map[kernel.ULID][]string, error)
+	// SetTracked sets acct's stack id's branch head to head and its
+	// tracked commit to commit, set by setBy, leaving either unchanged
+	// when nil. It changes neither the stack's version nor its events;
+	// ErrNotFound when acct lacks it.
+	SetTracked(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+		head, commit *Commit,
+		setBy string,
+	) error
+}
+
+// ErrRefNotFound reports a branch or commit a stack's repository lacks.
+var ErrRefNotFound = errors.New("stacks: ref not found")
+
+// StackSources is what the stack's commit operations read of the vcs
+// domain, which is constructed after stacks and implements it: ref, a
+// branch, a tag or a full commit SHA, resolved on acct's stack id's
+// repository; ErrRefNotFound when the repository lacks it,
+// kernel.ErrUnavailable when its provider cannot be reached, and a
+// *kernel.Invalid when the stack's source is one infraweave cannot read.
+// The stacks domain declares it, so the back edge internal/app binds
+// after construction adds no import.
+//
+// ref: decision 0004
+type StackSources interface {
+	Resolve(ctx context.Context, acct kernel.AccountID, id kernel.ULID, ref string) (Commit, error)
 }
 
 // StackGuard is a domain's say in a stack's moves and deletes: a domain
@@ -263,11 +309,14 @@ const (
 )
 
 // Changed is a ChangedKind event's document: the stack's ULID and slug
-// after the change, and which change it was.
+// after the change, which change it was, and whether it gave the stack
+// its source or changed it: its provider, VCS integration, namespace,
+// repository, repository URL or branch.
 type Changed struct {
 	Stack  kernel.ULID `json:"stack"`
 	Slug   string      `json:"slug"`
 	Change string      `json:"change"`
+	Source bool        `json:"source,omitempty"`
 }
 
 // ChangedSchema is the JSON Schema of ChangedVersion's documents.
@@ -278,6 +327,7 @@ var ChangedSchema = []byte(`{
 		"stack": {"type": "string", "minLength": 26, "maxLength": 26},
 		"slug": {"type": "string", "minLength": 1},
 		"change": {"enum": ["created", "updated", "reslugged", "disabled", "enabled",
-			"locked", "unlocked", "deleted"]}
+			"locked", "unlocked", "deleted"]},
+		"source": {"type": "boolean"}
 	}
 }`)

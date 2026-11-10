@@ -63,6 +63,9 @@ func viewOf(
 		SkipVendorBinaryDownload:     st.SkipVendorBinaryDownload,
 		ManagesStateFile:             st.ManagesState,
 		CreatedAt:                    unix(st.CreatedAt.Unix()),
+		TrackedBranchHead:            commitView(st.TrackedBranchHead),
+		TrackedCommit:                commitView(st.TrackedCommit),
+		TrackedCommitSetBy:           st.TrackedCommitSetBy,
 		State:                        api.StackState(st.State),
 		StateIsTerminal:              st.State.Terminal(),
 		Blocked:                      st.Blocked,
@@ -167,6 +170,17 @@ func actions(as []accessapi.Action) []api.Action {
 		out = append(out, api.Action(a))
 	}
 	return out
+}
+
+// commitView is c as the API answers it, nil when c is.
+func commitView(c *stacksapi.Commit) *api.Commit {
+	if c == nil {
+		return nil
+	}
+	return &api.Commit{
+		Hash: c.Hash, Tag: c.Tag, Url: c.URL, Message: c.Message, AuthorName: c.AuthorName,
+		AuthorLogin: c.AuthorLogin, Timestamp: unix(c.Timestamp.Unix()),
+	}
 }
 
 func orEmpty[T any](s []T) []T {

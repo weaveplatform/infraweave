@@ -3,10 +3,13 @@
 // ULID, with a slug unique per account, its settings and its lock, the
 // runs domain's projection of its run state, which SetRunState writes
 // without counting a version, and the ID of the space it lives in, which
-// carries no foreign key, since spaces belong to the access domain; stack_hooks, stack_labels and stack_stars
-// hold its hooks, labels and each caller's star. Store reads a stack, by
+// carries no foreign key, since spaces belong to the access domain;
+// stack_hooks, stack_labels and stack_stars hold its hooks, labels and
+// each caller's star. Store reads a stack, by
 // ID, by slug or by the repository's branch it tracks,
-// stacksapi.ErrNotFound when the account lacks it, writes it whole,
+// stacksapi.ErrNotFound when the account lacks it, writes it whole but
+// for its tracked commit and branch head, which SetTracked writes without
+// its version,
 // searches an account's stacks and suggests their values by
 // stacks.Fields through platform/sql/search, answers whether a stack
 // lives in a space, finds an account's stacks in some spaces by label

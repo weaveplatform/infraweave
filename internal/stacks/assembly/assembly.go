@@ -97,6 +97,10 @@ func (d *Domain) Stacks() stacksapi.Stacks { return d.stacks }
 // every later stack move and delete asks.
 func (d *Domain) GuardStacks(g stacksapi.StackGuard) { d.stacks.Guard(g) }
 
+// BindSources binds the vcs domain's resolver of a stack's refs, which
+// the commit operations reach the stack's repository through.
+func (d *Domain) BindSources(src stacksapi.StackSources) { d.stacks.BindSources(src) }
+
 // BindConfiguration binds the configuration domain's reader of a stack's
 // contexts and config elements, a back edge internal/app binds after it
 // constructs that domain; until then a stack has neither.
