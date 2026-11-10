@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -45,7 +46,7 @@ const (
 type Grant struct {
 	Source  Source
 	Binding kernel.ULID
-	Actor   role.ActorKind
+	Actor   binding.ActorKind
 	ActorID kernel.ULID
 	Space   kernel.ULID
 	RoleID  kernel.ULID
@@ -83,19 +84,19 @@ func (s *Snapshot) actors(w Who) []actor {
 	switch {
 	case w.Kind == kernel.PrincipalRun:
 		if !w.Stack.IsZero() {
-			out = append(out, actor{role.ActorStack, w.Stack})
+			out = append(out, actor{binding.ActorStack, w.Stack})
 		}
 		return out
 	case w.Kind == kernel.PrincipalUser, w.Kind == kernel.PrincipalAPIKey && !w.Member.IsZero():
-		out = append(out, actor{role.ActorUser, w.Member.ULID})
+		out = append(out, actor{binding.ActorUser, w.Member.ULID})
 	case w.Kind == kernel.PrincipalAPIKey:
-		out = append(out, actor{role.ActorAPIKey, w.Actor})
+		out = append(out, actor{binding.ActorAPIKey, w.Actor})
 	default:
 		return nil
 	}
 	for _, t := range w.Teams {
 		if id, ok := s.groups[t]; ok {
-			out = append(out, actor{role.ActorGroup, id})
+			out = append(out, actor{binding.ActorGroup, id})
 		}
 	}
 	return out
@@ -103,15 +104,15 @@ func (s *Snapshot) actors(w Who) []actor {
 
 // bound is every binding of w's actors, and a run's implicit read of its
 // stack's home space as a binding of space-reader with no ID.
-func (s *Snapshot) bound(w Who) []role.Binding {
-	var out []role.Binding
+func (s *Snapshot) bound(w Who) []binding.Binding {
+	var out []binding.Binding
 	for _, a := range s.actors(w) {
 		out = append(out, s.bindings[a]...)
 	}
 	if w.Kind == kernel.PrincipalRun && !w.Stack.IsZero() {
 		if _, ok := s.parent[w.StackHome]; ok {
-			out = append(out, role.Binding{
-				ActorKind: role.ActorStack,
+			out = append(out, binding.Binding{
+				ActorKind: binding.ActorStack,
 				ActorID:   w.Stack,
 				RoleID:    s.reader.id,
 				SpaceID:   w.StackHome,
@@ -122,7 +123,7 @@ func (s *Snapshot) bound(w Who) []role.Binding {
 }
 
 // roleOf is b's role; a binding with no ID is a stack's implicit read.
-func (s *Snapshot) roleOf(b role.Binding) grantRole {
+func (s *Snapshot) roleOf(b binding.Binding) grantRole {
 	if b.ID.IsZero() {
 		return s.reader
 	}

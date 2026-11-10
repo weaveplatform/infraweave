@@ -8,6 +8,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -53,7 +54,7 @@ func bindAccountAdmin(
 	if _, err := q.Exec(ctx, `INSERT INTO role_bindings (account_id, id, actor_kind, actor_id,
 			role_id, space_id, origin, created_by)
 		SELECT $1, $2, $3, $4, id, $1, $5, $6 FROM roles WHERE account_id = $1 AND slug = $7`,
-		acct, kernel.NewULID(), role.ActorUser, admin, role.OriginBinding,
+		acct, kernel.NewULID(), binding.ActorUser, admin, binding.OriginBinding,
 		string(e.ActorKind)+":"+e.ActorID, role.SpaceAdmin); err != nil {
 		return fmt.Errorf("access: bind the account admin: %w", sql.Unavailable(err))
 	}
@@ -206,31 +207,16 @@ func (s *Store) DeleteRole(
 }
 
 // RoleBindings reads the bindings of acct's role id to users, groups and
-// API keys, oldest first, each with its space's slug.
+// API keys, oldest first.
 func (s *Store) RoleBindings(
 	ctx context.Context,
 	acct kernel.AccountID,
 	id kernel.ULID,
-) ([]role.Listed, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT b.account_id, b.id, b.actor_kind, b.actor_id,
-			b.role_id, b.space_id, b.origin, b.created_at, b.created_by, s.slug
-		FROM role_bindings b JOIN spaces s ON s.account_id = b.account_id AND s.id = b.space_id
-		WHERE b.account_id = $1 AND b.role_id = $2 AND b.actor_kind = ANY($3)
-		ORDER BY b.created_at, b.id`, acct, id,
-		[]string{string(role.ActorUser), string(role.ActorGroup), string(role.ActorAPIKey)})
-	if err != nil {
-		return nil, fmt.Errorf("access: list role bindings: %w", sql.Unavailable(err))
-	}
-	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (role.Listed, error) {
-		var l role.Listed
-		err := r.Scan(&l.AccountID, &l.ID, &l.ActorKind, &l.ActorID, &l.RoleID, &l.SpaceID,
-			&l.Origin, &l.CreatedAt, &l.CreatedBy, &l.Space)
-		return l, err //nolint:wrapcheck // named below
-	})
-	if err != nil {
-		return nil, fmt.Errorf("access: list role bindings: %w", sql.Unavailable(err))
-	}
-	return out, nil
+) ([]binding.Listed, error) {
+	return s.bindings(ctx, `b.account_id = $1 AND b.role_id = $2 AND b.actor_kind = ANY($3)`,
+		acct, id, []string{
+			string(binding.ActorUser), string(binding.ActorGroup), string(binding.ActorAPIKey),
+		})
 }
 
 // lockRole reads acct's role slug and locks its row.

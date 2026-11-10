@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -49,13 +50,11 @@ type Store interface {
 	) (Role, error)
 	// RoleBindings reads the bindings of the account's role id to users,
 	// groups and API keys, oldest first.
-	RoleBindings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]Listed, error)
-}
-
-// Listed is a binding as its role lists it, with its space's slug.
-type Listed struct {
-	Binding
-	Space string
+	RoleBindings(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+	) ([]binding.Listed, error)
 }
 
 // Input is a custom role as created; a nil Description is empty.
@@ -122,7 +121,11 @@ func (s *Service) Role(ctx context.Context, acct kernel.AccountID, slug string) 
 // Bindings reads the bindings of acct's role r to users, groups and API
 // keys. A stack's binding arrives with the stack role bindings, which
 // list it with the stack's name from the stacks domain.
-func (s *Service) Bindings(ctx context.Context, acct kernel.AccountID, r Role) ([]Listed, error) {
+func (s *Service) Bindings(
+	ctx context.Context,
+	acct kernel.AccountID,
+	r Role,
+) ([]binding.Listed, error) {
 	return s.store.RoleBindings(ctx, acct, r.ID) //nolint:wrapcheck // the store names the read
 }
 

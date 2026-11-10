@@ -18,7 +18,12 @@
 // custom role's change locks its row, so a binding written beside a
 // delete, whose foreign key reads the row with a share lock, waits for it
 // and the count of bindings the delete reads stays true. A
-// key's Admin reads whether it holds that binding. Every write to the
+// key's Admin reads whether it holds that binding. A binding of a
+// role and space its actor holds already is a *binding.Duplicate naming
+// its index; removing a managed user, or deleting a group or an API key,
+// deletes its bindings in the same transaction; ReplaceAccessRules swaps
+// an actor's access_rule bindings in one; and Atomic runs a function in
+// one transaction that every write through its context joins. Every write to the
 // space tree or a space's inheritance, to roles, role_actions,
 // role_bindings or managed_user_groups, and every admission, moves the
 // account's authz_version and sends
@@ -30,7 +35,7 @@
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
 // port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
 // orgadmin.Store, settings.Store, space.Store, user.Store, group.Store,
-// role.Store and authz.Store, with an
+// role.Store, binding.Store and authz.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same
 // transaction; deleting an organization revokes its live sessions, then

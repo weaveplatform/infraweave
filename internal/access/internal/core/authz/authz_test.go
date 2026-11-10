@@ -6,6 +6,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -67,11 +68,11 @@ func newAccount() *account {
 
 // bind binds the role slug on space to the actor, and returns the
 // binding's ID.
-func (x *account) bind(kind role.ActorKind, actor kernel.ULID, slug, space string) kernel.ULID {
+func (x *account) bind(kind binding.ActorKind, actor kernel.ULID, slug, space string) kernel.ULID {
 	id := kernel.NewULID()
-	x.data.Bindings = append(x.data.Bindings, role.Binding{
+	x.data.Bindings = append(x.data.Bindings, binding.Binding{
 		AccountID: x.id, ID: id, ActorKind: kind, ActorID: actor, RoleID: x.roles[slug],
-		SpaceID: x.spaces[space], Origin: role.OriginBinding,
+		SpaceID: x.spaces[space], Origin: binding.OriginBinding,
 	})
 	return id
 }
@@ -110,22 +111,22 @@ func TestUnitAuthorize(t *testing.T) {
 	admin, writer, inheritor, deep := kernel.NewMemberID(), kernel.NewMemberID(),
 		kernel.NewMemberID(), kernel.NewMemberID()
 	grouped, owner, outsider := kernel.NewMemberID(), kernel.NewMemberID(), kernel.NewMemberID()
-	x.bind(role.ActorUser, admin.ULID, role.SpaceAdmin, "top")
-	x.bind(role.ActorUser, writer.ULID, role.SpaceWriter, "top")
-	x.bind(role.ActorUser, inheritor.ULID, role.SpaceAdmin, "a11")
-	x.bind(role.ActorUser, deep.ULID, role.SpaceAdmin, "a111")
+	x.bind(binding.ActorUser, admin.ULID, role.SpaceAdmin, "top")
+	x.bind(binding.ActorUser, writer.ULID, role.SpaceWriter, "top")
+	x.bind(binding.ActorUser, inheritor.ULID, role.SpaceAdmin, "a11")
+	x.bind(binding.ActorUser, deep.ULID, role.SpaceAdmin, "a111")
 	ops := x.group("ops")
-	x.bind(role.ActorGroup, ops, role.WorkerPoolController, "legacy")
-	x.bind(role.ActorUser, grouped.ULID, "custom", "legacy")
-	x.bind(role.ActorUser, owner.ULID, role.SpaceWriter, "a")
+	x.bind(binding.ActorGroup, ops, role.WorkerPoolController, "legacy")
+	x.bind(binding.ActorUser, grouped.ULID, "custom", "legacy")
+	x.bind(binding.ActorUser, owner.ULID, role.SpaceWriter, "a")
 	key := kernel.NewULID()
-	x.bind(role.ActorAPIKey, key, role.SpaceReader, "legacy")
+	x.bind(binding.ActorAPIKey, key, role.SpaceReader, "legacy")
 	adminStack, plainStack := kernel.NewULID(), kernel.NewULID()
-	x.bind(role.ActorStack, adminStack, role.SpaceAdmin, "top")
+	x.bind(binding.ActorStack, adminStack, role.SpaceAdmin, "top")
 	snap := authz.Build(x.data)
 
 	other := newAccount()
-	other.bind(role.ActorUser, admin.ULID, role.SpaceAdmin, "top")
+	other.bind(binding.ActorUser, admin.ULID, role.SpaceAdmin, "top")
 	otherSnap := authz.Build(other.data)
 
 	personal := authz.Who{
@@ -244,24 +245,24 @@ func TestUnitAuthorize(t *testing.T) {
 func TestUnitExplain(t *testing.T) {
 	x := newAccount()
 	m := kernel.NewMemberID()
-	onTop := x.bind(role.ActorUser, m.ULID, role.SpaceWriter, "top")
-	onA11 := x.bind(role.ActorUser, m.ULID, "custom", "a11")
-	onA1 := x.bind(role.ActorUser, m.ULID, role.WorkerPoolController, "a1")
+	onTop := x.bind(binding.ActorUser, m.ULID, role.SpaceWriter, "top")
+	onA11 := x.bind(binding.ActorUser, m.ULID, "custom", "a11")
+	onA1 := x.bind(binding.ActorUser, m.ULID, role.WorkerPoolController, "a1")
 	snap := authz.Build(x.data)
 	got := snap.Explain(x.user(m), x.spaces["a1"])
 	want := []authz.Grant{
 		{
-			Source: authz.Propagated, Binding: onTop, Actor: role.ActorUser, ActorID: m.ULID,
+			Source: authz.Propagated, Binding: onTop, Actor: binding.ActorUser, ActorID: m.ULID,
 			Space: x.spaces["top"], RoleID: x.roles[role.SpaceWriter], Role: role.SpaceWriter,
 		},
 		{
-			Source: authz.Inherited, Binding: onA11, Actor: role.ActorUser, ActorID: m.ULID,
+			Source: authz.Inherited, Binding: onA11, Actor: binding.ActorUser, ActorID: m.ULID,
 			Space: x.spaces["a11"], RoleID: x.roles[role.SpaceReader], Role: role.SpaceReader,
 		},
 		{
 			Source:  authz.Resident,
 			Binding: onA1,
-			Actor:   role.ActorUser,
+			Actor:   binding.ActorUser,
 			ActorID: m.ULID,
 			Space:   x.spaces["a1"],
 			RoleID:  x.roles[role.WorkerPoolController],
@@ -335,12 +336,12 @@ func TestUnitBuildSkipsDangling(t *testing.T) {
 	x := newAccount()
 	m := kernel.NewMemberID()
 	x.data.Bindings = append(x.data.Bindings,
-		role.Binding{
-			ID: kernel.NewULID(), ActorKind: role.ActorUser, ActorID: m.ULID,
+		binding.Binding{
+			ID: kernel.NewULID(), ActorKind: binding.ActorUser, ActorID: m.ULID,
 			RoleID: kernel.NewULID(), SpaceID: x.spaces["a"],
 		},
-		role.Binding{
-			ID: kernel.NewULID(), ActorKind: role.ActorUser, ActorID: m.ULID,
+		binding.Binding{
+			ID: kernel.NewULID(), ActorKind: binding.ActorUser, ActorID: m.ULID,
 			RoleID: x.roles[role.SpaceAdmin], SpaceID: kernel.NewULID(),
 		})
 	snap := authz.Build(x.data)
@@ -370,9 +371,9 @@ func TestUnitBuildSkipsDangling(t *testing.T) {
 func TestUnitActions(t *testing.T) {
 	x := newAccount()
 	admin, below, writer := kernel.NewMemberID(), kernel.NewMemberID(), kernel.NewMemberID()
-	x.bind(role.ActorUser, admin.ULID, role.SpaceAdmin, "top")
-	x.bind(role.ActorUser, below.ULID, role.SpaceAdmin, "a11")
-	x.bind(role.ActorUser, writer.ULID, role.SpaceWriter, "top")
+	x.bind(binding.ActorUser, admin.ULID, role.SpaceAdmin, "top")
+	x.bind(binding.ActorUser, below.ULID, role.SpaceAdmin, "a11")
+	x.bind(binding.ActorUser, writer.ULID, role.SpaceWriter, "top")
 	snap := authz.Build(x.data)
 	has := slices.Contains[[]accessapi.Action]
 

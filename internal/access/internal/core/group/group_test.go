@@ -170,7 +170,7 @@ func TestUnitGroups(t *testing.T) {
 	svc := group.NewService(group.Deps{Store: s, Now: func() time.Time { return t0 }})
 	p := kernel.Principal{Kind: kernel.PrincipalUser, AccountID: s.acct, Login: "alice"}
 
-	g, err := svc.Create(ctx, p, "192.0.2.1", "ops", "operators", 0)
+	g, err := svc.Create(ctx, p, "192.0.2.1", "ops", "operators")
 	if err != nil || g.Name != "ops" || g.Description != "operators" || !g.CreatedAt.Equal(t0) ||
 		g.AccountID != s.acct {
 		t.Fatalf("create = %+v, %v", g, err)
@@ -179,11 +179,8 @@ func TestUnitGroups(t *testing.T) {
 		e.AffectedResource.ID != g.ID.String() || len(e.Body) == 0 {
 		t.Errorf("entry = %+v", e)
 	}
-	if _, err := svc.Create(ctx, p, "", "ops", "", 0); !errors.Is(err, port.ErrSlugTaken) {
+	if _, err := svc.Create(ctx, p, "", "ops", ""); !errors.Is(err, port.ErrSlugTaken) {
 		t.Errorf("a second ops: %v", err)
-	}
-	if _, err := svc.Create(ctx, p, "", "qa", "", 2); !errors.Is(err, user.ErrBindingsUnsupported) {
-		t.Errorf("with role bindings: %v", err)
 	}
 	var fe *organization.FieldError
 	if _, err := svc.Create(
@@ -192,7 +189,6 @@ func TestUnitGroups(t *testing.T) {
 		"",
 		"",
 		"",
-		0,
 	); !errors.As(err, &fe) ||
 		fe.Field != "groupName" {
 		t.Errorf("no name: %v", err)

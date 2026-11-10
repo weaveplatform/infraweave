@@ -539,7 +539,7 @@ func TestUnitManagedUsers(t *testing.T) {
 		{http.MethodPatch, "/managed-users/nope", `{}`, http.StatusNotFound},
 		{
 			http.MethodPatch, user, `{"accessRules":[{"space":"legacy","spaceAccessLevel":"READ"}]}`,
-			http.StatusBadRequest,
+			http.StatusUnprocessableEntity,
 		},
 		{http.MethodPut, "/managed-users/nope", `{"accessRules":[]}`, http.StatusNotFound},
 		{http.MethodGet, "/managed-users/nope", "", http.StatusNotFound},

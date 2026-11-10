@@ -1,4 +1,4 @@
-package role
+package binding
 
 import (
 	"time"
@@ -39,4 +39,12 @@ type Binding struct {
 	Origin    Origin
 	CreatedAt time.Time
 	CreatedBy string
+	Version   int64
+}
+
+// Listed is a binding as a view names it: its role's and space's slugs.
+type Listed struct {
+	Binding
+	Role  string
+	Space string
 }

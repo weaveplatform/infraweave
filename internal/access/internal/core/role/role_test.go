@@ -91,3 +91,21 @@ func TestUnitSystemActions(t *testing.T) {
 		t.Error("a custom slug has system actions")
 	}
 }
+
+func TestUnitLevels(t *testing.T) {
+	for level, slug := range map[string]string{
+		"READ": role.SpaceReader, "WRITE": role.SpaceWriter, "ADMIN": role.SpaceAdmin,
+	} {
+		got, ok := role.ForLevel(level)
+		back, okBack := role.LevelOf(slug)
+		if !ok || got != slug || !okBack || back != level {
+			t.Errorf("%s: ForLevel = %q %t, LevelOf = %q %t", level, got, ok, back, okBack)
+		}
+	}
+	if _, ok := role.ForLevel("NONE"); ok {
+		t.Error("NONE grants a role")
+	}
+	if _, ok := role.LevelOf(role.WorkerPoolController); ok {
+		t.Error("worker-pool-controller has a level")
+	}
+}

@@ -27,7 +27,6 @@ func TestUnitManagedError(t *testing.T) {
 			&featuresapi.LimitError{Limit: "seats", Scope: "organization", Value: 3},
 			problem.LimitReached,
 		},
-		{managed.ErrBindingsUnsupported, problem.InvalidRequest},
 		{managed.ErrNotMember, problem.Forbidden},
 		{fmt.Errorf("%w: bob", port.ErrNotFound), problem.NotFound},
 		{port.ErrSlugTaken, problem.AlreadyExists},
@@ -50,7 +49,7 @@ func TestUnitManagedError(t *testing.T) {
 // lastLoginTime.
 func TestUnitManagedUserSeen(t *testing.T) {
 	seen := time.Date(2026, 11, 7, 9, 0, 0, 0, time.UTC)
-	u := managedUser(managed.User{Member: member.Member{LastSeenAt: &seen}}, nil)
+	u := managedUser(managed.User{Member: member.Member{LastSeenAt: &seen}}, nil, nil)
 	if u.LastLoginTime == nil || *u.LastLoginTime != unix(seen) {
 		t.Errorf("lastLoginTime = %v", u.LastLoginTime)
 	}

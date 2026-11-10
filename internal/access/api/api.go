@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -166,6 +167,77 @@ type SpaceNode struct {
 	Name    string
 	Parent  kernel.ULID
 	Inherit bool
+}
+
+// The kinds of actor another domain keeps that a role binding grants to:
+// a stack, and a Flows project.
+const (
+	ActorStack        = "stack"
+	ActorFlowsProject = "flows_project"
+)
+
+// ErrNoBinding is a role binding the account lacks.
+var ErrNoBinding = errors.New("no such role binding")
+
+// ErrBindingHeld is a role binding of an actor, role and space the
+// account already holds.
+var ErrBindingHeld = errors.New("the actor already holds the role in the space")
+
+// BindingRequest names a role binding's role and space by their slugs.
+type BindingRequest struct {
+	Role  string
+	Space string
+}
+
+// RoleBinding grants the role Role, by slug, to the actor of kind Actor
+// and ID ActorID in the space SpaceID, slug Space, and the spaces below
+// it.
+type RoleBinding struct {
+	ID        kernel.ULID
+	Actor     string
+	ActorID   kernel.ULID
+	Role      string
+	SpaceID   kernel.ULID
+	Space     string
+	CreatedAt time.Time
+	CreatedBy string
+}
+
+// Bindings are the role bindings of the actors another domain keeps, such
+// as stacks. Bind records, as p, a binding of the actor for each request,
+// all or none, in the transaction ctx carries when there is one: a role
+// or space the account lacks, or a space p does not administer, is a
+// *kernel.Invalid pointing at pointer/<index>/roleID or spaceID, and a
+// binding the account holds ErrBindingHeld. Unbind deletes one binding,
+// ErrNoBinding when the account lacks it, and UnbindActor every binding
+// of an actor the owning domain deletes. ByActor and BySpace read an
+// actor's bindings and a space's, oldest first. Each write moves the
+// account's authorization.
+//
+// ref: decision 0007 § "Bindings"
+type Bindings interface {
+	Bind(
+		ctx context.Context,
+		p kernel.Principal,
+		actor string,
+		id kernel.ULID,
+		pointer string,
+		reqs []BindingRequest,
+	) ([]RoleBinding, error)
+	Unbind(
+		ctx context.Context,
+		acct kernel.AccountID,
+		actor string,
+		id kernel.ULID,
+	) (RoleBinding, error)
+	UnbindActor(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) error
+	ByActor(
+		ctx context.Context,
+		acct kernel.AccountID,
+		actor string,
+		id kernel.ULID,
+	) ([]RoleBinding, error)
+	BySpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) ([]RoleBinding, error)
 }
 
 // SpaceMove is a proposed move of Space, with every space below it, to a

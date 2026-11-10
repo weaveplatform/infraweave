@@ -84,6 +84,36 @@ func devSpace(t *testing.T) (*Domain, *sql.DB, account.Account, space.Space) {
 	return d, db, a, dev
 }
 
+// claimed is a member who claims a, so is space-admin on its top space
+// and reads every space under it.
+func claimed(t *testing.T, d *Domain, db *sql.DB, a account.Account) kernel.Principal {
+	t.Helper()
+	ctx := t.Context()
+	m := kernel.NewMemberID()
+	if _, err := db.Primary().Exec(ctx, `INSERT INTO members (organization_id, id, login, name,
+		email, status) VALUES ($1, $2, 'alice', 'Alice', 'alice@example.com', 'active')`,
+		a.OrganizationID, m); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.store.ClaimAccount(ctx, a.OrganizationID, a.ID, m, time.Now(),
+		kernel.OrganizationAuditEntry{
+			OrganizationID:   a.OrganizationID,
+			ActorKind:        kernel.PrincipalOperator,
+			ActorID:          kernel.NewULID().String(),
+			Action:           orgadmin.ActionAccountClaim,
+			EventType:        "UPDATE",
+			AffectedResource: kernel.AuditResource{Type: "ACCOUNT", ID: a.Slug.String()},
+		}); err != nil {
+		t.Fatal(err)
+	}
+	return kernel.Principal{
+		Kind:      kernel.PrincipalUser,
+		ActorID:   m.ULID,
+		MemberID:  m,
+		AccountID: a.ID,
+	}
+}
+
 // TestAccGuardSpaces checks that a guard another domain registers refuses
 // the deletes and moves of the domain's trees, which a new organization's
 // first account holds.
@@ -115,26 +145,7 @@ func TestAccSubjects(t *testing.T) {
 			return kernel.ULID{}, accessapi.ErrNoSubject
 		},
 	)
-	// The member who claims the account is space-admin on its top space,
-	// so reads every space under it.
-	m := kernel.NewMemberID()
-	if _, err := db.Primary().Exec(ctx, `INSERT INTO members (organization_id, id, login, name,
-		email, status) VALUES ($1, $2, 'alice', 'Alice', 'alice@example.com', 'active')`,
-		a.OrganizationID, m); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := d.store.ClaimAccount(ctx, a.OrganizationID, a.ID, m, time.Now(),
-		kernel.OrganizationAuditEntry{
-			OrganizationID:   a.OrganizationID,
-			ActorKind:        kernel.PrincipalOperator,
-			ActorID:          kernel.NewULID().String(),
-			Action:           orgadmin.ActionAccountClaim,
-			EventType:        "UPDATE",
-			AffectedResource: kernel.AuditResource{Type: "ACCOUNT", ID: a.Slug.String()},
-		}); err != nil {
-		t.Fatal(err)
-	}
-	p := kernel.Principal{Kind: kernel.PrincipalUser, ActorID: m.ULID, MemberID: m, AccountID: a.ID}
+	p := claimed(t, d, db, a)
 	for _, c := range []struct {
 		subject accessapi.Subject
 		id      string

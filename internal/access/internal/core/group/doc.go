@@ -5,8 +5,9 @@
 // reads, describes and deletes the caller's account's groups, lists a
 // group's members, and lists the names the account's latest sign-ins
 // reported. A name another group of the account holds is
-// port.ErrSlugTaken, and role bindings, which arrive with P4b, are
-// user.ErrBindingsUnsupported. Every write carries its entry on the
+// port.ErrSlugTaken; the binding service writes the role bindings a
+// creation carries, in its transaction, and the store deletes a group's
+// bindings with it. Every write carries its entry on the
 // account's trail. A Group's Version is raised by every change; Update
 // and Delete carry a kernel.Expect, and the store refuses a group whose
 // version it does not accept with kernel.ErrStale, changing nothing.

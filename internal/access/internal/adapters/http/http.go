@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
@@ -43,7 +44,9 @@ type Server struct {
 	users    *managed.Service
 	groups   *group.Service
 	roles    *role.Service
+	bindings *binding.Service
 	oauth    *oauth.Service
+	atomic   func(context.Context, func(context.Context) error) error
 }
 
 // Accounts reads an account; port.Tenancy is one.
@@ -54,7 +57,10 @@ type Accounts interface {
 // Services are what the partial serves through: Orgs the Organization
 // tag, Users and Groups the Managed Users tag, OAuth the consent
 // operations of the authorization server, Spaces the Spaces tag, Roles
-// the Roles tag, and Authz the actions each view lists.
+// the Roles tag, Bindings the role bindings of users, groups and API keys,
+// and Authz the actions each view lists. Atomic runs a function in one
+// transaction, which the stores' writes in its context join, so an actor
+// and the bindings its input carries are written together or not at all.
 type Services struct {
 	Auth     *authn.Service
 	Keys     *apikey.Service
@@ -66,7 +72,9 @@ type Services struct {
 	Users    *managed.Service
 	Groups   *group.Service
 	Roles    *role.Service
+	Bindings *binding.Service
 	OAuth    *oauth.Service
+	Atomic   func(context.Context, func(context.Context) error) error
 }
 
 // NewServer returns the partial serving through sv.
@@ -74,7 +82,8 @@ func NewServer(sv Services) Server {
 	return Server{
 		auth: sv.Auth, keys: sv.Keys, authz: sv.Authz, spaces: sv.Spaces, accounts: sv.Accounts,
 		settings: sv.Settings, orgs: sv.Orgs,
-		users: sv.Users, groups: sv.Groups, roles: sv.Roles, oauth: sv.OAuth,
+		users: sv.Users, groups: sv.Groups, roles: sv.Roles, bindings: sv.Bindings, oauth: sv.OAuth,
+		atomic: sv.Atomic,
 	}
 }
 

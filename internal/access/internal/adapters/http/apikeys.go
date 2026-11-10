@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
@@ -52,7 +53,11 @@ func (s Server) ApiKeys(
 	}
 	body := api.ApiKeyPage{Items: make([]api.ApiKey, 0, min(len(keys), limit))}
 	for _, k := range keys[:min(len(keys), limit)] {
-		body.Items = append(body.Items, apiKey(k, "", acts))
+		v, err := s.keyOf(ctx, k, "", acts)
+		if err != nil {
+			return nil, err
+		}
+		body.Items = append(body.Items, v)
 	}
 	if len(keys) > limit {
 		last := keys[limit-1].ID.String()
@@ -94,9 +99,25 @@ func (s Server) ApiKeyCreate(
 			ClaimMapping:      claimMapping(o.ClaimMappings),
 		}
 	}
-	k, secret, err := s.keys.Create(ctx, p, in)
+	bs, err := s.prepare(ctx, p, binding.ActorAPIKey, legacy{
+		rules:    ruleRequests(deref(req.Body.AccessRules)),
+		bindings: roleRequests(deref(req.Body.RoleBindings)),
+	})
 	if err != nil {
-		return nil, keyError(err, "")
+		return nil, err
+	}
+	var (
+		k      apikey.Key
+		secret string
+	)
+	err = s.atomic(ctx, func(ctx context.Context) error {
+		if k, secret, err = s.keys.Create(ctx, p, in); err != nil {
+			return keyError(err, "")
+		}
+		return bindingError(s.bind(ctx, p.AccountID, binding.ActorAPIKey, k.ID, bs), "", "")
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck // each write in the transaction answers its own problem
 	}
 	v, err := s.keyView(ctx, k, secret)
 	if err != nil {
@@ -352,24 +373,40 @@ func (s Server) keyActions(ctx context.Context) ([]api.Action, error) {
 	return actions(acts), nil
 }
 
-// keyView is apiKey of k with the caller's keyActions.
+// keyView is keyOf k with the caller's keyActions.
 func (s Server) keyView(ctx context.Context, k apikey.Key, secret string) (api.ApiKey, error) {
 	acts, err := s.keyActions(ctx)
 	if err != nil {
 		return api.ApiKey{}, err
 	}
-	return apiKey(k, secret, acts), nil
+	return s.keyOf(ctx, k, secret, acts)
+}
+
+// keyOf is apiKey of k with acts and its bindings.
+func (s Server) keyOf(
+	ctx context.Context,
+	k apikey.Key,
+	secret string,
+	acts []api.Action,
+) (api.ApiKey, error) {
+	held, err := s.bindings.Held(ctx, k.AccountID, binding.ActorAPIKey, k.ID)
+	if err != nil {
+		return api.ApiKey{}, err //nolint:wrapcheck // the store names the read
+	}
+	return apiKey(k, secret, acts, held), nil
 }
 
 // apiKey is k in the reference's ApiKey shape, with secret when create or
-// reset has just made one, and acts as its allowedActions. admin reads
-// whether the key holds a space-admin binding on the account's top space;
-// access rules and spaces read empty until API key bindings are served.
-func apiKey(k apikey.Key, secret string, acts []api.Action) api.ApiKey {
+// reset has just made one, and acts as its allowedActions. held are its
+// bindings: admin reads whether one is space-admin on the account's top
+// space, whose ID is the account's, accessRules are those its access
+// rules made, and spaceCount the spaces they name.
+func apiKey(k apikey.Key, secret string, acts []api.Action, held []binding.Listed) api.ApiKey {
 	out := api.ApiKey{
-		Admin:          k.Admin,
+		Admin:          topAdmin(held, k.AccountID),
 		AllowedActions: acts,
-		AccessRules:    []api.SpaceAccessRule{},
+		AccessRules:    rules(held),
+		SpaceCount:     spaceCount(held),
 		CreatedAt:      unix(k.CreatedAt),
 		Creator:        k.Creator,
 		Deleted:        !k.DeletedAt.IsZero(),

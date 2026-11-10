@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
-	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
@@ -70,8 +70,8 @@ func (s *Store) AuthzData(ctx context.Context, acct kernel.AccountID) (authz.Dat
 		if d.Bindings, err = collect(ctx, q, `SELECT account_id, id, actor_kind, actor_id, role_id,
 				space_id, origin, created_at, created_by
 			FROM role_bindings WHERE account_id = $1 ORDER BY id`, acct,
-			func(r pgx.CollectableRow) (role.Binding, error) {
-				var b role.Binding
+			func(r pgx.CollectableRow) (binding.Binding, error) {
+				var b binding.Binding
 				return b, r.Scan(
 					&b.AccountID,
 					&b.ID,

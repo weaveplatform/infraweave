@@ -2898,17 +2898,22 @@ type ApiKeyEnableNonAdminManagersRequest struct {
 
 // ApiKeyInput A new API key. There is no admin field: a body that sets one answers
 // 400, and a key becomes an account admin through a space-admin role
-// binding on the account's top space.
+// binding on the account's top space. accessRules and roleBindings bind
+// the key in its creation, under the rules of the managed users' inputs.
 type ApiKeyInput struct {
+	// AccessRules Access rules for api key.
+	AccessRules *[]SpaceAccessRuleInput `json:"accessRules,omitempty"`
+
 	// Description Description of the API key
 	Description *string `json:"description,omitempty"`
 	ExpiresAt   *int32  `json:"expiresAt,omitempty"`
 	Machine     *bool   `json:"machine,omitempty"`
 
 	// Name Name of the API key
-	Name  string           `json:"name"`
-	Oidc  *APIKeyInputOIDC `json:"oidc,omitempty"`
-	Teams []string         `json:"teams"`
+	Name         string              `json:"name"`
+	Oidc         *APIKeyInputOIDC    `json:"oidc,omitempty"`
+	RoleBindings *[]RoleBindingInput `json:"roleBindings,omitempty"`
+	Teams        []string            `json:"teams"`
 }
 
 // ApiKeyOIDCSettings ApiKeyOIDCSettings represents the OIDC settings for an API key.
@@ -12954,6 +12959,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
 	ApiKeyUpdate(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ApiKeyApiKeyRoleBindings Api key api key role bindings
+	//
+	// The API key's role bindings, oldest first: those made as bindings and those its access rules made.
+	//
+	// Corresponds with GET /api-keys/{apiKeyId}/api-key-role-bindings (the `ApiKeyApiKeyRoleBindings` operationId).
+	ApiKeyApiKeyRoleBindings(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ApiKeyReset Reset API Key
 	//
 	// Reset the secret of an API key.
@@ -13512,7 +13524,7 @@ type ClientInterface interface {
 
 	// ManagedUserGroupCreateV2WithBody Create User Group
 	//
-	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -13521,7 +13533,7 @@ type ClientInterface interface {
 
 	// ManagedUserGroupCreateV2 Create User Group
 	//
-	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -13585,6 +13597,13 @@ type ClientInterface interface {
 	// Corresponds with GET /managed-user-groups/{managedUserGroupId}/managed-users (the `ManagedUserGroupManagedUsers` operationId).
 	ManagedUserGroupManagedUsers(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupManagedUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ManagedUserGroupUserRoleBindings Managed user group user role bindings
+	//
+	// The group's role bindings, oldest first: those made as bindings and those its access rules made.
+	//
+	// Corresponds with GET /managed-user-groups/{managedUserGroupId}/user-role-bindings (the `ManagedUserGroupUserRoleBindings` operationId).
+	ManagedUserGroupUserRoleBindings(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ManagedUserRequestInviteWithBody Request Invite
 	//
 	// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
@@ -13612,7 +13631,7 @@ type ClientInterface interface {
 
 	// ManagedUserInviteV2WithBody Invite Managed User
 	//
-	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -13621,7 +13640,7 @@ type ClientInterface interface {
 
 	// ManagedUserInviteV2 Invite Managed User
 	//
-	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -13637,7 +13656,7 @@ type ClientInterface interface {
 
 	// ManagedUser Get Managed User
 	//
-	// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+	// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER; the member's grants are its role bindings, which accessRules reads back as far as access rules made them. A member the account does not admit answers 404.
 	//
 	// Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
 	ManagedUser(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -13662,7 +13681,7 @@ type ClientInterface interface {
 
 	// ManagedUserUpdateWithBody Update Managed User
 	//
-	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -13671,7 +13690,7 @@ type ClientInterface interface {
 
 	// ManagedUserUpdate Update Managed User
 	//
-	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -13691,6 +13710,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /managed-users/{managedUserId}/resend-invite (the `ManagedUserResendInvite` operationId).
 	ManagedUserResendInvite(ctx context.Context, managedUserId string, params *ManagedUserResendInviteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ManagedUserUserRoleBindings Managed user user role bindings
+	//
+	// The managed user's role bindings, oldest first: those made as bindings and those its access rules made.
+	//
+	// Corresponds with GET /managed-users/{managedUserId}/user-role-bindings (the `ManagedUserUserRoleBindings` operationId).
+	ManagedUserUserRoleBindings(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MarkedForDeletion Marked For Deletion
 	//
@@ -16388,6 +16414,23 @@ func (c *Client) ApiKeyUpdate(ctx context.Context, apiKeyId string, params *ApiK
 	return c.Client.Do(req)
 }
 
+// ApiKeyApiKeyRoleBindings Api key api key role bindings
+//
+// The API key's role bindings, oldest first: those made as bindings and those its access rules made.
+//
+// Corresponds with GET /api-keys/{apiKeyId}/api-key-role-bindings (the `ApiKeyApiKeyRoleBindings` operationId).
+func (c *Client) ApiKeyApiKeyRoleBindings(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewApiKeyApiKeyRoleBindingsRequest(c.Server, apiKeyId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ApiKeyReset Reset API Key
 //
 // Reset the secret of an API key.
@@ -17606,7 +17649,7 @@ func (c *Client) ManagedUserGroups(ctx context.Context, params *ManagedUserGroup
 
 // ManagedUserGroupCreateV2WithBody Create User Group
 //
-// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes any type of body and a specified content type.
 //
@@ -17625,7 +17668,7 @@ func (c *Client) ManagedUserGroupCreateV2WithBody(ctx context.Context, params *M
 
 // ManagedUserGroupCreateV2 Create User Group
 //
-// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -17769,6 +17812,23 @@ func (c *Client) ManagedUserGroupManagedUsers(ctx context.Context, managedUserGr
 	return c.Client.Do(req)
 }
 
+// ManagedUserGroupUserRoleBindings Managed user group user role bindings
+//
+// The group's role bindings, oldest first: those made as bindings and those its access rules made.
+//
+// Corresponds with GET /managed-user-groups/{managedUserGroupId}/user-role-bindings (the `ManagedUserGroupUserRoleBindings` operationId).
+func (c *Client) ManagedUserGroupUserRoleBindings(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserGroupUserRoleBindingsRequest(c.Server, managedUserGroupId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ManagedUserRequestInviteWithBody Request Invite
 //
 // Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
@@ -17826,7 +17886,7 @@ func (c *Client) ManagedUsers(ctx context.Context, params *ManagedUsersParams, r
 
 // ManagedUserInviteV2WithBody Invite Managed User
 //
-// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes any type of body and a specified content type.
 //
@@ -17845,7 +17905,7 @@ func (c *Client) ManagedUserInviteV2WithBody(ctx context.Context, params *Manage
 
 // ManagedUserInviteV2 Invite Managed User
 //
-// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -17881,7 +17941,7 @@ func (c *Client) ManagedUserDelete(ctx context.Context, managedUserId string, pa
 
 // ManagedUser Get Managed User
 //
-// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER; the member's grants are its role bindings, which accessRules reads back as far as access rules made them. A member the account does not admit answers 404.
 //
 // Corresponds with GET /managed-users/{managedUserId} (the `ManagedUser` operationId).
 func (c *Client) ManagedUser(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -17936,7 +17996,7 @@ func (c *Client) ManagedUserPatchWithApplicationMergePatchPlusJSONBody(ctx conte
 
 // ManagedUserUpdateWithBody Update Managed User
 //
-// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 //
 // Takes any type of body and a specified content type.
 //
@@ -17955,7 +18015,7 @@ func (c *Client) ManagedUserUpdateWithBody(ctx context.Context, managedUserId st
 
 // ManagedUserUpdate Update Managed User
 //
-// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -17996,6 +18056,23 @@ func (c *Client) ManagedUserPersonalApiKeys(ctx context.Context, managedUserId s
 // Corresponds with POST /managed-users/{managedUserId}/resend-invite (the `ManagedUserResendInvite` operationId).
 func (c *Client) ManagedUserResendInvite(ctx context.Context, managedUserId string, params *ManagedUserResendInviteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewManagedUserResendInviteRequest(c.Server, managedUserId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ManagedUserUserRoleBindings Managed user user role bindings
+//
+// The managed user's role bindings, oldest first: those made as bindings and those its access rules made.
+//
+// Corresponds with GET /managed-users/{managedUserId}/user-role-bindings (the `ManagedUserUserRoleBindings` operationId).
+func (c *Client) ManagedUserUserRoleBindings(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewManagedUserUserRoleBindingsRequest(c.Server, managedUserId)
 	if err != nil {
 		return nil, err
 	}
@@ -23692,6 +23769,40 @@ func NewApiKeyUpdateRequestWithBody(server string, apiKeyId string, params *ApiK
 	return req, nil
 }
 
+// NewApiKeyApiKeyRoleBindingsRequest constructs an http.Request for the ApiKeyApiKeyRoleBindings method
+func NewApiKeyApiKeyRoleBindingsRequest(server string, apiKeyId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "apiKeyId", apiKeyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api-keys/%s/api-key-role-bindings", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewApiKeyResetRequest constructs an http.Request for the ApiKeyReset method
 func NewApiKeyResetRequest(server string, apiKeyId string, params *ApiKeyResetParams) (*http.Request, error) {
 	var err error
@@ -26564,6 +26675,40 @@ func NewManagedUserGroupManagedUsersRequest(server string, managedUserGroupId st
 	return req, nil
 }
 
+// NewManagedUserGroupUserRoleBindingsRequest constructs an http.Request for the ManagedUserGroupUserRoleBindings method
+func NewManagedUserGroupUserRoleBindingsRequest(server string, managedUserGroupId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserGroupId", managedUserGroupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-user-groups/%s/user-role-bindings", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewManagedUserRequestInviteRequest calls the generic ManagedUserRequestInvite builder with application/json body
 func NewManagedUserRequestInviteRequest(server string, params *ManagedUserRequestInviteParams, body ManagedUserRequestInviteJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -27075,6 +27220,40 @@ func NewManagedUserResendInviteRequest(server string, managedUserId string, para
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewManagedUserUserRoleBindingsRequest constructs an http.Request for the ManagedUserUserRoleBindings method
+func NewManagedUserUserRoleBindingsRequest(server string, managedUserId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "managedUserId", managedUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/managed-users/%s/user-role-bindings", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -36559,6 +36738,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /api-keys/{apiKeyId} (the `ApiKeyUpdate` operationId).
 	ApiKeyUpdateWithResponse(ctx context.Context, apiKeyId string, params *ApiKeyUpdateParams, body ApiKeyUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUpdateResponse, error)
 
+	// ApiKeyApiKeyRoleBindingsWithResponse Api key api key role bindings
+	//
+	// The API key's role bindings, oldest first: those made as bindings and those its access rules made.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api-keys/{apiKeyId}/api-key-role-bindings (the `ApiKeyApiKeyRoleBindings` operationId).
+	ApiKeyApiKeyRoleBindingsWithResponse(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*ApiKeyApiKeyRoleBindingsResponse, error)
+
 	// ApiKeyResetWithResponse Reset API Key
 	//
 	// Reset the secret of an API key.
@@ -37177,7 +37365,7 @@ type ClientWithResponsesInterface interface {
 
 	// ManagedUserGroupCreateV2WithBodyWithResponse Create User Group
 	//
-	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37186,7 +37374,7 @@ type ClientWithResponsesInterface interface {
 
 	// ManagedUserGroupCreateV2WithResponse Create User Group
 	//
-	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+	// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37256,6 +37444,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /managed-user-groups/{managedUserGroupId}/managed-users (the `ManagedUserGroupManagedUsers` operationId).
 	ManagedUserGroupManagedUsersWithResponse(ctx context.Context, managedUserGroupId string, params *ManagedUserGroupManagedUsersParams, reqEditors ...RequestEditorFn) (*ManagedUserGroupManagedUsersResponse, error)
 
+	// ManagedUserGroupUserRoleBindingsWithResponse Managed user group user role bindings
+	//
+	// The group's role bindings, oldest first: those made as bindings and those its access rules made.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-user-groups/{managedUserGroupId}/user-role-bindings (the `ManagedUserGroupUserRoleBindings` operationId).
+	ManagedUserGroupUserRoleBindingsWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupUserRoleBindingsResponse, error)
+
 	// ManagedUserRequestInviteWithBodyWithResponse Request Invite
 	//
 	// Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
@@ -37285,7 +37482,7 @@ type ClientWithResponsesInterface interface {
 
 	// ManagedUserInviteV2WithBodyWithResponse Invite Managed User
 	//
-	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37294,7 +37491,7 @@ type ClientWithResponsesInterface interface {
 
 	// ManagedUserInviteV2WithResponse Invite Managed User
 	//
-	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+	// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37312,7 +37509,7 @@ type ClientWithResponsesInterface interface {
 
 	// ManagedUserWithResponse Get Managed User
 	//
-	// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+	// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER; the member's grants are its role bindings, which accessRules reads back as far as access rules made them. A member the account does not admit answers 404.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -37339,7 +37536,7 @@ type ClientWithResponsesInterface interface {
 
 	// ManagedUserUpdateWithBodyWithResponse Update Managed User
 	//
-	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37348,7 +37545,7 @@ type ClientWithResponsesInterface interface {
 
 	// ManagedUserUpdateWithResponse Update Managed User
 	//
-	// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+	// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -37372,6 +37569,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /managed-users/{managedUserId}/resend-invite (the `ManagedUserResendInvite` operationId).
 	ManagedUserResendInviteWithResponse(ctx context.Context, managedUserId string, params *ManagedUserResendInviteParams, reqEditors ...RequestEditorFn) (*ManagedUserResendInviteResponse, error)
+
+	// ManagedUserUserRoleBindingsWithResponse Managed user user role bindings
+	//
+	// The managed user's role bindings, oldest first: those made as bindings and those its access rules made.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /managed-users/{managedUserId}/user-role-bindings (the `ManagedUserUserRoleBindings` operationId).
+	ManagedUserUserRoleBindingsWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserUserRoleBindingsResponse, error)
 
 	// MarkedForDeletionWithResponse Marked For Deletion
 	//
@@ -42429,6 +42635,101 @@ func (r ApiKeyUpdateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ApiKeyUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ApiKeyApiKeyRoleBindingsResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyApiKeyRoleBindings
+type ApiKeyApiKeyRoleBindingsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyApiKeyRoleBindingsResponse429Headers the declared response headers of an HTTP 429 response for ApiKeyApiKeyRoleBindings
+type ApiKeyApiKeyRoleBindingsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ApiKeyApiKeyRoleBindingsResponse503Headers the declared response headers of an HTTP 503 response for ApiKeyApiKeyRoleBindings
+type ApiKeyApiKeyRoleBindingsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ApiKeyApiKeyRoleBindingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]ApiKeyRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ApiKeyApiKeyRoleBindingsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ApiKeyApiKeyRoleBindingsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ApiKeyApiKeyRoleBindingsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ApiKeyApiKeyRoleBindingsResponse) GetJSON200() *[]ApiKeyRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ApiKeyApiKeyRoleBindingsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ApiKeyApiKeyRoleBindingsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ApiKeyApiKeyRoleBindingsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ApiKeyApiKeyRoleBindingsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ApiKeyApiKeyRoleBindingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ApiKeyApiKeyRoleBindingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ApiKeyApiKeyRoleBindingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ApiKeyApiKeyRoleBindingsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -47780,6 +48081,101 @@ func (r ManagedUserGroupManagedUsersResponse) ContentType() string {
 	return ""
 }
 
+// ManagedUserGroupUserRoleBindingsResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserGroupUserRoleBindings
+type ManagedUserGroupUserRoleBindingsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupUserRoleBindingsResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserGroupUserRoleBindings
+type ManagedUserGroupUserRoleBindingsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserGroupUserRoleBindingsResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserGroupUserRoleBindings
+type ManagedUserGroupUserRoleBindingsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserGroupUserRoleBindingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]UserGroupRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserGroupUserRoleBindingsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserGroupUserRoleBindingsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserGroupUserRoleBindingsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserGroupUserRoleBindingsResponse) GetJSON200() *[]UserGroupRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserGroupUserRoleBindingsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserGroupUserRoleBindingsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserGroupUserRoleBindingsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserGroupUserRoleBindingsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserGroupUserRoleBindingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserGroupUserRoleBindingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserGroupUserRoleBindingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserGroupUserRoleBindingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ManagedUserRequestInviteResponse201Headers the declared response headers of an HTTP 201 response for ManagedUserRequestInvite
 type ManagedUserRequestInviteResponse201Headers struct {
 	XRateLimitLimit     *int
@@ -48702,6 +49098,101 @@ func (r ManagedUserResendInviteResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ManagedUserResendInviteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ManagedUserUserRoleBindingsResponse200Headers the declared response headers of an HTTP 200 response for ManagedUserUserRoleBindings
+type ManagedUserUserRoleBindingsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserUserRoleBindingsResponse429Headers the declared response headers of an HTTP 429 response for ManagedUserUserRoleBindings
+type ManagedUserUserRoleBindingsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// ManagedUserUserRoleBindingsResponse503Headers the declared response headers of an HTTP 503 response for ManagedUserUserRoleBindings
+type ManagedUserUserRoleBindingsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type ManagedUserUserRoleBindingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]UserRoleBinding
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ManagedUserUserRoleBindingsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ManagedUserUserRoleBindingsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *ManagedUserUserRoleBindingsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ManagedUserUserRoleBindingsResponse) GetJSON200() *[]UserRoleBinding {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ManagedUserUserRoleBindingsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r ManagedUserUserRoleBindingsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r ManagedUserUserRoleBindingsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ManagedUserUserRoleBindingsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ManagedUserUserRoleBindingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ManagedUserUserRoleBindingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ManagedUserUserRoleBindingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ManagedUserUserRoleBindingsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -66086,6 +66577,21 @@ func (c *ClientWithResponses) ApiKeyUpdateWithResponse(ctx context.Context, apiK
 	return ParseApiKeyUpdateResponse(rsp)
 }
 
+// ApiKeyApiKeyRoleBindingsWithResponse Api key api key role bindings
+//
+// The API key's role bindings, oldest first: those made as bindings and those its access rules made.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api-keys/{apiKeyId}/api-key-role-bindings (the `ApiKeyApiKeyRoleBindings` operationId).
+func (c *ClientWithResponses) ApiKeyApiKeyRoleBindingsWithResponse(ctx context.Context, apiKeyId string, reqEditors ...RequestEditorFn) (*ApiKeyApiKeyRoleBindingsResponse, error) {
+	rsp, err := c.ApiKeyApiKeyRoleBindings(ctx, apiKeyId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseApiKeyApiKeyRoleBindingsResponse(rsp)
+}
+
 // ApiKeyResetWithResponse Reset API Key
 //
 // Reset the secret of an API key.
@@ -67100,7 +67606,7 @@ func (c *ClientWithResponses) ManagedUserGroupsWithResponse(ctx context.Context,
 
 // ManagedUserGroupCreateV2WithBodyWithResponse Create User Group
 //
-// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67115,7 +67621,7 @@ func (c *ClientWithResponses) ManagedUserGroupCreateV2WithBodyWithResponse(ctx c
 
 // ManagedUserGroupCreateV2WithResponse Create User Group
 //
-// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request, so no grant is dropped silently.
+// Create a managed user group of the account, matching the identity provider group groupName names. A name another group of the account holds answers 409 already-exists. Each of roleBindings binds the group to a role of the account in a space, in the group's creation, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67233,6 +67739,21 @@ func (c *ClientWithResponses) ManagedUserGroupManagedUsersWithResponse(ctx conte
 	return ParseManagedUserGroupManagedUsersResponse(rsp)
 }
 
+// ManagedUserGroupUserRoleBindingsWithResponse Managed user group user role bindings
+//
+// The group's role bindings, oldest first: those made as bindings and those its access rules made.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-user-groups/{managedUserGroupId}/user-role-bindings (the `ManagedUserGroupUserRoleBindings` operationId).
+func (c *ClientWithResponses) ManagedUserGroupUserRoleBindingsWithResponse(ctx context.Context, managedUserGroupId string, reqEditors ...RequestEditorFn) (*ManagedUserGroupUserRoleBindingsResponse, error) {
+	rsp, err := c.ManagedUserGroupUserRoleBindings(ctx, managedUserGroupId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserGroupUserRoleBindingsResponse(rsp)
+}
+
 // ManagedUserRequestInviteWithBodyWithResponse Request Invite
 //
 // Ask the account's admins to invite the person email and userName name. Nothing is delivered (no e-mail is sent): the request is recorded on the account's audit trail as managed_user.request_invite. Answers true.
@@ -67280,7 +67801,7 @@ func (c *ClientWithResponses) ManagedUsersWithResponse(ctx context.Context, para
 
 // ManagedUserInviteV2WithBodyWithResponse Invite Managed User
 //
-// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67295,7 +67816,7 @@ func (c *ClientWithResponses) ManagedUserInviteV2WithBodyWithResponse(ctx contex
 
 // ManagedUserInviteV2WithResponse Invite Managed User
 //
-// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Role bindings arrive with the account's roles: a non-empty roleBindings answers 400 invalid-request.
+// Invite a person to the account. A member of the organization with the login username names is admitted to the account; otherwise a PENDING member is created with that login. The invitation is recorded with invitationEmail and its sentAt, and no e-mail is sent: the person accepts by signing in through the invitation's link, never by an e-mail match. A member the account already admits, or an email with a pending invitation in the account, answers 409 invalid-state; a deactivated member 409 invalid-state. The invitation takes the member a seat unless another account of the organization already admits them; with billing on, a seat beyond the pool or the account's limit answers 403 limit-reached. Each of roleBindings binds the member to a role of the account in a space, in the invitation's transaction, and needs SPACE_ADMIN on that space; a role or space the account lacks, or a space the caller does not administer, answers 422 validation-failed naming the element, and nothing is created.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67325,7 +67846,7 @@ func (c *ClientWithResponses) ManagedUserDeleteWithResponse(ctx context.Context,
 
 // ManagedUserWithResponse Get Managed User
 //
-// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER until the account's role bindings arrive. A member the account does not admit answers 404.
+// The account's managed user. status is PENDING until the person accepts the invitation, whether or not its 24 hours since latestInvitation.sentAt have passed (an expired invitation); ACTIVE once they have signed in; INACTIVE once the organization deactivated them. role is USER; the member's grants are its role bindings, which accessRules reads back as far as access rules made them. A member the account does not admit answers 404.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -67370,7 +67891,7 @@ func (c *ClientWithResponses) ManagedUserPatchWithApplicationMergePatchPlusJSONB
 
 // ManagedUserUpdateWithBodyWithResponse Update Managed User
 //
-// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67385,7 +67906,7 @@ func (c *ClientWithResponses) ManagedUserUpdateWithBodyWithResponse(ctx context.
 
 // ManagedUserUpdateWithResponse Update Managed User
 //
-// Set the managed user's slackMemberID. Space access levels are granted through the account's role bindings, which arrive later: a non-empty accessRules answers 400 invalid-request.
+// Set the managed user's slackMemberID and replace the space access levels accessRules grants: each rule is a binding of space-reader, space-writer or space-admin by its level, which accessRules reads back, and a level of NONE grants nothing. Role bindings made otherwise stay. Each space needs SPACE_ADMIN of the caller; a space the account lacks or the caller does not administer answers 422 validation-failed naming the rule.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -67426,6 +67947,21 @@ func (c *ClientWithResponses) ManagedUserResendInviteWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseManagedUserResendInviteResponse(rsp)
+}
+
+// ManagedUserUserRoleBindingsWithResponse Managed user user role bindings
+//
+// The managed user's role bindings, oldest first: those made as bindings and those its access rules made.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /managed-users/{managedUserId}/user-role-bindings (the `ManagedUserUserRoleBindings` operationId).
+func (c *ClientWithResponses) ManagedUserUserRoleBindingsWithResponse(ctx context.Context, managedUserId string, reqEditors ...RequestEditorFn) (*ManagedUserUserRoleBindingsResponse, error) {
+	rsp, err := c.ManagedUserUserRoleBindings(ctx, managedUserId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseManagedUserUserRoleBindingsResponse(rsp)
 }
 
 // MarkedForDeletionWithResponse Marked For Deletion
@@ -74739,6 +75275,128 @@ func ParseApiKeyUpdateResponse(rsp *http.Response) (*ApiKeyUpdateResponse, error
 	return response, nil
 }
 
+// ParseApiKeyApiKeyRoleBindingsResponse parses an HTTP response from a ApiKeyApiKeyRoleBindingsWithResponse call
+func ParseApiKeyApiKeyRoleBindingsResponse(rsp *http.Response) (*ApiKeyApiKeyRoleBindingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ApiKeyApiKeyRoleBindingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ApiKeyRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ApiKeyApiKeyRoleBindingsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ApiKeyApiKeyRoleBindingsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ApiKeyApiKeyRoleBindingsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseApiKeyResetResponse parses an HTTP response from a ApiKeyResetWithResponse call
 func ParseApiKeyResetResponse(rsp *http.Response) (*ApiKeyResetResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -81620,6 +82278,128 @@ func ParseManagedUserGroupManagedUsersResponse(rsp *http.Response) (*ManagedUser
 	return response, nil
 }
 
+// ParseManagedUserGroupUserRoleBindingsResponse parses an HTTP response from a ManagedUserGroupUserRoleBindingsWithResponse call
+func ParseManagedUserGroupUserRoleBindingsResponse(rsp *http.Response) (*ManagedUserGroupUserRoleBindingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserGroupUserRoleBindingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []UserGroupRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserGroupUserRoleBindingsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserGroupUserRoleBindingsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserGroupUserRoleBindingsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseManagedUserRequestInviteResponse parses an HTTP response from a ManagedUserRequestInviteWithResponse call
 func ParseManagedUserRequestInviteResponse(rsp *http.Response) (*ManagedUserRequestInviteResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -82796,6 +83576,128 @@ func ParseManagedUserResendInviteResponse(rsp *http.Response) (*ManagedUserResen
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ManagedUserResendInviteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseManagedUserUserRoleBindingsResponse parses an HTTP response from a ManagedUserUserRoleBindingsWithResponse call
+func ParseManagedUserUserRoleBindingsResponse(rsp *http.Response) (*ManagedUserUserRoleBindingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ManagedUserUserRoleBindingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []UserRoleBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ManagedUserUserRoleBindingsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers ManagedUserUserRoleBindingsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers ManagedUserUserRoleBindingsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -8,8 +8,9 @@ Feature: Managed users and groups
   admitting them, and they stay a member of the organization. A member
   counts once against the seats limit however many accounts admit it. Groups
   are each account's: their members are the account's managed users whose
-  latest sign-in reported the group's name. Role bindings arrive with the
-  account's roles, so an input carrying any answers 400 invalid-request.
+  latest sign-in reported the group's name. The role bindings and access
+  rules an input carries are stored as role bindings, and one naming a role
+  or space the account lacks answers 422 validation-failed at its pointer.
   ref: decision 0007
 
   Background:
@@ -29,8 +30,8 @@ Feature: Managed users and groups
     Then the answer's username is '"bob"'
     When token "h" sends "PUT /api/v1/managed-users/{bob}" with '{"accessRules":[],"slackMemberID":"U123"}' through A
     Then the answer's slackMemberID is '"U123"'
-    When token "h" sends "PUT /api/v1/managed-users/{bob}" with '{"accessRules":[{"space":"root","spaceAccessLevel":"READ"}]}' through B
-    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "PUT /api/v1/managed-users/{bob}" with '{"accessRules":[{"space":"nowhere","spaceAccessLevel":"READ"}]}' through B
+    Then it answers a 422 problem "validation-failed"
     When token "h" sends "DELETE /api/v1/managed-users/{bob}" through A
     Then the answer's username is '"bob"'
     When token "h" sends "GET /api/v1/managed-users/{bob}" through B
@@ -45,8 +46,8 @@ Feature: Managed users and groups
     Then it answers a 409 problem "invalid-state"
     When token "h" sends "POST /api/v1/managed-users" with '{"username":"bob","roleBindings":[]}' through A
     Then it answers a 409 problem "invalid-state"
-    When token "h" sends "POST /api/v1/managed-users" with '{"username":"dan","roleBindings":[{"roleID":"r","spaceID":"root"}]}' through B
-    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "POST /api/v1/managed-users" with '{"username":"dan","roleBindings":[{"roleID":"r","spaceID":"nowhere"}]}' through B
+    Then it answers a 422 problem "validation-failed"
     When token "h" sends "POST /api/v1/managed-users" with '{"username":"","invitationEmail":"nope","roleBindings":[]}' through A
     Then it answers a 422 problem "validation-failed"
 
@@ -90,8 +91,8 @@ Feature: Managed users and groups
     And the answer's members is '["alice"]'
     When token "h" sends "POST /api/v1/managed-user-groups" with '{"groupName":"ops","roleBindings":[]}' through B
     Then it answers a 409 problem "already-exists"
-    When token "h" sends "POST /api/v1/managed-user-groups" with '{"groupName":"qa","roleBindings":[{"roleID":"r","spaceID":"root"}]}' through A
-    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "POST /api/v1/managed-user-groups" with '{"groupName":"qa","roleBindings":[{"roleID":"r","spaceID":"nowhere"}]}' through A
+    Then it answers a 422 problem "validation-failed"
     When token "h" sends "GET /api/v1/managed-user-groups" through B
     Then it answers 200
     When token "h" sends "PUT /api/v1/managed-user-groups/{ops}" with '{"description":"Operations"}' through A
