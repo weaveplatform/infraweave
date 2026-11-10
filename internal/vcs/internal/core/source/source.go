@@ -60,6 +60,15 @@ func (s *Service) Resolve(
 	if errors.Is(err, port.ErrNotFound) {
 		return vcsapi.Commit{}, fmt.Errorf("%w: %s", vcsapi.ErrRefNotFound, ref)
 	}
+	if errors.Is(err, port.ErrNoIntegration) {
+		return vcsapi.Commit{}, &kernel.Invalid{
+			Detail: "The stack's repository is reached only through a VCS integration.",
+			Errors: []kernel.FieldError{{
+				Pointer: "/vcsIntegrationId", Reason: kernel.ReasonRequired,
+				Message: "The stack names no integration and its provider has no default.",
+			}},
+		}
+	}
 	if errors.Is(err, port.ErrRepositoryURL) {
 		return vcsapi.Commit{}, &kernel.Invalid{
 			Detail: "The stack's repository URL is not one infraweave reaches.",
@@ -109,8 +118,9 @@ func stackCommit(c vcsapi.Commit) stacksapi.Commit {
 // Track sets acct's stack id's branch head and tracked commit to the
 // head of its branch, set by infraweave. A stack deleted since, or on a
 // provider infraweave reads no source of, has nothing to track; a branch
-// the repository lacks is a queue.Permanent failure, which no retry
-// mends, and the stack keeps what it tracked.
+// the repository lacks, and a repository with no integration to reach it
+// through, are queue.Permanent failures, which no retry mends, and the
+// stack keeps what it tracked.
 func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error {
 	src, repo, err := s.source(ctx, acct, stack)
 	if _, ok := errors.AsType[*kernel.Invalid](err); ok || errors.Is(err, stacksapi.ErrNotFound) {
@@ -124,7 +134,8 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 		return err //nolint:wrapcheck // stacks names the read
 	}
 	c, err := src.ResolveRef(ctx, repo, st.Branch)
-	if errors.Is(err, port.ErrNotFound) || errors.Is(err, port.ErrRepositoryURL) {
+	if errors.Is(err, port.ErrNotFound) || errors.Is(err, port.ErrRepositoryURL) ||
+		errors.Is(err, port.ErrNoIntegration) {
 		//nolint:wrapcheck // marks it
 		return queue.Permanent(fmt.Errorf("vcs: track %s of stack %s: %w", st.Branch, stack, err))
 	}

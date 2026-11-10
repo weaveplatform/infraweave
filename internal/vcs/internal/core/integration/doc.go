@@ -10,7 +10,15 @@
 // stack's write names, one of its provider in its space or one it
 // inherits from, and SpaceGuard refuses deleting a space an integration
 // lives in. A provider details only reach a caller with SPACE_ADMIN in
-// the integration's space.
+// the integration's space. Builtin and SetBuiltin read and set an
+// account's check options of a provider whose credentials the operator
+// sets, GitHub's, which a stack on it always uses; OpenManifest and
+// FromManifest open a GitHub App manifest form and turn the App it
+// creates into a GitHub Enterprise integration with the form's ID; and
+// Details are an integration's webhook secret and URL and its App as its
+// host reports it. Create checks the provider settings every provider
+// shares, and Update keeps an integration's space and, when it is given
+// none, its credential.
 //
 // ref: decisions 0007, 0012 and 0013
 //
@@ -18,7 +26,9 @@
 //
 // New takes the Store, the pool its writes begin transactions on, the
 // access domain's spaces and authorizer, the stacks domain's api, the
-// providers infraweave stores integrations of and each one's Tester.
+// providers infraweave stores integrations of, each one's Tester, the
+// operator's built-in integrations, the GitHub provider's Apps and the
+// server's public origin.
 //
 // # Dependencies
 //

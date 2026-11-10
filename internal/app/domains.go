@@ -120,6 +120,7 @@ func newDomains(
 		Authz:    access.Authorizer(),
 		Stacks:   stacks.Stacks(),
 		Settings: c.VCS,
+		Public:   c.Server.PublicURL,
 	})
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting

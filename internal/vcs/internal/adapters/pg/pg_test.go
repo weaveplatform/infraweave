@@ -115,6 +115,8 @@ func (tester) Test(_ context.Context, in port.Integration) ([]port.Check, error)
 
 type fixture struct {
 	db            *pgxpool.Pool
+	store         *pg.Store
+	deps          integration.Deps
 	svc           *integration.Service
 	acct          kernel.AccountID
 	admin, reader kernel.Principal
@@ -161,16 +163,24 @@ func newFixture(t *testing.T) *fixture {
 	all := []accessapi.Action{accessapi.ActionSpaceRead, accessapi.ActionSpaceAdmin}
 	read := []accessapi.Action{accessapi.ActionSpaceRead}
 	f.stacks = &stacks{detached: &f.detached}
-	f.svc = integration.New(integration.Deps{
-		Store: pg.New(db, keys), DB: db, Spaces: tree, Stacks: f.stacks,
+	f.store = pg.New(db, keys)
+	f.deps = integration.Deps{
+		Store: f.store, DB: db, Spaces: tree, Stacks: f.stacks,
 		Authz: authz{grants: map[string]map[kernel.ULID][]accessapi.Action{
 			"admin":  {f.acct.ULID: all, f.team: all, f.hidden: all},
 			"reader": {f.acct.ULID: read, f.team: read},
 		}},
-		Providers: []string{"GITLAB", "BITBUCKET_CLOUD"},
+		Providers: []string{"GITLAB", "BITBUCKET_CLOUD", "GITHUB_ENTERPRISE"},
 		Testers:   map[string]port.Tester{"GITLAB": tester{}},
-		Now:       func() time.Time { return time.Unix(1_700_000_000, 0).UTC() },
-	})
+		Builtin: map[string]port.Integration{"GITHUB": {
+			Provider: "GITHUB", Credential: []byte("operator-key"),
+			Settings: port.Settings{APIHost: "https://api.github.com", AppID: "1"},
+		}},
+		Apps:   apps{},
+		Public: "https://infraweave.example/",
+		Now:    func() time.Time { return time.Unix(1_700_000_000, 0).UTC() },
+	}
+	f.svc = integration.New(f.deps)
 	return f
 }
 
@@ -426,7 +436,7 @@ func TestAccWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := gitlab("Renamed", "hidden", false)
+	in := gitlab("Renamed", "acme", false)
 	in.Description, in.Checks.Mode = "Main GitLab", "ALL"
 	in.Secrets = &integration.Secrets{Credential: []byte("rotated")}
 	got, err := f.svc.Update(ctx, f.admin, def.ID.String(), kernel.Expect{}, in)

@@ -34,7 +34,10 @@
 // RustFS, Vault and Gitea, which serves HTTPS under a CA the suite makes
 // for the run and hosts each scenario's own repositories, and which a @vcs
 // scenario's servers trust through vcs.ca_file; chi serves the
-// in-process OIDC issuer. The secrets
+// in-process OIDC issuer, and internal/vcs/githubfake the in-process
+// GitHub host of a @github scenario, whose certificate its servers trust
+// through the same vcs.ca_file and whose operator App they name through
+// vcs.github_app. The secrets
 // steps load the keyring and serve's blob store from internal/platform to
 // seal and read what no operation serves yet, and run infraweave secrets
 // as a subprocess. Every step and every

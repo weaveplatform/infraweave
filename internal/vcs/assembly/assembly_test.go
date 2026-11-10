@@ -26,10 +26,13 @@ func (s stacks) Settings(
 }
 
 // TestUnitDomain checks that the domain reads raw Git, refusing an http
-// URL at /repositoryURL before any request, and no other provider yet, and
-// that a nil domain's partial is the zero one.
+// URL at /repositoryURL before any request; reads GitHub, refusing a
+// stack with no integration at /vcsIntegrationId; reads no other provider
+// yet; and that a nil domain's partial is the zero one.
 func TestUnitDomain(t *testing.T) {
-	for provider, pointer := range map[string]string{"GIT": "/repositoryURL", "GITHUB": "/provider"} {
+	for provider, pointer := range map[string]string{
+		"GIT": "/repositoryURL", "GITHUB": "/vcsIntegrationId", "GITLAB": "/provider",
+	} {
 		d, err := New(Deps{Stacks: stacks{provider: provider}})
 		if err != nil {
 			t.Fatal(err)

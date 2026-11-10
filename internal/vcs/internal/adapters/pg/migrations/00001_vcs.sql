@@ -44,3 +44,17 @@ CREATE UNIQUE INDEX vcs_integrations_default ON vcs_integrations (account_id, pr
     WHERE is_default;
 
 CREATE INDEX vcs_integrations_space ON vcs_integrations (account_id, space_id);
+
+-- A GitHub App manifest form an account has opened and not yet completed.
+-- id is the form's state, which the App's host hands back with its code;
+-- reading the row deletes it, so a state completes once. api_host and
+-- user_facing_host are the host the form creates the App on, which the
+-- completion converts the code through.
+CREATE TABLE vcs_manifests (
+    account_id       uuid        NOT NULL,
+    id               uuid        NOT NULL,
+    api_host         text        NOT NULL,
+    user_facing_host text        NOT NULL,
+    expires_at       timestamptz NOT NULL,
+    PRIMARY KEY (account_id, id)
+);
