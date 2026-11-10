@@ -5,7 +5,8 @@ Feature: Organization account limits and usage
   account a seat while the pool has room, naming the account's limit. Usage
   counts each account of the organization and no account of another: the
   home account's seats are its member's and the home key's, which every
-  launch uses.
+  launch uses. The member, an account admin, holds the organization role
+  only where a scenario gives it.
   ref: decision 0021
 
   Background:
@@ -58,3 +59,22 @@ Feature: Organization account limits and usage
     Then the answer leaves out "globex"
     When token "x" sends "GET /api/v1/organization/usage" through A
     Then it answers a 401 problem "unauthenticated"
+
+  @op:organizationLimits @op:organizationAccountLimitClear @case:denial
+  Scenario: An account admin without the organization role reads no limit and clears none
+    When the browser sends "PUT /api/v1/organization/accounts/acme-dev/limits/seats" with '{"value":1}' through A
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "GET /api/v1/organization/limits" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ORGANIZATION_ADMIN"'
+    When the browser sends "DELETE /api/v1/organization/accounts/acme-dev/limits/seats" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ORGANIZATION_ADMIN"'
+
+  @op:organizationAccountLimitClear @case:failure
+  Scenario: Clearing a limit no account holds, or of an account the organization lacks, is refused
+    Given the home account's member holds organization-admin
+    When the browser sends "DELETE /api/v1/organization/accounts/acme-dev/limits/no-such" through A
+    Then it answers a 422 problem "validation-failed"
+    When the browser sends "DELETE /api/v1/organization/accounts/no-such/limits/seats" through B
+    Then it answers a 404 problem "not-found"
