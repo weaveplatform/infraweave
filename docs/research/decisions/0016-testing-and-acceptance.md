@@ -130,7 +130,8 @@ everywhere, and the reason names where the contract checks it instead.
 | `@tofu` | a pinned OpenTofu release, checked the same way | a real run (below) |
 | `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
 | `@vault` | Vault in dev mode, with the Transit engine mounted and a Transit key per scenario | the `vault` KEK provider: rewrapping the data keys to Vault, and servers that run on it ([0013](0013-secrets-at-rest.md)) |
-| `@vcs` | Gitea container, with a repository seeded per scenario | real webhooks, commit statuses, pull request comments (decision 0012) |
+| `@vcs` | Gitea container, with a repository seeded per scenario, and each provider's chi fake | real webhooks, commit statuses, pull request comments; each provider's own shapes (decision 0012) |
+| `@vcs-cloud` | nothing: the scenario reads the repositories the `vcs-cloud` job created from its environment | the same scenarios against the real providers; only the `vcs-cloud` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module | Kubernetes workers (decision 0008) |
 | `@flows-agent` | a test app built on `pkg/flows/appsdk` as a local OCI image, and an `infraweave flows-agent` subprocess that runs it in Docker | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
@@ -329,6 +330,7 @@ coverage it would contribute is not waived.
 | `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
 | `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's and OpenTofu's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
+| `vcs-cloud` | `ubuntu-latest`, scheduled nightly | `sourcetest` and the `@vcs-cloud` scenarios against GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps repositories created for the run and destroyed after it | 30 min | no |
 
 - **`fips-only` and coverage.** It runs the same tests as the jobs above
   under a stricter runtime, so its coverage adds nothing and is not merged.
@@ -354,6 +356,29 @@ coverage it would contribute is not waived.
   - **Failures.** A failing run opens an issue for that cloud, or comments on
     the open one, with the failing cases and the run's link. A passing run
     leaves an open issue for a person to close.
+
+- **The VCS lab job.**
+  - **Repositories.** Terraform roots under `test/cloud/vcs/` create, for
+    each run, a repository with seeded files, a second branch and a tag on
+    GitHub, GitLab, Bitbucket Cloud and Azure DevOps, named with a suffix
+    unique to the run. Bitbucket Data Center has no hosted service, so the
+    job starts Atlassian's Bitbucket Data Center image with a licence from
+    its secrets, and the same Terraform seeds a repository there. The job
+    destroys everything when the run ends, pass or fail, and deletes any
+    lab repository older than a day that a cancelled run left.
+  - **Credentials.** None of these providers federates an OIDC token that
+    can create repositories, so the job's credentials are environment
+    secrets of a `vcs-cloud` environment that only `main` may use: a GitHub
+    App installed on a test organization, a GitLab test group's access
+    token, a Bitbucket Cloud test workspace's access token, an Azure DevOps
+    test organization's personal access token, and the Bitbucket Data
+    Center licence. Each reaches only its lab, which holds nothing else.
+  - **What it covers.** That the fakes still match the real services: each
+    provider's `Source` and `Browse`, private stacks through their
+    integrations, the scopes of each run's source credential, and, from
+    P12b, webhooks and feedback. A provider whose secrets are unset reports
+    "not configured" and fails.
+  - **Failures.** As the cloud object store job: an issue per provider.
 
 - A scenario's partition is the first of `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so a
@@ -413,10 +438,13 @@ coverage it would contribute is not waived.
   authorized account for every CI run and would test Spacelift, not
   infraweave. Captures, taken once with permission and replayed, carry the
   same evidence (report 30).
-- **Rejected: hosted GitHub or GitLab in acceptance.** They need
-  credentials and network. Gitea gives real webhooks and statuses; the
-  provider-specific shapes are covered by the chi fakes and recorded
-  payloads.
+- **Hosted VCS providers nightly, not per pull request.** They need
+  credentials, which pull requests from forks do not receive, and their
+  availability and rate limits would make the blocking gate flaky. Gitea
+  gives real webhooks and statuses and the chi fakes give each provider's
+  shapes in every pull request; the nightly `vcs-cloud` job proves the
+  fakes against repositories Terraform creates, so a provider that changes
+  its API opens an issue within a day.
 - **Rejected: acceptance on macOS and Windows.** The macOS runners have no
   Docker daemon and the Windows runners cannot run Linux containers; the
   server's behaviour does not depend on the OS, and unit tests
@@ -443,13 +471,17 @@ coverage it would contribute is not waived.
 - The Spacelift provider's acceptance configurations are translated, not
   copied verbatim, where they reference Spacelift-only resources; the
   translation is recorded in `provider-parity.yaml`.
-- The `nightly`, `postgres-next`, `objectstore-cloud` and
-  `vendors-upstream` jobs are informational: a newer Terraform, OpenTofu or
-  PostgreSQL release, a real cloud, or a release index that changes its
-  format, that breaks a case opens an issue rather than blocking merges.
+- The `nightly`, `postgres-next`, `objectstore-cloud`, `vendors-upstream`
+  and `vcs-cloud` jobs are informational: a newer Terraform, OpenTofu or
+  PostgreSQL release, a real cloud or VCS provider, or a release index that
+  changes its format, that breaks a case opens an issue rather than
+  blocking merges.
 - The cloud job needs one lab account or project per cloud, its OIDC trust
   and its bucket, which the maintainer provisions; until they exist the job
-  reports itself as not configured rather than passing.
+  reports itself as not configured rather than passing. The VCS lab job
+  likewise needs each provider's test organization, group or workspace, the
+  GitHub App and the Bitbucket Data Center licence, which the maintainer
+  provides once.
 - Under `GODEBUG=fips140=only`, a test helper or library that reaches for a
   refused algorithm fails the `fips-only` job like product code does; the
   fix is an approved algorithm, not an exemption.

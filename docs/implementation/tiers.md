@@ -70,10 +70,10 @@ A feature is in its lowest seeded tier and every tier above it.
 | `tasks` | capability | Task runs | | ✓ | ✓ | ✓ | ✓ | P10 |
 | `webhooks` | capability | The Webhooks tag | | ✓ | ✓ | ✓ | ✓ | P18 |
 | `drift-detection` | capability | The Drift Detection tag | | | ✓ | ✓ | ✓ | P16 |
-| `ignored-runs` | capability | `stackSearchRunIgnoredTriggers` and the ignored-run warnings | | | ✓ | ✓ | ✓ | P12 |
+| `ignored-runs` | capability | `stackSearchRunIgnoredTriggers` and the ignored-run warnings | | | ✓ | ✓ | ✓ | P12b |
 | `private-worker-pools` | capability | Private worker pools in the Worker Pools tag | | | ✓ | ✓ | ✓ | P8 |
 | `sessions` | capability | Session listing and revocation | | | ✓ | ✓ | ✓ | P3 |
-| `aggregated-vcs-checks` | option | `vcsChecks: AGGREGATED` on a VCS integration | | | | ✓ | ✓ | P12 |
+| `aggregated-vcs-checks` | option | `vcsChecks: AGGREGATED` on a VCS integration | | | | ✓ | ✓ | P12b |
 | `blueprints` | capability | The Blueprints tag | | | | ✓ | ✓ | P21 |
 | `scheduling` | capability | Scheduled runs, tasks and deletes | | | | ✓ | ✓ | P16 |
 | `targeted-replan` | capability | `runTargetedReplan` | | | | ✓ | ✓ | P10 |
@@ -81,7 +81,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `terraform-provider-registry` | capability | The Terraform Providers and GPG Keys tags, and the provider registry protocol | | | | ✓ | ✓ | P17b |
 | `audit-trail` | capability | The Audit Trail tag | | | | | ✓ | P18b |
 | `mfa` | capability | Enforced MFA and security keys | | | | | ✓ | P23 |
-| `multiple-vcs-integrations` | option | `isDefault: false` on a VCS integration | | | | | ✓ | P19 |
+| `multiple-vcs-integrations` | option | `isDefault: false` on a VCS integration | | | | | ✓ | P12 |
 | `oidc-api-keys` | option | API key type `OIDC` | | | | | ✓ | P3 |
 | `saml-sso` | capability | SAML single sign-on and its settings | | | | | ✓ | P23 |
 | `scim` | capability | SCIM v2 provisioning and its OAuth client | | | | | ✓ | P23 |
@@ -115,7 +115,8 @@ Counts of the reference rows each phase owns. Superseded counts the rows no phas
 | P9 | 0 | 1 | 2 | 0 |
 | P10 | 1 | 1 | 1 | 1 |
 | P11 | 1 | 0 | 0 | 0 |
-| P12 | 1 | 0 | 1 | 2 |
+| P12 | 1 | 3 | 5 | 1 |
+| P12b | 0 | 0 | 1 | 2 |
 | P13 | 1 | 2 | 2 | 1 |
 | P14 | 0 | 0 | 1 | 1 |
 | P15 | 1 | 4 | 7 | 2 |
@@ -125,7 +126,6 @@ Counts of the reference rows each phase owns. Superseded counts the rows no phas
 | P18 | 4 | 3 | 2 | 2 |
 | P18b | 1 | 1 | 0 | 1 |
 | P18c | 6 | 0 | 0 | 0 |
-| P19 | 0 | 3 | 5 | 1 |
 | P19b | 4 | 3 | 4 | 1 |
 | P20b | 3 | 2 | 2 | 0 |
 | P21 | 3 | 4 | 3 | 3 |
