@@ -3,10 +3,14 @@
 // integrations of the caller's account in the spaces it may read, lists
 // those of a provider a stack in a space may bind, and tests one through
 // its provider's Tester, answering 501 for a provider with none. An
-// integration's provider details come from its provider's Describe, and
-// only to a caller with SPACE_ADMIN in its space. The provider operations
-// that create and change integrations answer 501 until their providers
-// serve them.
+// integration's provider details reach only a caller with SPACE_ADMIN in
+// its space: GitHub's and GitHub Enterprise's from the service, and other
+// providers' from their Describe. It serves the GitHub operations: the
+// operator's App's check options, GitHub Enterprise integrations' create,
+// read, update, delete and test, the last answering whether every check
+// passed, and the App manifest flow. Other providers' create and change
+// operations answer 501 until their providers serve them. A provider not
+// configured answers 503 and a provider's rate limit 502.
 //
 // # Input and output
 //
@@ -15,7 +19,7 @@
 // # Dependencies
 //
 // It imports the access api package, internal/kernel and its search
-// package, the generated API, platform/httpkit's apisearch and problem
-// packages and the domain's integration and port packages. The vcs
+// package, the generated API, platform/httpkit's apisearch, problem and
+// strict packages and the domain's integration and port packages. The vcs
 // domain's assembly constructs it.
 package http

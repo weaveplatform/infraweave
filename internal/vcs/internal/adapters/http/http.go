@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -146,14 +147,48 @@ func (s Server) VcsIntegration(
 		return nil, err //nolint:wrapcheck // the access domain names the read
 	}
 	v := viewOf(in, slugs)
-	if d, ok := s.describe[in.Provider]; ok && admin {
-		details, err := d(in)
-		if err != nil {
+	if admin {
+		if v.Details, err = s.details(ctx, p, in, slugs); err != nil {
 			return nil, err
 		}
-		v.Details = &details
 	}
 	return api.VcsIntegration200JSONResponse{Body: v}, nil
+}
+
+// details are in's provider details as its provider's own read answers
+// them to an admin of its space; nil for a provider with none.
+func (s Server) details(
+	ctx context.Context,
+	p kernel.Principal,
+	in integration.Integration,
+	slugs map[kernel.ULID]string,
+) (*api.VCSIntegrationDetails, error) {
+	var out api.VCSIntegrationDetails
+	var err error
+	switch in.Provider {
+	case integration.GitHubEnterprise:
+		d, derr := s.svc.Details(ctx, in)
+		if derr != nil {
+			return nil, derr //nolint:wrapcheck // the store names the read
+		}
+		err = out.FromGithubEnterpriseIntegration(enterpriseView(in, slugs, &d, true))
+	case integration.GitHub:
+		b, berr := s.svc.Builtin(ctx, p, in.Provider)
+		if berr != nil {
+			return nil, integrationError(berr)
+		}
+		err = out.FromGithubIntegration(githubView(b))
+	default:
+		d, ok := s.describe[in.Provider]
+		if !ok {
+			return nil, nil //nolint:nilnil // a provider with no details answers none
+		}
+		out, err = d(in)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // VcsIntegrationTest runs the connection test of an integration's
@@ -259,6 +294,17 @@ func integrationError(err error) error {
 	if errors.Is(err, integration.ErrNotFound) {
 		//nolint:wrapcheck // as above
 		return problem.NotFound.Error("No such VCS integration in this account.")
+	}
+	if errors.Is(err, integration.ErrNotConfigured) {
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.ServiceUnavailable.Error(
+			"The operator has not configured this provider's GitHub App.")
+	}
+	if rl, ok := errors.AsType[*port.RateLimited](err); ok {
+		//nolint:wrapcheck // as above
+		return problem.UpstreamError.Error(fmt.Sprintf(
+			"The provider's rate limit refuses the call until %s.",
+			rl.Reset.UTC().Format(time.RFC3339)))
 	}
 	if errors.Is(err, integration.ErrNoTester) {
 		//nolint:wrapcheck // as above

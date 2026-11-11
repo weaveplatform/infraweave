@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -38,10 +39,11 @@ func Stream() migrate.Stream {
 }
 
 // Held are the vcs columns that hold other domains' rows: an
-// integration's account and space.
+// integration's account and space, and a manifest form's account.
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "vcs_integrations", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_manifests", Columns: []string{"account_id"}},
 		{
 			Entity:  "space",
 			Table:   "vcs_integrations",
@@ -316,13 +318,56 @@ func (s *Store) InSpace(
 
 // Purge deletes up to batch of the deleted account acct's integrations.
 func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {
-	tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM vcs_integrations WHERE account_id = $1
-		AND id IN (SELECT id FROM vcs_integrations WHERE account_id = $1 LIMIT $2)`, acct, batch)
-	if err != nil {
-		return false, fmt.Errorf("vcs: purge account %s's integrations: %w", acct,
-			sql.Unavailable(err))
+	gone := 0
+	for _, table := range []string{"vcs_integrations", "vcs_manifests"} {
+		tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM `+table+` WHERE account_id = $1
+			AND id IN (SELECT id FROM `+table+` WHERE account_id = $1 LIMIT $2)`, acct, batch)
+		if err != nil {
+			return false, fmt.Errorf("vcs: purge account %s's %s: %w", acct, table,
+				sql.Unavailable(err))
+		}
+		gone += int(tag.RowsAffected())
 	}
-	return tag.RowsAffected() == 0, nil
+	return gone == 0, nil
+}
+
+// OpenManifest keeps m, a manifest form of acct, until it expires.
+func (s *Store) OpenManifest(
+	ctx context.Context,
+	acct kernel.AccountID,
+	m integration.Manifest,
+) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_manifests
+		(account_id, id, api_host, user_facing_host, expires_at) VALUES ($1, $2, $3, $4, $5)`,
+		acct, m.ID, m.APIHost, m.UserFacingHost, m.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("vcs: open manifest %s: %w", m.ID, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// TakeManifest deletes acct's manifest form id and answers it, when it
+// has not expired at now; integration.ErrNotFound otherwise.
+func (s *Store) TakeManifest(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	now time.Time,
+) (integration.Manifest, error) {
+	m := integration.Manifest{ID: id}
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `DELETE FROM vcs_manifests
+		WHERE account_id = $1 AND id = $2
+		RETURNING api_host, user_facing_host, expires_at`, acct, id).
+		Scan(&m.APIHost, &m.UserFacingHost, &m.ExpiresAt)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return m, fmt.Errorf("%w: manifest %s", integration.ErrNotFound, id)
+	case err != nil:
+		return m, fmt.Errorf("vcs: take manifest %s: %w", id, sql.Unavailable(err))
+	case !m.ExpiresAt.After(now):
+		return m, fmt.Errorf("%w: manifest %s expired", integration.ErrNotFound, id)
+	}
+	return m, nil
 }
 
 // integrationColumn is the SQL of each of integration.Fields. The

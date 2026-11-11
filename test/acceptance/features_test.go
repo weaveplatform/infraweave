@@ -157,7 +157,7 @@ func ctlBinary(ctx context.Context) (string, error) {
 func dockerTags(tags []string) []string {
 	var out []string
 	for _, t := range tags {
-		if !Exempt(t) && t != "@oidc" && t != "@ai" {
+		if !Exempt(t) && t != "@oidc" && t != "@ai" && t != "@github" {
 			out = append(out, t)
 		}
 	}
@@ -283,6 +283,9 @@ type world struct {
 	// git seeds the scenario's @vcs repositories, whose CA every server of
 	// a @vcs scenario trusts.
 	git *giteaSteps
+	// github is a @github scenario's GitHub host, whose certificate every
+	// server of the scenario trusts.
+	github *githubSteps
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -317,6 +320,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 		if w.ownPG != nil {
 			err = errors.Join(err, w.ownPG.Terminate(ctx))
 		}
+		w.github.stop()
 		if w.dir != "" {
 			err = errors.Join(err, os.RemoveAll(w.dir))
 		}
@@ -326,6 +330,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	(&deploySteps{}).register(sc)
 	git := &giteaSteps{w: w}
 	w.git = git
+	w.github = &githubSteps{}
 	(&servedSteps{w: w}).register(sc)
 	(&observeSteps{w: w}).register(sc)
 	(&startupSteps{w: w}).register(sc)
@@ -431,16 +436,49 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 			return nil, err
 		}
 	}
+	if config, err = w.vcs(ctx, config); err != nil {
+		return nil, err
+	}
+	return w.launch(ctx, "all", config)
+}
+
+// vcs is config with the vcs settings the scenario's tags need: a @vcs
+// scenario's servers trust its Gitea, and a @github scenario's trust its
+// GitHub host and name its operator App, under one vcs.ca_file holding
+// every certificate they trust.
+func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
+	vcs := map[string]any{}
+	var cas []byte
 	if slices.Contains(w.tags, "@vcs") {
 		if err := w.git.start(ctx); err != nil {
 			return nil, err
 		}
-		vcs := map[string]any{"ca_file": w.git.gitea.CAFile}
-		if config, err = withSection(config, "vcs", vcs); err != nil {
+		ca, err := os.ReadFile(w.git.gitea.CAFile)
+		if err != nil {
+			return nil, fmt.Errorf("gitea CA: %w", err)
+		}
+		cas = append(cas, ca...)
+	}
+	if slices.Contains(w.tags, "@github") && w.github.srv == nil {
+		app, ca, err := w.github.start(w.dir)
+		if err != nil {
 			return nil, err
 		}
+		vcs["github_app"] = app
+		cas = append(cas, ca...)
+	} else if w.github.srv != nil {
+		vcs["github_app"] = w.github.app0
+		cas = append(cas, w.github.srv.CA...)
 	}
-	return w.launch(ctx, "all", config)
+	if len(cas) == 0 {
+		return config, nil
+	}
+	file := filepath.Join(w.dir, "vcs-ca.pem")
+	if err := os.WriteFile(file, cas, 0o600); err != nil {
+		return nil, fmt.Errorf("vcs CA: %w", err)
+	}
+	vcs["ca_file"] = file
+	return withSection(config, "vcs", vcs)
 }
 
 // launch runs one more infraweave process mode with config and gives the

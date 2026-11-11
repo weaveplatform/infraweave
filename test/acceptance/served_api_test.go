@@ -86,6 +86,8 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	(&stackSearchSteps{s: spaces}).register(sc)
 	(&configSteps{o: org}).register(sc)
 	s.w.git.ids = org.ids
+	s.w.github.o, s.w.github.ids = org, org.ids
+	s.w.github.register(sc)
 	(&vcsSteps{o: org}).register(sc)
 	(&expressionSteps{o: org}).register(sc)
 	(&catalogSteps{o: org}).register(sc)

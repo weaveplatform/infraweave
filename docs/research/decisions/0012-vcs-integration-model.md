@@ -104,7 +104,8 @@ not provider names.
 - **The `GITHUB` provider.** infraweave operates no Marketplace app. The
   `GITHUB` value names one GitHub App that the operator registers for the
   installation (server settings `vcs.github_app.app_id`,
-  `vcs.github_app.private_key_file`, `vcs.github_app.webhook_secret_file`);
+  `vcs.github_app.private_key_file`, `vcs.github_app.webhook_secret_file`,
+  and `vcs.github_app.api_host` for an App on GitHub Enterprise Server);
   `githubIntegration` and `githubIntegrationUpdate` read and set its check
   options. `GITHUB_ENTERPRISE` is the per-account custom App on github.com or
   GitHub Enterprise Server, including the manifest flow

@@ -2,8 +2,9 @@
 // integrations, which seals each one's credential and webhook secret to
 // its row and opens them only for Secrets, refuses a second default of a
 // provider through vcs_integrations_default, searches them by the
-// integration package's Fields, and purges a deleted account's a batch at
-// a time; Stream, the migration stream that creates them; Held, the
+// integration package's Fields, keeps each GitHub App manifest form until
+// it is taken once or expires, and purges a deleted account's
+// integrations and forms a batch at a time; Stream, the migration stream that creates them; Held, the
 // columns that name other domains' rows; and SealedColumns, the three
 // sealed secret columns.
 //

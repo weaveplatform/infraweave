@@ -4,12 +4,16 @@
 // ref or path is missing, ErrRepositoryURL for a repository URL a Source
 // refuses, and ErrTooLarge for a file over MaxFileSize; and Tester, which
 // a provider implements to check an Integration, its Settings and opened
-// secrets, with Checks of each kind. The sourcetest package is the
-// contract every Source passes.
+// secrets, with Checks of each kind; Browse, which lists the repositories
+// an integration reaches and a repository's branches; Apps, the GitHub
+// provider's App work, reporting an App, writing a manifest form and
+// converting the code its host hands back; and RateLimited, a call its
+// host refused until a reset time. The sourcetest package is the contract
+// every Source passes.
 //
 // # Input and output
 //
-// None; it declares types and an interface.
+// None; it declares types and interfaces.
 //
 // # Dependencies
 //

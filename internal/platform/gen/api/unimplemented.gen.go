@@ -422,8 +422,16 @@ func (UnimplementedStrict) ExpressionEvaluate(context.Context, ExpressionEvaluat
 	return nil, &problem.NotImplementedError{OperationID: "expressionEvaluate", Route: "POST /expressions/evaluate"}
 }
 
+func (UnimplementedStrict) GithubAppGenerateManifest(context.Context, GithubAppGenerateManifestRequestObject) (GithubAppGenerateManifestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubAppGenerateManifest", Route: "POST /github-app-manifests"}
+}
+
 func (UnimplementedStrict) GithubEnterpriseIntegrationCreate(context.Context, GithubEnterpriseIntegrationCreateRequestObject) (GithubEnterpriseIntegrationCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseIntegrationCreate", Route: "POST /github-enterprise-integrations"}
+}
+
+func (UnimplementedStrict) GithubAppCreateFromManifest(context.Context, GithubAppCreateFromManifestRequestObject) (GithubAppCreateFromManifestResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "githubAppCreateFromManifest", Route: "POST /github-enterprise-integrations/from-manifest"}
 }
 
 func (UnimplementedStrict) GithubEnterpriseIntegrationDelete(context.Context, GithubEnterpriseIntegrationDeleteRequestObject) (GithubEnterpriseIntegrationDeleteResponseObject, error) {

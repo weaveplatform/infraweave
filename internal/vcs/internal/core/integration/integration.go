@@ -66,6 +66,9 @@ var (
 	ErrDefaultTaken = errors.New("vcs: default integration taken")
 	// ErrNoTester reports a provider whose integrations no test checks.
 	ErrNoTester = errors.New("vcs: no test for the provider")
+	// ErrNotConfigured reports a built-in provider whose credentials the
+	// operator has not set, or GitHub App work with no Apps bound.
+	ErrNotConfigured = errors.New("vcs: provider not configured")
 )
 
 // Fields are what an integration search filters and orders by: name,
@@ -130,14 +133,28 @@ type Store interface {
 		scope Scope,
 	) (search.Suggestions, error)
 	// Purge deletes up to batch of the deleted account acct's
-	// integrations; true when none is left.
+	// integrations and manifest forms; true when none is left.
 	Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error)
+	// OpenManifest keeps m, a manifest form of acct, until it expires.
+	OpenManifest(ctx context.Context, acct kernel.AccountID, m Manifest) error
+	// TakeManifest deletes acct's manifest form id and answers it when it
+	// has not expired at now; ErrNotFound otherwise.
+	TakeManifest(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+		now time.Time,
+	) (Manifest, error)
 }
 
 // Deps are what the service is constructed over: the store, the pool its
 // writes begin transactions on, the spaces integrations live in, the
 // authorizer, the stacks a delete detaches, each provider infraweave
-// stores integrations of, and the Tester of each provider that has one.
+// stores integrations of, and the Tester of each provider that has one;
+// Builtin, the integration of each provider whose credentials the
+// operator sets, with no row of its own; Apps, the GitHub provider's App
+// work; and Public, the server's public origin, which webhook and
+// manifest URLs start with.
 type Deps struct {
 	Store     Store
 	DB        tx.Beginner
@@ -146,6 +163,9 @@ type Deps struct {
 	Stacks    stacksapi.Stacks
 	Providers []string
 	Testers   map[string]port.Tester
+	Builtin   map[string]port.Integration
+	Apps      port.Apps
+	Public    string
 	Now       func() time.Time
 }
 
@@ -159,6 +179,9 @@ type Service struct {
 	stacks    stacksapi.Stacks
 	providers []string
 	testers   map[string]port.Tester
+	builtin   map[string]port.Integration
+	apps      port.Apps
+	public    string
 	now       func() time.Time
 }
 
@@ -170,7 +193,8 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
-		providers: d.Providers, testers: d.Testers, now: now,
+		providers: d.Providers, testers: d.Testers, builtin: d.Builtin, apps: d.Apps,
+		public: strings.TrimSuffix(d.Public, "/"), now: now,
 	}
 }
 
@@ -384,6 +408,7 @@ func (s *Service) check(in Input, create bool) error {
 			"vcsChecks is one of INDIVIDUAL, AGGREGATED and ALL."))
 	}
 	errs = append(errs, kernel.CheckLabels("/customInput/labels", in.Labels)...)
+	errs = append(errs, checkSettings(in)...)
 	if len(errs) == 0 {
 		return nil
 	}
@@ -402,6 +427,16 @@ func defaultRefused(message string) error {
 // decided SPACE_ADMIN on in's space. A default outside the top space,
 // and a second default of a provider, are refused at isDefault.
 func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Integration, error) {
+	return s.create(ctx, p, kernel.NewULID(), in)
+}
+
+// create is Create of the integration id.
+func (s *Service) create(
+	ctx context.Context,
+	p kernel.Principal,
+	id kernel.ULID,
+	in Input,
+) (Integration, error) {
 	if err := s.check(in, true); err != nil {
 		return Integration{}, err
 	}
@@ -421,7 +456,7 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Int
 		}
 		now := s.now()
 		out = Integration{
-			Account: p.AccountID, ID: kernel.NewULID(), Provider: in.Provider,
+			Account: p.AccountID, ID: id, Provider: in.Provider,
 			Slug: kernel.SlugFrom(in.Name).String(), Name: strings.TrimSpace(in.Name),
 			Space: space, IsDefault: in.IsDefault, CreatedAt: now, Version: 1,
 		}
@@ -464,8 +499,11 @@ func apply(out *Integration, in Input, now time.Time) {
 }
 
 // Update replaces the changeable fields of p's account's integration id
-// with in's, and its secrets when in carries them, when expect accepts
-// its version. The route has decided SPACE_ADMIN on its space.
+// with in's, and its secrets when in carries them, keeping its credential
+// when in's is nil, when expect accepts its version. The route has
+// decided SPACE_ADMIN on its space. A space other than the integration's
+// is refused at space: moving one could leave a bound stack out of its
+// reach.
 func (s *Service) Update(
 	ctx context.Context,
 	p kernel.Principal,
@@ -485,9 +523,20 @@ func (s *Service) Update(
 		if err := expect.Check(out.Version); err != nil {
 			return err //nolint:wrapcheck // kernel.ErrStale is the answer
 		}
+		if err := s.sameSpace(ctx, p.AccountID, out.Space, in.Space); err != nil {
+			return err
+		}
+		sec := in.Secrets
+		if sec != nil && sec.Credential == nil {
+			kept, err := s.store.Secrets(ctx, p.AccountID, out.ID)
+			if err != nil {
+				return err //nolint:wrapcheck // the store names the read
+			}
+			sec = &Secrets{Credential: kept.Credential, WebhookSecret: sec.WebhookSecret}
+		}
 		apply(&out, in, s.now())
 		out.Version++
-		return s.store.Write(ctx, out, in.Secrets) //nolint:wrapcheck // the store names the write
+		return s.store.Write(ctx, out, sec) //nolint:wrapcheck // the store names the write
 	})
 	return out, err //nolint:wrapcheck // each step in the transaction names itself
 }
@@ -563,13 +612,17 @@ func (s *Service) Bindable(
 // secrets opened: its own, id, or the provider's default when id is nil.
 // It is false when the stack names none and the provider has no default,
 // and for a provider infraweave stores no integrations of, such as raw
-// Git, without a read.
+// Git, without a read. A built-in provider's stack uses the operator's
+// integration, whose row holds only the account's check options.
 func (s *Service) Use(
 	ctx context.Context,
 	acct kernel.AccountID,
 	provider string,
 	id *kernel.ULID,
 ) (port.Integration, bool, error) {
+	if use, ok := s.builtin[provider]; ok {
+		return use, true, nil
+	}
 	if !slices.Contains(s.providers, provider) {
 		return port.Integration{}, false, nil
 	}

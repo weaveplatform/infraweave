@@ -5389,6 +5389,55 @@ paths:
         - idempotency-key
         - rate-limit
       x-upstream: none
+  /github-app-manifests:
+    post:
+      description: >-
+        Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+      operationId: githubAppGenerateManifest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: account
+      requestBody:
+        content:
+          application/json:
+            example:
+              ownerName: acme
+              ownerType: ORG
+            schema:
+              $ref: '#/components/schemas/GitHubAppManifestInput'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitHubAppManifest'
+          description: The githubAppGenerateManifest result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Github App Generate Manifest
+      tags:
+        - VCS Integrations
+      x-bruno: Advanced/Slack/Github App Generate Manifest.bru
+      x-graphql:
+        field: githubAppGenerateManifest
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
   /github-enterprise-integrations:
     post:
       description: Creates the GitHub Enterprise integration
@@ -5450,6 +5499,55 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: create
+  /github-enterprise-integrations/from-manifest:
+    post:
+      description: >-
+        Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+      operationId: githubAppCreateFromManifest
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: account
+      requestBody:
+        content:
+          application/json:
+            example:
+              code: example
+              state: example
+            schema:
+              $ref: '#/components/schemas/GithubAppCreateFromManifestRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubEnterpriseIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Github App Create From Manifest
+      tags:
+        - VCS Integrations
+      x-bruno: Advanced/Slack/Github App Create From Manifest.bru
+      x-graphql:
+        field: githubAppCreateFromManifest
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
   /github-enterprise-integrations/{githubEnterpriseIntegrationId}:
     delete:
       description: Deletes the GitHub Enterprise integration
@@ -20657,6 +20755,42 @@ components:
         CASCADE: Force apply this run and propagate to all triggered dependents.
         SINGLE: Force apply this run only, do not propagate to dependents.
       x-graphql-type: ForceApplyMode
+    GitHubAppManifest:
+      description: A GitHub App manifest form, which a browser posts to the App's host.
+      properties:
+        endpoint:
+          description: The URL the form posts to, carrying the form's state.
+          type: string
+        manifest:
+          description: The manifest, a JSON document.
+          type: string
+      required:
+        - endpoint
+        - manifest
+      type: object
+      x-graphql-type: GitHubAppManifest
+    GitHubAppManifestInput:
+      description: The host and owner of a GitHub App a manifest form creates.
+      properties:
+        apiHost:
+          description: The API host of the App's host; https://api.github.com when left out.
+          nullable: true
+          type: string
+        host:
+          description: The host the App is created on; https://github.com when left out.
+          nullable: true
+          type: string
+        ownerName:
+          description: The organization that owns the App; left out for the user who creates it.
+          nullable: true
+          type: string
+        ownerType:
+          $ref: '#/components/schemas/AccountType'
+      required:
+        - ownerType
+      additionalProperties: false
+      type: object
+      x-graphql-type: GitHubAppManifestInput
     GitHubAppStatus:
       enum:
         - OK
@@ -20670,6 +20804,20 @@ components:
         - ERROR
       type: string
       x-graphql-type: GitHubAppStatus
+    GithubAppCreateFromManifestRequest:
+      description: The code a GitHub App's host redirected back with, and the form's state.
+      properties:
+        code:
+          description: The code the App's host redirected back with.
+          type: string
+        state:
+          description: The state of the manifest form the App was created from.
+          type: string
+      required:
+        - code
+        - state
+      additionalProperties: false
+      type: object
     GithubEnterpriseIntegration:
       description: GithubEnterpriseIntegration shows GitHub Enterprise integration details.
       properties:

@@ -4571,8 +4571,41 @@ type FederationProvider string
 // ForceApplyMode ForceApplyMode controls whether a run should force apply even when delta is zero.
 type ForceApplyMode string
 
+// GitHubAppManifest A GitHub App manifest form, which a browser posts to the App's host.
+type GitHubAppManifest struct {
+	// Endpoint The URL the form posts to, carrying the form's state.
+	Endpoint string `json:"endpoint"`
+
+	// Manifest The manifest, a JSON document.
+	Manifest string `json:"manifest"`
+}
+
+// GitHubAppManifestInput The host and owner of a GitHub App a manifest form creates.
+type GitHubAppManifestInput struct {
+	// ApiHost The API host of the App's host; https://api.github.com when left out.
+	ApiHost *string `json:"apiHost,omitempty"`
+
+	// Host The host the App is created on; https://github.com when left out.
+	Host *string `json:"host,omitempty"`
+
+	// OwnerName The organization that owns the App; left out for the user who creates it.
+	OwnerName *string `json:"ownerName,omitempty"`
+
+	// OwnerType The type of the account's owner, as the reference enumerates GitHub account types. An infraweave account belongs to an organization, so it is always ORG.
+	OwnerType AccountType `json:"ownerType"`
+}
+
 // GitHubAppStatus defines model for GitHubAppStatus.
 type GitHubAppStatus string
+
+// GithubAppCreateFromManifestRequest The code a GitHub App's host redirected back with, and the form's state.
+type GithubAppCreateFromManifestRequest struct {
+	// Code The code the App's host redirected back with.
+	Code string `json:"code"`
+
+	// State The state of the manifest form the App was created from.
+	State string `json:"state"`
+}
 
 // GithubEnterpriseIntegration GithubEnterpriseIntegration shows GitHub Enterprise integration details.
 type GithubEnterpriseIntegration struct {
@@ -11273,8 +11306,14 @@ type ExpressionCompleteJSONRequestBody = ExpressionCompleteRequest
 // ExpressionEvaluateJSONRequestBody defines body for ExpressionEvaluate for application/json ContentType.
 type ExpressionEvaluateJSONRequestBody = ExpressionEvaluateRequest
 
+// GithubAppGenerateManifestJSONRequestBody defines body for GithubAppGenerateManifest for application/json ContentType.
+type GithubAppGenerateManifestJSONRequestBody = GitHubAppManifestInput
+
 // GithubEnterpriseIntegrationCreateJSONRequestBody defines body for GithubEnterpriseIntegrationCreate for application/json ContentType.
 type GithubEnterpriseIntegrationCreateJSONRequestBody = GithubEnterpriseIntegrationCreateRequest
+
+// GithubAppCreateFromManifestJSONRequestBody defines body for GithubAppCreateFromManifest for application/json ContentType.
+type GithubAppCreateFromManifestJSONRequestBody = GithubAppCreateFromManifestRequest
 
 // GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for GithubEnterpriseIntegrationPatch for application/merge-patch+json ContentType.
 type GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
@@ -14456,6 +14495,24 @@ type ClientInterface interface {
 	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 	ExpressionEvaluate(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GithubAppGenerateManifestWithBody Github App Generate Manifest
+	//
+	// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+	GithubAppGenerateManifestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubAppGenerateManifest Github App Generate Manifest
+	//
+	// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+	GithubAppGenerateManifest(ctx context.Context, body GithubAppGenerateManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GithubEnterpriseIntegrationCreateWithBody Create GitHub Enterprise Integration
 	//
 	// Creates the GitHub Enterprise integration.
@@ -14473,6 +14530,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
 	GithubEnterpriseIntegrationCreate(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubAppCreateFromManifestWithBody Github App Create From Manifest
+	//
+	// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+	GithubAppCreateFromManifestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubAppCreateFromManifest Github App Create From Manifest
+	//
+	// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+	GithubAppCreateFromManifest(ctx context.Context, body GithubAppCreateFromManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GithubEnterpriseIntegrationDelete Delete GitHub Enterprise Integration
 	//
@@ -19494,6 +19569,44 @@ func (c *Client) ExpressionEvaluate(ctx context.Context, params *ExpressionEvalu
 	return c.Client.Do(req)
 }
 
+// GithubAppGenerateManifestWithBody Github App Generate Manifest
+//
+// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+func (c *Client) GithubAppGenerateManifestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubAppGenerateManifestRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubAppGenerateManifest Github App Generate Manifest
+//
+// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+func (c *Client) GithubAppGenerateManifest(ctx context.Context, body GithubAppGenerateManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubAppGenerateManifestRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GithubEnterpriseIntegrationCreateWithBody Create GitHub Enterprise Integration
 //
 // Creates the GitHub Enterprise integration.
@@ -19522,6 +19635,44 @@ func (c *Client) GithubEnterpriseIntegrationCreateWithBody(ctx context.Context, 
 // Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
 func (c *Client) GithubEnterpriseIntegrationCreate(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGithubEnterpriseIntegrationCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubAppCreateFromManifestWithBody Github App Create From Manifest
+//
+// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+func (c *Client) GithubAppCreateFromManifestWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubAppCreateFromManifestRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GithubAppCreateFromManifest Github App Create From Manifest
+//
+// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+func (c *Client) GithubAppCreateFromManifest(ctx context.Context, body GithubAppCreateFromManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubAppCreateFromManifestRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -30179,6 +30330,46 @@ func NewExpressionEvaluateRequestWithBody(server string, params *ExpressionEvalu
 	return req, nil
 }
 
+// NewGithubAppGenerateManifestRequest calls the generic GithubAppGenerateManifest builder with application/json body
+func NewGithubAppGenerateManifestRequest(server string, body GithubAppGenerateManifestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubAppGenerateManifestRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubAppGenerateManifestRequestWithBody constructs an http.Request for the GithubAppGenerateManifest method, with any body, and a specified content type
+func NewGithubAppGenerateManifestRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-app-manifests")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGithubEnterpriseIntegrationCreateRequest calls the generic GithubEnterpriseIntegrationCreate builder with application/json body
 func NewGithubEnterpriseIntegrationCreateRequest(server string, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -30230,6 +30421,46 @@ func NewGithubEnterpriseIntegrationCreateRequestWithBody(server string, params *
 		}
 
 	}
+
+	return req, nil
+}
+
+// NewGithubAppCreateFromManifestRequest calls the generic GithubAppCreateFromManifest builder with application/json body
+func NewGithubAppCreateFromManifestRequest(server string, body GithubAppCreateFromManifestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubAppCreateFromManifestRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubAppCreateFromManifestRequestWithBody constructs an http.Request for the GithubAppCreateFromManifest method, with any body, and a specified content type
+func NewGithubAppCreateFromManifestRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/github-enterprise-integrations/from-manifest")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -43220,6 +43451,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 	ExpressionEvaluateWithResponse(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionEvaluateResponse, error)
 
+	// GithubAppGenerateManifestWithBodyWithResponse Github App Generate Manifest
+	//
+	// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+	GithubAppGenerateManifestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubAppGenerateManifestResponse, error)
+
+	// GithubAppGenerateManifestWithResponse Github App Generate Manifest
+	//
+	// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+	GithubAppGenerateManifestWithResponse(ctx context.Context, body GithubAppGenerateManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubAppGenerateManifestResponse, error)
+
 	// GithubEnterpriseIntegrationCreateWithBodyWithResponse Create GitHub Enterprise Integration
 	//
 	// Creates the GitHub Enterprise integration.
@@ -43237,6 +43486,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /github-enterprise-integrations (the `GithubEnterpriseIntegrationCreate` operationId).
 	GithubEnterpriseIntegrationCreateWithResponse(ctx context.Context, params *GithubEnterpriseIntegrationCreateParams, body GithubEnterpriseIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEnterpriseIntegrationCreateResponse, error)
+
+	// GithubAppCreateFromManifestWithBodyWithResponse Github App Create From Manifest
+	//
+	// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+	GithubAppCreateFromManifestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubAppCreateFromManifestResponse, error)
+
+	// GithubAppCreateFromManifestWithResponse Github App Create From Manifest
+	//
+	// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+	GithubAppCreateFromManifestWithResponse(ctx context.Context, body GithubAppCreateFromManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubAppCreateFromManifestResponse, error)
 
 	// GithubEnterpriseIntegrationDeleteWithResponse Delete GitHub Enterprise Integration
 	//
@@ -56065,6 +56332,94 @@ func (r ExpressionEvaluateResponse) ContentType() string {
 	return ""
 }
 
+// GithubAppGenerateManifestResponse200Headers the declared response headers of an HTTP 200 response for GithubAppGenerateManifest
+type GithubAppGenerateManifestResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubAppGenerateManifestResponse429Headers the declared response headers of an HTTP 429 response for GithubAppGenerateManifest
+type GithubAppGenerateManifestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubAppGenerateManifestResponse503Headers the declared response headers of an HTTP 503 response for GithubAppGenerateManifest
+type GithubAppGenerateManifestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubAppGenerateManifestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GitHubAppManifest
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GithubAppGenerateManifestResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubAppGenerateManifestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubAppGenerateManifestResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GithubAppGenerateManifestResponse) GetJSON200() *GitHubAppManifest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubAppGenerateManifestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubAppGenerateManifestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubAppGenerateManifestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubAppGenerateManifestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubAppGenerateManifestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubAppGenerateManifestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubAppGenerateManifestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GithubEnterpriseIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for GithubEnterpriseIntegrationCreate
 type GithubEnterpriseIntegrationCreateResponse201Headers struct {
 	XRateLimitLimit     *int
@@ -56161,6 +56516,94 @@ func (r GithubEnterpriseIntegrationCreateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GithubEnterpriseIntegrationCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GithubAppCreateFromManifestResponse201Headers the declared response headers of an HTTP 201 response for GithubAppCreateFromManifest
+type GithubAppCreateFromManifestResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubAppCreateFromManifestResponse429Headers the declared response headers of an HTTP 429 response for GithubAppCreateFromManifest
+type GithubAppCreateFromManifestResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// GithubAppCreateFromManifestResponse503Headers the declared response headers of an HTTP 503 response for GithubAppCreateFromManifest
+type GithubAppCreateFromManifestResponse503Headers struct {
+	RetryAfter *int
+}
+
+type GithubAppCreateFromManifestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *GithubEnterpriseIntegration
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *GithubAppCreateFromManifestResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GithubAppCreateFromManifestResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *GithubAppCreateFromManifestResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r GithubAppCreateFromManifestResponse) GetJSON201() *GithubEnterpriseIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r GithubAppCreateFromManifestResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r GithubAppCreateFromManifestResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GithubAppCreateFromManifestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GithubAppCreateFromManifestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubAppCreateFromManifestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubAppCreateFromManifestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GithubAppCreateFromManifestResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -79888,6 +80331,36 @@ func (c *ClientWithResponses) ExpressionEvaluateWithResponse(ctx context.Context
 	return ParseExpressionEvaluateResponse(rsp)
 }
 
+// GithubAppGenerateManifestWithBodyWithResponse Github App Generate Manifest
+//
+// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+func (c *ClientWithResponses) GithubAppGenerateManifestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubAppGenerateManifestResponse, error) {
+	rsp, err := c.GithubAppGenerateManifestWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubAppGenerateManifestResponse(rsp)
+}
+
+// GithubAppGenerateManifestWithResponse Github App Generate Manifest
+//
+// Opens a manifest form that creates a GitHub App on github.com or a GitHub Enterprise Server. The form stays open for an hour; the App's host redirects back with a code, which githubAppCreateFromManifest turns into a GitHub Enterprise integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-app-manifests (the `GithubAppGenerateManifest` operationId).
+func (c *ClientWithResponses) GithubAppGenerateManifestWithResponse(ctx context.Context, body GithubAppGenerateManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubAppGenerateManifestResponse, error) {
+	rsp, err := c.GithubAppGenerateManifest(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubAppGenerateManifestResponse(rsp)
+}
+
 // GithubEnterpriseIntegrationCreateWithBodyWithResponse Create GitHub Enterprise Integration
 //
 // Creates the GitHub Enterprise integration.
@@ -79916,6 +80389,36 @@ func (c *ClientWithResponses) GithubEnterpriseIntegrationCreateWithResponse(ctx 
 		return nil, err
 	}
 	return ParseGithubEnterpriseIntegrationCreateResponse(rsp)
+}
+
+// GithubAppCreateFromManifestWithBodyWithResponse Github App Create From Manifest
+//
+// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+func (c *ClientWithResponses) GithubAppCreateFromManifestWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubAppCreateFromManifestResponse, error) {
+	rsp, err := c.GithubAppCreateFromManifestWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubAppCreateFromManifestResponse(rsp)
+}
+
+// GithubAppCreateFromManifestWithResponse Github App Create From Manifest
+//
+// Creates a GitHub Enterprise integration in the account's top space from the App a manifest form created, named after the App. It is the default when the account has no default GitHub Enterprise integration. Each form completes once.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /github-enterprise-integrations/from-manifest (the `GithubAppCreateFromManifest` operationId).
+func (c *ClientWithResponses) GithubAppCreateFromManifestWithResponse(ctx context.Context, body GithubAppCreateFromManifestJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubAppCreateFromManifestResponse, error) {
+	rsp, err := c.GithubAppCreateFromManifest(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubAppCreateFromManifestResponse(rsp)
 }
 
 // GithubEnterpriseIntegrationDeleteWithResponse Delete GitHub Enterprise Integration
@@ -97436,6 +97939,121 @@ func ParseExpressionEvaluateResponse(rsp *http.Response) (*ExpressionEvaluateRes
 	return response, nil
 }
 
+// ParseGithubAppGenerateManifestResponse parses an HTTP response from a GithubAppGenerateManifestWithResponse call
+func ParseGithubAppGenerateManifestResponse(rsp *http.Response) (*GithubAppGenerateManifestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubAppGenerateManifestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GitHubAppManifest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GithubAppGenerateManifestResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubAppGenerateManifestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubAppGenerateManifestResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseGithubEnterpriseIntegrationCreateResponse parses an HTTP response from a GithubEnterpriseIntegrationCreateWithResponse call
 func ParseGithubEnterpriseIntegrationCreateResponse(rsp *http.Response) (*GithubEnterpriseIntegrationCreateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -97552,6 +98170,121 @@ func ParseGithubEnterpriseIntegrationCreateResponse(rsp *http.Response) (*Github
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers GithubEnterpriseIntegrationCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGithubAppCreateFromManifestResponse parses an HTTP response from a GithubAppCreateFromManifestWithResponse call
+func ParseGithubAppCreateFromManifestResponse(rsp *http.Response) (*GithubAppCreateFromManifestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubAppCreateFromManifestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest GithubEnterpriseIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers GithubAppCreateFromManifestResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers GithubAppCreateFromManifestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers GithubAppCreateFromManifestResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

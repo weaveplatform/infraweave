@@ -69,7 +69,7 @@ func TestAccUnavailable(t *testing.T) {
 			t.Errorf("%s on a closed pool = %v", name, err)
 		}
 	}
-	if len(pg.Held()) != 2 || len(pg.SealedColumns()) != 3 {
+	if len(pg.Held()) != 3 || len(pg.SealedColumns()) != 3 {
 		t.Errorf("held %v, sealed %v", pg.Held(), pg.SealedColumns())
 	}
 	if (&integration.Missing{Kind: "space", ID: "x"}).Error() == "" {

@@ -42,6 +42,23 @@ func (s *store) Get(
 	return in, nil
 }
 
+// Default is the account's first integration of provider.
+func (s *store) Default(
+	_ context.Context,
+	_ kernel.AccountID,
+	provider string,
+) (integration.Integration, error) {
+	if s.fail != nil {
+		return integration.Integration{}, s.fail
+	}
+	for _, in := range s.rows {
+		if in.Provider == provider {
+			return in, nil
+		}
+	}
+	return integration.Integration{}, integration.ErrNotFound
+}
+
 func (s *store) Secrets(
 	context.Context,
 	kernel.AccountID,
