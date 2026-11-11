@@ -36,8 +36,9 @@ type sources struct{}
 func (sources) Release(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
 // TestUnitEvents checks that the domain's event kind registers once, that
-// a run_updated document meets its schema, and that the vcs domain's
-// back edge binds.
+// a run_updated document meets its schema, that the vcs domain's back edge
+// binds, and that the domain hands over its run.schedule handler and
+// subscribes its consumer once.
 func TestUnitEvents(t *testing.T) {
 	kinds := outbox.NewKinds()
 	if err := RegisterEvents(kinds); err != nil {
@@ -59,5 +60,17 @@ func TestUnitEvents(t *testing.T) {
 		[]byte(`{"state": "QUEUED"}`)); err == nil {
 		t.Error("a document without its run passes")
 	}
-	New(Deps{}).BindSources(sources{})
+	d := New(Deps{})
+	d.BindSources(sources{})
+	if jobs := d.Jobs(); len(jobs) != 1 || jobs[0].Kind.Name != "run.schedule" ||
+		jobs[0].Handler == nil {
+		t.Errorf("Jobs = %+v", jobs)
+	}
+	events := outbox.New(nil, nil, kinds)
+	if err := d.Subscribe(events); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Subscribe(events); !errors.Is(err, outbox.ErrConsumer) {
+		t.Errorf("a second subscription = %v, want ErrConsumer", err)
+	}
 }

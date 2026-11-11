@@ -1,6 +1,8 @@
 // Package assembly constructs the runs domain over its Deps, after the
 // configuration domain, with the lifecycle every run is created and moved
-// through. RegisterEvents registers runsapi.Updated with the outbox, and
+// through. Jobs is its run.schedule handler, which moves a stack's queued
+// runs to READY, and Subscribe subscribes the consumer that schedules a
+// stack once it is unlocked or enabled. RegisterEvents registers runsapi.Updated with the outbox, and
 // BindSources binds the vcs domain's runsapi.RunSources, a back edge, so a
 // run's end releases its source credentials. StackStatus is the stacksapi.StackStatus
 // internal/app binds in the stacks domain, the back edge the stack view
@@ -19,8 +21,8 @@
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, the domain's core, lifecycle, http and pg
-// packages, platform/outbox, platform/sql/integrity, platform/sql/migrate
-// and platform/tx. Only
+// It imports runsapi, stacksapi, the domain's core, lifecycle, schedule,
+// http and pg packages, platform/outbox, platform/queue,
+// platform/sql/integrity and platform/sql/migrate. Only
 // internal/app and cmd/ import it, as the constructors rule enforces.
 package assembly

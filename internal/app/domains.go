@@ -158,6 +158,9 @@ func newDomains(
 	if err := vcs.Subscribe(events); err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the consumer
 	}
+	if err := runs.Subscribe(events); err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the consumer
+	}
 	return d, nil
 }
 
