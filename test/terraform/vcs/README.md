@@ -64,7 +64,8 @@ repositories.
 They are the `vcs-lab` environment's secrets, set with
 `gh secret set --env vcs-lab`. Give the environment a deployment branch
 rule that admits only `main`. A provider with any of its secrets unset
-reports "not configured" and fails.
+is skipped: its job passes having run nothing, and the run's summary
+names the secrets it lacks.
 
 | Provider | Secret | What it holds |
 |---|---|---|

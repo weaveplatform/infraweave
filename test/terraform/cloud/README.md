@@ -35,7 +35,8 @@ The `objectstore` roots' outputs are the secrets of `objectstore-cloud.yml`'s
 `objectstore-cloud` environment, set with `gh secret set --env
 objectstore-cloud`. None is a credential, but they name the lab's accounts,
 and the public repository's logs mask secrets and print variables. A cloud
-with any of its secrets unset reports "not configured" and fails.
+with any of its secrets unset is skipped: its job passes having run
+nothing, and the run's summary names the secrets it lacks.
 
 | Root | Output | Secret |
 |---|---|---|

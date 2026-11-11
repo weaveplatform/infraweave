@@ -412,8 +412,8 @@ GitHub, GitLab, Bitbucket Cloud, Azure DevOps and a Bitbucket Data Center
 container each night, runs every provider's source contract and a stack
 through `infraweave` against them, and destroys them; the issue is per
 provider. [`test/terraform/vcs`](test/terraform/vcs/README.md) holds its
-Terraform. A cloud or provider without its environment secrets reports
-"not configured" and fails.
+Terraform. A cloud or provider without its environment secrets is
+skipped, and the run's summary names what it lacks.
 
 ## Dependencies stay at latest
 

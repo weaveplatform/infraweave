@@ -12,10 +12,10 @@ name: go | VCS provider labs
 #
 # The lab's names and credentials are the vcs-lab environment's
 # secrets, which the logs mask; a value derived from one is masked
-# before use. A provider without its secrets reports "not configured"
-# and fails rather than passing. The job is informational: the quality
-# gate does not need it, and a failure opens an issue per provider, or
-# comments on the open one.
+# before use. A provider without its secrets is skipped: its job passes
+# having run nothing, and the run's summary names the secrets it lacks.
+# The job is informational: the quality gate does not need it, and a
+# failure opens an issue per provider, or comments on the open one.
 # ref: decision 0016
 on:
   schedule:
@@ -124,19 +124,22 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Not configured
+      # A lab the maintainer has not set up is skipped rather than failed,
+      # so a red run is a provider that broke. Every later step runs only
+      # for a configured provider.
+      - name: Skip, not configured
         if: ${{ steps.config.outputs.configured != 'true' }}
         env:
           MISSING: ${{ steps.config.outputs.missing }}
         run: |
-          line="vcs-lab ${PROVIDER} is not configured: the vcs-lab environment's secrets ${MISSING} are not set. test/terraform/vcs/README.md describes the lab and lists them."
-          echo "$line"
+          line="vcs-lab ${PROVIDER} is skipped: the vcs-lab environment's secrets ${MISSING} are not set. test/terraform/vcs/README.md describes the lab and lists them."
+          echo "::notice title=vcs-lab ${PROVIDER} skipped::${line}"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
 
       # Each provider's Terraform credentials, its push credentials for
       # seed.sh, and the variables its Terraform root and sweep.sh read.
       - name: Set the provider's environment
+        if: ${{ steps.config.outputs.configured == 'true' }}
         run: |
           set -euo pipefail
           {
@@ -170,7 +173,7 @@ jobs:
       # start-gitlab.sh makes the container's certificate and the run's
       # administrator token, and writes the variables that name them.
       - name: Start GitLab
-        if: ${{ matrix.provider == 'gitlab' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.provider == 'gitlab' }}
         run: |
           set -euo pipefail
           image=$(sed -nE 's/^[[:space:]]*ImageGitLabCE = "([^"]+)"/\1/p' test/acceptance/images.go)
@@ -185,7 +188,7 @@ jobs:
       # run's own. Bitbucket's first start, with no search server, takes a
       # few minutes before /status answers RUNNING.
       - name: Start Bitbucket Data Center
-        if: ${{ matrix.provider == 'bitbucket-dc' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.provider == 'bitbucket-dc' }}
         run: |
           set -euo pipefail
           image=$(sed -nE 's/^[[:space:]]*ImageBitbucketDC = "([^"]+)"/\1/p' test/acceptance/images.go)
@@ -236,11 +239,14 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Sweep lab repositories a day old
-        if: ${{ matrix.provider != 'gitlab' && matrix.provider != 'bitbucket-dc' }}
+        if: >-
+          ${{ steps.config.outputs.configured == 'true' &&
+          matrix.provider != 'gitlab' && matrix.provider != 'bitbucket-dc' }}
         run: test/terraform/vcs/sweep.sh "$PROVIDER"
 
       - name: Apply the lab
         id: apply
+        if: ${{ steps.config.outputs.configured == 'true' }}
         run: |
           set -euo pipefail
           terraform -chdir="$ROOT" init -input=false -no-color > /dev/null
@@ -250,6 +256,7 @@ jobs:
       # is masked before it reaches the environment; the GitHub App's key
       # spans lines, so it goes in under a delimiter.
       - name: Name the lab to the tests
+        if: ${{ steps.config.outputs.configured == 'true' }}
         run: |
           set -euo pipefail
           out() { terraform -chdir="$ROOT" output -raw "$1"; }
@@ -289,6 +296,7 @@ jobs:
       # Each test appends to cloud.log, whose failing cases the report
       # quotes.
       - name: The source contract and a run's credential
+        if: ${{ steps.config.outputs.configured == 'true' }}
         env:
           TEST: ${{ matrix.test }}
           PACKAGE: ./internal/vcs/internal/adapters/${{ matrix.root }}
@@ -313,7 +321,7 @@ jobs:
 
       # One open issue per provider tracks its failing runs: the first
       # failure opens it, and each later one comments on it until a person
-      # closes it. A provider that is not configured fails without an
+      # closes it. A provider that is not configured passes without an
       # issue, since nothing ran.
       - name: Open or update the provider's issue
         if: ${{ failure() && steps.config.outputs.configured == 'true' }}
