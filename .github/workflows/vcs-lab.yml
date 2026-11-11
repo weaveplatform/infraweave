@@ -1,4 +1,4 @@
-name: go | VCS providers in the cloud
+name: go | VCS provider labs
 
 # Each night on main, every VCS provider against its real service: the
 # Terraform root in test/terraform/vcs/<root> makes two private repositories
@@ -69,7 +69,6 @@ jobs:
       LAB_GITHUB_ADMIN_TOKEN: ${{ secrets.VCS_GITHUB_ADMIN_TOKEN }}
       LAB_GITHUB_APP_ID: ${{ secrets.VCS_GITHUB_APP_ID }}
       LAB_GITHUB_APP_PRIVATE_KEY: ${{ secrets.VCS_GITHUB_APP_PRIVATE_KEY }}
-      LAB_GITHUB_APP_INSTALLATION_ID: ${{ secrets.VCS_GITHUB_APP_INSTALLATION_ID }}
       LAB_GITLAB_GROUP: ${{ secrets.VCS_GITLAB_GROUP }}
       LAB_GITLAB_ADMIN_TOKEN: ${{ secrets.VCS_GITLAB_ADMIN_TOKEN }}
       LAB_BITBUCKET_CLOUD_WORKSPACE: ${{ secrets.VCS_BITBUCKET_CLOUD_WORKSPACE }}
@@ -109,7 +108,7 @@ jobs:
         id: config
         run: |
           case "$PROVIDER" in
-            github) need="LAB_GITHUB_ORGANIZATION LAB_GITHUB_ADMIN_TOKEN LAB_GITHUB_APP_ID LAB_GITHUB_APP_PRIVATE_KEY LAB_GITHUB_APP_INSTALLATION_ID" ;;
+            github) need="LAB_GITHUB_ORGANIZATION LAB_GITHUB_ADMIN_TOKEN LAB_GITHUB_APP_ID LAB_GITHUB_APP_PRIVATE_KEY" ;;
             gitlab) need="LAB_GITLAB_GROUP LAB_GITLAB_ADMIN_TOKEN" ;;
             bitbucket-cloud) need="LAB_BITBUCKET_CLOUD_WORKSPACE LAB_BITBUCKET_CLOUD_PROJECT_KEY LAB_BITBUCKET_CLOUD_EMAIL LAB_BITBUCKET_CLOUD_API_TOKEN" ;;
             azure-devops) need="LAB_AZURE_DEVOPS_ORGANIZATION_URL LAB_AZURE_DEVOPS_PROJECT LAB_AZURE_DEVOPS_PAT" ;;
@@ -148,7 +147,6 @@ jobs:
               github)
                 echo "TF_VAR_token=$LAB_GITHUB_ADMIN_TOKEN"
                 echo "TF_VAR_organization=$LAB_GITHUB_ORGANIZATION"
-                echo "TF_VAR_installation_id=$LAB_GITHUB_APP_INSTALLATION_ID"
                 echo "SEED_USER=x-access-token"
                 echo "SEED_TOKEN=$LAB_GITHUB_ADMIN_TOKEN"
                 ;;

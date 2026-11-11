@@ -4,14 +4,9 @@ variable "organization" {
 }
 
 variable "token" {
-  description = "An organization owner's token, which creates and deletes repositories and adds them to the lab App's installation; TF_VAR_token sets it."
+  description = "An organization owner's token, which creates and deletes repositories; TF_VAR_token sets it."
   type        = string
   sensitive   = true
-}
-
-variable "installation_id" {
-  description = "The lab App's installation on the organization, set to reach selected repositories."
-  type        = string
 }
 
 variable "suffix" {
