@@ -150,7 +150,7 @@ infraweave/
 │   ├── agent/                     runs on customer hosts; links no domain and no server persistence (P8)
 │   │   ├── cli/                   cobra commands of the agent process modes, shared by both builds
 │   │   ├── config/                launcher settings: pool token, comms URL, executor, mounts
-│   │   ├── launcher/              register, long-poll jobs and signals, heartbeat, drain
+│   │   ├── launcher/              register, long-poll jobs and signals, heartbeat, drain; admin listener (/livez, /readyz)
 │   │   ├── wire/                  GENERATED worker protocol client
 │   │   ├── executor/docker/       one run container per job, own binary mounted (P8)
 │   │   ├── executor/kubernetes/   WorkerPool and Worker controller, pod per run (P14)
@@ -187,10 +187,10 @@ infraweave/
 │   │   ├── api/                   Runs, Scheduler, Reports, StateAccess, events
 │   │   ├── assembly/
 │   │   └── internal/
-│   │       ├── core/              machine lifecycle gates queuegate schedule handover timers
+│   │       ├── core/              machine lifecycle schedule trigger read control surface handover timers
 │   │       │                      promote replan forceapply dependencies port
 │   │       └── adapters/          http (Runs tag, log streaming); pg (runs, transitions, receipts, flags,
-│   │                              assignments, stack_run_locks, stack_run_state, stack_outputs)
+│   │                              log chunks, stack_run_locks, stack_run_state, stack_outputs)
 │   ├── workers/                   hexagon: pools, workers, credentials, worker protocol endpoints, pool samples (P8, P14)
 │   │   └── api/ assembly/ internal/{core/{pool,worker,credential,drain,waiter,sample,port},adapters/{http,protocol,pg}}/
 │   ├── vendors/                   flat: tool version catalogue (P5, P20), refreshed from the release indexes
@@ -490,7 +490,7 @@ only refuses more.
 | `constructors` (rule 4) | everything except `**/internal/app/**` and `**/cmd/**` | deny | `$m/internal/<domain>/assembly` for each of the 19 domains |
 | `core-not-adapters` (rule 5) | `**/internal/*/internal/core/**` | deny | `$m/internal/<domain>/internal/adapters` for each of the 8 hexagon domains |
 | `shared-below-domains` (rule 6) | `**/internal/platform/**`, `**/internal/kernel/**`, `**/internal/iac/**` | deny | the 19 domain roots, `$m/internal/agent`, `$m/internal/app` |
-| `agent-isolation` (rule 7) | `**/internal/agent/**`, `**/cmd/infraweave/agent.go`, `**/cmd/infraweave-agent/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/pkg/flows/app/v1$`, `$m/internal/agent/`, `$m/internal/kernel$` and `/`, `$m/internal/iac$` and `/`, and `$m/internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr}$` |
+| `agent-isolation` (rule 7) | `**/internal/agent/**`, `**/cmd/infraweave/agent.go`, `**/cmd/infraweave-agent/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/pkg/flows/app/v1$`, `$m/internal/agent/`, `$m/internal/kernel$` and `/`, `$m/internal/iac$` and `/`, and `$m/internal/platform/{buildinfo,observe,rego,httpkit/client,httpkit/serve,seal,expr,mask}$` |
 | `devtools` (rule 8) | everything except `**/tools/**`, `**/internal/devtools/**`, and the tests of `api/` and `test/acceptance/`, which check the committed documents with `specref` | deny | `$m/internal/devtools` |
 | `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |
 | `ctl` (rule 10) | `**/internal/ctl/**`, `**/cmd/infraweavectl/**` | lax: deny, then allow | deny `$m/internal` and `$m/pkg/client`; allow `$m/internal/ctl$`, `$m/internal/platform/buildinfo$` and `$m/internal/platform/private$` |
@@ -510,10 +510,11 @@ no entry, and a new platform package stays out of the agent until the rule
 names it. `agent-isolation` allows all of `internal/iac`, so `iac-pure`
 holds `iac` to `kernel` and itself: an `iac` package cannot carry another
 import into the agent. `internal/agent` may import only `internal/kernel`, `internal/iac`,
-`pkg/flows/app/v1` and seven `platform` packages from outside its own tree:
+`pkg/flows/app/v1` and eight `platform` packages from outside its own tree:
 `buildinfo`, `observe` and `httpkit/serve` (every agent process mode logs,
 traces and answers its probes), `rego`, `httpkit/client`, `seal` (the runner
-seals workspaces) and `expr` (the runner renders workflow command templates). The 8 hexagons
+seals workspaces), `expr` (the runner renders workflow command templates) and
+`mask` (the runner masks secrets in its log output). The 8 hexagons
 are `runs`, `vcs`, `workers`, `access`, `registry`, `events`, `intelligence`
 and `flows`.
 

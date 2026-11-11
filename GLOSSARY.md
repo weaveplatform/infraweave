@@ -116,16 +116,52 @@ _Avoid_: worker binary, executor
 A logical executor in a worker pool that runs one run at a time.
 _Avoid_: agent, runner, launcher
 
+**Worker pool**:
+A group of workers in a space that takes the runs of the stacks assigned to it.
+_Avoid_: runner pool, agent pool (a Flows term)
+
+**Private worker pool**:
+A worker pool whose workers run on the customer's own hosts, holding a key that never leaves them.
+_Avoid_: self-hosted pool
+
 **Public worker pool**:
 The worker pool an operator runs for every organization of an installation.
 _Avoid_: shared pool, managed pool
+
+**Pool CA**:
+The installation's certificate authority that signs every private worker pool's certificate.
+_Avoid_: root CA
+
+**Pool token**:
+The credential a launcher is given once when its pool is created, naming the pool, the installation and the pool's certificate.
+_Avoid_: worker token, API key
+
+**Run specification**:
+Everything a worker needs to execute one run, with its secret part readable only by the pool's key holder.
+_Avoid_: job, payload, manifest
+
+**Handover**:
+The interval between a worker claiming a run and the run reporting that it has started.
+_Avoid_: preparation, dispatch
+
+**Drained worker**:
+A worker that finishes its current run and takes no new one.
+_Avoid_: paused worker, cordoned worker
+
+**Cycle**:
+Asking every worker of a pool to exit once its current run ends.
+_Avoid_: recycle, restart
+
+**Reset**:
+Replacing a pool's certificate so that its existing workers are refused.
+_Avoid_: rotate, revoke
 
 **Offline worker**:
 A worker that has stopped sending heartbeats for long enough that it receives no new work.
 _Avoid_: dead worker, lost worker
 
 **Lost run**:
-A run that fails because its worker stayed offline past the run's tolerance.
+A run that fails because its worker stayed offline past the installation's tolerance, which is the same for every pool.
 _Avoid_: orphaned run, zombie run
 
 ### Access

@@ -358,7 +358,7 @@ The phase that creates a domain wires it into the
   outside the 19 adds those entries too.
 - `internal/app/domains.go` constructs it at its place in the construction
   order, its migration stream registers at the same place, and
-  `internal/app/router.go` embeds its `<Domain>Deploy` alias.
+  `internal/app/router.go` embeds its `<Domain>API` alias.
 - Each import edge whose other end already exists lands with it. An edge to
   a domain that arrives later lands with that later phase.
 - Its tables hold other domains' IDs as plain columns, never foreign keys.
@@ -1535,7 +1535,7 @@ queued; nothing executes them until P8.
    `state_version` fencing, the stack state update, `outbox.Append` of
    `run_updated`, terminal lock release and the `run.schedule` follow-up;
    `Create` with deduplication on stack, commit and run type.
-4. `internal/runs/internal/core/queuegate` and `schedule`: `run.schedule`
+4. `internal/runs/internal/core/schedule`: `run.schedule`
    with unique key `stack:<id>`, the stack lock for blocking runs, the
    disabled-stack and dependency gates (approval and dependencies are
    no-ops until P13 and P16), the seven priority levels.
@@ -1556,7 +1556,7 @@ queued; nothing executes them until P8.
    `policies` edge with P13. `stacks` reads run state through
    `stacksapi.StackStatus`, and `runTrigger` resolves a named commit through
    `vcsapi.Sources`, back edges that `internal/app` sets after
-   construction (`SetStackStatus`, `SetSources`), adding no import
+   construction (`SetStackStatus`, `BindSources`), adding no import
    ([declared graph](repo-layout.md#declared-graph)).
 7. `runs` adds `run` to the environment surface through its `Surfaces()`
    ([0024](../research/decisions/0024-expression-language.md)), so a
@@ -1579,7 +1579,10 @@ Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.m
 
 Private worker pools, the `/worker/v1` protocol and `infraweave launcher`, which
 claims a run, prepares it and starts a container from the same binary. The
-container runs a stub runner until P9.
+container runs a stub runner until P9. The source and its credential, tool
+versions and the encrypted workspace arrive with P9, the state backend with
+P8b, the launcher's run and no-log timeouts with P10, and the run's trace
+context in the assignment with P18b.
 
 **Tasks**
 1. `internal/workers` (hexagon) with `worker_pools`, `workers`,
@@ -1595,14 +1598,21 @@ container runs a stub runner until P9.
    `searchWorkerPoolsSuggestions`, `workerPoolSearchWorkers`,
    `workerPoolSearchWorkersSuggestions`, `attachableWorkerPoolsInSpace`,
    `stackAttachableWorkerPools`, `accountUpdateDefaultWorkerPoolRunnerImages`,
-   `defaultPrivateWorkerPoolRunnerImage`. Feature: `workers_pools.feature`.
+   `defaultPrivateWorkerPoolRunnerImage`, which reads the account's default
+   runner images in place of the constant `access` serves until then.
+   `access` mints the worker session token, the run token and the in-run
+   API token through `accessapi`
+   ([0006](../research/decisions/0006-authentication-and-tokens.md#token-kinds)).
+   Feature: `workers_pools.feature`.
 2. `api/src/worker/` bundled to `api/worker.openapi.yaml`, generated into
    `internal/platform/gen/worker` and `internal/agent/wire`;
    `internal/workers/internal/adapters/protocol` serves `register`, `poll`,
    `deregister`, `runs/{run}/spec`, `reports`, `upload-urls`, `log-chunks`,
    `artifacts` and `workspace`. Held polls woken by `infraweave_runs`; the
    claim with `FOR UPDATE SKIP LOCKED` in
-   `internal/runs/internal/core/schedule`.
+   `internal/runs/internal/core/schedule`, over the columns `runs` gains in
+   its `CREATE`: `worker_id`, `worker_pool_id` and `priority_tier`, with
+   the claim's partial index.
    Tests: `TestUnitWorkerRegistration` (foreign chain, reset serial,
    replayed `jti`, skewed `iat`), `TestAccRunClaim` (50 concurrent pollers,
    one claim per run). Records DV-008, DV-024, DV-027.
@@ -1610,17 +1620,23 @@ container runs a stub runner until P9.
    environment resolved by P6's `configuration/api.Environment`, the run
    token, the in-run API token, and the secret part sealed to the pool key
    with decision 0013's pool envelope (ECDH P-256, HKDF-SHA256,
-   AES-256-GCM); the per-run artifact key.
+   AES-256-GCM); the per-run artifact key. `runsassembly.Deps` gains
+   `configapi.Environment`, the edge P7 task 6 leaves to P8, and the
+   environment's templates are rendered here (P7 task 7).
 4. `internal/agent`: `config`, `launcher` (register, poll, signals, drain,
    cycle), `executor/docker` (the launcher's own binary bind-mounted
    read-only as the container's root process, UID 1983) and `agenttest`.
    `internal/agent/cli` holds `infraweave launcher` and the hidden
    `infraweave runner` stub, which `cmd/infraweave/agent.go` registers.
+   `infraweave launcher` serves `/livez` and `/readyz` on an admin
+   listener, as `serve` does.
 5. Liveness: a worker unseen for `worker.offline_after` (3 minutes) is
    `OFFLINE` and receives no new work; `worker.reap` fails a run whose
    worker stays offline past `run.lost_after` (60 minutes) as a lost run
-   with the note `worker lost`; drain, cycle and reset as decision 0008's
-   table. Records DV-025 and DV-092.
+   with the note `worker lost`; a claimed run with no `started` report
+   inside its pool's preparing timeout (`run.preparing_timeout_default`,
+   15 minutes) fails through T11, T36 or T44; drain, cycle and reset as
+   decision 0008's table. Records DV-025 and DV-092.
 6. `worker.sample`, a periodic task in the `scheduler` process mode that
    runs every minute and writes each pool's busy workers, registered
    workers and queued runs to `worker_pool_samples`, kept for
@@ -1633,18 +1649,20 @@ container runs a stub runner until P9.
    hexagon, after `access` in `domains.go` and the migration order: its
    edges to `features` and `access`, and the edges waiting on it, `stacks`
    to `workers` (a stack's worker pool references `worker_pools`) and
-   `runs` to `workers` (`runs`' `run_assignments` references `workers`).
+   `runs` to `workers` (`runs.worker_id` and `runs.worker_pool_id` hold
+   `workers`' IDs).
    The protocol claims and reports through `runsapi.Scheduler` and
    `runsapi.Reports`, back edges that `internal/app` sets after
-   construction (`SetScheduler`, `SetReports`), adding no import
+   construction (`BindScheduler`, `BindReports`), adding no import
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
-- `worker_protocol.feature` (`@postgres`, `@objectstore`): a launcher
-  registers, claims a run, receives a sealed specification, starts a
-  container that reports and exits; a killed launcher's worker turns
-  `OFFLINE` and, in virtual time past `run.lost_after`, its run is lost
-  with the note `worker lost`.
+- `worker_protocol.feature` (`@postgres`, `@objectstore`, `@docker`): a
+  launcher registers, claims a run, receives a sealed specification, starts
+  a container that reports and exits; a killed launcher's worker turns
+  `OFFLINE` and, with `worker.offline_after` and `run.lost_after` set to
+  seconds, its run is lost with the note `worker lost`. Unit tests in
+  virtual time cover the default durations.
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
 - Two instances write one `worker_pool_samples` row per pool per minute.
 - The interpolation scenario of `expressions_deploy.feature`: a

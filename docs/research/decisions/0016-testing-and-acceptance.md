@@ -133,6 +133,7 @@ everywhere, and the reason names where the contract checks it instead.
 | `@vcs` | Gitea container, with a repository seeded per scenario, and each provider's chi fake | real webhooks, commit statuses, pull request comments; each provider's own shapes (decision 0012) |
 | `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
+| `@docker` | the host's Docker daemon; the harness builds `infraweave-runner:acceptance`, a minimal image with UID 1983, and starts `infraweave launcher` as a subprocess, waiting on its admin `/livez` | the worker protocol with the `runner` stub: a claim, a sealed specification, a container that reports, an offline worker and a lost run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008) |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module | Kubernetes workers (decision 0008) |
 | `@flows-agent` | a test app built on `pkg/flows/appsdk` as a local OCI image, and an `infraweave flows-agent` subprocess that runs it in Docker | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
 
@@ -318,7 +319,7 @@ coverage it would contribute is not waived.
 |---|---|---|---|---|
 | `unit` | `ubuntu-latest`, `macos-latest`, `windows-latest` | `make test` | 15 min | yes |
 | `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc`, `@vault` | 20 min | yes |
-| `accept-runs` | `ubuntu-latest` | `@terraform`, `@tofu`, `@kubernetes`, `@flows-agent` | 30 min | yes |
+| `accept-runs` | `ubuntu-latest` | `@docker`, `@terraform`, `@tofu`, `@kubernetes`, `@flows-agent` | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
 | `parity` | `ubuntu-latest` | `make verify-parity` and the state check | 5 min | yes |

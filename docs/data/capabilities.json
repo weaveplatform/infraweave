@@ -1112,7 +1112,7 @@
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
         "plan": "Public pool all plans; private pools Starter+ [D]",
         "tierFeatures": "`PRIVATE_WORKERS`",
-        "notes": "The public pool is P8"
+        "notes": "Every plan runs on the public pool; private pools need Starter+"
       },
       "infraweave": {
         "feature": "`worker-pools`, `private-worker-pools`; limits `private-workers`, `public-worker-slots`",
@@ -1120,7 +1120,7 @@
         "phase": "P8",
         "also": "P14, P25b",
         "state": "missing",
-        "notes": "Private pools first; the public worker pool later, as an option"
+        "notes": "Private pools in P8; the public worker pool, its usage and its searches in P14, as an option"
       }
     },
     {
