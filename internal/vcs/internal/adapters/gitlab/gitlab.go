@@ -35,11 +35,18 @@ var (
 	ErrCredential = fmt.Errorf("gitlab: access token refused: %w", port.ErrCredential)
 	// ErrHost is a host that is not an http or https URL.
 	ErrHost = errors.New("gitlab: host is not an http or https URL")
-	// ErrCannotMint is a token GitLab refuses a project access token to,
-	// one below Maintainer on the project or without the api scope.
+	// ErrCannotMint is a token GitLab refuses a project access token to:
+	// one below Maintainer on the project, one without the api scope, or
+	// a group or project access token, whose bot user may mint none.
 	ErrCannotMint = fmt.Errorf("gitlab: the token may not mint a project access token: %w",
 		port.ErrCannotMint)
 )
+
+// botRefusal is the words of GitLab's 400 to a bot user's mint, which
+// gitlabfake.BotRefusal repeats. Only these words make a 400 a refusal:
+// another 400 is a request this provider got wrong, and lending the
+// integration's wider token for it would hide the fault.
+const botRefusal = "permission to create project access token"
 
 // Username is the user git authenticates a token as over HTTPS; GitLab
 // reads the token alone.
@@ -376,8 +383,7 @@ func (p *Provider) Mint(
 			ExpiresAt:   &iso,
 		}, gitlab.WithContext(ctx))
 	if err != nil {
-		if resp != nil && resp.Response != nil && resp.StatusCode == http.StatusForbidden &&
-			rateLimit(resp.Response) == nil {
+		if refusedMint(resp, err) {
 			return port.Credential{}, fmt.Errorf("%w: %s: %w", ErrCannotMint, pid, err)
 		}
 		return port.Credential{}, classify(resp, err, "access token of "+pid)
@@ -386,6 +392,22 @@ func (p *Provider) Mint(
 		Username: Username, Token: []byte(tok.Token),
 		ID: strconv.FormatInt(tok.ID, 10), ExpiresAt: day,
 	}, nil
+}
+
+// refusedMint reports whether GitLab refused the token a project access
+// token: a 403 that is no rate limit, or a 400 refusing a bot user.
+func refusedMint(resp *gitlab.Response, err error) bool {
+	if resp == nil || resp.Response == nil {
+		return false
+	}
+	switch resp.StatusCode {
+	case http.StatusForbidden:
+		return rateLimit(resp.Response) == nil
+	case http.StatusBadRequest:
+		var e *gitlab.ErrorResponse
+		return errors.As(err, &e) && strings.Contains(e.Message, botRefusal)
+	}
+	return false
 }
 
 // Revoke revokes repo's project access token id. A token GitLab no longer

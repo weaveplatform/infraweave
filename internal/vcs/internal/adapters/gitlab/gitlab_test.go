@@ -450,8 +450,9 @@ func TestUnitTimeout(t *testing.T) {
 // TestUnitMint checks that a Maintainer mints a Reporter token with
 // read_repository alone, expiring at the start of the day expires falls
 // on, which reads its project and no other and lists nothing; that a
-// Developer, a token without the api scope and a missing project are
-// refused; and that a revoke stops the token, twice over.
+// Developer, a token without the api scope and a group access token's
+// Maintainer bot may not mint, while another 400 and a missing project
+// are errors; and that a revoke stops the token, twice over.
 func TestUnitMint(t *testing.T) {
 	l := newLab(t)
 	ctx := t.Context()
@@ -514,14 +515,21 @@ func TestUnitMint(t *testing.T) {
 	l.fake.AddMember("acme", "dev", "dev", gitlabfake.Developer)
 	dev := integrationOf(l.fake.AddToken("dev", "api"), l.srv.URL)
 	reader := integrationOf(l.fake.AddToken("infraweave", "read_api"), l.srv.URL)
+	l.fake.AddMember("acme/platform", "infra", "group_7_bot", gitlabfake.Maintainer)
+	bot := integrationOf(l.fake.AddBotToken("group_7_bot", "api"), l.srv.URL)
 	for name, repo := range map[string]port.Repository{
-		"a Developer":         {Namespace: "acme", Name: "dev", Integration: &dev},
-		"a token without api": {Namespace: "acme/platform", Name: "infra", Integration: &reader},
+		"a Developer":            {Namespace: "acme", Name: "dev", Integration: &dev},
+		"a token without api":    {Namespace: "acme/platform", Name: "infra", Integration: &reader},
+		"a group access token's": {Namespace: "acme/platform", Name: "infra", Integration: &bot},
 	} {
 		if _, err := l.gl.Mint(ctx, repo, "run", expires); !errors.Is(err, port.ErrCannotMint) ||
 			!errors.Is(err, gitlab.ErrCannotMint) {
 			t.Errorf("%s minting = %v", name, err)
 		}
+	}
+	if _, err := l.gl.Mint(ctx, l.repo.Repo, "run",
+		time.Now().Add(-48*time.Hour)); err == nil || errors.Is(err, port.ErrCannotMint) {
+		t.Errorf("minting a token expired already = %v", err)
 	}
 	if _, err := l.gl.Mint(ctx, l.repo.Missing, "run", expires); !errors.Is(err, port.ErrNotFound) {
 		t.Errorf("minting on a missing project = %v", err)

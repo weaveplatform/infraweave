@@ -259,7 +259,7 @@ credential that is part of the run's sealed secret material:
 | Provider | Credential |
 |---|---|
 | GitHub, GitHub Enterprise | An installation token minted for the run, limited to that repository and `contents: read`, expiring after one hour |
-| GitLab | A project access token minted for the run with `read_repository`, expiring the next day and revoked when the run reaches a terminal state; where the integration's token cannot create one (it needs the Maintainer role on the project), the integration's token, and the run's log says so |
+| GitLab | A project access token minted for the run with `read_repository`, expiring the next day and revoked when the run reaches a terminal state; where the integration's token cannot create one (it needs the Maintainer role on the project, and GitLab refuses one to the bot user of a group or project access token), the integration's token, and the run's log says so |
 | Bitbucket Data Center | A repository access token minted for the run with `REPO_READ`, expiring the next day and revoked when the run reaches a terminal state; where the integration's token cannot create one (it needs repository admin), the integration's token, and the run's log says so |
 | Bitbucket Cloud, Azure DevOps | The integration's token, which these providers cannot narrow through their APIs |
 | Raw Git | None; public HTTPS URLs only |

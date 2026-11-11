@@ -53,6 +53,10 @@ const (
 	Owner      = 50
 )
 
+// BotRefusal is how GitLab words its refusal of a project access token
+// to a bot user, after "400 Bad request - ".
+const BotRefusal = "User does not have permission to create project access token"
+
 // Author is the name and e-mail every seeded commit carries.
 const (
 	AuthorName  = gitmem.AuthorName
@@ -63,10 +67,12 @@ const (
 // annotated tags, trees and their differences behave as Git's do.
 type Repo = gitmem.Repo
 
-// user is a user tokens act as.
+// user is a user tokens act as; bot marks the bot user of a group or
+// project access token.
 type user struct {
 	id       int64
 	username string
+	bot      bool
 }
 
 // token is an access token of a user, with its scopes; mint is the
@@ -175,6 +181,20 @@ func (f *Fake) AddToken(username string, scopes ...string) string {
 	f.nextID++
 	tok := "glpat-" + secret()
 	f.tokens[tok] = &token{id: f.nextID, user: f.userOf(username), scopes: scopes}
+	return tok
+}
+
+// AddBotToken issues a token acting as the bot user username, created
+// the first time, holding scopes, as a group or project access token
+// does, and returns it.
+func (f *Fake) AddBotToken(username string, scopes ...string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.nextID++
+	tok := "glpat-" + secret()
+	u := f.userOf(username)
+	u.bot = true
+	f.tokens[tok] = &token{id: f.nextID, user: u, scopes: scopes}
 	return tok
 }
 
@@ -521,13 +541,21 @@ func (f *Fake) mint(w http.ResponseWriter, r *http.Request) {
 		answer(w, http.StatusForbidden, message("403 Forbidden"))
 		return
 	}
+	// GitLab refuses a bot user with 400, not 403, whatever its level.
+	if tok.user.bot {
+		answer(w, http.StatusBadRequest,
+			message("400 Bad request - "+BotRefusal))
+		return
+	}
 	if bad || err != nil || in.Name == "" || len(in.Scopes) == 0 || in.AccessLevel > level ||
 		!exp.After(time.Now()) {
 		answer(w, http.StatusBadRequest, message("400 Bad request"))
 		return
 	}
 	f.nextID++
-	bot := &user{id: f.nextID, username: fmt.Sprintf("project_%d_bot_%s", p.id, secret()[:8])}
+	bot := &user{
+		id: f.nextID, username: fmt.Sprintf("project_%d_bot_%s", p.id, secret()[:8]), bot: true,
+	}
 	f.users[bot.username] = bot
 	p.members[bot.id] = in.AccessLevel
 	m := &Minted{
