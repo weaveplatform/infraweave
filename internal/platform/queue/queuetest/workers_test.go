@@ -255,16 +255,19 @@ func TestAccWorkersCompleteTx(t *testing.T) {
 
 // TestAccWorkersLeaseExtension checks that a handler running past its
 // lease keeps its job: without renewal the job would be recovered and run
-// again.
+// again. The handler runs three leases long, so it needs several renewals.
+// A renewal comes every third of a lease, so a lease of a second leaves
+// each one two thirds of a second to land: room for a database call that a
+// machine loaded by the whole gate slows.
 func TestAccWorkersLeaseExtension(t *testing.T) {
 	cfg := fast()
-	cfg.Lease = 300 * time.Millisecond
+	cfg.Lease = time.Second
 	r := queue.NewRegistry()
 	var runs atomic.Int32
 	register(t, r, kind("t.long", 0), func(ctx context.Context, _ queue.Job) error {
 		runs.Add(1)
 		select {
-		case <-time.After(time.Second):
+		case <-time.After(3 * cfg.Lease):
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
