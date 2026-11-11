@@ -151,7 +151,9 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   the run type and the drift flag, using report 08's seven tiers, and recomputed by
   `runPrioritySet` ([08 priority](../reference/08-run-lifecycle.md#priority)). A
   partial index on `(worker_pool_id, priority_tier, created_at, id)` where the
-  state is claimable serves the claim.
+  state is claimable serves the claim. `runs.worker_id` and
+  `runs.worker_pool_id` are columns of the run row holding the `workers`
+  domain's IDs, so the claim writes no other table of `runs`.
 - **The claim** runs in one transaction:
 
   ```sql
@@ -205,12 +207,17 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
     the pool private key, with the certificate in `x5c` and the payload
     `{pool, iat, jti, version, os, arch, metadata}`. The server checks the chain
     to the pool CA, the current serial, `iat` within five minutes, and that `jti`
-    is unseen (table `worker_nonces`, kept 10 minutes). It answers with the worker
-    ID and a worker session token (`aud` `infraweave-worker`, one hour).
+    is unseen (table `worker_nonces`, kept 10 minutes). A new worker beyond the
+    organization's `private-workers` limit, pooled across its accounts, answers
+    `403`, problem `limit-reached`
+    ([0021](0021-capability-scope-and-supersession.md#limits)). It answers with
+    the worker ID and a worker session token (`aud` `infraweave-worker`, one
+    hour).
   - **Resuming.** A registration that names an existing worker ID of the same
     pool resumes that worker instead of creating one, while the worker row
     still exists. A launcher that was offline and whose session token expired
-    meanwhile resumes this way and keeps its run.
+    meanwhile resumes this way and keeps its run. A resumed worker is not
+    counted against `private-workers` again.
   - **Run token.** Issued at claim (`aud` `infraweave-runner`), scoped to one run,
     accepted only while the run is in a worker state and its `state_version`
     matches the run's current execution, and valid at most until the run ends
