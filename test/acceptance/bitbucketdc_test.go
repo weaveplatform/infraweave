@@ -28,7 +28,7 @@ func (b *bitbucketDCSteps) register(sc *godog.ScenarioContext) {
 		b.repository,
 	)
 	sc.Step(
-		`^a commit to "main" of the Bitbucket Data Center repository "([^"]+)" is kept as "(\w+)"$`,
+		`^a commit to "([\w./-]+)" of the Bitbucket Data Center repository "([^"]+)" is kept as "(\w+)"$`,
 		b.commit,
 	)
 }
@@ -75,13 +75,14 @@ func (b *bitbucketDCSteps) repository(path, username, key string) error {
 	return nil
 }
 
-// commit adds a commit to main of path and keeps it as key.
-func (b *bitbucketDCSteps) commit(path, key string) error {
+// commit adds a commit to branch of path, which a new branch starts
+// from the last commit, and keeps it as key.
+func (b *bitbucketDCSteps) commit(branch, path, key string) error {
 	project, slug, err := b.split(path)
 	if err != nil {
 		return err
 	}
-	b.ids[key] = b.fake.Repo(project, slug).Commit("main", key, map[string]string{
+	b.ids[key] = b.fake.Repo(project, slug).Commit(branch, key, map[string]string{
 		"main.tf": "# " + key + "\n",
 	})
 	return nil

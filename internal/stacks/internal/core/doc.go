@@ -51,6 +51,9 @@
 // search the stacks a space's access view lists: those that live in the
 // space, or, for a space admin, every stack accessapi.Grants finds a grant
 // of reaching it, its implicit read of its own space among them.
+// SearchUsers and SuggestUsers search the stacks the caller may read that
+// use a VCS integration: those bound to it and, for a provider's default,
+// those on its provider that name none.
 //
 // # Input and output
 //

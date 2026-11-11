@@ -26,7 +26,10 @@ func (g *gitlabSteps) register(sc *godog.ScenarioContext) {
 		`^a GitLab project "([^"]+)" that "(\w+)" maintains, its head of "main" kept as "(\w+)"$`,
 		g.project,
 	)
-	sc.Step(`^a commit to "main" of the GitLab project "([^"]+)" is kept as "(\w+)"$`, g.commit)
+	sc.Step(
+		`^a commit to "([\w./-]+)" of the GitLab project "([^"]+)" is kept as "(\w+)"$`,
+		g.commit,
+	)
 }
 
 // start serves the fake and answers its certificate, which the caller
@@ -68,13 +71,14 @@ func (g *gitlabSteps) project(path, username, key string) error {
 	return nil
 }
 
-// commit adds a commit to main of path and keeps it as key.
-func (g *gitlabSteps) commit(path, key string) error {
+// commit adds a commit to branch of path, which a new branch starts
+// from the last commit, and keeps it as key.
+func (g *gitlabSteps) commit(branch, path, key string) error {
 	namespace, name, err := g.split(path)
 	if err != nil {
 		return err
 	}
-	g.ids[key] = g.fake.Repo(namespace, name).Commit("main", key, map[string]string{
+	g.ids[key] = g.fake.Repo(namespace, name).Commit(branch, key, map[string]string{
 		"main.tf": "# " + key + "\n",
 	})
 	return nil

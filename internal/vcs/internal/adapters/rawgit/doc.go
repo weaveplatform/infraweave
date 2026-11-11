@@ -1,7 +1,7 @@
 // Package rawgit is the raw Git provider: Source implements port.Source
-// over Git's smart HTTP protocol for a public repository reached by its
-// https URL with no credential. It resolves a ref from the server's ref
-// advertisement, fetches the commits it needs one commit deep into memory,
+// and port.Brancher over Git's smart HTTP protocol for a public
+// repository reached by its https URL with no credential. It lists
+// branches and resolves a ref from the server's ref advertisement, fetches the commits it needs one commit deep into memory,
 // and reads files and tree differences from them; the server never
 // proxies an archive, and a run fetches its source from the repository's
 // own URL.

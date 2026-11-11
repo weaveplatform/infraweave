@@ -5,7 +5,9 @@
 // spaces and some stacks' labels, locks a stack for a run, holds a stack
 // for a domain about to store its ID, sets the Commit a stack tracks and
 // its branch's head, writes the runs domain's projection of a stack's run
-// state, and detaches the stacks bound to a deleted VCS integration;
+// state, detaches the stacks bound to a deleted VCS integration, and
+// searches the stacks that use an integration, which Use names, and
+// suggests their values;
 // ErrNotFound when the account lacks the stack. A domain whose rows name
 // stacks registers a StackGuard, which a stack's move asks what the stack
 // would lose, as a StackMove, and its delete asks to delete the domain's
@@ -28,7 +30,8 @@
 //
 // # Dependencies
 //
-// It imports the standard library and internal/kernel. The domains above
+// It imports the standard library, internal/kernel and kernel/search. The
+// domains above
 // stacks in the declared graph import it; the stacks domain's assembly
 // implements Stacks, those domains StackGuard, the configuration domain
 // StackConfiguration, the runs domain StackStatus, and the vcs domain

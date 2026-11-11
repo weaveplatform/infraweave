@@ -97,3 +97,26 @@ Feature: Azure DevOps integrations
     When token "h" sends "POST /api/v1/stacks/orphan/sync-commit" through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/vcsIntegrationId"
+
+  @op:azureDevOpsRepoIntegrationCreate @op:repositories @op:branches @case:success
+  Scenario: A user pages the repositories and branches of the provider's default
+    Given an Azure DevOps repository "Platform/web" that "dev" administers, its head of "main" kept as "web"
+    And a commit to "dev" of the Azure DevOps repository "Platform/infra" is kept as "dev"
+    When token "h" sends "POST /api/v1/azure-dev-ops-repo-integrations" with '{"organizationURL":"{azureDevOpsOrg}","personalAccessToken":"{tok}","customInput":{"name":"Main","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    When token "h" sends "GET /api/v1/repositories?provider=AZURE_DEVOPS&limit=1" through B
+    Then it answers 200
+    And the answer's items is '[{"namespace":"Platform","id":"infra"}]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/repositories?provider=AZURE_DEVOPS&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '[{"namespace":"Platform","id":"web"}]'
+    And the answer leaves out "nextCursor"
+    When token "h" sends "GET /api/v1/branches?provider=AZURE_DEVOPS&namespace=Platform&repository=infra&limit=1" through B
+    Then it answers 200
+    And the answer's items is '["dev"]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/branches?provider=AZURE_DEVOPS&namespace=Platform&repository=infra&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '["main"]'
+    And the answer leaves out "nextCursor"

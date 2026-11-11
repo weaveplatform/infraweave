@@ -147,6 +147,7 @@ func New(d Deps) (*Domain, error) {
 	})
 	bbdc := bitbucketdc.New(bitbucketdc.Options{RootCAs: roots})
 	ado := azuredevops.New(azuredevops.Options{RootCAs: roots})
+	git := rawgit.New(rawgit.Options{RootCAs: roots})
 	integrations := integration.New(integration.Deps{
 		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers,
@@ -155,11 +156,16 @@ func New(d Deps) (*Domain, error) {
 			integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc,
 			integration.AzureDevOps: ado,
 		},
+		Browse: map[string]port.Brancher{
+			integration.Git: git, integration.GitHub: gh, integration.GitHubEnterprise: gh,
+			integration.GitLab: gl, integration.BitbucketCloud: bbc,
+			integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
+		},
 		Builtin: builtin, Apps: gh, Public: d.Public,
 	})
 	return &Domain{
 		sources: source.New(d.Stacks, map[string]port.Source{
-			"GIT":                        rawgit.New(rawgit.Options{RootCAs: roots}),
+			integration.Git:              git,
 			integration.GitHub:           gh,
 			integration.GitHubEnterprise: gh,
 			integration.GitLab:           gl,

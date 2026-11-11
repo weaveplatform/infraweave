@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/cucumber/godog"
 
@@ -21,6 +22,8 @@ func (v *vcsSteps) register(sc *godog.ScenarioContext) {
 		v.tracks,
 	)
 	sc.Step(`^the answer's tracked commit was (not )?set by infraweave$`, v.setBy)
+	sc.Step(`^the answer's nextCursor is kept as "(\w+)"$`, v.next)
+	sc.Step(`^the answer finds the stacks "([^"]*)" using it$`, v.users)
 	sc.Step(
 		`^token "(\w+)" eventually reads the stack "([a-z0-9-]+)" tracking the commit kept as "(\w+)" through ([AB])$`,
 		v.eventually,
@@ -66,6 +69,43 @@ func (v *vcsSteps) integration(
 		return fmt.Errorf("%w: no space %q for integration %s", errStep, space, key)
 	}
 	v.o.ids[key] = id.String()
+	return nil
+}
+
+// next keeps the last answer's nextCursor, a page's, as key.
+func (v *vcsSteps) next(key string) error {
+	var page struct {
+		Next string `json:"nextCursor"`
+	}
+	r := v.o.a.s.last()
+	if json.Unmarshal(r.body, &page) != nil || page.Next == "" {
+		return fmt.Errorf("%w: the answer has no nextCursor: %d %s", errStep, r.status, r.body)
+	}
+	v.o.ids[key] = page.Next
+	return nil
+}
+
+// users checks the last answer, a search of an integration's users,
+// against want: their stacks' slugs, comma-separated, in its order.
+func (v *vcsSteps) users(want string) error {
+	var page struct {
+		Edges []struct {
+			Node struct {
+				StackID string `json:"stackId"`
+			} `json:"node"`
+		} `json:"edges"`
+	}
+	r := v.o.a.s.last()
+	if json.Unmarshal(r.body, &page) != nil {
+		return fmt.Errorf("%w: the answer is no search: %d %s", errStep, r.status, r.body)
+	}
+	got := make([]string, 0, len(page.Edges))
+	for _, e := range page.Edges {
+		got = append(got, e.Node.StackID)
+	}
+	if strings.Join(got, ", ") != want {
+		return fmt.Errorf("%w: the stacks using it are %q, not %q", errStep, got, want)
+	}
 	return nil
 }
 

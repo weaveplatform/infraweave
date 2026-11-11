@@ -96,8 +96,10 @@ func (s *store) Suggest(
 type spaces struct {
 	accessapi.Spaces
 
-	top  kernel.ULID
-	fail error
+	top      kernel.ULID
+	fail     error
+	tree     []accessapi.SpaceNode
+	treeFail error
 }
 
 func (s *spaces) Find(_ context.Context, _ kernel.AccountID, slug string) (kernel.ULID, error) {
@@ -112,6 +114,9 @@ func (s *spaces) Slugs(context.Context, kernel.AccountID) (map[kernel.ULID]strin
 }
 
 func (s *spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode, error) {
+	if s.tree != nil || s.treeFail != nil {
+		return s.tree, s.treeFail
+	}
 	return []accessapi.SpaceNode{{ID: s.top}}, nil
 }
 
@@ -151,12 +156,15 @@ func (tester) Test(context.Context, port.Integration) ([]port.Check, error) {
 
 // fixture is a server over a GITLAB integration with a tester, a
 // BITBUCKET_CLOUD, a BITBUCKET_DATACENTER and an AZURE_DEVOPS one, and one of OTHER, a provider with no tester whose
-// details fail to describe.
+// details fail to describe. GITHUB is built in; it, GIT and GITLAB browse
+// through a browser, and BITBUCKET_CLOUD through one that fails.
 type fixture struct {
 	srv                             http.Server
 	store                           *store
 	spaces                          *spaces
+	users                           *users
 	ctx                             context.Context
+	acct                            kernel.AccountID
 	gitlab, cloud, dc, azure, other string
 }
 
@@ -190,10 +198,12 @@ func newFixture(t *testing.T) fixture {
 		},
 	}}
 	sp := &spaces{top: acct.ULID}
+	us := &users{}
 	svc := integration.New(integration.Deps{
 		Store:  st,
 		Spaces: sp,
 		Authz:  authz{top: acct.ULID},
+		Stacks: us,
 		Providers: []string{
 			"GITLAB",
 			"BITBUCKET_CLOUD",
@@ -205,7 +215,12 @@ func newFixture(t *testing.T) fixture {
 			"GITLAB": tester{}, "BITBUCKET_CLOUD": tester{},
 			"BITBUCKET_DATACENTER": tester{}, "AZURE_DEVOPS": tester{},
 		},
-		Now: time.Now,
+		Browse: map[string]port.Brancher{
+			"GIT": browser{}, "GITHUB": browser{}, "GITLAB": browser{},
+			"BITBUCKET_CLOUD": browser{fail: errBoom},
+		},
+		Builtin: map[string]port.Integration{"GITHUB": {Provider: "GITHUB"}},
+		Now:     time.Now,
 	})
 	srv := http.New(svc, sp, map[string]http.Describe{
 		"GITLAB": func(integration.Integration) (api.VCSIntegrationDetails, error) {
@@ -217,7 +232,8 @@ func newFixture(t *testing.T) fixture {
 	})
 	ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{AccountID: acct})
 	return fixture{
-		srv: srv, store: st, spaces: sp, ctx: ctx, gitlab: gitlab.String(), cloud: cloud.String(),
+		srv: srv, store: st, spaces: sp, users: us, ctx: ctx, acct: acct,
+		gitlab: gitlab.String(), cloud: cloud.String(),
 		dc: dc.String(), azure: azure.String(), other: other.String(),
 	}
 }

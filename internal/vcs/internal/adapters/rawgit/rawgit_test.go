@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -255,6 +256,36 @@ func TestUnitSourceRefs(t *testing.T) {
 		port.ErrNotFound,
 	) {
 		t.Errorf("ReadFile at an unknown ref = %v", err)
+	}
+}
+
+// TestUnitSourceBranches checks that Branches lists the branches a
+// server advertises, sorted and without its tags, and that a missing
+// repository is port.ErrNotFound and an http URL port.ErrRepositoryURL.
+func TestUnitSourceBranches(t *testing.T) {
+	r := newRepository(t)
+	if err := r.store.SetReference(plumbing.NewHashReference(
+		"refs/heads/feature/a", plumbing.NewHash(r.base),
+	)); err != nil {
+		t.Fatal(err)
+	}
+	srv, src := serve(t, gitServer{repos: map[string]*memory.Storage{"infra": r.store}}.routes())
+	got, err := src.Branches(t.Context(), port.Repository{URL: srv.URL + "/infra.git"})
+	if err != nil || !slices.Equal(got, []string{"big", "feature/a", "main", "tree"}) {
+		t.Errorf("Branches = %v, %v", got, err)
+	}
+	if _, err := src.Branches(t.Context(), port.Repository{URL: srv.URL + "/gone.git"}); !errors.Is(
+		err, port.ErrNotFound) {
+		t.Errorf("Branches of a missing repository = %v", err)
+	}
+	if _, err := src.Branches(
+		t.Context(),
+		port.Repository{URL: "http://git.example/x.git"},
+	); !errors.Is(
+		err,
+		port.ErrRepositoryURL,
+	) {
+		t.Errorf("Branches over http = %v", err)
 	}
 }
 

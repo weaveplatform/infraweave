@@ -17,7 +17,8 @@
 // through stack_labels_label, and holds a stack FOR KEY SHARE, the lock a
 // key check takes, so a move or delete that locks it FOR UPDATE waits. A search joins the caller's stars, and reads the space
 // tree from its scope, since the spaces tables belong to the access
-// domain. ByIDs reads the stacks of some IDs at once, InSpaces every
+// domain; a scope's Use keeps the stacks bound to its integration and,
+// for a default, those on its provider bound to none. ByIDs reads the stacks of some IDs at once, InSpaces every
 // stack in some spaces, and Labels the labels of some stacks. Purge deletes a
 // batch of a deleted account's stacks, with their hooks, labels and
 // stars, and reports whether none is left. Held names the columns that

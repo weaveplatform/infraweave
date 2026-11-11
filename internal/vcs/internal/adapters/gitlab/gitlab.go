@@ -32,7 +32,7 @@ var (
 		port.ErrNoIntegration)
 	// ErrCredential is an access token that is missing, or that GitLab
 	// refuses.
-	ErrCredential = errors.New("gitlab: access token refused")
+	ErrCredential = fmt.Errorf("gitlab: access token refused: %w", port.ErrCredential)
 	// ErrHost is a host that is not an http or https URL.
 	ErrHost = errors.New("gitlab: host is not an http or https URL")
 )

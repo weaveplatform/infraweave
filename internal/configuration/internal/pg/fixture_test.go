@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/core"
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
@@ -206,6 +207,21 @@ func (s *stacks) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) err
 // DetachVCS is never reached: the configuration domain deletes no VCS
 // integration.
 func (*stacks) DetachVCS(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
+
+// SearchUsers is never reached: the configuration domain searches no VCS
+// integration's stacks.
+func (*stacks) SearchUsers(
+	context.Context, kernel.Principal, stacksapi.Use, search.Input,
+) (search.Result[stacksapi.Stack], error) {
+	return search.Result[stacksapi.Stack]{}, nil
+}
+
+// SuggestUsers is never reached, as SearchUsers is not.
+func (*stacks) SuggestUsers(
+	context.Context, kernel.Principal, stacksapi.Use, search.SuggestionsInput,
+) (search.Suggestions, error) {
+	return search.Suggestions{}, nil
+}
 
 // SetRunState is never reached: the configuration domain does not run
 // stacks.

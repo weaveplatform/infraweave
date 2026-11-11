@@ -21,6 +21,9 @@ var (
 	// an integration, when the stack names none and its provider has no
 	// default.
 	ErrNoIntegration = errors.New("vcs: no integration")
+	// ErrCredential reports a provider refusing an integration's
+	// credential, which each provider's own credential error wraps.
+	ErrCredential = errors.New("vcs: credential refused")
 )
 
 // RateLimited reports a provider call its host refused for its rate limit,
@@ -123,17 +126,24 @@ type Listed struct {
 	Name      string
 }
 
+// Brancher lists a repository's branches, for a user choosing a stack's
+// branch. Raw Git, which has no integration to list repositories
+// through, is a Brancher alone.
+type Brancher interface {
+	// Branches lists repo's branches, sorted; ErrNotFound when repo is
+	// missing.
+	Branches(ctx context.Context, repo Repository) ([]string, error)
+}
+
 // Browse lists what an integration reaches, for a user choosing a stack's
 // repository and branch.
 //
 // ref: decision 0012
 type Browse interface {
+	Brancher
 	// Repositories lists the repositories in reaches, sorted by namespace
 	// and name.
 	Repositories(ctx context.Context, in Integration) ([]Listed, error)
-	// Branches lists repo's branches, sorted; ErrNotFound when repo is
-	// missing.
-	Branches(ctx context.Context, repo Repository) ([]string, error)
 }
 
 // The states of a GitHub App as its host reports it.

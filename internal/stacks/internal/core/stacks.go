@@ -75,12 +75,14 @@ func vendors() []string {
 // Scope is what a stack search sees: the spaces the caller may read, the
 // account's space tree, which the space field reads, and the caller,
 // whose stars the starred field reads. Stacks, when it is not nil, holds
-// the search to those stacks, for a space's access view.
+// the search to those stacks, for a space's access view; Use, when it is
+// not nil, to the stacks that use a VCS integration.
 type Scope struct {
 	Reachable []kernel.ULID
 	Spaces    []accessapi.SpaceNode
 	Actor     Actor
 	Stacks    []kernel.ULID
+	Use       *stacksapi.Use
 }
 
 // Store is what the service needs of the stacks' storage. Every method
@@ -592,6 +594,49 @@ func (s *Service) Suggest(
 	if err != nil {
 		return search.Suggestions{}, err
 	}
+	return s.store.Suggest(ctx, p.AccountID, in, scope) //nolint:wrapcheck // as the store's
+}
+
+// SearchUsers reads a page of the stacks of p's account in the spaces it
+// may read that use u, as Search reads them.
+func (s *Service) SearchUsers(
+	ctx context.Context,
+	p kernel.Principal,
+	u stacksapi.Use,
+	in search.Input,
+) (search.Result[stacksapi.Stack], error) {
+	scope, err := s.scope(ctx, p)
+	if err != nil {
+		return search.Result[stacksapi.Stack]{}, err
+	}
+	scope.Use = &u
+	res, err := s.store.Search(ctx, p.AccountID, in, scope)
+	if err != nil {
+		return search.Result[stacksapi.Stack]{}, err //nolint:wrapcheck // as the store's
+	}
+	out := search.Result[stacksapi.Stack]{
+		Edges: make([]search.Edge[stacksapi.Stack], len(res.Edges)),
+		Start: res.Start, End: res.End, HasNext: res.HasNext, HasPrevious: res.HasPrevious,
+	}
+	for i, e := range res.Edges {
+		out.Edges[i] = search.Edge[stacksapi.Stack]{Cursor: e.Cursor, Node: e.Node.Stack}
+	}
+	return out, nil
+}
+
+// SuggestUsers lists the values the stacks of p's account in the spaces
+// it may read that use u hold, under in's predicates.
+func (s *Service) SuggestUsers(
+	ctx context.Context,
+	p kernel.Principal,
+	u stacksapi.Use,
+	in search.SuggestionsInput,
+) (search.Suggestions, error) {
+	scope, err := s.scope(ctx, p)
+	if err != nil {
+		return search.Suggestions{}, err
+	}
+	scope.Use = &u
 	return s.store.Suggest(ctx, p.AccountID, in, scope) //nolint:wrapcheck // as the store's
 }
 
