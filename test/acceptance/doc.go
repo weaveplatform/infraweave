@@ -37,7 +37,8 @@
 // in-process OIDC issuer, and internal/vcs/githubfake the in-process
 // GitHub host of a @github scenario, whose certificate its servers trust
 // through the same vcs.ca_file and whose operator App they name through
-// vcs.github_app. The secrets
+// vcs.github_app, and internal/vcs/gitlabfake the in-process GitLab of a
+// @gitlab scenario, trusted the same way. The secrets
 // steps load the keyring and serve's blob store from internal/platform to
 // seal and read what no operation serves yet, and run infraweave secrets
 // as a subprocess. Every step and every

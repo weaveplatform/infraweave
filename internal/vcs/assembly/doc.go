@@ -1,7 +1,7 @@
 // Package assembly constructs the vcs domain, the source of a stack's
 // commits, after the configuration domain. Sources is its implementation
 // of vcsapi.Sources over each provider's Source, raw Git's as GIT and
-// GitHub's as GITHUB and GITHUB_ENTERPRISE, and
+// GitHub's as GITHUB and GITHUB_ENTERPRISE, GitLab's as GITLAB, and
 // StackSources the same resolution as the stacks domain's
 // stacksapi.StackSources, which internal/app binds there. Subscribe
 // subscribes the Track consumer, which sets a stack's branch head and
@@ -29,6 +29,6 @@
 // It imports the access and stacks api packages, internal/kernel,
 // platform/crypt, platform/outbox, platform/queue, platform/sql's
 // integrity and migrate packages, platform/tx and the domain's api, http,
-// github, pg, rawgit, integration, port and source packages. Only internal/app and cmd/ import it, as the
+// github, gitlab, pg, rawgit, integration, port and source packages. Only internal/app and cmd/ import it, as the
 // constructors rule enforces.
 package assembly

@@ -84,20 +84,7 @@ func (s Server) GithubEnterpriseIntegrationCreate(
 			Credential: []byte(b.PrivateKey), WebhookSecret: []byte(secret),
 		},
 	}
-	if c := b.CustomInput; c != nil {
-		in.Name, in.Space, in.Description = c.Name, c.SpaceID, or(c.Description, "")
-		in.IsDefault = c.IsDefault != nil && *c.IsDefault
-		if c.Labels != nil {
-			in.Labels = *c.Labels
-		}
-		in.UseGitCheckout = c.UseGitCheckout != nil && *c.UseGitCheckout
-		if c.VcsChecks != nil {
-			in.Checks.Mode = string(*c.VcsChecks)
-		}
-		if c.VcsCheckOptions != nil {
-			in.Checks = checkOptions(in.Checks, c.VcsCheckOptions)
-		}
-	}
+	custom(&in, b.CustomInput)
 	out, err := s.svc.Create(ctx, p, in)
 	if err != nil {
 		return nil, integrationError(err)
@@ -148,31 +135,14 @@ func (s Server) GithubEnterpriseIntegrationUpdate(
 	if err != nil {
 		return nil, integrationError(err)
 	}
-	c := b.CustomInput
-	in := integration.Input{
-		Provider: integration.GitHubEnterprise, Space: c.Space,
-		Description: or(c.Description, cur.Description), Labels: cur.Labels,
-		Checks: cur.Checks, UseGitCheckout: cur.UseGitCheckout,
-		Settings: port.Settings{
-			APIHost: b.ApiHost, UserFacingHost: or(b.UserFacingHost, b.ApiHost),
-			AppID: cur.Settings.AppID,
-		},
-		Secrets: &integration.Secrets{WebhookSecret: []byte(b.WebhookSecret)},
+	in := customUpdate(cur, b.CustomInput)
+	in.Settings = port.Settings{
+		APIHost: b.ApiHost, UserFacingHost: or(b.UserFacingHost, b.ApiHost),
+		AppID: cur.Settings.AppID,
 	}
+	in.Secrets = &integration.Secrets{WebhookSecret: []byte(b.WebhookSecret)}
 	if b.PrivateKey != nil {
 		in.Secrets.Credential = []byte(*b.PrivateKey)
-	}
-	if c.Labels != nil {
-		in.Labels = *c.Labels
-	}
-	if c.UseGitCheckout != nil {
-		in.UseGitCheckout = *c.UseGitCheckout
-	}
-	if c.VcsChecks != nil {
-		in.Checks.Mode = string(*c.VcsChecks)
-	}
-	if c.VcsCheckOptions != nil {
-		in.Checks = checkOptions(in.Checks, c.VcsCheckOptions)
 	}
 	out, err := s.svc.Update(ctx, p, id, strict.IfMatch(req.Params.IfMatch), in)
 	if err != nil {
@@ -370,6 +340,49 @@ func checkOptionsView(c integration.Checks) *api.VCSCheckOptions {
 	}
 }
 
+// custom sets on in the fields every provider's create shares, which c
+// carries; none when c is nil, which the service refuses for its name.
+func custom(in *integration.Input, c *api.CustomVCSInput) {
+	if c == nil {
+		return
+	}
+	in.Name, in.Space, in.Description = c.Name, c.SpaceID, or(c.Description, "")
+	in.IsDefault = c.IsDefault != nil && *c.IsDefault
+	if c.Labels != nil {
+		in.Labels = *c.Labels
+	}
+	in.UseGitCheckout = c.UseGitCheckout != nil && *c.UseGitCheckout
+	if c.VcsChecks != nil {
+		in.Checks.Mode = string(*c.VcsChecks)
+	}
+	if c.VcsCheckOptions != nil {
+		in.Checks = checkOptions(in.Checks, c.VcsCheckOptions)
+	}
+}
+
+// customUpdate is the input of an update of cur by the fields every
+// provider's update shares, which c carries, keeping each one c leaves
+// out.
+func customUpdate(cur integration.Integration, c api.CustomVCSUpdateInputBody) integration.Input {
+	in := integration.Input{
+		Provider: cur.Provider, Space: c.Space, Description: kept(c.Description, cur.Description),
+		Labels: cur.Labels, Checks: cur.Checks, UseGitCheckout: cur.UseGitCheckout,
+	}
+	if c.Labels != nil {
+		in.Labels = *c.Labels
+	}
+	if c.UseGitCheckout != nil {
+		in.UseGitCheckout = *c.UseGitCheckout
+	}
+	if c.VcsChecks != nil {
+		in.Checks.Mode = string(*c.VcsChecks)
+	}
+	if c.VcsCheckOptions != nil {
+		in.Checks = checkOptions(in.Checks, c.VcsCheckOptions)
+	}
+	return in
+}
+
 // checkOptions is c with each option o sets.
 func checkOptions(c integration.Checks, o *api.VCSCheckOptionsInput) integration.Checks {
 	if o.IndividualFailuresOnly != nil {
@@ -387,6 +400,15 @@ func webhookSecret() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b) // crypto/rand.Read never fails
 	return hex.EncodeToString(b)
+}
+
+// kept is *p, or cur when p is nil: a field an update leaves out keeps
+// its value, and one it sets empty is emptied.
+func kept(p *string, cur string) string {
+	if p == nil {
+		return cur
+	}
+	return *p
 }
 
 // or is *p, or def when p is nil or empty.

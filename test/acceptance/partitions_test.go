@@ -99,8 +99,8 @@ func TestUnitTagExpression(t *testing.T) {
 		"":     "",
 		"runs": "@terraform,@tofu,@kubernetes,@flows-agent",
 		"integrations": "~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && " +
-			"@vcs,@github,@ai",
-		"core": "~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@ai",
+			"@vcs,@github,@gitlab,@ai",
+		"core": "~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@ai",
 	} {
 		got, err := TagExpression(name)
 		if err != nil || got != want {

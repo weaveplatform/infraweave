@@ -22,7 +22,7 @@
 //
 // # Dependencies
 //
-// It imports chi, golang-jwt and go-git with its in-memory storage and
-// filesystem. The github provider's tests and the acceptance suite
+// It imports chi, golang-jwt and the domain's gitmem, which holds its
+// repositories. The github provider's tests and the acceptance suite
 // construct it.
 package githubfake

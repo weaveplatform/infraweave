@@ -20,6 +20,7 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/github"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/gitlab"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/rawgit"
@@ -104,7 +105,7 @@ type Domain struct {
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
-// as the GIT provider, and GitHub's, over https with the system's roots
+// as the GIT provider, GitHub's and GitLab's, over https with the system's roots
 // and those of vcs.ca_file. It fails when vcs.ca_file cannot be read or
 // holds no certificate, and when vcs.github_app names an App whose files
 // cannot be read.
@@ -127,11 +128,12 @@ func New(d Deps) (*Domain, error) {
 		return nil, err
 	}
 	gh := github.New(github.Options{RootCAs: roots})
+	gl := gitlab.New(gitlab.Options{RootCAs: roots})
 	integrations := integration.New(integration.Deps{
 		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers,
 		Testers: map[string]port.Tester{
-			integration.GitHub: gh, integration.GitHubEnterprise: gh,
+			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
 		},
 		Builtin: builtin, Apps: gh, Public: d.Public,
 	})
@@ -140,6 +142,7 @@ func New(d Deps) (*Domain, error) {
 			"GIT":                        rawgit.New(rawgit.Options{RootCAs: roots}),
 			integration.GitHub:           gh,
 			integration.GitHubEnterprise: gh,
+			integration.GitLab:           gl,
 		}, integrations),
 		integrations: integrations,
 		api:          http.New(integrations, d.Spaces, nil),

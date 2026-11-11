@@ -499,8 +499,8 @@ func apply(out *Integration, in Input, now time.Time) {
 }
 
 // Update replaces the changeable fields of p's account's integration id
-// with in's, and its secrets when in carries them, keeping its credential
-// when in's is nil, when expect accepts its version. The route has
+// with in's, and its secrets when in carries them, keeping each secret
+// in leaves nil, when expect accepts its version. The route has
 // decided SPACE_ADMIN on its space. A space other than the integration's
 // is refused at space: moving one could leave a bound stack out of its
 // reach.
@@ -527,12 +527,18 @@ func (s *Service) Update(
 			return err
 		}
 		sec := in.Secrets
-		if sec != nil && sec.Credential == nil {
+		if sec != nil && (sec.Credential == nil || sec.WebhookSecret == nil) {
 			kept, err := s.store.Secrets(ctx, p.AccountID, out.ID)
 			if err != nil {
 				return err //nolint:wrapcheck // the store names the read
 			}
-			sec = &Secrets{Credential: kept.Credential, WebhookSecret: sec.WebhookSecret}
+			sec = &Secrets{Credential: sec.Credential, WebhookSecret: sec.WebhookSecret}
+			if sec.Credential == nil {
+				sec.Credential = kept.Credential
+			}
+			if sec.WebhookSecret == nil {
+				sec.WebhookSecret = kept.WebhookSecret
+			}
 		}
 		apply(&out, in, s.now())
 		out.Version++

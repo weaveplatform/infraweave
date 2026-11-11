@@ -152,12 +152,12 @@ func ctlBinary(ctx context.Context) (string, error) {
 }
 
 // dockerTags are the scenario's tags that need a Docker daemon: every
-// dependency tag except @oidc, which runs in process, and @ai, whose
-// provider is a fake on loopback.
+// dependency tag except @oidc, @github and @gitlab, which run in process,
+// and @ai, whose provider is a fake on loopback.
 func dockerTags(tags []string) []string {
 	var out []string
 	for _, t := range tags {
-		if !Exempt(t) && t != "@oidc" && t != "@ai" && t != "@github" {
+		if !Exempt(t) && t != "@oidc" && t != "@ai" && t != "@github" && t != "@gitlab" {
 			out = append(out, t)
 		}
 	}
@@ -286,6 +286,9 @@ type world struct {
 	// github is a @github scenario's GitHub host, whose certificate every
 	// server of the scenario trusts.
 	github *githubSteps
+	// gitlab is a @gitlab scenario's GitLab, whose certificate every
+	// server of the scenario trusts.
+	gitlab *gitlabSteps
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -321,6 +324,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 			err = errors.Join(err, w.ownPG.Terminate(ctx))
 		}
 		w.github.stop()
+		w.gitlab.stop()
 		if w.dir != "" {
 			err = errors.Join(err, os.RemoveAll(w.dir))
 		}
@@ -331,6 +335,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	git := &giteaSteps{w: w}
 	w.git = git
 	w.github = &githubSteps{}
+	w.gitlab = &gitlabSteps{}
 	(&servedSteps{w: w}).register(sc)
 	(&observeSteps{w: w}).register(sc)
 	(&startupSteps{w: w}).register(sc)
@@ -443,9 +448,9 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 }
 
 // vcs is config with the vcs settings the scenario's tags need: a @vcs
-// scenario's servers trust its Gitea, and a @github scenario's trust its
-// GitHub host and name its operator App, under one vcs.ca_file holding
-// every certificate they trust.
+// scenario's servers trust its Gitea, a @github scenario's trust its
+// GitHub host and name its operator App, and a @gitlab scenario's trust
+// its GitLab, under one vcs.ca_file holding every certificate they trust.
 func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	vcs := map[string]any{}
 	var cas []byte
@@ -469,6 +474,11 @@ func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	} else if w.github.srv != nil {
 		vcs["github_app"] = w.github.app0
 		cas = append(cas, w.github.srv.CA...)
+	}
+	if slices.Contains(w.tags, "@gitlab") && w.gitlab.srv == nil {
+		cas = append(cas, w.gitlab.start()...)
+	} else if w.gitlab.srv != nil {
+		cas = append(cas, w.gitlab.srv.CA...)
 	}
 	if len(cas) == 0 {
 		return config, nil

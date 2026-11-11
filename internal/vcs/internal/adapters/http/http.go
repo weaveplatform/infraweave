@@ -172,6 +172,12 @@ func (s Server) details(
 			return nil, derr //nolint:wrapcheck // the store names the read
 		}
 		err = out.FromGithubEnterpriseIntegration(enterpriseView(in, slugs, &d, true))
+	case integration.GitLab:
+		d, derr := s.svc.Details(ctx, in)
+		if derr != nil {
+			return nil, derr //nolint:wrapcheck // the store names the read
+		}
+		err = out.FromGitlabIntegration(gitlabView(in, slugs, &d))
 	case integration.GitHub:
 		b, berr := s.svc.Builtin(ctx, p, in.Provider)
 		if berr != nil {
