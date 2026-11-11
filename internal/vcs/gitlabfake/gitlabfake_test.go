@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/gitlabfake"
 )
@@ -73,5 +74,50 @@ func TestUnitRoutes(t *testing.T) {
 	if !strings.HasPrefix(string(srv.CA), "-----BEGIN CERTIFICATE-----") ||
 		!strings.HasPrefix(srv.URL, "https://") {
 		t.Errorf("the server = %s with CA %.30s", srv.URL, srv.CA)
+	}
+}
+
+// TestUnitAccessTokens checks the mint requests the gitlab provider never
+// sends, a body that is not JSON, one naming no scope, a past expiry and
+// a level above the minter's, and a revoke by a Developer.
+func TestUnitAccessTokens(t *testing.T) {
+	f := gitlabfake.New()
+	tok := f.AddToken("infraweave", "api")
+	dev := f.AddToken("dev", "api")
+	f.AddMember("acme", "infra", "infraweave", gitlabfake.Maintainer)
+	f.AddMember("acme", "infra", "dev", gitlabfake.Developer)
+	h := f.Handler()
+	send := func(method, path, auth, body string) int {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(t.Context(), method, path, strings.NewReader(body))
+		req.Header.Set("PRIVATE-TOKEN", auth)
+		h.ServeHTTP(w, req)
+		return w.Code
+	}
+	tomorrow := time.Now().Add(48 * time.Hour).UTC().Format(time.DateOnly)
+	for body, want := range map[string]int{
+		"{": http.StatusBadRequest,
+		`{"name":"run","expires_at":"` + tomorrow + `"}`:                                                http.StatusBadRequest,
+		`{"name":"run","scopes":["read_repository"],"expires_at":"2001-01-01"}`:                         http.StatusBadRequest,
+		`{"name":"run","scopes":["api"],"access_level":50,"expires_at":"` + tomorrow + `"}`:             http.StatusBadRequest,
+		`{"name":"run","scopes":["read_repository"],"access_level":20,"expires_at":"` + tomorrow + `"}`: http.StatusCreated,
+	} {
+		if got := send(
+			http.MethodPost,
+			"/api/v4/projects/acme%2Finfra/access_tokens",
+			tok,
+			body,
+		); got != want {
+			t.Errorf("mint %s = %d, want %d", body, got, want)
+		}
+	}
+	id := fmt.Sprint(f.Minted()[0].ID)
+	if got := send(http.MethodDelete, "/api/v4/projects/acme%2Finfra/access_tokens/"+id, dev,
+		""); got != http.StatusForbidden {
+		t.Errorf("a Developer's revoke = %d", got)
+	}
+	if got := send(http.MethodDelete, "/api/v4/projects/acme%2Finfra/access_tokens/"+id, tok,
+		""); got != http.StatusNoContent || !f.Minted()[0].Revoked {
+		t.Errorf("revoke = %d, %+v", got, f.Minted())
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 )
 
@@ -24,6 +25,10 @@ var (
 	// ErrCredential reports a provider refusing an integration's
 	// credential, which each provider's own credential error wraps.
 	ErrCredential = errors.New("vcs: credential refused")
+	// ErrCannotMint reports an integration whose token lacks the right to
+	// mint a run's narrowed token on a repository, such as a GitLab token
+	// below Maintainer; the run falls back to the integration's own token.
+	ErrCannotMint = errors.New("vcs: the integration's token cannot mint a run token")
 )
 
 // RateLimited reports a provider call its host refused for its rate limit,
@@ -90,6 +95,9 @@ type Settings struct {
 // its credential and webhook secret opened. Nothing but the provider's
 // client sees them.
 type Integration struct {
+	// ID is the stored integration's, zero for an operator's built-in
+	// integration, which a run's minted token names to revoke it by.
+	ID            kernel.ULID
 	Provider      string
 	Settings      Settings
 	Credential    []byte
@@ -203,4 +211,37 @@ type Apps interface {
 	// Convert turns code, which apiHost redirected back with, into the
 	// App it created; ErrNotFound when apiHost does not know the code.
 	Convert(ctx context.Context, apiHost, code string) (Created, error)
+}
+
+// Credential is a token a run's worker fetches its repository's source
+// with, over git's HTTPS basic auth as Username.
+type Credential struct {
+	Username string
+	Token    []byte
+	// ID is the provider's ID of a minted token, which Revoke takes;
+	// empty for one that only expires, and for an integration's own.
+	ID string
+	// ExpiresAt is when a minted token expires; zero for an integration's
+	// own.
+	ExpiresAt time.Time
+}
+
+// Minter mints a run's credential: a token that reads one repository and
+// nothing else.
+//
+// ref: decision 0012 § "Source access for runs"
+type Minter interface {
+	// Mint mints a token named name that reads repo alone, expiring at
+	// expires or, where the provider caps it, sooner; ErrCannotMint when
+	// repo's integration may not mint one.
+	Mint(ctx context.Context, repo Repository, name string, expires time.Time) (Credential, error)
+	// Revoke revokes repo's minted token id; nil when it is already gone.
+	Revoke(ctx context.Context, repo Repository, id string) error
+}
+
+// Lender lends a run the integration's own token, where the provider
+// mints none narrower or the integration may not mint one.
+type Lender interface {
+	// Lend is in's own credential as git checks out with it.
+	Lend(in Integration) Credential
 }

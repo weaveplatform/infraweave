@@ -73,7 +73,12 @@ var (
 	_ port.Source = (*Provider)(nil)
 	_ port.Browse = (*Provider)(nil)
 	_ port.Tester = (*Provider)(nil)
+	_ port.Lender = (*Provider)(nil)
 )
+
+// PATUser is the user git authenticates a personal access token as over
+// HTTPS; Azure DevOps reads the token alone, but git needs a user.
+const PATUser = "pat"
 
 // New returns the provider, reaching each organization over TLS 1.2 or
 // later.
@@ -464,6 +469,15 @@ func (p *Provider) AffectedFiles(
 	}
 	slices.Sort(paths)
 	return slices.Compact(paths), nil
+}
+
+// Lend is in's personal access token as git checks out with it. Azure
+// DevOps mints no token narrower than the integration's through its API,
+// so a run reads every repository the integration does.
+//
+// ref: decision 0012 § "Source access for runs"
+func (p *Provider) Lend(in port.Integration) port.Credential {
+	return port.Credential{Username: PATUser, Token: in.Credential}
 }
 
 // SourceURL is repo's clone URL on its integration's user-facing host;

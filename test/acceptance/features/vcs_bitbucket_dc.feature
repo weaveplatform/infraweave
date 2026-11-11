@@ -48,8 +48,8 @@ Feature: Bitbucket Data Center integrations
     When token "h" sends "GET /api/v1/bitbucket-datacenter-integrations/{d}" through A
     Then it answers a 404 problem "not-found"
 
-  @op:bitbucketDatacenterIntegrationCreate @op:stackCreate @op:stackSyncCommit @case:success
-  Scenario: A stack on a project's repository tracks its branch through its provider's default
+  @op:bitbucketDatacenterIntegrationCreate @op:stackCreate @op:stackSyncCommit @op:stackSetCurrentCommit @case:success
+  Scenario: A stack on a project's repository tracks its branch through its provider's default, and pins an earlier commit
     When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","accessToken":"{tok}","customInput":{"name":"Main","spaceID":"acme","isDefault":true}}' through A
     Then it answers 201
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"ACME","repository":"infra","branch":"main","provider":"BITBUCKET_DATACENTER","space":"{team}"},"manageState":false}' through B
@@ -59,6 +59,9 @@ Feature: Bitbucket Data Center integrations
     And token "h" sends "POST /api/v1/stacks/infra/sync-commit" through B
     Then it answers 200
     And the answer tracks the commit kept as "pushed" at the branch head kept as "pushed"
+    When token "h" sends "POST /api/v1/stacks/infra/set-current-commit" with '{"sha":"{seed}"}' through A
+    Then it answers 200
+    And the answer tracks the commit kept as "seed" at the branch head kept as "pushed"
 
   @op:bitbucketDatacenterIntegrationCreate @op:bitbucketDatacenterIntegration @op:bitbucketDatacenterIntegrationUpdate @op:bitbucketDatacenterIntegrationDelete @op:bitbucketDatacenterIntegrationTest @case:denial
   Scenario: A reader of a space sees its integrations without their secrets, and changes nothing

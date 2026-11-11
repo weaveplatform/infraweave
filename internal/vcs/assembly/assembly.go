@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
+	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -108,6 +110,7 @@ type Deps struct {
 	Stacks   stacksapi.Stacks
 	Settings Settings
 	Public   string
+	Log      *slog.Logger
 }
 
 // Domain is the vcs domain, constructed once per process.
@@ -164,15 +167,23 @@ func New(d Deps) (*Domain, error) {
 		Builtin: builtin, Apps: gh, Public: d.Public,
 	})
 	return &Domain{
-		sources: source.New(d.Stacks, map[string]port.Source{
-			integration.Git:              git,
-			integration.GitHub:           gh,
-			integration.GitHubEnterprise: gh,
-			integration.GitLab:           gl,
-			integration.BitbucketCloud:   bbc,
-			integration.BitbucketDC:      bbdc,
-			integration.AzureDevOps:      ado,
-		}, integrations),
+		sources: source.New(source.Deps{
+			Stacks: d.Stacks,
+			Providers: map[string]port.Source{
+				integration.Git:              git,
+				integration.GitHub:           gh,
+				integration.GitHubEnterprise: gh,
+				integration.GitLab:           gl,
+				integration.BitbucketCloud:   bbc,
+				integration.BitbucketDC:      bbdc,
+				integration.AzureDevOps:      ado,
+			},
+			Integrations: integrations,
+			Tokens:       pg.NewTokens(d.DB),
+			Jobs:         queue.New(d.DB),
+			Now:          time.Now,
+			Log:          d.Log,
+		}),
 		integrations: integrations,
 		api:          http.New(integrations, d.Spaces, nil),
 	}, nil
@@ -241,6 +252,16 @@ func (d *Domain) StackSources() stacksapi.StackSources { return d.sources.Resolv
 // commit when a stacksapi.Changed gives the stack its source or changes
 // it; every replica subscribes it, and the outbox runs each event once.
 const Track = "vcs.track"
+
+// Revoke is the job that revokes a run's minted tokens once
+// vcsapi.Sources.Release enqueues it.
+var Revoke = source.Revoke
+
+// Jobs are the domain's job handlers, which the scheduler registers:
+// Revoke's.
+func (d *Domain) Jobs() []queue.Registration {
+	return []queue.Registration{{Kind: Revoke, Handler: d.sources.Revoked}}
+}
 
 // Subscribe subscribes the domain's consumers on events.
 func (d *Domain) Subscribe(events *outbox.Outbox) error {

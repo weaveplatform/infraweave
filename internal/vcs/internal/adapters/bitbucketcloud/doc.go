@@ -7,7 +7,8 @@
 // and the repositories an account reaches are those of the workspaces it
 // belongs to. A Test reads the account and checks that it is admin of
 // every repository it is a member of, the permission that installs a
-// repository's webhook.
+// repository's webhook. Lend lends a run the integration's own API
+// token, as Bitbucket Cloud mints none narrower through its API.
 //
 // ref: decision 0012
 //

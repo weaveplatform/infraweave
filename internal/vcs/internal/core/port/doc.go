@@ -8,7 +8,10 @@
 // an integration reaches and a repository's branches; Apps, the GitHub
 // provider's App work, reporting an App, writing a manifest form and
 // converting the code its host hands back; and RateLimited, a call its
-// host refused until a reset time. The sourcetest package is the contract
+// host refused until a reset time; Minter, which mints a run a Credential
+// that reads one repository alone and revokes it, ErrCannotMint when the
+// integration may not mint one; and Lender, which lends a run the
+// integration's own token instead. The sourcetest package is the contract
 // every Source passes.
 //
 // # Input and output
@@ -17,6 +20,7 @@
 //
 // # Dependencies
 //
-// It imports the standard library and the domain's api package. The
-// domain's core packages call it; the provider adapters implement it.
+// It imports the standard library, internal/kernel and the domain's api
+// package. The domain's core packages call it; the provider adapters
+// implement it.
 package port

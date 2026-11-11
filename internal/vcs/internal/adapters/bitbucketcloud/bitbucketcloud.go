@@ -84,7 +84,12 @@ var (
 	_ port.Source = (*Provider)(nil)
 	_ port.Browse = (*Provider)(nil)
 	_ port.Tester = (*Provider)(nil)
+	_ port.Lender = (*Provider)(nil)
 )
+
+// APITokenUser is the user git authenticates an Atlassian API token as
+// over HTTPS, in place of the account's email.
+const APITokenUser = "x-bitbucket-api-token-auth" //nolint:gosec // a username, not a credential
 
 // New returns the provider, reaching the API over TLS 1.2 or later. When
 // o.APIHost is not an http or https URL, every call answers ErrHost.
@@ -407,6 +412,15 @@ func (p *Provider) AffectedFiles(
 	}
 	slices.Sort(out)
 	return slices.Compact(out), nil
+}
+
+// Lend is in's API token as git checks out with it. Bitbucket Cloud
+// mints no token narrower than the integration's, so a run reads every
+// repository the integration does.
+//
+// ref: decision 0012 § "Source access for runs"
+func (p *Provider) Lend(in port.Integration) port.Credential {
+	return port.Credential{Username: APITokenUser, Token: in.Credential}
 }
 
 // SourceURL is repo's clone URL on the user-facing host: Bitbucket serves

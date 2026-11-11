@@ -50,7 +50,7 @@ type Domains struct {
 // newDomains constructs every domain on db, sealing under keys and signing
 // tokens through kms under the kms backend, with c's settings; the domains
 // append their events to events, whose kinds newKinds registered, and
-// subscribe their purges there. It fails on a setting a domain reads a file
+// subscribe their purges there, logging to log. It fails on a setting a domain reads a file
 // for, and on an outbox whose purges are already subscribed.
 func newDomains(
 	c config.Config,
@@ -58,6 +58,7 @@ func newDomains(
 	keys *crypt.Keyring,
 	kms []signer.KMS,
 	events *outbox.Outbox,
+	log *slog.Logger,
 ) (Domains, error) {
 	features := featuresassembly.New(featuresassembly.Deps{
 		DB:       db.Primary(),
@@ -121,6 +122,7 @@ func newDomains(
 		Stacks:   stacks.Stacks(),
 		Settings: c.VCS,
 		Public:   c.Server.PublicURL,
+		Log:      log,
 	})
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting

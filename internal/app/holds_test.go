@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -54,7 +55,14 @@ func newHoldWorld(t *testing.T) holdWorld {
 	ctx := t.Context()
 	db := sqltest.Open(t)
 	q := db.Primary()
-	d, err := newDomains(config.Defaults(), db, testKeyring(t, q), nil, testEvents(t, q))
+	d, err := newDomains(
+		config.Defaults(),
+		db,
+		testKeyring(t, q),
+		nil,
+		testEvents(t, q),
+		slog.New(slog.DiscardHandler),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

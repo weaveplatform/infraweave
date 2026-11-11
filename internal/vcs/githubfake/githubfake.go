@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -78,6 +79,24 @@ type Installation struct {
 	Repos     []string
 }
 
+// TokenRequest is a request for an installation token as the fake
+// received it: the installation, and the repositories and permissions the
+// request narrowed the token to, nil when it named none.
+type TokenRequest struct {
+	Installation int64
+	Repositories []string
+	Permissions  map[string]string
+}
+
+// token is what an installation token reaches: its installation's
+// repositories, or repos alone when it is not nil, with perms, or its
+// App's permissions when nil.
+type token struct {
+	install int64
+	repos   []string
+	perms   map[string]string
+}
+
 // Fake is a GitHub API: Apps, their installations and tokens, and
 // repositories, served under /api/v3 as GitHub Enterprise Server serves
 // them.
@@ -86,7 +105,8 @@ type Fake struct {
 	apps     map[int64]*App
 	installs map[int64]*Installation
 	repos    map[string]*Repo
-	tokens   map[string]int64
+	tokens   map[string]token
+	minted   []TokenRequest
 	codes    map[string]string
 	nextID   int64
 	fault    Fault
@@ -100,7 +120,7 @@ type Fake struct {
 func New() *Fake {
 	return &Fake{
 		apps: map[int64]*App{}, installs: map[int64]*Installation{}, repos: map[string]*Repo{},
-		tokens: map[string]int64{}, codes: map[string]string{}, nextID: 1000,
+		tokens: map[string]token{}, codes: map[string]string{}, nextID: 1000,
 	}
 }
 
@@ -235,6 +255,14 @@ func (f *Fake) Tokens() int {
 	return f.issued
 }
 
+// TokenRequests are the installation token requests the fake has
+// answered with a token, in the order it received them.
+func (f *Fake) TokenRequests() []TokenRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.minted)
+}
+
 // Handler serves the fake's routes under /api/v3.
 func (f *Fake) Handler() http.Handler {
 	r := chi.NewRouter()
@@ -272,6 +300,7 @@ type ctxKey int
 const (
 	appKey ctxKey = iota
 	installKey
+	tokenKey
 	repoKey
 )
 
@@ -348,27 +377,38 @@ func (f *Fake) asInstallation(next http.Handler) http.Handler {
 			tok, _ = strings.CutPrefix(auth, "Bearer ")
 		}
 		f.mu.Lock()
-		in, ok := f.installs[f.tokens[tok]]
+		t := f.tokens[tok]
+		in, ok := f.installs[t.install]
 		f.mu.Unlock()
 		if !ok {
 			answer(w, http.StatusUnauthorized, message("Bad credentials"))
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), installKey, in)))
+		ctx := context.WithValue(r.Context(), installKey, in)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, tokenKey, t)))
 	})
 }
 
 // reachable admits a request for a repository the installation reaches,
-// answering 404 for any other, as GitHub hides what a token cannot see.
+// and the token's repositories name when it is narrowed, answering 404
+// for any other, as GitHub hides what a token cannot see; a token
+// narrowed to permissions without contents is refused with 403, since
+// every repository route reads contents.
 func (f *Fake) reachable(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		owner, name := chi.URLParam(r, "owner"), chi.URLParam(r, "repo")
 		in := r.Context().Value(installKey).(*Installation) //nolint:forcetypeassert // asInstallation sets it
+		t := r.Context().Value(tokenKey).(token)            //nolint:forcetypeassert // as above
 		f.mu.Lock()
 		repo, ok := f.repos[owner+"/"+name]
 		f.mu.Unlock()
-		if !ok || in.Owner != owner || !slices.Contains(in.Repos, name) {
+		if !ok || in.Owner != owner || !slices.Contains(in.Repos, name) ||
+			t.repos != nil && !slices.Contains(t.repos, name) {
 			answer(w, http.StatusNotFound, message("Not Found"))
+			return
+		}
+		if t.perms != nil && t.perms["contents"] == "" {
+			answer(w, http.StatusForbidden, message("Resource not accessible by integration"))
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), repoKey, repo)))
@@ -402,6 +442,15 @@ func (f *Fake) installations(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) accessToken(w http.ResponseWriter, r *http.Request) {
 	a := r.Context().Value(appKey).(*App) //nolint:forcetypeassert // asApp sets it
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	var body struct {
+		Repositories []string          `json:"repositories"`
+		Permissions  map[string]string `json:"permissions"`
+	}
+	raw, err := io.ReadAll(r.Body)
+	if err != nil || len(raw) > 0 && json.Unmarshal(raw, &body) != nil {
+		answer(w, http.StatusBadRequest, message("Problems parsing JSON"))
+		return
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	in, ok := f.installs[id]
@@ -409,12 +458,40 @@ func (f *Fake) accessToken(w http.ResponseWriter, r *http.Request) {
 		answer(w, http.StatusNotFound, message("Not Found"))
 		return
 	}
+	for _, name := range body.Repositories {
+		if !slices.Contains(in.Repos, name) {
+			answer(
+				w,
+				http.StatusUnprocessableEntity,
+				message(
+					"There is at least one repository that does not exist or is not accessible",
+				),
+			)
+			return
+		}
+	}
+	for perm, level := range body.Permissions {
+		if !covers(a.Permissions[perm], level) {
+			answer(w, http.StatusUnprocessableEntity,
+				message("The permissions requested are not granted to this installation."))
+			return
+		}
+	}
 	tok := "ghs_" + secret()
-	f.tokens[tok] = id
+	f.tokens[tok] = token{install: id, repos: body.Repositories, perms: body.Permissions}
+	f.minted = append(f.minted, TokenRequest{
+		Installation: id, Repositories: body.Repositories, Permissions: body.Permissions,
+	})
 	f.issued++
 	answer(w, http.StatusCreated, map[string]any{
 		"token": tok, "expires_at": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
 	})
+}
+
+// covers reports whether an App's level of a permission grants want: a
+// write grants a read.
+func covers(held, want string) bool {
+	return held == want || held == "write" && want == "read"
 }
 
 func (f *Fake) repoInstallation(w http.ResponseWriter, r *http.Request) {
@@ -436,8 +513,13 @@ func (f *Fake) repoInstallation(w http.ResponseWriter, r *http.Request) {
 
 func (f *Fake) installationRepos(w http.ResponseWriter, r *http.Request) {
 	in := r.Context().Value(installKey).(*Installation) //nolint:forcetypeassert // asInstallation sets it
-	repos := make([]map[string]any, 0, len(in.Repos))
-	for _, name := range in.Repos {
+	t := r.Context().Value(tokenKey).(token)            //nolint:forcetypeassert // as above
+	names := in.Repos
+	if t.repos != nil {
+		names = t.repos
+	}
+	repos := make([]map[string]any, 0, len(names))
+	for _, name := range names {
 		repos = append(repos, map[string]any{
 			"name": name, "full_name": in.Owner + "/" + name,
 			"owner": map[string]string{"login": in.Owner},

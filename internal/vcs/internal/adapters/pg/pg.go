@@ -39,11 +39,18 @@ func Stream() migrate.Stream {
 }
 
 // Held are the vcs columns that hold other domains' rows: an
-// integration's account and space, and a manifest form's account.
+// integration's account and space, a manifest form's account, and a run
+// token's account and stack.
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "vcs_integrations", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "vcs_manifests", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_run_tokens", Columns: []string{"account_id"}},
+		{
+			Entity:  "stack",
+			Table:   "vcs_run_tokens",
+			Columns: []string{"account_id", "stack_id"},
+		},
 		{
 			Entity:  "space",
 			Table:   "vcs_integrations",
@@ -328,6 +335,14 @@ func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bo
 		}
 		gone += int(tag.RowsAffected())
 	}
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM vcs_run_tokens WHERE account_id = $1
+		AND (run_id, token_id) IN (SELECT run_id, token_id FROM vcs_run_tokens
+			WHERE account_id = $1 LIMIT $2)`, acct, batch)
+	if err != nil {
+		return false, fmt.Errorf("vcs: purge account %s's vcs_run_tokens: %w", acct,
+			sql.Unavailable(err))
+	}
+	gone += int(tag.RowsAffected())
 	return gone == 0, nil
 }
 

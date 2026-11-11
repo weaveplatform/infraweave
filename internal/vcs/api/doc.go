@@ -1,6 +1,7 @@
 // Package api is what other domains call of the vcs domain: Sources,
 // which resolves a branch, a tag or a commit of a stack's repository to a
-// Commit and names the URL a worker fetches a commit's source from;
+// Commit, names the URL a worker fetches a commit's source from, hands a
+// run the Credential it fetches with and revokes it when the run ends;
 // ErrRefNotFound when the repository lacks the ref.
 //
 // # Input and output

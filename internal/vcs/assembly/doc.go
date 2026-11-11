@@ -14,14 +14,17 @@
 // and SpaceOf, for Entity, are its say in the access domain;
 // StackIntegrations the check of the integration a stack's write names,
 // which internal/app binds in the stacks domain; and Purge deletes a
-// deleted account's integrations. API is its partial of the API's strict
-// server, aliased VCSAPI.
+// deleted account's integrations. Jobs are its job handlers, which the
+// scheduler registers: Revoke's, which revokes a run's minted tokens once
+// vcsapi.Sources.Release enqueues it. API is its partial of the API's
+// strict server, aliased VCSAPI.
 //
 // # Input and output
 //
 // New takes the database, the keyring, the access domain's spaces and
-// authorizer, the stacks domain's api, the vcs settings and the server's
-// public origin in Deps; a vcs.ca_file it cannot read, or that holds no
+// authorizer, the stacks domain's api, the vcs settings, the server's
+// public origin and the log a run's fallback credential is noted in, in
+// Deps; a vcs.ca_file it cannot read, or that holds no
 // certificate, and a vcs.github_app whose private key or webhook secret
 // file it cannot read, fail it with ErrConfig. vcs.github_app's App is
 // the GITHUB provider; with no app_id, that provider answers 503.

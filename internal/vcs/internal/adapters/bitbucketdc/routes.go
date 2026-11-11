@@ -12,8 +12,8 @@ import (
 // refuses to send.
 var ErrRoute = errors.New("bitbucketdc: route not in the allowlist")
 
-// Route is a request the client sends: its method and its path under the
-// REST API's base, /rest/api/1.0 on the integration's host, in
+// Route is a request the client sends: its method and its path on the
+// integration's host, below any context path such as /bitbucket, in
 // http.ServeMux's pattern syntax, where {name...} matches the rest of the
 // path.
 type Route struct {
@@ -26,13 +26,15 @@ type Route struct {
 //
 // ref: decision 0012 § "VCS agent"
 var Routes = []Route{
-	{http.MethodGet, "/profile/recent/repos"},
-	{http.MethodGet, "/repos"},
-	{http.MethodGet, "/projects/{projectKey}/repos/{repositorySlug}/branches"},
-	{http.MethodGet, "/projects/{projectKey}/repos/{repositorySlug}/tags/{name...}"},
-	{http.MethodGet, "/projects/{projectKey}/repos/{repositorySlug}/commits/{commitId}"},
-	{http.MethodGet, "/projects/{projectKey}/repos/{repositorySlug}/raw/{path...}"},
-	{http.MethodGet, "/projects/{projectKey}/repos/{repositorySlug}/compare/changes"},
+	{http.MethodGet, API + "/profile/recent/repos"},
+	{http.MethodGet, API + "/repos"},
+	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/branches"},
+	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/tags/{name...}"},
+	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/commits/{commitId}"},
+	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/raw/{path...}"},
+	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/compare/changes"},
+	{http.MethodPut, Tokens + "/projects/{projectKey}/repos/{repositorySlug}"},
+	{http.MethodDelete, Tokens + "/projects/{projectKey}/repos/{repositorySlug}/{tokenId}"},
 }
 
 // routes matches a request against Routes.
@@ -45,7 +47,7 @@ var routes = sync.OnceValue(func() *http.ServeMux {
 })
 
 // Allowed reports whether a request of method to escaped, an escaped
-// path under the REST API's base, is one of Routes. A path that is not in
+// path below the host's context path, is one of Routes. A path that is not in
 // its clean form, such as one with a dot segment, is refused rather than
 // matched after cleaning.
 func Allowed(method, escaped string) bool {

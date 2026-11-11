@@ -144,3 +144,17 @@ Feature: GitHub integrations
     Then it answers 200
     And the answer's items is '["main"]'
     And the answer leaves out "nextCursor"
+
+  @op:stackCreate @op:stackSyncCommit @op:stackSetCurrentCommit @case:success
+  Scenario: A stack on a private repository tracks its branch through the operator's App, and pins an earlier commit
+    Given a commit to "main" of the GitHub repository "acme/infra" is kept as "seed"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"acme","repository":"infra","branch":"main","provider":"GITHUB","space":"{team}"},"manageState":false}' through B
+    Then it answers 201
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
+    When a commit to "main" of the GitHub repository "acme/infra" is kept as "pushed"
+    And token "h" sends "POST /api/v1/stacks/infra/sync-commit" through B
+    Then it answers 200
+    And the answer tracks the commit kept as "pushed" at the branch head kept as "pushed"
+    When token "h" sends "POST /api/v1/stacks/infra/set-current-commit" with '{"sha":"{seed}"}' through A
+    Then it answers 200
+    And the answer tracks the commit kept as "seed" at the branch head kept as "pushed"
