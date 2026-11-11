@@ -373,3 +373,41 @@ func TestUnitUnknownKidReload(t *testing.T) {
 		t.Errorf("%d reloads after a second, want 2", store.reads)
 	}
 }
+
+func TestUnitRunIssuer(t *testing.T) {
+	svc, _, _ := setup(t)
+	ctx := context.Background()
+	const runIssuer = "https://runs.example.com"
+	// Empty keeps every token's issuer.
+	if svc.WithRunIssuer("") != svc {
+		t.Fatal("WithRunIssuer does not return the service")
+	}
+	r := request()
+	r.Kind = token.KindRun
+	raw, _, err := svc.Issue(ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if iss := segment(t, raw, 1)["iss"]; iss != issuer {
+		t.Errorf("default in-run iss = %v", iss)
+	}
+	svc.WithRunIssuer(runIssuer)
+	// Only an in-run API token carries the run issuer, and each kind is
+	// verified against its own.
+	for kind, want := range map[token.Kind]string{
+		token.KindRun: runIssuer, token.KindAPIKey: issuer, token.KindWorker: issuer, token.KindRunner: issuer,
+	} {
+		r := request()
+		r.Kind = kind
+		raw, issued, err := svc.Issue(ctx, r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if iss := segment(t, raw, 1)["iss"]; iss != want || issued.Issuer != want {
+			t.Errorf("%s iss = %v, %s; want %s", kind, iss, issued.Issuer, want)
+		}
+		if got, err := svc.Verify(ctx, raw, audience); err != nil || got != issued {
+			t.Errorf("%s Verify = %+v, %v", kind, got, err)
+		}
+	}
+}

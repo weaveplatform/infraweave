@@ -83,7 +83,7 @@ is used for signatures only; nothing infraweave seals uses JWE.
 | In-run API token | injected into runs as `INFRAWEAVE_API_TOKEN` | 3 hours, and only while the run is `PLANNING`, `APPLYING` or `PERFORMING` | the API base URL | `<stack or module slug>/<run ULID>` | yes, actor kind `run` |
 | OIDC federation token | injected into runs as `INFRAWEAVE_OIDC_TOKEN` and `/mnt/workspace/infraweave.oidc` | 1 hour | the federation audience | the rendered subject template | no |
 | Worker session token | launcher registration ([0008](0008-run-execution-and-worker-protocol.md)) | 1 hour, renewed in poll responses | `infraweave-worker` | worker ULID | no |
-| Run token | handover of a run to a worker ([0008](0008-run-execution-and-worker-protocol.md)) | until the run ends, plus 1 hour | `infraweave-runner` | run ULID | no |
+| Run token | handover of a run to a worker ([0008](0008-run-execution-and-worker-protocol.md)) | until the run ends, plus 1 hour, and at most 24 hours | `infraweave-runner` | run ULID | no |
 
 The lifetimes above are defaults. Each is configuration
 (`auth.tokens.<kind>.ttl`; the browser session's two limits are
@@ -99,7 +99,7 @@ carries:
 | `sub` | as in the table |
 | `jti` | the session ULID; revoking the session revokes the token |
 | `iat`, `nbf`, `exp` | Unix seconds; `nbf` equals `iat` |
-| `iw_kind` | `user`, `api_key`, `organization_key`, `oauth` or `run` |
+| `iw_kind` | `user`, `api_key`, `organization_key`, `oauth` or `run`; the worker protocol's tokens carry `worker` and `runner` |
 
 Nothing about access lives in the token: the session row, which names the
 organization and the account, and 0007's evaluator decide every request, so

@@ -75,6 +75,9 @@ func whoOf(p kernel.Principal) Who {
 		Actor:   p.ActorID,
 		Member:  p.MemberID,
 		Teams:   p.Teams,
+		// A run acts as its stack, from the space the stack lives in.
+		Stack:     p.StackID,
+		StackHome: p.StackSpaceID,
 	}
 }
 

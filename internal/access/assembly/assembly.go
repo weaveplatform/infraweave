@@ -159,6 +159,10 @@ func New(d Deps) (*Domain, error) {
 	if issuer == "" {
 		issuer = d.PublicURL
 	}
+	runIssuer := d.Settings.RunAPIToken.Issuer
+	if runIssuer == "" {
+		runIssuer = d.PublicURL
+	}
 	now := d.Now
 	if now == nil {
 		now = time.Now
@@ -173,9 +177,9 @@ func New(d Deps) (*Domain, error) {
 	}
 	tokens := token.New(pg.NewSigningKeys(d.DB, d.Keys, d.KMS), issuer, token.Policy{
 		Manual:    manual,
-		TokenLife: d.Settings.Tokens.API.TTL,
+		TokenLife: d.Settings.Tokens.longest(),
 		Refs:      refs,
-	}, now)
+	}, now).WithRunIssuer(runIssuer)
 	var roots []byte
 	if f := d.Settings.OIDCAPIKeys.CAFile; f != "" {
 		var err error
@@ -201,6 +205,10 @@ func New(d Deps) (*Domain, error) {
 		Operators:        d.Settings.Operator.operators(),
 		OperatorAudience: d.OperatorAudience,
 		TTL:              d.Settings.Tokens.API.TTL,
+		WorkerTTL:        d.Settings.Tokens.Worker.TTL,
+		RunTTL:           d.Settings.Tokens.Run.TTL,
+		RunAPITTL:        d.Settings.Tokens.RunAPI.TTL,
+		Accounts:         store,
 		BreakGlass:       store,
 		Admission:        store,
 		AccountAdmin:     decide.Admin,

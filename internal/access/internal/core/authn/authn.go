@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
@@ -72,6 +73,13 @@ type Deps struct {
 	OperatorAudience string
 	// TTL is auth.tokens.api.ttl, an API token's longest life.
 	TTL time.Duration
+	// WorkerTTL, RunTTL and RunAPITTL are auth.tokens' worker, run and
+	// run_api lifetimes: a worker session token's, a run token's and an
+	// in-run API token's.
+	WorkerTTL, RunTTL, RunAPITTL time.Duration
+	// Accounts reads the account an in-run API token's session belongs
+	// to.
+	Accounts port.Tenancy
 	// BreakGlass reads break-glass credentials and records sign-ins.
 	BreakGlass port.BreakGlass
 	// Admission decides which accounts admit a member.
@@ -92,6 +100,8 @@ type Service struct {
 	d       Deps
 	cache   *session.Cache
 	secrets *secretIndex
+	// runs reads an in-run API token's run; BindRuns sets it.
+	runs accessapi.Runs
 }
 
 // New returns the service on d, with this replica's session cache.
@@ -393,7 +403,9 @@ func reaches(reach Reach) func(session.Session) bool {
 	return func(ss session.Session) bool {
 		switch reach {
 		case ReachOrganization:
-			return !ss.OrganizationID.IsZero() && ss.ActorKind != kernel.PrincipalOrganization
+			// A run acts only in its own account.
+			return !ss.OrganizationID.IsZero() && ss.ActorKind != kernel.PrincipalOrganization &&
+				ss.ActorKind != kernel.PrincipalRun
 		case ReachOrganizationAdmin:
 			switch ss.ActorKind {
 			case kernel.PrincipalUser, kernel.PrincipalBreakGlass, kernel.PrincipalOrganization:
@@ -478,9 +490,13 @@ func (s *Service) authenticate(
 
 // principal is ss's principal, whose Admin, for a session of an account,
 // is decided from the account's bindings at this request rather than at
-// sign-in, so a binding's change applies to live sessions.
+// sign-in, so a binding's change applies to live sessions. A run's
+// principal acts as its stack, and only while its run is live.
 func (s *Service) principal(ctx context.Context, ss session.Session) (kernel.Principal, error) {
 	p := ss.Principal()
+	if p.Kind == kernel.PrincipalRun {
+		return s.runPrincipal(ctx, p)
+	}
 	if p.AccountID.IsZero() || s.d.AccountAdmin == nil {
 		return p, nil
 	}

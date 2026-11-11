@@ -252,3 +252,49 @@ func TestUnitServiceHolders(t *testing.T) {
 		t.Fatalf("ExplainEach = %+v, %v", got, err)
 	}
 }
+
+func TestUnitServiceRun(t *testing.T) {
+	ctx := t.Context()
+	x := newAccount()
+	stack := kernel.NewULID()
+	x.bind(binding.ActorStack, stack, role.SpaceAdmin, "a1")
+	svc := authz.NewService(&store{x: x})
+	p := kernel.Principal{
+		Kind: kernel.PrincipalRun, AccountID: x.id, ActorID: kernel.NewULID(),
+		StackID: stack, StackSpaceID: x.spaces["legacy"],
+	}
+	// The run acts as its stack: its binding, the read a1's inheritance
+	// gives of a, and a read of the space the stack lives in.
+	for space, want := range map[string]bool{"a1": true, "a": true, "legacy": true, "top": false} {
+		if ok, err := svc.Authorize(
+			ctx,
+			p,
+			accessapi.ActionSpaceRead,
+			x.spaces[space],
+		); err != nil ||
+			ok != want {
+			t.Errorf("read %s = %t, %v; want %t", space, ok, err, want)
+		}
+	}
+	// Narrowed: no run actions, whatever the stack holds.
+	if ok, err := svc.Authorize(
+		ctx,
+		p,
+		accessapi.ActionRunTrigger,
+		x.spaces["a1"],
+	); err != nil ||
+		ok {
+		t.Errorf("RUN_TRIGGER = %t, %v", ok, err)
+	}
+	// A run principal with no stack holds nothing.
+	p.StackID, p.StackSpaceID = kernel.ULID{}, kernel.ULID{}
+	if ok, err := svc.Authorize(
+		ctx,
+		p,
+		accessapi.ActionSpaceRead,
+		x.spaces["a1"],
+	); err != nil ||
+		ok {
+		t.Errorf("no stack = %t, %v", ok, err)
+	}
+}
