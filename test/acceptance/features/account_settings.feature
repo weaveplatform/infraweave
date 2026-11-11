@@ -11,7 +11,7 @@ Feature: Account settings
   and never as its organization's last account; its deletion revokes its
   sessions on every replica and is recorded on its organization's trail.
   The other domains' purges then remove the rows they keep of it, such as
-  its stacks and limits, and leave its organization's. Changing a setting
+  its stacks, runs and limits, and leave its organization's. Changing a setting
   needs ACCOUNT_ADMIN, which space-writer on the top space does not hold;
   any principal of the account reads the settings and may ask for personal
   keys, and a session no account admits reaches none of them. The member
@@ -71,7 +71,7 @@ Feature: Account settings
   @op:markedForDeletion @op:accountToggleDeletionMark @op:accountCanBeDeleted @op:accountCanBeDeletedAt @op:accountConfirmDelete @case:success @case:failure
   Scenario: A marked account is deleted, and an unmarked one is not
     Given the sibling key is exchanged through A for token "sib"
-    And the account "acme-dev" holds a stack, a context with elements attached to it, and an account limit
+    And the account "acme-dev" holds a stack with a run, a context with elements attached to it, and an account limit
     Then "GET /api/v1/marked-for-deletion" through A with token "sib" answers 'false'
     And "GET /api/v1/account/can-be-deleted" through B with token "sib" answers 'false'
     And "GET /api/v1/account/can-be-deleted-at" through A with token "sib" answers '0'
@@ -86,7 +86,7 @@ Feature: Account settings
     When "POST /api/v1/account/confirm-delete" through B with token "sib" answers 'true'
     Then the viewer through A with token "sib" answers 401 within a second
     And the sibling account no longer exists, and its organization's trail holds its deletion
-    And no stack, context or limit of the account "acme-dev" remains, and its organization's entitlement does
+    And no stack, run, context or limit of the account "acme-dev" remains, and its organization's entitlement does
     And the viewer through A with token "admin" answers 200
 
   @op:accountConfirmDelete @case:denial

@@ -21,23 +21,24 @@ type purgeSteps struct {
 
 func (p *purgeSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
-		`^the account "([a-z0-9-]+)" holds a stack, a context with elements attached to it, and an account limit$`,
+		`^the account "([a-z0-9-]+)" holds a stack with a run, a context with elements attached to it, and an account limit$`,
 		p.holds,
 	)
 	sc.Step(
-		`^no stack, context or limit of the account "([a-z0-9-]+)" remains, and its organization's entitlement does$`,
+		`^no stack, run, context or limit of the account "([a-z0-9-]+)" remains, and its organization's entitlement does$`,
 		p.accountPurged,
 	)
 	sc.Step(
-		`^no stack, context, limit or entitlement of the account "([a-z0-9-]+)" or its organization remains$`,
+		`^no stack, run, context, limit or entitlement of the account "([a-z0-9-]+)" or its organization remains$`,
 		p.organizationPurged,
 	)
 }
 
-// holds writes a stack, a context with an element attached to the stack,
-// an element of the stack's own and a seats limit of the account slug
-// names, as the stacks, configuration and features domains would, and
-// records its IDs.
+// holds writes a stack, a run of it with a transition that holds its run
+// lock, is its tracked run and wrote an output, a context with an element
+// attached to the stack, an element of the stack's own and a seats limit
+// of the account slug names, as the stacks, runs, configuration and
+// features domains would, and records its IDs.
 func (p *purgeSteps) holds(ctx context.Context, slug string) error {
 	out, err := p.s.query(ctx, `SELECT organization_id || ' ' || id FROM accounts WHERE slug = `+
 		literal(slug))
@@ -67,23 +68,41 @@ func (p *purgeSteps) holds(ctx context.Context, slug string) error {
 		SELECT c.account_id, gen_random_uuid(), c.id, s.id
 			FROM contexts c JOIN stacks s ON s.account_id = c.account_id
 			WHERE c.account_id = '%[2]s';
+		INSERT INTO runs (account_id, id, stack_id, type, state, commit, triggered_by)
+		SELECT account_id, gen_random_uuid(), id, 'TRACKED', 'APPLYING', '{"hash":"abc"}', 'alice'
+			FROM stacks WHERE account_id = '%[2]s';
+		INSERT INTO run_state_transitions (account_id, run_id, sequence, state, terminal)
+		SELECT account_id, id, 1, 'QUEUED', false FROM runs WHERE account_id = '%[2]s';
+		INSERT INTO stack_run_locks (account_id, stack_id, run_id)
+		SELECT account_id, stack_id, id FROM runs WHERE account_id = '%[2]s';
+		INSERT INTO stack_run_state (account_id, stack_id, tracked_run_id)
+		SELECT account_id, stack_id, id FROM runs WHERE account_id = '%[2]s';
+		INSERT INTO stack_outputs (account_id, stack_id, name, run_id, value)
+		SELECT account_id, stack_id, 'url', id, '"https://example.com"' FROM runs
+			WHERE account_id = '%[2]s';
 		INSERT INTO account_limits (organization_id, account_id, limit_name, value)
 		VALUES ('%[1]s', '%[2]s', 'seats', 1);`, ids[0], ids[1]))
 	return err
 }
 
-// held counts what remains of the account acct in the stacks and
+// held counts what remains of the account acct in the stacks, runs and
 // configuration domains, and of its limits.
 func held(acct string) string {
 	return fmt.Sprintf(`(SELECT count(*) FROM stacks WHERE account_id = '%[1]s')
 		+ (SELECT count(*) FROM contexts WHERE account_id = '%[1]s')
 		+ (SELECT count(*) FROM config_elements WHERE account_id = '%[1]s')
 		+ (SELECT count(*) FROM context_attachments WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM runs WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM run_state_transitions WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM stack_run_locks WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM stack_run_state WHERE account_id = '%[1]s')
+		+ (SELECT count(*) FROM stack_outputs WHERE account_id = '%[1]s')
 		+ (SELECT count(*) FROM account_limits WHERE account_id = '%[1]s')`, acct)
 }
 
 // accountPurged waits for the purges of a deleted account to remove its
-// stack, context, elements, attachment and limit, and checks that they
+// stack, run and what the run holds, context, elements, attachment and
+// limit, and checks that they
 // left its organization's entitlement.
 func (p *purgeSteps) accountPurged(ctx context.Context, slug string) error {
 	ids, err := p.ids(slug)

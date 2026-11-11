@@ -6,8 +6,9 @@
 // stack_run_state each stack's tracked run and stack_outputs the outputs
 // of its last applied run. No table carries a foreign key to a stack,
 // since stacks belong to the stacks domain. Store reads the run that
-// holds each of some stacks' run lock, and deletes a deleted stack's
-// runs, with their transitions, and its run lock, tracked run and outputs.
+// holds each of some stacks' run lock, deletes a deleted stack's runs,
+// with their transitions, and its run lock, tracked run and outputs, and
+// purges a deleted account's rows a batch a statement.
 // It is also the lifecycle's store: it locks a run's row, moves a run and
 // records its transition, inserts a run, finds a stack's run of a type and
 // commit that has not ended, makes a run its stack's tracked run, releases
