@@ -545,7 +545,7 @@ it adds no import.
 | `stacks` | features, access, workers, vendors | `stacksapi.StackStatus`, which `runs` implements, for the stack view's blocker; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config` |
 | `configuration` | features, access, stacks | |
 | `policies` | features, access, stacks | |
-| `runs` | features, access, stacks, configuration, workers, vendors, policies | `vcsapi.Sources`, `cloudapi.Credentials`, `stateapi.Versions` at handover |
+| `runs` | features, access, stacks, configuration, workers, vendors, policies | `runsapi.RunSources`, which `vcs` implements, so a run's end releases its source credentials and its handover reaches its source; `cloudapi.Credentials`, `stateapi.Versions` at handover |
 | `state` | features, access, stacks, runs | |
 | `cloud` | features, access, stacks | |
 | `registry` | features, access, workers, configuration, policies, runs, cloud | |

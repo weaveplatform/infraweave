@@ -1742,9 +1742,9 @@ through the backend.
    `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so the provider's
    `infraweave_current_stack` and `infraweave_current_space` have their
    data.
-7. The handover asks `vcsapi.Sources`, the back edge P7 binds, for the
-   run's source URL and its source credential, which travels in the run's
-   sealed secret material; the worker fetches the source itself
+7. The handover asks `runsapi.RunSources`, the back edge P7 binds and `vcs`
+   implements, for the run's source URL and its source credential, which
+   travels in the run's sealed secret material; the worker fetches the source itself
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**

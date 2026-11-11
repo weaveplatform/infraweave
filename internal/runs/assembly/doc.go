@@ -1,5 +1,8 @@
 // Package assembly constructs the runs domain over its Deps, after the
-// configuration domain. StackStatus is the stacksapi.StackStatus
+// configuration domain, with the lifecycle every run is created and moved
+// through. RegisterEvents registers runsapi.Updated with the outbox, and
+// BindSources binds the vcs domain's runsapi.RunSources, a back edge, so a
+// run's end releases its source credentials. StackStatus is the stacksapi.StackStatus
 // internal/app binds in the stacks domain, the back edge the stack view
 // reads each stack's blocker through; StackGuard is the
 // stacksapi.StackGuard internal/app registers there, so a stack's delete
@@ -11,11 +14,13 @@
 //
 // # Input and output
 //
-// None of its own: the domain reaches PostgreSQL through Deps.
+// None of its own: the domain reaches PostgreSQL, the stacks domain, the
+// outbox and the queue through Deps.
 //
 // # Dependencies
 //
-// It imports stacksapi, the domain's core, http and pg packages,
-// platform/sql/integrity, platform/sql/migrate and platform/tx. Only
+// It imports runsapi, stacksapi, the domain's core, lifecycle, http and pg
+// packages, platform/outbox, platform/sql/integrity, platform/sql/migrate
+// and platform/tx. Only
 // internal/app and cmd/ import it, as the constructors rule enforces.
 package assembly

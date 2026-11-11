@@ -1,12 +1,17 @@
 package assembly
 
 import (
+	"time"
+
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -17,18 +22,45 @@ func Stream() migrate.Stream { return pg.Stream() }
 // nightly orphan count.
 func Held() []integrity.Held { return pg.Held() }
 
-// Deps are what the runs domain takes from the platform: the database.
+// Deps are what the runs domain takes from the platform and the domains
+// before it: the database, the stacks domain, the outbox its runs' events
+// go to, the queue its jobs go to, and a clock, time.Now when nil.
 type Deps struct {
-	DB tx.Querier
+	DB     tx.Querier
+	Stacks stacksapi.Stacks
+	Events lifecycle.Events
+	Jobs   lifecycle.Jobs
+	Now    func() time.Time
 }
 
 // Domain is the runs domain, constructed once per process.
 type Domain struct {
-	runs *core.Service
+	runs      *core.Service
+	lifecycle *lifecycle.Lifecycle
 }
 
 // New constructs the domain on d.
-func New(d Deps) *Domain { return &Domain{runs: core.New(pg.New(d.DB))} }
+func New(d Deps) *Domain {
+	store := pg.New(d.DB)
+	return &Domain{
+		runs: core.New(store),
+		lifecycle: lifecycle.New(lifecycle.Deps{
+			Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now,
+		}),
+	}
+}
+
+// RegisterEvents adds the domain's event kinds to kinds, before the
+// scheduler starts.
+func RegisterEvents(kinds *outbox.Kinds) error {
+	//nolint:wrapcheck // names the kind
+	return kinds.Register(runsapi.UpdatedKind, runsapi.UpdatedVersion, runsapi.UpdatedSchema)
+}
+
+// BindSources binds the vcs domain's revocation of a run's source
+// credentials, a back edge internal/app binds after it constructs that
+// domain; every run that ends from then on releases its credentials.
+func (d *Domain) BindSources(s runsapi.RunSources) { d.lifecycle.BindSources(s) }
 
 // StackStatus is the domain's answer to the stack view's read of the run
 // blocking each stack, a back edge internal/app binds in the stacks
