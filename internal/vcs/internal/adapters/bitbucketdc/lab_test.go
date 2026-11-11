@@ -1,10 +1,6 @@
 package bitbucketdc_test
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -22,14 +18,7 @@ import (
 func TestAccBitbucketDCLab(t *testing.T) {
 	lab := sourcetest.LabEnv(t, vcslab.EnvHost, vcslab.EnvToken, vcslab.EnvNamespace,
 		vcslab.EnvRepository, vcslab.EnvOther, vcslab.EnvCAFile)
-	pem, err := os.ReadFile(lab.CAFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(pem) {
-		t.Fatalf("%s holds no certificate", lab.CAFile)
-	}
+	roots, client := sourcetest.LabRoots(t, lab.CAFile)
 	in := integrationOf(lab.Host, lab.Token)
 	dc := bitbucketdc.New(bitbucketdc.Options{RootCAs: roots})
 	repo := port.Repository{Namespace: lab.Namespace, Name: lab.Repository, Integration: &in}
@@ -41,9 +30,6 @@ func TestAccBitbucketDCLab(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := &http.Client{Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12},
-	}}
 	clone := func(name string) string {
 		return strings.TrimSuffix(lab.Host, "/") + "/scm/" + strings.ToLower(lab.Namespace) +
 			"/" + name + ".git"

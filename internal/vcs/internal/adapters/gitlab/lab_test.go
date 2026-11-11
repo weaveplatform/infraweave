@@ -1,7 +1,6 @@
 package gitlab_test
 
 import (
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -13,14 +12,15 @@ import (
 )
 
 // TestAccGitLabLab runs the source contract against the vcs-lab
-// job's GitLab project, and checks that a run's project access token
+// job's project on its GitLab container, and checks that a run's project access token
 // reads that project and not another the integration reaches, and
 // nothing once revoked.
 func TestAccGitLabLab(t *testing.T) {
 	lab := sourcetest.LabEnv(t, vcslab.EnvHost, vcslab.EnvToken, vcslab.EnvNamespace,
-		vcslab.EnvRepository, vcslab.EnvOther)
+		vcslab.EnvRepository, vcslab.EnvOther, vcslab.EnvCAFile)
+	roots, client := sourcetest.LabRoots(t, lab.CAFile)
 	in := integrationOf(lab.Token, lab.Host)
-	gl := gitlab.New(gitlab.Options{})
+	gl := gitlab.New(gitlab.Options{RootCAs: roots})
 	repo := port.Repository{Namespace: lab.Namespace, Name: lab.Repository, Integration: &in}
 	gone := repo
 	gone.Name += "-gone"
@@ -33,13 +33,13 @@ func TestAccGitLabLab(t *testing.T) {
 	clone := func(name string) string {
 		return strings.TrimSuffix(lab.Host, "/") + "/" + lab.Namespace + "/" + name + ".git"
 	}
-	sourcetest.Scope(t, http.DefaultClient, c, clone(lab.Repository), clone(lab.Other), false)
+	sourcetest.Scope(t, client, c, clone(lab.Repository), clone(lab.Other), false)
 	if err := gl.Revoke(t.Context(), repo, c.ID); err != nil {
 		t.Fatal(err)
 	}
 	if ok, err := sourcetest.Reads(
 		t.Context(),
-		http.DefaultClient,
+		client,
 		clone(lab.Repository),
 		c,
 	); ok ||

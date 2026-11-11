@@ -139,6 +139,7 @@ jobs:
           pin motoserver/moto motoserver/moto '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin gitea/gitea gitea/gitea '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin atlassian/bitbucket atlassian/bitbucket '^[0-9]+\.[0-9]+\.[0-9]+$'
+          pin gitlab/gitlab-ce gitlab/gitlab-ce '^[0-9]+\.[0-9]+\.[0-9]+-ce\.0$'
           # Azurite publishes to the Microsoft Artifact Registry, not
           # Docker Hub.
           repin mcr.microsoft.com/azure-storage/azurite "$(curl -fsS https://mcr.microsoft.com/v2/azure-storage/azurite/tags/list \

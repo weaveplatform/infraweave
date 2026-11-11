@@ -10,7 +10,7 @@ is part of infraweave or its reference deployments.
 | Root | Creates |
 |---|---|
 | `github` | two private repositories in the lab organization, which the lab App, installed on all its repositories, reaches |
-| `gitlab` | two private projects in the lab group, and the integration's group access token at Maintainer with `api`, expiring in two days |
+| `gitlab` | on the container the job starts: a group, two private projects, and a user who is the group's Maintainer, whose personal access token with `api`, expiring in two days, is the integration's (GitLab refuses a group access token's bot a project access token) |
 | `bitbucketcloud` | two private repositories in the lab workspace's project |
 | `azuredevops` | two repositories in the lab project |
 | `bitbucketdc` | on the container the job starts: a project, two repositories, and the integration's project access token with project admin, expiring in a day |
@@ -47,8 +47,10 @@ repositories.
     contents and metadata, no webhook, installed on all the
     organization's repositories; the lab holds nothing else for it to
     reach.
-- **GitLab:** a group on GitLab.com, on a tier that allows group and
-  project access tokens, and an owner's personal access token with `api`.
+- **GitLab:** nothing. GitLab.com offers group and project access tokens
+  only on paid tiers, so the job starts GitLab Community Edition
+  (`start-gitlab.sh`), which offers them on every tier, and makes its
+  administrator's token and HTTPS certificate for each run.
 - **Bitbucket Cloud:** a workspace with a project, and an Atlassian
   account's API token with repository admin and delete scopes on it.
 - **Azure DevOps:** an organization with a project, and a personal access
@@ -69,8 +71,6 @@ reports "not configured" and fails.
 | GitHub | `VCS_GITHUB_ORGANIZATION` | the organization's login |
 | | `VCS_GITHUB_ADMIN_TOKEN` | the owner's token |
 | | `VCS_GITHUB_APP_ID`, `VCS_GITHUB_APP_PRIVATE_KEY` | the App's ID and PEM private key |
-| GitLab | `VCS_GITLAB_GROUP` | the group's full path |
-| | `VCS_GITLAB_ADMIN_TOKEN` | the owner's token |
 | Bitbucket Cloud | `VCS_BITBUCKET_CLOUD_WORKSPACE`, `VCS_BITBUCKET_CLOUD_PROJECT_KEY` | the workspace and its project |
 | | `VCS_BITBUCKET_CLOUD_EMAIL`, `VCS_BITBUCKET_CLOUD_API_TOKEN` | the account's e-mail and API token |
 | Azure DevOps | `VCS_AZURE_DEVOPS_ORGANIZATION_URL`, `VCS_AZURE_DEVOPS_PROJECT` | `https://dev.azure.com/<organization>` and the project |
@@ -85,10 +85,12 @@ Each root reads its provider's credentials as the comment in its
 `seed.sh` reads `SEED_USER` and `SEED_TOKEN`.
 
 ```sh
+image=$(sed -nE 's/^[[:space:]]*ImageGitLabCE = "([^"]+)"/\1/p' test/acceptance/images.go)
+test/terraform/vcs/start-gitlab.sh "$image" /tmp/gitlab-lab
+set -a; . /tmp/gitlab-lab/env; set +a
 cd test/terraform/vcs/gitlab
-export GITLAB_TOKEN=… SEED_USER=oauth2 SEED_TOKEN=…
 terraform init
-terraform apply -var group=<group> -var suffix="$(date +%s)-local"
+terraform apply -var suffix="$(date +%s)-local"
 ```
 
 Then set the tests' variables from `terraform output`. Each output's
@@ -98,7 +100,8 @@ description names its variable.
 INFRAWEAVE_TEST_VCS_HOST=… INFRAWEAVE_TEST_VCS_TOKEN=… … \
   go test -run '^TestAccGitLabLab$' ./internal/vcs/internal/adapters/gitlab
 INFRAWEAVE_ACCEPT_TAGS=@lab:gitlab … make accept PARTITION=vcs-lab
-terraform destroy -var group=<group> -var suffix=…
+terraform destroy -var suffix=…
+docker rm -f gitlab
 ```
 
 `make labs-vcs` validates every root against its lock file;

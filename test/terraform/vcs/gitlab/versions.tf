@@ -13,8 +13,10 @@ terraform {
   }
 }
 
-# GITLAB_TOKEN holds a token of an owner of the lab group, which creates
-# and deletes projects and the group's access token.
+# GITLAB_TOKEN holds the container's administrator's token, which the
+# job makes for the run; the container's certificate is the job's own,
+# which cacert_file trusts.
 provider "gitlab" {
-  base_url = "${var.host}/api/v4/"
+  base_url    = "${var.host}/api/v4/"
+  cacert_file = var.ca_file
 }

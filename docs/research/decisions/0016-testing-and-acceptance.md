@@ -360,30 +360,32 @@ coverage it would contribute is not waived.
 - **The VCS lab job.**
   - **Repositories.** A Terraform root per provider under
     `test/terraform/vcs/` creates, for each run, two private repositories
-    on GitHub, GitLab, Bitbucket Cloud and Azure DevOps, named
-    `infraweave-lab-<Unix time>-<run>`. A script pushes one fixed history
-    to each: a base commit no ref points at, an annotated tag, `main`'s
-    head and a second branch. Every date in it is fixed, so its commit
-    hashes are constants the tests compare against. The integration
-    reaches both repositories; a run's token must reach only the first.
-    Bitbucket Data Center has no hosted service, so the job starts
-    Atlassian's image with a licence from its secrets, and its root seeds
-    the container through the REST API. The job destroys everything when
-    the run ends, pass or fail. Before applying, it deletes any lab
-    repository more than a day old, reading the age from the name, since
-    Azure DevOps records none.
+    named `infraweave-lab-<Unix time>-<run>`. A script pushes one fixed
+    history to each: a base commit no ref points at, an annotated tag,
+    `main`'s head and a second branch. Every date in it is fixed, so its
+    commit hashes are constants the tests compare against. The
+    integration reaches both repositories; a run's token must reach only
+    the first. GitHub, Bitbucket Cloud and Azure DevOps are the hosted
+    services. Two providers run as containers the job starts:
+    - **Bitbucket Data Center** has no hosted service, so the job starts
+      Atlassian's image with a licence from its secrets.
+    - **GitLab.com** offers group and project access tokens only on paid
+      tiers, so the job starts GitLab Community Edition, which offers
+      them on every tier.
+
+    The job destroys everything when the run ends, pass or fail. Before
+    applying, it deletes any hosted lab repository more than a day old,
+    reading the age from the name, since Azure DevOps records none.
   - **Credentials.** None of these providers federates an OIDC token that
     can create repositories. The job's credentials are therefore
     environment secrets of a `vcs-lab` environment that only `main` may
     use, each reaching only its lab, which holds nothing else:
     - an owner's token on a test GitHub organization, and a GitHub App
       the organization owns, installed on all its repositories;
-    - an owner's token on a GitLab test group, from which the root makes
-      the integration's group access token;
     - an Atlassian account's API token on a Bitbucket Cloud test workspace;
     - a personal access token on an Azure DevOps test project;
-    - the Bitbucket Data Center licence; the system administrator's
-      password is made for each run.
+    - the Bitbucket Data Center licence. The job makes the containers'
+      administrator credentials and certificates for each run.
   - **What it covers.** That the fakes still match the real services:
     - each provider's `Source`, through `sourcetest`;
     - a private stack through its integration, in the `@vcs-lab`
@@ -495,7 +497,7 @@ coverage it would contribute is not waived.
 - The cloud job needs one lab account or project per cloud, its OIDC trust
   and its bucket, which the maintainer provisions; until they exist the job
   reports itself as not configured rather than passing. The VCS lab job
-  likewise needs each provider's test organization, group or workspace, the
+  likewise needs each hosted provider's test organization or workspace, the
   GitHub App and the Bitbucket Data Center licence, which the maintainer
   provides once.
 - Under `GODEBUG=fips140=only`, a test helper or library that reaches for a
