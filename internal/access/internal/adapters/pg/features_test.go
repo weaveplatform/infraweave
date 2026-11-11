@@ -219,8 +219,10 @@ func TestAccSeats(t *testing.T) {
 			VALUES ($1, $2, 'deleted', 'SECRET', $3, 'test', $4, $4)`, []any{x.acct, kernel.NewULID(), h, now}},
 		{`INSERT INTO api_keys (account_id, id, name, type, secret_hash, creator, last_used_at, disabled_at)
 			VALUES ($1, $2, 'disabled', 'SECRET', $3, 'test', $4, $4)`, []any{x.acct, kernel.NewULID(), h, now}},
+		// Expired a window ago, not at now: the seats query compares with
+		// the database's clock, which may run behind this process's.
 		{`INSERT INTO api_keys (account_id, id, name, type, secret_hash, creator, last_used_at, expires_at)
-			VALUES ($1, $2, 'expired', 'SECRET', $3, 'test', $4, $4)`, []any{x.acct, kernel.NewULID(), h, now}},
+			VALUES ($1, $2, 'expired', 'SECRET', $3, 'test', $4, $5)`, []any{x.acct, kernel.NewULID(), h, now, old}},
 		{
 			`INSERT INTO api_keys (account_id, id, name, type, secret_hash, creator, is_personal,
 			owner_user_id, last_used_at) VALUES ($1, $2, 'mine', 'SECRET', $3, 'test', true, $4, $5)`,
