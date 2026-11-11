@@ -305,8 +305,10 @@ jobs:
           set -o pipefail
           make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
 
+      # Only a run that reached apply has anything to destroy, or the root
+      # initialized.
       - name: Destroy the lab
-        if: ${{ always() && steps.config.outputs.configured == 'true' }}
+        if: ${{ always() && steps.apply.outcome != 'skipped' }}
         run: terraform -chdir="$ROOT" destroy -input=false -auto-approve -no-color
 
       # One open issue per provider tracks its failing runs: the first
