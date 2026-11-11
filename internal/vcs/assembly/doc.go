@@ -1,9 +1,10 @@
 // Package assembly constructs the vcs domain, the source of a stack's
 // commits, after the configuration domain. Sources is its implementation
 // of vcsapi.Sources over each provider's Source, raw Git's as GIT,
-// GitHub's as GITHUB and GITHUB_ENTERPRISE, GitLab's as GITLAB and
-// Bitbucket Cloud's as BITBUCKET_CLOUD, and StackSources the same resolution as the stacks domain's
-// stacksapi.StackSources, which internal/app binds there. Subscribe
+// GitHub's as GITHUB and GITHUB_ENTERPRISE, GitLab's as GITLAB,
+// Bitbucket Cloud's as BITBUCKET_CLOUD and Bitbucket Data Center's as
+// BITBUCKET_DATACENTER, and StackSources the same resolution as the
+// stacks domain's stacksapi.StackSources, which internal/app binds there. Subscribe
 // subscribes the Track consumer, which sets a stack's branch head and
 // tracked commit whenever a stacksapi.Changed marks its source given or
 // changed. The domain keeps each account's VCS integrations of
@@ -31,7 +32,7 @@
 // It imports the access and stacks api packages, internal/kernel,
 // platform/crypt, platform/outbox, platform/queue, platform/sql's
 // integrity and migrate packages, platform/tx and the domain's api, http,
-// bitbucketcloud, github, gitlab, pg, rawgit, integration, port and
-// source packages. Only internal/app and cmd/ import it, as the
+// bitbucketcloud, bitbucketdc, github, gitlab, pg, rawgit, integration,
+// port and source packages. Only internal/app and cmd/ import it, as the
 // constructors rule enforces.
 package assembly

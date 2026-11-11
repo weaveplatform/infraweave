@@ -41,7 +41,9 @@
 // @gitlab scenario, trusted the same way; and
 // internal/vcs/bitbucketcloudfake the in-process Bitbucket Cloud of a
 // @bitbucket-cloud scenario, trusted the same way and reached through
-// vcs.bitbucket_cloud.api_host. The secrets
+// vcs.bitbucket_cloud.api_host; and internal/vcs/bitbucketdcfake the
+// in-process Bitbucket Data Center of a @bitbucket-dc scenario, trusted
+// the same way. The secrets
 // steps load the keyring and serve's blob store from internal/platform to
 // seal and read what no operation serves yet, and run infraweave secrets
 // as a subprocess. Every step and every

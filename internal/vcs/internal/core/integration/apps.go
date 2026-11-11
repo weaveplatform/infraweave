@@ -21,14 +21,15 @@ import (
 // The providers the service names: GitHub is the operator's App, which
 // the server's settings configure; GitHub Enterprise an account's own App
 // on github.com or a GitHub Enterprise Server; GitLab GitLab.com or a
-// self-managed GitLab, reached with an access token; and Bitbucket Cloud
-// its workspaces, reached with an Atlassian account's email and API
-// token.
+// self-managed GitLab, reached with an access token; Bitbucket Cloud its
+// workspaces, reached with an Atlassian account's email and API token;
+// and Bitbucket Data Center a server, reached with an HTTP access token.
 const (
 	GitHub           = "GITHUB"
 	GitHubEnterprise = "GITHUB_ENTERPRISE"
 	GitLab           = "GITLAB"
 	BitbucketCloud   = "BITBUCKET_CLOUD"
+	BitbucketDC      = "BITBUCKET_DATACENTER"
 )
 
 // ManifestTTL is how long a GitHub App manifest form stays open: the time

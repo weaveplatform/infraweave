@@ -150,25 +150,31 @@ func (tester) Test(context.Context, port.Integration) ([]port.Check, error) {
 }
 
 // fixture is a server over a GITLAB integration with a tester, a
-// BITBUCKET_CLOUD one, and one of OTHER, a provider with no tester whose
+// BITBUCKET_CLOUD and a BITBUCKET_DATACENTER one, and one of OTHER, a provider with no tester whose
 // details fail to describe.
 type fixture struct {
-	srv                  http.Server
-	store                *store
-	spaces               *spaces
-	ctx                  context.Context
-	gitlab, cloud, other string
+	srv                      http.Server
+	store                    *store
+	spaces                   *spaces
+	ctx                      context.Context
+	gitlab, cloud, dc, other string
 }
 
 func newFixture(t *testing.T) fixture {
 	t.Helper()
 	acct := kernel.NewAccountID()
-	gitlab, cloud, other := kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
+	gitlab, cloud, dc, other := kernel.NewULID(), kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
 	st := &store{rows: map[kernel.ULID]integration.Integration{
 		gitlab: {Account: acct, ID: gitlab, Provider: "GITLAB", Name: "Main", Space: acct.ULID},
 		cloud: {
 			Account: acct, ID: cloud, Provider: "BITBUCKET_CLOUD", Name: "Cloud",
 			Space: acct.ULID, Settings: port.Settings{Email: "dev@acme.example"},
+		},
+		dc: {
+			Account: acct, ID: dc, Provider: "BITBUCKET_DATACENTER", Name: "DC",
+			Space: acct.ULID, Settings: port.Settings{
+				APIHost: "https://bitbucket.acme.example", Username: "infraweave",
+			},
 		},
 		other: {
 			Account: acct, ID: other, Provider: "OTHER", Name: "Other",
@@ -178,9 +184,12 @@ func newFixture(t *testing.T) fixture {
 	sp := &spaces{top: acct.ULID}
 	svc := integration.New(integration.Deps{
 		Store: st, Spaces: sp, Authz: authz{top: acct.ULID},
-		Providers: []string{"GITLAB", "BITBUCKET_CLOUD", "OTHER"},
-		Testers:   map[string]port.Tester{"GITLAB": tester{}, "BITBUCKET_CLOUD": tester{}},
-		Now:       time.Now,
+		Providers: []string{"GITLAB", "BITBUCKET_CLOUD", "BITBUCKET_DATACENTER", "OTHER"},
+		Testers: map[string]port.Tester{
+			"GITLAB": tester{}, "BITBUCKET_CLOUD": tester{},
+			"BITBUCKET_DATACENTER": tester{},
+		},
+		Now: time.Now,
 	})
 	srv := http.New(svc, sp, map[string]http.Describe{
 		"GITLAB": func(integration.Integration) (api.VCSIntegrationDetails, error) {
@@ -193,7 +202,7 @@ func newFixture(t *testing.T) fixture {
 	ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{AccountID: acct})
 	return fixture{
 		srv: srv, store: st, spaces: sp, ctx: ctx, gitlab: gitlab.String(), cloud: cloud.String(),
-		other: other.String(),
+		dc: dc.String(), other: other.String(),
 	}
 }
 
@@ -266,7 +275,7 @@ func TestUnitAnswers(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := got.(api.VcsIntegrations200JSONResponse).Body
-	if len(page.Items) != 3 || page.NextCursor == nil || *page.NextCursor != "end" {
+	if len(page.Items) != 4 || page.NextCursor == nil || *page.NextCursor != "end" {
 		t.Errorf("list = %+v", page)
 	}
 	for _, in := range page.Items {
