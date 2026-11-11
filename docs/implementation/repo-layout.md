@@ -236,10 +236,12 @@ infraweave/
 │   ├── depguard/                  a module of its own breaking each depguard rule once; make lint-fixtures
 │   ├── fixtures/                  Terraform and OpenTofu projects, Git repositories, policy corpus (P9)
 │   │   └── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
-│   ├── terraform/<resource>/      provider acceptance configurations, translated from Spacelift's (P24)
-│   └── cloud/<job>/<cloud>/       Terraform for the labs scheduled cloud jobs reach, such as objectstore-cloud's
-│                                  buckets and identities (P2b) and vcs-cloud's repositories on every VCS
-│                                  provider (P12); local state, locked providers
+│   └── terraform/
+│       ├── <resource>/            provider acceptance configurations, translated from Spacelift's (P24)
+│       ├── cloud/<job>/<cloud>/   the cloud platforms' labs: objectstore-cloud's buckets and identities
+│       │                          (P2b) and the KMS live tests' keys; local state, locked providers
+│       └── vcs/<provider>/        vcs-lab's repositories on every VCS provider (P12), seeded by
+│                                  seed.sh and swept by sweep.sh; local state, locked providers
 ├── web/console/                   the console: React and TypeScript, built by Vite into platform/httpkit/console/dist (P24c)
 │   └── src/api/                   GENERATED orval client and hooks; committed; drift-checked
 ├── tools/                         thin mains over internal/devtools; excluded from coverage
@@ -455,7 +457,7 @@ option 5's
 - **Feature files** are named `<area>_<topic>.feature`, where `<area>` is the
   domain or concern (`runs_terraform.feature`, `events_webhooks.feature`,
   `authz_spaces.feature`). A scenario carries dependency tags (`@postgres`,
-  `@objectstore`, `@vault`, `@terraform`, `@tofu`, `@oidc`, `@vcs`, `@vcs-cloud`, `@ai`,
+  `@objectstore`, `@vault`, `@terraform`, `@tofu`, `@oidc`, `@vcs`, `@vcs-lab`, `@ai`,
   `@kubernetes`, `@flows-agent`), one `@op:<operationId>` tag per
   operation it exercises, and `@case:success`, `@case:denial` or
   `@case:failure` for the kind of path it proves; a Terraform provider

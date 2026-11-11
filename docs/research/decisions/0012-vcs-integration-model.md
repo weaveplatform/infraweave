@@ -141,7 +141,7 @@ GitHub has a capability, the others gain its equivalent:
 Each provider has a chi fake (`githubfake`, `gitlabfake`,
 `bitbucketcloudfake`, `bitbucketdcfake`, `azuredevopsfake`) that holds its
 client to the routes it calls in every pull request, and the scheduled
-`vcs-cloud` job checks every provider against real repositories
+`vcs-lab` job checks every provider against real repositories
 ([0016](0016-testing-and-acceptance.md)).
 
 ### Webhook intake: stored before acknowledgement
@@ -396,7 +396,7 @@ the launcher's mapping of pool names to endpoints is 0008's.
   its own tests and fails on any that the allowlist refuses.
 - `sourcetest`: every provider's `Source` passes one contract suite: raw Git
   against Gitea and every other provider against its fake in every pull
-  request, and against the real repositories the scheduled `vcs-cloud` job
+  request, and against the real repositories the scheduled `vcs-lab` job
   creates.
 - Gherkin features under `test/acceptance/features/`, against PostgreSQL in a
   container and a fake VCS served by chi:

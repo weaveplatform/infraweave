@@ -131,7 +131,7 @@ everywhere, and the reason names where the contract checks it instead.
 | `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
 | `@vault` | Vault in dev mode, with the Transit engine mounted and a Transit key per scenario | the `vault` KEK provider: rewrapping the data keys to Vault, and servers that run on it ([0013](0013-secrets-at-rest.md)) |
 | `@vcs` | Gitea container, with a repository seeded per scenario, and each provider's chi fake | real webhooks, commit statuses, pull request comments; each provider's own shapes (decision 0012) |
-| `@vcs-cloud` | nothing: the scenario reads the repositories the `vcs-cloud` job created from its environment | the same scenarios against the real providers; only the `vcs-cloud` job runs them, and every partition excludes the tag |
+| `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module | Kubernetes workers (decision 0008) |
 | `@flows-agent` | a test app built on `pkg/flows/appsdk` as a local OCI image, and an `infraweave flows-agent` subprocess that runs it in Docker | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
@@ -330,7 +330,7 @@ coverage it would contribute is not waived.
 | `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
 | `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's and OpenTofu's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
-| `vcs-cloud` | `ubuntu-latest`, scheduled nightly | `sourcetest` and the `@vcs-cloud` scenarios against GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps repositories created for the run and destroyed after it | 30 min | no |
+| `vcs-lab` | `ubuntu-latest`, scheduled nightly | `sourcetest` and the `@vcs-lab` scenarios against GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps repositories created for the run and destroyed after it | 45 min | no |
 
 - **`fips-only` and coverage.** It runs the same tests as the jobs above
   under a stricter runtime, so its coverage adds nothing and is not merged.
@@ -358,26 +358,42 @@ coverage it would contribute is not waived.
     leaves an open issue for a person to close.
 
 - **The VCS lab job.**
-  - **Repositories.** Terraform roots under `test/cloud/vcs/` create, for
-    each run, a repository with seeded files, a second branch and a tag on
-    GitHub, GitLab, Bitbucket Cloud and Azure DevOps, named with a suffix
-    unique to the run. Bitbucket Data Center has no hosted service, so the
-    job starts Atlassian's Bitbucket Data Center image with a licence from
-    its secrets, and the same Terraform seeds a repository there. The job
-    destroys everything when the run ends, pass or fail, and deletes any
-    lab repository older than a day that a cancelled run left.
+  - **Repositories.** A Terraform root per provider under
+    `test/terraform/vcs/` creates, for each run, two private repositories
+    on GitHub, GitLab, Bitbucket Cloud and Azure DevOps, named
+    `infraweave-lab-<Unix time>-<run>`. A script pushes one fixed history
+    to each: a base commit no ref points at, an annotated tag, `main`'s
+    head and a second branch. Every date in it is fixed, so its commit
+    hashes are constants the tests compare against. The integration
+    reaches both repositories; a run's token must reach only the first.
+    Bitbucket Data Center has no hosted service, so the job starts
+    Atlassian's image with a licence from its secrets, and its root seeds
+    the container through the REST API. The job destroys everything when
+    the run ends, pass or fail. Before applying, it deletes any lab
+    repository more than a day old, reading the age from the name, since
+    Azure DevOps records none.
   - **Credentials.** None of these providers federates an OIDC token that
-    can create repositories, so the job's credentials are environment
-    secrets of a `vcs-cloud` environment that only `main` may use: a GitHub
-    App installed on a test organization, a GitLab test group's access
-    token, a Bitbucket Cloud test workspace's access token, an Azure DevOps
-    test organization's personal access token, and the Bitbucket Data
-    Center licence. Each reaches only its lab, which holds nothing else.
-  - **What it covers.** That the fakes still match the real services: each
-    provider's `Source` and `Browse`, private stacks through their
-    integrations, the scopes of each run's source credential, and, from
-    P12b, webhooks and feedback. A provider whose secrets are unset reports
-    "not configured" and fails.
+    can create repositories. The job's credentials are therefore
+    environment secrets of a `vcs-lab` environment that only `main` may
+    use, each reaching only its lab, which holds nothing else:
+    - an owner's token on a test GitHub organization, and a GitHub App
+      installed on it for selected repositories;
+    - an owner's token on a GitLab test group, from which the root makes
+      the integration's group access token;
+    - an Atlassian account's API token on a Bitbucket Cloud test workspace;
+    - a personal access token on an Azure DevOps test project;
+    - the Bitbucket Data Center licence; the system administrator's
+      password is made for each run.
+  - **What it covers.** That the fakes still match the real services:
+    - each provider's `Source`, through `sourcetest`;
+    - a private stack through its integration, in the `@vcs-lab`
+      scenarios;
+    - the reach of each run's source credential, which a minted token
+      gives to its own repository alone and a lent token gives to both;
+    - from P12b, webhooks and feedback.
+
+    A provider whose secrets are unset reports "not configured" and
+    fails.
   - **Failures.** As the cloud object store job: an issue per provider.
 
 - A scenario's partition is the first of `accept-runs`,
@@ -442,7 +458,7 @@ coverage it would contribute is not waived.
   credentials, which pull requests from forks do not receive, and their
   availability and rate limits would make the blocking gate flaky. Gitea
   gives real webhooks and statuses and the chi fakes give each provider's
-  shapes in every pull request; the nightly `vcs-cloud` job proves the
+  shapes in every pull request; the nightly `vcs-lab` job proves the
   fakes against repositories Terraform creates, so a provider that changes
   its API opens an issue within a day.
 - **Rejected: acceptance on macOS and Windows.** The macOS runners have no
@@ -472,7 +488,7 @@ coverage it would contribute is not waived.
   copied verbatim, where they reference Spacelift-only resources; the
   translation is recorded in `provider-parity.yaml`.
 - The `nightly`, `postgres-next`, `objectstore-cloud`, `vendors-upstream`
-  and `vcs-cloud` jobs are informational: a newer Terraform, OpenTofu or
+  and `vcs-lab` jobs are informational: a newer Terraform, OpenTofu or
   PostgreSQL release, a real cloud or VCS provider, or a release index that
   changes its format, that breaks a case opens an issue rather than
   blocking merges.

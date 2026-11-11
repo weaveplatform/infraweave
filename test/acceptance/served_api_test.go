@@ -96,6 +96,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	s.w.bitbucketDC.register(sc)
 	s.w.azureDevOps.ids = org.ids
 	s.w.azureDevOps.register(sc)
+	(&labSteps{ids: org.ids}).register(sc)
 	(&vcsSteps{o: org}).register(sc)
 	(&expressionSteps{o: org}).register(sc)
 	(&catalogSteps{o: org}).register(sc)

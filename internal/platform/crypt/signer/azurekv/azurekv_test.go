@@ -27,7 +27,7 @@ import (
 const (
 	// KeyEnv names the key version the live test signs with, by its key
 	// ID, https://<vault>/keys/<name>/<version>, which
-	// test/cloud/kek/azure creates.
+	// test/terraform/cloud/kek/azure creates.
 	KeyEnv = "INFRAWEAVE_TEST_AZUREKV_SIGNING_KEY"
 	// RecordEnv set to 1 makes the live test write the fixture.
 	RecordEnv = "INFRAWEAVE_TEST_RECORD"

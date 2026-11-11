@@ -6,7 +6,7 @@ name: go | Object store contract in the clouds
 # identities a deployment grants: the writer (serve's grants, which hold no
 # delete, so the cloud must refuse one) and the deleter (scheduler's, which
 # deletes expired objects). GitHub's OIDC token is federated to each cloud;
-# no key is stored. test/cloud/objectstore holds the Terraform that
+# no key is stored. test/terraform/cloud/objectstore holds the Terraform that
 # provisions the buckets and the trust, and its outputs are this workflow's
 # environment secrets: none is a credential, but they name the clouds'
 # accounts, and a public repository's logs mask only secrets. A cloud
@@ -115,7 +115,7 @@ jobs:
         env:
           MISSING: ${{ steps.config.outputs.missing }}
         run: |
-          line="objectstore-cloud ${CLOUD} is not configured: the objectstore-cloud environment's secrets for ${MISSING} are not set. test/cloud/README.md provisions the cloud and lists them."
+          line="objectstore-cloud ${CLOUD} is not configured: the objectstore-cloud environment's secrets for ${MISSING} are not set. test/terraform/cloud/README.md provisions the cloud and lists them."
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
           exit 1

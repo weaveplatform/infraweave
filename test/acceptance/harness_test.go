@@ -200,6 +200,7 @@ func (h *harnessSteps) runNested(ctx context.Context, without, requiring string)
 		envBinary+"="+bin,
 		envCucumber+"=",
 		envPartition+"=",
+		envTags+"=",
 	)
 	if without != "" {
 		cmd.Env = append(cmd.Env, envNoDocker+"=1")

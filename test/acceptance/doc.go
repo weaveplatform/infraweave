@@ -8,7 +8,11 @@
 // first use. Without a Docker daemon it skips the scenarios that need one,
 // unless INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, which fails the run instead. A
 // failed scenario leaves its evidence in out/<scenario>/. make accept
-// PARTITION=core|runs|integrations selects one CI partition of Partitions.
+// PARTITION=core|runs|integrations selects one CI partition of Partitions;
+// PARTITION=vcs-lab selects the @vcs-lab scenarios, which reach the real
+// VCS providers only the scheduled vcs-lab job provisions, and which every
+// other run excludes. INFRAWEAVE_ACCEPT_TAGS narrows a run further, as the
+// job does to one provider's @lab: tag.
 //
 // TestAccCaptures replays the capture fixtures in test/fixtures/captures
 // (LoadCaptures, Replay) against the same binary; a failed expectation is a

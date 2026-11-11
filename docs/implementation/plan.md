@@ -1901,11 +1901,11 @@ a source credential for its repository.
    access token, a Bitbucket Data Center repository access token), revoked
    when the run ends, and hands the integration's token otherwise.
    Feature: `vcs_sources.feature` gains a private stack on each provider.
-8. The `vcs-cloud` lab: Terraform roots under `test/cloud/vcs/` that create
+8. The VCS lab: Terraform roots under `test/terraform/vcs/` that create
    a repository per run on GitHub, GitLab, Bitbucket Cloud and Azure DevOps,
    a Bitbucket Data Center container the job starts with a licence from its
-   secrets, and the scheduled `vcs-cloud.yml` that applies them, runs
-   `sourcetest` and the `@vcs-cloud` scenarios against them, and destroys
+   secrets, and the scheduled `vcs-lab.yml` that applies them, runs
+   `sourcetest` and the `@vcs-lab` scenarios against them, and destroys
    them.
 
 **Exit criteria**
@@ -1918,7 +1918,7 @@ a source credential for its repository.
 - The operations of tasks 1 to 6 meet decision 0016's evidence rule; the
   parity baseline drops them.
 - Every provider passes `sourcetest` against its fake, and against a real
-  repository in a green `vcs-cloud` run.
+  repository in a green `vcs-lab` run.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P12b: VCS events and feedback
@@ -1962,7 +1962,7 @@ checks, pull request comments and deployments.
 5. Features: `vcs_webhooks.feature` and `vcs_feedback.feature` (`@vcs`,
    Gitea for real webhooks and statuses, each provider's fake for its own
    shapes, recorded payloads driving a run and a check on every provider),
-   and their `@vcs-cloud` scenarios against P12's lab.
+   and their `@vcs-lab` scenarios against P12's lab.
 
 **Exit criteria**
 - On every provider, a signed push creates one tracked run; a bad signature

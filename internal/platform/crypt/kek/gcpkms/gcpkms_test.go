@@ -20,7 +20,7 @@ import (
 
 const (
 	// KeyEnv names the CryptoKey the live test wraps with, which
-	// test/cloud/kek/google creates.
+	// test/terraform/cloud/kek/google creates.
 	KeyEnv = "INFRAWEAVE_TEST_GCPKMS_KEY"
 	// RecordEnv set to 1 makes the live test write the fixture.
 	RecordEnv = "INFRAWEAVE_TEST_RECORD"

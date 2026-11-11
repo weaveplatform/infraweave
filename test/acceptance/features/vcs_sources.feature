@@ -13,6 +13,12 @@ Feature: A stack's tracked commit
   bindings a scenario gives it. Stack infra lives in legacy and stack
   hidden in team. A raw Git repository's branches list by its URL.
 
+  The @vcs-lab scenarios run only in the scheduled vcs-lab job, each
+  against the real provider its @lab: tag names: a private repository
+  the job provisioned for the run and pushed the lab history to, through
+  an integration of the job's credentials. A stack on it tracks main's
+  head, pins the history's base, and syncs back to the head.
+
   Background:
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
@@ -81,3 +87,80 @@ Feature: A stack's tracked commit
     Then it answers 200
     And the answer's items is '["main"]'
     And the answer leaves out "nextCursor"
+
+  @vcs-lab @lab:github
+  Scenario: A private stack on GitHub tracks its branch, pins an earlier commit and syncs back
+    Given the vcs-lab lab's repository
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"GITHUB","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
+    When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
+    Then it answers 200
+    And the answer tracks the commit kept as "labBase" at the branch head kept as "labHead"
+    When token "h" sends "POST /api/v1/stacks/lab/sync-commit" through A
+    Then it answers 200
+    And the answer tracks the commit kept as "labHead" at the branch head kept as "labHead"
+
+  @vcs-lab @lab:gitlab
+  Scenario: A private stack on GitLab tracks its branch, pins an earlier commit and syncs back
+    Given the vcs-lab lab's repository
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{labHost}","privateToken":"{labToken}","customInput":{"name":"Lab","spaceID":"acme"}}' through A
+    Then it answers 201
+    And the answer's id names "lab"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"GITLAB","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
+    When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
+    Then it answers 200
+    And the answer tracks the commit kept as "labBase" at the branch head kept as "labHead"
+    When token "h" sends "POST /api/v1/stacks/lab/sync-commit" through A
+    Then it answers 200
+    And the answer tracks the commit kept as "labHead" at the branch head kept as "labHead"
+
+  @vcs-lab @lab:bitbucket-cloud
+  Scenario: A private stack on Bitbucket Cloud tracks its branch, pins an earlier commit and syncs back
+    Given the vcs-lab lab's repository
+    When token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"{labUser}","apiToken":"{labToken}","customInput":{"name":"Lab","spaceID":"acme"}}' through A
+    Then it answers 201
+    And the answer's id names "lab"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"BITBUCKET_CLOUD","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
+    When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
+    Then it answers 200
+    And the answer tracks the commit kept as "labBase" at the branch head kept as "labHead"
+    When token "h" sends "POST /api/v1/stacks/lab/sync-commit" through A
+    Then it answers 200
+    And the answer tracks the commit kept as "labHead" at the branch head kept as "labHead"
+
+  @vcs-lab @lab:bitbucket-dc
+  Scenario: A private stack on Bitbucket Data Center tracks its branch, pins an earlier commit and syncs back
+    Given the vcs-lab lab's repository
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{labHost}","userFacingHost":"{labHost}","accessToken":"{labToken}","username":"{labUser}","customInput":{"name":"Lab","spaceID":"acme"}}' through A
+    Then it answers 201
+    And the answer's id names "lab"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"BITBUCKET_DATACENTER","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
+    When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
+    Then it answers 200
+    And the answer tracks the commit kept as "labBase" at the branch head kept as "labHead"
+    When token "h" sends "POST /api/v1/stacks/lab/sync-commit" through A
+    Then it answers 200
+    And the answer tracks the commit kept as "labHead" at the branch head kept as "labHead"
+
+  @vcs-lab @lab:azure-devops
+  Scenario: A private stack on Azure DevOps tracks its branch, pins an earlier commit and syncs back
+    Given the vcs-lab lab's repository
+    When token "h" sends "POST /api/v1/azure-dev-ops-repo-integrations" with '{"organizationURL":"{labHost}","personalAccessToken":"{labToken}","accessibleProjects":["{labNamespace}"],"customInput":{"name":"Lab","spaceID":"acme"}}' through A
+    Then it answers 201
+    And the answer's id names "lab"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"AZURE_DEVOPS","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
+    When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
+    Then it answers 200
+    And the answer tracks the commit kept as "labBase" at the branch head kept as "labHead"
+    When token "h" sends "POST /api/v1/stacks/lab/sync-commit" through A
+    Then it answers 200
+    And the answer tracks the commit kept as "labHead" at the branch head kept as "labHead"

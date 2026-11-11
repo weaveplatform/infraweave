@@ -83,6 +83,7 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@vcs", "@tofu"}, "runs"},
 		{[]string{"@ai"}, "integrations"},
 		{[]string{"@provider:resource:spacelift_stack", "@terraform"}, "runs"},
+		{[]string{"@postgres", "@vcs", "@vcs-lab", "@lab:gitlab"}, "vcs-lab"},
 	} {
 		got, err := Place(tc.tags)
 		if err != nil || got != tc.want {
@@ -96,11 +97,12 @@ func TestUnitPlace(t *testing.T) {
 
 func TestUnitTagExpression(t *testing.T) {
 	for name, want := range map[string]string{
-		"":     "",
-		"runs": "@terraform,@tofu,@kubernetes,@flows-agent",
-		"integrations": "~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && " +
+		"":        "~@vcs-lab",
+		"vcs-lab": "@vcs-lab",
+		"runs":    "~@vcs-lab && @terraform,@tofu,@kubernetes,@flows-agent",
+		"integrations": "~@vcs-lab && ~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && " +
 			"@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai",
-		"core": "~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
+		"core": "~@vcs-lab && ~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
 	} {
 		got, err := TagExpression(name)
 		if err != nil || got != want {
@@ -109,6 +111,15 @@ func TestUnitTagExpression(t *testing.T) {
 	}
 	if _, err := TagExpression("everything"); !errors.Is(err, ErrUnknownPartition) {
 		t.Errorf("an unknown partition: %v", err)
+	}
+	for want, exprs := range map[string][]string{
+		"":                        {"", ""},
+		"@vcs-lab":                {"@vcs-lab", ""},
+		"@vcs-lab && @lab:gitlab": {"@vcs-lab", "", "@lab:gitlab"},
+	} {
+		if got := And(exprs...); got != want {
+			t.Errorf("And(%q) = %q, want %q", exprs, got, want)
+		}
 	}
 }
 
