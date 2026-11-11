@@ -273,10 +273,13 @@ func (p *Provider) ResolveRef(
 			repo.Name,
 			rc.GetSHA(),
 		),
-		Message:     rc.GetCommit().GetMessage(),
-		AuthorName:  rc.GetCommit().GetAuthor().GetName(),
-		Timestamp:   rc.GetCommit().GetAuthor().GetDate().Time,
-		AuthorLogin: rc.GetAuthor().Login,
+		Message:    rc.GetCommit().GetMessage(),
+		AuthorName: rc.GetCommit().GetAuthor().GetName(),
+		Timestamp:  rc.GetCommit().GetAuthor().GetDate().Time,
+	}
+	// GitHub's author is null when no account owns the commit's e-mail.
+	if a := rc.GetAuthor(); a != nil {
+		out.AuthorLogin = a.Login
 	}
 	if ref == out.Hash {
 		return out, nil
