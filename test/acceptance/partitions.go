@@ -27,7 +27,15 @@ var Partitions = []Partition{
 	{Name: "runs", Tags: []string{"@terraform", "@tofu", "@kubernetes", "@flows-agent"}},
 	{
 		Name: "integrations",
-		Tags: []string{"@vcs", "@github", "@gitlab", "@bitbucket-cloud", "@bitbucket-dc", "@ai"},
+		Tags: []string{
+			"@vcs",
+			"@github",
+			"@gitlab",
+			"@bitbucket-cloud",
+			"@bitbucket-dc",
+			"@azure-devops",
+			"@ai",
+		},
 	},
 	{Name: "core", Tags: []string{"@postgres", "@objectstore", "@oidc", "@vault"}},
 }

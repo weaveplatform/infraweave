@@ -190,6 +190,12 @@ func (s Server) details(
 			return nil, derr //nolint:wrapcheck // the store names the read
 		}
 		err = out.FromBitbucketDatacenterIntegration(bitbucketDCView(in, slugs, &d))
+	case integration.AzureDevOps:
+		d, derr := s.svc.Details(ctx, in)
+		if derr != nil {
+			return nil, derr //nolint:wrapcheck // the store names the read
+		}
+		err = out.FromAzureDevOpsRepoIntegration(azureDevOpsView(in, slugs, &d))
 	case integration.GitHub:
 		b, berr := s.svc.Builtin(ctx, p, in.Provider)
 		if berr != nil {

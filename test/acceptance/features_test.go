@@ -152,13 +152,14 @@ func ctlBinary(ctx context.Context) (string, error) {
 }
 
 // dockerTags are the scenario's tags that need a Docker daemon: every
-// dependency tag except @oidc, @github, @gitlab, @bitbucket-cloud and
-// @bitbucket-dc, which run in process, and @ai, whose provider is a fake on loopback.
+// dependency tag except @oidc, @github, @gitlab, @bitbucket-cloud,
+// @bitbucket-dc and @azure-devops, which run in process, and @ai, whose provider is a fake on loopback.
 func dockerTags(tags []string) []string {
 	var out []string
 	for _, t := range tags {
 		if !Exempt(t) && t != "@oidc" && t != "@ai" && t != "@github" && t != "@gitlab" &&
-			t != "@bitbucket-cloud" && t != "@bitbucket-dc" {
+			t != "@bitbucket-cloud" && t != "@bitbucket-dc" &&
+			t != "@azure-devops" {
 			out = append(out, t)
 		}
 	}
@@ -296,6 +297,9 @@ type world struct {
 	// bitbucketDC is a @bitbucket-dc scenario's Bitbucket Data Center,
 	// whose certificate every server of the scenario trusts.
 	bitbucketDC *bitbucketDCSteps
+	// azureDevOps is an @azure-devops scenario's Azure DevOps, whose
+	// certificate every server of the scenario trusts.
+	azureDevOps *azureDevOpsSteps
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -334,6 +338,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 		w.gitlab.stop()
 		w.bitbucketCloud.stop()
 		w.bitbucketDC.stop()
+		w.azureDevOps.stop()
 		if w.dir != "" {
 			err = errors.Join(err, os.RemoveAll(w.dir))
 		}
@@ -347,6 +352,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	w.gitlab = &gitlabSteps{}
 	w.bitbucketCloud = &bitbucketCloudSteps{}
 	w.bitbucketDC = &bitbucketDCSteps{}
+	w.azureDevOps = &azureDevOpsSteps{}
 	(&servedSteps{w: w}).register(sc)
 	(&observeSteps{w: w}).register(sc)
 	(&startupSteps{w: w}).register(sc)
@@ -462,8 +468,8 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 // scenario's servers trust its Gitea, a @github scenario's trust its
 // GitHub host and name its operator App, a @gitlab scenario's trust its
 // GitLab, a @bitbucket-cloud scenario's trust and reach its Bitbucket
-// Cloud, and a @bitbucket-dc scenario's trust its Bitbucket Data Center,
-// under one vcs.ca_file holding every certificate they trust.
+// Cloud, a @bitbucket-dc scenario's trust its Bitbucket Data Center, and
+// an @azure-devops scenario's trust its Azure DevOps, under one vcs.ca_file holding every certificate they trust.
 func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	vcs := map[string]any{}
 	var cas []byte
@@ -502,6 +508,11 @@ func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 		cas = append(cas, w.bitbucketDC.start()...)
 	} else if w.bitbucketDC.srv != nil {
 		cas = append(cas, w.bitbucketDC.srv.CA...)
+	}
+	if slices.Contains(w.tags, "@azure-devops") && w.azureDevOps.srv == nil {
+		cas = append(cas, w.azureDevOps.start()...)
+	} else if w.azureDevOps.srv != nil {
+		cas = append(cas, w.azureDevOps.srv.CA...)
 	}
 	if w.bitbucketCloud.srv != nil {
 		vcs["bitbucket_cloud"] = map[string]any{"api_host": w.bitbucketCloud.apiHost()}
