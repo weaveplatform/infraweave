@@ -4,6 +4,8 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
@@ -16,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -82,6 +85,14 @@ func New(d Deps) *Domain {
 // SpaceOf finds the space of a run's stack by the run's ID, which
 // internal/app registers with the access domain for Entity.
 func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.read.SpaceOf }
+
+// Surfaces are the domain's additions to the surfaces other domains own:
+// run, on the configuration domain's environment surface.
+//
+// ref: decision 0024 "Who declares a surface"
+func (d *Domain) Surfaces() []expr.Surface {
+	return []expr.Surface{{Name: configapi.Surface, Variables: []expr.Variable{surface.Variable()}}}
+}
 
 // Jobs are the domain's job handlers, which the scheduler registers:
 // lifecycle.ScheduleKind's, which moves a stack's queued runs to READY.

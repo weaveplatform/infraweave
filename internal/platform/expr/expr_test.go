@@ -30,6 +30,11 @@ const inputsSchema = `{
 	}
 }`
 
+// env describes every context as an empty one.
+func env(context.Context, kernel.Principal, string) (expr.Context, error) {
+	return expr.Context{}, nil
+}
+
 // surface is the test surface: inputs, free-form data and secrets.
 func surface() expr.Surface {
 	return expr.Surface{
@@ -690,7 +695,11 @@ func TestUnitExprRegistry(t *testing.T) {
 		want     error
 	}{
 		{"bad limits", expr.Config{}, nil, expr.ErrConfig},
-		{"duplicate surface", expr.Defaults(), []expr.Surface{{Name: "a"}, {Name: "a"}}, expr.ErrRequest},
+		{"two contexts", expr.Defaults(), []expr.Surface{{Name: "a", Env: env}, {Name: "a", Env: env}}, expr.ErrRequest},
+		{"a variable declared twice", expr.Defaults(), []expr.Surface{
+			{Name: "a", Variables: []expr.Variable{{Name: "x"}}},
+			{Name: "a", Variables: []expr.Variable{{Name: "x"}}},
+		}, expr.ErrRequest},
 		{"no name", expr.Defaults(), []expr.Surface{{}}, expr.ErrRequest},
 		{
 			"reserved now", expr.Defaults(),
@@ -717,6 +726,15 @@ func TestUnitExprRegistry(t *testing.T) {
 	}
 	if _, ok := r.Surface("nope"); ok {
 		t.Error("an unknown surface was found")
+	}
+	added := expr.Surface{Name: "test", Variables: []expr.Variable{{Name: "run"}}}
+	owned := surface()
+	owned.Env = env
+	for _, order := range [][]expr.Surface{{added, owned}, {owned, added}} {
+		s, _ := registry(t, expr.Defaults(), order...).Surface("test")
+		if len(s.Variables) != 4 || s.Env == nil {
+			t.Errorf("a surface merged from %d declarations = %+v", len(order), s)
+		}
 	}
 
 	for _, c := range []struct {
