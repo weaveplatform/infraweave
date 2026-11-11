@@ -94,6 +94,11 @@ func TestUnitSource(t *testing.T) {
 		got.URL != l.srv.URL+"/acme/infra/commit/"+got.Hash {
 		t.Errorf("ResolveRef(main) = %+v", got)
 	}
+	l.fake.Unlink(githubfake.AuthorEmail)
+	if c, err := l.gh.ResolveRef(t.Context(), l.repo.Repo, "main"); err != nil ||
+		c.AuthorLogin != nil || c.Hash != got.Hash {
+		t.Errorf("ResolveRef(main) by an e-mail no account owns = %+v, %v", c, err)
+	}
 	want := l.srv.URL + "/api/v3/repos/acme/infra/tarball/" + got.Hash
 	if u := l.gh.SourceURL(l.repo.Repo, got.Hash); u != want {
 		t.Errorf("SourceURL = %s, want %s", u, want)

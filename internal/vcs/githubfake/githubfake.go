@@ -114,14 +114,25 @@ type Fake struct {
 	until    time.Time
 	requests int
 	issued   int
+	logins   map[string]string
 }
 
-// New returns a fake with no App, installation or repository.
+// New returns a fake with no App, installation or repository, whose
+// account AuthorLogin owns the e-mail AuthorEmail.
 func New() *Fake {
 	return &Fake{
 		apps: map[int64]*App{}, installs: map[int64]*Installation{}, repos: map[string]*Repo{},
 		tokens: map[string]token{}, codes: map[string]string{}, nextID: 1000,
+		logins: map[string]string{AuthorEmail: AuthorLogin},
 	}
+}
+
+// Unlink makes email belong to no GitHub account, so a commit it
+// authored answers with a null author, as GitHub's own does.
+func (f *Fake) Unlink(email string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.logins, email)
 }
 
 // Server is the fake served over TLS.
@@ -538,6 +549,14 @@ func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
 		answer(w, http.StatusUnprocessableEntity, message("No commit found for SHA: "+ref))
 		return
 	}
+	// GitHub names the account that owns the author's e-mail, and null
+	// when none does.
+	f.mu.Lock()
+	var author map[string]string
+	if login, ok := f.logins[c.Author.Email]; ok {
+		author = map[string]string{"login": login}
+	}
+	f.mu.Unlock()
 	answer(w, http.StatusOK, map[string]any{
 		"sha": c.Hash.String(),
 		"html_url": fmt.Sprintf("%s/%s/%s/commit/%s",
@@ -549,7 +568,7 @@ func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
 				"date": c.Author.When.UTC().Format(time.RFC3339),
 			},
 		},
-		"author": map[string]string{"login": AuthorLogin},
+		"author": author,
 	})
 }
 
