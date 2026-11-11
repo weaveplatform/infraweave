@@ -152,12 +152,13 @@ func ctlBinary(ctx context.Context) (string, error) {
 }
 
 // dockerTags are the scenario's tags that need a Docker daemon: every
-// dependency tag except @oidc, @github and @gitlab, which run in process,
-// and @ai, whose provider is a fake on loopback.
+// dependency tag except @oidc, @github, @gitlab and @bitbucket-cloud,
+// which run in process, and @ai, whose provider is a fake on loopback.
 func dockerTags(tags []string) []string {
 	var out []string
 	for _, t := range tags {
-		if !Exempt(t) && t != "@oidc" && t != "@ai" && t != "@github" && t != "@gitlab" {
+		if !Exempt(t) && t != "@oidc" && t != "@ai" && t != "@github" && t != "@gitlab" &&
+			t != "@bitbucket-cloud" {
 			out = append(out, t)
 		}
 	}
@@ -289,6 +290,9 @@ type world struct {
 	// gitlab is a @gitlab scenario's GitLab, whose certificate every
 	// server of the scenario trusts.
 	gitlab *gitlabSteps
+	// bitbucketCloud is a @bitbucket-cloud scenario's Bitbucket Cloud,
+	// which every server of the scenario reaches and trusts.
+	bitbucketCloud *bitbucketCloudSteps
 }
 
 func (s *suite) initScenario(sc *godog.ScenarioContext) {
@@ -325,6 +329,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 		}
 		w.github.stop()
 		w.gitlab.stop()
+		w.bitbucketCloud.stop()
 		if w.dir != "" {
 			err = errors.Join(err, os.RemoveAll(w.dir))
 		}
@@ -336,6 +341,7 @@ func (s *suite) initScenario(sc *godog.ScenarioContext) {
 	w.git = git
 	w.github = &githubSteps{}
 	w.gitlab = &gitlabSteps{}
+	w.bitbucketCloud = &bitbucketCloudSteps{}
 	(&servedSteps{w: w}).register(sc)
 	(&observeSteps{w: w}).register(sc)
 	(&startupSteps{w: w}).register(sc)
@@ -449,8 +455,9 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 
 // vcs is config with the vcs settings the scenario's tags need: a @vcs
 // scenario's servers trust its Gitea, a @github scenario's trust its
-// GitHub host and name its operator App, and a @gitlab scenario's trust
-// its GitLab, under one vcs.ca_file holding every certificate they trust.
+// GitHub host and name its operator App, a @gitlab scenario's trust its
+// GitLab, and a @bitbucket-cloud scenario's trust and reach its Bitbucket
+// Cloud, under one vcs.ca_file holding every certificate they trust.
 func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	vcs := map[string]any{}
 	var cas []byte
@@ -479,6 +486,14 @@ func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 		cas = append(cas, w.gitlab.start()...)
 	} else if w.gitlab.srv != nil {
 		cas = append(cas, w.gitlab.srv.CA...)
+	}
+	if slices.Contains(w.tags, "@bitbucket-cloud") && w.bitbucketCloud.srv == nil {
+		cas = append(cas, w.bitbucketCloud.start()...)
+	} else if w.bitbucketCloud.srv != nil {
+		cas = append(cas, w.bitbucketCloud.srv.CA...)
+	}
+	if w.bitbucketCloud.srv != nil {
+		vcs["bitbucket_cloud"] = map[string]any{"api_host": w.bitbucketCloud.apiHost()}
 	}
 	if len(cas) == 0 {
 		return config, nil

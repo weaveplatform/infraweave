@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/mail"
 	"net/url"
 	"slices"
 	"strings"
@@ -19,12 +20,15 @@ import (
 
 // The providers the service names: GitHub is the operator's App, which
 // the server's settings configure; GitHub Enterprise an account's own App
-// on github.com or a GitHub Enterprise Server; and GitLab GitLab.com or a
-// self-managed GitLab, reached with an access token.
+// on github.com or a GitHub Enterprise Server; GitLab GitLab.com or a
+// self-managed GitLab, reached with an access token; and Bitbucket Cloud
+// its workspaces, reached with an Atlassian account's email and API
+// token.
 const (
 	GitHub           = "GITHUB"
 	GitHubEnterprise = "GITHUB_ENTERPRISE"
 	GitLab           = "GITLAB"
+	BitbucketCloud   = "BITBUCKET_CLOUD"
 )
 
 // ManifestTTL is how long a GitHub App manifest form stays open: the time
@@ -74,6 +78,13 @@ func checkSettings(in Input) []kernel.FieldError {
 	if id := in.Settings.AppID; id != "" && strings.Trim(id, "0123456789") != "" {
 		errs = append(errs, kernel.FieldError{
 			Pointer: "/appID", Reason: kernel.ReasonFormat, Message: "appID is a number.",
+		})
+	}
+	if a, err := mail.ParseAddress(in.Settings.Email); in.Provider == BitbucketCloud &&
+		(err != nil || a.Name != "" || a.Address != in.Settings.Email) {
+		errs = append(errs, kernel.FieldError{
+			Pointer: "/email", Reason: kernel.ReasonFormat,
+			Message: "email is the address of the Atlassian account the API token is of.",
 		})
 	}
 	if in.Settings.AppID != "" && in.Secrets != nil && in.Secrets.Credential != nil &&

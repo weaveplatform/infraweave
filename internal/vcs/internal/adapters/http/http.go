@@ -178,6 +178,12 @@ func (s Server) details(
 			return nil, derr //nolint:wrapcheck // the store names the read
 		}
 		err = out.FromGitlabIntegration(gitlabView(in, slugs, &d))
+	case integration.BitbucketCloud:
+		d, derr := s.svc.Details(ctx, in)
+		if derr != nil {
+			return nil, derr //nolint:wrapcheck // the store names the read
+		}
+		err = out.FromBitbucketCloudIntegration(bitbucketCloudView(in, slugs, &d))
 	case integration.GitHub:
 		b, berr := s.svc.Builtin(ctx, p, in.Provider)
 		if berr != nil {

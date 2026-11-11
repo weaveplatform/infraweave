@@ -287,7 +287,7 @@ func TestAccRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	bb := gitlab("Cloud", "team", false)
-	bb.Provider = "BITBUCKET_CLOUD"
+	bb.Provider, bb.Settings = "BITBUCKET_CLOUD", port.Settings{Email: "dev@acme.example"}
 	if _, err := f.svc.Create(ctx, f.admin, bb); err != nil {
 		t.Fatal(err)
 	}
@@ -471,6 +471,7 @@ func TestAccWrite(t *testing.T) {
 	}
 	bb := gitlab("Cloud", "", false)
 	bb.Provider, bb.Secrets = "BITBUCKET_CLOUD", nil
+	bb.Settings = port.Settings{Email: "dev@acme.example"}
 	cloud, err := f.svc.Create(ctx, f.admin, bb)
 	if err != nil {
 		t.Fatal(err)

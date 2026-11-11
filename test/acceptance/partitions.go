@@ -25,7 +25,7 @@ type Partition struct {
 // ref: decision 0016
 var Partitions = []Partition{
 	{Name: "runs", Tags: []string{"@terraform", "@tofu", "@kubernetes", "@flows-agent"}},
-	{Name: "integrations", Tags: []string{"@vcs", "@github", "@gitlab", "@ai"}},
+	{Name: "integrations", Tags: []string{"@vcs", "@github", "@gitlab", "@bitbucket-cloud", "@ai"}},
 	{Name: "core", Tags: []string{"@postgres", "@objectstore", "@oidc", "@vault"}},
 }
 
