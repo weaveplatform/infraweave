@@ -96,7 +96,7 @@ exclusion is recorded with its evidence.
 | Spacelift SaaS GraphQL schema | introspection `b3255fe38f5e`, fetched 2026-10-28 | `demo.app.spacelift.io`; the schema carries no version of its own |
 | spacelift-api-bruno | `7cad4574954b` | MIT |
 | terraform-provider-spacelift | v1.57.0 | MIT |
-| Go | 1.27.3 | module baseline |
+| Go | 1.27.4 | module baseline |
 | chi | v5.5.0 | |
 | kin-openapi | v0.152.0 | OpenAPI 3.0.3 validation |
 | oapi-codegen | v2.8.1 | strict chi server and client |

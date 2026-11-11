@@ -1,6 +1,6 @@
 module github.com/weaveplatform/infraweave
 
-go 1.27.3
+go 1.27.4
 
 tool (
 	github.com/vladopajic/go-test-coverage/v2
