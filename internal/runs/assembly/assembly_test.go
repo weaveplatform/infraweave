@@ -10,6 +10,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // TestUnitDomain checks that the domain answers the stack view's status
@@ -30,10 +31,20 @@ func TestUnitDomain(t *testing.T) {
 	}
 }
 
-// sources is a runsapi.RunSources that releases nothing.
+// sources is a runsapi.RunSources that releases nothing and a
+// stacksapi.StackSources that resolves every ref to the zero commit.
 type sources struct{}
 
 func (sources) Release(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
+
+func (sources) Resolve(
+	context.Context,
+	kernel.AccountID,
+	kernel.ULID,
+	string,
+) (stacksapi.Commit, error) {
+	return stacksapi.Commit{}, nil
+}
 
 // TestUnitEvents checks that the domain's event kind registers once, that
 // a run_updated document meets its schema, that the vcs domain's back edge
@@ -61,7 +72,7 @@ func TestUnitEvents(t *testing.T) {
 		t.Error("a document without its run passes")
 	}
 	d := New(Deps{})
-	d.BindSources(sources{})
+	d.BindSources(sources{}, sources{})
 	if jobs := d.Jobs(); len(jobs) != 1 || jobs[0].Kind.Name != "run.schedule" ||
 		jobs[0].Handler == nil {
 		t.Errorf("Jobs = %+v", jobs)

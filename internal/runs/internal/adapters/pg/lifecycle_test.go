@@ -53,6 +53,34 @@ func (f *fakeStacks) Get(
 	return f.settings[id].Stack, nil
 }
 
+func (f *fakeStacks) BySlug(
+	_ context.Context,
+	_ kernel.AccountID,
+	slug string,
+) (stacksapi.Stack, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, st := range f.settings {
+		if st.Slug == slug {
+			return st.Stack, nil
+		}
+	}
+	return stacksapi.Stack{}, stacksapi.ErrNotFound
+}
+
+func (f *fakeStacks) Settings(
+	_ context.Context,
+	_ kernel.AccountID,
+	id kernel.ULID,
+) (stacksapi.Settings, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.err["Settings"]; err != nil {
+		return stacksapi.Settings{}, err
+	}
+	return f.settings[id], nil
+}
+
 func (f *fakeStacks) LockForRun(
 	ctx context.Context,
 	_ kernel.AccountID,
@@ -102,11 +130,27 @@ func (f *fakeStacks) last(stack kernel.ULID) (projection, bool) {
 	return w[len(w)-1], true
 }
 
-// fakeSources records the runs whose credentials are released.
+// fakeSources resolves the commits by SHA and records the runs whose
+// credentials are released; err fails a release.
 type fakeSources struct {
 	mu       sync.Mutex
+	commits  map[string]stacksapi.Commit
 	released []kernel.ULID
 	err      error
+}
+
+func (f *fakeSources) Resolve(
+	_ context.Context,
+	_ kernel.AccountID,
+	_ kernel.ULID,
+	ref string,
+) (stacksapi.Commit, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if c, ok := f.commits[ref]; ok {
+		return c, nil
+	}
+	return stacksapi.Commit{}, stacksapi.ErrRefNotFound
 }
 
 func (f *fakeSources) Release(_ context.Context, _ kernel.AccountID, run kernel.ULID) error {
@@ -843,10 +887,11 @@ func TestAccLifecycleStoreUnavailable(t *testing.T) {
 	_, _, activeErr := s.Active(ctx, acct, id, kernel.RunTypeTracked, "abc")
 	_, unlockErr := s.Unlock(ctx, acct, id)
 	_, _, projErr := s.Projection(ctx, acct, id, kernel.StackStates())
+	_, historyErr := s.History(ctx, acct, id)
 	for name, err := range map[string]error{
 		"Lock": lockErr, "Move": s.Move(ctx, run, step), "Insert": s.Insert(ctx, run, step),
 		"Active": activeErr, "Track": s.Track(ctx, run), "Unlock": unlockErr,
-		"Projection": projErr,
+		"Projection": projErr, "History": historyErr,
 	} {
 		if err == nil {
 			t.Errorf("%s on a closed pool succeeded", name)

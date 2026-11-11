@@ -13,16 +13,24 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 )
 
 var (
 	_ lifecycle.Store = (*Store)(nil)
 	_ schedule.Store  = (*Store)(nil)
+	_ trigger.Store   = (*Store)(nil)
 )
 
 // runColumns are the columns scanRun reads, in its order.
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
-	commit, triggered_by, priority, drift_detection, created_at, updated_at`
+	commit, triggered_by, priority, drift_detection, runtime_config,
+	coalesce(force_apply_mode, ''), created_at, updated_at`
+
+// insertColumns are runColumns as an INSERT names them.
+const insertColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
+	commit, triggered_by, priority, drift_detection, runtime_config, force_apply_mode,
+	created_at, updated_at`
 
 // scanRun reads one row of runColumns.
 func scanRun(row pgx.Row) (lifecycle.Run, error) {
@@ -32,7 +40,8 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 		commit               []byte
 	)
 	err := row.Scan(&r.Account, &r.ID, &r.Stack, &typ, &state, &r.Version, &r.StateChangedAt,
-		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.CreatedAt, &r.UpdatedAt)
+		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.RuntimeConfig, &r.ForceApply,
+		&r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
 	}
@@ -82,11 +91,11 @@ func (s *Store) Insert(ctx context.Context, run lifecycle.Run, step lifecycle.St
 	if err != nil {
 		return fmt.Errorf("runs: encode the commit of run %s: %w", run.ID, err)
 	}
-	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO runs (`+runColumns+`)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO runs (`+insertColumns+`)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nullif($13, ''), $14, $15)`,
 		run.Account, run.ID, run.Stack, string(run.Type), string(run.State), run.Version,
 		run.StateChangedAt, commit, run.TriggeredBy, string(run.Priority), run.DriftDetection,
-		run.CreatedAt, run.UpdatedAt)
+		[]byte(run.RuntimeConfig), run.ForceApply, run.CreatedAt, run.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("runs: insert run %s: %w", run.ID, sql.Unavailable(err))
 	}
@@ -246,4 +255,40 @@ func (s *Store) TakeLock(ctx context.Context, run lifecycle.Run) (bool, error) {
 			sql.Unavailable(err))
 	}
 	return tag.RowsAffected() == 1, nil
+}
+
+// History reads acct's run's transitions, oldest first.
+func (s *Store) History(
+	ctx context.Context,
+	acct kernel.AccountID,
+	run kernel.ULID,
+) ([]lifecycle.Step, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT sequence, state, timestamp, until, username,
+		note, has_logs FROM run_state_transitions
+		WHERE account_id = $1 AND run_id = $2 ORDER BY sequence`, acct, run)
+	if err != nil {
+		return nil, fmt.Errorf("runs: read the history of run %s: %w", run, sql.Unavailable(err))
+	}
+	defer rows.Close()
+	var out []lifecycle.Step
+	for rows.Next() {
+		var (
+			st    lifecycle.Step
+			state string
+		)
+		if err := rows.Scan(&st.Sequence, &state, &st.At, &st.Until, &st.Username, &st.Note,
+			&st.HasLogs); err != nil {
+			return nil, fmt.Errorf(
+				"runs: read the history of run %s: %w",
+				run,
+				sql.Unavailable(err),
+			)
+		}
+		st.State, st.At = kernel.RunState(state), st.At.UTC()
+		out = append(out, st)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("runs: read the history of run %s: %w", run, sql.Unavailable(err))
+	}
+	return out, nil
 }

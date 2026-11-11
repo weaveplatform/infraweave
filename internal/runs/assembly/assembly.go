@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -39,6 +40,7 @@ type Domain struct {
 	runs      *core.Service
 	lifecycle *lifecycle.Lifecycle
 	scheduler *schedule.Scheduler
+	trigger   *trigger.Service
 }
 
 // New constructs the domain on d.
@@ -52,6 +54,9 @@ func New(d Deps) *Domain {
 		lifecycle: lc,
 		scheduler: schedule.New(schedule.Deps{
 			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs,
+		}),
+		trigger: trigger.New(trigger.Deps{
+			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc,
 		}),
 	}
 }
@@ -77,9 +82,13 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 }
 
 // BindSources binds the vcs domain's revocation of a run's source
-// credentials, a back edge internal/app binds after it constructs that
-// domain; every run that ends from then on releases its credentials.
-func (d *Domain) BindSources(s runsapi.RunSources) { d.lifecycle.BindSources(s) }
+// credentials and its resolution of a stack's commits, back edges
+// internal/app binds after it constructs that domain; from then on every
+// run that ends releases its credentials, and a trigger may name a commit.
+func (d *Domain) BindSources(s runsapi.RunSources, r stacksapi.StackSources) {
+	d.lifecycle.BindSources(s)
+	d.trigger.BindSources(r)
+}
 
 // StackStatus is the domain's answer to the stack view's read of the run
 // blocking each stack, a back edge internal/app binds in the stacks
@@ -97,4 +106,9 @@ type RunsAPI = http.Server
 
 // API is the domain's partial of the API's strict server; a nil domain's
 // is the zero partial, for tests that construct none.
-func (d *Domain) API() RunsAPI { return RunsAPI{} }
+func (d *Domain) API() RunsAPI {
+	if d == nil {
+		return RunsAPI{}
+	}
+	return http.New(d.trigger)
+}

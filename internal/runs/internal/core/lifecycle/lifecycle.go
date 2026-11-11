@@ -103,7 +103,9 @@ type Actor struct {
 func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login: p.Login} }
 
 // Run is a run as the lifecycle reads and writes it. Version is its
-// state_version; TriggeredBy is the login or trigger that created it.
+// state_version; TriggeredBy is the login or trigger that created it;
+// RuntimeConfig is the runtime configuration its trigger gave, nil for
+// none, and ForceApply SINGLE or CASCADE when it applies with no changes.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -116,12 +118,15 @@ type Run struct {
 	TriggeredBy    string
 	Priority       kernel.RunPriority
 	DriftDetection bool
+	RuntimeConfig  json.RawMessage
+	ForceApply     string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
 
 // Step is one run_state_transitions row: the state a transition enters,
-// its sequence, the run's new state_version, and who took it.
+// its sequence, the run's new state_version, and who took it. HasLogs is
+// whether the state wrote logs, which a transition never sets.
 type Step struct {
 	Sequence int64
 	State    kernel.RunState
@@ -129,6 +134,7 @@ type Step struct {
 	Until    *time.Time
 	Username *string
 	Note     *string
+	HasLogs  bool
 }
 
 // Store is the lifecycle's storage port. Each method joins the transaction
@@ -268,7 +274,8 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 
 // NewRun is a run to create: acct's stack, its type, the commit it works
 // on, who creates it, its priority, normal when empty, whether drift
-// detection starts it, and a note for its first transition.
+// detection starts it, its runtime configuration and force-apply mode,
+// and a note for its first transition.
 type NewRun struct {
 	Account        kernel.AccountID
 	Stack          kernel.ULID
@@ -277,6 +284,8 @@ type NewRun struct {
 	Actor          Actor
 	Priority       kernel.RunPriority
 	DriftDetection bool
+	RuntimeConfig  json.RawMessage
+	ForceApply     string
 	Note           string
 }
 
@@ -322,7 +331,7 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 		Account: n.Account, ID: kernel.NewULID(), Stack: n.Stack, Type: n.Type,
 		State: kernel.RunStateQueued, Version: 1, StateChangedAt: now, Commit: n.Commit,
 		TriggeredBy: n.Actor.Login, Priority: priority, DriftDetection: n.DriftDetection,
-		CreatedAt: now, UpdatedAt: now,
+		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, CreatedAt: now, UpdatedAt: now,
 	}
 	step := Step{
 		Sequence: 1, State: kernel.RunStateQueued, At: now,
