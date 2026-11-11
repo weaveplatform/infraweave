@@ -23,7 +23,7 @@ These apply to every weaveplatform repository created from this template.
   total and ≥90% per directory, and Playwright journeys against a real
   `infraweave all` with dependencies from testcontainers. Each blocks merges.
   Node.js is pinned to the current LTS; npm with a committed lockfile.
-- **Go version.** `go.mod` names the full patch release (`go 1.27.3`);
+- **Go version.** `go.mod` names the full patch release (`go 1.27.4`);
   `deps-refresh.yml` moves it to the latest stable release.
 - **Builds** run with `GOWORK=off` so a local `go.work` never hides a missing
   dependency that CI would catch.
