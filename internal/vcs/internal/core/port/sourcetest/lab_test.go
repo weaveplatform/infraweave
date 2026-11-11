@@ -1,9 +1,13 @@
 package sourcetest
 
 import (
+	"encoding/pem"
 	"errors"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -28,6 +32,39 @@ func TestUnitLabEnv(t *testing.T) {
 	t.Setenv(vcslab.EnvHost, "https://gitlab.example")
 	if lab := LabEnv(t, vcslab.EnvHost); lab.Host != "https://gitlab.example" {
 		t.Errorf("LabEnv = %+v", lab)
+	}
+}
+
+// TestUnitLabRoots checks that LabRoots's client trusts the container's
+// certificate, and that a missing file or one with no certificate fails.
+func TestUnitLabRoots(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer srv.Close()
+	ca := filepath.Join(t.TempDir(), "ca.pem")
+	block := &pem.Block{Type: "CERTIFICATE", Bytes: srv.Certificate().Raw}
+	if err := os.WriteFile(ca, pem.EncodeToMemory(block), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, client := LabRoots(t, ca)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("a client trusting the lab's certificate = %v", err)
+	}
+	_ = resp.Body.Close()
+
+	empty := filepath.Join(t.TempDir(), "empty.pem")
+	if err := os.WriteFile(empty, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := labRoots(empty); !errors.Is(err, ErrNoCertificate) {
+		t.Errorf("a file with no certificate = %v", err)
+	}
+	if _, err := labRoots(filepath.Join(t.TempDir(), "gone.pem")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("a missing file = %v", err)
 	}
 }
 

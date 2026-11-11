@@ -107,7 +107,7 @@ Feature: A stack's tracked commit
     When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{labHost}","privateToken":"{labToken}","customInput":{"name":"Lab","spaceID":"acme"}}' through A
     Then it answers 201
     And the answer's id names "lab"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"GITLAB","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"GITLAB","vcsIntegrationId":"{lab}","space":"{team}"},"manageState":false}' through B
     Then it answers 201
     And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
     When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
@@ -123,7 +123,7 @@ Feature: A stack's tracked commit
     When token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"{labUser}","apiToken":"{labToken}","customInput":{"name":"Lab","spaceID":"acme"}}' through A
     Then it answers 201
     And the answer's id names "lab"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"BITBUCKET_CLOUD","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"BITBUCKET_CLOUD","vcsIntegrationId":"{lab}","space":"{team}"},"manageState":false}' through B
     Then it answers 201
     And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
     When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
@@ -139,7 +139,7 @@ Feature: A stack's tracked commit
     When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{labHost}","userFacingHost":"{labHost}","accessToken":"{labToken}","username":"{labUser}","customInput":{"name":"Lab","spaceID":"acme"}}' through A
     Then it answers 201
     And the answer's id names "lab"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"BITBUCKET_DATACENTER","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"BITBUCKET_DATACENTER","vcsIntegrationId":"{lab}","space":"{team}"},"manageState":false}' through B
     Then it answers 201
     And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
     When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B
@@ -155,7 +155,7 @@ Feature: A stack's tracked commit
     When token "h" sends "POST /api/v1/azure-dev-ops-repo-integrations" with '{"organizationURL":"{labHost}","personalAccessToken":"{labToken}","accessibleProjects":["{labNamespace}"],"customInput":{"name":"Lab","spaceID":"acme"}}' through A
     Then it answers 201
     And the answer's id names "lab"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"AZURE_DEVOPS","vcsIntegrationId":"{lab}","space":"legacy"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"AZURE_DEVOPS","vcsIntegrationId":"{lab}","space":"{team}"},"manageState":false}' through B
     Then it answers 201
     And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A
     When token "h" sends "POST /api/v1/stacks/lab/set-current-commit" with '{"sha":"{labBase}"}' through B

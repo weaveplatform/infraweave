@@ -69,8 +69,6 @@ jobs:
       LAB_GITHUB_ADMIN_TOKEN: ${{ secrets.VCS_GITHUB_ADMIN_TOKEN }}
       LAB_GITHUB_APP_ID: ${{ secrets.VCS_GITHUB_APP_ID }}
       LAB_GITHUB_APP_PRIVATE_KEY: ${{ secrets.VCS_GITHUB_APP_PRIVATE_KEY }}
-      LAB_GITLAB_GROUP: ${{ secrets.VCS_GITLAB_GROUP }}
-      LAB_GITLAB_ADMIN_TOKEN: ${{ secrets.VCS_GITLAB_ADMIN_TOKEN }}
       LAB_BITBUCKET_CLOUD_WORKSPACE: ${{ secrets.VCS_BITBUCKET_CLOUD_WORKSPACE }}
       LAB_BITBUCKET_CLOUD_PROJECT_KEY: ${{ secrets.VCS_BITBUCKET_CLOUD_PROJECT_KEY }}
       LAB_BITBUCKET_CLOUD_EMAIL: ${{ secrets.VCS_BITBUCKET_CLOUD_EMAIL }}
@@ -109,7 +107,8 @@ jobs:
         run: |
           case "$PROVIDER" in
             github) need="LAB_GITHUB_ORGANIZATION LAB_GITHUB_ADMIN_TOKEN LAB_GITHUB_APP_ID LAB_GITHUB_APP_PRIVATE_KEY" ;;
-            gitlab) need="LAB_GITLAB_GROUP LAB_GITLAB_ADMIN_TOKEN" ;;
+            # The job makes the GitLab container's every credential.
+            gitlab) need="" ;;
             bitbucket-cloud) need="LAB_BITBUCKET_CLOUD_WORKSPACE LAB_BITBUCKET_CLOUD_PROJECT_KEY LAB_BITBUCKET_CLOUD_EMAIL LAB_BITBUCKET_CLOUD_API_TOKEN" ;;
             azure-devops) need="LAB_AZURE_DEVOPS_ORGANIZATION_URL LAB_AZURE_DEVOPS_PROJECT LAB_AZURE_DEVOPS_PAT" ;;
             bitbucket-dc) need="LAB_BITBUCKET_DC_LICENSE" ;;
@@ -150,12 +149,6 @@ jobs:
                 echo "SEED_USER=x-access-token"
                 echo "SEED_TOKEN=$LAB_GITHUB_ADMIN_TOKEN"
                 ;;
-              gitlab)
-                echo "GITLAB_TOKEN=$LAB_GITLAB_ADMIN_TOKEN"
-                echo "TF_VAR_group=$LAB_GITLAB_GROUP"
-                echo "SEED_USER=oauth2"
-                echo "SEED_TOKEN=$LAB_GITLAB_ADMIN_TOKEN"
-                ;;
               bitbucket-cloud)
                 echo "BITBUCKET_USERNAME=$LAB_BITBUCKET_CLOUD_EMAIL"
                 echo "BITBUCKET_PASSWORD=$LAB_BITBUCKET_CLOUD_API_TOKEN"
@@ -173,6 +166,18 @@ jobs:
                 ;;
             esac
           } >> "$GITHUB_ENV"
+
+      # start-gitlab.sh makes the container's certificate and the run's
+      # administrator token, and writes the variables that name them.
+      - name: Start GitLab
+        if: ${{ matrix.provider == 'gitlab' }}
+        run: |
+          set -euo pipefail
+          image=$(sed -nE 's/^[[:space:]]*ImageGitLabCE = "([^"]+)"/\1/p' test/acceptance/images.go)
+          lab="$RUNNER_TEMP/gitlab"
+          test/terraform/vcs/start-gitlab.sh "$image" "$lab"
+          echo "::add-mask::$(sed -n 's/^GITLAB_TOKEN=//p' "$lab/env")"
+          cat "$lab/env" >> "$GITHUB_ENV"
 
       # The container serves HTTPS under a certificate the job makes,
       # which Terraform, git and the tests trust through a bundle of it
@@ -231,7 +236,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Sweep lab repositories a day old
-        if: ${{ matrix.provider != 'bitbucket-dc' }}
+        if: ${{ matrix.provider != 'gitlab' && matrix.provider != 'bitbucket-dc' }}
         run: test/terraform/vcs/sweep.sh "$PROVIDER"
 
       - name: Apply the lab

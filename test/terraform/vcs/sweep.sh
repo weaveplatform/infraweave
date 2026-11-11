@@ -7,11 +7,11 @@
 # deletes, never a credential.
 #
 #   sweep.sh github           TF_VAR_token, TF_VAR_organization
-#   sweep.sh gitlab           GITLAB_TOKEN, TF_VAR_group, TF_VAR_host (optional)
 #   sweep.sh bitbucket-cloud  BITBUCKET_USERNAME, BITBUCKET_PASSWORD, TF_VAR_workspace
 #   sweep.sh azure-devops     AZDO_ORG_SERVICE_URL, AZDO_PERSONAL_ACCESS_TOKEN, TF_VAR_project
 #
-# Bitbucket Data Center needs none: its container lives for one run.
+# GitLab and Bitbucket Data Center need none: their containers live for
+# one run.
 set -euo pipefail
 
 cutoff=$(($(date +%s) - 86400))
@@ -44,23 +44,6 @@ case "${1:-}" in
         api DELETE "$base/repos/${TF_VAR_organization}/${name}" "$auth"
       done
     ;;
-  gitlab)
-    : "${GITLAB_TOKEN:?}" "${TF_VAR_group:?}"
-    auth="header = \"PRIVATE-TOKEN: ${GITLAB_TOKEN}\""
-    base="${TF_VAR_host:-https://gitlab.com}/api/v4"
-    group=$(jq -rn --arg g "$TF_VAR_group" '$g | @uri')
-    api GET "$base/groups/${group}/projects?search=infraweave-lab-&per_page=100" "$auth" |
-      jq -r '.[] | "\(.path) \(.id) \(.path_with_namespace)"' | while read -r name id path; do
-        if [ -n "$(stale <<<"$name")" ]; then
-          echo "deleting $name"
-          api DELETE "$base/projects/${id}" "$auth"
-          # A group that delays deletion keeps the project until it is
-          # deleted again, by its path.
-          full=$(jq -rn --arg p "$path" '$p | @uri')
-          api DELETE "$base/projects/${id}?permanently_remove=true&full_path=${full}" "$auth" || true
-        fi
-      done
-    ;;
   bitbucket-cloud)
     : "${BITBUCKET_USERNAME:?}" "${BITBUCKET_PASSWORD:?}" "${TF_VAR_workspace:?}"
     auth="user = \"${BITBUCKET_USERNAME}:${BITBUCKET_PASSWORD}\""
@@ -86,7 +69,7 @@ case "${1:-}" in
       done
     ;;
   *)
-    echo "usage: sweep.sh github|gitlab|bitbucket-cloud|azure-devops" >&2
+    echo "usage: sweep.sh github|bitbucket-cloud|azure-devops" >&2
     exit 2
     ;;
 esac

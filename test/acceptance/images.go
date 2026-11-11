@@ -55,11 +55,17 @@ const (
 	// start, which no public pull request has.
 	ImageMoto = "motoserver/moto:5.2.5@sha256:59a1965d845249b04def37a0e2565f9cc6c44543cb89b68e90f28f344b3b0d1a"
 	// ImageBitbucketDC is the Bitbucket Data Center the scheduled
-	// vcs-lab job starts with its licence, the one provider it cannot
-	// reach as a hosted service; the job reads the pin from this line.
+	// vcs-lab job starts with its licence, since Atlassian hosts none;
+	// the job reads the pin from this line.
 	//
 	// ref: decision 0016
 	ImageBitbucketDC = "atlassian/bitbucket:10.5.2@sha256:3a11bf2e699423aed764de5a587f231860c20261e28f9e42e7df290a3cc904a9"
+	// ImageGitLabCE is the GitLab the scheduled vcs-lab job starts, since
+	// GitLab.com offers the group and project access tokens the lab mints
+	// only on paid tiers; the job reads the pin from this line.
+	//
+	// ref: decision 0016
+	ImageGitLabCE = "gitlab/gitlab-ce:19.5.4-ce.0@sha256:fde2dacdec6307a142c3f28bc07c62e534bccf47bc7ffb3a4e81a90e1cf0c5b7"
 )
 
 // ErrPostgresEnv marks a PostgresEnv value that names no image.

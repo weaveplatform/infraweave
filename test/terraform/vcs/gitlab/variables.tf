@@ -1,12 +1,18 @@
 variable "host" {
-  description = "The GitLab instance."
+  description = "The GitLab container's https URL."
   type        = string
-  default     = "https://gitlab.com"
+  default     = "https://localhost:8443"
+}
+
+variable "ca_file" {
+  description = "A PEM file of the certificate the container serves."
+  type        = string
 }
 
 variable "group" {
-  description = "The lab group's full path, which holds the projects."
+  description = "The path of the group that holds the projects."
   type        = string
+  default     = "lab"
 }
 
 variable "suffix" {

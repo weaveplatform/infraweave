@@ -2,10 +2,13 @@ package sourcetest
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -24,6 +27,35 @@ func LabEnv(t *testing.T, need ...string) vcslab.Lab {
 		t.Skipf("%v: the vcs-lab job runs this test", err)
 	}
 	return lab
+}
+
+// LabRoots returns the certificates in the PEM file caFile, the lab
+// container's own, and a client that trusts them alone, failing t when
+// the file holds none.
+func LabRoots(t *testing.T, caFile string) (*x509.CertPool, *http.Client) {
+	t.Helper()
+	roots, err := labRoots(caFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return roots, &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12},
+	}}
+}
+
+// ErrNoCertificate reports a CA file that holds no PEM certificate.
+var ErrNoCertificate = errors.New("sourcetest: no certificate")
+
+func labRoots(caFile string) (*x509.CertPool, error) {
+	pem, err := os.ReadFile(caFile)
+	if err != nil {
+		return nil, fmt.Errorf("sourcetest: lab CA: %w", err)
+	}
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(pem) {
+		return nil, fmt.Errorf("%w in %s", ErrNoCertificate, caFile)
+	}
+	return roots, nil
 }
 
 // Lab is what a Source must find in repo, a repository seed.sh pushed
