@@ -3,8 +3,9 @@
 // through. Jobs is its run.schedule handler, which moves a stack's queued
 // runs to READY, and Subscribe subscribes the consumer that schedules a
 // stack once it is unlocked or enabled. RegisterEvents registers runsapi.Updated with the outbox, and
-// BindSources binds the vcs domain's runsapi.RunSources, a back edge, so a
-// run's end releases its source credentials. StackStatus is the stacksapi.StackStatus
+// BindSources binds the vcs domain's runsapi.RunSources and
+// stacksapi.StackSources, back edges, so a run's end releases its source
+// credentials and a trigger resolves the commit it names. StackStatus is the stacksapi.StackStatus
 // internal/app binds in the stacks domain, the back edge the stack view
 // reads each stack's blocker through; StackGuard is the
 // stacksapi.StackGuard internal/app registers there, so a stack's delete
@@ -22,7 +23,7 @@
 // # Dependencies
 //
 // It imports runsapi, stacksapi, the domain's core, lifecycle, schedule,
-// http and pg packages, platform/outbox, platform/queue,
+// trigger, http and pg packages, platform/outbox, platform/queue,
 // platform/sql/integrity and platform/sql/migrate. Only
 // internal/app and cmd/ import it, as the constructors rule enforces.
 package assembly

@@ -115,11 +115,16 @@ func TestAccScheduleLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	w.handle(t, s)
-	for run, want := range map[lifecycle.Run]kernel.RunState{
-		first: kernel.RunStateReady, second: kernel.RunStateQueued, proposed: kernel.RunStateReady,
+	for _, c := range []struct {
+		run  lifecycle.Run
+		want kernel.RunState
+	}{
+		{first, kernel.RunStateReady},
+		{second, kernel.RunStateQueued},
+		{proposed, kernel.RunStateReady},
 	} {
-		if got := w.state(t, run); got != want {
-			t.Errorf("%s run is %s, want %s", run.Type, got, want)
+		if got := w.state(t, c.run); got != c.want {
+			t.Errorf("%s run is %s, want %s", c.run.Type, got, c.want)
 		}
 	}
 	blockers, err := core.New(w.store).Blockers(t.Context(), w.acct, []kernel.ULID{w.stack})

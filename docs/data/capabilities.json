@@ -756,8 +756,8 @@
         "lowestTier": "Free; Starter for `tasks`; Starter+ for `ignored-runs`; Business for `targeted-replan`",
         "phase": "P10",
         "also": "P7, P9, P13, P16, P18b, P20b, P22",
-        "state": "missing",
-        "notes": "3 of 35 operations are 501 stubs at the baseline: `proposeWithOverrides`, `runTrigger`, `taskCreate`"
+        "state": "partial",
+        "notes": "`runTrigger` is served (P7): it queues a tracked or proposed run on the commit the caller names or the stack tracks, answering the run of the same stack, type and commit that has not ended, and a locked stack takes runs from its lock's holder alone; `proposeWithOverrides` and `taskCreate` are 501 stubs"
       }
     },
     {

@@ -9,7 +9,9 @@
 -- the run's transitions, and a transition that read another fails, so two
 -- never both move a run; commit is the commit the run works on, as the
 -- API's Commit; triggered_by is the login or the trigger that created it;
--- priority is low, normal or high.
+-- priority is low, normal or high; runtime_config is the runtime
+-- configuration its trigger gave, which overrides the stack's, and
+-- force_apply_mode SINGLE or CASCADE when it applies with no changes.
 CREATE TABLE runs (
     account_id       uuid        NOT NULL,
     id               uuid        NOT NULL,
@@ -22,10 +24,13 @@ CREATE TABLE runs (
     triggered_by     text        NOT NULL,
     priority         text        NOT NULL DEFAULT 'normal',
     drift_detection  boolean     NOT NULL DEFAULT false,
+    runtime_config   jsonb,
+    force_apply_mode text,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, id),
-    CHECK (priority IN ('low', 'normal', 'high'))
+    CHECK (priority IN ('low', 'normal', 'high')),
+    CHECK (force_apply_mode IN ('SINGLE', 'CASCADE'))
 );
 
 -- A stack's run lists read its runs of some types newest first, and its

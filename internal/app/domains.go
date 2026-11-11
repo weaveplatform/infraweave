@@ -135,7 +135,7 @@ func newDomains(
 	access.GuardSpaces(vcs.SpaceGuard())
 	access.ResolveSubjects(vcsassembly.Entity, vcs.SpaceOf())
 	stacks.BindSources(vcs.StackSources())
-	runs.BindSources(vcs.Sources())
+	runs.BindSources(vcs.Sources(), vcs.StackSources())
 	stacks.BindIntegrations(vcs.StackIntegrations())
 	d := Domains{
 		Features:      features,
