@@ -6,9 +6,9 @@ Feature: VCS integrations
   it may read; a stack in a space binds one of its provider in that space
   or one it inherits from. The home key is space-admin on the account's
   top space; the member key holds only the bindings a scenario gives it.
-  Space team inherits from the top space and space secret does not. No
-  operation creates an integration yet, so the scenarios write them as the
-  vcs domain stores them, with their secrets sealed.
+  Space team inherits from the top space and space secret does not. The
+  scenarios write the integrations as the vcs domain stores them, with
+  their secrets sealed.
 
   Background:
     Given two infraweave servers, A and B, on one database
@@ -73,7 +73,7 @@ Feature: VCS integrations
     Then it answers a 404 problem "not-found"
     When token "h" sends "GET /api/v1/vcs-integrations/nope?provider=GITLAB" through B
     Then it answers a 404 problem "not-found"
-    When token "h" sends "GET /api/v1/vcs-integrations/{main}/test?provider=GITLAB" through A
+    When token "h" sends "GET /api/v1/vcs-integrations/{cloud}/test?provider=BITBUCKET_CLOUD" through A
     Then it answers a 501 problem "not-implemented"
     When token "h" sends "GET /api/v1/vcs-integrations/{main}/test?provider=BITBUCKET_CLOUD" through B
     Then it answers a 404 problem "not-found"

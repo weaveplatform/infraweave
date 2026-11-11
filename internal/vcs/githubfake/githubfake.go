@@ -21,6 +21,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/gitmem"
 )
 
 // Fault is how the fake answers every request while it is set.
@@ -180,7 +182,7 @@ func (f *Fake) Repo(owner, name string) *Repo {
 	if r, ok := f.repos[key]; ok {
 		return r
 	}
-	r := newRepo(owner, name)
+	r := gitmem.New()
 	f.repos[key] = r
 	return r
 }
@@ -369,8 +371,6 @@ func (f *Fake) reachable(next http.Handler) http.Handler {
 			answer(w, http.StatusNotFound, message("Not Found"))
 			return
 		}
-		repo.mu.Lock()
-		defer repo.mu.Unlock()
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), repoKey, repo)))
 	})
 }
@@ -451,14 +451,15 @@ func (f *Fake) installationRepos(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
 	ref := chi.URLParam(r, "*")
-	c, err := repo.resolve(ref)
+	c, err := repo.Resolve(ref)
 	if err != nil {
 		answer(w, http.StatusUnprocessableEntity, message("No commit found for SHA: "+ref))
 		return
 	}
 	answer(w, http.StatusOK, map[string]any{
-		"sha":      c.Hash.String(),
-		"html_url": fmt.Sprintf("%s/%s/%s/commit/%s", host(r), repo.Owner, repo.Name, c.Hash),
+		"sha": c.Hash.String(),
+		"html_url": fmt.Sprintf("%s/%s/%s/commit/%s",
+			host(r), chi.URLParam(r, "owner"), chi.URLParam(r, "repo"), c.Hash),
 		"commit": map[string]any{
 			"message": c.Message,
 			"author": map[string]string{
@@ -473,8 +474,8 @@ func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) tagRef(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
 	tag := chi.URLParam(r, "*")
-	sha, ok := repo.isTag(tag)
-	if !ok {
+	sha, _, _, err := repo.TagOf(tag)
+	if err != nil {
 		answer(w, http.StatusNotFound, message("Not Found"))
 		return
 	}
@@ -485,7 +486,7 @@ func (f *Fake) tagRef(w http.ResponseWriter, r *http.Request) {
 
 func (f *Fake) contents(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
-	b, err := repo.file(r.URL.Query().Get("ref"), chi.URLParam(r, "*"))
+	b, err := repo.File(r.URL.Query().Get("ref"), chi.URLParam(r, "*"))
 	if err != nil {
 		answer(w, http.StatusNotFound, message("Not Found"))
 		return
@@ -499,14 +500,23 @@ func (f *Fake) contents(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
 	base, head, ok := strings.Cut(chi.URLParam(r, "*"), "...")
-	changed, err := repo.changed(base, head)
+	changes, err := repo.Changes(r.Context(), base, head)
 	if !ok || err != nil {
 		answer(w, http.StatusNotFound, message("Not Found"))
 		return
 	}
-	files := make([]map[string]any, 0, len(changed))
-	for _, name := range changed {
-		files = append(files, map[string]any{"filename": name})
+	files := make([]map[string]any, 0, len(changes))
+	for _, ch := range changes {
+		switch {
+		case ch.To == "":
+			files = append(files, map[string]any{"filename": ch.From, "status": "removed"})
+		case ch.From != "" && ch.From != ch.To:
+			files = append(files, map[string]any{
+				"filename": ch.To, "previous_filename": ch.From, "status": "renamed",
+			})
+		default:
+			files = append(files, map[string]any{"filename": ch.To})
+		}
 	}
 	paged(w, r, files, func(page []map[string]any) any {
 		return map[string]any{"status": "ahead", "files": page}
@@ -515,14 +525,17 @@ func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
 
 func (f *Fake) branches(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
-	bs, err := repo.branches()
+	bs, err := repo.Branches()
 	if err != nil {
 		answer(w, http.StatusInternalServerError, message(err.Error()))
 		return
 	}
 	out := make([]map[string]any, 0, len(bs))
 	for _, b := range bs {
-		out = append(out, map[string]any{"name": b[0], "commit": map[string]string{"sha": b[1]}})
+		out = append(
+			out,
+			map[string]any{"name": b.Name, "commit": map[string]string{"sha": b.Commit}},
+		)
 	}
 	paged(w, r, out, func(page []map[string]any) any { return page })
 }

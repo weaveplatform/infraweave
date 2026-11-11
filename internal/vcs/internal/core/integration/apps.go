@@ -17,12 +17,14 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
-// The GitHub providers: GitHub is the operator's App, which the server's
-// settings configure, and GitHub Enterprise an account's own App on
-// github.com or a GitHub Enterprise Server.
+// The providers the service names: GitHub is the operator's App, which
+// the server's settings configure; GitHub Enterprise an account's own App
+// on github.com or a GitHub Enterprise Server; and GitLab GitLab.com or a
+// self-managed GitLab, reached with an access token.
 const (
 	GitHub           = "GITHUB"
 	GitHubEnterprise = "GITHUB_ENTERPRISE"
+	GitLab           = "GITLAB"
 )
 
 // ManifestTTL is how long a GitHub App manifest form stays open: the time
