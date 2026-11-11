@@ -8,7 +8,11 @@
 // since stacks belong to the stacks domain. Store reads the run that
 // holds each of some stacks' run lock, and deletes a deleted stack's
 // runs, with their transitions, and its run lock, tracked run and outputs.
-// Held names the columns that hold the access domain's accounts and the
+// It is also the lifecycle's store: it locks a run's row, moves a run and
+// records its transition, inserts a run, finds a stack's run of a type and
+// commit that has not ended, makes a run its stack's tracked run, releases
+// the run lock a run holds, and reads a stack's state and blocked from its
+// tracked run's transitions and its run lock. Held names the columns that hold the access domain's accounts and the
 // stacks domain's stacks. Every method joins the transaction its context
 // carries.
 //
@@ -18,7 +22,7 @@
 //
 // # Dependencies
 //
-// It imports internal/kernel, platform/sql, platform/sql/integrity,
-// platform/sql/migrate and platform/tx. The runs domain's assembly
+// It imports pgx, the domain's lifecycle, internal/kernel, platform/sql,
+// platform/sql/integrity, platform/sql/migrate and platform/tx. The runs domain's assembly
 // constructs it.
 package pg

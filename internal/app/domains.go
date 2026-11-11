@@ -106,7 +106,12 @@ func newDomains(
 	)
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
-	runs := runsassembly.New(runsassembly.Deps{DB: db.Primary()})
+	runs := runsassembly.New(runsassembly.Deps{
+		DB:     db.Primary(),
+		Stacks: stacks.Stacks(),
+		Events: events,
+		Jobs:   queue.New(db.Primary()),
+	})
 	stacks.GuardStacks(runs.StackGuard())
 	stacks.SetStackStatus(runs.StackStatus())
 	registry, err := expr.NewRegistry(c.Expressions, configuration.Surfaces()...)
@@ -130,6 +135,7 @@ func newDomains(
 	access.GuardSpaces(vcs.SpaceGuard())
 	access.ResolveSubjects(vcsassembly.Entity, vcs.SpaceOf())
 	stacks.BindSources(vcs.StackSources())
+	runs.BindSources(vcs.Sources())
 	stacks.BindIntegrations(vcs.StackIntegrations())
 	d := Domains{
 		Features:      features,
@@ -177,6 +183,7 @@ func newKinds() *outbox.Kinds {
 	_ = accessassembly.RegisterEvents(kinds)
 	_ = stacksassembly.RegisterEvents(kinds)
 	_ = configurationassembly.RegisterEvents(kinds)
+	_ = runsassembly.RegisterEvents(kinds)
 	return kinds
 }
 

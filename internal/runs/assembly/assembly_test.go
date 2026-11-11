@@ -1,9 +1,14 @@
 package assembly
 
 import (
+	"context"
+	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 )
 
@@ -23,4 +28,36 @@ func TestUnitDomain(t *testing.T) {
 	if !reflect.ValueOf(none.API()).IsZero() {
 		t.Error("a nil domain's partial is not the zero one")
 	}
+}
+
+// sources is a runsapi.RunSources that releases nothing.
+type sources struct{}
+
+func (sources) Release(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
+
+// TestUnitEvents checks that the domain's event kind registers once, that
+// a run_updated document meets its schema, and that the vcs domain's
+// back edge binds.
+func TestUnitEvents(t *testing.T) {
+	kinds := outbox.NewKinds()
+	if err := RegisterEvents(kinds); err != nil {
+		t.Fatal(err)
+	}
+	if err := RegisterEvents(kinds); !errors.Is(err, outbox.ErrKind) {
+		t.Errorf("a second registration = %v, want ErrKind", err)
+	}
+	doc := []byte(`{"state": "QUEUED", "username": null, "note": null,
+		"run": {"id": "01M75S3Z1Q5Q3SPXB86FFN5ES8", "type": "TRACKED", "state": "QUEUED",
+			"commit": {"author": "Alice", "hash": "abc", "message": "m", "url": "", "tag": "",
+				"created_at": 1},
+			"created_at": 1, "updated_at": 1, "drift_detection": false, "triggered_by": "alice"},
+		"stack": {"id": "network", "ulid": "01M75S3Z1Q5Q3SPXB86FFN5ES8", "name": "Network"}}`)
+	if err := kinds.Validate(runsapi.UpdatedKind, runsapi.UpdatedVersion, doc); err != nil {
+		t.Errorf("a run_updated document fails its schema: %v", err)
+	}
+	if err := kinds.Validate(runsapi.UpdatedKind, runsapi.UpdatedVersion,
+		[]byte(`{"state": "QUEUED"}`)); err == nil {
+		t.Error("a document without its run passes")
+	}
+	New(Deps{}).BindSources(sources{})
 }
