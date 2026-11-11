@@ -68,13 +68,11 @@ Feature: VCS integrations
     Then it answers a 404 problem "not-found"
 
   @op:vcsIntegration @op:vcsIntegrationTest @op:vcsIntegrations @op:searchVCSIntegrations @op:attachableVCSIntegrationsForProviderInSpace @case:failure
-  Scenario: Another provider, an unknown ID, a bad cursor and an untested provider are refused
+  Scenario: Another provider, an unknown ID and a bad cursor are refused
     When token "h" sends "GET /api/v1/vcs-integrations/{main}?provider=BITBUCKET_CLOUD" through A
     Then it answers a 404 problem "not-found"
     When token "h" sends "GET /api/v1/vcs-integrations/nope?provider=GITLAB" through B
     Then it answers a 404 problem "not-found"
-    When token "h" sends "GET /api/v1/vcs-integrations/{cloud}/test?provider=BITBUCKET_CLOUD" through A
-    Then it answers a 501 problem "not-implemented"
     When token "h" sends "GET /api/v1/vcs-integrations/{main}/test?provider=BITBUCKET_CLOUD" through B
     Then it answers a 404 problem "not-found"
     When token "h" sends "GET /api/v1/vcs-integrations?cursor=nope" through A

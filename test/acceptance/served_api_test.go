@@ -90,6 +90,8 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	s.w.github.register(sc)
 	s.w.gitlab.ids = org.ids
 	s.w.gitlab.register(sc)
+	s.w.bitbucketCloud.ids = org.ids
+	s.w.bitbucketCloud.register(sc)
 	(&vcsSteps{o: org}).register(sc)
 	(&expressionSteps{o: org}).register(sc)
 	(&catalogSteps{o: org}).register(sc)

@@ -110,6 +110,10 @@ not provider names.
   options. `GITHUB_ENTERPRISE` is the per-account custom App on github.com or
   GitHub Enterprise Server, including the manifest flow
   ([11 section 4.2](../reference/11-vcs-integrations.md#42-operations)).
+- **Bitbucket Cloud's host.** A `BITBUCKET_CLOUD` integration names no
+  host: every one reaches `https://api.bitbucket.org/2.0`, or the server
+  setting `vcs.bitbucket_cloud.api_host` when the operator points it at a
+  stand-in such as a proxy or a test fake.
 - **Out of this record.** Which other providers are served is decision
   0021's. It builds `BLOB` and `ORIGIN` as schema-only interfaces (PD-03);
   the `INFRAWEAVE` provider, whose files sit in the database and which

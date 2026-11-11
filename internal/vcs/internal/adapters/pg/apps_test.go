@@ -200,8 +200,8 @@ func TestAccManifest(t *testing.T) {
 // TestAccAppSettings checks that a create refuses a host that is not
 // https, an App ID that is not a number and a private key that is not
 // one; that an update keeps the private key when it carries none and
-// refuses another space; and that an integration with no App reports
-// none.
+// refuses another space; that a Bitbucket Cloud integration names a bare
+// email address; and that an integration with no App reports none.
 func TestAccAppSettings(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
@@ -268,6 +268,17 @@ func TestAccAppSettings(t *testing.T) {
 		_, err := f.svc.Update(ctx, f.admin, out.ID.String(), kernel.Expect{}, up)
 		if !slices.Equal(pointers(t, err), []string{"/customInput/space"}) {
 			t.Errorf("an update to space %s = %v", space, err)
+		}
+	}
+
+	for _, email := range []string{"", "dev", "Dev <dev@acme.example>"} {
+		bb := gitlab("Cloud", "", false)
+		bb.Provider, bb.Settings = "BITBUCKET_CLOUD", port.Settings{Email: email}
+		if got := pointers(
+			t,
+			func() error { _, err := f.svc.Create(ctx, f.admin, bb); return err }(),
+		); !slices.Equal(got, []string{"/email"}) {
+			t.Errorf("a Bitbucket Cloud email %q = %v", email, got)
 		}
 	}
 

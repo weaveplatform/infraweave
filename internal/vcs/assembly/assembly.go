@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/bitbucketcloud"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/github"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/gitlab"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/http"
@@ -59,11 +60,21 @@ type DB interface {
 
 // Settings are the vcs settings: CAFile is a PEM file of certificate
 // authorities trusted beside the system's when reaching a repository's
-// host, for a host under a private CA, and GitHubApp the operator's
-// GitHub App, which the GITHUB provider is.
+// host, for a host under a private CA; GitHubApp the operator's GitHub
+// App, which the GITHUB provider is; and BitbucketCloud where Bitbucket
+// Cloud's API is.
 type Settings struct {
-	CAFile    string    `mapstructure:"ca_file"`
-	GitHubApp GitHubApp `mapstructure:"github_app"`
+	CAFile         string         `mapstructure:"ca_file"`
+	GitHubApp      GitHubApp      `mapstructure:"github_app"`
+	BitbucketCloud BitbucketCloud `mapstructure:"bitbucket_cloud"`
+}
+
+// BitbucketCloud is where every BITBUCKET_CLOUD integration reaches
+// Bitbucket Cloud: its API host, https://api.bitbucket.org/2.0 when
+// empty. An integration names no host of its own, so a server reaching a
+// stand-in for Bitbucket Cloud, such as a proxy, sets it here.
+type BitbucketCloud struct {
+	APIHost string `mapstructure:"api_host"`
 }
 
 // GitHubApp is the GitHub App the operator registers for the GITHUB
@@ -105,8 +116,8 @@ type Domain struct {
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
-// as the GIT provider, GitHub's and GitLab's, over https with the system's roots
-// and those of vcs.ca_file. It fails when vcs.ca_file cannot be read or
+// as the GIT provider, GitHub's, GitLab's and Bitbucket Cloud's, over
+// https with the system's roots and those of vcs.ca_file. It fails when vcs.ca_file cannot be read or
 // holds no certificate, and when vcs.github_app names an App whose files
 // cannot be read.
 func New(d Deps) (*Domain, error) {
@@ -129,11 +140,15 @@ func New(d Deps) (*Domain, error) {
 	}
 	gh := github.New(github.Options{RootCAs: roots})
 	gl := gitlab.New(gitlab.Options{RootCAs: roots})
+	bbc := bitbucketcloud.New(bitbucketcloud.Options{
+		RootCAs: roots, APIHost: d.Settings.BitbucketCloud.APIHost,
+	})
 	integrations := integration.New(integration.Deps{
 		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers,
 		Testers: map[string]port.Tester{
 			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
+			integration.BitbucketCloud: bbc,
 		},
 		Builtin: builtin, Apps: gh, Public: d.Public,
 	})
@@ -143,6 +158,7 @@ func New(d Deps) (*Domain, error) {
 			integration.GitHub:           gh,
 			integration.GitHubEnterprise: gh,
 			integration.GitLab:           gl,
+			integration.BitbucketCloud:   bbc,
 		}, integrations),
 		integrations: integrations,
 		api:          http.New(integrations, d.Spaces, nil),
