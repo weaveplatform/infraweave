@@ -33,8 +33,7 @@ type recorder struct {
 }
 
 func (r recorder) RoundTrip(req *http.Request) (*http.Response, error) {
-	rel, ok := strings.CutPrefix(req.URL.EscapedPath(), bitbucketdc.API)
-	if !ok || !bitbucketdc.Allowed(req.Method, rel) {
+	if !bitbucketdc.Allowed(req.Method, req.URL.EscapedPath()) {
 		r.t.Errorf("sent %s %s, which the allowlist refuses", req.Method, req.URL)
 	}
 	return r.next.RoundTrip(req) //nolint:wrapcheck // the client wraps it
@@ -220,27 +219,35 @@ func TestUnitHosts(t *testing.T) {
 // no other method, path, dot segment, query or host; and that the client
 // refuses to send a request outside it.
 func TestUnitRoutes(t *testing.T) {
-	for _, p := range []string{
-		"/profile/recent/repos", "/repos",
-		"/projects/ACME/repos/infra/branches",
-		"/projects/ACME/repos/infra/tags/release/1",
-		"/projects/ACME/repos/infra/commits/abc",
-		"/projects/ACME/repos/infra/raw/modules/a%20b.tf",
-		"/projects/ACME/repos/infra/compare/changes",
+	api, tokens := bitbucketdc.API, bitbucketdc.Tokens
+	for _, c := range [][2]string{
+		{http.MethodGet, api + "/profile/recent/repos"},
+		{http.MethodGet, api + "/repos"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/branches"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/tags/release/1"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/commits/abc"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/raw/modules/a%20b.tf"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/compare/changes"},
+		{http.MethodPut, tokens + "/projects/ACME/repos/infra"},
+		{http.MethodDelete, tokens + "/projects/ACME/repos/infra/123"},
 	} {
-		if !bitbucketdc.Allowed(http.MethodGet, p) {
-			t.Errorf("GET %s refused", p)
+		if !bitbucketdc.Allowed(c[0], c[1]) {
+			t.Errorf("%s %s refused", c[0], c[1])
 		}
 	}
 	for _, c := range [][2]string{
-		{http.MethodPost, "/repos"},
-		{http.MethodDelete, "/projects/ACME/repos/infra/branches"},
-		{http.MethodGet, "/projects/ACME/repos/infra/webhooks"},
-		{http.MethodGet, "/projects/ACME/repos/infra/raw/../../webhooks"},
-		{http.MethodGet, "/projects/ACME/repos/infra/commits/a/b"},
-		{http.MethodGet, "/repos/"},
-		{http.MethodGet, "/repos?permission=REPO_ADMIN"},
-		{http.MethodGet, "https://evil.example/repos"},
+		{http.MethodGet, "/repos"},
+		{http.MethodPost, api + "/repos"},
+		{http.MethodDelete, api + "/projects/ACME/repos/infra/branches"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/webhooks"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/raw/../../webhooks"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/commits/a/b"},
+		{http.MethodGet, api + "/repos/"},
+		{http.MethodGet, api + "/repos?permission=REPO_ADMIN"},
+		{http.MethodGet, tokens + "/projects/ACME/repos/infra"},
+		{http.MethodPut, tokens + "/users/infraweave"},
+		{http.MethodDelete, tokens + "/projects/ACME/repos/infra/1/2"},
+		{http.MethodGet, "https://evil.example" + api + "/repos"},
 		{http.MethodGet, ""},
 		{http.MethodGet, "%zz"},
 	} {
@@ -261,12 +268,13 @@ func TestUnitRoutes(t *testing.T) {
 		t.Errorf("GET /repos = %v", err)
 	}
 	unbased := bitbucketdc.Transport(bitbucketdc.NewOver(trusting(l.srv.Pool())))
-	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, l.srv.URL+"/repos", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet,
+		l.srv.URL+bitbucketdc.API+"/repos", nil)
 	if resp, err := unbased.RoundTrip(req); !errors.Is(err, bitbucketdc.ErrRoute) {
 		if resp != nil {
 			_ = resp.Body.Close()
 		}
-		t.Errorf("a request with no REST API base = %v", err)
+		t.Errorf("a request with no host's context path = %v", err)
 	}
 }
 

@@ -10,7 +10,9 @@
 // token reads when it names none. A Test reads the organization's
 // projects, then checks that the token lists the repositories of each
 // project the integration reaches and reads the organization's service
-// hook subscriptions, which a webhook is.
+// hook subscriptions, which a webhook is. Lend lends a run the
+// integration's own personal access token, as Azure DevOps mints none
+// narrower through its API.
 //
 // ref: decision 0012
 // ref: https://learn.microsoft.com/rest/api/azure/devops/core/projects/list

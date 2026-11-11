@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -30,19 +32,35 @@ type Service struct {
 	stacks       stacksapi.Stacks
 	providers    map[string]port.Source
 	integrations Integrations
+	tokens       Tokens
+	jobs         Enqueuer
+	now          func() time.Time
+	log          *slog.Logger
 }
 
 var _ vcsapi.Sources = (*Service)(nil)
 
-// New returns the service reading stacks through stacks and their
-// integrations through integrations, with each provider's Source keyed by
-// its served VCSProvider value.
-func New(
-	stacks stacksapi.Stacks,
-	providers map[string]port.Source,
-	integrations Integrations,
-) *Service {
-	return &Service{stacks: stacks, providers: providers, integrations: integrations}
+// Deps are what the service reads and writes through: the stacks
+// domain's api, each provider's Source keyed by its served VCSProvider
+// value, the domain's Integrations, the Tokens minted for runs, the queue
+// Release enqueues on, the clock and the log a run's fallback to an
+// integration's own token is noted in.
+type Deps struct {
+	Stacks       stacksapi.Stacks
+	Providers    map[string]port.Source
+	Integrations Integrations
+	Tokens       Tokens
+	Jobs         Enqueuer
+	Now          func() time.Time
+	Log          *slog.Logger
+}
+
+// New returns the service over d.
+func New(d Deps) *Service {
+	return &Service{
+		stacks: d.Stacks, providers: d.Providers, integrations: d.Integrations,
+		tokens: d.Tokens, jobs: d.Jobs, now: d.Now, log: d.Log,
+	}
 }
 
 // Resolve implements vcsapi.Sources.

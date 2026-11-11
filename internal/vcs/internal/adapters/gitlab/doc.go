@@ -1,10 +1,14 @@
 // Package gitlab is the GitLab provider: Provider implements port.Source,
-// port.Browse and port.Tester over GitLab's REST API for GitLab.com and
-// self-managed GitLab, acting with the integration's access token. A
-// repository is a project, named by its namespace's full path, a
-// subgroup's included, and its own path. A Test reads the token's user and
-// scopes and checks the api scope, and the Maintainer role on every
-// project the token reaches, which mints a run's project access token.
+// port.Browse, port.Tester, port.Minter and port.Lender over GitLab's
+// REST API for GitLab.com and self-managed GitLab, acting with the
+// integration's access token. A repository is a project, named by its
+// namespace's full path, a subgroup's included, and its own path. A Test
+// reads the token's user and scopes and checks the api scope, and the
+// Maintainer role on every project the token reaches, which mints a run's
+// project access token. Mint mints that token on the run's project,
+// read_repository alone at Reporter, expiring at the start of the
+// expiry's day in UTC; Revoke revokes it; and Lend lends a run the
+// integration's own token, each authenticating to git as Username.
 //
 // ref: decision 0012
 //
@@ -16,9 +20,11 @@
 // user is no member of, is port.ErrNotFound; a rate limit is a
 // *port.RateLimited carrying its reset time; a missing or refused token
 // is ErrCredential; a host that fails or does not answer is
-// kernel.ErrUnavailable; and a file over port.MaxFileSize is
-// port.ErrTooLarge, read no further than the byte past the limit. A Test
-// turns a host's failure into a failed check rather than an error.
+// kernel.ErrUnavailable; a token GitLab refuses a project access token to
+// is ErrCannotMint; a revoke of a token GitLab no longer finds is nil;
+// and a file over port.MaxFileSize is port.ErrTooLarge, read no further
+// than the byte past the limit. A Test turns a host's failure into a
+// failed check rather than an error.
 //
 // # Dependencies
 //

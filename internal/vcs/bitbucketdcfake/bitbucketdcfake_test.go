@@ -66,3 +66,41 @@ func TestUnitRoutes(t *testing.T) {
 		t.Errorf("the server = %s with CA %.30s", srv.URL, srv.CA)
 	}
 }
+
+// TestUnitTokens checks the token answers the bitbucketdc provider never
+// draws: a body with no name or permissions, a token with no life, and a
+// revoke by a user who does not administer the repository.
+func TestUnitTokens(t *testing.T) {
+	f := bitbucketdcfake.New()
+	admin, writer := f.AddToken("admin"), f.AddToken("writer")
+	f.Grant("ACME", "infra", "admin", bitbucketdcfake.Admin)
+	f.Grant("ACME", "infra", "writer", bitbucketdcfake.Write)
+	h := f.Handler()
+	send := func(method, path, token, body string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(t.Context(), method, path, strings.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		h.ServeHTTP(w, req)
+		return w
+	}
+	repo := bitbucketdcfake.Tokens + "/projects/ACME/repos/infra"
+	for _, body := range []string{`{`, `{"permissions":["REPO_READ"]}`, `{"name":"n"}`} {
+		if w := send(http.MethodPut, repo, admin, body); w.Code != http.StatusBadRequest {
+			t.Errorf("PUT %s = %d, want 400", body, w.Code)
+		}
+	}
+	w := send(http.MethodPut, repo, admin, `{"name":"n","permissions":["REPO_READ"]}`)
+	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), "expiryDate") {
+		t.Errorf("a token with no life = %d %s", w.Code, w.Body)
+	}
+	m := f.Minted()
+	if len(m) != 1 || m[0].ExpiryDays != 0 {
+		t.Fatalf("minted %+v", m)
+	}
+	if w := send(http.MethodDelete, repo+"/"+m[0].ID, writer, ""); w.Code != http.StatusForbidden {
+		t.Errorf("a writer's revoke = %d, want 403", w.Code)
+	}
+	if f.Minted()[0].Revoked {
+		t.Error("a writer revoked the token")
+	}
+}

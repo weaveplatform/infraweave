@@ -1,6 +1,7 @@
 package bitbucketdc
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -30,6 +31,14 @@ const Backoff = time.Minute
 
 // API is the REST API's path on an integration's API host.
 const API = "/rest/api/1.0"
+
+// Tokens is the access tokens REST API's path on an integration's API
+// host.
+const Tokens = "/rest/access-tokens/1.0"
+
+// TokenUser is the user git authenticates a minted repository access
+// token as, which Bitbucket accepts for a token no user owns.
+const TokenUser = "x-token-auth" //nolint:gosec // a username, not a credential
 
 // limit is the page size every list asks for.
 const limit = "100"
@@ -75,6 +84,8 @@ var (
 	_ port.Source = (*Provider)(nil)
 	_ port.Browse = (*Provider)(nil)
 	_ port.Tester = (*Provider)(nil)
+	_ port.Minter = (*Provider)(nil)
+	_ port.Lender = (*Provider)(nil)
 )
 
 // New returns the provider, reaching each host over TLS 1.2 or later.
@@ -88,9 +99,10 @@ func newProvider(rt http.RoundTripper) *Provider {
 	return &Provider{client: &http.Client{Transport: allowlist{next: rt}}}
 }
 
-// host is an integration's REST API base, with no trailing slash, and the
-// user-facing host its commits and clones are on.
-type host struct{ api, web string }
+// host is an integration's API host with any context path, its REST
+// API base, each with no trailing slash, and the user-facing host its
+// commits and clones are on.
+type host struct{ root, api, web string }
 
 // hostOf is s's host: its API host's REST API, and its user-facing host,
 // the API host when it names none. Each is an https URL, a context path
@@ -106,7 +118,7 @@ func hostOf(s port.Settings) (host, error) {
 			return host{}, err
 		}
 	}
-	return host{api: api + API, web: web}, nil
+	return host{root: api, api: api + API, web: web}, nil
 }
 
 // base is raw with no trailing slash, when it is an https URL with a host
@@ -120,18 +132,18 @@ func base(raw string) (string, error) {
 	return strings.TrimSuffix(raw, "/"), nil
 }
 
-// baseKey carries the escaped path of a request's REST API base, which
-// the allowlist matches the rest of its path against.
+// baseKey carries the escaped context path of a request's host, empty
+// for none, which the allowlist matches the rest of its path against.
 type baseKey struct{}
 
-// allowlist sends a request only to one of Routes under the REST API base
-// its context names.
+// allowlist sends a request only to one of Routes below the context path
+// its context names; a request whose context names none is refused.
 type allowlist struct{ next http.RoundTripper }
 
 func (a allowlist) RoundTrip(r *http.Request) (*http.Response, error) {
-	b, _ := r.Context().Value(baseKey{}).(string) //nolint:errcheck // absent refuses
+	b, named := r.Context().Value(baseKey{}).(string)
 	rel, ok := strings.CutPrefix(r.URL.EscapedPath(), b)
-	if b == "" || !ok || !Allowed(r.Method, rel) {
+	if !named || !ok || !Allowed(r.Method, rel) {
 		return nil, fmt.Errorf("%w: %s %s", ErrRoute, r.Method, r.URL.EscapedPath())
 	}
 	return a.next.RoundTrip(r) //nolint:wrapcheck // the client wraps it
@@ -169,6 +181,28 @@ func (p *Provider) get(
 	q url.Values,
 	what string,
 ) (*http.Response, error) {
+	resp, err := p.send(ctx, in, http.MethodGet, API+rel, q, nil, what)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return resp, nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+	return nil, classify(resp, what)
+}
+
+// send sends method to rel, an escaped path below in's host's context
+// path, with q, and body as JSON when it is not nil, as in's token, and
+// answers the response whatever its status.
+func (p *Provider) send(
+	ctx context.Context,
+	in port.Integration,
+	method, rel string,
+	q url.Values,
+	body any,
+	what string,
+) (*http.Response, error) {
 	h, err := hostOf(in.Settings)
 	if err != nil {
 		return nil, err
@@ -177,29 +211,37 @@ func (p *Provider) get(
 	if tok == "" {
 		return nil, fmt.Errorf("%w: no access token", ErrCredential)
 	}
-	u, _ := url.Parse(h.api) //nolint:errcheck // hostOf parsed it
+	u, _ := url.Parse(h.root) //nolint:errcheck // hostOf parsed it
 	ctx = context.WithValue(ctx, baseKey{}, u.EscapedPath())
-	raw := h.api + rel
+	raw := h.root + rel
 	if len(q) > 0 {
 		raw += "?" + q.Encode()
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, raw, nil)
+	var r io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("bitbucketdc: %s: %w", what, err)
+		}
+		r = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, raw, r)
 	if err != nil {
 		return nil, fmt.Errorf("bitbucketdc: %s: %w", what, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := p.client.Do(req)
 	switch {
 	case errors.Is(err, ErrRoute):
 		return nil, fmt.Errorf("bitbucketdc: %s: %w", what, err)
 	case err != nil:
 		return nil, fmt.Errorf("%w: bitbucketdc: %s: %w", kernel.ErrUnavailable, what, err)
-	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
-		return resp, nil
 	}
-	defer func() { _ = resp.Body.Close() }()
-	return nil, classify(resp, what)
+	return resp, nil
 }
 
 // decode GETs rel with q into v.

@@ -35,7 +35,15 @@ var (
 	ErrCredential = fmt.Errorf("gitlab: access token refused: %w", port.ErrCredential)
 	// ErrHost is a host that is not an http or https URL.
 	ErrHost = errors.New("gitlab: host is not an http or https URL")
+	// ErrCannotMint is a token GitLab refuses a project access token to,
+	// one below Maintainer on the project or without the api scope.
+	ErrCannotMint = fmt.Errorf("gitlab: the token may not mint a project access token: %w",
+		port.ErrCannotMint)
 )
+
+// Username is the user git authenticates a token as over HTTPS; GitLab
+// reads the token alone.
+const Username = "oauth2"
 
 // Options are what a deployment or a test changes.
 type Options struct {
@@ -44,8 +52,9 @@ type Options struct {
 	RootCAs *x509.CertPool
 }
 
-// Provider is the GitLab provider: port.Source, port.Browse and
-// port.Tester over GitLab's REST API, reached with an access token.
+// Provider is the GitLab provider: port.Source, port.Browse, port.Tester,
+// port.Minter and port.Lender over GitLab's REST API, reached with an
+// access token.
 //
 // ref: decision 0012
 type Provider struct {
@@ -56,6 +65,8 @@ var (
 	_ port.Source = (*Provider)(nil)
 	_ port.Browse = (*Provider)(nil)
 	_ port.Tester = (*Provider)(nil)
+	_ port.Minter = (*Provider)(nil)
+	_ port.Lender = (*Provider)(nil)
 )
 
 // New returns the provider, reaching GitLab over TLS 1.2 or later.
@@ -336,6 +347,84 @@ func (p *Provider) Branches(ctx context.Context, repo port.Repository) ([]string
 	}
 	slices.Sort(out)
 	return out, nil
+}
+
+// Mint mints a project access token named name on repo's project, with
+// read_repository alone at Reporter, so it clones that project and reads
+// nothing else. GitLab expires a token at the start of its expiry date in
+// UTC, so it expires at the start of expires' date, before expires.
+func (p *Provider) Mint(
+	ctx context.Context,
+	repo port.Repository,
+	name string,
+	expires time.Time,
+) (port.Credential, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	c, _, pid, err := p.repo(repo)
+	if err != nil {
+		return port.Credential{}, err
+	}
+	day := time.Date(expires.UTC().Year(), expires.UTC().Month(), expires.UTC().Day(),
+		0, 0, 0, 0, time.UTC)
+	iso := gitlab.ISOTime(day)
+	tok, resp, err := c.ProjectAccessTokens.CreateProjectAccessToken(pid,
+		&gitlab.CreateProjectAccessTokenOptions{
+			Name:        &name,
+			Scopes:      &[]string{"read_repository"},
+			AccessLevel: gitlab.Ptr(gitlab.ReporterPermissions),
+			ExpiresAt:   &iso,
+		}, gitlab.WithContext(ctx))
+	if err != nil {
+		if resp != nil && resp.Response != nil && resp.StatusCode == http.StatusForbidden &&
+			rateLimit(resp.Response) == nil {
+			return port.Credential{}, fmt.Errorf("%w: %s: %w", ErrCannotMint, pid, err)
+		}
+		return port.Credential{}, classify(resp, err, "access token of "+pid)
+	}
+	return port.Credential{
+		Username: Username, Token: []byte(tok.Token),
+		ID: strconv.FormatInt(tok.ID, 10), ExpiresAt: day,
+	}, nil
+}
+
+// Revoke revokes repo's project access token id. A token GitLab no longer
+// finds, revoked already or on a project gone since, is nil: there is
+// nothing left to revoke.
+func (p *Provider) Revoke(ctx context.Context, repo port.Repository, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return fmt.Errorf("gitlab: access token ID %q: %w", id, err)
+	}
+	c, _, pid, err := p.repo(repo)
+	if err != nil {
+		return err
+	}
+	resp, err := c.ProjectAccessTokens.RevokeProjectAccessToken(pid, n, gitlab.WithContext(ctx))
+	if err == nil {
+		return nil
+	}
+	if err := classify(
+		resp,
+		err,
+		"access token "+id+" of "+pid,
+	); !errors.Is(
+		err,
+		port.ErrNotFound,
+	) {
+		return err
+	}
+	return nil
+}
+
+// Lend is in's own access token, which reads every project its user is a
+// member of.
+func (p *Provider) Lend(in port.Integration) port.Credential {
+	return port.Credential{
+		Username: Username, Token: []byte(strings.TrimSpace(string(in.Credential))),
+	}
 }
 
 // all collects every page list answers, classifying the failure of the

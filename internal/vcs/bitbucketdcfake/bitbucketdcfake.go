@@ -26,6 +26,10 @@ import (
 // API is the path the REST API is served under, below the server's URL.
 const API = "/rest/api/1.0"
 
+// Tokens is the path the access tokens REST API is served under, below
+// the server's URL.
+const Tokens = "/rest/access-tokens/1.0"
+
 // Fault is how the fake answers every request while it is set.
 type Fault int
 
@@ -92,14 +96,30 @@ type repository struct {
 	roles   map[string]Role
 }
 
+// Minted is a repository access token the fake minted, as a test reads
+// back what was asked for: the repository's project and slug, the
+// token's ID, name, permissions and life in days, and whether it is
+// revoked.
+type Minted struct {
+	ID          string
+	Project     string
+	Slug        string
+	Name        string
+	Permissions []string
+	ExpiryDays  int
+	Revoked     bool
+}
+
 // Fake is a Bitbucket Data Center REST API: users, their HTTP access
 // tokens, and repositories in projects with the roles users hold on them,
-// served under API.
+// served under API, and the repository access tokens a repository's
+// admin mints, served under Tokens.
 type Fake struct {
 	mu       sync.Mutex
 	users    map[string]*user
 	tokens   map[string]*user
 	repos    map[string]*repository
+	minted   []*Minted
 	nextID   int
 	fault    Fault
 	scope    string
@@ -204,6 +224,20 @@ func (f *Fake) FailPath(prefix string, fault Fault, after time.Duration) {
 	f.fault, f.scope, f.until = fault, prefix, time.Now().Add(after).Truncate(time.Second)
 }
 
+// Minted lists the repository access tokens the fake minted, in the
+// order it minted them.
+func (f *Fake) Minted() []Minted {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]Minted, 0, len(f.minted))
+	for _, m := range f.minted {
+		c := *m
+		c.Permissions = slices.Clone(m.Permissions)
+		out = append(out, c)
+	}
+	return out
+}
+
 // Requests counts the requests the fake has received.
 func (f *Fake) Requests() int {
 	f.mu.Lock()
@@ -211,8 +245,8 @@ func (f *Fake) Requests() int {
 	return f.requests
 }
 
-// Handler serves the fake's routes under API. A tag and a file path keep
-// their slashes, as Bitbucket names them.
+// Handler serves the fake's routes under API and Tokens. A tag and a
+// file path keep their slashes, as Bitbucket names them.
 func (f *Fake) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(f.faults)
@@ -229,7 +263,89 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/compare/changes", f.changes)
 		})
 	})
+	r.Route(Tokens+"/projects/{project}/repos/{slug}", func(r chi.Router) {
+		r.Use(f.authenticated, f.member)
+		r.Put("/", f.mint)
+		r.Delete("/{id}", f.revoke)
+	})
 	return r
+}
+
+// mint mints a repository access token for an admin of the repository,
+// answering 403 to any other user, as Bitbucket does. The token
+// authenticates as a user of its own that reads the repository alone,
+// whatever permissions it asks for, so a test sees a token that reaches
+// nothing else and writes nothing.
+func (f *Fake) mint(w http.ResponseWriter, r *http.Request) {
+	u := r.Context().Value(userKey).(*user)          //nolint:forcetypeassert // authenticated sets it
+	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
+	var body struct {
+		Name        string   `json:"name"`
+		Permissions []string `json:"permissions"`
+		ExpiryDays  int      `json:"expiryDays"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" ||
+		len(body.Permissions) == 0 {
+		answer(w, http.StatusBadRequest, problem("A token needs a name and permissions."))
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if repo.roles[u.name] < Admin {
+		answer(w, http.StatusForbidden, problem(
+			"You are not permitted to access this resource"))
+		return
+	}
+	f.nextID++
+	id := strconv.Itoa(f.nextID)
+	tok := "BBDC-" + secret()
+	owner := &user{id: f.nextID, name: "access-token-" + id}
+	f.tokens[tok] = owner
+	repo.roles[owner.name] = Read
+	f.minted = append(f.minted, &Minted{
+		ID: id, Project: repo.project, Slug: repo.slug, Name: body.Name,
+		Permissions: body.Permissions, ExpiryDays: body.ExpiryDays,
+	})
+	out := map[string]any{
+		"id": id, "name": body.Name, "permissions": body.Permissions, "token": tok,
+		"createdDate": time.Now().UnixMilli(),
+	}
+	if body.ExpiryDays > 0 {
+		out["expiryDays"] = body.ExpiryDays
+		out["expiryDate"] = time.Now().AddDate(0, 0, body.ExpiryDays).UnixMilli()
+	}
+	answer(w, http.StatusOK, out)
+}
+
+// revoke deletes a repository access token for an admin of the
+// repository; a token the repository does not have is 404.
+func (f *Fake) revoke(w http.ResponseWriter, r *http.Request) {
+	u := r.Context().Value(userKey).(*user)          //nolint:forcetypeassert // authenticated sets it
+	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
+	id := chi.URLParam(r, "id")
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if repo.roles[u.name] < Admin {
+		answer(w, http.StatusForbidden, problem(
+			"You are not permitted to access this resource"))
+		return
+	}
+	i := slices.IndexFunc(f.minted, func(m *Minted) bool {
+		return m.ID == id && !m.Revoked && m.Project == repo.project && m.Slug == repo.slug
+	})
+	if i < 0 {
+		answer(w, http.StatusNotFound, problem("No access token "+id+" exists."))
+		return
+	}
+	f.minted[i].Revoked = true
+	name := "access-token-" + id
+	delete(repo.roles, name)
+	for tok, owner := range f.tokens {
+		if owner.name == name {
+			delete(f.tokens, tok)
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type ctxKey int

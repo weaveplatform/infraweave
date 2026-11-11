@@ -2,6 +2,7 @@ package github_test
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -295,6 +296,95 @@ func TestUnitTokens(t *testing.T) {
 	); err != nil ||
 		l.fake.Tokens() != 2 {
 		t.Errorf("another App: %v, %d tokens", err, l.fake.Tokens())
+	}
+}
+
+// TestUnitMint checks that a run's token is narrowed to its repository
+// and contents: read, reads that repository and no other the
+// installation reaches, leaves the cached installation token alone, and
+// that a repository no installation reaches is not found.
+func TestUnitMint(t *testing.T) {
+	l := newLab(t)
+	ctx := t.Context()
+	app := l.fake.AddApp("runs", "acme")
+	install := l.fake.Install(app.ID, "acme", "Organization", "infra", "web")
+	l.fake.Repo("acme", "web").Commit("main", "web", map[string]string{"main.tf": "w"})
+	in := integrationOf(app, l.srv.URL)
+	repo := port.Repository{Namespace: "acme", Name: "infra", Integration: &in}
+	expires := time.Now().Add(24 * time.Hour)
+	c, err := l.gh.Mint(ctx, repo, "run", expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Username != "x-access-token" || len(c.Token) == 0 || c.ID != "" ||
+		c.ExpiresAt.IsZero() || !c.ExpiresAt.Before(expires) {
+		t.Errorf("credential = %s, %d bytes, %q, %v", c.Username, len(c.Token), c.ID, c.ExpiresAt)
+	}
+	want := githubfake.TokenRequest{
+		Installation: install, Repositories: []string{"infra"},
+		Permissions: map[string]string{"contents": "read"},
+	}
+	got := l.fake.TokenRequests()
+	if len(got) != 1 || got[0].Installation != want.Installation ||
+		!slices.Equal(got[0].Repositories, want.Repositories) ||
+		len(got[0].Permissions) != 1 || got[0].Permissions["contents"] != "read" {
+		t.Errorf("token requests = %+v, want %+v", got, want)
+	}
+
+	hc := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
+		RootCAs: l.srv.Pool(), MinVersion: tls.VersionTLS12,
+	}}}
+	status := func(name string) int {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+			l.srv.URL+"/api/v3/repos/acme/"+name+"/commits/main", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Authorization", "token "+string(c.Token))
+		res, err := hc.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = res.Body.Close()
+		return res.StatusCode
+	}
+	if s := status("infra"); s != http.StatusOK {
+		t.Errorf("the run's repository answers %d", s)
+	}
+	if s := status("web"); s != http.StatusNotFound {
+		t.Errorf("another repository of the installation answers %d", s)
+	}
+
+	if _, err := l.gh.ResolveRef(ctx, repo, "main"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.gh.ReadFile(ctx, port.Repository{
+		Namespace: "acme", Name: "web", Integration: &in,
+	}, "main", "main.tf"); err != nil {
+		t.Errorf("the installation's own token, after a mint, reads web: %v", err)
+	}
+
+	missing := port.Repository{Namespace: "acme", Name: "nowhere", Integration: &in}
+	if _, err := l.gh.Mint(ctx, missing, "run", expires); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("Mint where no installation reaches = %v", err)
+	}
+	if _, err := l.gh.Mint(ctx, port.Repository{}, "run", expires); !errors.Is(
+		err, port.ErrNoIntegration) {
+		t.Errorf("Mint with no integration = %v", err)
+	}
+	bad := in
+	bad.Settings.AppID = "x"
+	if _, err := l.gh.Mint(ctx, port.Repository{
+		Namespace: "acme", Name: "infra", Integration: &bad,
+	}, "run", expires); !errors.Is(err, github.ErrCredential) {
+		t.Errorf("Mint with a bad App ID = %v", err)
+	}
+	l.fake.FailPath("/app/installations/", githubfake.ServerError, 0)
+	if _, err := l.gh.Mint(ctx, repo, "run", expires); !errors.Is(err, kernel.ErrUnavailable) {
+		t.Errorf("Mint on a failing host = %v", err)
+	}
+	if err := l.gh.Revoke(ctx, repo, ""); err != nil {
+		t.Errorf("Revoke = %v", err)
 	}
 }
 

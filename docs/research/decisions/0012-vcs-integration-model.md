@@ -264,6 +264,12 @@ credential that is part of the run's sealed secret material:
 | Bitbucket Cloud, Azure DevOps | The integration's token, which these providers cannot narrow through their APIs |
 | Raw Git | None; public HTTPS URLs only |
 
+infraweave keeps only a minted token's ID, never the token, in
+`vcs_run_tokens`. The transaction that ends a run enqueues one `vcs.revoke`
+job, keyed by the run; it revokes each of the run's tokens through the
+integration that minted it, treats a token already gone as revoked, and
+leaves a token whose integration was deleted to expire.
+
 A run behind a VCS agent pool needs a private worker that can reach the VCS;
 the launcher's mapping of pool names to endpoints is 0008's.
 

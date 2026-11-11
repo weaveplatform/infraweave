@@ -46,8 +46,9 @@ type Options struct {
 	RootCAs *x509.CertPool
 }
 
-// Provider is the GitHub provider: port.Source, port.Browse, port.Tester
-// and port.Apps over GitHub's REST API, reached as a GitHub App.
+// Provider is the GitHub provider: port.Source, port.Browse, port.Tester,
+// port.Apps and port.Minter over GitHub's REST API, reached as a GitHub
+// App.
 //
 // ref: decision 0012
 type Provider struct {
@@ -62,6 +63,7 @@ var (
 	_ port.Browse = (*Provider)(nil)
 	_ port.Tester = (*Provider)(nil)
 	_ port.Apps   = (*Provider)(nil)
+	_ port.Minter = (*Provider)(nil)
 )
 
 // New returns the provider, reaching GitHub over TLS 1.2 or later.
@@ -177,12 +179,22 @@ func (p *Provider) installation(a app, id int64) *github.Client {
 // repo is a client acting as the installation of repo's App that reaches
 // repo; ErrNotFound when none does.
 func (p *Provider) repo(ctx context.Context, repo port.Repository) (*github.Client, host, error) {
+	a, id, err := p.installationOf(ctx, repo)
+	if err != nil {
+		return nil, host{}, err
+	}
+	return p.installation(a, id), a.host, nil
+}
+
+// installationOf is repo's App and the ID of its installation that
+// reaches repo; ErrNotFound when none does.
+func (p *Provider) installationOf(ctx context.Context, repo port.Repository) (app, int64, error) {
 	if repo.Integration == nil {
-		return nil, host{}, fmt.Errorf("%w: %s/%s", ErrNoIntegration, repo.Namespace, repo.Name)
+		return app{}, 0, fmt.Errorf("%w: %s/%s", ErrNoIntegration, repo.Namespace, repo.Name)
 	}
 	a, err := p.app(*repo.Integration)
 	if err != nil {
-		return nil, host{}, err
+		return app{}, 0, err
 	}
 	in, _, err := client(
 		a.host,
@@ -193,10 +205,47 @@ func (p *Provider) repo(ctx context.Context, repo port.Repository) (*github.Clie
 		repo.Name,
 	)
 	if err != nil {
-		return nil, host{}, classify(err, "installation of "+repo.Namespace+"/"+repo.Name)
+		return app{}, 0, classify(err, "installation of "+repo.Namespace+"/"+repo.Name)
 	}
-	return p.installation(a, in.GetID()), a.host, nil
+	return a, in.GetID(), nil
 }
+
+// Mint mints an installation token of repo's App that reads repo's
+// contents alone. GitHub expires it an hour after minting and takes no
+// expiry, so expires bounds nothing here and the token carries no ID to
+// revoke. The provider never caches it: the installation's own token,
+// which its other calls reuse, stays unnarrowed.
+//
+// ref: decision 0012 § "Source access for runs"
+func (p *Provider) Mint(
+	ctx context.Context,
+	repo port.Repository,
+	_ string,
+	_ time.Time,
+) (port.Credential, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	a, id, err := p.installationOf(ctx, repo)
+	if err != nil {
+		return port.Credential{}, err
+	}
+	tok, _, err := client(a.host, a.tr).Apps.CreateInstallationToken(ctx, id,
+		&github.InstallationTokenOptions{
+			Repositories: []string{repo.Name},
+			Permissions:  &github.InstallationPermissions{Contents: new("read")},
+		})
+	if err != nil {
+		return port.Credential{}, classify(err, "token for "+repo.Namespace+"/"+repo.Name)
+	}
+	return port.Credential{
+		Username: "x-access-token", Token: []byte(tok.GetToken()),
+		ExpiresAt: tok.GetExpiresAt().Time,
+	}, nil
+}
+
+// Revoke is nil: a token Mint mints carries no ID and only expires, an
+// hour after minting.
+func (p *Provider) Revoke(context.Context, port.Repository, string) error { return nil }
 
 // ResolveRef resolves ref of repo to its commit, naming the tag when ref
 // is one.

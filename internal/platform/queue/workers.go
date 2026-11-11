@@ -43,6 +43,14 @@ type HandlerOptions struct {
 	RetryDelay func(attempt int) time.Duration
 }
 
+// Registration is a kind's handler and its options, as a domain hands
+// them to the process that registers them.
+type Registration struct {
+	Kind    Kind
+	Handler Handler
+	Options HandlerOptions
+}
+
 // ErrRegister reports a registration the process must not start with.
 var ErrRegister = errors.New("invalid job registration")
 

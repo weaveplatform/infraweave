@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -28,14 +29,28 @@ func TestAccPurges(t *testing.T) {
 	db := sqltest.Open(t)
 	q := db.Primary()
 	events := testEvents(t, q)
-	d, err := newDomains(config.Defaults(), db, testKeyring(t, q), nil, events)
+	d, err := newDomains(
+		config.Defaults(),
+		db,
+		testKeyring(t, q),
+		nil,
+		events,
+		slog.New(slog.DiscardHandler),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := d.Features.Seed(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := newDomains(config.Defaults(), db, testKeyring(t, q), nil, events); err == nil {
+	if _, err := newDomains(
+		config.Defaults(),
+		db,
+		testKeyring(t, q),
+		nil,
+		events,
+		slog.New(slog.DiscardHandler),
+	); err == nil {
 		t.Error("the purges subscribed twice to one outbox")
 	}
 	op := kernel.WithPrincipal(ctx, kernel.Principal{Kind: kernel.PrincipalOperator})

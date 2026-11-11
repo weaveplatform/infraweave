@@ -69,11 +69,27 @@ type user struct {
 	username string
 }
 
-// token is an access token of a user, with its scopes.
+// token is an access token of a user, with its scopes; mint is the
+// record of a project access token the fake minted, nil for one AddToken
+// issued.
 type token struct {
 	id     int64
 	user   *user
 	scopes []string
+	mint   *Minted
+}
+
+// Minted is a project access token the fake minted, as its request named
+// it: the project's full path, the token's name, scopes, access level and
+// expiry date, and whether it has been revoked since.
+type Minted struct {
+	ID          int64
+	Project     string
+	Name        string
+	Scopes      []string
+	AccessLevel int
+	ExpiresAt   string
+	Revoked     bool
 }
 
 // project is a project in a namespace, with its members' access levels
@@ -95,6 +111,7 @@ type Fake struct {
 	users    map[string]*user
 	tokens   map[string]*token
 	projects map[string]*project
+	minted   []*Minted
 	nextID   int64
 	fault    Fault
 	scope    string
@@ -196,6 +213,20 @@ func (f *Fake) AddMember(namespace, name, username string, level int) {
 	p.members[f.userOf(username).id] = level
 }
 
+// Minted lists the project access tokens the fake has minted, in the
+// order it minted them.
+func (f *Fake) Minted() []Minted {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]Minted, 0, len(f.minted))
+	for _, m := range f.minted {
+		c := *m
+		c.Scopes = slices.Clone(m.Scopes)
+		out = append(out, c)
+	}
+	return out
+}
+
 // Fail answers every request with fault until it is set to None, a rate
 // limit lifting after.
 func (f *Fake) Fail(fault Fault, after time.Duration) { f.FailPath("", fault, after) }
@@ -217,12 +248,14 @@ func (f *Fake) Requests() int {
 
 // Handler serves the fake's routes under /api/v4. A project is named by
 // its ID or its URL-encoded full path, a ref and a file path URL-encoded,
-// as GitLab names them.
+// as GitLab names them. A token with neither the api nor the read_api
+// scope reads a project's repository routes alone, as read_repository
+// allows.
 func (f *Fake) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(f.faults)
 	r.Route("/api/v4", func(r chi.Router) {
-		r.Use(f.authenticated)
+		r.Use(f.authenticated, scoped)
 		r.Get("/user", f.user)
 		r.Get("/personal_access_tokens/self", f.self)
 		r.Get("/projects", f.list)
@@ -234,6 +267,8 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/repository/files/{file}/raw", f.raw)
 			r.Get("/repository/compare", f.compare)
 			r.Get("/repository/branches", f.branches)
+			r.Post("/access_tokens", f.mint)
+			r.Delete("/access_tokens/{token}", f.revoke)
 		})
 	})
 	return r
@@ -295,6 +330,22 @@ func (f *Fake) authenticated(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), tokenKey, tok)))
+	})
+}
+
+// scoped refuses a token holding neither api nor read_api anything but
+// reading a project's repository.
+func scoped(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tok := r.Context().Value(tokenKey).(*token) //nolint:forcetypeassert // authenticated sets it
+		rest, _ := strings.CutPrefix(r.URL.EscapedPath(), "/api/v4/projects/")
+		_, rest, _ = strings.Cut(rest, "/")
+		if !slices.Contains(tok.scopes, "api") && !slices.Contains(tok.scopes, "read_api") &&
+			(r.Method != http.MethodGet || !strings.HasPrefix(rest, "repository/")) {
+			answer(w, http.StatusForbidden, map[string]string{"error": "insufficient_scope"})
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -446,6 +497,76 @@ func (f *Fake) branches(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 	paged(w, r, out)
+}
+
+// mint mints a project access token whose bot user is a member of the
+// project alone, at the level the request names, as a token with the api
+// scope and Maintainer or above may.
+func (f *Fake) mint(w http.ResponseWriter, r *http.Request) {
+	tok := r.Context().Value(tokenKey).(*token)   //nolint:forcetypeassert // authenticated sets it
+	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member sets it
+	// GitLab's field names are snake case.
+	var in struct {
+		Name        string   `json:"name"`
+		Scopes      []string `json:"scopes"`
+		AccessLevel int      `json:"access_level"` //nolint:tagliatelle // as above
+		ExpiresAt   string   `json:"expires_at"`   //nolint:tagliatelle // as above
+	}
+	bad := json.NewDecoder(r.Body).Decode(&in) != nil
+	exp, err := time.Parse(time.DateOnly, in.ExpiresAt)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	level := p.members[tok.user.id]
+	if !slices.Contains(tok.scopes, "api") || level < Maintainer {
+		answer(w, http.StatusForbidden, message("403 Forbidden"))
+		return
+	}
+	if bad || err != nil || in.Name == "" || len(in.Scopes) == 0 || in.AccessLevel > level ||
+		!exp.After(time.Now()) {
+		answer(w, http.StatusBadRequest, message("400 Bad request"))
+		return
+	}
+	f.nextID++
+	bot := &user{id: f.nextID, username: fmt.Sprintf("project_%d_bot_%s", p.id, secret()[:8])}
+	f.users[bot.username] = bot
+	p.members[bot.id] = in.AccessLevel
+	m := &Minted{
+		ID: f.nextID, Project: p.fullPath(), Name: in.Name, Scopes: in.Scopes,
+		AccessLevel: in.AccessLevel, ExpiresAt: in.ExpiresAt,
+	}
+	f.minted = append(f.minted, m)
+	raw := "glpat-" + secret()
+	f.tokens[raw] = &token{id: m.ID, user: bot, scopes: in.Scopes, mint: m}
+	answer(w, http.StatusCreated, map[string]any{
+		"id": m.ID, "name": m.Name, "scopes": m.Scopes, "access_level": m.AccessLevel,
+		"expires_at": m.ExpiresAt, "user_id": bot.id, "active": true, "revoked": false,
+		"token": raw,
+	})
+}
+
+// revoke revokes the project's minted token the route names, removing its
+// bot user from the project, as a token with the api scope and Maintainer
+// or above may; one the project never minted, or revoked already, is 404.
+func (f *Fake) revoke(w http.ResponseWriter, r *http.Request) {
+	tok := r.Context().Value(tokenKey).(*token)   //nolint:forcetypeassert // authenticated sets it
+	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member sets it
+	id, _ := strconv.ParseInt(chi.URLParam(r, "token"), 10, 64)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !slices.Contains(tok.scopes, "api") || p.members[tok.user.id] < Maintainer {
+		answer(w, http.StatusForbidden, message("403 Forbidden"))
+		return
+	}
+	for raw, t := range f.tokens {
+		if t.mint != nil && t.mint.ID == id && t.mint.Project == p.fullPath() {
+			delete(f.tokens, raw)
+			delete(p.members, t.user.id)
+			t.mint.Revoked = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+	}
+	answer(w, http.StatusNotFound, message("404 Not found"))
 }
 
 func projectJSON(r *http.Request, p *project) map[string]any {

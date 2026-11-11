@@ -446,3 +446,123 @@ func TestUnitTimeout(t *testing.T) {
 		}
 	})
 }
+
+// TestUnitMint checks that a Maintainer mints a Reporter token with
+// read_repository alone, expiring at the start of the day expires falls
+// on, which reads its project and no other and lists nothing; that a
+// Developer, a token without the api scope and a missing project are
+// refused; and that a revoke stops the token, twice over.
+func TestUnitMint(t *testing.T) {
+	l := newLab(t)
+	ctx := t.Context()
+	expires := time.Now().Add(36 * time.Hour)
+	c, err := l.gl.Mint(ctx, l.repo.Repo, "infraweave-run-1", expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day := expires.UTC().Format(time.DateOnly)
+	if c.Username != gitlab.Username || len(c.Token) == 0 || c.ID == "" ||
+		c.ExpiresAt.Format(time.DateOnly) != day || !c.ExpiresAt.Before(expires) {
+		t.Errorf("Mint = %+v", c)
+	}
+	want := gitlabfake.Minted{
+		Project:     "acme/platform/infra",
+		Name:        "infraweave-run-1",
+		Scopes:      []string{"read_repository"},
+		AccessLevel: gitlabfake.Reporter,
+		ExpiresAt:   day,
+	}
+	got := l.fake.Minted()
+	if len(got) != 1 || fmt.Sprint(got[0].ID) != c.ID {
+		t.Fatalf("minted = %+v", got)
+	}
+	want.ID = got[0].ID
+	if !reflectEqual(got[0], want) {
+		t.Errorf("minted = %+v, want %+v", got[0], want)
+	}
+
+	run := integrationOf(string(c.Token), l.srv.URL)
+	own := l.repo.Repo
+	own.Integration = &run
+	if _, err := l.gl.ResolveRef(ctx, own, "main"); err != nil {
+		t.Errorf("the run token reading its project = %v", err)
+	}
+	other := port.Repository{Namespace: "acme/platform", Name: "hidden", Integration: &run}
+	if _, err := l.gl.ResolveRef(ctx, other, "main"); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("the run token reading another project = %v", err)
+	}
+	if _, err := l.gl.Repositories(ctx, run); err == nil {
+		t.Error("the run token listed projects")
+	}
+	if _, err := l.gl.Mint(ctx, own, "again", expires); !errors.Is(err, port.ErrCannotMint) {
+		t.Errorf("the run token minting = %v", err)
+	}
+
+	if err := l.gl.Revoke(ctx, l.repo.Repo, c.ID); err != nil {
+		t.Fatal(err)
+	}
+	if !l.fake.Minted()[0].Revoked {
+		t.Error("the token is not revoked")
+	}
+	if _, err := l.gl.ResolveRef(ctx, own, "main"); !errors.Is(err, gitlab.ErrCredential) {
+		t.Errorf("a revoked token reading = %v", err)
+	}
+	if err := l.gl.Revoke(ctx, l.repo.Repo, c.ID); err != nil {
+		t.Errorf("revoking twice = %v", err)
+	}
+
+	l.fake.AddMember("acme", "dev", "dev", gitlabfake.Developer)
+	dev := integrationOf(l.fake.AddToken("dev", "api"), l.srv.URL)
+	reader := integrationOf(l.fake.AddToken("infraweave", "read_api"), l.srv.URL)
+	for name, repo := range map[string]port.Repository{
+		"a Developer":         {Namespace: "acme", Name: "dev", Integration: &dev},
+		"a token without api": {Namespace: "acme/platform", Name: "infra", Integration: &reader},
+	} {
+		if _, err := l.gl.Mint(ctx, repo, "run", expires); !errors.Is(err, port.ErrCannotMint) ||
+			!errors.Is(err, gitlab.ErrCannotMint) {
+			t.Errorf("%s minting = %v", name, err)
+		}
+	}
+	if _, err := l.gl.Mint(ctx, l.repo.Missing, "run", expires); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("minting on a missing project = %v", err)
+	}
+	if _, err := l.gl.Mint(ctx, port.Repository{Namespace: "acme", Name: "x"}, "run",
+		expires); !errors.Is(err, port.ErrNoIntegration) {
+		t.Errorf("minting with no integration = %v", err)
+	}
+	if err := l.gl.Revoke(ctx, port.Repository{Namespace: "acme", Name: "x"},
+		"1"); !errors.Is(err, port.ErrNoIntegration) {
+		t.Errorf("revoking with no integration = %v", err)
+	}
+	if err := l.gl.Revoke(ctx, l.repo.Repo, "nope"); err == nil {
+		t.Error("revoked a token named by no number")
+	}
+	l.fake.Fail(gitlabfake.ServerError, 0)
+	if err := l.gl.Revoke(ctx, l.repo.Repo, c.ID); !errors.Is(err, kernel.ErrUnavailable) {
+		t.Errorf("revoking on a failing host = %v", err)
+	}
+	if _, err := l.gl.Mint(
+		ctx,
+		l.repo.Repo,
+		"run",
+		expires,
+	); !errors.Is(
+		err,
+		kernel.ErrUnavailable,
+	) {
+		t.Errorf("minting on a failing host = %v", err)
+	}
+	l.fake.Fail(gitlabfake.None, 0)
+
+	lent := l.gl.Lend(integrationOf(" "+l.token+"\n", l.srv.URL))
+	if lent.Username != gitlab.Username || string(lent.Token) != l.token || lent.ID != "" ||
+		!lent.ExpiresAt.IsZero() {
+		t.Errorf("Lend = %+v", lent)
+	}
+}
+
+func reflectEqual(a, b gitlabfake.Minted) bool {
+	return a.ID == b.ID && a.Project == b.Project && a.Name == b.Name &&
+		slices.Equal(a.Scopes, b.Scopes) && a.AccessLevel == b.AccessLevel &&
+		a.ExpiresAt == b.ExpiresAt && a.Revoked == b.Revoked
+}

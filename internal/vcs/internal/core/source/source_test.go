@@ -282,7 +282,7 @@ func (i integrations) Use(
 // newService is the service over st and providers, whose stacks use no
 // integration.
 func newService(st stacksapi.Stacks, providers map[string]port.Source) *Service {
-	return New(st, providers, integrations{})
+	return New(Deps{Stacks: st, Providers: providers, Integrations: integrations{}})
 }
 
 // TestUnitIntegration checks that the Source reaches the repository
@@ -296,9 +296,12 @@ func TestUnitIntegration(t *testing.T) {
 	use := port.Integration{Provider: "GITLAB", Credential: []byte("token")}
 	var got port.Repository
 	var asked *kernel.ULID
-	svc := New(stacks{settings: set}, map[string]port.Source{
-		"GITLAB": source{repo: &got, commit: vcsapi.Commit{Hash: "abc"}},
-	}, integrations{in: use, found: true, asked: &asked})
+	svc := New(Deps{
+		Stacks: stacks{settings: set}, Providers: map[string]port.Source{
+			"GITLAB": source{repo: &got, commit: vcsapi.Commit{Hash: "abc"}},
+		},
+		Integrations: integrations{in: use, found: true, asked: &asked},
+	})
 	if _, err := svc.Resolve(
 		t.Context(),
 		kernel.NewAccountID(),
@@ -311,8 +314,13 @@ func TestUnitIntegration(t *testing.T) {
 		asked == nil || *asked != id {
 		t.Errorf("repository = %+v, asked for %v", got, asked)
 	}
-	failed := New(stacks{settings: set}, map[string]port.Source{"GITLAB": source{repo: &got}},
-		integrations{err: errOffline})
+	failed := New(Deps{
+		Stacks: stacks{
+			settings: set,
+		},
+		Providers:    map[string]port.Source{"GITLAB": source{repo: &got}},
+		Integrations: integrations{err: errOffline},
+	})
 	if _, err := failed.Resolve(
 		t.Context(),
 		kernel.NewAccountID(),
@@ -325,8 +333,13 @@ func TestUnitIntegration(t *testing.T) {
 		t.Errorf("Resolve with a failed integration = %v", err)
 	}
 	set.VCSDetached = true
-	detached := New(stacks{settings: set}, map[string]port.Source{"GITLAB": source{repo: &got}},
-		integrations{})
+	detached := New(Deps{
+		Stacks: stacks{
+			settings: set,
+		},
+		Providers:    map[string]port.Source{"GITLAB": source{repo: &got}},
+		Integrations: integrations{},
+	})
 	_, err := detached.Resolve(t.Context(), kernel.NewAccountID(), kernel.NewULID(), "main")
 	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
 		t.Errorf("Resolve of a detached stack = %v", err)

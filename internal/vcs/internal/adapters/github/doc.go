@@ -1,12 +1,15 @@
 // Package github is the GitHub provider: Provider implements port.Source,
-// port.Browse, port.Tester and port.Apps over GitHub's REST API for
-// github.com and GitHub Enterprise Server, acting as the integration's
-// GitHub App. A repository's call finds the App's installation on it
-// with the App's JWT, then acts as that installation, reusing the
-// installation's token across calls until it expires. A Test reads the
-// App and checks the permissions and webhook events infraweave needs; the
-// manifest flow writes the form that creates an App asking for exactly
-// those, and converts the code GitHub redirects back with into the App.
+// port.Browse, port.Tester, port.Apps and port.Minter over GitHub's REST
+// API for github.com and GitHub Enterprise Server, acting as the
+// integration's GitHub App. A repository's call finds the App's
+// installation on it with the App's JWT, then acts as that installation,
+// reusing the installation's token across calls until it expires. Mint
+// mints a run a separate installation token, never cached, that reads one
+// repository's contents alone and expires within the hour; Revoke has
+// nothing to revoke. A Test reads the App and checks the permissions and
+// webhook events infraweave needs; the manifest flow writes the form that
+// creates an App asking for exactly those, and converts the code GitHub
+// redirects back with into the App.
 //
 // ref: decision 0012
 //

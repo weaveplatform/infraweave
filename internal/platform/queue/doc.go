@@ -22,7 +22,8 @@
 // Discard are the operator's dead-job operations, and Stats reports each queue's
 // depth.
 //
-// A process that runs jobs registers a Handler per kind in a Registry, with
+// A domain hands its kinds' handlers to the process as Registrations. A
+// process that runs jobs registers a Handler per kind in a Registry, with
 // its timeout (at most MaxTimeout), the feature that gates it and its retry
 // delay, and runs Workers: a pool per logical queue with that queue's worker
 // count (Config). An idle pool claims when a notification names its queue,

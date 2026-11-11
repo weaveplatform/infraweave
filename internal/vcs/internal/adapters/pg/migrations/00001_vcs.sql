@@ -58,3 +58,23 @@ CREATE TABLE vcs_manifests (
     expires_at       timestamptz NOT NULL,
     PRIMARY KEY (account_id, id)
 );
+
+-- A token minted for a run to fetch its stack's source with, until the
+-- run ends and a vcs.revoke job revokes it. Only the provider's ID of the
+-- token is kept, never the token: revoking needs the ID and the
+-- integration's own token, read from integration_id, and the repository
+-- the token reads. A token whose integration is deleted first is left to
+-- expire at expires_at.
+CREATE TABLE vcs_run_tokens (
+    account_id     uuid        NOT NULL,
+    run_id         uuid        NOT NULL,
+    token_id       text        NOT NULL,
+    stack_id       uuid        NOT NULL,
+    integration_id uuid        NOT NULL,
+    provider       text        NOT NULL,
+    namespace      text        NOT NULL,
+    repository     text        NOT NULL,
+    expires_at     timestamptz NOT NULL,
+    created_at     timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, run_id, token_id)
+);

@@ -101,16 +101,17 @@ func platformTasks(
 var errNotListening = errors.New("the queue's listening connection is down")
 
 // startScheduler starts the scheduler role: the queue's workers with the
-// platform's handlers, the outbox's fan-out and consumption and blob.delete
-// over store, the one full objectstore.Store of the process, and the ticker
-// over periodic_tasks, after registering the periodic tasks in the
-// database. ent decides whether a job's account may run its kind's
-// feature, so a downgraded organization's jobs complete as skipped. Their
-// wake-ups come through l, which the caller runs. A registration that fails
-// fails startup. The returned stop ends the ticker, then the workers, which
-// finish within queue.shutdown_grace or hand their jobs back to pending
-// without counting the attempt; the caller calls it after the HTTP drain,
-// so another replica takes the work at once, and before the pool closes.
+// platform's handlers, the domains' jobs, the outbox's fan-out and
+// consumption and blob.delete over store, the one full objectstore.Store
+// of the process, and the ticker over periodic_tasks, after registering
+// the periodic tasks in the database. ent decides whether a job's account
+// may run its kind's feature, so a downgraded organization's jobs
+// complete as skipped. Their wake-ups come through l, which the caller
+// runs. A registration that fails fails startup. The returned stop ends
+// the ticker, then the workers, which finish within queue.shutdown_grace
+// or hand their jobs back to pending without counting the attempt; the
+// caller calls it after the HTTP drain, so another replica takes the work
+// at once, and before the pool closes.
 //
 // ref: decisions 0011 and 0020
 func startScheduler(
@@ -123,6 +124,7 @@ func startScheduler(
 	events *outbox.Outbox,
 	store objectstore.Store,
 	domainTasks []cron.Task,
+	domainJobs []queue.Registration,
 	ent queue.Entitlements,
 	log *slog.Logger,
 	health *observe.Health,
@@ -140,6 +142,11 @@ func startScheduler(
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
 		if err := tasks.Ensure(ctx, t.Kind, t.Every); err != nil {
+			return nil, fmt.Errorf("scheduler: %w", err)
+		}
+	}
+	for _, j := range domainJobs {
+		if err := reg.Register(j.Kind, j.Handler, j.Options); err != nil {
 			return nil, fmt.Errorf("scheduler: %w", err)
 		}
 	}

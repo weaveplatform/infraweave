@@ -659,7 +659,7 @@ func (s *Service) use(ctx context.Context, in Integration) (port.Integration, er
 		return port.Integration{}, err //nolint:wrapcheck // the store names the read
 	}
 	return port.Integration{
-		Provider: in.Provider, Settings: in.Settings, Credential: sec.Credential,
+		ID: in.ID, Provider: in.Provider, Settings: in.Settings, Credential: sec.Credential,
 		WebhookSecret: sec.WebhookSecret,
 	}, nil
 }

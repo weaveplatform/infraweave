@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -48,4 +50,47 @@ type Sources interface {
 		stack kernel.ULID,
 		commit string,
 	) (string, error)
+	// Credential is the credential acct's run fetches the source of
+	// stack with, minted for the run alone where the provider narrows
+	// one; nil for a repository reached with none, as raw Git's is.
+	Credential(
+		ctx context.Context,
+		acct kernel.AccountID,
+		stack, run kernel.ULID,
+	) (*Credential, error)
+	// Release revokes the credentials minted for acct's run, in a job the
+	// transaction ctx carries enqueues once per run, so the caller calls
+	// it in the transaction that ends the run.
+	Release(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error
+}
+
+// Credential is a token a run's worker fetches its repository with, over
+// git's HTTPS basic auth as Username. It is secret material: the run seals
+// it, and its String, GoString and LogValue leave the token out, so a
+// log, an error or an event that formats it never carries the token.
+//
+// ref: decision 0012 § "Source access for runs"
+type Credential struct {
+	Username string
+	Token    []byte
+	// ExpiresAt is when a minted token expires; nil for the integration's
+	// own.
+	ExpiresAt *time.Time
+	// Narrowed is true for a token minted to read the run's repository
+	// alone, and false for the integration's own token, which reads every
+	// repository the integration does; the run's log says which.
+	Narrowed bool
+}
+
+// String is c without its token.
+func (c Credential) String() string {
+	return fmt.Sprintf("vcs credential of %s (narrowed %t)", c.Username, c.Narrowed)
+}
+
+// GoString is c without its token.
+func (c Credential) GoString() string { return c.String() }
+
+// LogValue is c without its token.
+func (c Credential) LogValue() slog.Value {
+	return slog.GroupValue(slog.String("username", c.Username), slog.Bool("narrowed", c.Narrowed))
 }

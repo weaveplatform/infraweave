@@ -47,8 +47,8 @@ Feature: Bitbucket Cloud integrations
     When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{c}" through A
     Then it answers a 404 problem "not-found"
 
-  @op:bitbucketCloudIntegrationCreateV2 @op:stackCreate @op:stackSyncCommit @case:success
-  Scenario: A stack on a workspace's repository tracks its branch through its provider's default
+  @op:bitbucketCloudIntegrationCreateV2 @op:stackCreate @op:stackSyncCommit @op:stackSetCurrentCommit @case:success
+  Scenario: A stack on a workspace's repository tracks its branch through its provider's default, and pins an earlier commit
     When token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"dev@acme.example","apiToken":"{tok}","customInput":{"name":"Main","spaceID":"acme","isDefault":true}}' through A
     Then it answers 201
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"acme","repository":"infra","branch":"main","provider":"BITBUCKET_CLOUD","space":"{team}"},"manageState":false}' through B
@@ -58,6 +58,9 @@ Feature: Bitbucket Cloud integrations
     And token "h" sends "POST /api/v1/stacks/infra/sync-commit" through B
     Then it answers 200
     And the answer tracks the commit kept as "pushed" at the branch head kept as "pushed"
+    When token "h" sends "POST /api/v1/stacks/infra/set-current-commit" with '{"sha":"{seed}"}' through A
+    Then it answers 200
+    And the answer tracks the commit kept as "seed" at the branch head kept as "pushed"
 
   @op:bitbucketCloudIntegrationCreateV2 @op:bitbucketCloudIntegration @op:bitbucketCloudIntegrationUpdateV2 @op:bitbucketCloudIntegrationDelete @op:bitbucketCloudIntegrationTest @case:denial
   Scenario: A reader of a space sees its integrations without their secrets, and changes nothing
