@@ -42,7 +42,7 @@ var (
 		port.ErrNoIntegration)
 	// ErrCredential is an e-mail or API token that is missing, or that
 	// Bitbucket refuses.
-	ErrCredential = errors.New("bitbucketcloud: API token refused")
+	ErrCredential = fmt.Errorf("bitbucketcloud: API token refused: %w", port.ErrCredential)
 	// ErrStatus is an answer that is none of the port's errors.
 	ErrStatus = errors.New("bitbucketcloud: unexpected answer")
 	// ErrHost is an API host that is not an http or https URL.

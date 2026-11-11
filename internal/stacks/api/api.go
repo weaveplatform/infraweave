@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 )
 
 // ErrNotFound reports a stack the account lacks.
@@ -183,6 +184,33 @@ type Stacks interface {
 	// refuses its commit operations until a write gives it a source
 	// again. It changes neither the stacks' versions nor their events.
 	DetachVCS(ctx context.Context, acct kernel.AccountID, integration kernel.ULID) error
+	// SearchUsers reads a page of the stacks of p's account in the spaces
+	// p may read that use u, which the query leaves the others out of; an
+	// input the stacks' search fields cannot answer is a
+	// *search.Invalid.
+	SearchUsers(
+		ctx context.Context,
+		p kernel.Principal,
+		u Use,
+		in search.Input,
+	) (search.Result[Stack], error)
+	// SuggestUsers lists the values those stacks hold under in's
+	// predicates, and counts them.
+	SuggestUsers(
+		ctx context.Context,
+		p kernel.Principal,
+		u Use,
+		in search.SuggestionsInput,
+	) (search.Suggestions, error)
+}
+
+// Use names the stacks that use a VCS integration: those bound to
+// Integration and, when Default is set, those on Provider that name no
+// integration, which use their provider's default.
+type Use struct {
+	Integration kernel.ULID
+	Provider    string
+	Default     bool
 }
 
 // ErrNoIntegration reports a VCS integration a stack may not bind: one

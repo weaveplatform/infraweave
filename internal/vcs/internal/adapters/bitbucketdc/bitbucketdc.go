@@ -41,7 +41,7 @@ var (
 		port.ErrNoIntegration)
 	// ErrCredential is an access token that is missing, or that Bitbucket
 	// refuses.
-	ErrCredential = errors.New("bitbucketdc: access token refused")
+	ErrCredential = fmt.Errorf("bitbucketdc: access token refused: %w", port.ErrCredential)
 	// ErrStatus is an answer that is none of the port's errors.
 	ErrStatus = errors.New("bitbucketdc: unexpected answer")
 	// ErrHost is an API host that is not an https URL.

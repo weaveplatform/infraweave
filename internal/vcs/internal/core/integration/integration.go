@@ -163,6 +163,7 @@ type Deps struct {
 	Stacks    stacksapi.Stacks
 	Providers []string
 	Testers   map[string]port.Tester
+	Browse    map[string]port.Brancher
 	Builtin   map[string]port.Integration
 	Apps      port.Apps
 	Public    string
@@ -179,6 +180,7 @@ type Service struct {
 	stacks    stacksapi.Stacks
 	providers []string
 	testers   map[string]port.Tester
+	browse    map[string]port.Brancher
 	builtin   map[string]port.Integration
 	apps      port.Apps
 	public    string
@@ -193,7 +195,8 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
-		providers: d.Providers, testers: d.Testers, builtin: d.Builtin, apps: d.Apps,
+		providers: d.Providers, testers: d.Testers, browse: d.Browse, builtin: d.Builtin,
+		apps:   d.Apps,
 		public: strings.TrimSuffix(d.Public, "/"), now: now,
 	}
 }

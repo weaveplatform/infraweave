@@ -3,10 +3,12 @@ Feature: GitLab integrations
   An account reaches GitLab.com or a self-managed GitLab with an access
   token, which it never reads back. A stack on GitLab names its project by
   its namespace, a group path with any subgroups, and its name, and reads
-  it through the integration it names or its provider's default. The
-  scenarios' GitLab is an in-process fake at {gitlabHost}. The home key is
-  space-admin on the account's top space; the member key holds only the
-  bindings a scenario gives it. Space team inherits from the top space.
+  it through the integration it names or its provider's default. A user
+  browses the projects and branches of an integration its spaces reach,
+  and finds the stacks that use it. The scenarios' GitLab is an in-process
+  fake at {gitlabHost}. The home key is space-admin on the account's top
+  space; the member key holds only the bindings a scenario gives it. Space
+  team inherits from the top space.
 
   Background:
     Given two infraweave servers, A and B, on one database
@@ -96,3 +98,89 @@ Feature: GitLab integrations
     When token "h" sends "POST /api/v1/stacks/orphan/sync-commit" through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/vcsIntegrationId"
+
+  @op:gitlabIntegrationCreate @op:repositories @op:branches @op:stackCreate @op:vcsIntegrationSearchUsers @op:vcsIntegrationSearchUsersSuggestions @case:success
+  Scenario: A user pages the default's repositories and branches, and finds the stacks that use it
+    Given a GitLab project "acme/platform/web" that "dev" maintains, its head of "main" kept as "web"
+    And a commit to "dev" of the GitLab project "acme/platform/infra" is kept as "dev"
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Main","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    And the answer's id names "g"
+    When token "h" sends "GET /api/v1/repositories?provider=GITLAB&limit=1" through B
+    Then it answers 200
+    And the answer's items is '[{"namespace":"acme/platform","id":"infra"}]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/repositories?provider=GITLAB&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '[{"namespace":"acme/platform","id":"web"}]'
+    And the answer leaves out "nextCursor"
+    When token "h" sends "GET /api/v1/branches?provider=GITLAB&namespace=acme%2Fplatform&repository=infra&vcsIntegrationID={g}&limit=1" through B
+    Then it answers 200
+    And the answer's items is '["dev"]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/branches?provider=GITLAB&namespace=acme%2Fplatform&repository=infra&vcsIntegrationID={g}&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '["main"]'
+    And the answer leaves out "nextCursor"
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Other","spaceID":"acme"}}' through B
+    Then the answer's id names "o"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Bound","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","vcsIntegrationId":"{g}","space":"{team}"},"manageState":false}' through A
+    Then it answers 201
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Plain","namespace":"acme/platform","repository":"web","branch":"main","provider":"GITLAB","space":"{team}"},"manageState":false}' through B
+    Then it answers 201
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Elsewhere","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","vcsIntegrationId":"{o}","space":"{team}"},"manageState":false}' through A
+    Then it answers 201
+    When token "h" sends "GET /api/v1/vcs-integrations/{g}/search-users?input=%7B%7D" through B
+    Then it answers 200
+    And the answer finds the stacks "bound, plain" using it
+    When token "h" sends "GET /api/v1/vcs-integrations/{o}/search-users?input=%7B%7D" through A
+    Then it answers 200
+    And the answer finds the stacks "elsewhere" using it
+    When token "h" sends "GET /api/v1/vcs-integrations/{g}/search-users-suggestions?input=%7B%22fields%22%3A%5B%22name%22%5D%7D" through B
+    Then it answers 200
+    And the answer suggests the name values "Bound:1, Plain:1" of 2 stacks
+
+  @op:gitlabIntegrationCreate @op:repositories @op:branches @op:vcsIntegrationSearchUsers @op:vcsIntegrationSearchUsersSuggestions @case:denial
+  Scenario: A reader browses an integration its space inherits, and finds none its spaces cannot reach
+    Given the member key is space-reader on the space "{team}"
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Ops","description":"","inheritEntities":true,"parentSpace":"acme"}' through A
+    And the answer's id is the space "ops"
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Top","spaceID":"acme"}}' through B
+    Then the answer's id names "top"
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Ops","spaceID":"{ops}"}}' through A
+    Then the answer's id names "o"
+    When token "m" sends "GET /api/v1/repositories?vcsIntegrationID={top}" through B
+    Then it answers 200
+    And the answer's items is '[{"namespace":"acme/platform","id":"infra"}]'
+    When token "m" sends "GET /api/v1/repositories?vcsIntegrationID={o}" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/branches?provider=GITLAB&namespace=acme%2Fplatform&repository=infra&vcsIntegrationID={o}" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/vcs-integrations/{o}/search-users?input=%7B%7D" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/vcs-integrations/{o}/search-users-suggestions?input=%7B%7D" through B
+    Then it answers a 404 problem "not-found"
+
+  @op:gitlabIntegrationCreate @op:repositories @op:branches @case:failure
+  Scenario: Browsing with no provider, through raw Git, with no default, a refused token, a bad cursor or of a missing project is refused
+    When token "h" sends "GET /api/v1/repositories" through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/provider"
+    When token "h" sends "GET /api/v1/repositories?provider=GIT" through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/provider"
+    When token "h" sends "GET /api/v1/branches?provider=GIT&namespace=acme&repository=infra" through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/repositoryURL"
+    When token "h" sends "GET /api/v1/repositories?provider=GITLAB" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"revoked","customInput":{"name":"Revoked","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    When token "h" sends "GET /api/v1/repositories?provider=GITLAB" through B
+    Then it answers a 502 problem "upstream-error"
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Main","spaceID":"acme"}}' through A
+    Then the answer's id names "g"
+    When token "h" sends "GET /api/v1/repositories?vcsIntegrationID={g}&cursor=nope" through B
+    Then it answers a 400 problem "invalid-cursor"
+    When token "h" sends "GET /api/v1/branches?provider=GITLAB&namespace=acme%2Fplatform&repository=gone&vcsIntegrationID={g}" through A
+    Then it answers a 404 problem "not-found"

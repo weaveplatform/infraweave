@@ -123,3 +123,24 @@ Feature: GitHub integrations
     Then it answers a 422 problem "validation-failed"
     When token "h" sends "PUT /api/v1/github-integration" with '{"vcsChecks":"SOME"}' through A
     Then it answers a 400 problem "invalid-request"
+
+  @op:repositories @op:branches @case:success
+  Scenario: A user pages the repositories and branches of the operator's App
+    Given a commit to "main" of the GitHub repository "acme/infra" is kept as "first"
+    And a commit to "dev" of the GitHub repository "acme/infra" is kept as "dev"
+    When token "h" sends "GET /api/v1/repositories?provider=GITHUB&limit=1" through B
+    Then it answers 200
+    And the answer's items is '[{"namespace":"acme","id":"infra"}]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/repositories?provider=GITHUB&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '[{"namespace":"acme","id":"web"}]'
+    And the answer leaves out "nextCursor"
+    When token "h" sends "GET /api/v1/branches?provider=GITHUB&namespace=acme&repository=infra&limit=1" through B
+    Then it answers 200
+    And the answer's items is '["dev"]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/branches?provider=GITHUB&namespace=acme&repository=infra&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '["main"]'
+    And the answer leaves out "nextCursor"

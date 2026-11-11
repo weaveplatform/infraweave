@@ -34,7 +34,7 @@ var (
 		port.ErrNoIntegration)
 	// ErrCredential is an App ID or private key that does not parse, or
 	// that GitHub refuses.
-	ErrCredential = errors.New("github: App credential refused")
+	ErrCredential = fmt.Errorf("github: App credential refused: %w", port.ErrCredential)
 	// ErrHost is a host that is not an http or https URL.
 	ErrHost = errors.New("github: host is not an http or https URL")
 )

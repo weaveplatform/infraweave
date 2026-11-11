@@ -36,6 +36,10 @@ func (g *githubSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the GitHub App "(\w+)" subscribes to no events$`, g.deaf)
 	sc.Step(`^the GitHub host hands back a manifest code kept as "(\w+)"$`, g.code)
 	sc.Step(`^the answer's manifest state is kept as "(\w+)"$`, g.state)
+	sc.Step(
+		`^a commit to "([\w./-]+)" of the GitHub repository "([^"]+)" is kept as "(\w+)"$`,
+		g.commit,
+	)
 }
 
 // start serves the fake with the operator's App and answers the vcs
@@ -46,7 +50,7 @@ func (g *githubSteps) start(dir string) (map[string]any, []byte, error) {
 	g.fake = githubfake.New()
 	g.srv = g.fake.Start()
 	op := g.fake.AddApp("infraweave", "acme")
-	g.fake.Install(op.ID, "acme", "Organization", "infra")
+	g.fake.Install(op.ID, "acme", "Organization", "infra", "web")
 	key, secret := filepath.Join(dir, "github-app.pem"), filepath.Join(dir, "github-app.secret")
 	if err := os.WriteFile(key, op.PrivateKey, 0o600); err != nil {
 		return nil, nil, fmt.Errorf("operator App key: %w", err)
@@ -84,6 +88,19 @@ func (g *githubSteps) app(key, org string) error {
 	}
 	g.ids[key+"ID"] = strconv.FormatInt(app.ID, 10)
 	g.ids[key+"Key"] = strings.Trim(string(pem), `"`)
+	return nil
+}
+
+// commit adds a commit to branch of path, an owner/name, which a new
+// branch starts from the last commit, and keeps it as key.
+func (g *githubSteps) commit(branch, path, key string) error {
+	owner, name, ok := strings.Cut(path, "/")
+	if g.fake == nil || !ok {
+		return fmt.Errorf("%w: no GitHub repository %q in this scenario", errStep, path)
+	}
+	g.ids[key] = g.fake.Repo(owner, name).Commit(branch, key, map[string]string{
+		"main.tf": "# " + key + "\n",
+	})
 	return nil
 }
 

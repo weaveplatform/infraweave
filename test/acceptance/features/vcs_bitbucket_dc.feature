@@ -97,3 +97,26 @@ Feature: Bitbucket Data Center integrations
     When token "h" sends "POST /api/v1/stacks/orphan/sync-commit" through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/vcsIntegrationId"
+
+  @op:bitbucketDatacenterIntegrationCreate @op:repositories @op:branches @case:success
+  Scenario: A user pages the repositories and branches of the provider's default
+    Given a Bitbucket Data Center repository "ACME/web" that "dev" administers, its head of "main" kept as "web"
+    And a commit to "dev" of the Bitbucket Data Center repository "ACME/infra" is kept as "dev"
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","accessToken":"{tok}","customInput":{"name":"Main","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    When token "h" sends "GET /api/v1/repositories?provider=BITBUCKET_DATACENTER&limit=1" through B
+    Then it answers 200
+    And the answer's items is '[{"namespace":"ACME","id":"infra"}]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/repositories?provider=BITBUCKET_DATACENTER&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '[{"namespace":"ACME","id":"web"}]'
+    And the answer leaves out "nextCursor"
+    When token "h" sends "GET /api/v1/branches?provider=BITBUCKET_DATACENTER&namespace=ACME&repository=infra&limit=1" through B
+    Then it answers 200
+    And the answer's items is '["dev"]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/branches?provider=BITBUCKET_DATACENTER&namespace=ACME&repository=infra&limit=1&cursor={next}" through A
+    Then it answers 200
+    And the answer's items is '["main"]'
+    And the answer leaves out "nextCursor"

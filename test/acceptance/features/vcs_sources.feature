@@ -11,7 +11,7 @@ Feature: A stack's tracked commit
   and a repository whose host does not answer is unavailable. The home key
   is space-admin on the account's top space; the member key holds only the
   bindings a scenario gives it. Stack infra lives in legacy and stack
-  hidden in team.
+  hidden in team. A raw Git repository's branches list by its URL.
 
   Background:
     Given two infraweave servers, A and B, on one database
@@ -69,3 +69,15 @@ Feature: A stack's tracked commit
     Then it answers a 503 problem "service-unavailable"
     When token "h" sends "POST /api/v1/stacks/gone/set-current-commit" with '{"sha":"{seed}"}' through B
     Then it answers a 503 problem "service-unavailable"
+
+  @op:branches @case:success
+  Scenario: A user pages a raw Git repository's branches by its URL
+    When a commit to "dev" of "infra" changing "dev.tf"
+    And token "h" sends "GET /api/v1/branches?provider=GIT&namespace=&repository=infra&repositoryURL={infra.url}&limit=1" through A
+    Then it answers 200
+    And the answer's items is '["dev"]'
+    And the answer's nextCursor is kept as "next"
+    When token "h" sends "GET /api/v1/branches?provider=GIT&namespace=&repository=infra&repositoryURL={infra.url}&limit=1&cursor={next}" through B
+    Then it answers 200
+    And the answer's items is '["main"]'
+    And the answer leaves out "nextCursor"

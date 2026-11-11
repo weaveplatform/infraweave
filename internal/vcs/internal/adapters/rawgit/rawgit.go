@@ -48,7 +48,10 @@ type Source struct {
 	git transport.Transport
 }
 
-var _ port.Source = (*Source)(nil)
+var (
+	_ port.Source   = (*Source)(nil)
+	_ port.Brancher = (*Source)(nil)
+)
 
 // New returns a Source that reaches repositories over https alone. go-git's
 // transport refuses a redirect from https to http, and one past its limit,
@@ -83,6 +86,34 @@ func (s *Source) ResolveRef(
 		AuthorName: c.Author.Name,
 		Timestamp:  c.Author.When.UTC(),
 	}, nil
+}
+
+// Branches implements port.Brancher: the branches repo's ref
+// advertisement names, sorted, read without fetching a commit.
+func (s *Source) Branches(ctx context.Context, repo port.Repository) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, Timeout)
+	defer cancel()
+	ep, err := endpoint(repo.URL)
+	if err != nil {
+		return nil, err
+	}
+	sess, err := s.git.NewUploadPackSession(ep, nil)
+	if err != nil {
+		return nil, classify(repo, err)
+	}
+	defer sess.Close() //nolint:errcheck // an HTTP session holds nothing open
+	ar, err := sess.AdvertisedReferencesContext(ctx)
+	if err != nil {
+		return nil, classify(repo, err)
+	}
+	var out []string
+	for name := range ar.References {
+		if branch, ok := strings.CutPrefix(name, "refs/heads/"); ok {
+			out = append(out, branch)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
 }
 
 // ReadFile implements port.Source.
