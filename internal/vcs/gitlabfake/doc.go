@@ -7,7 +7,8 @@
 // the certificate a client trusts, such as through vcs.ca_file. A
 // Maintainer's token with the api scope mints and revokes project access
 // tokens, each acting as a bot user that is a member of its project
-// alone, and Minted lists what each mint asked for and whether it has
+// alone; a bot user's token, as AddBotToken issues, may mint none, which
+// GitLab answers with a 400 rather than a 403. Minted lists what each mint asked for and whether it has
 // been revoked. Fail and FailPath make it answer with a rate limit, a
 // server error or no answer at all, so the provider's handling of each is
 // tested without the real service, which the scheduled vcs-lab job
