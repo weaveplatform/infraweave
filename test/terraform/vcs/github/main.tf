@@ -1,6 +1,7 @@
 # The vcs-lab job's GitHub lab: two private repositories, each holding
-# seed.sh's history, both in the lab App's installation, so the App
-# reaches the second and a run's token minted for the first must not.
+# seed.sh's history. The lab App is installed on all of the
+# organization's repositories, so it reaches the second and a run's token
+# minted for the first must not.
 
 locals {
   names = {
@@ -17,13 +18,6 @@ resource "github_repository" "lab" {
   visibility  = "private"
   # seed.sh pushes to an empty repository.
   auto_init = false
-}
-
-resource "github_app_installation_repository" "lab" {
-  for_each = local.names
-
-  installation_id = var.installation_id
-  repository      = github_repository.lab[each.key].name
 }
 
 # SEED_USER and SEED_TOKEN come from the environment that runs apply.

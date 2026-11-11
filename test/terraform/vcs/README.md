@@ -9,7 +9,7 @@ is part of infraweave or its reference deployments.
 
 | Root | Creates |
 |---|---|
-| `github` | two private repositories in the lab organization, both added to the lab App's installation |
+| `github` | two private repositories in the lab organization, which the lab App, installed on all its repositories, reaches |
 | `gitlab` | two private projects in the lab group, and the integration's group access token at Maintainer with `api`, expiring in two days |
 | `bitbucketcloud` | two private repositories in the lab workspace's project |
 | `azuredevops` | two repositories in the lab project |
@@ -40,10 +40,13 @@ repositories.
 
 - **GitHub:**
   - an organization;
-  - an owner's classic token with `repo`, `delete_repo` and `admin:org`;
-  - a GitHub App with read access to contents and metadata, installed on
-    the organization for selected repositories, which the root adds the
-    run's repositories to.
+  - an owner's classic token with `repo` and `delete_repo`, or a
+    fine-grained token on the organization with repository
+    Administration write;
+  - a GitHub App owned by the organization, with read access to
+    contents and metadata, no webhook, installed on all the
+    organization's repositories; the lab holds nothing else for it to
+    reach.
 - **GitLab:** a group on GitLab.com, on a tier that allows group and
   project access tokens, and an owner's personal access token with `api`.
 - **Bitbucket Cloud:** a workspace with a project, and an Atlassian
@@ -66,7 +69,6 @@ reports "not configured" and fails.
 | GitHub | `VCS_GITHUB_ORGANIZATION` | the organization's login |
 | | `VCS_GITHUB_ADMIN_TOKEN` | the owner's token |
 | | `VCS_GITHUB_APP_ID`, `VCS_GITHUB_APP_PRIVATE_KEY` | the App's ID and PEM private key |
-| | `VCS_GITHUB_APP_INSTALLATION_ID` | its installation on the organization |
 | GitLab | `VCS_GITLAB_GROUP` | the group's full path |
 | | `VCS_GITLAB_ADMIN_TOKEN` | the owner's token |
 | Bitbucket Cloud | `VCS_BITBUCKET_CLOUD_WORKSPACE`, `VCS_BITBUCKET_CLOUD_PROJECT_KEY` | the workspace and its project |

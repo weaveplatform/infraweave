@@ -377,7 +377,7 @@ coverage it would contribute is not waived.
     environment secrets of a `vcs-lab` environment that only `main` may
     use, each reaching only its lab, which holds nothing else:
     - an owner's token on a test GitHub organization, and a GitHub App
-      installed on it for selected repositories;
+      the organization owns, installed on all its repositories;
     - an owner's token on a GitLab test group, from which the root makes
       the integration's group access token;
     - an Atlassian account's API token on a Bitbucket Cloud test workspace;
