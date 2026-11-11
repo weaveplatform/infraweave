@@ -23,13 +23,15 @@ import (
 // on github.com or a GitHub Enterprise Server; GitLab GitLab.com or a
 // self-managed GitLab, reached with an access token; Bitbucket Cloud its
 // workspaces, reached with an Atlassian account's email and API token;
-// and Bitbucket Data Center a server, reached with an HTTP access token.
+// Bitbucket Data Center a server, reached with an HTTP access token; and
+// Azure DevOps an organization, reached with a personal access token.
 const (
 	GitHub           = "GITHUB"
 	GitHubEnterprise = "GITHUB_ENTERPRISE"
 	GitLab           = "GITLAB"
 	BitbucketCloud   = "BITBUCKET_CLOUD"
 	BitbucketDC      = "BITBUCKET_DATACENTER"
+	AzureDevOps      = "AZURE_DEVOPS"
 )
 
 // ManifestTTL is how long a GitHub App manifest form stays open: the time
@@ -68,8 +70,10 @@ func checkSettings(in Input) []kernel.FieldError {
 	var errs []kernel.FieldError
 	for field, host := range map[string]string{
 		"apiHost": in.Settings.APIHost, "userFacingHost": in.Settings.UserFacingHost,
+		"organizationURL": in.Settings.OrganizationURL,
 	} {
-		if host != "" && !httpsURL(host) {
+		required := field == "organizationURL" && in.Provider == AzureDevOps
+		if (host != "" || required) && !httpsURL(host) {
 			errs = append(errs, kernel.FieldError{
 				Pointer: "/" + field, Reason: kernel.ReasonFormat,
 				Message: field + " is an https URL with a host and no credential.",

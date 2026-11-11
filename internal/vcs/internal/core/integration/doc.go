@@ -17,7 +17,8 @@
 // creates into a GitHub Enterprise integration with the form's ID; and
 // Details are an integration's webhook secret and URL and its App as its
 // host reports it. Create checks the provider settings every provider
-// shares and a Bitbucket Cloud integration's email; Update keeps an
+// shares, a Bitbucket Cloud integration's email and an Azure DevOps
+// integration's organization URL; Update keeps an
 // integration's space and each secret, its credential or webhook secret,
 // that it is given none of.
 //

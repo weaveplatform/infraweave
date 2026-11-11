@@ -170,7 +170,7 @@ func newFixture(t *testing.T) *fixture {
 			"admin":  {f.acct.ULID: all, f.team: all, f.hidden: all},
 			"reader": {f.acct.ULID: read, f.team: read},
 		}},
-		Providers: []string{"GITLAB", "BITBUCKET_CLOUD", "GITHUB_ENTERPRISE"},
+		Providers: []string{"GITLAB", "BITBUCKET_CLOUD", "GITHUB_ENTERPRISE", "AZURE_DEVOPS"},
 		Testers:   map[string]port.Tester{"GITLAB": tester{}},
 		Builtin: map[string]port.Integration{"GITHUB": {
 			Provider: "GITHUB", Credential: []byte("operator-key"),

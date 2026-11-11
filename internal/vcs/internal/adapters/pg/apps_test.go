@@ -201,7 +201,7 @@ func TestAccManifest(t *testing.T) {
 // https, an App ID that is not a number and a private key that is not
 // one; that an update keeps the private key when it carries none and
 // refuses another space; that a Bitbucket Cloud integration names a bare
-// email address; and that an integration with no App reports none.
+// email address and an Azure DevOps one an https organization URL; and that an integration with no App reports none.
 func TestAccAppSettings(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
@@ -279,6 +279,17 @@ func TestAccAppSettings(t *testing.T) {
 			func() error { _, err := f.svc.Create(ctx, f.admin, bb); return err }(),
 		); !slices.Equal(got, []string{"/email"}) {
 			t.Errorf("a Bitbucket Cloud email %q = %v", email, got)
+		}
+	}
+
+	for _, org := range []string{"", "http://dev.azure.example/acme"} {
+		ado := gitlab("Azure", "", false)
+		ado.Provider, ado.Settings = "AZURE_DEVOPS", port.Settings{OrganizationURL: org}
+		if got := pointers(
+			t,
+			func() error { _, err := f.svc.Create(ctx, f.admin, ado); return err }(),
+		); !slices.Equal(got, []string{"/organizationURL"}) {
+			t.Errorf("an Azure DevOps organization URL %q = %v", org, got)
 		}
 	}
 

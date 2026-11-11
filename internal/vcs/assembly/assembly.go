@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/azuredevops"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/bitbucketcloud"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/bitbucketdc"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/github"
@@ -117,8 +118,8 @@ type Domain struct {
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
-// as the GIT provider, GitHub's, GitLab's, Bitbucket Cloud's and
-// Bitbucket Data Center's, over https with the system's roots and those of vcs.ca_file. It fails when vcs.ca_file cannot be read or
+// as the GIT provider, GitHub's, GitLab's, Bitbucket Cloud's, Bitbucket
+// Data Center's and Azure DevOps's, over https with the system's roots and those of vcs.ca_file. It fails when vcs.ca_file cannot be read or
 // holds no certificate, and when vcs.github_app names an App whose files
 // cannot be read.
 func New(d Deps) (*Domain, error) {
@@ -145,12 +146,14 @@ func New(d Deps) (*Domain, error) {
 		RootCAs: roots, APIHost: d.Settings.BitbucketCloud.APIHost,
 	})
 	bbdc := bitbucketdc.New(bitbucketdc.Options{RootCAs: roots})
+	ado := azuredevops.New(azuredevops.Options{RootCAs: roots})
 	integrations := integration.New(integration.Deps{
 		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers,
 		Testers: map[string]port.Tester{
 			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
 			integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc,
+			integration.AzureDevOps: ado,
 		},
 		Builtin: builtin, Apps: gh, Public: d.Public,
 	})
@@ -162,6 +165,7 @@ func New(d Deps) (*Domain, error) {
 			integration.GitLab:           gl,
 			integration.BitbucketCloud:   bbc,
 			integration.BitbucketDC:      bbdc,
+			integration.AzureDevOps:      ado,
 		}, integrations),
 		integrations: integrations,
 		api:          http.New(integrations, d.Spaces, nil),

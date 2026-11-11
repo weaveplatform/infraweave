@@ -70,15 +70,17 @@ type Source interface {
 
 // Settings are an integration's provider settings, each empty when its
 // provider has none: the API and user-facing hosts, the user and e-mail
-// a token belongs to, an Azure DevOps organization's URL and a GitHub
-// App's ID.
+// a token belongs to, an Azure DevOps organization's URL and the projects
+// of it the integration reaches, every one when empty, and a GitHub App's
+// ID.
 type Settings struct {
-	APIHost         string `json:"apiHost,omitempty"`
-	UserFacingHost  string `json:"userFacingHost,omitempty"`
-	Username        string `json:"username,omitempty"`
-	Email           string `json:"email,omitempty"`
-	OrganizationURL string `json:"organizationUrl,omitempty"`
-	AppID           string `json:"appId,omitempty"`
+	APIHost            string   `json:"apiHost,omitempty"`
+	UserFacingHost     string   `json:"userFacingHost,omitempty"`
+	Username           string   `json:"username,omitempty"`
+	Email              string   `json:"email,omitempty"`
+	OrganizationURL    string   `json:"organizationUrl,omitempty"`
+	AccessibleProjects []string `json:"accessibleProjects,omitempty"`
+	AppID              string   `json:"appId,omitempty"`
 }
 
 // Integration is a VCS integration as a provider's client uses it, with
