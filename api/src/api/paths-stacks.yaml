@@ -2315,6 +2315,14 @@ components:
     Run:
       description: Run represents one execution of a stack.
       properties:
+        allowedActions:
+          description: >-
+            The actions the caller may take on the run: those its state
+            allows next, that the caller holds on the stack's space. A run
+            that has ended allows none.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
         branch:
           description: Name of the branch for which this Run has been created.
           type: string
@@ -2485,6 +2493,7 @@ components:
             the dependency graph. A standalone Run's workflowId is its own id.
           type: string
       required:
+        - allowedActions
         - branch
         - canConfirm
         - canPromote

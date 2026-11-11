@@ -167,6 +167,41 @@ func TestAccFindPaging(t *testing.T) {
 	}
 }
 
+// TestAccFindOffset reads a first page after skipping rows, which has a
+// page before it, and counts the rows the scope and the predicates keep
+// whatever the paging; a cursor's page ignores the offset.
+func TestAccFindOffset(t *testing.T) {
+	w := newWorld(t)
+	s := Scope{Where: "i.state <> $1", Args: []any{"GONE"}, Reachable: w.reach("a", "a1", "b")}
+	in := ks.Input{First: new(int32(2)), OrderBy: []ks.Order{{Field: "createdAt"}}, Offset: 3}
+	r := w.find(t, s, in)
+	if got := slugs(r); !reflect.DeepEqual(got, []string{"b-1", "a1-0"}) || !r.HasPrevious ||
+		!r.HasNext {
+		t.Errorf("offset page = %v %+v", got, r)
+	}
+	in.After = r.End
+	if got := slugs(w.find(t, s, in)); !reflect.DeepEqual(got, []string{"a1-1"}) {
+		t.Errorf("page after the offset page = %v", got)
+	}
+	n, err := Count(t.Context(), w.db, items, s, in)
+	if err != nil || n != 6 {
+		t.Errorf("Count = %d, %v, want 6", n, err)
+	}
+	in.Predicates = []ks.Predicate{
+		{Field: "flag", Constraint: ks.Constraint{BooleanEquals: []bool{true}}},
+	}
+	if n, err = Count(t.Context(), w.db, items, s, in); err != nil || n != 3 {
+		t.Errorf("Count of flagged rows = %d, %v, want 3", n, err)
+	}
+	in.Predicates = []ks.Predicate{{Field: "nope"}}
+	if _, err = Count(t.Context(), w.db, items, s, in); !errors.As(err, new(*ks.Invalid)) {
+		t.Errorf("Count of an unknown field = %v", err)
+	}
+	if _, err = Count(t.Context(), broken{}, items, s, ks.Input{}); !errors.Is(err, errBroken) {
+		t.Errorf("Count = %v", err)
+	}
+}
+
 // TestAccFindConstraints runs a predicate of each constraint against the
 // rows of a and its descendants.
 func TestAccFindConstraints(t *testing.T) {

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -17,6 +18,8 @@ type Store interface {
 		acct kernel.AccountID,
 		stacks []kernel.ULID,
 	) (map[kernel.ULID]kernel.ULID, error)
+	// StackOf reads the stack of acct's run, false when acct lacks it.
+	StackOf(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, bool, error)
 	// DeleteStack deletes acct's stack's runs with their transitions,
 	// and its run lock, tracked run and outputs, in the context's
 	// transaction.
@@ -41,6 +44,23 @@ func (s *Service) Blockers(
 		return map[kernel.ULID]kernel.ULID{}, nil
 	}
 	return s.store.Blockers(ctx, acct, stacks) //nolint:wrapcheck // the store names the read
+}
+
+// RunStack answers the stack of acct's run; stacksapi.ErrNotFound when
+// acct lacks the run.
+func (s *Service) RunStack(
+	ctx context.Context,
+	acct kernel.AccountID,
+	run kernel.ULID,
+) (kernel.ULID, error) {
+	stack, ok, err := s.store.StackOf(ctx, acct, run)
+	if err != nil {
+		return kernel.ULID{}, err //nolint:wrapcheck // the store names the read
+	}
+	if !ok {
+		return kernel.ULID{}, fmt.Errorf("%w: run %s", stacksapi.ErrNotFound, run)
+	}
+	return stack, nil
 }
 
 // LostOnMove answers nothing: a stack's runs belong to the stack, not to

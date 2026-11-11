@@ -298,6 +298,7 @@ type statement struct {
 	n        int
 	backward bool
 	cursor   bool
+	skipped  bool
 	list     string
 }
 
@@ -360,6 +361,10 @@ func compile(e Entity, s Scope, in kernelsearch.Input) (statement, error) {
 	st.sql = "SELECT " + e.Select + ", " + strings.Join(selected, ", ") +
 		" FROM " + e.From + " WHERE " + where +
 		" ORDER BY " + strings.Join(order, ", ") + " LIMIT " + a.add(st.n+1)
+	if in.Offset > 0 && !st.cursor && !st.backward {
+		st.skipped = true
+		st.sql += " OFFSET " + a.add(in.Offset)
+	}
 	st.args = a
 	return st, nil
 }
@@ -462,9 +467,29 @@ func Find[T any](
 	case st.backward:
 		out.HasPrevious, out.HasNext = more, st.cursor
 	default:
-		out.HasPrevious, out.HasNext = st.cursor, more
+		out.HasPrevious, out.HasNext = st.cursor || st.skipped, more
 	}
 	return out, nil
+}
+
+// Count counts e's rows under s that in keeps, ignoring its paging.
+func Count(
+	ctx context.Context,
+	q tx.Querier,
+	e Entity,
+	s Scope,
+	in kernelsearch.Input,
+) (int, error) {
+	if err := kernelsearch.Check(e.Fields(), in); err != nil {
+		return 0, err //nolint:wrapcheck // answered as it is
+	}
+	a := args(slices.Clone(s.Args))
+	var n int
+	if err := q.QueryRow(ctx, "SELECT count(*) FROM "+e.From+" WHERE "+
+		filter(e, s, in.Predicates, in.FullText, &a), a...).Scan(&n); err != nil {
+		return 0, fmt.Errorf("count %s: %w", e.List, sql.Unavailable(err))
+	}
+	return n, nil
 }
 
 // Suggest counts e's rows under s that in keeps and lists, for each field

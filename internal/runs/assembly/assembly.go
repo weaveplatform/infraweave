@@ -3,6 +3,7 @@ package assembly
 import (
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
@@ -11,7 +12,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -24,11 +27,18 @@ func Stream() migrate.Stream { return pg.Stream() }
 // nightly orphan count.
 func Held() []integrity.Held { return pg.Held() }
 
+// Entity is the name the access domain resolves a run's space by, for
+// the operations whose subject is a run.
+const Entity = "run"
+
 // Deps are what the runs domain takes from the platform and the domains
-// before it: the database, the stacks domain, the outbox its runs' events
-// go to, the queue its jobs go to, and a clock, time.Now when nil.
+// before it: the database, the access domain's spaces and authorizer, the
+// stacks domain, the outbox its runs' events go to, the queue its jobs go
+// to, and a clock, time.Now when nil.
 type Deps struct {
 	DB     queue.DB
+	Spaces accessapi.Spaces
+	Authz  accessapi.Authorizer
 	Stacks stacksapi.Stacks
 	Events lifecycle.Events
 	Jobs   schedule.Queue
@@ -41,6 +51,8 @@ type Domain struct {
 	lifecycle *lifecycle.Lifecycle
 	scheduler *schedule.Scheduler
 	trigger   *trigger.Service
+	read      *read.Service
+	control   *control.Service
 }
 
 // New constructs the domain on d.
@@ -49,6 +61,7 @@ func New(d Deps) *Domain {
 	lc := lifecycle.New(lifecycle.Deps{
 		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now,
 	})
+	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz})
 	return &Domain{
 		runs:      core.New(store),
 		lifecycle: lc,
@@ -56,10 +69,19 @@ func New(d Deps) *Domain {
 			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs,
 		}),
 		trigger: trigger.New(trigger.Deps{
-			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc,
+			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,
+		}),
+		read: views,
+		control: control.New(control.Deps{
+			DB: d.DB, Store: store, Stacks: d.Stacks, Authz: d.Authz, Lifecycle: lc,
+			Views: views, Now: d.Now,
 		}),
 	}
 }
+
+// SpaceOf finds the space of a run's stack by the run's ID, which
+// internal/app registers with the access domain for Entity.
+func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.read.SpaceOf }
 
 // Jobs are the domain's job handlers, which the scheduler registers:
 // lifecycle.ScheduleKind's, which moves a stack's queued runs to READY.
@@ -91,8 +113,8 @@ func (d *Domain) BindSources(s runsapi.RunSources, r stacksapi.StackSources) {
 }
 
 // StackStatus is the domain's answer to the stack view's read of the run
-// blocking each stack, a back edge internal/app binds in the stacks
-// domain.
+// blocking each stack and to runStack's read of a run's stack, a back
+// edge internal/app binds in the stacks domain.
 func (d *Domain) StackStatus() stacksapi.StackStatus { return d.runs }
 
 // StackGuard is the domain's say in the stacks domain's moves and
@@ -110,5 +132,5 @@ func (d *Domain) API() RunsAPI {
 	if d == nil {
 		return RunsAPI{}
 	}
-	return http.New(d.trigger)
+	return http.New(d.trigger, d.read, d.control)
 }

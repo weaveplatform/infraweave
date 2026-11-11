@@ -3,8 +3,11 @@ package pg
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -73,6 +76,25 @@ func (s *Store) Blockers(
 		return nil, fmt.Errorf("runs: read the stacks' run locks: %w", sql.Unavailable(err))
 	}
 	return out, nil
+}
+
+// StackOf reads the stack of acct's run, false when acct lacks it.
+func (s *Store) StackOf(
+	ctx context.Context,
+	acct kernel.AccountID,
+	run kernel.ULID,
+) (kernel.ULID, bool, error) {
+	var stack kernel.ULID
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT stack_id FROM runs
+		WHERE account_id = $1 AND id = $2`, acct, run).Scan(&stack)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return kernel.ULID{}, false, nil
+	case err != nil:
+		return kernel.ULID{}, false, fmt.Errorf("runs: read the stack of run %s: %w", run,
+			sql.Unavailable(err))
+	}
+	return stack, true, nil
 }
 
 // DeleteStack deletes acct's stack's outputs, tracked run, run lock and

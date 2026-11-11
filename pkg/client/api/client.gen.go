@@ -6057,6 +6057,9 @@ type RoleUpdateInput struct {
 
 // Run Run represents one execution of a stack.
 type Run struct {
+	// AllowedActions The actions the caller may take on the run: those its state allows next, that the caller holds on the stack's space. A run that has ended allows none.
+	AllowedActions []Action `json:"allowedActions"`
+
 	// Branch Name of the branch for which this Run has been created.
 	Branch string `json:"branch"`
 
@@ -6200,6 +6203,11 @@ type Run struct {
 	WorkflowId string `json:"workflowId"`
 }
 
+// RunCancelRequest The arguments of runCancel not carried in the path.
+type RunCancelRequest struct {
+	Note *string `json:"note,omitempty"`
+}
+
 // RunComment RunComment represents a single comment on a Run.
 type RunComment struct {
 	// Body Body of the comment, supports Markdown.
@@ -6210,6 +6218,16 @@ type RunComment struct {
 
 	// Username Username of the commenter.
 	Username string `json:"username"`
+}
+
+// RunConnection RunConnection represents a single run in a page of searchRuns results.
+type RunConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node RunWithStack is a run together with the stack (or module) it belongs to, so
+	// the account-wide runs view can render stack details without a separate
+	// per-stack query.
+	Node RunWithStack `json:"node"`
 }
 
 // RunDependency defines model for RunDependency.
@@ -6337,6 +6355,12 @@ type RunPolicyReceipt struct {
 // RunPriorityPreset RunPriorityPreset represents predefined priority levels for runs.
 type RunPriorityPreset string
 
+// RunPrioritySetRequest The arguments of runPrioritySet not carried in the path.
+type RunPrioritySetRequest struct {
+	// Preset RunPriorityPreset represents predefined priority levels for runs.
+	Preset RunPriorityPreset `json:"preset"`
+}
+
 // RunRef A reference to a Run; fetch it with GET /runs/{runId}.
 type RunRef struct {
 	Id string `json:"id"`
@@ -6458,6 +6482,21 @@ type RunTriggerRequest struct {
 
 // RunType RunType is a type of the Run.
 type RunType string
+
+// RunWithStack RunWithStack is a run together with the stack (or module) it belongs to, so
+// the account-wide runs view can render stack details without a separate
+// per-stack query.
+type RunWithStack struct {
+	// IsModule Whether the run belongs to a module. Surfaced here because the Stack type
+	// does not expose it.
+	IsModule bool `json:"isModule"`
+
+	// Run A reference to a Run; fetch it with GET /runs/{runId}.
+	Run RunRef `json:"run"`
+
+	// Stack A reference to a Stack; fetch it with GET /stacks/{stackId}.
+	Stack StackRef `json:"stack"`
+}
 
 // RunWorkerFinding defines model for RunWorkerFinding.
 type RunWorkerFinding struct {
@@ -6914,6 +6953,22 @@ type SearchQueryRequestedPage string
 type SearchRunIgnoredTriggersOutput struct {
 	Edges    []RunIgnoredTriggersConnection `json:"edges"`
 	PageInfo PageInfo                       `json:"pageInfo"`
+}
+
+// SearchRunsOutput SearchRunsOutput is a page of account-wide runs returned by searchRuns.
+type SearchRunsOutput struct {
+	Edges    []RunConnection `json:"edges"`
+	PageInfo PageInfo        `json:"pageInfo"`
+
+	// Total Total number of runs matching the query, ignoring pagination.
+	// Computed with a single COUNT query and resolved lazily, only select it when needed.
+	Total int32 `json:"total"`
+}
+
+// SearchRunsRequest The arguments of searchRuns not carried in the path.
+type SearchRunsRequest struct {
+	Input  SearchInput `json:"input"`
+	Offset *int32      `json:"offset,omitempty"`
 }
 
 // SearchSpaceContextsOutput defines model for SearchSpaceContextsOutput.
@@ -10827,6 +10882,18 @@ type StackRunsInRangeParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// RunCancelParams defines parameters for RunCancel.
+type RunCancelParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// RunPrioritySetParams defines parameters for RunPrioritySet.
+type RunPrioritySetParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // StackScheduledDeleteParams defines parameters for StackScheduledDelete.
 type StackScheduledDeleteParams struct {
 	Id string `form:"id" json:"id"`
@@ -11384,6 +11451,12 @@ type RolePatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 // RoleUpdateJSONRequestBody defines body for RoleUpdate for application/json ContentType.
 type RoleUpdateJSONRequestBody = RoleUpdateInput
 
+// SearchRunsJSONRequestBody defines body for SearchRuns for application/json ContentType.
+type SearchRunsJSONRequestBody = SearchRunsRequest
+
+// SearchRunsSuggestionsJSONRequestBody defines body for SearchRunsSuggestions for application/json ContentType.
+type SearchRunsSuggestionsJSONRequestBody = SearchSuggestionsInput
+
 // SearchSpaceContextsJSONRequestBody defines body for SearchSpaceContexts for application/json ContentType.
 type SearchSpaceContextsJSONRequestBody = SearchSpaceContextsRequest
 
@@ -11488,6 +11561,12 @@ type ProposeWithOverridesJSONRequestBody = ProposeWithOverridesRequest
 
 // RunTriggerJSONRequestBody defines body for RunTrigger for application/json ContentType.
 type RunTriggerJSONRequestBody = RunTriggerRequest
+
+// RunCancelJSONRequestBody defines body for RunCancel for application/json ContentType.
+type RunCancelJSONRequestBody = RunCancelRequest
+
+// RunPrioritySetJSONRequestBody defines body for RunPrioritySet for application/json ContentType.
+type RunPrioritySetJSONRequestBody = RunPrioritySetRequest
 
 // StackScheduledDeleteCreateJSONRequestBody defines body for StackScheduledDeleteCreate for application/json ContentType.
 type StackScheduledDeleteCreateJSONRequestBody = ScheduledDeleteInput
@@ -15363,6 +15442,82 @@ type ClientInterface interface {
 	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 	RoleUpdate(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SearchRunsWithBody Search Runs
+	//
+	// Paginated, account-wide run history ordered newest-first, over the
+	// runs of the stacks in spaces the caller may read. Scope the window
+	// with a TimeInRange predicate on the `createdAt` field.
+	//
+	// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+	// is alphabetical by the state's name, so equal states group together.
+	//
+	// Paginate with either input.after (keyset cursor, sequential) or offset
+	// (random-access, for loading pages concurrently), not both. offset skips
+	// that many rows in the ordered result; use input.first as the page size and
+	// SearchRunsOutput.total to compute the page count.
+	//
+	// Offset paging trades keyset's stability for random access, so pages can
+	// skip or repeat rows if runs are created or deleted mid-scan.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+	SearchRunsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchRuns Search Runs
+	//
+	// Paginated, account-wide run history ordered newest-first, over the
+	// runs of the stacks in spaces the caller may read. Scope the window
+	// with a TimeInRange predicate on the `createdAt` field.
+	//
+	// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+	// is alphabetical by the state's name, so equal states group together.
+	//
+	// Paginate with either input.after (keyset cursor, sequential) or offset
+	// (random-access, for loading pages concurrently), not both. offset skips
+	// that many rows in the ordered result; use input.first as the page size and
+	// SearchRunsOutput.total to compute the page count.
+	//
+	// Offset paging trades keyset's stability for random access, so pages can
+	// skip or repeat rows if runs are created or deleted mid-scan.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+	SearchRuns(ctx context.Context, body SearchRunsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchRunsSuggestionsWithBody Search Runs Suggestions
+	//
+	// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+	SearchRunsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchRunsSuggestions Search Runs Suggestions
+	//
+	// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+	SearchRunsSuggestions(ctx context.Context, body SearchRunsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Run Get Run
+	//
+	// Details of a single Run by ID, without needing to know the stack.
+	//
+	// Corresponds with GET /runs/{runId} (the `Run` operationId).
+	Run(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunStack Get Run Stack
+	//
+	// Return the stack the run belongs to.
+	//
+	// Corresponds with GET /runs/{runId}/stack (the `RunStack` operationId).
+	RunStack(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Seats Seats
 	//
 	// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -16267,6 +16422,44 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/runs-in-range (the `StackRunsInRange` operationId).
 	StackRunsInRange(ctx context.Context, stackId string, params *StackRunsInRangeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunCancelWithBody Cancel Run
+	//
+	// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+	RunCancelWithBody(ctx context.Context, stackId string, runId string, params *RunCancelParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunCancel Cancel Run
+	//
+	// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+	RunCancel(ctx context.Context, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunPrioritySetWithBody Set Run Priority
+	//
+	// Sets the priority preset of a run that has not ended.
+	// Controls run scheduling priority with named presets.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+	RunPrioritySetWithBody(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunPrioritySet Set Run Priority
+	//
+	// Sets the priority preset of a run that has not ended.
+	// Controls run scheduling priority with named presets.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+	RunPrioritySet(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledDelete Stack scheduled delete
 	//
@@ -21497,6 +21690,142 @@ func (c *Client) RoleUpdate(ctx context.Context, roleId string, params *RoleUpda
 	return c.Client.Do(req)
 }
 
+// SearchRunsWithBody Search Runs
+//
+// Paginated, account-wide run history ordered newest-first, over the
+// runs of the stacks in spaces the caller may read. Scope the window
+// with a TimeInRange predicate on the `createdAt` field.
+//
+// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+// is alphabetical by the state's name, so equal states group together.
+//
+// Paginate with either input.after (keyset cursor, sequential) or offset
+// (random-access, for loading pages concurrently), not both. offset skips
+// that many rows in the ordered result; use input.first as the page size and
+// SearchRunsOutput.total to compute the page count.
+//
+// Offset paging trades keyset's stability for random access, so pages can
+// skip or repeat rows if runs are created or deleted mid-scan.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+func (c *Client) SearchRunsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchRunsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchRuns Search Runs
+//
+// Paginated, account-wide run history ordered newest-first, over the
+// runs of the stacks in spaces the caller may read. Scope the window
+// with a TimeInRange predicate on the `createdAt` field.
+//
+// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+// is alphabetical by the state's name, so equal states group together.
+//
+// Paginate with either input.after (keyset cursor, sequential) or offset
+// (random-access, for loading pages concurrently), not both. offset skips
+// that many rows in the ordered result; use input.first as the page size and
+// SearchRunsOutput.total to compute the page count.
+//
+// Offset paging trades keyset's stability for random access, so pages can
+// skip or repeat rows if runs are created or deleted mid-scan.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+func (c *Client) SearchRuns(ctx context.Context, body SearchRunsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchRunsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchRunsSuggestionsWithBody Search Runs Suggestions
+//
+// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+func (c *Client) SearchRunsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchRunsSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchRunsSuggestions Search Runs Suggestions
+//
+// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+func (c *Client) SearchRunsSuggestions(ctx context.Context, body SearchRunsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchRunsSuggestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Run Get Run
+//
+// Details of a single Run by ID, without needing to know the stack.
+//
+// Corresponds with GET /runs/{runId} (the `Run` operationId).
+func (c *Client) Run(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunRequest(c.Server, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunStack Get Run Stack
+//
+// Return the stack the run belongs to.
+//
+// Corresponds with GET /runs/{runId}/stack (the `RunStack` operationId).
+func (c *Client) RunStack(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunStackRequest(c.Server, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Seats Seats
 //
 // The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -23462,6 +23791,84 @@ func (c *Client) RunTrigger(ctx context.Context, stackId string, params *RunTrig
 // Corresponds with GET /stacks/{stackId}/runs-in-range (the `StackRunsInRange` operationId).
 func (c *Client) StackRunsInRange(ctx context.Context, stackId string, params *StackRunsInRangeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackRunsInRangeRequest(c.Server, stackId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunCancelWithBody Cancel Run
+//
+// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+func (c *Client) RunCancelWithBody(ctx context.Context, stackId string, runId string, params *RunCancelParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunCancelRequestWithBody(c.Server, stackId, runId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunCancel Cancel Run
+//
+// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+func (c *Client) RunCancel(ctx context.Context, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunCancelRequest(c.Server, stackId, runId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunPrioritySetWithBody Set Run Priority
+//
+// Sets the priority preset of a run that has not ended.
+// Controls run scheduling priority with named presets.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+func (c *Client) RunPrioritySetWithBody(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunPrioritySetRequestWithBody(c.Server, stackId, runId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunPrioritySet Set Run Priority
+//
+// Sets the priority preset of a run that has not ended.
+// Controls run scheduling priority with named presets.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+func (c *Client) RunPrioritySet(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunPrioritySetRequest(c.Server, stackId, runId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -34329,6 +34736,154 @@ func NewRoleUpdateRequestWithBody(server string, roleId string, params *RoleUpda
 	return req, nil
 }
 
+// NewSearchRunsRequest calls the generic SearchRuns builder with application/json body
+func NewSearchRunsRequest(server string, body SearchRunsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchRunsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchRunsRequestWithBody constructs an http.Request for the SearchRuns method, with any body, and a specified content type
+func NewSearchRunsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchRunsSuggestionsRequest calls the generic SearchRunsSuggestions builder with application/json body
+func NewSearchRunsSuggestionsRequest(server string, body SearchRunsSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchRunsSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchRunsSuggestionsRequestWithBody constructs an http.Request for the SearchRunsSuggestions method, with any body, and a specified content type
+func NewSearchRunsSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRunRequest constructs an http.Request for the Run method
+func NewRunRequest(server string, runId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRunStackRequest constructs an http.Request for the RunStack method
+func NewRunStackRequest(server string, runId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/stack", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSeatsRequest constructs an http.Request for the Seats method
 func NewSeatsRequest(server string) (*http.Request, error) {
 	var err error
@@ -38404,6 +38959,144 @@ func NewStackRunsInRangeRequest(server string, stackId string, params *StackRuns
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRunCancelRequest calls the generic RunCancel builder with application/json body
+func NewRunCancelRequest(server string, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunCancelRequestWithBody(server, stackId, runId, params, "application/json", bodyReader)
+}
+
+// NewRunCancelRequestWithBody constructs an http.Request for the RunCancel method, with any body, and a specified content type
+func NewRunCancelRequestWithBody(server string, stackId string, runId string, params *RunCancelParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/%s/cancel", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRunPrioritySetRequest calls the generic RunPrioritySet builder with application/json body
+func NewRunPrioritySetRequest(server string, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunPrioritySetRequestWithBody(server, stackId, runId, params, "application/json", bodyReader)
+}
+
+// NewRunPrioritySetRequestWithBody constructs an http.Request for the RunPrioritySet method, with any body, and a specified content type
+func NewRunPrioritySetRequestWithBody(server string, stackId string, runId string, params *RunPrioritySetParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/%s/priority-set", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -44427,6 +45120,86 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 	RoleUpdateWithResponse(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RoleUpdateResponse, error)
 
+	// SearchRunsWithBodyWithResponse Search Runs
+	//
+	// Paginated, account-wide run history ordered newest-first, over the
+	// runs of the stacks in spaces the caller may read. Scope the window
+	// with a TimeInRange predicate on the `createdAt` field.
+	//
+	// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+	// is alphabetical by the state's name, so equal states group together.
+	//
+	// Paginate with either input.after (keyset cursor, sequential) or offset
+	// (random-access, for loading pages concurrently), not both. offset skips
+	// that many rows in the ordered result; use input.first as the page size and
+	// SearchRunsOutput.total to compute the page count.
+	//
+	// Offset paging trades keyset's stability for random access, so pages can
+	// skip or repeat rows if runs are created or deleted mid-scan.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+	SearchRunsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchRunsResponse, error)
+
+	// SearchRunsWithResponse Search Runs
+	//
+	// Paginated, account-wide run history ordered newest-first, over the
+	// runs of the stacks in spaces the caller may read. Scope the window
+	// with a TimeInRange predicate on the `createdAt` field.
+	//
+	// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+	// is alphabetical by the state's name, so equal states group together.
+	//
+	// Paginate with either input.after (keyset cursor, sequential) or offset
+	// (random-access, for loading pages concurrently), not both. offset skips
+	// that many rows in the ordered result; use input.first as the page size and
+	// SearchRunsOutput.total to compute the page count.
+	//
+	// Offset paging trades keyset's stability for random access, so pages can
+	// skip or repeat rows if runs are created or deleted mid-scan.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+	SearchRunsWithResponse(ctx context.Context, body SearchRunsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchRunsResponse, error)
+
+	// SearchRunsSuggestionsWithBodyWithResponse Search Runs Suggestions
+	//
+	// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+	SearchRunsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchRunsSuggestionsResponse, error)
+
+	// SearchRunsSuggestionsWithResponse Search Runs Suggestions
+	//
+	// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+	SearchRunsSuggestionsWithResponse(ctx context.Context, body SearchRunsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchRunsSuggestionsResponse, error)
+
+	// RunWithResponse Get Run
+	//
+	// Details of a single Run by ID, without needing to know the stack.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId} (the `Run` operationId).
+	RunWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RunResponse, error)
+
+	// RunStackWithResponse Get Run Stack
+	//
+	// Return the stack the run belongs to.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId}/stack (the `RunStack` operationId).
+	RunStackWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RunStackResponse, error)
+
 	// SeatsWithResponse Seats
 	//
 	// The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -45405,6 +46178,44 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/runs-in-range (the `StackRunsInRange` operationId).
 	StackRunsInRangeWithResponse(ctx context.Context, stackId string, params *StackRunsInRangeParams, reqEditors ...RequestEditorFn) (*StackRunsInRangeResponse, error)
+
+	// RunCancelWithBodyWithResponse Cancel Run
+	//
+	// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+	RunCancelWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunCancelParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunCancelResponse, error)
+
+	// RunCancelWithResponse Cancel Run
+	//
+	// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+	RunCancelWithResponse(ctx context.Context, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*RunCancelResponse, error)
+
+	// RunPrioritySetWithBodyWithResponse Set Run Priority
+	//
+	// Sets the priority preset of a run that has not ended.
+	// Controls run scheduling priority with named presets.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+	RunPrioritySetWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunPrioritySetResponse, error)
+
+	// RunPrioritySetWithResponse Set Run Priority
+	//
+	// Sets the priority preset of a run that has not ended.
+	// Controls run scheduling priority with named presets.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+	RunPrioritySetWithResponse(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody, reqEditors ...RequestEditorFn) (*RunPrioritySetResponse, error)
 
 	// StackScheduledDeleteWithResponse Stack scheduled delete
 	//
@@ -64493,6 +65304,372 @@ func (r RoleUpdateResponse) ContentType() string {
 	return ""
 }
 
+// SearchRunsResponse200Headers the declared response headers of an HTTP 200 response for SearchRuns
+type SearchRunsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchRunsResponse429Headers the declared response headers of an HTTP 429 response for SearchRuns
+type SearchRunsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchRunsResponse503Headers the declared response headers of an HTTP 503 response for SearchRuns
+type SearchRunsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchRunsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchRunsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchRunsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchRunsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchRunsResponse) GetJSON200() *SearchRunsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchRunsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchRunsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchRunsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchRunsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchRunsSuggestions
+type SearchRunsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchRunsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchRunsSuggestions
+type SearchRunsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchRunsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchRunsSuggestions
+type SearchRunsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchRunsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchRunsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchRunsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchRunsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchRunsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchRunsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchRunsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchRunsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchRunsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchRunsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchRunsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchRunsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunResponse200Headers the declared response headers of an HTTP 200 response for Run
+type RunResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunResponse429Headers the declared response headers of an HTTP 429 response for Run
+type RunResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunResponse503Headers the declared response headers of an HTTP 503 response for Run
+type RunResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunStackResponse200Headers the declared response headers of an HTTP 200 response for RunStack
+type RunStackResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunStackResponse429Headers the declared response headers of an HTTP 429 response for RunStack
+type RunStackResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunStackResponse503Headers the declared response headers of an HTTP 503 response for RunStack
+type RunStackResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Stack
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunStackResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunStackResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunStackResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunStackResponse) GetJSON200() *Stack {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunStackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunStackResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunStackResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunStackResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunStackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunStackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SeatsResponse200Headers the declared response headers of an HTTP 200 response for Seats
 type SeatsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -71699,6 +72876,224 @@ func (r StackRunsInRangeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StackRunsInRangeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunCancelResponse200Headers the declared response headers of an HTTP 200 response for RunCancel
+type RunCancelResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunCancelResponse429Headers the declared response headers of an HTTP 429 response for RunCancel
+type RunCancelResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunCancelResponse503Headers the declared response headers of an HTTP 503 response for RunCancel
+type RunCancelResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunCancelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunCancelResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunCancelResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunCancelResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunCancelResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunCancelResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunCancelResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunCancelResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunCancelResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunCancelResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunCancelResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunCancelResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunCancelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunCancelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunCancelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunPrioritySetResponse200Headers the declared response headers of an HTTP 200 response for RunPrioritySet
+type RunPrioritySetResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunPrioritySetResponse429Headers the declared response headers of an HTTP 429 response for RunPrioritySet
+type RunPrioritySetResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunPrioritySetResponse503Headers the declared response headers of an HTTP 503 response for RunPrioritySet
+type RunPrioritySetResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunPrioritySetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunPrioritySetResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunPrioritySetResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunPrioritySetResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunPrioritySetResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunPrioritySetResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunPrioritySetResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunPrioritySetResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunPrioritySetResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunPrioritySetResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunPrioritySetResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunPrioritySetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunPrioritySetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunPrioritySetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunPrioritySetResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -81943,6 +83338,122 @@ func (c *ClientWithResponses) RoleUpdateWithResponse(ctx context.Context, roleId
 	return ParseRoleUpdateResponse(rsp)
 }
 
+// SearchRunsWithBodyWithResponse Search Runs
+//
+// Paginated, account-wide run history ordered newest-first, over the
+// runs of the stacks in spaces the caller may read. Scope the window
+// with a TimeInRange predicate on the `createdAt` field.
+//
+// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+// is alphabetical by the state's name, so equal states group together.
+//
+// Paginate with either input.after (keyset cursor, sequential) or offset
+// (random-access, for loading pages concurrently), not both. offset skips
+// that many rows in the ordered result; use input.first as the page size and
+// SearchRunsOutput.total to compute the page count.
+//
+// Offset paging trades keyset's stability for random access, so pages can
+// skip or repeat rows if runs are created or deleted mid-scan.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+func (c *ClientWithResponses) SearchRunsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchRunsResponse, error) {
+	rsp, err := c.SearchRunsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchRunsResponse(rsp)
+}
+
+// SearchRunsWithResponse Search Runs
+//
+// Paginated, account-wide run history ordered newest-first, over the
+// runs of the stacks in spaces the caller may read. Scope the window
+// with a TimeInRange predicate on the `createdAt` field.
+//
+// Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+// is alphabetical by the state's name, so equal states group together.
+//
+// Paginate with either input.after (keyset cursor, sequential) or offset
+// (random-access, for loading pages concurrently), not both. offset skips
+// that many rows in the ordered result; use input.first as the page size and
+// SearchRunsOutput.total to compute the page count.
+//
+// Offset paging trades keyset's stability for random access, so pages can
+// skip or repeat rows if runs are created or deleted mid-scan.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/search (the `SearchRuns` operationId).
+func (c *ClientWithResponses) SearchRunsWithResponse(ctx context.Context, body SearchRunsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchRunsResponse, error) {
+	rsp, err := c.SearchRuns(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchRunsResponse(rsp)
+}
+
+// SearchRunsSuggestionsWithBodyWithResponse Search Runs Suggestions
+//
+// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+func (c *ClientWithResponses) SearchRunsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchRunsSuggestionsResponse, error) {
+	rsp, err := c.SearchRunsSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchRunsSuggestionsResponse(rsp)
+}
+
+// SearchRunsSuggestionsWithResponse Search Runs Suggestions
+//
+// The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/search/suggestions (the `SearchRunsSuggestions` operationId).
+func (c *ClientWithResponses) SearchRunsSuggestionsWithResponse(ctx context.Context, body SearchRunsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchRunsSuggestionsResponse, error) {
+	rsp, err := c.SearchRunsSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchRunsSuggestionsResponse(rsp)
+}
+
+// RunWithResponse Get Run
+//
+// Details of a single Run by ID, without needing to know the stack.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId} (the `Run` operationId).
+func (c *ClientWithResponses) RunWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RunResponse, error) {
+	rsp, err := c.Run(ctx, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunResponse(rsp)
+}
+
+// RunStackWithResponse Get Run Stack
+//
+// Return the stack the run belongs to.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId}/stack (the `RunStack` operationId).
+func (c *ClientWithResponses) RunStackWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RunStackResponse, error) {
+	rsp, err := c.RunStack(ctx, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunStackResponse(rsp)
+}
+
 // SeatsWithResponse Seats
 //
 // The seats of the caller's account and its organization. With billing off no limit applies and neither limit is set.
@@ -83562,6 +85073,68 @@ func (c *ClientWithResponses) StackRunsInRangeWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseStackRunsInRangeResponse(rsp)
+}
+
+// RunCancelWithBodyWithResponse Cancel Run
+//
+// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+func (c *ClientWithResponses) RunCancelWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunCancelParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunCancelResponse, error) {
+	rsp, err := c.RunCancelWithBody(ctx, stackId, runId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunCancelResponse(rsp)
+}
+
+// RunCancelWithResponse Cancel Run
+//
+// Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
+func (c *ClientWithResponses) RunCancelWithResponse(ctx context.Context, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*RunCancelResponse, error) {
+	rsp, err := c.RunCancel(ctx, stackId, runId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunCancelResponse(rsp)
+}
+
+// RunPrioritySetWithBodyWithResponse Set Run Priority
+//
+// Sets the priority preset of a run that has not ended.
+// Controls run scheduling priority with named presets.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+func (c *ClientWithResponses) RunPrioritySetWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunPrioritySetResponse, error) {
+	rsp, err := c.RunPrioritySetWithBody(ctx, stackId, runId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunPrioritySetResponse(rsp)
+}
+
+// RunPrioritySetWithResponse Set Run Priority
+//
+// Sets the priority preset of a run that has not ended.
+// Controls run scheduling priority with named presets.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
+func (c *ClientWithResponses) RunPrioritySetWithResponse(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody, reqEditors ...RequestEditorFn) (*RunPrioritySetResponse, error) {
+	rsp, err := c.RunPrioritySet(ctx, stackId, runId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunPrioritySetResponse(rsp)
 }
 
 // StackScheduledDeleteWithResponse Stack scheduled delete
@@ -108350,6 +109923,480 @@ func ParseRoleUpdateResponse(rsp *http.Response) (*RoleUpdateResponse, error) {
 	return response, nil
 }
 
+// ParseSearchRunsResponse parses an HTTP response from a SearchRunsWithResponse call
+func ParseSearchRunsResponse(rsp *http.Response) (*SearchRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchRunsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchRunsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchRunsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchRunsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchRunsSuggestionsResponse parses an HTTP response from a SearchRunsSuggestionsWithResponse call
+func ParseSearchRunsSuggestionsResponse(rsp *http.Response) (*SearchRunsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchRunsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchRunsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchRunsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchRunsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunResponse parses an HTTP response from a RunWithResponse call
+func ParseRunResponse(rsp *http.Response) (*RunResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunStackResponse parses an HTTP response from a RunStackWithResponse call
+func ParseRunStackResponse(rsp *http.Response) (*RunStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Stack
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunStackResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunStackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunStackResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSeatsResponse parses an HTTP response from a SeatsWithResponse call
 func ParseSeatsResponse(rsp *http.Response) (*SeatsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -117589,6 +119636,278 @@ func ParseStackRunsInRangeResponse(rsp *http.Response) (*StackRunsInRangeRespons
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackRunsInRangeResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunCancelResponse parses an HTTP response from a RunCancelWithResponse call
+func ParseRunCancelResponse(rsp *http.Response) (*RunCancelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunCancelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunCancelResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunCancelResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunCancelResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunPrioritySetResponse parses an HTTP response from a RunPrioritySetWithResponse call
+func ParseRunPrioritySetResponse(rsp *http.Response) (*RunPrioritySetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunPrioritySetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunPrioritySetResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunPrioritySetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunPrioritySetResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

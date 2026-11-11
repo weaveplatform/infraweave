@@ -98,6 +98,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	s.w.azureDevOps.register(sc)
 	(&labSteps{ids: org.ids}).register(sc)
 	(&vcsSteps{o: org}).register(sc)
+	(&runSteps{o: org}).register(sc)
 	(&expressionSteps{o: org}).register(sc)
 	(&catalogSteps{o: org}).register(sc)
 	(&updateSteps{o: org, etags: map[string]string{}}).register(sc)

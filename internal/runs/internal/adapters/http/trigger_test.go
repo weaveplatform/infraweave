@@ -11,7 +11,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -47,8 +49,8 @@ func TestUnitTriggerInput(t *testing.T) {
 	}
 }
 
-// TestUnitTriggerErrors answers each refusal of the trigger with its
-// problem and passes any other error through.
+// TestUnitTriggerErrors answers each refusal of the run operations with
+// its problem and passes any other error through.
 func TestUnitTriggerErrors(t *testing.T) {
 	for _, c := range []struct {
 		err    error
@@ -59,15 +61,18 @@ func TestUnitTriggerErrors(t *testing.T) {
 		{lifecycle.ErrDisabled, http.StatusConflict, "invalid-state"},
 		{trigger.ErrNoCommit, http.StatusConflict, "invalid-state"},
 		{stacksapi.ErrNotFound, http.StatusNotFound, "not-found"},
+		{read.ErrNotFound, http.StatusNotFound, "not-found"},
+		{control.ErrBlocking, http.StatusForbidden, "forbidden"},
+		{control.ErrState, http.StatusConflict, "invalid-state"},
 	} {
 		var p *problem.Error
-		if !errors.As(runError(c.err, "infra"), &p) || p.Problem.Status != c.status ||
+		if !errors.As(runError(c.err, "infra", ""), &p) || p.Problem.Status != c.status ||
 			p.Problem.Type != problem.TypePrefix+c.slug {
 			t.Errorf("%v = %+v, want %d %s", c.err, p, c.status, c.slug)
 		}
 	}
 	other := errors.New("other")
-	if got := runError(other, "infra"); !errors.Is(got, other) {
+	if got := runError(other, "infra", ""); !errors.Is(got, other) {
 		t.Errorf("another error = %v", got)
 	}
 }
@@ -78,7 +83,7 @@ func TestUnitTriggerErrors(t *testing.T) {
 func TestUnitTriggerRun(t *testing.T) {
 	at := time.Unix(1_800_000_000, 0).UTC()
 	alice, note := "alice", "pinned"
-	v := trigger.View{
+	v := read.View{
 		Run: lifecycle.Run{
 			ID: kernel.NewULID(), Type: kernel.RunTypeTracked, State: kernel.RunStateFinished,
 			Commit:      stacksapi.Commit{Hash: "abc", Message: "Add a subnet", Timestamp: at},
@@ -113,7 +118,7 @@ func TestUnitTriggerRun(t *testing.T) {
 // TestUnitTriggerRefusals answers a request with no principal 401, and a
 // body the trigger refuses before it runs with its problem.
 func TestUnitTriggerRefusals(t *testing.T) {
-	s := New(nil)
+	s := New(nil, nil, nil)
 	if _, err := s.RunTrigger(context.Background(), api.RunTriggerRequestObject{}); err == nil {
 		t.Error("a request with no principal passed")
 	}

@@ -742,6 +742,22 @@ func (UnimplementedStrict) RoleUpdate(context.Context, RoleUpdateRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "roleUpdate", Route: "PUT /roles/{roleId}"}
 }
 
+func (UnimplementedStrict) SearchRuns(context.Context, SearchRunsRequestObject) (SearchRunsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchRuns", Route: "POST /runs/search"}
+}
+
+func (UnimplementedStrict) SearchRunsSuggestions(context.Context, SearchRunsSuggestionsRequestObject) (SearchRunsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchRunsSuggestions", Route: "POST /runs/search/suggestions"}
+}
+
+func (UnimplementedStrict) Run(context.Context, RunRequestObject) (RunResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "run", Route: "GET /runs/{runId}"}
+}
+
+func (UnimplementedStrict) RunStack(context.Context, RunStackRequestObject) (RunStackResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runStack", Route: "GET /runs/{runId}/stack"}
+}
+
 func (UnimplementedStrict) Seats(context.Context, SeatsRequestObject) (SeatsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "seats", Route: "GET /seats"}
 }
@@ -1028,6 +1044,14 @@ func (UnimplementedStrict) RunTrigger(context.Context, RunTriggerRequestObject) 
 
 func (UnimplementedStrict) StackRunsInRange(context.Context, StackRunsInRangeRequestObject) (StackRunsInRangeResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackRunsInRange", Route: "GET /stacks/{stackId}/runs-in-range"}
+}
+
+func (UnimplementedStrict) RunCancel(context.Context, RunCancelRequestObject) (RunCancelResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runCancel", Route: "POST /stacks/{stackId}/runs/{runId}/cancel"}
+}
+
+func (UnimplementedStrict) RunPrioritySet(context.Context, RunPrioritySetRequestObject) (RunPrioritySetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runPrioritySet", Route: "POST /stacks/{stackId}/runs/{runId}/priority-set"}
 }
 
 func (UnimplementedStrict) StackScheduledDelete(context.Context, StackScheduledDeleteRequestObject) (StackScheduledDeleteResponseObject, error) {

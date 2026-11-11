@@ -8,7 +8,8 @@ Feature: Spaces and their stacks stay within their account
   home and sibling accounts are of one organization, and the stranger
   account of another; each key is space-admin on its account's top space.
   A stack, in its account's space, is the same: another account's answers
-  as one that does not exist, and a slug is taken only within its account.
+  as one that does not exist, and a slug is taken only within its account,
+  and so are its runs.
 
   Background:
     Given two infraweave servers, A and B, on one database, with an operator key
@@ -78,6 +79,28 @@ Feature: Spaces and their stacks stay within their account
     Then it answers 200
     When token "s" sends "POST /api/v1/stacks" with '{"input":{"name":"Over","repository":"infra","branch":"main","space":"acme"},"manageState":false}' through A
     Then it answers a 404 problem "not-found"
+
+  @vcs @op:run @op:runStack @op:runCancel @op:runPrioritySet @op:searchRuns @case:denial
+  Scenario: Another account's run answers 404 within the organization and across it
+    Given a Gitea repository "infra" with the files:
+      | main.tf | terraform {} |
+    And the head of "main" of "infra" is kept as "seed"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy"},"manageState":false}' through A
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through B
+    And token "h" sends "POST /api/v1/stacks/infra/runs" with '{}' through A
+    And the answer's id names "run"
+    When token "s" sends "GET /api/v1/runs/{run}" through B
+    Then it answers a 404 problem "not-found"
+    When token "x" sends "GET /api/v1/runs/{run}/stack" through A
+    Then it answers a 404 problem "not-found"
+    When token "s" sends "POST /api/v1/stacks/infra/runs/{run}/cancel" with '{}' through A
+    Then it answers a 404 problem "not-found"
+    When token "x" sends "POST /api/v1/stacks/infra/runs/{run}/priority-set" with '{"preset":"high"}' through B
+    Then it answers a 404 problem "not-found"
+    When token "s" sends "POST /api/v1/runs/search" with '{"input":{}}' through A
+    Then the answer's edges are the runs ""
+    When token "h" sends "GET /api/v1/runs/{run}" through B
+    Then it answers 200
 
   @op:organizationAccountCreate @case:success
   Scenario: A new account starts with its top space, legacy, its system roles and its first admin

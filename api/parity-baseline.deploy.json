@@ -314,8 +314,6 @@
       "searchManagedEntitiesGroupByTypes"
     ],
     "Runs": [
-      "run",
-      "runCancel",
       "runChangesV2",
       "runChangesV3",
       "runComment",
@@ -331,7 +329,6 @@
       "runMinutesUsage",
       "runPluginLogsDownloadURL",
       "runPolicyReceiptSample",
-      "runPrioritySet",
       "runPromote",
       "runProposeLocalWorkspace",
       "runResourceCreate",
@@ -339,13 +336,11 @@
       "runReview",
       "runSearchEntityChanges",
       "runSearchEntityChangesSuggestions",
-      "runStack",
       "runStop",
       "runTargetedReplan",
       "runTraceSpans",
       "runTriggerBatch",
       "runWorkerMetrics",
-      "searchRuns",
       "uploadLocalWorkspace"
     ],
     "SSO": [
@@ -407,7 +402,6 @@
       "searchRepoCommitsSuggestions",
       "searchRepoFilesSuggestions",
       "searchReposSuggestions",
-      "searchRunsSuggestions",
       "searchSpacePoliciesSuggestions",
       "searchTofuWorkspacesSuggestions",
       "searchWorkerPoolsSuggestions"
