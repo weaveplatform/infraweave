@@ -11,7 +11,7 @@
 // such as through vcs.ca_file. Fail and FailPath make it answer with a
 // rate limit, a server error or no answer at all, so the provider's
 // handling of each is tested without a real server, which the scheduled
-// vcs-cloud job's container checks.
+// vcs-lab job's container checks.
 //
 // ref: decision 0012 § "Every provider is a peer"
 //

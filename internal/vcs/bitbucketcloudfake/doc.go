@@ -8,7 +8,7 @@
 // trusts, such as through vcs.ca_file. Fail and FailPath make it answer
 // with a rate limit, a server error or no answer at all, so the
 // provider's handling of each is tested without the real service, which
-// the scheduled vcs-cloud job checks.
+// the scheduled vcs-lab job checks.
 //
 // ref: decision 0012 § "Every provider is a peer"
 //

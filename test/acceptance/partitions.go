@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Partition is one CI job of the acceptance split, named by the suffix
-// make accept PARTITION= takes.
+// Partition is one job of the acceptance split, a pull request's CI job
+// or a scheduled lab's, named by the suffix make accept PARTITION= takes.
 //
 // ref: decision 0016
 type Partition struct {
@@ -17,10 +17,22 @@ type Partition struct {
 	Tags []string
 }
 
-// Partitions are the CI jobs, in the order a scenario is placed: the first
-// partition that lists one of its tags takes it, so a scenario that needs
-// a run and a VCS runs with the runs. accept-core also takes every
-// untagged scenario.
+// Labs are the scheduled jobs' partitions, whose scenarios reach
+// infrastructure that only the job provisions from test/terraform: the
+// real VCS providers' repositories of test/terraform/vcs, for vcs-lab.
+// A lab's scenario is placed there before any partition of Partitions
+// sees it, and every partition of Partitions, and a run of none, excludes
+// it.
+//
+// ref: decision 0016
+var Labs = []Partition{
+	{Name: "vcs-lab", Tags: []string{"@vcs-lab"}},
+}
+
+// Partitions are the pull request's CI jobs, in the order a scenario is
+// placed: the first partition that lists one of its tags takes it, so a
+// scenario that needs a run and a VCS runs with the runs. accept-core
+// also takes every untagged scenario.
 //
 // ref: decision 0016
 var Partitions = []Partition{
@@ -41,11 +53,16 @@ var Partitions = []Partition{
 }
 
 // Tags that place no scenario: @op:, @case: and @provider: name what a
-// scenario evidences (specref parity --states), and @quarantine marks one
-// that is known to be unreliable.
-var exemptPrefixes = []string{"@op:", "@case:", "@provider:"}
+// scenario evidences (specref parity --states), @lab: names the provider
+// whose lab a @vcs-lab scenario reaches, and @quarantine marks one that
+// is known to be unreliable.
+var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
 const quarantine = "@quarantine"
+
+// placing is every partition in the order Place tries them: the labs,
+// then the pull request's.
+func placing() []Partition { return append(slices.Clone(Labs), Partitions...) }
 
 // Exempt reports whether tag places no scenario in a partition.
 func Exempt(tag string) bool {
@@ -64,13 +81,13 @@ var ErrUnlistedTag = errors.New("no partition lists the tag")
 // ErrUnlistedTag naming the first tag no partition lists.
 func Place(tags []string) (string, error) {
 	for _, t := range tags {
-		if !Exempt(t) && !slices.ContainsFunc(Partitions, func(p Partition) bool {
+		if !Exempt(t) && !slices.ContainsFunc(placing(), func(p Partition) bool {
 			return slices.Contains(p.Tags, t)
 		}) {
 			return "", fmt.Errorf("%w: %s", ErrUnlistedTag, t)
 		}
 	}
-	for _, p := range Partitions {
+	for _, p := range placing() {
 		if slices.ContainsFunc(tags, func(t string) bool { return slices.Contains(p.Tags, t) }) {
 			return p.Name, nil
 		}
@@ -79,13 +96,11 @@ func Place(tags []string) (string, error) {
 }
 
 // TagExpression is the godog tag expression that selects the scenarios Place
-// puts in the partition called name; empty selects every scenario.
+// puts in the partition called name; empty selects every scenario but the
+// labs'.
 func TagExpression(name string) (string, error) {
-	if name == "" {
-		return "", nil
-	}
 	var not []string
-	for _, p := range Partitions {
+	for _, p := range placing() {
 		if p.Name == name {
 			// A scenario of an earlier partition belongs there, so it is
 			// excluded here; godog joins "," as or and "&&" as and.
@@ -99,5 +114,22 @@ func TagExpression(name string) (string, error) {
 			not = append(not, "~"+t)
 		}
 	}
+	if name == "" {
+		var labs []string
+		for _, p := range Labs {
+			for _, t := range p.Tags {
+				labs = append(labs, "~"+t)
+			}
+		}
+		return strings.Join(labs, " && "), nil
+	}
 	return "", fmt.Errorf("%w %q", ErrUnknownPartition, name)
+}
+
+// And joins the non-empty godog tag expressions exprs, each of which a
+// scenario must match.
+func And(exprs ...string) string {
+	return strings.Join(slices.DeleteFunc(slices.Clone(exprs), func(e string) bool {
+		return e == ""
+	}), " && ")
 }

@@ -1,0 +1,332 @@
+name: go | VCS providers in the cloud
+
+# Each night on main, every VCS provider against its real service: the
+# Terraform root in test/terraform/vcs/<root> makes two private repositories
+# for the run and pushes seed.sh's history to each, then the provider's
+# TestAcc<Provider>Cloud runs the source contract and checks a run
+# credential's reach, and vcs_sources.feature's @vcs-lab scenario
+# drives a stack on the lab through infraweave. Destroy always runs, and a
+# sweep first deletes any lab repository a day old that an earlier run
+# left. Bitbucket Data Center is the one provider with no hosted service:
+# the job starts its image with the lab's licence.
+#
+# The lab's names and credentials are the vcs-lab environment's
+# secrets, which the logs mask; a value derived from one is masked
+# before use. A provider without its secrets reports "not configured"
+# and fails rather than passing. The job is informational: the quality
+# gate does not need it, and a failure opens an issue per provider, or
+# comments on the open one.
+# ref: decision 0016
+on:
+  schedule:
+    - cron: '43 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vcs-lab
+  cancel-in-progress: false
+
+env:
+  GOWORK: 'off'
+
+jobs:
+  provider:
+    name: 'vcs-lab ${{ matrix.provider }}'
+    # The environment's branch rule admits only main.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - provider: github
+            root: github
+            test: TestAccGitHubLab
+          - provider: gitlab
+            root: gitlab
+            test: TestAccGitLabLab
+          - provider: bitbucket-cloud
+            root: bitbucketcloud
+            test: TestAccBitbucketCloudLab
+          - provider: azure-devops
+            root: azuredevops
+            test: TestAccAzureDevOpsLab
+          - provider: bitbucket-dc
+            root: bitbucketdc
+            test: TestAccBitbucketDCLab
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: vcs-lab
+    permissions:
+      contents: read
+      issues: write
+    env:
+      PROVIDER: ${{ matrix.provider }}
+      ROOT: test/terraform/vcs/${{ matrix.root }}
+      LAB_GITHUB_ORGANIZATION: ${{ secrets.VCS_GITHUB_ORGANIZATION }}
+      LAB_GITHUB_ADMIN_TOKEN: ${{ secrets.VCS_GITHUB_ADMIN_TOKEN }}
+      LAB_GITHUB_APP_ID: ${{ secrets.VCS_GITHUB_APP_ID }}
+      LAB_GITHUB_APP_PRIVATE_KEY: ${{ secrets.VCS_GITHUB_APP_PRIVATE_KEY }}
+      LAB_GITHUB_APP_INSTALLATION_ID: ${{ secrets.VCS_GITHUB_APP_INSTALLATION_ID }}
+      LAB_GITLAB_GROUP: ${{ secrets.VCS_GITLAB_GROUP }}
+      LAB_GITLAB_ADMIN_TOKEN: ${{ secrets.VCS_GITLAB_ADMIN_TOKEN }}
+      LAB_BITBUCKET_CLOUD_WORKSPACE: ${{ secrets.VCS_BITBUCKET_CLOUD_WORKSPACE }}
+      LAB_BITBUCKET_CLOUD_PROJECT_KEY: ${{ secrets.VCS_BITBUCKET_CLOUD_PROJECT_KEY }}
+      LAB_BITBUCKET_CLOUD_EMAIL: ${{ secrets.VCS_BITBUCKET_CLOUD_EMAIL }}
+      LAB_BITBUCKET_CLOUD_API_TOKEN: ${{ secrets.VCS_BITBUCKET_CLOUD_API_TOKEN }}
+      LAB_AZURE_DEVOPS_ORGANIZATION_URL: ${{ secrets.VCS_AZURE_DEVOPS_ORGANIZATION_URL }}
+      LAB_AZURE_DEVOPS_PROJECT: ${{ secrets.VCS_AZURE_DEVOPS_PROJECT }}
+      LAB_AZURE_DEVOPS_PAT: ${{ secrets.VCS_AZURE_DEVOPS_PAT }}
+      LAB_BITBUCKET_DC_LICENSE: ${{ secrets.VCS_BITBUCKET_DC_LICENSE }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      # The wrapper would print each command's output again, outputs
+      # included, after the masks the job sets.
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+
+      # Lists the provider's missing secrets rather than failing at its
+      # first call with an error that names none of them.
+      - name: Read the provider's configuration
+        id: config
+        run: |
+          case "$PROVIDER" in
+            github) need="LAB_GITHUB_ORGANIZATION LAB_GITHUB_ADMIN_TOKEN LAB_GITHUB_APP_ID LAB_GITHUB_APP_PRIVATE_KEY LAB_GITHUB_APP_INSTALLATION_ID" ;;
+            gitlab) need="LAB_GITLAB_GROUP LAB_GITLAB_ADMIN_TOKEN" ;;
+            bitbucket-cloud) need="LAB_BITBUCKET_CLOUD_WORKSPACE LAB_BITBUCKET_CLOUD_PROJECT_KEY LAB_BITBUCKET_CLOUD_EMAIL LAB_BITBUCKET_CLOUD_API_TOKEN" ;;
+            azure-devops) need="LAB_AZURE_DEVOPS_ORGANIZATION_URL LAB_AZURE_DEVOPS_PROJECT LAB_AZURE_DEVOPS_PAT" ;;
+            bitbucket-dc) need="LAB_BITBUCKET_DC_LICENSE" ;;
+          esac
+          missing=""
+          for v in $need; do
+            [ -n "${!v}" ] || missing="$missing VCS_${v#LAB_}"
+          done
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "missing=${missing# }" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Not configured
+        if: ${{ steps.config.outputs.configured != 'true' }}
+        env:
+          MISSING: ${{ steps.config.outputs.missing }}
+        run: |
+          line="vcs-lab ${PROVIDER} is not configured: the vcs-lab environment's secrets ${MISSING} are not set. test/terraform/vcs/README.md describes the lab and lists them."
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      # Each provider's Terraform credentials, its push credentials for
+      # seed.sh, and the variables its Terraform root and sweep.sh read.
+      - name: Set the provider's environment
+        run: |
+          set -euo pipefail
+          {
+            echo "TF_VAR_suffix=$(date +%s)-${GITHUB_RUN_ID}"
+            echo "TF_IN_AUTOMATION=1"
+            case "$PROVIDER" in
+              github)
+                echo "TF_VAR_token=$LAB_GITHUB_ADMIN_TOKEN"
+                echo "TF_VAR_organization=$LAB_GITHUB_ORGANIZATION"
+                echo "TF_VAR_installation_id=$LAB_GITHUB_APP_INSTALLATION_ID"
+                echo "SEED_USER=x-access-token"
+                echo "SEED_TOKEN=$LAB_GITHUB_ADMIN_TOKEN"
+                ;;
+              gitlab)
+                echo "GITLAB_TOKEN=$LAB_GITLAB_ADMIN_TOKEN"
+                echo "TF_VAR_group=$LAB_GITLAB_GROUP"
+                echo "SEED_USER=oauth2"
+                echo "SEED_TOKEN=$LAB_GITLAB_ADMIN_TOKEN"
+                ;;
+              bitbucket-cloud)
+                echo "BITBUCKET_USERNAME=$LAB_BITBUCKET_CLOUD_EMAIL"
+                echo "BITBUCKET_PASSWORD=$LAB_BITBUCKET_CLOUD_API_TOKEN"
+                echo "TF_VAR_workspace=$LAB_BITBUCKET_CLOUD_WORKSPACE"
+                echo "TF_VAR_project_key=$LAB_BITBUCKET_CLOUD_PROJECT_KEY"
+                echo "SEED_USER=x-bitbucket-api-token-auth"
+                echo "SEED_TOKEN=$LAB_BITBUCKET_CLOUD_API_TOKEN"
+                ;;
+              azure-devops)
+                echo "AZDO_ORG_SERVICE_URL=$LAB_AZURE_DEVOPS_ORGANIZATION_URL"
+                echo "AZDO_PERSONAL_ACCESS_TOKEN=$LAB_AZURE_DEVOPS_PAT"
+                echo "TF_VAR_project=$LAB_AZURE_DEVOPS_PROJECT"
+                echo "SEED_USER=pat"
+                echo "SEED_TOKEN=$LAB_AZURE_DEVOPS_PAT"
+                ;;
+            esac
+          } >> "$GITHUB_ENV"
+
+      # The container serves HTTPS under a certificate the job makes,
+      # which Terraform, git and the tests trust through a bundle of it
+      # and the system's roots; the system administrator's password is the
+      # run's own. Bitbucket's first start, with no search server, takes a
+      # few minutes before /status answers RUNNING.
+      - name: Start Bitbucket Data Center
+        if: ${{ matrix.provider == 'bitbucket-dc' }}
+        run: |
+          set -euo pipefail
+          image=$(sed -nE 's/^[[:space:]]*ImageBitbucketDC = "([^"]+)"/\1/p' test/acceptance/images.go)
+          lab="$RUNNER_TEMP/bitbucket"
+          mkdir -p "$lab"
+          password=$(openssl rand -hex 24)
+          echo "::add-mask::$password"
+          keystore=$(openssl rand -hex 16)
+          echo "::add-mask::$keystore"
+          openssl req -x509 -newkey rsa:3072 -nodes -days 1 -subj '/CN=localhost' \
+            -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+            -keyout "$lab/key.pem" -out "$lab/cert.pem" 2>/dev/null
+          openssl pkcs12 -export -name bitbucket -inkey "$lab/key.pem" -in "$lab/cert.pem" \
+            -out "$lab/lab.p12" -passout "pass:$keystore"
+          chmod 0644 "$lab/lab.p12"
+          cat /etc/ssl/certs/ca-certificates.crt "$lab/cert.pem" > "$lab/bundle.pem"
+          printf '%s' "$LAB_BITBUCKET_DC_LICENSE" > "$lab/licence"
+          docker run -d --name bitbucket -p 7990:7990 \
+            -v "$lab/lab.p12:/opt/lab.p12:ro" \
+            -e SERVER_SSL_ENABLED=true -e SERVER_SSL_KEY_STORE=/opt/lab.p12 \
+            -e SERVER_SSL_KEY_STORE_TYPE=PKCS12 -e SERVER_SSL_KEY_ALIAS=bitbucket \
+            -e SERVER_SSL_KEY_STORE_PASSWORD="$keystore" -e SERVER_SSL_KEY_PASSWORD="$keystore" \
+            -e SEARCH_ENABLED=false \
+            -e SETUP_DISPLAYNAME='infraweave lab' -e SETUP_BASEURL=https://localhost:7990 \
+            -e SETUP_LICENSE="$(cat "$lab/licence")" \
+            -e SETUP_SYSADMIN_USERNAME=admin -e SETUP_SYSADMIN_PASSWORD="$password" \
+            -e SETUP_SYSADMIN_DISPLAYNAME='infraweave lab' \
+            -e SETUP_SYSADMIN_EMAILADDRESS=lab@infraweave.invalid \
+            "$image" > /dev/null
+          rm "$lab/licence"
+          for _ in $(seq 120); do
+            state=$(curl -fsS --cacert "$lab/cert.pem" https://localhost:7990/status 2>/dev/null | jq -r .state || true)
+            [ "$state" = RUNNING ] && break
+            sleep 5
+          done
+          if [ "$state" != RUNNING ]; then
+            echo "Bitbucket Data Center did not start: its state is ${state:-no answer}"
+            docker logs --tail 50 bitbucket
+            exit 1
+          fi
+          {
+            echo "TF_VAR_admin_password=$password"
+            echo "TF_VAR_ca_file=$lab/cert.pem"
+            echo "SEED_USER=admin"
+            echo "SEED_TOKEN=$password"
+            echo "GIT_SSL_CAINFO=$lab/bundle.pem"
+            echo "INFRAWEAVE_TEST_VCS_CA_FILE=$lab/cert.pem"
+          } >> "$GITHUB_ENV"
+
+      - name: Sweep lab repositories a day old
+        if: ${{ matrix.provider != 'bitbucket-dc' }}
+        run: test/terraform/vcs/sweep.sh "$PROVIDER"
+
+      - name: Apply the lab
+        id: apply
+        run: |
+          set -euo pipefail
+          terraform -chdir="$ROOT" init -input=false -no-color > /dev/null
+          terraform -chdir="$ROOT" apply -input=false -auto-approve -no-color
+
+      # Every output the tests read, the integration's token among them,
+      # is masked before it reaches the environment; the GitHub App's key
+      # spans lines, so it goes in under a delimiter.
+      - name: Name the lab to the tests
+        run: |
+          set -euo pipefail
+          out() { terraform -chdir="$ROOT" output -raw "$1"; }
+          put() {
+            echo "::add-mask::$2"
+            echo "$1=$2" >> "$GITHUB_ENV"
+          }
+          put INFRAWEAVE_TEST_VCS_NAMESPACE "$(out namespace)"
+          put INFRAWEAVE_TEST_VCS_REPOSITORY "$(out repository)"
+          put INFRAWEAVE_TEST_VCS_OTHER "$(out other)"
+          case "$PROVIDER" in
+            github)
+              put INFRAWEAVE_TEST_VCS_USER "$LAB_GITHUB_APP_ID"
+              delimiter="KEY_$(openssl rand -hex 16)"
+              printf 'INFRAWEAVE_TEST_VCS_TOKEN<<%s\n%s\n%s\n' "$delimiter" \
+                "$LAB_GITHUB_APP_PRIVATE_KEY" "$delimiter" >> "$GITHUB_ENV"
+              ;;
+            gitlab)
+              put INFRAWEAVE_TEST_VCS_HOST "$(out host)"
+              put INFRAWEAVE_TEST_VCS_TOKEN "$(out token)"
+              ;;
+            bitbucket-cloud)
+              put INFRAWEAVE_TEST_VCS_USER "$LAB_BITBUCKET_CLOUD_EMAIL"
+              put INFRAWEAVE_TEST_VCS_TOKEN "$LAB_BITBUCKET_CLOUD_API_TOKEN"
+              ;;
+            azure-devops)
+              put INFRAWEAVE_TEST_VCS_HOST "$LAB_AZURE_DEVOPS_ORGANIZATION_URL"
+              put INFRAWEAVE_TEST_VCS_TOKEN "$LAB_AZURE_DEVOPS_PAT"
+              ;;
+            bitbucket-dc)
+              put INFRAWEAVE_TEST_VCS_HOST "$(out host)"
+              put INFRAWEAVE_TEST_VCS_USER "$(out user)"
+              put INFRAWEAVE_TEST_VCS_TOKEN "$(out token)"
+              ;;
+          esac
+
+      # Each test appends to cloud.log, whose failing cases the report
+      # quotes.
+      - name: The source contract and a run's credential
+        env:
+          TEST: ${{ matrix.test }}
+          PACKAGE: ./internal/vcs/internal/adapters/${{ matrix.root }}
+        run: |
+          set -o pipefail
+          go test -count=1 -v -run "^${TEST}\$" "$PACKAGE" 2>&1 | tee -a cloud.log
+
+      - name: A stack on the lab through infraweave
+        if: ${{ !cancelled() && steps.apply.outcome == 'success' }}
+        env:
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+          INFRAWEAVE_ACCEPT_TAGS: '@lab:${{ matrix.provider }}'
+        run: |
+          set -o pipefail
+          make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
+
+      - name: Destroy the lab
+        if: ${{ always() && steps.config.outputs.configured == 'true' }}
+        run: terraform -chdir="$ROOT" destroy -input=false -auto-approve -no-color
+
+      # One open issue per provider tracks its failing runs: the first
+      # failure opens it, and each later one comments on it until a person
+      # closes it. A provider that is not configured fails without an
+      # issue, since nothing ran.
+      - name: Open or update the provider's issue
+        if: ${{ failure() && steps.config.outputs.configured == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          title="vcs-lab failed on ${PROVIDER}"
+          failed=$(grep -E -e '--- FAIL|^[[:space:]]*Scenario:.*# ' cloud.log 2>/dev/null | sed 's/^ *//' | sort -u || true)
+          body=$(printf 'The VCS provider checks failed against %s on %s: %s\n\nFailing cases:\n```\n%s\n```\n' \
+            "$PROVIDER" "$SHA" "$RUN_URL" "${failed:-none recorded; the run failed outside the tests}")
+          number=$(gh issue list --state open --search "\"${title}\" in:title" --json number,title \
+            -q ".[] | select(.title == \"${title}\") | .number" | head -n 1)
+          if [ -z "$number" ]; then
+            gh issue create --title "$title" --body "$body"
+          else
+            gh issue comment "$number" --body "$body"
+          fi

@@ -23,3 +23,6 @@ go.work.sum
 .vscode/
 *.swp
 .DS_Store
+
+# The Terraform plugin cache make labs-cloud and labs-vcs share
+/.terraform.d/

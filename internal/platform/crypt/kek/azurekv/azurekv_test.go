@@ -23,7 +23,7 @@ import (
 
 const (
 	// URLEnv names the key the live test wraps with, as its URL without a
-	// version, which test/cloud/kek/azure creates.
+	// version, which test/terraform/cloud/kek/azure creates.
 	URLEnv = "INFRAWEAVE_TEST_AZUREKV_URL"
 	// RecordEnv set to 1 makes the live test write the fixture.
 	RecordEnv = "INFRAWEAVE_TEST_RECORD"

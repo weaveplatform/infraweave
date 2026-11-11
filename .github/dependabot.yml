@@ -29,3 +29,17 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+
+  # The cloud labs' Terraform roots, one directory per job and cloud or
+  # provider; each PR moves versions.tf and the lock file together.
+  - package-ecosystem: "terraform"
+    directories: ["/test/terraform/cloud/*/*", "/test/terraform/vcs/*"]
+    schedule:
+      interval: "daily"
+    groups:
+      terraform-providers:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+    commit-message:
+      prefix: "chore"
+      include: "scope"

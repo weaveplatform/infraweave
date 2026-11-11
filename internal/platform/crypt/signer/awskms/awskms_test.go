@@ -21,7 +21,7 @@ import (
 )
 
 // KeyEnv names the KMS key the live test signs with, by its ARN, which
-// test/cloud/kek/aws creates.
+// test/terraform/cloud/kek/aws creates.
 const KeyEnv = "INFRAWEAVE_TEST_AWSKMS_SIGNING_KEY"
 
 // arn is a key ARN in AWS's documentation account.

@@ -29,9 +29,12 @@ const (
 	envPartition     = "INFRAWEAVE_ACCEPT_PARTITION"
 	envSeed          = "INFRAWEAVE_ACCEPT_SEED"
 	envFeatures      = "INFRAWEAVE_ACCEPT_FEATURES"
-	envOut           = "INFRAWEAVE_ACCEPT_OUT"
-	envCucumber      = "INFRAWEAVE_ACCEPT_CUCUMBER"
-	envBinary        = "INFRAWEAVE_ACCEPT_BINARY"
+	// envTags narrows the partition's scenarios to those matching a
+	// further tag expression, such as one provider's @lab: tag.
+	envTags     = "INFRAWEAVE_ACCEPT_TAGS"
+	envOut      = "INFRAWEAVE_ACCEPT_OUT"
+	envCucumber = "INFRAWEAVE_ACCEPT_CUCUMBER"
+	envBinary   = "INFRAWEAVE_ACCEPT_BINARY"
 	// envNoDocker makes the suite treat the daemon as unreachable. The
 	// harness feature's nested runs need that on a host whose daemon
 	// answers, and no Docker variable can hide it: testcontainers falls
@@ -204,6 +207,7 @@ func TestAccFeatures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tags = And(tags, os.Getenv(envTags))
 	seed := time.Now().UnixNano()
 	if v := os.Getenv(envSeed); v != "" {
 		if seed, err = strconv.ParseInt(v, 10, 64); err != nil {
@@ -469,7 +473,9 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 // GitHub host and name its operator App, a @gitlab scenario's trust its
 // GitLab, a @bitbucket-cloud scenario's trust and reach its Bitbucket
 // Cloud, a @bitbucket-dc scenario's trust its Bitbucket Data Center, and
-// an @azure-devops scenario's trust its Azure DevOps, under one vcs.ca_file holding every certificate they trust.
+// an @azure-devops scenario's trust its Azure DevOps, and a @vcs-lab
+// scenario's reach its lab (labVCS), under one vcs.ca_file holding every
+// certificate they trust.
 func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	vcs := map[string]any{}
 	var cas []byte
@@ -517,14 +523,21 @@ func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	if w.bitbucketCloud.srv != nil {
 		vcs["bitbucket_cloud"] = map[string]any{"api_host": w.bitbucketCloud.apiHost()}
 	}
-	if len(cas) == 0 {
+	ca, err := labVCS(w.dir, w.tags, vcs)
+	if err != nil {
+		return nil, err
+	}
+	cas = append(cas, ca...)
+	if len(vcs) == 0 && len(cas) == 0 {
 		return config, nil
 	}
-	file := filepath.Join(w.dir, "vcs-ca.pem")
-	if err := os.WriteFile(file, cas, 0o600); err != nil {
-		return nil, fmt.Errorf("vcs CA: %w", err)
+	if len(cas) > 0 {
+		file := filepath.Join(w.dir, "vcs-ca.pem")
+		if err := os.WriteFile(file, cas, 0o600); err != nil {
+			return nil, fmt.Errorf("vcs CA: %w", err)
+		}
+		vcs["ca_file"] = file
 	}
-	vcs["ca_file"] = file
 	return withSection(config, "vcs", vcs)
 }
 

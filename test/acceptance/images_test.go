@@ -28,6 +28,7 @@ func TestUnitImagesPinned(t *testing.T) {
 		{"ImageAzurite", ImageAzurite, ""},
 		{"ImageVault", ImageVault, ""},
 		{"ImageMoto", ImageMoto, ""},
+		{"ImageBitbucketDC", ImageBitbucketDC, ""},
 	} {
 		m := pinned.FindStringSubmatch(tc.image)
 		switch {

@@ -96,13 +96,14 @@ build:
 		done; \
 	done
 
-## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|runs|integrations for one CI partition); coverage and cucumber.json to cover/accept
+## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|runs|integrations for one CI partition, vcs-lab for the labs'); coverage and cucumber.json to cover/accept
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
 # accept-core also runs the TestAcc suites beside the code; the other
-# partitions hold Gherkin scenarios alone.
+# partitions hold Gherkin scenarios alone. With no PARTITION, every
+# scenario runs but vcs-lab's, which need the scheduled job's labs.
 # ref: decision 0016
-ACCEPT_FEATURES_ONLY = $(filter runs integrations,$(PARTITION))
+ACCEPT_FEATURES_ONLY = $(filter runs integrations vcs-lab,$(PARTITION))
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
 	INFRAWEAVE_ACCEPT_PARTITION=$(PARTITION) $(GO) test -count=1 -run '$(if $(ACCEPT_FEATURES_ONLY),^TestAccFeatures$$,^TestAcc)' -covermode=atomic -cover -coverpkg=$(MODULE)/... $(if $(ACCEPT_FEATURES_ONLY),./test/acceptance,./...) -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
@@ -188,11 +189,35 @@ verify-parity:
 parity-baseline:
 	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p --write-baseline || exit 1; done
 
+## labs-cloud: terraform validate each cloud-platform lab root under test/terraform/cloud (objectstore-cloud and the KMS live tests)
+## labs-vcs: terraform validate each VCS lab root under test/terraform/vcs (vcs-lab)
+# Each root initializes without its backend and against its committed lock
+# file, which init must not change, so a provider bump missing from a lock
+# fails here. The roots share one plugin cache.
+LAB_ROOTS_CLOUD = $(sort $(dir $(wildcard test/terraform/cloud/*/*/versions.tf)))
+LAB_ROOTS_VCS = $(sort $(dir $(wildcard test/terraform/vcs/*/versions.tf)))
+TF_PLUGIN_CACHE_DIR ?= $(CURDIR)/.terraform.d/plugin-cache
+export TF_PLUGIN_CACHE_DIR
+define validate-labs
+	@mkdir -p $(TF_PLUGIN_CACHE_DIR)
+	@for r in $(1); do \
+		echo "terraform validate $$r"; \
+		terraform -chdir=$$r init -backend=false -input=false -lockfile=readonly > /dev/null && \
+		terraform -chdir=$$r validate -no-color > /dev/null || exit 1; \
+	done
+endef
+
+labs-cloud:
+	$(call validate-labs,$(LAB_ROOTS_CLOUD))
+
+labs-vcs:
+	$(call validate-labs,$(LAB_ROOTS_VCS))
+
 ## docs-check: links, report headers and decision statuses under docs/ (internal/devtools/docscheck)
 docs-check:
 	$(GO) test -count=1 -run '^TestUnitDocs$$' ./internal/devtools/docscheck
 
 ## gate: everything CI runs, in order
-gate: docs-check vet lint lint-fixtures test accept verify-parity verify-reference verify-generate cover vuln build
+gate: docs-check vet lint lint-fixtures labs-cloud labs-vcs test accept verify-parity verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint lint-fixtures vet test accept reference-fetch scaffold vendors-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint lint-fixtures labs-cloud labs-vcs vet test accept reference-fetch scaffold vendors-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate

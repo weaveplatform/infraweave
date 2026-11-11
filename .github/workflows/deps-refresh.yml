@@ -9,8 +9,8 @@ name: deps | Refresh
 #   - the golangci-lint version in .github/golangci-lint-version;
 #   - the oapi-codegen version in the Makefile, which runs it outside go.mod;
 #   - modules pinned to a branch or query in .github/deps-refresh.pins;
-#   - the container images the acceptance suite pins by digest in
-#     test/acceptance/images.go.
+#   - the container images the acceptance suite and the vcs-lab job pin
+#     by digest in test/acceptance/images.go.
 #
 # The result goes up as one PR from the org App, so the quality gate runs on
 # it like any other change, and auto-merge.yml merges it when the gate
@@ -138,6 +138,7 @@ jobs:
           pin hashicorp/vault hashicorp/vault '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin motoserver/moto motoserver/moto '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin gitea/gitea gitea/gitea '^[0-9]+\.[0-9]+\.[0-9]+$'
+          pin atlassian/bitbucket atlassian/bitbucket '^[0-9]+\.[0-9]+\.[0-9]+$'
           # Azurite publishes to the Microsoft Artifact Registry, not
           # Docker Hub.
           repin mcr.microsoft.com/azure-storage/azurite "$(curl -fsS https://mcr.microsoft.com/v2/azure-storage/azurite/tags/list \
