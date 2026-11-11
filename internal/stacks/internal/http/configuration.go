@@ -10,7 +10,7 @@ import (
 
 // unbound is the configuration and run status of a server whose
 // configuration and runs domains are not bound: no stack has a context or
-// a config element, and no run blocks one.
+// a config element, no run blocks one, and no run exists.
 type unbound struct{}
 
 func (unbound) Blockers(
@@ -19,6 +19,10 @@ func (unbound) Blockers(
 	[]kernel.ULID,
 ) (map[kernel.ULID]kernel.ULID, error) {
 	return map[kernel.ULID]kernel.ULID{}, nil
+}
+
+func (unbound) RunStack(context.Context, kernel.AccountID, kernel.ULID) (kernel.ULID, error) {
+	return kernel.ULID{}, stacksapi.ErrNotFound
 }
 
 func (unbound) AttachedContexts(

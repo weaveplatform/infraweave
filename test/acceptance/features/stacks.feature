@@ -8,9 +8,9 @@ Feature: Stacks
   lifted by its holder, or forced by a caller who may force it, and refuses
   every other lock. A stack protected from deletion is not deleted, and a
   space that holds a stack is not either. A stack in a space the caller
-  cannot read answers as one that does not exist. Until runs exist, a
-  stack's run and task lists are empty pages and a run by ID is not found,
-  each read decided on the stack's space. The home key is
+  cannot read answers as one that does not exist. A stack with no runs
+  lists empty pages of runs and tasks and finds no run by ID, each read
+  decided on the stack's space. The home key is
   space-admin on the account's top space; the member key holds only the
   bindings a scenario gives it.
 
@@ -194,7 +194,7 @@ Feature: Stacks
     And the problem refuses the field "/labels/1" as "duplicate"
 
   @op:stackRuns @op:stackRunsInRange @op:stackProposedRuns @op:stackTasks @op:stackRun @case:success @case:failure
-  Scenario: A stack's runs and tasks are empty pages until runs exist, and a run by ID is not found
+  Scenario: A stack with no runs lists empty pages of runs and tasks, and finds no run by ID
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And the member key is space-reader on the space "legacy"
     When token "m" sends "GET /api/v1/stacks/infra/runs" through A

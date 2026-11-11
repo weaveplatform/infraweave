@@ -300,7 +300,8 @@ type StackConfiguration interface {
 // StackStatus is what the stack view reads of the runs domain, which is
 // constructed after stacks and implements it: the run blocking each of
 // the account's stacks, the run that holds its run lock, keyed by stack
-// ID, with a stack no run blocks absent. The stacks domain declares it,
+// ID, with a stack no run blocks absent, and the stack a run belongs to.
+// The stacks domain declares it,
 // so the back edge internal/app binds after construction adds no import.
 //
 // ref: decisions 0004 and 0008
@@ -310,6 +311,9 @@ type StackStatus interface {
 		acct kernel.AccountID,
 		stacks []kernel.ULID,
 	) (map[kernel.ULID]kernel.ULID, error)
+	// RunStack is the stack of acct's run, which runStack answers;
+	// ErrNotFound when acct lacks the run.
+	RunStack(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, error)
 }
 
 // AttachedContext is a context attached to a stack as the stack's view

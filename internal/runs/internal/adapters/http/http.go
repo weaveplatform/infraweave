@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -17,10 +20,14 @@ import (
 // Server is the runs domain's partial of the API's strict server.
 type Server struct {
 	trigger *trigger.Service
+	read    *read.Service
+	control *control.Service
 }
 
-// New returns the partial over the trigger service.
-func New(t *trigger.Service) Server { return Server{trigger: t} }
+// New returns the partial over the trigger, read and control services.
+func New(t *trigger.Service, r *read.Service, c *control.Service) Server {
+	return Server{trigger: t, read: r, control: c}
+}
 
 // RunTrigger creates a run on the stack, or answers the one of the same
 // stack, type and commit that has not ended.
@@ -28,10 +35,9 @@ func (s Server) RunTrigger(
 	ctx context.Context,
 	req api.RunTriggerRequestObject,
 ) (api.RunTriggerResponseObject, error) {
-	p, ok := kernel.PrincipalFrom(ctx)
-	if !ok {
-		//nolint:wrapcheck // a problem, answered as it is
-		return nil, problem.Unauthenticated.Error("The request carries no valid credential.")
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
 	}
 	in, err := input(req.Body)
 	if err != nil {
@@ -39,9 +45,19 @@ func (s Server) RunTrigger(
 	}
 	v, err := s.trigger.Trigger(ctx, p, req.StackId, in)
 	if err != nil {
-		return nil, runError(err, req.StackId)
+		return nil, runError(err, req.StackId, "")
 	}
 	return api.RunTrigger200JSONResponse{Body: runOf(v)}, nil
+}
+
+// principal is the caller the route authenticated.
+func principal(ctx context.Context) (kernel.Principal, error) {
+	p, ok := kernel.PrincipalFrom(ctx)
+	if !ok {
+		//nolint:wrapcheck // a problem, answered as it is
+		return p, problem.Unauthenticated.Error("The request carries no valid credential.")
+	}
+	return p, nil
 }
 
 // input is a trigger's body as the trigger service takes it. A runtime
@@ -80,16 +96,25 @@ func input(body *api.RunTriggerRequest) (trigger.Input, error) {
 	return in, nil
 }
 
-// runError answers the trigger's refusals; slug is the stack the request
-// names. A *kernel.Invalid is answered as it is.
-func runError(err error, slug string) error {
+// runError answers the refusals of the run operations; slug is the stack
+// the request names and run the run, if any. A *kernel.Invalid is
+// answered as it is.
+func runError(err error, slug, run string) error {
 	if l, ok := errors.AsType[*lifecycle.Locked](err); ok {
-		p := problem.Forbidden.New(
+		return forbidden(accessapi.ActionRunTrigger,
 			fmt.Sprintf("The stack is locked by %s; only its holder triggers runs.", l.By))
-		p.Action = "RUN_TRIGGER"
-		return &problem.Error{Problem: p}
 	}
 	switch {
+	case errors.Is(err, control.ErrBlocking):
+		return forbidden(accessapi.ActionRunCancelBlocking,
+			"The run holds the stack's lock; canceling it needs RUN_CANCEL_BLOCKING.")
+	case errors.Is(err, control.ErrState):
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.InvalidState.Error("The run's state does not allow this; " +
+			"a cancel needs a run that has not started, a priority one that has not ended.")
+	case errors.Is(err, read.ErrNotFound):
+		//nolint:wrapcheck // as above
+		return problem.NotFound.Error(fmt.Sprintf("No run %q in this account.", run))
 	case errors.Is(err, lifecycle.ErrDisabled):
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.InvalidState.Error("The stack is disabled; enable it to trigger runs.")
@@ -104,8 +129,15 @@ func runError(err error, slug string) error {
 	return err
 }
 
+// forbidden is a 403 that names the action the caller lacks.
+func forbidden(a accessapi.Action, detail string) error {
+	p := problem.Forbidden.New(detail)
+	p.Action = string(a)
+	return &problem.Error{Problem: p}
+}
+
 // runOf is v as the API answers a run.
-func runOf(v trigger.View) api.Run {
+func runOf(v read.View) api.Run {
 	r := v.Run
 	history := make([]api.RunStateTransition, len(v.History))
 	for i, st := range v.History {
@@ -130,9 +162,14 @@ func runOf(v trigger.View) api.Run {
 	if r.TriggeredBy != "" {
 		triggeredBy = &r.TriggeredBy
 	}
+	allowed := make([]api.Action, len(v.Actions))
+	for i, a := range v.Actions {
+		allowed[i] = api.Action(a)
+	}
 	return api.Run{
-		Branch:   v.Branch,
-		Comments: []api.RunComment{},
+		AllowedActions: allowed,
+		Branch:         v.Branch,
+		Comments:       []api.RunComment{},
 		Commit: api.Commit{
 			Hash: r.Commit.Hash, Tag: r.Commit.Tag, Url: r.Commit.URL, Message: r.Commit.Message,
 			AuthorName: r.Commit.AuthorName, AuthorLogin: r.Commit.AuthorLogin,

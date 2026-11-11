@@ -15,7 +15,9 @@ import (
 // triggerer is a trigger service of w's, with w's sources bound when
 // bound is set.
 func (w *world) triggerer(bound bool) *trigger.Service {
-	s := trigger.New(trigger.Deps{DB: w.db, Store: w.store, Stacks: w.stacks, Lifecycle: w.lc})
+	s := trigger.New(trigger.Deps{
+		DB: w.db, Stacks: w.stacks, Lifecycle: w.lc, Views: w.reader(w.access()),
+	})
 	if bound {
 		s.BindSources(w.sources)
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -887,11 +888,16 @@ func TestAccLifecycleStoreUnavailable(t *testing.T) {
 	_, _, activeErr := s.Active(ctx, acct, id, kernel.RunTypeTracked, "abc")
 	_, unlockErr := s.Unlock(ctx, acct, id)
 	_, _, projErr := s.Projection(ctx, acct, id, kernel.StackStates())
-	_, historyErr := s.History(ctx, acct, id)
+	_, historyErr := s.Histories(ctx, acct, []kernel.ULID{id})
+	_, getErr := s.Get(ctx, acct, id)
+	_, _, stackErr := s.StackOf(ctx, acct, id)
+	_, _, holderErr := s.Holder(ctx, acct, id)
+	_, listErr := s.List(ctx, acct, id, kernel.RunTypes(), read.Query{Limit: 1})
 	for name, err := range map[string]error{
 		"Lock": lockErr, "Move": s.Move(ctx, run, step), "Insert": s.Insert(ctx, run, step),
 		"Active": activeErr, "Track": s.Track(ctx, run), "Unlock": unlockErr,
-		"Projection": projErr, "History": historyErr,
+		"Projection": projErr, "Histories": historyErr, "Get": getErr, "StackOf": stackErr,
+		"Holder": holderErr, "List": listErr, "SetPriority": s.SetPriority(ctx, run, "high", time.Now()),
 	} {
 		if err == nil {
 			t.Errorf("%s on a closed pool succeeded", name)

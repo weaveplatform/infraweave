@@ -18,7 +18,9 @@
 // PREVIOUS and LAST backwards. A cursor holds the last row's keys as text,
 // cast back to each column's type, and names the entity and the order, so a
 // cursor of another list or order, or one a client altered, answers 400
-// invalid-cursor. Suggest counts the rows the same filter keeps and lists
+// invalid-cursor. A first page read forwards may skip Offset rows first,
+// and has a page before it when it does; Count counts the rows a search
+// keeps whatever its paging. Suggest counts the rows the same filter keeps and lists
 // the most common values of each field asked for, with counts, so no value
 // or count reaches past the reachable spaces. Compile answers the query
 // Find runs, which searchtest fuzzes for each entity.

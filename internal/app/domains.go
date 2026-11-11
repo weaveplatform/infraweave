@@ -108,11 +108,14 @@ func newDomains(
 	stacks.BindConfiguration(configuration.Configuration())
 	runs := runsassembly.New(runsassembly.Deps{
 		DB:     db.Primary(),
+		Spaces: access.Spaces(),
+		Authz:  access.Authorizer(),
 		Stacks: stacks.Stacks(),
 		Events: events,
 		Jobs:   queue.New(db.Primary()),
 	})
 	stacks.GuardStacks(runs.StackGuard())
+	access.ResolveSubjects(runsassembly.Entity, runs.SpaceOf())
 	stacks.SetStackStatus(runs.StackStatus())
 	registry, err := expr.NewRegistry(c.Expressions, configuration.Surfaces()...)
 	if err != nil {

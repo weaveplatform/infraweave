@@ -7,6 +7,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/http"
 )
 
@@ -15,6 +16,10 @@ import (
 type status struct {
 	blockers map[kernel.ULID]kernel.ULID
 	err      error
+}
+
+func (status) RunStack(context.Context, kernel.AccountID, kernel.ULID) (kernel.ULID, error) {
+	return kernel.ULID{}, stacksapi.ErrNotFound
 }
 
 func (s status) Blockers(

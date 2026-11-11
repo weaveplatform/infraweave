@@ -10,6 +10,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -17,19 +18,12 @@ import (
 // tracks none and whose branch head is not known yet.
 var ErrNoCommit = errors.New("runs: the stack tracks no commit")
 
-// Store reads what a triggered run is answered with. Each method joins the
-// transaction its context carries.
-type Store interface {
-	// History reads acct's run's transitions, oldest first.
-	History(ctx context.Context, acct kernel.AccountID, run kernel.ULID) ([]lifecycle.Step, error)
-}
-
 // Deps are what the trigger reads and writes through.
 type Deps struct {
 	DB        tx.Beginner
-	Store     Store
 	Stacks    stacksapi.Stacks
 	Lifecycle *lifecycle.Lifecycle
+	Views     *read.Service
 }
 
 // Service triggers runs on a stack.
@@ -60,15 +54,6 @@ type Input struct {
 	ForceApply    string
 }
 
-// View is a run as the API answers it: the run, its stack's branch and
-// its transitions, oldest first.
-type View struct {
-	Run     lifecycle.Run
-	Stack   stacksapi.Stack
-	Branch  string
-	History []lifecycle.Step
-}
-
 // Trigger creates p's run on its account's stack slug in one transaction,
 // or answers the run of the stack, type and commit that has not ended. A
 // type other than TRACKED or PROPOSED, and a commit the repository lacks,
@@ -82,13 +67,13 @@ func (s *Service) Trigger(
 	p kernel.Principal,
 	slug string,
 	in Input,
-) (View, error) {
+) (read.View, error) {
 	typ := in.Type
 	if typ == "" {
 		typ = kernel.RunTypeTracked
 	}
 	if typ != kernel.RunTypeTracked && typ != kernel.RunTypeProposed {
-		return View{}, &kernel.Invalid{
+		return read.View{}, &kernel.Invalid{
 			Detail: "A trigger creates a TRACKED or a PROPOSED run.",
 			Errors: []kernel.FieldError{{
 				Pointer: "/runType", Reason: kernel.ReasonEnum,
@@ -96,7 +81,7 @@ func (s *Service) Trigger(
 			}},
 		}
 	}
-	var v View
+	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 		if err != nil {
@@ -117,12 +102,8 @@ func (s *Service) Trigger(
 		if err != nil {
 			return err //nolint:wrapcheck // the lifecycle names the refusal
 		}
-		history, err := s.d.Store.History(ctx, p.AccountID, run.ID)
-		if err != nil {
-			return err //nolint:wrapcheck // the store names the read
-		}
-		v = View{Run: run, Stack: st, Branch: settings.Branch, History: history}
-		return nil
+		v, err = s.d.Views.One(ctx, p, run)
+		return err //nolint:wrapcheck // the read names itself
 	})
 	return v, err //nolint:wrapcheck // each step names itself
 }

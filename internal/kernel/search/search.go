@@ -44,6 +44,10 @@ type Input struct {
 	FullText   string
 	Predicates []Predicate
 	OrderBy    []Order
+	// Offset is how many rows a first page read forwards skips, for a
+	// client that loads pages at once rather than one cursor at a time; a
+	// page read from a cursor or backwards ignores it.
+	Offset int
 }
 
 // SuggestionsInput asks which values Fields hold among the rows the

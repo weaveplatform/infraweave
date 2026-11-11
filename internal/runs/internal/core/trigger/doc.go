@@ -4,17 +4,16 @@
 // with neither with ErrNoCommit, and creates the run through the
 // lifecycle, which answers a run of the stack, type and commit that has
 // not ended instead of a second and refuses a disabled or locked stack.
-// It answers the run as a View, with its stack's branch and its
-// transitions. Store is its storage port.
+// It answers the run as a read.View.
 //
 // # Input and output
 //
-// None of its own: it reaches storage through Store, the stacks domain
-// through stacksapi.Stacks, the vcs domain through stacksapi.StackSources
-// and runs through the lifecycle.
+// None of its own: it reaches the stacks domain through stacksapi.Stacks,
+// the vcs domain through stacksapi.StackSources, runs through the
+// lifecycle and their views through the read service.
 //
 // # Dependencies
 //
-// It imports stacksapi, the domain's lifecycle, internal/kernel and
-// platform/tx. The runs domain's assembly constructs it.
+// It imports stacksapi, the domain's lifecycle and read, internal/kernel
+// and platform/tx. The runs domain's assembly constructs it.
 package trigger

@@ -13,13 +13,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
-	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 )
 
 var (
 	_ lifecycle.Store = (*Store)(nil)
 	_ schedule.Store  = (*Store)(nil)
-	_ trigger.Store   = (*Store)(nil)
 )
 
 // runColumns are the columns scanRun reads, in its order.
@@ -255,40 +253,4 @@ func (s *Store) TakeLock(ctx context.Context, run lifecycle.Run) (bool, error) {
 			sql.Unavailable(err))
 	}
 	return tag.RowsAffected() == 1, nil
-}
-
-// History reads acct's run's transitions, oldest first.
-func (s *Store) History(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-) ([]lifecycle.Step, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT sequence, state, timestamp, until, username,
-		note, has_logs FROM run_state_transitions
-		WHERE account_id = $1 AND run_id = $2 ORDER BY sequence`, acct, run)
-	if err != nil {
-		return nil, fmt.Errorf("runs: read the history of run %s: %w", run, sql.Unavailable(err))
-	}
-	defer rows.Close()
-	var out []lifecycle.Step
-	for rows.Next() {
-		var (
-			st    lifecycle.Step
-			state string
-		)
-		if err := rows.Scan(&st.Sequence, &state, &st.At, &st.Until, &st.Username, &st.Note,
-			&st.HasLogs); err != nil {
-			return nil, fmt.Errorf(
-				"runs: read the history of run %s: %w",
-				run,
-				sql.Unavailable(err),
-			)
-		}
-		st.State, st.At = kernel.RunState(state), st.At.UTC()
-		out = append(out, st)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("runs: read the history of run %s: %w", run, sql.Unavailable(err))
-	}
-	return out, nil
 }

@@ -9407,6 +9407,213 @@ paths:
         - merge-patch
         - rate-limit
       x-rest-style: update
+  /runs/search:
+    post:
+      description: |-
+        Paginated, account-wide run history ordered newest-first, over the
+        runs of the stacks in spaces the caller may read. Scope the window
+        with a TimeInRange predicate on the `createdAt` field.
+
+        Orderable by `createdAt`, `triggeredBy` and `state`. Ordering by `state`
+        is alphabetical by the state's name, so equal states group together.
+
+        Paginate with either input.after (keyset cursor, sequential) or offset
+        (random-access, for loading pages concurrently), not both. offset skips
+        that many rows in the ordered result; use input.first as the page size and
+        SearchRunsOutput.total to compute the page count.
+
+        Offset paging trades keyset's stability for random access, so pages can
+        skip or repeat rows if runs are created or deleted mid-scan.
+      operationId: searchRuns
+      x-infraweave-feature: runs
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example:
+              input:
+                first: 50
+              offset: 0
+            schema:
+              $ref: '#/components/schemas/SearchRunsRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchRunsOutput'
+          description: The searchRuns result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Runs
+      tags:
+        - Runs
+      x-bruno: Runs/Search Runs.bru
+      x-graphql:
+        field: searchRuns
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /runs/search/suggestions:
+    post:
+      description: >-
+        The fields a run search filters and orders by, with the values the runs the predicates keep hold and how many hold each. Only runs of stacks in spaces the caller may read are counted.
+      operationId: searchRunsSuggestions
+      x-infraweave-feature: runs
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchRunsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Runs Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Runs Suggestions.bru
+      x-graphql:
+        field: searchRunsSuggestions
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /runs/{runId}:
+    get:
+      description: Details of a single Run by ID, without needing to know the stack.
+      operationId: run
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The run result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Run
+      tags:
+        - Runs
+      x-bruno: Runs/Get Run.bru
+      x-graphql:
+        field: run
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: item
+  /runs/{runId}/stack:
+    get:
+      description: Return the stack the run belongs to.
+      operationId: runStack
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: runId
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stack'
+          description: The runStack result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Run Stack
+      tags:
+        - Runs
+      x-bruno: Runs/Get Run Stack.bru
+      x-graphql:
+        field: runStack
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: sub-read
   /seats:
     get:
       description: >-
@@ -13474,6 +13681,144 @@ paths:
         - cursor-pagination
         - rate-limit
       x-rest-style: field
+  /stacks/{stackId}/runs/{runId}/cancel:
+    post:
+      description: >-
+        Cancel a Run that has not yet started: a queued run, or a ready one. Canceling the run that holds the stack's lock, which blocks the stack's other runs, also needs RUN_CANCEL_BLOCKING, and releases the lock.
+      operationId: runCancel
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              note: Canceling run
+            schema:
+              $ref: '#/components/schemas/RunCancelRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runCancel result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Cancel Run
+      tags:
+        - Runs
+      x-bruno: Runs/Cancel Run.bru
+      x-graphql:
+        field: runCancel
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_CANCEL
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/priority-set:
+    post:
+      description: |-
+        Sets the priority preset of a run that has not ended.
+        Controls run scheduling priority with named presets.
+      operationId: runPrioritySet
+      x-infraweave-feature: runs
+      x-infraweave-action: RUN_PRIORITIZE_SET
+      x-infraweave-subject: path:runId:run
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              preset: high
+            schema:
+              $ref: '#/components/schemas/RunPrioritySetRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runPrioritySet result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Set Run Priority
+      tags:
+        - Runs
+      x-bruno: Runs/Set Run Priority.bru
+      x-graphql:
+        field: runPrioritySet
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
   /stacks/{stackId}/scheduled-delete:
     get:
       description: Individual ScheduledDelete created for this stack
@@ -23396,6 +23741,12 @@ components:
     Run:
       description: Run represents one execution of a stack.
       properties:
+        allowedActions:
+          description: >-
+            The actions the caller may take on the run: those its state allows next, that the caller holds on the stack's space. A run that has ended allows none.
+          items:
+            $ref: '#/components/schemas/Action'
+          type: array
         branch:
           description: Name of the branch for which this Run has been created.
           type: string
@@ -23566,6 +23917,7 @@ components:
             the dependency graph. A standalone Run's workflowId is its own id.
           type: string
       required:
+        - allowedActions
         - branch
         - canConfirm
         - canPromote
@@ -23611,6 +23963,15 @@ components:
         searchEntityChangesSuggestions: served by GET /runs/{runId}/search-entity-changes-suggestions
         workerMetrics: served by GET /runs/{runId}/worker-metrics
       x-graphql-type: Run
+    RunCancelRequest:
+      additionalProperties: false
+      description: The arguments of runCancel not carried in the path.
+      properties:
+        note:
+          nullable: true
+          type: string
+      type: object
+      x-graphql-args-of: runCancel
     RunComment:
       description: RunComment represents a single comment on a Run.
       properties:
@@ -23630,6 +23991,18 @@ components:
         - username
       type: object
       x-graphql-type: RunComment
+    RunConnection:
+      description: RunConnection represents a single run in a page of searchRuns results.
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/RunWithStack'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: RunConnection
     RunDependency:
       properties:
         id:
@@ -23844,6 +24217,16 @@ components:
           except that low priority tracked and proposed runs still go ahead of drift detection runs.
         normal: Default priority based on run type (blocking, non-blocking, drift detection).
       x-graphql-type: RunPriorityPreset
+    RunPrioritySetRequest:
+      additionalProperties: false
+      description: The arguments of runPrioritySet not carried in the path.
+      properties:
+        preset:
+          $ref: '#/components/schemas/RunPriorityPreset'
+      required:
+        - preset
+      type: object
+      x-graphql-args-of: runPrioritySet
     RunRef:
       description: A reference to a Run; fetch it with GET /runs/{runId}.
       properties:
@@ -24104,6 +24487,27 @@ components:
         TRACKED: A deployment candidate.
         UNKNOWN: An invalid "zero-value" for the run type.
       x-graphql-type: RunType
+    RunWithStack:
+      description: |-
+        RunWithStack is a run together with the stack (or module) it belongs to, so
+        the account-wide runs view can render stack details without a separate
+        per-stack query.
+      properties:
+        isModule:
+          description: |-
+            Whether the run belongs to a module. Surfaced here because the Stack type
+            does not expose it.
+          type: boolean
+        run:
+          $ref: '#/components/schemas/RunRef'
+        stack:
+          $ref: '#/components/schemas/StackRef'
+      required:
+        - isModule
+        - run
+        - stack
+      type: object
+      x-graphql-type: RunWithStack
     RunWorkerFinding:
       properties:
         description:
@@ -24941,6 +25345,41 @@ components:
         - pageInfo
       type: object
       x-graphql-type: SearchRunIgnoredTriggersOutput
+    SearchRunsOutput:
+      description: SearchRunsOutput is a page of account-wide runs returned by searchRuns.
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/RunConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        total:
+          description: |-
+            Total number of runs matching the query, ignoring pagination.
+            Computed with a single COUNT query and resolved lazily, only select it when needed.
+          format: int32
+          type: integer
+      required:
+        - edges
+        - pageInfo
+        - total
+      type: object
+      x-graphql-type: SearchRunsOutput
+    SearchRunsRequest:
+      additionalProperties: false
+      description: The arguments of searchRuns not carried in the path.
+      properties:
+        input:
+          $ref: '#/components/schemas/SearchInput'
+        offset:
+          format: int32
+          nullable: true
+          type: integer
+      required:
+        - input
+      type: object
+      x-graphql-args-of: searchRuns
     SearchSpaceContextsOutput:
       properties:
         edges:
