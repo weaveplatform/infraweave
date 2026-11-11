@@ -394,8 +394,9 @@ coverage it would contribute is not waived.
       gives to its own repository alone and a lent token gives to both;
     - from P12b, webhooks and feedback.
 
-    A provider whose secrets are unset reports "not configured" and
-    fails.
+    A provider whose secrets are unset is skipped, and the run's
+    summary names the secrets it lacks, so a failed run is a provider
+    that broke.
   - **Failures.** As the cloud object store job: an issue per provider.
 
 - A scenario's partition is the first of `accept-runs`,
@@ -496,7 +497,7 @@ coverage it would contribute is not waived.
   blocking merges.
 - The cloud job needs one lab account or project per cloud, its OIDC trust
   and its bucket, which the maintainer provisions; until they exist the job
-  reports itself as not configured rather than passing. The VCS lab job
+  skips that cloud, and its summary says so. The VCS lab job
   likewise needs each hosted provider's test organization or workspace, the
   GitHub App and the Bitbucket Data Center licence, which the maintainer
   provides once.

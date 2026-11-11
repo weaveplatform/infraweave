@@ -10,8 +10,8 @@ name: go | Object store contract in the clouds
 # provisions the buckets and the trust, and its outputs are this workflow's
 # environment secrets: none is a credential, but they name the clouds'
 # accounts, and a public repository's logs mask only secrets. A cloud
-# without them reports "not configured" and fails rather than passing. The
-# job is informational: the quality gate does not need it, and a failure
+# without them is skipped: its job passes having run nothing, and the
+# run's summary names what it lacks. The job is informational: the quality gate does not need it, and a failure
 # opens an issue per cloud, or comments on the open one.
 # ref: decisions 0016 and 0020
 on:
@@ -110,20 +110,22 @@ jobs:
           echo "--- FAIL: force-failure is set" | tee cloud.log
           exit 1
 
-      - name: Not configured
+      # A cloud the maintainer has not provisioned is skipped rather than
+      # failed, so a red run is a cloud that broke. Every later step runs
+      # only for a configured cloud.
+      - name: Skip, not configured
         if: ${{ steps.config.outputs.configured != 'true' }}
         env:
           MISSING: ${{ steps.config.outputs.missing }}
         run: |
-          line="objectstore-cloud ${CLOUD} is not configured: the objectstore-cloud environment's secrets for ${MISSING} are not set. test/terraform/cloud/README.md provisions the cloud and lists them."
-          echo "$line"
+          line="objectstore-cloud ${CLOUD} is skipped: the objectstore-cloud environment's secrets for ${MISSING} are not set. test/terraform/cloud/README.md provisions the cloud and lists them."
+          echo "::notice title=objectstore-cloud ${CLOUD} skipped::${line}"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
 
       # Each identity's run appends to cloud.log, whose failing cases the
       # report quotes.
       - name: AWS writer credentials
-        if: ${{ matrix.cloud == 'aws' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'aws' }}
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.OBJECTSTORE_AWS_WRITER_ROLE }}
@@ -131,7 +133,7 @@ jobs:
           mask-aws-account-id: true
 
       - name: S3 as the writer
-        if: ${{ matrix.cloud == 'aws' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'aws' }}
         env:
           INFRAWEAVE_TEST_CLOUD_IDENTITY: writer
           INFRAWEAVE_TEST_S3_BUCKET: ${{ secrets.OBJECTSTORE_AWS_BUCKET }}
@@ -141,7 +143,7 @@ jobs:
           go test -count=1 -v -run '^TestAccS3Cloud$' ./internal/platform/objectstore/s3 2>&1 | tee -a cloud.log
 
       - name: AWS deleter credentials
-        if: ${{ matrix.cloud == 'aws' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'aws' }}
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.OBJECTSTORE_AWS_DELETER_ROLE }}
@@ -149,7 +151,7 @@ jobs:
           mask-aws-account-id: true
 
       - name: S3 as the deleter
-        if: ${{ matrix.cloud == 'aws' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'aws' }}
         env:
           INFRAWEAVE_TEST_CLOUD_IDENTITY: deleter
           INFRAWEAVE_TEST_S3_BUCKET: ${{ secrets.OBJECTSTORE_AWS_BUCKET }}
@@ -159,14 +161,14 @@ jobs:
           go test -count=1 -v -run '^TestAccS3Cloud$' ./internal/platform/objectstore/s3 2>&1 | tee -a cloud.log
 
       - name: Google writer credentials
-        if: ${{ matrix.cloud == 'google' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'google' }}
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.OBJECTSTORE_GCS_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.OBJECTSTORE_GCS_WRITER }}
 
       - name: Cloud Storage as the writer
-        if: ${{ matrix.cloud == 'google' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'google' }}
         env:
           INFRAWEAVE_TEST_CLOUD_IDENTITY: writer
           INFRAWEAVE_TEST_GCS_BUCKET: ${{ secrets.OBJECTSTORE_GCS_BUCKET }}
@@ -175,14 +177,14 @@ jobs:
           go test -count=1 -v -run '^TestAccGCSCloud$' ./internal/platform/objectstore/gcs 2>&1 | tee -a cloud.log
 
       - name: Google deleter credentials
-        if: ${{ matrix.cloud == 'google' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'google' }}
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.OBJECTSTORE_GCS_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.OBJECTSTORE_GCS_DELETER }}
 
       - name: Cloud Storage as the deleter
-        if: ${{ matrix.cloud == 'google' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'google' }}
         env:
           INFRAWEAVE_TEST_CLOUD_IDENTITY: deleter
           INFRAWEAVE_TEST_GCS_BUCKET: ${{ secrets.OBJECTSTORE_GCS_BUCKET }}
@@ -191,7 +193,7 @@ jobs:
           go test -count=1 -v -run '^TestAccGCSCloud$' ./internal/platform/objectstore/gcs 2>&1 | tee -a cloud.log
 
       - name: Azure writer sign-in
-        if: ${{ matrix.cloud == 'azure' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'azure' }}
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.OBJECTSTORE_AZURE_WRITER_CLIENT_ID }}
@@ -201,7 +203,7 @@ jobs:
       # azidentity's default chain would first probe for a managed
       # identity the runner does not have; the Azure CLI holds the sign-in.
       - name: Blob Storage as the writer
-        if: ${{ matrix.cloud == 'azure' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'azure' }}
         env:
           AZURE_TOKEN_CREDENTIALS: AzureCLICredential
           INFRAWEAVE_TEST_CLOUD_IDENTITY: writer
@@ -212,7 +214,7 @@ jobs:
           go test -count=1 -v -run '^TestAccAzureBlobCloud$' ./internal/platform/objectstore/azureblob 2>&1 | tee -a cloud.log
 
       - name: Azure deleter sign-in
-        if: ${{ matrix.cloud == 'azure' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'azure' }}
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.OBJECTSTORE_AZURE_DELETER_CLIENT_ID }}
@@ -220,7 +222,7 @@ jobs:
           subscription-id: ${{ secrets.OBJECTSTORE_AZURE_SUBSCRIPTION_ID }}
 
       - name: Blob Storage as the deleter
-        if: ${{ matrix.cloud == 'azure' }}
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.cloud == 'azure' }}
         env:
           AZURE_TOKEN_CREDENTIALS: AzureCLICredential
           INFRAWEAVE_TEST_CLOUD_IDENTITY: deleter
@@ -232,7 +234,7 @@ jobs:
 
       # One open issue per cloud tracks its failing runs: the first failure
       # opens it, and each later one comments on it until a person closes
-      # it. A cloud that is not configured fails without an issue, since
+      # it. A cloud that is not configured passes without an issue, since
       # nothing ran.
       - name: Open or update the cloud's issue
         if: ${{ failure() && (steps.config.outputs.configured == 'true' || inputs.force-failure) }}
