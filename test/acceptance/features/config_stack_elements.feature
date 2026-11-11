@@ -143,6 +143,11 @@ Feature: A stack's own config elements
     When token "h" sends "PUT /api/v1/stacks/infra/configs/URL" with '{"type":"ENVIRONMENT_VARIABLE","value":"${{ stack.nmae }}","writeOnly":false}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/value" from 1:11 to 1:15
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/URL" with '{"type":"ENVIRONMENT_VARIABLE","value":"${{ run.nope }}","writeOnly":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/value" from 1:9 to 1:13
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/COMMIT" with '{"type":"ENVIRONMENT_VARIABLE","value":"${{ run.commit.hash }}","writeOnly":false}' through B
+    Then it answers 201
     When token "h" sends "PUT /api/v1/stacks/infra/configs/URL" with '{"type":"ENVIRONMENT_VARIABLE","value":"https://${{ env.REGION }}.${{ stack.id }}/${HOME}","writeOnly":false}' through A
     Then it answers 201
     When token "h" sends "GET /api/v1/stacks/infra/config-element?id=URL" through B

@@ -117,7 +117,10 @@ func newDomains(
 	stacks.GuardStacks(runs.StackGuard())
 	access.ResolveSubjects(runsassembly.Entity, runs.SpaceOf())
 	stacks.SetStackStatus(runs.StackStatus())
-	registry, err := expr.NewRegistry(c.Expressions, configuration.Surfaces()...)
+	registry, err := expr.NewRegistry(
+		c.Expressions,
+		slices.Concat(configuration.Surfaces(), runs.Surfaces())...,
+	)
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the surface or the setting
 	}

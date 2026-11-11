@@ -63,7 +63,9 @@ type Context struct {
 }
 
 // Surface is a place where users write expressions, declared by the
-// domain that owns it.
+// domain that owns it. Another domain adds variables to it by declaring a
+// surface of the same name with no Env: the registry merges the two, and
+// the owner's Env describes the context for all of its variables.
 type Surface struct {
 	Name      string
 	Variables []Variable
@@ -252,9 +254,9 @@ type Registry struct {
 	programs *lru[[32]byte, *program]
 }
 
-// NewRegistry builds a registry of surfaces under cfg's limits. A surface
-// name appears once, a variable once within its surface, and no surface
-// declares now.
+// NewRegistry builds a registry of surfaces under cfg's limits, merging
+// the declarations of one name. A surface has one Env at most, a variable
+// appears once within its surface, and no surface declares now.
 func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -266,13 +268,22 @@ func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 		programs: newLRU[[32]byte, *program](programs),
 	}
 	for _, s := range surfaces {
-		if _, dup := r.surfaces[s.Name]; dup || s.Name == "" {
+		merged, dup := r.surfaces[s.Name]
+		if s.Name == "" || dup && merged.Env != nil && s.Env != nil {
 			return nil, fmt.Errorf(
-				"%w: surface %q is declared twice or has no name",
+				"%w: surface %q has two contexts or no name",
 				ErrRequest,
 				s.Name,
 			)
 		}
+		merged.Name = s.Name
+		if s.Env != nil {
+			merged.Env = s.Env
+		}
+		merged.Variables = slices.Concat(merged.Variables, s.Variables)
+		r.surfaces[s.Name] = merged
+	}
+	for _, s := range r.surfaces {
 		seen := map[string]bool{}
 		for _, v := range s.Variables {
 			if v.Name == Now || seen[v.Name] {
@@ -285,7 +296,6 @@ func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 			}
 			seen[v.Name] = true
 		}
-		r.surfaces[s.Name] = s
 	}
 	none, err := fingerprint(nil)
 	if err != nil {

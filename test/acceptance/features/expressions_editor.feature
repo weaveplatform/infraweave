@@ -6,7 +6,9 @@ Feature: Expressions editor
   context is a stack, read by whoever reads its space: env holds the
   variables the stack resolves to, a write-only one masked, and a name it
   does not resolve to is an error with its range; stack describes the
-  stack. A stack the caller cannot read answers as one that does not
+  stack; run, the run a handover renders for, comes only from a sample,
+  since a stack has no run until one is handed over. A stack the caller
+  cannot read answers as one that does not
   exist. The home key is space-admin on the account's top space; the
   member key holds only the bindings a scenario gives it. Stack infra
   lives in legacy, with the variable REGION and the write-only TOKEN.
@@ -34,6 +36,12 @@ Feature: Expressions editor
     And the answer leaves out "s3cret"
     When token "h" sends "POST /api/v1/expressions/evaluate" with '{"surface":"environment","ref":"infra","form":"expression","source":"env.REGION","sample":{"env":{"REGION":"us"}}}' through A
     Then the answer's value is '"us"'
+    When token "h" sends "POST /api/v1/expressions/complete" with '{"surface":"environment","ref":"infra","form":"template","source":"${{ run.pr }}","position":{"line":1,"column":11}}' through B
+    Then it answers 200
+    And the answer completes "priority"
+    When token "h" sends "POST /api/v1/expressions/evaluate" with '{"surface":"environment","ref":"infra","form":"template","source":"${{ run.type }}-${{ run.commit.hash }}","sample":{"run":{"type":"PROPOSED","commit":{"hash":"abc"}}}}' through A
+    Then it answers 200
+    And the answer's value is '"PROPOSED-abc"'
 
   @op:expressionCheck @op:expressionComplete @op:expressionEvaluate @case:denial
   Scenario: A stack in a space the caller cannot read answers 404 until the caller reads the space
@@ -75,6 +83,12 @@ Feature: Expressions editor
     When token "h" sends "POST /api/v1/expressions/check" with '{"surface":"environment","ref":"infra","form":"template","source":"${{ env.REGOIN }}"}' through A
     Then it answers 200
     And the answer flags an error from 1:9 to 1:15
+    When token "h" sends "POST /api/v1/expressions/check" with '{"surface":"environment","ref":"infra","form":"template","source":"${{ run.commit.sha }}"}' through B
+    Then it answers 200
+    And the answer flags an error from 1:16 to 1:19
+    When token "h" sends "POST /api/v1/expressions/evaluate" with '{"surface":"environment","ref":"infra","form":"template","source":"${{ run.id }}"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/source" as "rule"
     When token "h" sends "POST /api/v1/expressions/check" with '{"surface":"nowhere","ref":"infra","form":"template","source":"x"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/surface" as "not-found"
