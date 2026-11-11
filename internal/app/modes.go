@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -158,7 +159,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 			events,
 			objs.store,
 			domains.cron(db.Primary(), log),
-			domains.VCS.Jobs(),
+			slices.Concat(domains.VCS.Jobs(), domains.Runs.Jobs()),
 			domains,
 			log,
 			health,

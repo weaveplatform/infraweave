@@ -12,9 +12,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
 )
 
-var _ lifecycle.Store = (*Store)(nil)
+var (
+	_ lifecycle.Store = (*Store)(nil)
+	_ schedule.Store  = (*Store)(nil)
+)
 
 // runColumns are the columns scanRun reads, in its order.
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
@@ -189,4 +193,57 @@ func (s *Store) Projection(
 			stack, sql.Unavailable(err))
 	}
 	return kernel.StackState(state), blocked, nil
+}
+
+// Queued reads acct's stack's QUEUED runs, oldest first.
+func (s *Store) Queued(
+	ctx context.Context,
+	acct kernel.AccountID,
+	stack kernel.ULID,
+) ([]lifecycle.Run, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+runColumns+` FROM runs
+		WHERE account_id = $1 AND stack_id = $2 AND state = $3 ORDER BY id`,
+		acct, stack, string(kernel.RunStateQueued))
+	if err != nil {
+		return nil, fmt.Errorf(
+			"runs: read the queued runs of stack %s: %w",
+			stack,
+			sql.Unavailable(err),
+		)
+	}
+	defer rows.Close()
+	var out []lifecycle.Run
+	for rows.Next() {
+		r, err := scanRun(rows)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"runs: read a queued run of stack %s: %w",
+				stack,
+				sql.Unavailable(err),
+			)
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"runs: read the queued runs of stack %s: %w",
+			stack,
+			sql.Unavailable(err),
+		)
+	}
+	return out, nil
+}
+
+// TakeLock makes run hold its stack's run lock when no run holds it, and
+// reports whether it does.
+func (s *Store) TakeLock(ctx context.Context, run lifecycle.Run) (bool, error) {
+	tag, err := tx.Q(ctx, s.db).
+		Exec(ctx, `INSERT INTO stack_run_locks (account_id, stack_id, run_id)
+		VALUES ($1, $2, $3) ON CONFLICT (account_id, stack_id) DO NOTHING`,
+			run.Account, run.Stack, run.ID)
+	if err != nil {
+		return false, fmt.Errorf("runs: lock stack %s for run %s: %w", run.Stack, run.ID,
+			sql.Unavailable(err))
+	}
+	return tag.RowsAffected() == 1, nil
 }

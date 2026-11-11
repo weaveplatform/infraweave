@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -21,6 +23,8 @@ import (
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 )
 
 // The credentials of the suite's own containers, which listen on loopback
@@ -171,9 +175,19 @@ func (d *Dependencies) Postgres(ctx context.Context) (*Database, error) {
 	}, nil
 }
 
+// pgMaxConnections lets every scenario running at once, one per GOMAXPROCS
+// as godog runs them, hold two servers' full pools and listeners, beside
+// the harness's own sessions. PostgreSQL's default of 100 refuses
+// connections once each server's queue workers hold theirs.
+func pgMaxConnections() string {
+	perServer := int(sql.Defaults().MaxConns) + 1
+	return strconv.Itoa(runtime.GOMAXPROCS(0)*2*perServer + 100)
+}
+
 // startPostgres starts the container and creates and migrates the template.
 func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
-	c, dsn, err := runPostgres(ctx)
+	c, dsn, err := runPostgres(ctx,
+		testcontainers.WithCmdArgs("-c", "max_connections="+pgMaxConnections()))
 	if c != nil {
 		d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })
 	}

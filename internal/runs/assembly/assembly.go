@@ -4,14 +4,15 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
-	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -26,10 +27,10 @@ func Held() []integrity.Held { return pg.Held() }
 // before it: the database, the stacks domain, the outbox its runs' events
 // go to, the queue its jobs go to, and a clock, time.Now when nil.
 type Deps struct {
-	DB     tx.Querier
+	DB     queue.DB
 	Stacks stacksapi.Stacks
 	Events lifecycle.Events
-	Jobs   lifecycle.Jobs
+	Jobs   schedule.Queue
 	Now    func() time.Time
 }
 
@@ -37,17 +38,35 @@ type Deps struct {
 type Domain struct {
 	runs      *core.Service
 	lifecycle *lifecycle.Lifecycle
+	scheduler *schedule.Scheduler
 }
 
 // New constructs the domain on d.
 func New(d Deps) *Domain {
 	store := pg.New(d.DB)
+	lc := lifecycle.New(lifecycle.Deps{
+		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now,
+	})
 	return &Domain{
-		runs: core.New(store),
-		lifecycle: lifecycle.New(lifecycle.Deps{
-			Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now,
+		runs:      core.New(store),
+		lifecycle: lc,
+		scheduler: schedule.New(schedule.Deps{
+			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs,
 		}),
 	}
+}
+
+// Jobs are the domain's job handlers, which the scheduler registers:
+// lifecycle.ScheduleKind's, which moves a stack's queued runs to READY.
+func (d *Domain) Jobs() []queue.Registration {
+	return []queue.Registration{{Kind: lifecycle.ScheduleKind, Handler: d.scheduler.Handle}}
+}
+
+// Subscribe subscribes the domain's consumers on events: the scheduling
+// of a stack that is unlocked or enabled.
+func (d *Domain) Subscribe(events *outbox.Outbox) error {
+	//nolint:wrapcheck // names the consumer
+	return events.Subscribe(stacksapi.ChangedKind, schedule.Consumer, d.scheduler.StackChanged)
 }
 
 // RegisterEvents adds the domain's event kinds to kinds, before the

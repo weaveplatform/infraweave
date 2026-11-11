@@ -59,10 +59,14 @@ func (f *fakeStacks) LockForRun(
 	id kernel.ULID,
 ) (stacksapi.Settings, error) {
 	f.mu.Lock()
-	err, st := f.err["LockForRun"], f.settings[id]
+	err := f.err["LockForRun"]
+	st, ok := f.settings[id]
 	f.mu.Unlock()
 	if err != nil {
 		return stacksapi.Settings{}, err
+	}
+	if !ok {
+		return stacksapi.Settings{}, stacksapi.ErrNotFound
 	}
 	if _, err := tx.Q(ctx, f.db).Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
 		id.String()); err != nil {
