@@ -4846,6 +4846,16 @@ type IntentProjectReference struct {
 	Name string `json:"name"`
 }
 
+// IntentProjectReferencesConnection defines model for IntentProjectReferencesConnection.
+type IntentProjectReferencesConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node IntentProjectReference is a lightweight pointer to an IntentProject,
+	// returned by relations (e.g. WorkerPool.intentProjects) that don't need to
+	// expose the full IntentProject surface area.
+	Node IntentProjectReference `json:"node"`
+}
+
 // KeyValuePairType defines model for KeyValuePairType.
 type KeyValuePairType struct {
 	Key   string `json:"key"`
@@ -5878,6 +5888,30 @@ type ProposeWithOverridesRequest struct {
 	EnvironmentVarsOverrides *[]EnvironmentVariable `json:"environmentVarsOverrides,omitempty"`
 }
 
+// PublicWorkerPool PublicWorkerPool contains details of public worker pool for account.
+type PublicWorkerPool struct {
+	// BusyWorkers Number of currently busy workers in the public worker pool for this account.
+	BusyWorkers int32 `json:"busyWorkers"`
+
+	// IntentProjects List of intent projects using public WorkerPool for this account.
+	IntentProjects []IntentProjectReference `json:"intentProjects"`
+
+	// IntentProjectsCount Count of intent projects using public WorkerPool for this account.
+	IntentProjectsCount int32 `json:"intentProjectsCount"`
+
+	// Parallelism Maximum number of simultaneously executing runs on the public worker pool for account.
+	Parallelism int32 `json:"parallelism"`
+
+	// PendingRuns Number of runs on the public worker ready for processing for this account.
+	PendingRuns int32 `json:"pendingRuns"`
+
+	// SchedulableRunsCount Count of schedulable runs on the public worker pool workers for this account.
+	SchedulableRunsCount int32 `json:"schedulableRunsCount"`
+
+	// UsersCount Count of users on the public worker pool workers for this account.
+	UsersCount int32 `json:"usersCount"`
+}
+
 // PullRequest PullRequest is infraweave's representation of a pull request on GitHub.
 type PullRequest struct {
 	// AuthorLogin GitHub username of the PullRequest creator.
@@ -6483,6 +6517,32 @@ type RunTriggerRequest struct {
 // RunType RunType is a type of the Run.
 type RunType string
 
+// RunWithPosition RunWithPosition is a wrapper for run with its position in the queue.
+type RunWithPosition struct {
+	IsModule bool  `json:"isModule"`
+	Position int32 `json:"position"`
+
+	// Provider VCSProvider is the type of VCS provider.
+	Provider VCSProvider `json:"provider"`
+
+	// Run A reference to a Run; fetch it with GET /runs/{runId}.
+	Run RunRef `json:"run"`
+
+	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
+	Space     SpaceRef `json:"space"`
+	StackId   string   `json:"stackId"`
+	StackName string   `json:"stackName"`
+	Version   *string  `json:"version,omitempty"`
+}
+
+// RunWithPositionConnection RunWithPositionConnection represents a single queued run in a page of results.
+type RunWithPositionConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node RunWithPosition is a wrapper for run with its position in the queue.
+	Node RunWithPosition `json:"node"`
+}
+
 // RunWithStack RunWithStack is a run together with the stack (or module) it belongs to, so
 // the account-wide runs view can render stack details without a separate
 // per-stack query.
@@ -6846,6 +6906,12 @@ type SearchInput struct {
 	RequestedPage *SearchQueryRequestedPage `json:"requestedPage,omitempty"`
 }
 
+// SearchIntentProjectReferencesOutput defines model for SearchIntentProjectReferencesOutput.
+type SearchIntentProjectReferencesOutput struct {
+	Edges    []IntentProjectReferencesConnection `json:"edges"`
+	PageInfo PageInfo                            `json:"pageInfo"`
+}
+
 // SearchManagedEntitiesGroupedByProvidersOutput defines model for SearchManagedEntitiesGroupedByProvidersOutput.
 type SearchManagedEntitiesGroupedByProvidersOutput struct {
 	Edges    []ManagedEntitiesGroupedByProvidersConnection `json:"edges"`
@@ -6969,6 +7035,12 @@ type SearchRunsOutput struct {
 type SearchRunsRequest struct {
 	Input  SearchInput `json:"input"`
 	Offset *int32      `json:"offset,omitempty"`
+}
+
+// SearchSchedulableRunsOutput defines model for SearchSchedulableRunsOutput.
+type SearchSchedulableRunsOutput struct {
+	Edges    []RunWithPositionConnection `json:"edges"`
+	PageInfo PageInfo                    `json:"pageInfo"`
 }
 
 // SearchSpaceContextsOutput defines model for SearchSpaceContextsOutput.
@@ -7140,6 +7212,24 @@ type SearchVCSIntegrationUsersOutput struct {
 type SearchVCSIntegrationsOutput struct {
 	Edges    []VCSIntegrationsConnection `json:"edges"`
 	PageInfo PageInfo                    `json:"pageInfo"`
+}
+
+// SearchWorkerPoolUsersOutput defines model for SearchWorkerPoolUsersOutput.
+type SearchWorkerPoolUsersOutput struct {
+	Edges    []WorkerPoolUserConnection `json:"edges"`
+	PageInfo PageInfo                   `json:"pageInfo"`
+}
+
+// SearchWorkerPoolsOutput defines model for SearchWorkerPoolsOutput.
+type SearchWorkerPoolsOutput struct {
+	Edges    []WorkerPoolConnection `json:"edges"`
+	PageInfo PageInfo               `json:"pageInfo"`
+}
+
+// SearchWorkersOutput defines model for SearchWorkersOutput.
+type SearchWorkersOutput struct {
+	Edges    []WorkerConnection `json:"edges"`
+	PageInfo PageInfo           `json:"pageInfo"`
 }
 
 // SeatLimit A seats limit and the seats in use under it. Members and API keys share one count: an active member takes a seat, and an API key that is not personal takes one from its first use until 30 days after its last.
@@ -9460,6 +9550,19 @@ type Worker struct {
 	Status   WorkerStatus `json:"status"`
 }
 
+// WorkerConnection WorkerConnection represents a single worker in a page of results.
+type WorkerConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node Worker represents a single worker in the WorkerPool.
+	Node Worker `json:"node"`
+}
+
+// WorkerDrainSetRequest The arguments of workerDrainSet not carried in the path.
+type WorkerDrainSetRequest struct {
+	Drain bool `json:"drain"`
+}
+
 // WorkerPool WorkerPool represents a single WorkerPool.
 type WorkerPool struct {
 	// AllowedActions Actions that the user can perform on this WorkerPool.
@@ -9559,6 +9662,34 @@ type WorkerPool struct {
 // WorkerPoolKind The concrete type, for union and interface responses.
 type WorkerPoolKind string
 
+// WorkerPoolConnection WorkerPoolConnection represents a single worker pool in a page of results.
+type WorkerPoolConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node A reference to a WorkerPool; fetch it with GET /worker-pools/{workerPoolId}.
+	Node WorkerPoolRef `json:"node"`
+}
+
+// WorkerPoolCreateRequest The arguments of workerPoolCreate not carried in the path.
+type WorkerPoolCreateRequest struct {
+	// CertificateSigningRequest certificate signing request in base64. Changing this value will trigger a token reset.
+	CertificateSigningRequest string `json:"certificateSigningRequest"`
+
+	// Description description of the worker pool
+	Description *string `json:"description,omitempty"`
+
+	// DriftDetectionRunLimit Limit of how many concurrent drift detection runs are allowed per worker pool
+	DriftDetectionRunLimit *int32    `json:"driftDetectionRunLimit,omitempty"`
+	Labels                 *[]string `json:"labels,omitempty"`
+
+	// Name name of the worker pool
+	Name                    string `json:"name"`
+	PreparingTimeoutSeconds *int32 `json:"preparingTimeoutSeconds,omitempty"`
+
+	// Space ID (slug) of the space the worker pool is in
+	Space *string `json:"space,omitempty"`
+}
+
 // WorkerPoolPage One page of a cursor-paginated list.
 type WorkerPoolPage struct {
 	Items []WorkerPool `json:"items"`
@@ -9572,6 +9703,11 @@ type WorkerPoolRef struct {
 	Id string `json:"id"`
 }
 
+// WorkerPoolResetRequest The arguments of workerPoolReset not carried in the path.
+type WorkerPoolResetRequest struct {
+	CertificateSigningRequest string `json:"certificateSigningRequest"`
+}
+
 // WorkerPoolScanReference WorkerPoolScanReference is a scan using the worker pool, viewed from the worker pool.
 type WorkerPoolScanReference struct {
 	// Id Slug of the scan.
@@ -9582,6 +9718,16 @@ type WorkerPoolScanReference struct {
 
 	// SpaceDetails A reference to a Space; fetch it with GET /spaces/{spaceId}.
 	SpaceDetails SpaceRef `json:"spaceDetails"`
+}
+
+// WorkerPoolUpdateRequest The arguments of workerPoolUpdate not carried in the path.
+type WorkerPoolUpdateRequest struct {
+	Description             *string   `json:"description,omitempty"`
+	DriftDetectionRunLimit  *int32    `json:"driftDetectionRunLimit,omitempty"`
+	Labels                  *[]string `json:"labels,omitempty"`
+	Name                    string    `json:"name"`
+	PreparingTimeoutSeconds *int32    `json:"preparingTimeoutSeconds,omitempty"`
+	Space                   *string   `json:"space,omitempty"`
 }
 
 // WorkerPoolUser WorkerPoolUser represents a user (module or stacks) of the worker pool.
@@ -9599,8 +9745,98 @@ type WorkerPoolUser struct {
 	StackName string `json:"stackName"`
 }
 
+// WorkerPoolUserConnection WorkerPoolUserConnection represents a single stack/module in a page of results for a worker pool.
+type WorkerPoolUserConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node WorkerPoolUser represents a user (module or stacks) of the worker pool.
+	Node WorkerPoolUser `json:"node"`
+}
+
 // WorkerStatus defines model for WorkerStatus.
 type WorkerStatus string
+
+// WorkerUsage defines model for WorkerUsage.
+type WorkerUsage struct {
+	// Burst Uses the current contract's limit and percentile, including for past cycles.
+	// `budgetMinutes` applies the current billed percentile to the selected cycle's
+	// duration.
+	Burst *WorkerUsageBurst `json:"burst,omitempty"`
+
+	// ConcurrencyAtContractedPercentile Concurrency at the percentile the contract bills on (contractedPercentile).
+	// Null when there is no contract or the contract has no percentile, matching
+	// contractedPercentile.
+	ConcurrencyAtContractedPercentile *int32 `json:"concurrencyAtContractedPercentile,omitempty"`
+
+	// ContractedLimit Worker concurrency limit in the current contract. Null when the account
+	// has no contract or no limit. Past cycles also use this current value,
+	// which may differ from the limit in effect during that cycle.
+	ContractedLimit *int32 `json:"contractedLimit,omitempty"`
+
+	// ContractedPercentile Billed percentile in the current contract, such as 95. Null when the
+	// account has no contract. Past cycles also use this current value.
+	ContractedPercentile *int32           `json:"contractedPercentile,omitempty"`
+	Cycle                WorkerUsageCycle `json:"cycle"`
+
+	// MultiAccountContract True when contractedLimit is not specific to this account: other accounts
+	// draw on the same limit, so this account's usage is only part of what counts
+	// against it.
+	MultiAccountContract bool `json:"multiAccountContract"`
+
+	// SelectableCycles Every cycle `cyclesAgo` can select right now, newest first, starting with
+	// the current cycle. The list stops at the oldest retained cycle or at the
+	// cycle the account was created or the contract started in, whichever is
+	// newer. Past dates are extrapolated from the current contract, and the list
+	// shifts by one when a new cycle starts.
+	SelectableCycles []WorkerUsageCycle `json:"selectableCycles"`
+}
+
+// WorkerUsageBurst Uses the current contract's limit and percentile, including for past cycles.
+// `budgetMinutes` applies the current billed percentile to the selected cycle's
+// duration.
+type WorkerUsageBurst struct {
+	// BudgetMinutes How many minutes of the full cycle may exceed the contracted worker limit.
+	BudgetMinutes int32 `json:"budgetMinutes"`
+
+	// RemainingMinutes budget - used (may be negative when over).
+	RemainingMinutes int32 `json:"remainingMinutes"`
+
+	// UsedMinutes Minutes above the current contracted limit. The current cycle counts time
+	// elapsed so far; a past cycle counts its full duration. Each minute counts
+	// once, regardless of how far concurrency exceeded the limit.
+	UsedMinutes int32 `json:"usedMinutes"`
+}
+
+// WorkerUsageCycle defines model for WorkerUsageCycle.
+type WorkerUsageCycle struct {
+	// CyclesAgo The `cyclesAgo` value that selects this cycle.
+	CyclesAgo int32 `json:"cyclesAgo"`
+
+	// End Unix seconds, exclusive on the minute timeline.
+	End int32 `json:"end"`
+
+	// Start Unix seconds, inclusive.
+	Start int32 `json:"start"`
+}
+
+// WorkerUsageInput Selects the billing cycle returned by `workerUsage`. Omitting `input`, passing
+// an empty input, omitting `cyclesAgo`, and setting `cyclesAgo` to 0 all select
+// the current cycle.
+type WorkerUsageInput struct {
+	// CyclesAgo Number of billing cycles before the current cycle. Null means 0. 0 selects
+	// the current cycle to date; 1 selects the most recent completed cycle.
+	// Valid values range from 0 through 5.
+	//
+	// The rollup retains the current monthly partition and the six preceding
+	// partitions. An anniversary-based billing cycle can span two partitions,
+	// so selecting cycle 6 could read a dropped partition as zero.
+	//
+	// A past cycle that ends before the account was created, or before the contract
+	// or subscription started, returns an error. The cycle those dates fall in stays
+	// selectable. The current cycle is never checked. A valid cycle older than the
+	// rollup returns zeros, which is indistinguishable from no usage.
+	CyclesAgo *int32 `json:"cyclesAgo,omitempty"`
+}
 
 // Cursor defines model for Cursor.
 type Cursor = string
@@ -11253,6 +11489,99 @@ type VcsIntegrationTestParams struct {
 	Provider VCSProvider `form:"provider" json:"provider"`
 }
 
+// WorkerPoolsParams defines parameters for WorkerPools.
+type WorkerPoolsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// WorkerPoolCreateParams defines parameters for WorkerPoolCreate.
+type WorkerPoolCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// WorkerPoolDeleteParams defines parameters for WorkerPoolDelete.
+type WorkerPoolDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// WorkerPoolPatchParams defines parameters for WorkerPoolPatch.
+type WorkerPoolPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// WorkerPoolUpdateParams defines parameters for WorkerPoolUpdate.
+type WorkerPoolUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// WorkerPoolCycleParams defines parameters for WorkerPoolCycle.
+type WorkerPoolCycleParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// WorkerPoolResetParams defines parameters for WorkerPoolReset.
+type WorkerPoolResetParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// WorkerPoolSearchIntentProjectsParams defines parameters for WorkerPoolSearchIntentProjects.
+type WorkerPoolSearchIntentProjectsParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// WorkerPoolSearchIntentProjectsSuggestionsParams defines parameters for WorkerPoolSearchIntentProjectsSuggestions.
+type WorkerPoolSearchIntentProjectsSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
+// WorkerPoolSearchSchedulableRunsParams defines parameters for WorkerPoolSearchSchedulableRuns.
+type WorkerPoolSearchSchedulableRunsParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// WorkerPoolSearchSchedulableRunsSuggestionsParams defines parameters for WorkerPoolSearchSchedulableRunsSuggestions.
+type WorkerPoolSearchSchedulableRunsSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
+// WorkerPoolSearchUsersParams defines parameters for WorkerPoolSearchUsers.
+type WorkerPoolSearchUsersParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// WorkerPoolSearchUsersSuggestionsParams defines parameters for WorkerPoolSearchUsersSuggestions.
+type WorkerPoolSearchUsersSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
+// WorkerPoolSearchWorkersParams defines parameters for WorkerPoolSearchWorkers.
+type WorkerPoolSearchWorkersParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// WorkerPoolSearchWorkersSuggestionsParams defines parameters for WorkerPoolSearchWorkersSuggestions.
+type WorkerPoolSearchWorkersSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
+// WorkerUsageParams defines parameters for WorkerUsage.
+type WorkerUsageParams struct {
+	Input *WorkerUsageInput `form:"input,omitempty" json:"input,omitempty"`
+}
+
 // ApiKeyEnableNonAdminManagersJSONRequestBody defines body for ApiKeyEnableNonAdminManagers for application/json ContentType.
 type ApiKeyEnableNonAdminManagersJSONRequestBody = ApiKeyEnableNonAdminManagersRequest
 
@@ -11645,6 +11974,27 @@ type SearchVCSIntegrationsJSONRequestBody = SearchInput
 
 // SearchVCSIntegrationsSuggestionsJSONRequestBody defines body for SearchVCSIntegrationsSuggestions for application/json ContentType.
 type SearchVCSIntegrationsSuggestionsJSONRequestBody = SearchSuggestionsInput
+
+// WorkerPoolCreateJSONRequestBody defines body for WorkerPoolCreate for application/json ContentType.
+type WorkerPoolCreateJSONRequestBody = WorkerPoolCreateRequest
+
+// SearchWorkerPoolsJSONRequestBody defines body for SearchWorkerPools for application/json ContentType.
+type SearchWorkerPoolsJSONRequestBody = SearchInput
+
+// SearchWorkerPoolsSuggestionsJSONRequestBody defines body for SearchWorkerPoolsSuggestions for application/json ContentType.
+type SearchWorkerPoolsSuggestionsJSONRequestBody = SearchSuggestionsInput
+
+// WorkerPoolPatchApplicationMergePatchPlusJSONRequestBody defines body for WorkerPoolPatch for application/merge-patch+json ContentType.
+type WorkerPoolPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// WorkerPoolUpdateJSONRequestBody defines body for WorkerPoolUpdate for application/json ContentType.
+type WorkerPoolUpdateJSONRequestBody = WorkerPoolUpdateRequest
+
+// WorkerPoolResetJSONRequestBody defines body for WorkerPoolReset for application/json ContentType.
+type WorkerPoolResetJSONRequestBody = WorkerPoolResetRequest
+
+// WorkerDrainSetJSONRequestBody defines body for WorkerDrainSet for application/json ContentType.
+type WorkerDrainSetJSONRequestBody = WorkerDrainSetRequest
 
 // AsAnsibleResource returns the union data inside the AnsibleEntity as a AnsibleResource
 func (t AnsibleEntity) AsAnsibleResource() (AnsibleResource, error) {
@@ -15361,6 +15711,13 @@ type ClientInterface interface {
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PublicWorkerPool Get Public Worker Pool
+	//
+	// Shows public worker pool details.
+	//
+	// Corresponds with GET /public-worker-pool (the `PublicWorkerPool` operationId).
+	PublicWorkerPool(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Repositories List Repositories
 	//
 	// List of repositories available to the account.
@@ -17173,6 +17530,226 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /viewer (the `Viewer` operationId).
 	Viewer(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPools List Worker Pools
+	//
+	// List of all the WorkerPools in the account.
+	//
+	// Corresponds with GET /worker-pools (the `WorkerPools` operationId).
+	WorkerPools(ctx context.Context, params *WorkerPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolCreateWithBody Create Worker Pool
+	//
+	// Create a new WorkerPool.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+	WorkerPoolCreateWithBody(ctx context.Context, params *WorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolCreate Create Worker Pool
+	//
+	// Create a new WorkerPool.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+	WorkerPoolCreate(ctx context.Context, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchWorkerPoolsWithBody Search Worker Pools
+	//
+	// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+	SearchWorkerPoolsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchWorkerPools Search Worker Pools
+	//
+	// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+	SearchWorkerPools(ctx context.Context, body SearchWorkerPoolsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchWorkerPoolsSuggestionsWithBody Search Worker Pools Suggestions
+	//
+	// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+	SearchWorkerPoolsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchWorkerPoolsSuggestions Search Worker Pools Suggestions
+	//
+	// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+	SearchWorkerPoolsSuggestions(ctx context.Context, body SearchWorkerPoolsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolDelete Delete Worker Pool
+	//
+	// Delete an existing WorkerPool.
+	//
+	// Corresponds with DELETE /worker-pools/{workerPoolId} (the `WorkerPoolDelete` operationId).
+	WorkerPoolDelete(ctx context.Context, workerPoolId string, params *WorkerPoolDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPool Get Worker Pool
+	//
+	// Details of a single WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId} (the `WorkerPool` operationId).
+	WorkerPool(ctx context.Context, workerPoolId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolPatchWithBody Patch Worker Pool
+	//
+	// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+	WorkerPoolPatchWithBody(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolPatchWithApplicationMergePatchPlusJSONBody Patch Worker Pool
+	//
+	// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+	WorkerPoolPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, body WorkerPoolPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolUpdateWithBody Update Worker Pool
+	//
+	// Update an existing WorkerPool.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+	WorkerPoolUpdateWithBody(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolUpdate Update Worker Pool
+	//
+	// Update an existing WorkerPool.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+	WorkerPoolUpdate(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, body WorkerPoolUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolCycle Cycle Worker Pool
+	//
+	// Cycles the workerpool.
+	//
+	// Corresponds with POST /worker-pools/{workerPoolId}/cycle (the `WorkerPoolCycle` operationId).
+	WorkerPoolCycle(ctx context.Context, workerPoolId string, params *WorkerPoolCycleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolResetWithBody Reset Worker Pool
+	//
+	// Recreate the credentials necessary to connect WorkerPool's workers to the
+	// control plane.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+	WorkerPoolResetWithBody(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolReset Reset Worker Pool
+	//
+	// Recreate the credentials necessary to connect WorkerPool's workers to the
+	// control plane.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+	WorkerPoolReset(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, body WorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchIntentProjects Worker pool search intent projects
+	//
+	// Search intent projects using this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects (the `WorkerPoolSearchIntentProjects` operationId).
+	WorkerPoolSearchIntentProjects(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchIntentProjectsSuggestions Worker pool search intent projects suggestions
+	//
+	// Search intent projects suggestions using this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects-suggestions (the `WorkerPoolSearchIntentProjectsSuggestions` operationId).
+	WorkerPoolSearchIntentProjectsSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchSchedulableRuns Worker pool search schedulable runs
+	//
+	// Search Runs for this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs (the `WorkerPoolSearchSchedulableRuns` operationId).
+	WorkerPoolSearchSchedulableRuns(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchSchedulableRunsSuggestions Worker pool search schedulable runs suggestions
+	//
+	// Search Runs Suggestions for this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs-suggestions (the `WorkerPoolSearchSchedulableRunsSuggestions` operationId).
+	WorkerPoolSearchSchedulableRunsSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchUsers Worker pool search users
+	//
+	// Search stacks/modules using this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-users (the `WorkerPoolSearchUsers` operationId).
+	WorkerPoolSearchUsers(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchUsersSuggestions Worker pool search users suggestions
+	//
+	// Search stacks/modules suggestions using this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-users-suggestions (the `WorkerPoolSearchUsersSuggestions` operationId).
+	WorkerPoolSearchUsersSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchWorkers Worker pool search workers
+	//
+	// Search workers belonging to this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-workers (the `WorkerPoolSearchWorkers` operationId).
+	WorkerPoolSearchWorkers(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolSearchWorkersSuggestions Worker pool search workers suggestions
+	//
+	// Search workers suggestions belonging to this WorkerPool.
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-workers-suggestions (the `WorkerPoolSearchWorkersSuggestions` operationId).
+	WorkerPoolSearchWorkersSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerDrainSetWithBody Set Worker Drain
+	//
+	// Toggles draining on the worker.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+	WorkerDrainSetWithBody(ctx context.Context, workerPoolId string, workerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerDrainSet Set Worker Drain
+	//
+	// Toggles draining on the worker.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+	WorkerDrainSet(ctx context.Context, workerPoolId string, workerId string, body WorkerDrainSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerUsage Get Worker Usage
+	//
+	// Private worker usage for a billing cycle. Omit `input` to select the
+	// current cycle.
+	//
+	// Corresponds with GET /worker-usage (the `WorkerUsage` operationId).
+	WorkerUsage(ctx context.Context, params *WorkerUsageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // ApiKeyEnableNonAdminManagersWithBody Enable Non-Admin Managers
@@ -21509,6 +22086,23 @@ func (c *Client) PersonalApiKeyDisable(ctx context.Context, personalApiKeyId str
 	return c.Client.Do(req)
 }
 
+// PublicWorkerPool Get Public Worker Pool
+//
+// Shows public worker pool details.
+//
+// Corresponds with GET /public-worker-pool (the `PublicWorkerPool` operationId).
+func (c *Client) PublicWorkerPool(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Repositories List Repositories
 //
 // List of repositories available to the account.
@@ -25492,6 +26086,496 @@ func (c *Client) VcsIntegrationTest(ctx context.Context, vcsIntegrationId string
 // Corresponds with GET /viewer (the `Viewer` operationId).
 func (c *Client) Viewer(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewViewerRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPools List Worker Pools
+//
+// List of all the WorkerPools in the account.
+//
+// Corresponds with GET /worker-pools (the `WorkerPools` operationId).
+func (c *Client) WorkerPools(ctx context.Context, params *WorkerPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolCreateWithBody Create Worker Pool
+//
+// Create a new WorkerPool.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+func (c *Client) WorkerPoolCreateWithBody(ctx context.Context, params *WorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolCreate Create Worker Pool
+//
+// Create a new WorkerPool.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+func (c *Client) WorkerPoolCreate(ctx context.Context, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchWorkerPoolsWithBody Search Worker Pools
+//
+// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+func (c *Client) SearchWorkerPoolsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchWorkerPoolsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchWorkerPools Search Worker Pools
+//
+// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+func (c *Client) SearchWorkerPools(ctx context.Context, body SearchWorkerPoolsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchWorkerPoolsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchWorkerPoolsSuggestionsWithBody Search Worker Pools Suggestions
+//
+// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+func (c *Client) SearchWorkerPoolsSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchWorkerPoolsSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchWorkerPoolsSuggestions Search Worker Pools Suggestions
+//
+// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+func (c *Client) SearchWorkerPoolsSuggestions(ctx context.Context, body SearchWorkerPoolsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchWorkerPoolsSuggestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolDelete Delete Worker Pool
+//
+// Delete an existing WorkerPool.
+//
+// Corresponds with DELETE /worker-pools/{workerPoolId} (the `WorkerPoolDelete` operationId).
+func (c *Client) WorkerPoolDelete(ctx context.Context, workerPoolId string, params *WorkerPoolDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolDeleteRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPool Get Worker Pool
+//
+// Details of a single WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId} (the `WorkerPool` operationId).
+func (c *Client) WorkerPool(ctx context.Context, workerPoolId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolRequest(c.Server, workerPoolId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolPatchWithBody Patch Worker Pool
+//
+// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+func (c *Client) WorkerPoolPatchWithBody(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolPatchRequestWithBody(c.Server, workerPoolId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolPatchWithApplicationMergePatchPlusJSONBody Patch Worker Pool
+//
+// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+func (c *Client) WorkerPoolPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, body WorkerPoolPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, workerPoolId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolUpdateWithBody Update Worker Pool
+//
+// Update an existing WorkerPool.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+func (c *Client) WorkerPoolUpdateWithBody(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolUpdateRequestWithBody(c.Server, workerPoolId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolUpdate Update Worker Pool
+//
+// Update an existing WorkerPool.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+func (c *Client) WorkerPoolUpdate(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, body WorkerPoolUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolUpdateRequest(c.Server, workerPoolId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolCycle Cycle Worker Pool
+//
+// Cycles the workerpool.
+//
+// Corresponds with POST /worker-pools/{workerPoolId}/cycle (the `WorkerPoolCycle` operationId).
+func (c *Client) WorkerPoolCycle(ctx context.Context, workerPoolId string, params *WorkerPoolCycleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolCycleRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolResetWithBody Reset Worker Pool
+//
+// Recreate the credentials necessary to connect WorkerPool's workers to the
+// control plane.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+func (c *Client) WorkerPoolResetWithBody(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolResetRequestWithBody(c.Server, workerPoolId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolReset Reset Worker Pool
+//
+// Recreate the credentials necessary to connect WorkerPool's workers to the
+// control plane.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+func (c *Client) WorkerPoolReset(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, body WorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolResetRequest(c.Server, workerPoolId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchIntentProjects Worker pool search intent projects
+//
+// Search intent projects using this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects (the `WorkerPoolSearchIntentProjects` operationId).
+func (c *Client) WorkerPoolSearchIntentProjects(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchIntentProjectsRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchIntentProjectsSuggestions Worker pool search intent projects suggestions
+//
+// Search intent projects suggestions using this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects-suggestions (the `WorkerPoolSearchIntentProjectsSuggestions` operationId).
+func (c *Client) WorkerPoolSearchIntentProjectsSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchIntentProjectsSuggestionsRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchSchedulableRuns Worker pool search schedulable runs
+//
+// Search Runs for this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs (the `WorkerPoolSearchSchedulableRuns` operationId).
+func (c *Client) WorkerPoolSearchSchedulableRuns(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchSchedulableRunsRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchSchedulableRunsSuggestions Worker pool search schedulable runs suggestions
+//
+// Search Runs Suggestions for this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs-suggestions (the `WorkerPoolSearchSchedulableRunsSuggestions` operationId).
+func (c *Client) WorkerPoolSearchSchedulableRunsSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchSchedulableRunsSuggestionsRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchUsers Worker pool search users
+//
+// Search stacks/modules using this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-users (the `WorkerPoolSearchUsers` operationId).
+func (c *Client) WorkerPoolSearchUsers(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchUsersRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchUsersSuggestions Worker pool search users suggestions
+//
+// Search stacks/modules suggestions using this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-users-suggestions (the `WorkerPoolSearchUsersSuggestions` operationId).
+func (c *Client) WorkerPoolSearchUsersSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchUsersSuggestionsRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchWorkers Worker pool search workers
+//
+// Search workers belonging to this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-workers (the `WorkerPoolSearchWorkers` operationId).
+func (c *Client) WorkerPoolSearchWorkers(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchWorkersRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolSearchWorkersSuggestions Worker pool search workers suggestions
+//
+// Search workers suggestions belonging to this WorkerPool.
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-workers-suggestions (the `WorkerPoolSearchWorkersSuggestions` operationId).
+func (c *Client) WorkerPoolSearchWorkersSuggestions(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolSearchWorkersSuggestionsRequest(c.Server, workerPoolId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerDrainSetWithBody Set Worker Drain
+//
+// Toggles draining on the worker.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+func (c *Client) WorkerDrainSetWithBody(ctx context.Context, workerPoolId string, workerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerDrainSetRequestWithBody(c.Server, workerPoolId, workerId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerDrainSet Set Worker Drain
+//
+// Toggles draining on the worker.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+func (c *Client) WorkerDrainSet(ctx context.Context, workerPoolId string, workerId string, body WorkerDrainSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerDrainSetRequest(c.Server, workerPoolId, workerId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerUsage Get Worker Usage
+//
+// Private worker usage for a billing cycle. Omit `input` to select the
+// current cycle.
+//
+// Corresponds with GET /worker-usage (the `WorkerUsage` operationId).
+func (c *Client) WorkerUsage(ctx context.Context, params *WorkerUsageParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerUsageRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -34295,6 +35379,33 @@ func NewPersonalApiKeyDisableRequest(server string, personalApiKeyId string, par
 	return req, nil
 }
 
+// NewPublicWorkerPoolRequest constructs an http.Request for the PublicWorkerPool method
+func NewPublicWorkerPoolRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/public-worker-pool")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRepositoriesRequest constructs an http.Request for the Repositories method
 func NewRepositoriesRequest(server string, params *RepositoriesParams) (*http.Request, error) {
 	var err error
@@ -42809,6 +43920,1082 @@ func NewViewerRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewWorkerPoolsRequest constructs an http.Request for the WorkerPools method
+func NewWorkerPoolsRequest(server string, params *WorkerPoolsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolCreateRequest calls the generic WorkerPoolCreate builder with application/json body
+func NewWorkerPoolCreateRequest(server string, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerPoolCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewWorkerPoolCreateRequestWithBody constructs an http.Request for the WorkerPoolCreate method, with any body, and a specified content type
+func NewWorkerPoolCreateRequestWithBody(server string, params *WorkerPoolCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewSearchWorkerPoolsRequest calls the generic SearchWorkerPools builder with application/json body
+func NewSearchWorkerPoolsRequest(server string, body SearchWorkerPoolsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchWorkerPoolsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchWorkerPoolsRequestWithBody constructs an http.Request for the SearchWorkerPools method, with any body, and a specified content type
+func NewSearchWorkerPoolsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchWorkerPoolsSuggestionsRequest calls the generic SearchWorkerPoolsSuggestions builder with application/json body
+func NewSearchWorkerPoolsSuggestionsRequest(server string, body SearchWorkerPoolsSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchWorkerPoolsSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchWorkerPoolsSuggestionsRequestWithBody constructs an http.Request for the SearchWorkerPoolsSuggestions method, with any body, and a specified content type
+func NewSearchWorkerPoolsSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerPoolDeleteRequest constructs an http.Request for the WorkerPoolDelete method
+func NewWorkerPoolDeleteRequest(server string, workerPoolId string, params *WorkerPoolDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolRequest constructs an http.Request for the WorkerPool method
+func NewWorkerPoolRequest(server string, workerPoolId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic WorkerPoolPatch builder with application/merge-patch+json body
+func NewWorkerPoolPatchRequestWithApplicationMergePatchPlusJSONBody(server string, workerPoolId string, params *WorkerPoolPatchParams, body WorkerPoolPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerPoolPatchRequestWithBody(server, workerPoolId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewWorkerPoolPatchRequestWithBody constructs an http.Request for the WorkerPoolPatch method, with any body, and a specified content type
+func NewWorkerPoolPatchRequestWithBody(server string, workerPoolId string, params *WorkerPoolPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolUpdateRequest calls the generic WorkerPoolUpdate builder with application/json body
+func NewWorkerPoolUpdateRequest(server string, workerPoolId string, params *WorkerPoolUpdateParams, body WorkerPoolUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerPoolUpdateRequestWithBody(server, workerPoolId, params, "application/json", bodyReader)
+}
+
+// NewWorkerPoolUpdateRequestWithBody constructs an http.Request for the WorkerPoolUpdate method, with any body, and a specified content type
+func NewWorkerPoolUpdateRequestWithBody(server string, workerPoolId string, params *WorkerPoolUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolCycleRequest constructs an http.Request for the WorkerPoolCycle method
+func NewWorkerPoolCycleRequest(server string, workerPoolId string, params *WorkerPoolCycleParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/cycle", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolResetRequest calls the generic WorkerPoolReset builder with application/json body
+func NewWorkerPoolResetRequest(server string, workerPoolId string, params *WorkerPoolResetParams, body WorkerPoolResetJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerPoolResetRequestWithBody(server, workerPoolId, params, "application/json", bodyReader)
+}
+
+// NewWorkerPoolResetRequestWithBody constructs an http.Request for the WorkerPoolReset method, with any body, and a specified content type
+func NewWorkerPoolResetRequestWithBody(server string, workerPoolId string, params *WorkerPoolResetParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/reset", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchIntentProjectsRequest constructs an http.Request for the WorkerPoolSearchIntentProjects method
+func NewWorkerPoolSearchIntentProjectsRequest(server string, workerPoolId string, params *WorkerPoolSearchIntentProjectsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-intent-projects", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchIntentProjectsSuggestionsRequest constructs an http.Request for the WorkerPoolSearchIntentProjectsSuggestions method
+func NewWorkerPoolSearchIntentProjectsSuggestionsRequest(server string, workerPoolId string, params *WorkerPoolSearchIntentProjectsSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-intent-projects-suggestions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchSchedulableRunsRequest constructs an http.Request for the WorkerPoolSearchSchedulableRuns method
+func NewWorkerPoolSearchSchedulableRunsRequest(server string, workerPoolId string, params *WorkerPoolSearchSchedulableRunsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-schedulable-runs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchSchedulableRunsSuggestionsRequest constructs an http.Request for the WorkerPoolSearchSchedulableRunsSuggestions method
+func NewWorkerPoolSearchSchedulableRunsSuggestionsRequest(server string, workerPoolId string, params *WorkerPoolSearchSchedulableRunsSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-schedulable-runs-suggestions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchUsersRequest constructs an http.Request for the WorkerPoolSearchUsers method
+func NewWorkerPoolSearchUsersRequest(server string, workerPoolId string, params *WorkerPoolSearchUsersParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-users", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchUsersSuggestionsRequest constructs an http.Request for the WorkerPoolSearchUsersSuggestions method
+func NewWorkerPoolSearchUsersSuggestionsRequest(server string, workerPoolId string, params *WorkerPoolSearchUsersSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-users-suggestions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchWorkersRequest constructs an http.Request for the WorkerPoolSearchWorkers method
+func NewWorkerPoolSearchWorkersRequest(server string, workerPoolId string, params *WorkerPoolSearchWorkersParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-workers", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerPoolSearchWorkersSuggestionsRequest constructs an http.Request for the WorkerPoolSearchWorkersSuggestions method
+func NewWorkerPoolSearchWorkersSuggestionsRequest(server string, workerPoolId string, params *WorkerPoolSearchWorkersSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/search-workers-suggestions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerDrainSetRequest calls the generic WorkerDrainSet builder with application/json body
+func NewWorkerDrainSetRequest(server string, workerPoolId string, workerId string, body WorkerDrainSetJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerDrainSetRequestWithBody(server, workerPoolId, workerId, "application/json", bodyReader)
+}
+
+// NewWorkerDrainSetRequestWithBody constructs an http.Request for the WorkerDrainSet method, with any body, and a specified content type
+func NewWorkerDrainSetRequestWithBody(server string, workerPoolId string, workerId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workerPoolId", workerPoolId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "workerId", workerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/%s/workers/%s/drain", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerUsageRequest constructs an http.Request for the WorkerUsage method
+func NewWorkerUsageRequest(server string, params *WorkerUsageParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-usage")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Input != nil {
+
+			if queryParamBuf, err := json.Marshal(*params.Input); err != nil {
+				return nil, err
+			} else {
+				queryValues.Add("input", string(queryParamBuf))
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -45031,6 +47218,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisableWithResponse(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*PersonalApiKeyDisableResponse, error)
 
+	// PublicWorkerPoolWithResponse Get Public Worker Pool
+	//
+	// Shows public worker pool details.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /public-worker-pool (the `PublicWorkerPool` operationId).
+	PublicWorkerPoolWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PublicWorkerPoolResponse, error)
+
 	// RepositoriesWithResponse List Repositories
 	//
 	// List of repositories available to the account.
@@ -47007,6 +49203,252 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /viewer (the `Viewer` operationId).
 	ViewerWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ViewerResponse, error)
+
+	// WorkerPoolsWithResponse List Worker Pools
+	//
+	// List of all the WorkerPools in the account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools (the `WorkerPools` operationId).
+	WorkerPoolsWithResponse(ctx context.Context, params *WorkerPoolsParams, reqEditors ...RequestEditorFn) (*WorkerPoolsResponse, error)
+
+	// WorkerPoolCreateWithBodyWithResponse Create Worker Pool
+	//
+	// Create a new WorkerPool.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+	WorkerPoolCreateWithBodyWithResponse(ctx context.Context, params *WorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolCreateResponse, error)
+
+	// WorkerPoolCreateWithResponse Create Worker Pool
+	//
+	// Create a new WorkerPool.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+	WorkerPoolCreateWithResponse(ctx context.Context, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolCreateResponse, error)
+
+	// SearchWorkerPoolsWithBodyWithResponse Search Worker Pools
+	//
+	// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+	SearchWorkerPoolsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsResponse, error)
+
+	// SearchWorkerPoolsWithResponse Search Worker Pools
+	//
+	// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+	SearchWorkerPoolsWithResponse(ctx context.Context, body SearchWorkerPoolsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsResponse, error)
+
+	// SearchWorkerPoolsSuggestionsWithBodyWithResponse Search Worker Pools Suggestions
+	//
+	// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+	SearchWorkerPoolsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsSuggestionsResponse, error)
+
+	// SearchWorkerPoolsSuggestionsWithResponse Search Worker Pools Suggestions
+	//
+	// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+	SearchWorkerPoolsSuggestionsWithResponse(ctx context.Context, body SearchWorkerPoolsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsSuggestionsResponse, error)
+
+	// WorkerPoolDeleteWithResponse Delete Worker Pool
+	//
+	// Delete an existing WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /worker-pools/{workerPoolId} (the `WorkerPoolDelete` operationId).
+	WorkerPoolDeleteWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolDeleteParams, reqEditors ...RequestEditorFn) (*WorkerPoolDeleteResponse, error)
+
+	// WorkerPoolWithResponse Get Worker Pool
+	//
+	// Details of a single WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId} (the `WorkerPool` operationId).
+	WorkerPoolWithResponse(ctx context.Context, workerPoolId string, reqEditors ...RequestEditorFn) (*WorkerPoolResponse, error)
+
+	// WorkerPoolPatchWithBodyWithResponse Patch Worker Pool
+	//
+	// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+	WorkerPoolPatchWithBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolPatchResponse, error)
+
+	// WorkerPoolPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Worker Pool
+	//
+	// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+	WorkerPoolPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, body WorkerPoolPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolPatchResponse, error)
+
+	// WorkerPoolUpdateWithBodyWithResponse Update Worker Pool
+	//
+	// Update an existing WorkerPool.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+	WorkerPoolUpdateWithBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolUpdateResponse, error)
+
+	// WorkerPoolUpdateWithResponse Update Worker Pool
+	//
+	// Update an existing WorkerPool.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+	WorkerPoolUpdateWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, body WorkerPoolUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolUpdateResponse, error)
+
+	// WorkerPoolCycleWithResponse Cycle Worker Pool
+	//
+	// Cycles the workerpool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools/{workerPoolId}/cycle (the `WorkerPoolCycle` operationId).
+	WorkerPoolCycleWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolCycleParams, reqEditors ...RequestEditorFn) (*WorkerPoolCycleResponse, error)
+
+	// WorkerPoolResetWithBodyWithResponse Reset Worker Pool
+	//
+	// Recreate the credentials necessary to connect WorkerPool's workers to the
+	// control plane.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+	WorkerPoolResetWithBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolResetResponse, error)
+
+	// WorkerPoolResetWithResponse Reset Worker Pool
+	//
+	// Recreate the credentials necessary to connect WorkerPool's workers to the
+	// control plane.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+	WorkerPoolResetWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, body WorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolResetResponse, error)
+
+	// WorkerPoolSearchIntentProjectsWithResponse Worker pool search intent projects
+	//
+	// Search intent projects using this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects (the `WorkerPoolSearchIntentProjects` operationId).
+	WorkerPoolSearchIntentProjectsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchIntentProjectsResponse, error)
+
+	// WorkerPoolSearchIntentProjectsSuggestionsWithResponse Worker pool search intent projects suggestions
+	//
+	// Search intent projects suggestions using this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects-suggestions (the `WorkerPoolSearchIntentProjectsSuggestions` operationId).
+	WorkerPoolSearchIntentProjectsSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchIntentProjectsSuggestionsResponse, error)
+
+	// WorkerPoolSearchSchedulableRunsWithResponse Worker pool search schedulable runs
+	//
+	// Search Runs for this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs (the `WorkerPoolSearchSchedulableRuns` operationId).
+	WorkerPoolSearchSchedulableRunsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchSchedulableRunsResponse, error)
+
+	// WorkerPoolSearchSchedulableRunsSuggestionsWithResponse Worker pool search schedulable runs suggestions
+	//
+	// Search Runs Suggestions for this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs-suggestions (the `WorkerPoolSearchSchedulableRunsSuggestions` operationId).
+	WorkerPoolSearchSchedulableRunsSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchSchedulableRunsSuggestionsResponse, error)
+
+	// WorkerPoolSearchUsersWithResponse Worker pool search users
+	//
+	// Search stacks/modules using this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-users (the `WorkerPoolSearchUsers` operationId).
+	WorkerPoolSearchUsersWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchUsersResponse, error)
+
+	// WorkerPoolSearchUsersSuggestionsWithResponse Worker pool search users suggestions
+	//
+	// Search stacks/modules suggestions using this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-users-suggestions (the `WorkerPoolSearchUsersSuggestions` operationId).
+	WorkerPoolSearchUsersSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchUsersSuggestionsResponse, error)
+
+	// WorkerPoolSearchWorkersWithResponse Worker pool search workers
+	//
+	// Search workers belonging to this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-workers (the `WorkerPoolSearchWorkers` operationId).
+	WorkerPoolSearchWorkersWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchWorkersResponse, error)
+
+	// WorkerPoolSearchWorkersSuggestionsWithResponse Worker pool search workers suggestions
+	//
+	// Search workers suggestions belonging to this WorkerPool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/{workerPoolId}/search-workers-suggestions (the `WorkerPoolSearchWorkersSuggestions` operationId).
+	WorkerPoolSearchWorkersSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchWorkersSuggestionsResponse, error)
+
+	// WorkerDrainSetWithBodyWithResponse Set Worker Drain
+	//
+	// Toggles draining on the worker.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+	WorkerDrainSetWithBodyWithResponse(ctx context.Context, workerPoolId string, workerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerDrainSetResponse, error)
+
+	// WorkerDrainSetWithResponse Set Worker Drain
+	//
+	// Toggles draining on the worker.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+	WorkerDrainSetWithResponse(ctx context.Context, workerPoolId string, workerId string, body WorkerDrainSetJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerDrainSetResponse, error)
+
+	// WorkerUsageWithResponse Get Worker Usage
+	//
+	// Private worker usage for a billing cycle. Omit `input` to select the
+	// current cycle.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-usage (the `WorkerUsage` operationId).
+	WorkerUsageWithResponse(ctx context.Context, params *WorkerUsageParams, reqEditors ...RequestEditorFn) (*WorkerUsageResponse, error)
 }
 
 // ApiKeyEnableNonAdminManagersResponse200Headers the declared response headers of an HTTP 200 response for ApiKeyEnableNonAdminManagers
@@ -64594,6 +67036,94 @@ func (r PersonalApiKeyDisableResponse) ContentType() string {
 	return ""
 }
 
+// PublicWorkerPoolResponse200Headers the declared response headers of an HTTP 200 response for PublicWorkerPool
+type PublicWorkerPoolResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPool
+type PublicWorkerPoolResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPool
+type PublicWorkerPoolResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PublicWorkerPool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PublicWorkerPoolResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PublicWorkerPoolResponse) GetJSON200() *PublicWorkerPool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RepositoriesResponse200Headers the declared response headers of an HTTP 200 response for Repositories
 type RepositoriesResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -79583,6 +82113,1958 @@ func (r ViewerResponse) ContentType() string {
 	return ""
 }
 
+// WorkerPoolsResponse200Headers the declared response headers of an HTTP 200 response for WorkerPools
+type WorkerPoolsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolsResponse429Headers the declared response headers of an HTTP 429 response for WorkerPools
+type WorkerPoolsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolsResponse503Headers the declared response headers of an HTTP 503 response for WorkerPools
+type WorkerPoolsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerPoolPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolsResponse) GetJSON200() *WorkerPoolPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r WorkerPoolsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolCreateResponse201Headers the declared response headers of an HTTP 201 response for WorkerPoolCreate
+type WorkerPoolCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolCreateResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolCreate
+type WorkerPoolCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolCreateResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolCreate
+type WorkerPoolCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *WorkerPool
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *WorkerPoolCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r WorkerPoolCreateResponse) GetJSON201() *WorkerPool {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerPoolCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r WorkerPoolCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchWorkerPoolsResponse200Headers the declared response headers of an HTTP 200 response for SearchWorkerPools
+type SearchWorkerPoolsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchWorkerPoolsResponse429Headers the declared response headers of an HTTP 429 response for SearchWorkerPools
+type SearchWorkerPoolsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchWorkerPoolsResponse503Headers the declared response headers of an HTTP 503 response for SearchWorkerPools
+type SearchWorkerPoolsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchWorkerPoolsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchWorkerPoolsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchWorkerPoolsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchWorkerPoolsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchWorkerPoolsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchWorkerPoolsResponse) GetJSON200() *SearchWorkerPoolsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchWorkerPoolsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchWorkerPoolsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchWorkerPoolsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchWorkerPoolsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchWorkerPoolsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchWorkerPoolsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchWorkerPoolsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchWorkerPoolsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchWorkerPoolsSuggestions
+type SearchWorkerPoolsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchWorkerPoolsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchWorkerPoolsSuggestions
+type SearchWorkerPoolsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchWorkerPoolsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchWorkerPoolsSuggestions
+type SearchWorkerPoolsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchWorkerPoolsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchWorkerPoolsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchWorkerPoolsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchWorkerPoolsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchWorkerPoolsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchWorkerPoolsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchWorkerPoolsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchWorkerPoolsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchWorkerPoolsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchWorkerPoolsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchWorkerPoolsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchWorkerPoolsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolDeleteResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolDelete
+type WorkerPoolDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolDeleteResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolDelete
+type WorkerPoolDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolDeleteResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolDelete
+type WorkerPoolDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerPool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolDeleteResponse) GetJSON200() *WorkerPool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r WorkerPoolDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolResponse200Headers the declared response headers of an HTTP 200 response for WorkerPool
+type WorkerPoolResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolResponse429Headers the declared response headers of an HTTP 429 response for WorkerPool
+type WorkerPoolResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolResponse503Headers the declared response headers of an HTTP 503 response for WorkerPool
+type WorkerPoolResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerPool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolResponse) GetJSON200() *WorkerPool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolPatchResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolPatch
+type WorkerPoolPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolPatchResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolPatch
+type WorkerPoolPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolPatchResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolPatch
+type WorkerPoolPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerPool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolPatchResponse) GetJSON200() *WorkerPool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerPoolPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r WorkerPoolPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r WorkerPoolPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolUpdateResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolUpdate
+type WorkerPoolUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolUpdateResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolUpdate
+type WorkerPoolUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolUpdateResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolUpdate
+type WorkerPoolUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerPool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolUpdateResponse) GetJSON200() *WorkerPool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r WorkerPoolUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolCycleResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolCycle
+type WorkerPoolCycleResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolCycleResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolCycle
+type WorkerPoolCycleResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolCycleResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolCycle
+type WorkerPoolCycleResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolCycleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolCycleResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolCycleResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolCycleResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolCycleResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolCycleResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerPoolCycleResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r WorkerPoolCycleResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolCycleResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolCycleResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolCycleResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolCycleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolCycleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolCycleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolCycleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolResetResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolReset
+type WorkerPoolResetResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolResetResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolReset
+type WorkerPoolResetResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolResetResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolReset
+type WorkerPoolResetResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolResetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerPool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolResetResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolResetResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolResetResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolResetResponse) GetJSON200() *WorkerPool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolResetResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerPoolResetResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r WorkerPoolResetResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolResetResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolResetResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolResetResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolResetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolResetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolResetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolResetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchIntentProjectsResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchIntentProjects
+type WorkerPoolSearchIntentProjectsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchIntentProjectsResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchIntentProjects
+type WorkerPoolSearchIntentProjectsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchIntentProjectsResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchIntentProjects
+type WorkerPoolSearchIntentProjectsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchIntentProjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchIntentProjectReferencesOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchIntentProjectsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchIntentProjectsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchIntentProjectsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchIntentProjectsResponse) GetJSON200() *SearchIntentProjectReferencesOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchIntentProjectsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchIntentProjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchIntentProjectsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchIntentProjectsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchIntentProjectsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchIntentProjectsSuggestions
+type WorkerPoolSearchIntentProjectsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchIntentProjectsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchIntentProjectsSuggestions
+type WorkerPoolSearchIntentProjectsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchIntentProjectsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchIntentProjectsSuggestions
+type WorkerPoolSearchIntentProjectsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchIntentProjectsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchIntentProjectsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchIntentProjectsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchIntentProjectsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchIntentProjectsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchSchedulableRunsResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchSchedulableRuns
+type WorkerPoolSearchSchedulableRunsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchSchedulableRunsResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchSchedulableRuns
+type WorkerPoolSearchSchedulableRunsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchSchedulableRunsResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchSchedulableRuns
+type WorkerPoolSearchSchedulableRunsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchSchedulableRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSchedulableRunsOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchSchedulableRunsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchSchedulableRunsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchSchedulableRunsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchSchedulableRunsResponse) GetJSON200() *SearchSchedulableRunsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchSchedulableRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchSchedulableRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchSchedulableRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchSchedulableRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchSchedulableRunsSuggestions
+type WorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchSchedulableRunsSuggestions
+type WorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchSchedulableRunsSuggestions
+type WorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchSchedulableRunsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchSchedulableRunsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchUsersResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchUsers
+type WorkerPoolSearchUsersResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchUsersResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchUsers
+type WorkerPoolSearchUsersResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchUsersResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchUsers
+type WorkerPoolSearchUsersResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchWorkerPoolUsersOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchUsersResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchUsersResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchUsersResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchUsersResponse) GetJSON200() *SearchWorkerPoolUsersOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchUsersResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchUsersResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchUsersResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchUsersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchUsersSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchUsersSuggestions
+type WorkerPoolSearchUsersSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchUsersSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchUsersSuggestions
+type WorkerPoolSearchUsersSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchUsersSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchUsersSuggestions
+type WorkerPoolSearchUsersSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchUsersSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchUsersSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchUsersSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchUsersSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchUsersSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchUsersSuggestionsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchUsersSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchUsersSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchUsersSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchUsersSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchUsersSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchUsersSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchUsersSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchWorkersResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchWorkers
+type WorkerPoolSearchWorkersResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchWorkersResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchWorkers
+type WorkerPoolSearchWorkersResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchWorkersResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchWorkers
+type WorkerPoolSearchWorkersResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchWorkersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchWorkersOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchWorkersResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchWorkersResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchWorkersResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchWorkersResponse) GetJSON200() *SearchWorkersOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchWorkersResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchWorkersResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchWorkersResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchWorkersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchWorkersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchWorkersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchWorkersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchWorkersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolSearchWorkersSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolSearchWorkersSuggestions
+type WorkerPoolSearchWorkersSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchWorkersSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolSearchWorkersSuggestions
+type WorkerPoolSearchWorkersSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolSearchWorkersSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolSearchWorkersSuggestions
+type WorkerPoolSearchWorkersSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolSearchWorkersSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolSearchWorkersSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolSearchWorkersSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolSearchWorkersSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolSearchWorkersSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolSearchWorkersSuggestionsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolSearchWorkersSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolSearchWorkersSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolSearchWorkersSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolSearchWorkersSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolSearchWorkersSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolSearchWorkersSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolSearchWorkersSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerDrainSetResponse200Headers the declared response headers of an HTTP 200 response for WorkerDrainSet
+type WorkerDrainSetResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerDrainSetResponse429Headers the declared response headers of an HTTP 429 response for WorkerDrainSet
+type WorkerDrainSetResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerDrainSetResponse503Headers the declared response headers of an HTTP 503 response for WorkerDrainSet
+type WorkerDrainSetResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerDrainSetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Worker
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerDrainSetResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerDrainSetResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerDrainSetResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerDrainSetResponse) GetJSON200() *Worker {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerDrainSetResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerDrainSetResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerDrainSetResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerDrainSetResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerDrainSetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerDrainSetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerDrainSetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerDrainSetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerUsageResponse200Headers the declared response headers of an HTTP 200 response for WorkerUsage
+type WorkerUsageResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerUsageResponse429Headers the declared response headers of an HTTP 429 response for WorkerUsage
+type WorkerUsageResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerUsageResponse503Headers the declared response headers of an HTTP 503 response for WorkerUsage
+type WorkerUsageResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerUsageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerUsage
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerUsageResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerUsageResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerUsageResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerUsageResponse) GetJSON200() *WorkerUsage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerUsageResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerUsageResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerUsageResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerUsageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerUsageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerUsageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerUsageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ApiKeyEnableNonAdminManagersWithBodyWithResponse Enable Non-Admin Managers
 //
 // Enable or disable non-admin managers of API keys. True lets admins of
@@ -83189,6 +87671,21 @@ func (c *ClientWithResponses) PersonalApiKeyDisableWithResponse(ctx context.Cont
 	return ParsePersonalApiKeyDisableResponse(rsp)
 }
 
+// PublicWorkerPoolWithResponse Get Public Worker Pool
+//
+// Shows public worker pool details.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /public-worker-pool (the `PublicWorkerPool` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PublicWorkerPoolResponse, error) {
+	rsp, err := c.PublicWorkerPool(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolResponse(rsp)
+}
+
 // RepositoriesWithResponse List Repositories
 //
 // List of repositories available to the account.
@@ -86472,6 +90969,414 @@ func (c *ClientWithResponses) ViewerWithResponse(ctx context.Context, reqEditors
 		return nil, err
 	}
 	return ParseViewerResponse(rsp)
+}
+
+// WorkerPoolsWithResponse List Worker Pools
+//
+// List of all the WorkerPools in the account.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools (the `WorkerPools` operationId).
+func (c *ClientWithResponses) WorkerPoolsWithResponse(ctx context.Context, params *WorkerPoolsParams, reqEditors ...RequestEditorFn) (*WorkerPoolsResponse, error) {
+	rsp, err := c.WorkerPools(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolsResponse(rsp)
+}
+
+// WorkerPoolCreateWithBodyWithResponse Create Worker Pool
+//
+// Create a new WorkerPool.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+func (c *ClientWithResponses) WorkerPoolCreateWithBodyWithResponse(ctx context.Context, params *WorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolCreateResponse, error) {
+	rsp, err := c.WorkerPoolCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolCreateResponse(rsp)
+}
+
+// WorkerPoolCreateWithResponse Create Worker Pool
+//
+// Create a new WorkerPool.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
+func (c *ClientWithResponses) WorkerPoolCreateWithResponse(ctx context.Context, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolCreateResponse, error) {
+	rsp, err := c.WorkerPoolCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolCreateResponse(rsp)
+}
+
+// SearchWorkerPoolsWithBodyWithResponse Search Worker Pools
+//
+// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+func (c *ClientWithResponses) SearchWorkerPoolsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsResponse, error) {
+	rsp, err := c.SearchWorkerPoolsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchWorkerPoolsResponse(rsp)
+}
+
+// SearchWorkerPoolsWithResponse Search Worker Pools
+//
+// Search the private worker pools of the account by name, description, label, space and timestamps. Only pools in spaces the caller may read are answered.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools/search (the `SearchWorkerPools` operationId).
+func (c *ClientWithResponses) SearchWorkerPoolsWithResponse(ctx context.Context, body SearchWorkerPoolsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsResponse, error) {
+	rsp, err := c.SearchWorkerPools(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchWorkerPoolsResponse(rsp)
+}
+
+// SearchWorkerPoolsSuggestionsWithBodyWithResponse Search Worker Pools Suggestions
+//
+// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+func (c *ClientWithResponses) SearchWorkerPoolsSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsSuggestionsResponse, error) {
+	rsp, err := c.SearchWorkerPoolsSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchWorkerPoolsSuggestionsResponse(rsp)
+}
+
+// SearchWorkerPoolsSuggestionsWithResponse Search Worker Pools Suggestions
+//
+// The fields a worker pool search filters and orders by, with the values the pools the predicates keep hold and how many hold each. Only pools in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools/search/suggestions (the `SearchWorkerPoolsSuggestions` operationId).
+func (c *ClientWithResponses) SearchWorkerPoolsSuggestionsWithResponse(ctx context.Context, body SearchWorkerPoolsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchWorkerPoolsSuggestionsResponse, error) {
+	rsp, err := c.SearchWorkerPoolsSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchWorkerPoolsSuggestionsResponse(rsp)
+}
+
+// WorkerPoolDeleteWithResponse Delete Worker Pool
+//
+// Delete an existing WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /worker-pools/{workerPoolId} (the `WorkerPoolDelete` operationId).
+func (c *ClientWithResponses) WorkerPoolDeleteWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolDeleteParams, reqEditors ...RequestEditorFn) (*WorkerPoolDeleteResponse, error) {
+	rsp, err := c.WorkerPoolDelete(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolDeleteResponse(rsp)
+}
+
+// WorkerPoolWithResponse Get Worker Pool
+//
+// Details of a single WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId} (the `WorkerPool` operationId).
+func (c *ClientWithResponses) WorkerPoolWithResponse(ctx context.Context, workerPoolId string, reqEditors ...RequestEditorFn) (*WorkerPoolResponse, error) {
+	rsp, err := c.WorkerPool(ctx, workerPoolId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolResponse(rsp)
+}
+
+// WorkerPoolPatchWithBodyWithResponse Patch Worker Pool
+//
+// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+func (c *ClientWithResponses) WorkerPoolPatchWithBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolPatchResponse, error) {
+	rsp, err := c.WorkerPoolPatchWithBody(ctx, workerPoolId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolPatchResponse(rsp)
+}
+
+// WorkerPoolPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Worker Pool
+//
+// Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /worker-pools/{workerPoolId} (the `WorkerPoolPatch` operationId).
+func (c *ClientWithResponses) WorkerPoolPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolPatchParams, body WorkerPoolPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolPatchResponse, error) {
+	rsp, err := c.WorkerPoolPatchWithApplicationMergePatchPlusJSONBody(ctx, workerPoolId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolPatchResponse(rsp)
+}
+
+// WorkerPoolUpdateWithBodyWithResponse Update Worker Pool
+//
+// Update an existing WorkerPool.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+func (c *ClientWithResponses) WorkerPoolUpdateWithBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolUpdateResponse, error) {
+	rsp, err := c.WorkerPoolUpdateWithBody(ctx, workerPoolId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolUpdateResponse(rsp)
+}
+
+// WorkerPoolUpdateWithResponse Update Worker Pool
+//
+// Update an existing WorkerPool.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /worker-pools/{workerPoolId} (the `WorkerPoolUpdate` operationId).
+func (c *ClientWithResponses) WorkerPoolUpdateWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolUpdateParams, body WorkerPoolUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolUpdateResponse, error) {
+	rsp, err := c.WorkerPoolUpdate(ctx, workerPoolId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolUpdateResponse(rsp)
+}
+
+// WorkerPoolCycleWithResponse Cycle Worker Pool
+//
+// Cycles the workerpool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools/{workerPoolId}/cycle (the `WorkerPoolCycle` operationId).
+func (c *ClientWithResponses) WorkerPoolCycleWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolCycleParams, reqEditors ...RequestEditorFn) (*WorkerPoolCycleResponse, error) {
+	rsp, err := c.WorkerPoolCycle(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolCycleResponse(rsp)
+}
+
+// WorkerPoolResetWithBodyWithResponse Reset Worker Pool
+//
+// Recreate the credentials necessary to connect WorkerPool's workers to the
+// control plane.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+func (c *ClientWithResponses) WorkerPoolResetWithBodyWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolResetResponse, error) {
+	rsp, err := c.WorkerPoolResetWithBody(ctx, workerPoolId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolResetResponse(rsp)
+}
+
+// WorkerPoolResetWithResponse Reset Worker Pool
+//
+// Recreate the credentials necessary to connect WorkerPool's workers to the
+// control plane.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /worker-pools/{workerPoolId}/reset (the `WorkerPoolReset` operationId).
+func (c *ClientWithResponses) WorkerPoolResetWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolResetParams, body WorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolResetResponse, error) {
+	rsp, err := c.WorkerPoolReset(ctx, workerPoolId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolResetResponse(rsp)
+}
+
+// WorkerPoolSearchIntentProjectsWithResponse Worker pool search intent projects
+//
+// Search intent projects using this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects (the `WorkerPoolSearchIntentProjects` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchIntentProjectsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchIntentProjectsResponse, error) {
+	rsp, err := c.WorkerPoolSearchIntentProjects(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchIntentProjectsResponse(rsp)
+}
+
+// WorkerPoolSearchIntentProjectsSuggestionsWithResponse Worker pool search intent projects suggestions
+//
+// Search intent projects suggestions using this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-intent-projects-suggestions (the `WorkerPoolSearchIntentProjectsSuggestions` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchIntentProjectsSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchIntentProjectsSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchIntentProjectsSuggestionsResponse, error) {
+	rsp, err := c.WorkerPoolSearchIntentProjectsSuggestions(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchIntentProjectsSuggestionsResponse(rsp)
+}
+
+// WorkerPoolSearchSchedulableRunsWithResponse Worker pool search schedulable runs
+//
+// Search Runs for this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs (the `WorkerPoolSearchSchedulableRuns` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchSchedulableRunsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchSchedulableRunsResponse, error) {
+	rsp, err := c.WorkerPoolSearchSchedulableRuns(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchSchedulableRunsResponse(rsp)
+}
+
+// WorkerPoolSearchSchedulableRunsSuggestionsWithResponse Worker pool search schedulable runs suggestions
+//
+// Search Runs Suggestions for this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-schedulable-runs-suggestions (the `WorkerPoolSearchSchedulableRunsSuggestions` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchSchedulableRunsSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchSchedulableRunsSuggestionsResponse, error) {
+	rsp, err := c.WorkerPoolSearchSchedulableRunsSuggestions(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchSchedulableRunsSuggestionsResponse(rsp)
+}
+
+// WorkerPoolSearchUsersWithResponse Worker pool search users
+//
+// Search stacks/modules using this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-users (the `WorkerPoolSearchUsers` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchUsersWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchUsersResponse, error) {
+	rsp, err := c.WorkerPoolSearchUsers(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchUsersResponse(rsp)
+}
+
+// WorkerPoolSearchUsersSuggestionsWithResponse Worker pool search users suggestions
+//
+// Search stacks/modules suggestions using this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-users-suggestions (the `WorkerPoolSearchUsersSuggestions` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchUsersSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchUsersSuggestionsResponse, error) {
+	rsp, err := c.WorkerPoolSearchUsersSuggestions(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchUsersSuggestionsResponse(rsp)
+}
+
+// WorkerPoolSearchWorkersWithResponse Worker pool search workers
+//
+// Search workers belonging to this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-workers (the `WorkerPoolSearchWorkers` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchWorkersWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchWorkersResponse, error) {
+	rsp, err := c.WorkerPoolSearchWorkers(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchWorkersResponse(rsp)
+}
+
+// WorkerPoolSearchWorkersSuggestionsWithResponse Worker pool search workers suggestions
+//
+// Search workers suggestions belonging to this WorkerPool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/{workerPoolId}/search-workers-suggestions (the `WorkerPoolSearchWorkersSuggestions` operationId).
+func (c *ClientWithResponses) WorkerPoolSearchWorkersSuggestionsWithResponse(ctx context.Context, workerPoolId string, params *WorkerPoolSearchWorkersSuggestionsParams, reqEditors ...RequestEditorFn) (*WorkerPoolSearchWorkersSuggestionsResponse, error) {
+	rsp, err := c.WorkerPoolSearchWorkersSuggestions(ctx, workerPoolId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolSearchWorkersSuggestionsResponse(rsp)
+}
+
+// WorkerDrainSetWithBodyWithResponse Set Worker Drain
+//
+// Toggles draining on the worker.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+func (c *ClientWithResponses) WorkerDrainSetWithBodyWithResponse(ctx context.Context, workerPoolId string, workerId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerDrainSetResponse, error) {
+	rsp, err := c.WorkerDrainSetWithBody(ctx, workerPoolId, workerId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerDrainSetResponse(rsp)
+}
+
+// WorkerDrainSetWithResponse Set Worker Drain
+//
+// Toggles draining on the worker.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain (the `WorkerDrainSet` operationId).
+func (c *ClientWithResponses) WorkerDrainSetWithResponse(ctx context.Context, workerPoolId string, workerId string, body WorkerDrainSetJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerDrainSetResponse, error) {
+	rsp, err := c.WorkerDrainSet(ctx, workerPoolId, workerId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerDrainSetResponse(rsp)
+}
+
+// WorkerUsageWithResponse Get Worker Usage
+//
+// Private worker usage for a billing cycle. Omit `input` to select the
+// current cycle.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-usage (the `WorkerUsage` operationId).
+func (c *ClientWithResponses) WorkerUsageWithResponse(ctx context.Context, params *WorkerUsageParams, reqEditors ...RequestEditorFn) (*WorkerUsageResponse, error) {
+	rsp, err := c.WorkerUsage(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerUsageResponse(rsp)
 }
 
 // ParseApiKeyEnableNonAdminManagersResponse parses an HTTP response from a ApiKeyEnableNonAdminManagersWithResponse call
@@ -109006,6 +113911,121 @@ func ParsePersonalApiKeyDisableResponse(rsp *http.Response) (*PersonalApiKeyDisa
 	return response, nil
 }
 
+// ParsePublicWorkerPoolResponse parses an HTTP response from a PublicWorkerPoolWithResponse call
+func ParsePublicWorkerPoolResponse(rsp *http.Response) (*PublicWorkerPoolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PublicWorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PublicWorkerPoolResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseRepositoriesResponse parses an HTTP response from a RepositoriesWithResponse call
 func ParseRepositoriesResponse(rsp *http.Response) (*RepositoriesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -128230,6 +133250,2516 @@ func ParseViewerResponse(rsp *http.Response) (*ViewerResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ViewerResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolsResponse parses an HTTP response from a WorkerPoolsWithResponse call
+func ParseWorkerPoolsResponse(rsp *http.Response) (*WorkerPoolsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerPoolPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolCreateResponse parses an HTTP response from a WorkerPoolCreateWithResponse call
+func ParseWorkerPoolCreateResponse(rsp *http.Response) (*WorkerPoolCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest WorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers WorkerPoolCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchWorkerPoolsResponse parses an HTTP response from a SearchWorkerPoolsWithResponse call
+func ParseSearchWorkerPoolsResponse(rsp *http.Response) (*SearchWorkerPoolsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchWorkerPoolsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchWorkerPoolsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchWorkerPoolsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchWorkerPoolsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchWorkerPoolsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchWorkerPoolsSuggestionsResponse parses an HTTP response from a SearchWorkerPoolsSuggestionsWithResponse call
+func ParseSearchWorkerPoolsSuggestionsResponse(rsp *http.Response) (*SearchWorkerPoolsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchWorkerPoolsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchWorkerPoolsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchWorkerPoolsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchWorkerPoolsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolDeleteResponse parses an HTTP response from a WorkerPoolDeleteWithResponse call
+func ParseWorkerPoolDeleteResponse(rsp *http.Response) (*WorkerPoolDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolResponse parses an HTTP response from a WorkerPoolWithResponse call
+func ParseWorkerPoolResponse(rsp *http.Response) (*WorkerPoolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolPatchResponse parses an HTTP response from a WorkerPoolPatchWithResponse call
+func ParseWorkerPoolPatchResponse(rsp *http.Response) (*WorkerPoolPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolUpdateResponse parses an HTTP response from a WorkerPoolUpdateWithResponse call
+func ParseWorkerPoolUpdateResponse(rsp *http.Response) (*WorkerPoolUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolCycleResponse parses an HTTP response from a WorkerPoolCycleWithResponse call
+func ParseWorkerPoolCycleResponse(rsp *http.Response) (*WorkerPoolCycleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolCycleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolCycleResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolCycleResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolCycleResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolResetResponse parses an HTTP response from a WorkerPoolResetWithResponse call
+func ParseWorkerPoolResetResponse(rsp *http.Response) (*WorkerPoolResetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolResetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolResetResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolResetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolResetResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchIntentProjectsResponse parses an HTTP response from a WorkerPoolSearchIntentProjectsWithResponse call
+func ParseWorkerPoolSearchIntentProjectsResponse(rsp *http.Response) (*WorkerPoolSearchIntentProjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchIntentProjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchIntentProjectReferencesOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchIntentProjectsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchIntentProjectsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchIntentProjectsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchIntentProjectsSuggestionsResponse parses an HTTP response from a WorkerPoolSearchIntentProjectsSuggestionsWithResponse call
+func ParseWorkerPoolSearchIntentProjectsSuggestionsResponse(rsp *http.Response) (*WorkerPoolSearchIntentProjectsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchIntentProjectsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchIntentProjectsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchIntentProjectsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchIntentProjectsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchSchedulableRunsResponse parses an HTTP response from a WorkerPoolSearchSchedulableRunsWithResponse call
+func ParseWorkerPoolSearchSchedulableRunsResponse(rsp *http.Response) (*WorkerPoolSearchSchedulableRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchSchedulableRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSchedulableRunsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchSchedulableRunsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchSchedulableRunsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchSchedulableRunsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchSchedulableRunsSuggestionsResponse parses an HTTP response from a WorkerPoolSearchSchedulableRunsSuggestionsWithResponse call
+func ParseWorkerPoolSearchSchedulableRunsSuggestionsResponse(rsp *http.Response) (*WorkerPoolSearchSchedulableRunsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchSchedulableRunsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchUsersResponse parses an HTTP response from a WorkerPoolSearchUsersWithResponse call
+func ParseWorkerPoolSearchUsersResponse(rsp *http.Response) (*WorkerPoolSearchUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchWorkerPoolUsersOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchUsersResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchUsersResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchUsersResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchUsersSuggestionsResponse parses an HTTP response from a WorkerPoolSearchUsersSuggestionsWithResponse call
+func ParseWorkerPoolSearchUsersSuggestionsResponse(rsp *http.Response) (*WorkerPoolSearchUsersSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchUsersSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchUsersSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchUsersSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchUsersSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchWorkersResponse parses an HTTP response from a WorkerPoolSearchWorkersWithResponse call
+func ParseWorkerPoolSearchWorkersResponse(rsp *http.Response) (*WorkerPoolSearchWorkersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchWorkersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchWorkersOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchWorkersResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchWorkersResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchWorkersResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolSearchWorkersSuggestionsResponse parses an HTTP response from a WorkerPoolSearchWorkersSuggestionsWithResponse call
+func ParseWorkerPoolSearchWorkersSuggestionsResponse(rsp *http.Response) (*WorkerPoolSearchWorkersSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolSearchWorkersSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolSearchWorkersSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolSearchWorkersSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolSearchWorkersSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerDrainSetResponse parses an HTTP response from a WorkerDrainSetWithResponse call
+func ParseWorkerDrainSetResponse(rsp *http.Response) (*WorkerDrainSetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerDrainSetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Worker
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerDrainSetResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerDrainSetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerDrainSetResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerUsageResponse parses an HTTP response from a WorkerUsageWithResponse call
+func ParseWorkerUsageResponse(rsp *http.Response) (*WorkerUsageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerUsageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerUsage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerUsageResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerUsageResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerUsageResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

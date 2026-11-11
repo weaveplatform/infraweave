@@ -25,6 +25,7 @@ import (
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
+	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
 )
 
 // Domains are the business domains, constructed in the declared graph's
@@ -34,6 +35,7 @@ import (
 type Domains struct {
 	Features      *featuresassembly.Domain
 	Access        *accessassembly.Domain
+	Workers       *workersassembly.Domain
 	Vendors       *vendorsassembly.Domain
 	Stacks        *stacksassembly.Domain
 	Configuration *configurationassembly.Domain
@@ -78,6 +80,15 @@ func newDomains(
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
+	workers := workersassembly.New(workersassembly.Deps{
+		DB:     db.Primary(),
+		Keys:   keys,
+		Spaces: access.Spaces(),
+		Authz:  access.Authorizer(),
+		Public: c.Server.PublicURL,
+	})
+	access.GuardSpaces(workers.SpaceGuard())
+	access.ResolveSubjects(workersassembly.Entity, workers.SpaceOf())
 	vendors := vendorsassembly.New(vendorsassembly.Deps{DB: db.Primary(), Settings: c.Vendors})
 	stacks := stacksassembly.New(stacksassembly.Deps{
 		DB:       db.Primary(),
@@ -146,6 +157,7 @@ func newDomains(
 	d := Domains{
 		Features:      features,
 		Access:        access,
+		Workers:       workers,
 		Vendors:       vendors,
 		Stacks:        stacks,
 		Configuration: configuration,

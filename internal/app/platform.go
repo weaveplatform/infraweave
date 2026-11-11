@@ -25,6 +25,7 @@ import (
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
+	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
 )
 
 // Streams are the migration streams: the platform's first, since every
@@ -37,6 +38,7 @@ func Streams() []migrate.Stream {
 		schema.Stream(),
 		featuresassembly.Stream(),
 		accessassembly.Stream(),
+		workersassembly.Stream(),
 		vendorsassembly.Stream(),
 		stacksassembly.Stream(),
 		configurationassembly.Stream(),
@@ -49,7 +51,8 @@ func Streams() []migrate.Stream {
 // which secrets.reseal walks after a data key rotation.
 func SealedColumns() []crypt.Column {
 	return slices.Concat(crypt.Registry(), accessassembly.SealedColumns(),
-		configurationassembly.SealedColumns(), vcsassembly.SealedColumns())
+		configurationassembly.SealedColumns(), vcsassembly.SealedColumns(),
+		workersassembly.SealedColumns())
 }
 
 // openDatabase opens PostgreSQL and brings its schema to this binary's:
