@@ -180,7 +180,7 @@ Feature: Runs queue on their stack
     Given token "h" sends "POST /api/v1/stacks/infra/runs" with '{}' through A
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "READY" through B
-    And token "h" sends "POST /api/v1/stacks/hidden/runs" with '{}' through B
+    And token "h" sends "POST /api/v1/stacks/hidden/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "secret"
     When token "m" sends "GET /api/v1/runs/{run}" through A
     Then it answers a 404 problem "not-found"

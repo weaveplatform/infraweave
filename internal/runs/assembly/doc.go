@@ -7,7 +7,10 @@
 // runsapi.RunSources and stacksapi.StackSources, back edges, so a run's
 // end releases its source credentials and a trigger resolves the commit
 // it names. Surfaces adds run to the configuration domain's environment
-// surface, for the expression registry internal/app builds. StackStatus
+// surface, for the expression registry internal/app builds. Purge deletes
+// a deleted account's runs, transitions, run locks, tracked runs and
+// outputs PurgeBatch rows at a time, as internal/app's runs.purge consumer
+// of accessapi.Deleted. StackStatus
 // is the stacksapi.StackStatus internal/app binds in the stacks domain,
 // the back edge the stack view reads each stack's blocker through;
 // StackGuard is the
@@ -25,7 +28,8 @@
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, configapi, the domain's core, lifecycle,
+// It imports runsapi, stacksapi, configapi, internal/kernel, the domain's
+// core, lifecycle,
 // schedule, surface, trigger, http and pg packages, platform/expr,
 // platform/outbox, platform/queue,
 // platform/sql/integrity and platform/sql/migrate. Only

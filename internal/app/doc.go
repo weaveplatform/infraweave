@@ -65,7 +65,7 @@
 // each rotation enqueues (secretsTasks) and which walks SealedColumns, the
 // platform's sealed columns and each domain's; every
 // domain appends to and subscribes on Run's one outbox, where
-// subscribePurges subscribes the features, stacks, configuration and vcs purges to
+// subscribePurges subscribes the features, stacks, configuration, vcs and runs purges to
 // accessapi.Deleted, since features cannot read access' event itself, and
 // the configuration domain subscribes its automatic attachments, and the
 // vcs domain its tracking of a stack's commit, to stacksapi.Changed. It stops the ticker, then

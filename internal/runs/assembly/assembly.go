@@ -1,10 +1,12 @@
 package assembly
 
 import (
+	"context"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -50,6 +52,7 @@ type Deps struct {
 
 // Domain is the runs domain, constructed once per process.
 type Domain struct {
+	store     *pg.Store
 	runs      *core.Service
 	lifecycle *lifecycle.Lifecycle
 	scheduler *schedule.Scheduler
@@ -66,6 +69,7 @@ func New(d Deps) *Domain {
 	})
 	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz})
 	return &Domain{
+		store:     store,
 		runs:      core.New(store),
 		lifecycle: lc,
 		scheduler: schedule.New(schedule.Deps{
@@ -85,6 +89,23 @@ func New(d Deps) *Domain {
 // SpaceOf finds the space of a run's stack by the run's ID, which
 // internal/app registers with the access domain for Entity.
 func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.read.SpaceOf }
+
+// PurgeBatch is how many rows one statement of Purge deletes, so no
+// transaction holds an account's every run and transition at once.
+const PurgeBatch = 500
+
+// Purge deletes the deleted account acct's runs, with their transitions,
+// and its stacks' run locks, tracked runs and outputs, PurgeBatch rows at
+// a time. internal/app runs it for each accessapi.Deleted; a purge
+// stopped part way keeps what it deleted, and running it again finishes.
+func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	for {
+		done, err := d.store.Purge(ctx, acct, PurgeBatch)
+		if err != nil || done {
+			return err //nolint:wrapcheck // the store names the purge
+		}
+	}
+}
 
 // Surfaces are the domain's additions to the surfaces other domains own:
 // run, on the configuration domain's environment surface.
