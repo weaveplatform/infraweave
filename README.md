@@ -265,6 +265,10 @@ To bootstrap an installation:
 | `auth.tokens.oauth_access.ttl` | | `INFRAWEAVE_AUTH_TOKENS_OAUTH_ACCESS_TTL` | `1h`: the most an MCP client's access token lasts, never past its grant; must be positive |
 | `auth.tokens.oauth_refresh.ttl` | | `INFRAWEAVE_AUTH_TOKENS_OAUTH_REFRESH_TTL` | `720h`: how long an MCP client's grant lasts after its last refresh; must be positive |
 | `auth.tokens.oauth_code.ttl` | | `INFRAWEAVE_AUTH_TOKENS_OAUTH_CODE_TTL` | `1m`: how long an authorization code waits to be redeemed; must be positive |
+| `auth.tokens.worker.ttl` | | `INFRAWEAVE_AUTH_TOKENS_WORKER_TTL` | `1h`: a worker session token's lifetime, which each poll renews before it ends; must be positive |
+| `auth.tokens.run.ttl` | | `INFRAWEAVE_AUTH_TOKENS_RUN_TTL` | `24h`: the most a run token lasts; the worker protocol accepts it only while its run is with a worker; must be positive |
+| `auth.tokens.run_api.ttl` | | `INFRAWEAVE_AUTH_TOKENS_RUN_API_TTL` | `3h`: an in-run API token's lifetime; it authenticates only while its run is planning, applying or performing; must be positive |
+| `auth.run_api_token.issuer` | | `INFRAWEAVE_AUTH_RUN_API_TOKEN_ISSUER` | `server.public_url`: the `iss` of in-run API tokens |
 | `auth.session.idle_timeout` | | `INFRAWEAVE_AUTH_SESSION_IDLE_TIMEOUT` | `12h`: how long a browser session lasts without a request; must be positive |
 | `auth.session.max_age` | | `INFRAWEAVE_AUTH_SESSION_MAX_AGE` | `168h`: a browser session's absolute lifetime, which its CLI tokens share; must be positive |
 | `auth.signing.backend` | | `INFRAWEAVE_AUTH_SIGNING_BACKEND` | `local`: signing keys generated in process and sealed under the keyring; `kms` signs through the KMS keys of `auth.signing.kms_keys`, whose private halves never enter infraweave |

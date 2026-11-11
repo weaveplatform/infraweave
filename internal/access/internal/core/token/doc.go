@@ -5,11 +5,13 @@
 // (ES256, through go-jose and a platform/crypt/signer Signer), creating the
 // first key when there is none. The claims are exactly iss, aud as one
 // string, sub, jti (the session ULID), iat, nbf equal to iat, exp and
-// iw_kind (Kind: api_key, or operator for the operator API's token), and
-// for an OAuth access token scope, its scopes separated by spaces.
+// iw_kind (Kind: api_key, or operator for the operator API's token, worker
+// and runner for the worker protocol's, run for an in-run API token), and
+// for an OAuth access token scope, its scopes separated by spaces. An
+// in-run API token's iss is WithRunIssuer's.
 // Service.Verify accepts ES256 alone, so alg none and
 // every HMAC algorithm fail, checks the signature against the key the kid
-// names, and requires the issuer, exactly the one audience, the claims
+// names, and requires its kind's issuer, exactly the one audience, the claims
 // above and iat, nbf and exp within Leeway of now; every refusal wraps
 // ErrToken. Public keys are cached per replica, and an unknown kid reloads
 // them at most once a second; a replica rereads which key is active every

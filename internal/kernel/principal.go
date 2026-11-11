@@ -82,6 +82,11 @@ type Principal struct {
 	Channel string
 	// Scopes narrow an OAuth grant's token; empty for every other kind.
 	Scopes []string
+	// StackID and StackSpaceID are a run principal's stack and the space
+	// the stack lives in, read at each request so a moved stack's runs
+	// act from its new space; zero for every other kind.
+	StackID      ULID
+	StackSpaceID ULID
 }
 
 // principalKey is the context key of the request's principal.

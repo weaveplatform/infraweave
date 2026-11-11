@@ -49,6 +49,17 @@
 // one in another such account, in the same channel and with the same
 // absolute end.
 //
+// The worker protocol's tokens: WorkerToken and RunToken issue a worker
+// session token and a run token, with audiences
+// accessapi.WorkerAudience and accessapi.RunnerAudience and no session
+// row, which VerifyWorker and VerifyRun read back as the worker or run
+// they name. InRunToken issues an in-run API token: an API token whose
+// session has actor kind run and whose sub is the stack's slug and the
+// run. Its principal is completed at each authentication from the
+// accessapi.Runs that BindRuns binds, acting as the run's stack from the
+// space the stack lives in, and is refused while the run is not live,
+// before Runs is bound, and on ReachOrganization's routes.
+//
 // Authenticate and AuthenticateBrowser read sessions through the
 // replica's session.Cache, which the assembly's watcher drops a session
 // from on its revocation message.
@@ -58,12 +69,13 @@
 // # Input and output
 //
 // None of its own: it reads and writes through the APIKeys, Sessions,
-// OrganizationKeys and BreakGlass ports and session.Admission, verifies through the OIDC port,
-// and signs through the token service it is given. Nothing is logged.
+// OrganizationKeys, BreakGlass and Tenancy ports and session.Admission,
+// reads runs through accessapi.Runs, verifies through the OIDC port, and
+// signs through the token service it is given. Nothing is logged.
 //
 // # Dependencies
 //
-// It imports the access domain's apikey, breakglass, loopback,
+// It imports the access domain's api, apikey, breakglass, loopback,
 // organization, port, session and token packages, internal/kernel and the
 // standard library. The access assembly constructs it.
 package authn

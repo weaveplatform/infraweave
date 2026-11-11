@@ -130,6 +130,10 @@ func TestUnitSettings(t *testing.T) {
 			"auth.tokens.oauth_refresh.ttl",
 		},
 		"code":        {func(s *Settings) { s.Tokens.OAuthCode.TTL = 0 }, "auth.tokens.oauth_code.ttl"},
+		"worker":      {func(s *Settings) { s.Tokens.Worker.TTL = 0 }, "auth.tokens.worker.ttl"},
+		"run":         {func(s *Settings) { s.Tokens.Run.TTL = -time.Hour }, "auth.tokens.run.ttl"},
+		"run api":     {func(s *Settings) { s.Tokens.RunAPI.TTL = 0 }, "auth.tokens.run_api.ttl"},
+		"run issuer":  {func(s *Settings) { s.RunAPIToken.Issuer = "/iss" }, "auth.run_api_token.issuer"},
 		"max age":     {func(s *Settings) { s.Session.MaxAge = -time.Hour }, "auth.session.max_age"},
 		"backend":     {func(s *Settings) { s.Signing.Backend = "hsm" }, "auth.signing.backend"},
 		"no kms keys": {func(s *Settings) { s.Signing.Backend = BackendKMS }, "auth.signing.kms_keys is required"},
@@ -221,5 +225,16 @@ func TestUnitPassword(t *testing.T) {
 	if !VerifyPassword(h, "correct horse") || VerifyPassword(h, "wrong horse") ||
 		VerifyPassword("$argon2id$x", "correct horse") {
 		t.Errorf("VerifyPassword(%s) disagrees with HashPassword", h)
+	}
+}
+
+func TestUnitTokensLongest(t *testing.T) {
+	ts := DefaultSettings().Tokens
+	if got := ts.longest(); got != defaultRunTTL {
+		t.Errorf("default longest = %s, want the run token's %s", got, defaultRunTTL)
+	}
+	ts.API.TTL = 48 * time.Hour
+	if got := ts.longest(); got != ts.API.TTL {
+		t.Errorf("longest = %s, want %s", got, ts.API.TTL)
 	}
 }

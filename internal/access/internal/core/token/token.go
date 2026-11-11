@@ -29,10 +29,17 @@ const (
 	KindOAuth           Kind = "oauth"
 	KindRun             Kind = "run"
 	KindOperator        Kind = "operator"
+	// KindWorker is a worker session token and KindRunner a run token:
+	// the worker protocol's, which have no session row.
+	KindWorker Kind = "worker"
+	KindRunner Kind = "runner"
 )
 
 // Kinds are every Kind.
-var Kinds = []Kind{KindUser, KindAPIKey, KindOrganizationKey, KindOAuth, KindRun, KindOperator}
+var Kinds = []Kind{
+	KindUser, KindAPIKey, KindOrganizationKey, KindOAuth, KindRun, KindOperator, KindWorker,
+	KindRunner,
+}
 
 // Leeway is the clock skew Verify allows on iat, nbf and exp, between
 // replicas of one installation.
@@ -104,8 +111,10 @@ type wire struct {
 type Service struct {
 	store  Store
 	issuer string
-	policy Policy
-	now    func() time.Time
+	// runIssuer is an in-run API token's iss, auth.run_api_token.issuer.
+	runIssuer string
+	policy    Policy
+	now       func() time.Time
 
 	signMu   sync.Mutex
 	active   signer.Signer
@@ -119,7 +128,24 @@ type Service struct {
 // New returns the service over store. issuer is every token's iss, and
 // now is the clock.
 func New(store Store, issuer string, policy Policy, now func() time.Time) *Service {
-	return &Service{store: store, issuer: issuer, policy: policy, now: now}
+	return &Service{store: store, issuer: issuer, runIssuer: issuer, policy: policy, now: now}
+}
+
+// WithRunIssuer makes iss the iss of in-run API tokens, which a run's
+// tools may verify apart from every other token; empty keeps the issuer.
+func (s *Service) WithRunIssuer(iss string) *Service {
+	if iss != "" {
+		s.runIssuer = iss
+	}
+	return s
+}
+
+// issuerOf is the iss a token of kind carries.
+func (s *Service) issuerOf(kind Kind) string {
+	if kind == KindRun {
+		return s.runIssuer
+	}
+	return s.issuer
 }
 
 // Issue signs a token for r with the active key, creating the first key
@@ -135,7 +161,7 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 	}
 	now := s.now().UTC().Truncate(time.Second)
 	c := Claims{
-		Issuer:   s.issuer,
+		Issuer:   s.issuerOf(r.Kind),
 		Subject:  r.Subject,
 		Audience: r.Audience,
 		Session:  r.Session,
@@ -226,7 +252,7 @@ func (s *Service) Rotate(ctx context.Context) error {
 }
 
 // Verify checks raw's signature against the key its kid names, and its
-// claims: ES256 only, s's issuer, exactly the one audience given, a
+// claims: ES256 only, the issuer of its iw_kind, exactly the one audience given, a
 // session ULID, a known iw_kind, and iat, nbf and exp within Leeway of now.
 // Every refusal wraps ErrToken; a store that cannot be read is not one.
 func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, error) {
@@ -265,7 +291,7 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 		return Claims{}, fmt.Errorf("%w: iw_kind %q", ErrToken, w.Kind)
 	}
 	if err := w.ValidateWithLeeway(jwt.Expected{
-		Issuer:      s.issuer,
+		Issuer:      s.issuerOf(w.Kind),
 		AnyAudience: jwt.Audience{audience},
 		Time:        s.now(),
 	}, Leeway); err != nil {

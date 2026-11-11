@@ -26,6 +26,14 @@ const (
 	defaultOAuthAccessTTL  = time.Hour
 	defaultOAuthRefreshTTL = 30 * 24 * time.Hour
 	defaultOAuthCodeTTL    = time.Minute
+	// The worker protocol's lifetimes: a worker session token, renewed by
+	// the poll; a run token, which the worker protocol accepts only while
+	// its run is in a worker state, so this bounds a token whose run is
+	// lost track of; and an in-run API token.
+	// ref: decision 0006 § "Token kinds"
+	defaultWorkerTTL = time.Hour
+	defaultRunTTL    = 24 * time.Hour
+	defaultRunAPITTL = 3 * time.Hour
 	// A browser session's limits: idle and absolute.
 	// ref: decision 0006 § "Token kinds"
 	defaultIdleTimeout = 12 * time.Hour
@@ -41,12 +49,14 @@ var ErrConfig = errors.New("invalid auth configuration")
 type Settings struct {
 	// APIIssuer is the iss of every API-facing token; empty means
 	// server.public_url.
-	APIIssuer   string             `mapstructure:"api_issuer"`
-	Tokens      TokenSettings      `mapstructure:"tokens"`
-	Session     SessionSettings    `mapstructure:"session"`
-	Signing     SigningSettings    `mapstructure:"signing"`
-	OIDCAPIKeys OIDCAPIKeySettings `mapstructure:"oidc_api_keys"`
-	Operator    OperatorSettings   `mapstructure:"operator"`
+	APIIssuer string `mapstructure:"api_issuer"`
+	// RunAPIToken is auth.run_api_token: the in-run API token's issuer.
+	RunAPIToken RunAPITokenSettings `mapstructure:"run_api_token"`
+	Tokens      TokenSettings       `mapstructure:"tokens"`
+	Session     SessionSettings     `mapstructure:"session"`
+	Signing     SigningSettings     `mapstructure:"signing"`
+	OIDCAPIKeys OIDCAPIKeySettings  `mapstructure:"oidc_api_keys"`
+	Operator    OperatorSettings    `mapstructure:"operator"`
 }
 
 // OperatorSettings are auth.operator.
@@ -79,6 +89,13 @@ type OIDCAPIKeySettings struct {
 	CAFile string `mapstructure:"ca_file"`
 }
 
+// RunAPITokenSettings are auth.run_api_token.
+type RunAPITokenSettings struct {
+	// Issuer is the in-run API token's iss; empty means
+	// server.public_url.
+	Issuer string `mapstructure:"issuer"`
+}
+
 // TokenSettings are auth.tokens: each token kind's lifetime.
 type TokenSettings struct {
 	// API is the API token's, which an API key or an operator key
@@ -90,6 +107,17 @@ type TokenSettings struct {
 	OAuthAccess  Lifetime `mapstructure:"oauth_access"`
 	OAuthRefresh Lifetime `mapstructure:"oauth_refresh"`
 	OAuthCode    Lifetime `mapstructure:"oauth_code"`
+	// Worker is a worker session token's, Run a run token's and RunAPI an
+	// in-run API token's.
+	Worker Lifetime `mapstructure:"worker"`
+	Run    Lifetime `mapstructure:"run"`
+	RunAPI Lifetime `mapstructure:"run_api"`
+}
+
+// longest is the longest lifetime of a token the api-token signing keys
+// sign, so a retiring key stays published until every one has expired.
+func (t TokenSettings) longest() time.Duration {
+	return max(t.API.TTL, t.OAuthAccess.TTL, t.Worker.TTL, t.Run.TTL, t.RunAPI.TTL)
 }
 
 // SessionSettings are auth.session: a browser session's limits. It ends
@@ -142,6 +170,9 @@ func DefaultSettings() Settings {
 			OAuthAccess:  Lifetime{TTL: defaultOAuthAccessTTL},
 			OAuthRefresh: Lifetime{TTL: defaultOAuthRefreshTTL},
 			OAuthCode:    Lifetime{TTL: defaultOAuthCodeTTL},
+			Worker:       Lifetime{TTL: defaultWorkerTTL},
+			Run:          Lifetime{TTL: defaultRunTTL},
+			RunAPI:       Lifetime{TTL: defaultRunAPITTL},
 		},
 		Session: SessionSettings{IdleTimeout: defaultIdleTimeout, MaxAge: defaultMaxAge},
 		Signing: SigningSettings{Backend: BackendLocal, Rotation: RotationAutomatic},
@@ -165,6 +196,9 @@ func (s Settings) Validate() error {
 		{"auth.tokens.oauth_access.ttl", s.Tokens.OAuthAccess.TTL},
 		{"auth.tokens.oauth_refresh.ttl", s.Tokens.OAuthRefresh.TTL},
 		{"auth.tokens.oauth_code.ttl", s.Tokens.OAuthCode.TTL},
+		{"auth.tokens.worker.ttl", s.Tokens.Worker.TTL},
+		{"auth.tokens.run.ttl", s.Tokens.Run.TTL},
+		{"auth.tokens.run_api.ttl", s.Tokens.RunAPI.TTL},
 		{"auth.session.idle_timeout", s.Session.IdleTimeout},
 		{"auth.session.max_age", s.Session.MaxAge},
 	} {
@@ -188,6 +222,13 @@ func (s Settings) Validate() error {
 					ErrConfig, s.APIIssuer),
 			)
 		}
+	}
+	if iss := s.RunAPIToken.Issuer; iss != "" && !absoluteURL(iss) {
+		errs = append(errs, fmt.Errorf(
+			"%w: auth.run_api_token.issuer %q is not an absolute http or https URL",
+			ErrConfig,
+			iss,
+		))
 	}
 	errs = append(errs, s.Operator.validate()...)
 	for i, iss := range s.OIDCAPIKeys.AllowedIssuers {

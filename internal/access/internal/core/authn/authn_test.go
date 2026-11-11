@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
@@ -53,6 +54,24 @@ type fakes struct {
 	// owners are the personal keys' owners each account admits as
 	// active members.
 	owners map[kernel.MemberID]apikey.Owner
+	// subjects are each issued token's sub, by its session.
+	subjects map[kernel.ULID]string
+	// org is every account's organization.
+	org kernel.OrganizationID
+}
+
+func (f *fakes) Organization(
+	_ context.Context,
+	id kernel.OrganizationID,
+) (organization.Organization, error) {
+	return organization.Organization{ID: id}, f.down("Organization")
+}
+
+func (f *fakes) Account(_ context.Context, id kernel.AccountID) (account.Account, error) {
+	if err := f.down("Account"); err != nil {
+		return account.Account{}, err
+	}
+	return account.Account{OrganizationID: f.org, ID: id}, nil
 }
 
 func (f *fakes) KeyOwner(
@@ -306,6 +325,7 @@ func (f *fakes) Issue(_ context.Context, r token.Request) (string, token.Claims,
 		return "", token.Claims{}, err
 	}
 	now := f.now.Truncate(time.Second)
+	f.subjects[r.Session] = r.Subject
 	return fmt.Sprintf("%s %s %s", r.Kind, r.Session, r.Audience), token.Claims{
 		Subject: r.Subject, Session: r.Session, Kind: r.Kind, Audience: r.Audience,
 		IssuedAt: now, Expiry: now.Add(r.TTL),
@@ -326,7 +346,7 @@ func (f *fakes) Verify(_ context.Context, raw, aud string) (token.Claims, error)
 	if err != nil {
 		return token.Claims{}, token.ErrToken
 	}
-	c := token.Claims{Kind: token.Kind(parts[0]), Session: id}
+	c := token.Claims{Kind: token.Kind(parts[0]), Session: id, Subject: f.subjects[id]}
 	if len(parts) == 4 {
 		c.Scope = strings.ReplaceAll(parts[3], ",", " ")
 	}
@@ -354,6 +374,8 @@ func newWorld(t *testing.T) *world {
 		admits:   map[kernel.MemberID][]session.Admitted{},
 		orgKeys:  map[kernel.ULID]apikey.OrganizationKey{},
 		owners:   map[kernel.MemberID]apikey.Owner{},
+		subjects: map[kernel.ULID]string{},
+		org:      kernel.NewOrganizationID(),
 	}
 	w := &world{
 		f:      f,
@@ -376,7 +398,8 @@ func (w *world) replica() *authn.Service {
 	f := w.f
 	return authn.New(authn.Deps{
 		Keys: f, OrganizationKeys: f, Sessions: f, Tokens: f, Audience: audience,
-		TTL:        10 * time.Hour,
+		TTL:       10 * time.Hour,
+		WorkerTTL: time.Hour, RunTTL: 24 * time.Hour, RunAPITTL: 3 * time.Hour, Accounts: f,
 		BreakGlass: f, Admission: f, Idle: idle, MaxAge: maxAge,
 		AccountAdmin: w.admin,
 		Now:          func() time.Time { return f.now },
