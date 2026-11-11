@@ -20,6 +20,49 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 		r.eventually,
 	)
 	sc.Step(`^the answer's (items|edges) are the runs "([^"]*)"$`, r.lists)
+	sc.Step(`^two infraweave servers, A and B, on one database, that run no default-queue jobs$`,
+		r.idle)
+	sc.Step(`^a third infraweave server runs the default queue's jobs$`, r.third)
+	sc.Step(`^the "run.schedule" jobs are (\d+), (pending|succeeded)$`, r.scheduled)
+}
+
+// idle starts the scenario's two servers with no worker on the default
+// queue, so the run.schedule jobs a burst of triggers enqueues wait until
+// a server that runs them starts.
+func (r *runSteps) idle(ctx context.Context) error {
+	w := r.o.a.s.w
+	w.queue = map[string]any{"queues": map[string]any{"default": map[string]any{"workers": 0}}}
+	defer func() { w.queue = nil }()
+	return r.o.a.s.twoReplicas(ctx)
+}
+
+// third starts a server with the default queue's workers on the
+// scenario's database.
+func (r *runSteps) third(ctx context.Context) error {
+	_, err := r.o.a.s.w.startServer(ctx, nil)
+	return err
+}
+
+// scheduled waits until every run.schedule job is in state and checks
+// that there are want of them, so a burst that coalesced into one job
+// shows as one, and one that did not as more.
+func (r *runSteps) scheduled(ctx context.Context, want int, state string) error {
+	var got string
+	err := Eventually(ctx, "run.schedule jobs to be "+state,
+		func(ctx context.Context) (bool, error) {
+			out, err := r.o.a.s.query(ctx, `SELECT count(*) FILTER (WHERE state = `+
+				literal(state)+`) || ' ' || count(*) FROM jobs WHERE kind = 'run.schedule'`)
+			got = strings.TrimSpace(out)
+			n := strings.Fields(got)
+			return err == nil && len(n) == 2 && n[0] == n[1], err
+		})
+	if err != nil {
+		return err //nolint:wrapcheck // names what it waited for
+	}
+	if want := fmt.Sprintf("%d %d", want, want); got != want {
+		return fmt.Errorf("%w: run.schedule jobs %s are %q, want %q", errStep, state, got, want)
+	}
+	return nil
 }
 
 // eventually reads the run kept as key until it is in state, which the
