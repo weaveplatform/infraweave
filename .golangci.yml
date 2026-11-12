@@ -252,6 +252,20 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/
             - github.com/weaveplatform/infraweave/internal/iac$
             - github.com/weaveplatform/infraweave/internal/iac/
+        graph-workers:
+          list-mode: lax
+          files:
+            - "**/internal/workers/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: workers imports only the api/ packages its row of the declared graph names
+          allow:
+            - github.com/weaveplatform/infraweave/internal/workers/
+            - github.com/weaveplatform/infraweave/internal/features/api$
+            - github.com/weaveplatform/infraweave/internal/access/api$
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
         graph-vendors:
           list-mode: lax
           files:

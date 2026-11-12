@@ -22,4 +22,5 @@ internal/stacks/wire/wire.go constructors github.com/weaveplatform/infraweave/in
 internal/stacks/wire/wire.go graph-stacks github.com/weaveplatform/infraweave/internal/runs/assembly
 internal/vcs/down/down.go graph-vcs github.com/weaveplatform/infraweave/internal/configuration/api
 internal/vendors/down/down.go graph-vendors github.com/weaveplatform/infraweave/internal/stacks/api
+internal/workers/up/up.go graph-workers github.com/weaveplatform/infraweave/internal/stacks/api
 pkg/y/y.go public-packages github.com/weaveplatform/infraweave/internal/kernel

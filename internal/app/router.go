@@ -21,6 +21,7 @@ import (
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
+	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
 )
 
 // BaseURL is the API's prefix, the server URL of api/api.openapi.yaml.
@@ -40,6 +41,7 @@ const OperatorBaseURL = "/operator/v1"
 type apiServer struct {
 	accessassembly.AccessAPI
 	featuresassembly.FeaturesAPI
+	workersassembly.WorkersAPI
 	vendorsassembly.VendorsAPI
 	stacksassembly.StacksAPI
 	configurationassembly.ConfigurationAPI
@@ -118,6 +120,7 @@ func API(
 		apiServer{
 			AccessAPI:        d.Access.API(),
 			FeaturesAPI:      d.Features.API(d.Access.Seats),
+			WorkersAPI:       d.Workers.API(),
 			VendorsAPI:       d.Vendors.API(),
 			StacksAPI:        d.Stacks.API(),
 			ConfigurationAPI: d.Configuration.API(),

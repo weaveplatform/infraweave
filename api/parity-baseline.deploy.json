@@ -403,8 +403,7 @@
       "searchRepoFilesSuggestions",
       "searchReposSuggestions",
       "searchSpacePoliciesSuggestions",
-      "searchTofuWorkspacesSuggestions",
-      "searchWorkerPoolsSuggestions"
+      "searchTofuWorkspacesSuggestions"
     ],
     "Sessions and Security Keys": [
       "securityKeyDelete",
@@ -516,27 +515,6 @@
       "namedWebhooksIntegrationSetHeaders",
       "namedWebhooksIntegrationUpdate",
       "searchNamedWebhooksIntegrations"
-    ],
-    "Worker Pools": [
-      "publicWorkerPool",
-      "searchWorkerPools",
-      "workerDrainSet",
-      "workerPool",
-      "workerPoolCreate",
-      "workerPoolCycle",
-      "workerPoolDelete",
-      "workerPoolReset",
-      "workerPoolSearchIntentProjects",
-      "workerPoolSearchIntentProjectsSuggestions",
-      "workerPoolSearchSchedulableRuns",
-      "workerPoolSearchSchedulableRunsSuggestions",
-      "workerPoolSearchUsers",
-      "workerPoolSearchUsersSuggestions",
-      "workerPoolSearchWorkers",
-      "workerPoolSearchWorkersSuggestions",
-      "workerPoolUpdate",
-      "workerPools",
-      "workerUsage"
     ],
     "untagged": [
       "deleteOauthClientForSCIM",

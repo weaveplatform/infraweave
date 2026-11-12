@@ -1,0 +1,1581 @@
+# Scaffolded by `specref scaffold --tag Worker Pools` from the Spacelift reference (schema-1fc7d2c49a8e).
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    IntentProjectReferencesConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/IntentProjectReference'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: IntentProjectReferencesConnection
+    PublicWorkerPool:
+      description: PublicWorkerPool contains details of public worker pool for account.
+      properties:
+        busyWorkers:
+          description: Number of currently busy workers in the public worker pool for this account.
+          format: int32
+          type: integer
+        intentProjects:
+          description: List of intent projects using public WorkerPool for this account.
+          items:
+            $ref: '#/components/schemas/IntentProjectReference'
+          type: array
+        intentProjectsCount:
+          description: Count of intent projects using public WorkerPool for this account.
+          format: int32
+          type: integer
+        parallelism:
+          description: Maximum number of simultaneously executing runs on the public worker pool for account.
+          format: int32
+          type: integer
+        pendingRuns:
+          description: Number of runs on the public worker ready for processing for this account.
+          format: int32
+          type: integer
+        schedulableRunsCount:
+          description: Count of schedulable runs on the public worker pool workers for this account.
+          format: int32
+          type: integer
+        usersCount:
+          description: Count of users on the public worker pool workers for this account.
+          format: int32
+          type: integer
+      required:
+        - busyWorkers
+        - intentProjects
+        - intentProjectsCount
+        - parallelism
+        - pendingRuns
+        - schedulableRunsCount
+        - usersCount
+      type: object
+      x-graphql-omitted:
+        activeRuns: superseded under rule S2; use busyWorkers
+        queuedRunsCount: superseded under rule S2; use schedulableRunsCount
+        searchIntentProjects: takes arguments; not reachable from an item route
+        searchIntentProjectsSuggestions: takes arguments; not reachable from an item route
+        searchSchedulableRuns: takes arguments; not reachable from an item route
+        searchSchedulableRunsSuggestions: takes arguments; not reachable from an item route
+        searchUsers: takes arguments; not reachable from an item route
+        searchUsersSuggestions: takes arguments; not reachable from an item route
+      x-graphql-type: PublicWorkerPool
+    RunWithPosition:
+      description: RunWithPosition is a wrapper for run with its position in the queue.
+      properties:
+        isModule:
+          type: boolean
+        position:
+          format: int32
+          type: integer
+        provider:
+          $ref: '#/components/schemas/VCSProvider'
+        run:
+          $ref: '#/components/schemas/RunRef'
+        space:
+          $ref: '#/components/schemas/SpaceRef'
+        stackId:
+          type: string
+        stackName:
+          type: string
+        version:
+          nullable: true
+          type: string
+      required:
+        - isModule
+        - position
+        - provider
+        - run
+        - space
+        - stackId
+        - stackName
+      type: object
+      x-graphql-type: RunWithPosition
+    RunWithPositionConnection:
+      description: RunWithPositionConnection represents a single queued run in a page of results.
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/RunWithPosition'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: RunWithPositionConnection
+    SearchIntentProjectReferencesOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/IntentProjectReferencesConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchIntentProjectReferencesOutput
+    SearchSchedulableRunsOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/RunWithPositionConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchSchedulableRunsOutput
+    SearchWorkerPoolUsersOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/WorkerPoolUserConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchWorkerPoolUsersOutput
+    SearchWorkerPoolsOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/WorkerPoolConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchWorkerPoolsOutput
+    SearchWorkersOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/WorkerConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchWorkersOutput
+    WorkerConnection:
+      description: WorkerConnection represents a single worker in a page of results.
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/Worker'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: WorkerConnection
+    WorkerDrainSetRequest:
+      additionalProperties: false
+      description: The arguments of workerDrainSet not carried in the path.
+      properties:
+        drain:
+          type: boolean
+      required:
+        - drain
+      type: object
+      x-graphql-args-of: workerDrainSet
+    WorkerPoolConnection:
+      description: WorkerPoolConnection represents a single worker pool in a page of results.
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/WorkerPoolRef'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: WorkerPoolConnection
+    WorkerPoolCreateRequest:
+      additionalProperties: false
+      description: The arguments of workerPoolCreate not carried in the path.
+      properties:
+        certificateSigningRequest:
+          description: certificate signing request in base64. Changing this value will trigger a token reset.
+          type: string
+          x-terraform:
+            - spacelift_worker_pool.csr
+        description:
+          description: description of the worker pool
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_worker_pool.description
+        driftDetectionRunLimit:
+          description: Limit of how many concurrent drift detection runs are allowed per worker pool
+          format: int32
+          nullable: true
+          type: integer
+          x-terraform:
+            - spacelift_worker_pool.drift_detection_run_limit
+        labels:
+          items:
+            type: string
+          nullable: true
+          type: array
+          x-terraform:
+            - spacelift_worker_pool.labels
+        name:
+          description: name of the worker pool
+          type: string
+          x-terraform:
+            - spacelift_worker_pool.name
+        preparingTimeoutSeconds:
+          format: int32
+          nullable: true
+          type: integer
+        space:
+          description: ID (slug) of the space the worker pool is in
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_worker_pool.space_id
+      required:
+        - certificateSigningRequest
+        - name
+      type: object
+      x-graphql-args-of: workerPoolCreate
+    WorkerPoolResetRequest:
+      additionalProperties: false
+      description: The arguments of workerPoolReset not carried in the path.
+      properties:
+        certificateSigningRequest:
+          type: string
+      required:
+        - certificateSigningRequest
+      type: object
+      x-graphql-args-of: workerPoolReset
+    WorkerPoolUpdateRequest:
+      additionalProperties: false
+      description: The arguments of workerPoolUpdate not carried in the path.
+      properties:
+        description:
+          nullable: true
+          type: string
+        driftDetectionRunLimit:
+          format: int32
+          nullable: true
+          type: integer
+        labels:
+          items:
+            type: string
+          nullable: true
+          type: array
+        name:
+          type: string
+        preparingTimeoutSeconds:
+          format: int32
+          nullable: true
+          type: integer
+        space:
+          nullable: true
+          type: string
+      required:
+        - name
+      type: object
+      x-graphql-args-of: workerPoolUpdate
+    WorkerPoolUserConnection:
+      description: WorkerPoolUserConnection represents a single stack/module in a page of results for a worker pool.
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/WorkerPoolUser'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: WorkerPoolUserConnection
+    WorkerUsage:
+      properties:
+        burst:
+          $ref: '#/components/schemas/WorkerUsageBurst'
+        concurrencyAtContractedPercentile:
+          description: |-
+            Concurrency at the percentile the contract bills on (contractedPercentile).
+            Null when there is no contract or the contract has no percentile, matching
+            contractedPercentile.
+          format: int32
+          nullable: true
+          type: integer
+        contractedLimit:
+          description: |-
+            Worker concurrency limit in the current contract. Null when the account
+            has no contract or no limit. Past cycles also use this current value,
+            which may differ from the limit in effect during that cycle.
+          format: int32
+          nullable: true
+          type: integer
+        contractedPercentile:
+          description: |-
+            Billed percentile in the current contract, such as 95. Null when the
+            account has no contract. Past cycles also use this current value.
+          format: int32
+          nullable: true
+          type: integer
+        cycle:
+          $ref: '#/components/schemas/WorkerUsageCycle'
+        multiAccountContract:
+          description: |-
+            True when contractedLimit is not specific to this account: other accounts
+            draw on the same limit, so this account's usage is only part of what counts
+            against it.
+          type: boolean
+        selectableCycles:
+          description: |-
+            Every cycle `cyclesAgo` can select right now, newest first, starting with
+            the current cycle. The list stops at the oldest retained cycle or at the
+            cycle the account was created or the contract started in, whichever is
+            newer. Past dates are extrapolated from the current contract, and the list
+            shifts by one when a new cycle starts.
+          items:
+            $ref: '#/components/schemas/WorkerUsageCycle'
+          type: array
+      required:
+        - cycle
+        - multiAccountContract
+        - selectableCycles
+      type: object
+      x-graphql-omitted:
+        concurrencyPercentiles: takes arguments; not reachable from an item route
+        daily: takes arguments; not reachable from an item route
+      x-graphql-type: WorkerUsage
+    WorkerUsageBurst:
+      description: |-
+        Uses the current contract's limit and percentile, including for past cycles.
+        `budgetMinutes` applies the current billed percentile to the selected cycle's
+        duration.
+      properties:
+        budgetMinutes:
+          description: How many minutes of the full cycle may exceed the contracted worker limit.
+          format: int32
+          type: integer
+        remainingMinutes:
+          description: budget - used (may be negative when over).
+          format: int32
+          type: integer
+        usedMinutes:
+          description: |-
+            Minutes above the current contracted limit. The current cycle counts time
+            elapsed so far; a past cycle counts its full duration. Each minute counts
+            once, regardless of how far concurrency exceeded the limit.
+          format: int32
+          type: integer
+      required:
+        - budgetMinutes
+        - remainingMinutes
+        - usedMinutes
+      type: object
+      x-graphql-type: WorkerUsageBurst
+    WorkerUsageCycle:
+      properties:
+        cyclesAgo:
+          description: The `cyclesAgo` value that selects this cycle.
+          format: int32
+          type: integer
+        end:
+          description: Unix seconds, exclusive on the minute timeline.
+          format: int32
+          type: integer
+        start:
+          description: Unix seconds, inclusive.
+          format: int32
+          type: integer
+      required:
+        - cyclesAgo
+        - end
+        - start
+      type: object
+      x-graphql-type: WorkerUsageCycle
+    WorkerUsageInput:
+      description: |-
+        Selects the billing cycle returned by `workerUsage`. Omitting `input`, passing
+        an empty input, omitting `cyclesAgo`, and setting `cyclesAgo` to 0 all select
+        the current cycle.
+      properties:
+        cyclesAgo:
+          description: |-
+            Number of billing cycles before the current cycle. Null means 0. 0 selects
+            the current cycle to date; 1 selects the most recent completed cycle.
+            Valid values range from 0 through 5.
+
+            The rollup retains the current monthly partition and the six preceding
+            partitions. An anniversary-based billing cycle can span two partitions,
+            so selecting cycle 6 could read a dropped partition as zero.
+
+            A past cycle that ends before the account was created, or before the contract
+            or subscription started, returns an error. The cycle those dates fall in stays
+            selectable. The current cycle is never checked. A valid cycle older than the
+            rollup returns zeros, which is indistinguishable from no usage.
+          format: int32
+          nullable: true
+          type: integer
+      type: object
+      x-graphql-type: WorkerUsageInput
+paths:
+  /public-worker-pool:
+    get:
+      description: Shows public worker pool details
+      operationId: publicWorkerPool
+      x-infraweave-feature: worker-pools
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWorkerPool'
+          description: The publicWorkerPool result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Public Worker Pool
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Get Public Worker Pool.bru
+      x-graphql:
+        field: publicWorkerPool
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: list
+      x-rest-style: read
+  /worker-pools:
+    get:
+      description: List of all the WorkerPools in the account.
+      operationId: workerPools
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPoolPage'
+          description: The workerPools result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Worker Pools
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/List Worker Pools.bru
+      x-graphql:
+        field: workerPools
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-infraweave-subject: list
+      x-rest-style: list
+    post:
+      description: Create a new WorkerPool.
+      operationId: workerPoolCreate
+      x-infraweave-feature: private-worker-pools
+      x-infraweave-subject: body:space
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              certificateSigningRequest: |-
+                -----BEGIN CERTIFICATE REQUEST-----
+                ...
+                -----END CERTIFICATE REQUEST-----
+              description: My worker pool
+              labels: []
+              name: my-worker-pool
+              space: root
+            schema:
+              $ref: '#/components/schemas/WorkerPoolCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Worker Pool
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Create Worker Pool.bru
+      x-graphql:
+        field: workerPoolCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: WORKER_POOL_CREATE
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /worker-pools/{workerPoolId}:
+    delete:
+      description: Delete an existing WorkerPool.
+      operationId: workerPoolDelete
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+          description: The workerPoolDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Worker Pool
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Delete Worker Pool.bru
+      x-graphql:
+        field: workerPoolDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: WORKER_POOL_DELETE
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: delete
+    get:
+      description: Details of a single WorkerPool.
+      operationId: workerPool
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+          description: The workerPool result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Worker Pool
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Get Worker Pool.bru
+      x-graphql:
+        field: workerPool
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: item
+    patch:
+      description: Change the members of WorkerPoolUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through workerPoolUpdate, so it validates and persists as the PUT does.
+      operationId: workerPoolPatch
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of WorkerPoolUpdateRequest.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+          description: The workerPoolUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Worker Pool
+      tags:
+        - Worker Pools
+      x-infraweave-action: WORKER_POOL_UPDATE
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-upstream: none
+    put:
+      description: Update an existing WorkerPool.
+      operationId: workerPoolUpdate
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              description: Updated description
+              labels: []
+              name: my-worker-pool-updated
+              space: root
+            schema:
+              $ref: '#/components/schemas/WorkerPoolUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+          description: The workerPoolUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Worker Pool
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Update Worker Pool.bru
+      x-graphql:
+        field: workerPoolUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: WORKER_POOL_UPDATE
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: update
+  /worker-pools/{workerPoolId}/cycle:
+    post:
+      description: Cycles the workerpool
+      operationId: workerPoolCycle
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The workerPoolCycle result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Cycle Worker Pool
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Cycle Worker Pool.bru
+      x-graphql:
+        field: workerPoolCycle
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: WORKER_POOL_CYCLE
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: action
+  /worker-pools/{workerPoolId}/reset:
+    post:
+      description: |-
+        Recreate the credentials necessary to connect WorkerPool's workers to the
+        control plane.
+      operationId: workerPoolReset
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              certificateSigningRequest: |-
+                -----BEGIN CERTIFICATE REQUEST-----
+                CSR_CONTENT_HERE
+                -----END CERTIFICATE REQUEST-----
+            schema:
+              $ref: '#/components/schemas/WorkerPoolResetRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+          description: The workerPoolReset result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Reset Worker Pool
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Reset Worker Pool.bru
+      x-graphql:
+        field: workerPoolReset
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: WORKER_POOL_RESET
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: action
+  /worker-pools/{workerPoolId}/search-intent-projects:
+    get:
+      description: Search intent projects using this WorkerPool.
+      operationId: workerPoolSearchIntentProjects
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchIntentProjectReferencesOutput'
+          description: The searchIntentProjects result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search intent projects
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchIntentProjects
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/search-intent-projects-suggestions:
+    get:
+      description: Search intent projects suggestions using this WorkerPool.
+      operationId: workerPoolSearchIntentProjectsSuggestions
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchIntentProjectsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search intent projects suggestions
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchIntentProjectsSuggestions
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/search-schedulable-runs:
+    get:
+      description: Search Runs for this WorkerPool.
+      operationId: workerPoolSearchSchedulableRuns
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSchedulableRunsOutput'
+          description: The searchSchedulableRuns result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search schedulable runs
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchSchedulableRuns
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/search-schedulable-runs-suggestions:
+    get:
+      description: Search Runs Suggestions for this WorkerPool.
+      operationId: workerPoolSearchSchedulableRunsSuggestions
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchSchedulableRunsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search schedulable runs suggestions
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchSchedulableRunsSuggestions
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/search-users:
+    get:
+      description: Search stacks/modules using this WorkerPool.
+      operationId: workerPoolSearchUsers
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchWorkerPoolUsersOutput'
+          description: The searchUsers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search users
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchUsers
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/search-users-suggestions:
+    get:
+      description: Search stacks/modules suggestions using this WorkerPool.
+      operationId: workerPoolSearchUsersSuggestions
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchUsersSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search users suggestions
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchUsersSuggestions
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/search-workers:
+    get:
+      description: Search workers belonging to this WorkerPool.
+      operationId: workerPoolSearchWorkers
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchWorkersOutput'
+          description: The searchWorkers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search workers
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchWorkers
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/search-workers-suggestions:
+    get:
+      description: Search workers suggestions belonging to this WorkerPool.
+      operationId: workerPoolSearchWorkersSuggestions
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchWorkersSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Worker pool search workers suggestions
+      tags:
+        - Worker Pools
+      x-graphql:
+        field: searchWorkersSuggestions
+        operation: query
+        type: WorkerPool
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: field
+  /worker-pools/{workerPoolId}/workers/{workerId}/drain:
+    put:
+      description: Toggles draining on the worker.
+      operationId: workerDrainSet
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - in: path
+          name: workerPoolId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: workerPool
+        - in: path
+          name: workerId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              drain: true
+            schema:
+              $ref: '#/components/schemas/WorkerDrainSetRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worker'
+          description: The workerDrainSet result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Set Worker Drain
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Set Worker Drain.bru
+      x-graphql:
+        field: workerDrainSet
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: WORKER_DRAIN_SET
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:workerPoolId:worker_pool
+      x-rest-style: override
+  /worker-pools/search:
+    post:
+      description: >-
+        Search the private worker pools of the account by name, description,
+        label, space and timestamps. Only pools in spaces the caller may read
+        are answered.
+      operationId: searchWorkerPools
+      x-infraweave-feature: private-worker-pools
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example:
+              first: 50
+            schema:
+              $ref: '#/components/schemas/SearchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchWorkerPoolsOutput'
+          description: The searchWorkerPools result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Worker Pools
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Search Worker Pools.bru
+      x-graphql:
+        field: searchWorkerPools
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /worker-pools/search/suggestions:
+    post:
+      description: >-
+        The fields a worker pool search filters and orders by, with the values
+        the pools the predicates keep hold and how many hold each. Only pools
+        in spaces the caller may read are counted.
+      operationId: searchWorkerPoolsSuggestions
+      x-infraweave-feature: private-worker-pools
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchWorkerPoolsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Worker Pools Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Worker Pools Suggestions.bru
+      x-graphql:
+        field: searchWorkerPoolsSuggestions
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /worker-usage:
+    get:
+      description: |-
+        Private worker usage for a billing cycle. Omit `input` to select the
+        current cycle.
+      operationId: workerUsage
+      x-infraweave-feature: private-worker-pools
+      parameters:
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerUsageInput'
+          in: query
+          name: input
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerUsage'
+          description: The workerUsage result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Worker Usage
+      tags:
+        - Worker Pools
+      x-bruno: Worker Pools/Get Worker Usage.bru
+      x-graphql:
+        field: workerUsage
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: list
+      x-rest-style: read

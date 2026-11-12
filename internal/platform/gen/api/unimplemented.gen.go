@@ -714,6 +714,10 @@ func (UnimplementedStrict) PersonalApiKeyDisable(context.Context, PersonalApiKey
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeyDisable", Route: "POST /personal-api-keys/{personalApiKeyId}/disable"}
 }
 
+func (UnimplementedStrict) PublicWorkerPool(context.Context, PublicWorkerPoolRequestObject) (PublicWorkerPoolResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPool", Route: "GET /public-worker-pool"}
+}
+
 func (UnimplementedStrict) Repositories(context.Context, RepositoriesRequestObject) (RepositoriesResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "repositories", Route: "GET /repositories"}
 }
@@ -1312,4 +1316,84 @@ func (UnimplementedStrict) VcsIntegrationTest(context.Context, VcsIntegrationTes
 
 func (UnimplementedStrict) Viewer(context.Context, ViewerRequestObject) (ViewerResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "viewer", Route: "GET /viewer"}
+}
+
+func (UnimplementedStrict) WorkerPools(context.Context, WorkerPoolsRequestObject) (WorkerPoolsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPools", Route: "GET /worker-pools"}
+}
+
+func (UnimplementedStrict) WorkerPoolCreate(context.Context, WorkerPoolCreateRequestObject) (WorkerPoolCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolCreate", Route: "POST /worker-pools"}
+}
+
+func (UnimplementedStrict) SearchWorkerPools(context.Context, SearchWorkerPoolsRequestObject) (SearchWorkerPoolsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchWorkerPools", Route: "POST /worker-pools/search"}
+}
+
+func (UnimplementedStrict) SearchWorkerPoolsSuggestions(context.Context, SearchWorkerPoolsSuggestionsRequestObject) (SearchWorkerPoolsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchWorkerPoolsSuggestions", Route: "POST /worker-pools/search/suggestions"}
+}
+
+func (UnimplementedStrict) WorkerPoolDelete(context.Context, WorkerPoolDeleteRequestObject) (WorkerPoolDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolDelete", Route: "DELETE /worker-pools/{workerPoolId}"}
+}
+
+func (UnimplementedStrict) WorkerPool(context.Context, WorkerPoolRequestObject) (WorkerPoolResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPool", Route: "GET /worker-pools/{workerPoolId}"}
+}
+
+func (UnimplementedStrict) WorkerPoolPatch(context.Context, WorkerPoolPatchRequestObject) (WorkerPoolPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolPatch", Route: "PATCH /worker-pools/{workerPoolId}"}
+}
+
+func (UnimplementedStrict) WorkerPoolUpdate(context.Context, WorkerPoolUpdateRequestObject) (WorkerPoolUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolUpdate", Route: "PUT /worker-pools/{workerPoolId}"}
+}
+
+func (UnimplementedStrict) WorkerPoolCycle(context.Context, WorkerPoolCycleRequestObject) (WorkerPoolCycleResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolCycle", Route: "POST /worker-pools/{workerPoolId}/cycle"}
+}
+
+func (UnimplementedStrict) WorkerPoolReset(context.Context, WorkerPoolResetRequestObject) (WorkerPoolResetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolReset", Route: "POST /worker-pools/{workerPoolId}/reset"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchIntentProjects(context.Context, WorkerPoolSearchIntentProjectsRequestObject) (WorkerPoolSearchIntentProjectsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchIntentProjects", Route: "GET /worker-pools/{workerPoolId}/search-intent-projects"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchIntentProjectsSuggestions(context.Context, WorkerPoolSearchIntentProjectsSuggestionsRequestObject) (WorkerPoolSearchIntentProjectsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchIntentProjectsSuggestions", Route: "GET /worker-pools/{workerPoolId}/search-intent-projects-suggestions"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchSchedulableRuns(context.Context, WorkerPoolSearchSchedulableRunsRequestObject) (WorkerPoolSearchSchedulableRunsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchSchedulableRuns", Route: "GET /worker-pools/{workerPoolId}/search-schedulable-runs"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchSchedulableRunsSuggestions(context.Context, WorkerPoolSearchSchedulableRunsSuggestionsRequestObject) (WorkerPoolSearchSchedulableRunsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchSchedulableRunsSuggestions", Route: "GET /worker-pools/{workerPoolId}/search-schedulable-runs-suggestions"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchUsers(context.Context, WorkerPoolSearchUsersRequestObject) (WorkerPoolSearchUsersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchUsers", Route: "GET /worker-pools/{workerPoolId}/search-users"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchUsersSuggestions(context.Context, WorkerPoolSearchUsersSuggestionsRequestObject) (WorkerPoolSearchUsersSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchUsersSuggestions", Route: "GET /worker-pools/{workerPoolId}/search-users-suggestions"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchWorkers(context.Context, WorkerPoolSearchWorkersRequestObject) (WorkerPoolSearchWorkersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchWorkers", Route: "GET /worker-pools/{workerPoolId}/search-workers"}
+}
+
+func (UnimplementedStrict) WorkerPoolSearchWorkersSuggestions(context.Context, WorkerPoolSearchWorkersSuggestionsRequestObject) (WorkerPoolSearchWorkersSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolSearchWorkersSuggestions", Route: "GET /worker-pools/{workerPoolId}/search-workers-suggestions"}
+}
+
+func (UnimplementedStrict) WorkerDrainSet(context.Context, WorkerDrainSetRequestObject) (WorkerDrainSetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerDrainSet", Route: "PUT /worker-pools/{workerPoolId}/workers/{workerId}/drain"}
+}
+
+func (UnimplementedStrict) WorkerUsage(context.Context, WorkerUsageRequestObject) (WorkerUsageResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerUsage", Route: "GET /worker-usage"}
 }

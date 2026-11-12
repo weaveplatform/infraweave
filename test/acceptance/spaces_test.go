@@ -22,7 +22,7 @@ type spaceSteps struct{ o *orgSteps }
 func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's id is the space "(\w+)"$`, s.remember)
 	sc.Step(
-		`^the answer lists the (?:spaces|stacks|contexts|roles|integrations) "([^"]*)"$`,
+		`^the answer lists the (?:spaces|stacks|contexts|roles|integrations|worker pools) "([^"]*)"$`,
 		s.lists,
 	)
 	sc.Step(

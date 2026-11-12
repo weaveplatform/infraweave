@@ -16,6 +16,7 @@ import (
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
+	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
 )
 
 // CountOrphans is integrity.orphans, the nightly count of IDs a domain
@@ -40,6 +41,7 @@ func held() []integrity.Held {
 		configurationassembly.Held(),
 		runsassembly.Held(),
 		vcsassembly.Held(),
+		workersassembly.Held(),
 	)
 }
 
