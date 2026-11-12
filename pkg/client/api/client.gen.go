@@ -2689,6 +2689,7 @@ const (
 	BUSY    WorkerStatus = "BUSY"
 	DRAINED WorkerStatus = "DRAINED"
 	IDLE    WorkerStatus = "IDLE"
+	OFFLINE WorkerStatus = "OFFLINE"
 )
 
 // Valid indicates whether the value is a known member of the WorkerStatus enum.
@@ -2699,6 +2700,8 @@ func (e WorkerStatus) Valid() bool {
 	case DRAINED:
 		return true
 	case IDLE:
+		return true
+	case OFFLINE:
 		return true
 	default:
 		return false

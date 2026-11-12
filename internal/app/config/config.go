@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
@@ -68,10 +69,15 @@ type Config struct {
 	// ref: decision 0012
 	VCS vcsassembly.Settings `mapstructure:"vcs"`
 	// Worker is the workers domain's: the longest a worker's poll is
-	// held.
+	// held, and how long a worker goes unseen before it is offline.
 	//
 	// ref: decision 0008
 	Worker workersassembly.Settings `mapstructure:"worker"`
+	// Run is the runs domain's: how long a worker goes unseen before its
+	// run is lost, and the preparing timeout of a pool that sets none.
+	//
+	// ref: decision 0008
+	Run runsassembly.Settings `mapstructure:"run"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -114,6 +120,7 @@ func Defaults() Config {
 		Auth:        accessassembly.DefaultSettings(),
 		Vendors:     vendorsassembly.DefaultSettings(),
 		Worker:      workersassembly.DefaultSettings(),
+		Run:         runsassembly.DefaultSettings(),
 	}
 }
 
@@ -254,10 +261,24 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Features.Validate(),
 		c.Vendors.Validate(),
 		c.Worker.Validate(),
+		c.Run.Validate(),
+		c.liveness(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 	return &c, nil
+}
+
+// liveness rejects a run.lost_after no greater than worker.offline_after,
+// which would fail a worker's run before the worker is even offline.
+//
+// ref: decision 0008 § "Liveness: offline workers and lost runs"
+func (c Config) liveness() error {
+	if c.Run.LostAfter <= c.Worker.OfflineAfter {
+		return fmt.Errorf("%w: run.lost_after %s is not greater than worker.offline_after %s",
+			runsassembly.ErrConfig, c.Run.LostAfter, c.Worker.OfflineAfter)
+	}
+	return nil
 }
 
 // bindEnv binds the variable of every key of t, the mapstructure tags of its

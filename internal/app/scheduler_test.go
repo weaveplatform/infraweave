@@ -82,9 +82,10 @@ func runModeWith(
 }
 
 // TestAccSchedulerModeStarts checks that the scheduler mode registers the
-// platform's periodic tasks, events.prune and the access domain's
-// authn.keys.rotate, runs them through its workers, and stops the ticker
-// before the workers; and that serve runs neither.
+// platform's periodic tasks, events.prune, the access domain's
+// authn.keys.rotate and the workers domain's worker.reap, runs them
+// through its workers, worker.reap on the scheduler queue, and stops the
+// ticker before the workers; and that serve runs neither.
 func TestAccSchedulerModeStarts(t *testing.T) {
 	observer := sqltest.Open(t)
 	out, _, stop := runMode(t, observer, ModeScheduler)
@@ -93,11 +94,17 @@ WHERE (name, interval) IN (('queue.prune', interval '10 minutes'), ('idempotency
     ('events.prune', interval '10 minutes'), ('authn.keys.rotate', interval '1 day'))`); n != 4 {
 		t.Errorf("%d of the periodic tasks registered, want 4", n)
 	}
+	if n := rows(t, observer, `SELECT count(*) FROM periodic_tasks
+WHERE name = 'worker.reap' AND interval = interval '30 seconds'`); n != 1 {
+		t.Errorf("worker.reap registered %d times every 30 seconds, want once", n)
+	}
 	// Each is due once registered, so the first ticks run them.
 	until(t, "the tasks to run", func() bool {
 		return rows(t, observer, `SELECT count(*) FROM jobs
 WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune', 'authn.keys.rotate')
-    AND queue = 'maintenance' AND state = 'succeeded'`) == 4
+    AND queue = 'maintenance' AND state = 'succeeded'`) == 4 &&
+			rows(t, observer, `SELECT count(*) FROM jobs
+WHERE kind = 'worker.reap' AND queue = 'scheduler' AND state = 'succeeded'`) >= 1
 	})
 	// The first rotation on an empty table creates the first key.
 	if n := rows(t, observer, `SELECT count(*) FROM signing_keys WHERE state = 'active'`); n != 1 {

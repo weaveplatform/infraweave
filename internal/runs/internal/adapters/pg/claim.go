@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -128,4 +129,66 @@ func (s *Store) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULI
 			sql.Unavailable(err))
 	}
 	return nil
+}
+
+var _ schedule.LivenessStore = (*Store)(nil)
+
+// Held reads and locks the runs worker holds. The partial index
+// runs_worker serves it.
+func (s *Store) Held(ctx context.Context, worker kernel.ULID) ([]lifecycle.Run, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+runColumns+` FROM runs
+		WHERE worker_id = $1 AND state = ANY($2)
+		ORDER BY id FOR UPDATE`, worker, onWorker)
+	if err != nil {
+		return nil, fmt.Errorf("runs: read the runs of worker %s: %w", worker,
+			sql.Unavailable(err))
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (lifecycle.Run, error) {
+		return scanRun(r)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: read the runs of worker %s: %w", worker,
+			sql.Unavailable(err))
+	}
+	return out, nil
+}
+
+// preparing are the states a claim moves a run to, which its first
+// started report moves it out of.
+var preparing = []string{
+	string(kernel.RunStatePreparing), string(kernel.RunStatePreparingApply),
+	string(kernel.RunStatePreparingReplan),
+}
+
+// Overdue reads and locks the runs left in preparation past their pool's
+// preparing timeout. The partial index runs_preparing serves it.
+func (s *Store) Overdue(
+	ctx context.Context,
+	now time.Time,
+	timeouts []workersapi.PoolTimeout,
+	fallback time.Duration,
+	batch int,
+) ([]lifecycle.Run, error) {
+	pools := make([]kernel.ULID, 0, len(timeouts))
+	micros := make([]int64, 0, len(timeouts))
+	for _, t := range timeouts {
+		pools, micros = append(pools, t.Pool), append(micros, t.Timeout.Microseconds())
+	}
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+runColumns+` FROM runs
+		WHERE state = ANY($1) AND state_changed_at < $2::timestamptz -
+			coalesce((SELECT t.micros FROM unnest($3::uuid[], $4::bigint[]) AS t(pool, micros)
+				WHERE t.pool = runs.worker_pool_id), $5) * interval '1 microsecond'
+		ORDER BY state_changed_at, id
+		LIMIT $6 FOR UPDATE SKIP LOCKED`,
+		preparing, now, pools, micros, fallback.Microseconds(), batch)
+	if err != nil {
+		return nil, fmt.Errorf("runs: read the overdue preparations: %w", sql.Unavailable(err))
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (lifecycle.Run, error) {
+		return scanRun(r)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: read the overdue preparations: %w", sql.Unavailable(err))
+	}
+	return out, nil
 }

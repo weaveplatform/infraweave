@@ -2,6 +2,8 @@ package assembly
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -31,6 +33,39 @@ import (
 
 // Stream is the runs domain's migration stream.
 func Stream() migrate.Stream { return pg.Stream() }
+
+// Settings are the run settings: LostAfter, how long a worker goes unseen
+// before its run is a lost run and fails, run.lost_after, and
+// PreparingTimeoutDefault, the preparing timeout of a pool that sets
+// none, run.preparing_timeout_default. The workers domain's reap applies
+// both, so internal/app hands them to it.
+//
+// ref: decision 0008 § "Configuration"
+type Settings struct {
+	LostAfter               time.Duration `mapstructure:"lost_after"`
+	PreparingTimeoutDefault time.Duration `mapstructure:"preparing_timeout_default"`
+}
+
+// DefaultSettings fail a lost run an hour after its worker's last poll,
+// which covers a launcher's restart and a short outage, and a run no
+// started report moved on 15 minutes after its claim.
+func DefaultSettings() Settings {
+	return Settings{LostAfter: time.Hour, PreparingTimeoutDefault: 15 * time.Minute}
+}
+
+// ErrConfig reports a run setting the server could not start with.
+var ErrConfig = errors.New("invalid run configuration")
+
+// Validate rejects a preparing timeout under a second, the unit a pool's
+// own is set in. run.lost_after is checked against worker.offline_after,
+// which internal/app/config does, since it spans both domains.
+func (s Settings) Validate() error {
+	if s.PreparingTimeoutDefault < time.Second {
+		return fmt.Errorf("%w: run.preparing_timeout_default %s is under 1s", ErrConfig,
+			s.PreparingTimeoutDefault)
+	}
+	return nil
+}
 
 // Held are the runs columns that hold other domains' rows, for the
 // nightly orphan count.
@@ -74,6 +109,7 @@ type Domain struct {
 	lifecycle *lifecycle.Lifecycle
 	scheduler *schedule.Scheduler
 	claims    *schedule.Claims
+	liveness  *schedule.Liveness
 	handover  *handover.Service
 	reports   *report.Service
 	trigger   *trigger.Service
@@ -95,7 +131,8 @@ func New(d Deps) *Domain {
 		scheduler: schedule.New(schedule.Deps{
 			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs,
 		}),
-		claims: schedule.NewClaims(store, lc),
+		claims:   schedule.NewClaims(store, lc),
+		liveness: schedule.NewLiveness(store, lc),
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Environment: d.Environment,
 			Tokens: d.Tokens,
@@ -202,6 +239,11 @@ type scheduler struct {
 // Reports is the domain's side of a claimed run's reports and uploads, a
 // back edge internal/app binds in the workers domain.
 func (d *Domain) Reports() workersapi.Reports { return d.reports }
+
+// Liveness is the domain's side of lost workers, ended containers and
+// overdue preparations, a back edge internal/app binds in the workers
+// domain, whose reap and polls fail runs through it.
+func (d *Domain) Liveness() workersapi.Liveness { return d.liveness }
 
 // BindExpressions binds the expression registry, which internal/app
 // builds from the domains' Surfaces after constructing them, and which a

@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	sqlsearch "github.com/weaveplatform/infraweave/internal/platform/sql/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
@@ -85,15 +86,16 @@ func (s *Store) Count(
 // workerColumns are a worker's columns as scanWorker reads them, over
 // workers w.
 const workerColumns = `w.account_id, w.organization_id, w.id, w.pool_id, w.serial, w.version,
-	w.os, w.arch, w.metadata, w.busy, w.drained, w.cycle, w.last_seen_at, w.available_at,
-	w.created_at`
+	w.os, w.arch, w.metadata, w.busy, w.drained, w.cycle, w.offline, w.last_seen_at,
+	w.available_at, w.created_at`
 
 // scanWorker reads workerColumns, then into extra.
 func scanWorker(row pgx.Row, extra ...any) (worker.Worker, error) {
 	var w worker.Worker
 	err := row.Scan(append([]any{
 		&w.Account, &w.Organization, &w.ID, &w.Pool, &w.Serial, &w.Version, &w.OS, &w.Arch,
-		&w.Metadata, &w.Busy, &w.Drained, &w.Cycle, &w.LastSeenAt, &w.AvailableAt, &w.CreatedAt,
+		&w.Metadata, &w.Busy, &w.Drained, &w.Cycle, &w.Offline, &w.LastSeenAt, &w.AvailableAt,
+		&w.CreatedAt,
 	}, extra...)...)
 	return w, err //nolint:wrapcheck // callers name the read
 }
@@ -156,14 +158,15 @@ func (s *Store) CreateWorker(ctx context.Context, w worker.Worker) error {
 	return nil
 }
 
-// Resume rewrites w's registration and marks it seen.
+// Resume rewrites w's registration and marks it seen, and no longer
+// offline.
 func (s *Store) Resume(ctx context.Context, w worker.Worker) error {
 	md, err := metadata(w.Metadata)
 	if err != nil {
 		return err
 	}
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE workers SET serial = $3, version = $4,
-			os = $5, arch = $6, metadata = $7, last_seen_at = $8
+			os = $5, arch = $6, metadata = $7, last_seen_at = $8, offline = false
 		WHERE account_id = $1 AND id = $2`,
 		w.Account, w.ID, w.Serial, w.Version, w.OS, w.Arch, md, w.LastSeenAt)
 	if err == nil && tag.RowsAffected() == 0 {
@@ -175,8 +178,9 @@ func (s *Store) Resume(ctx context.Context, w worker.Worker) error {
 	return nil
 }
 
-// Seen marks the worker id seen at now with busy. available_at is set
-// when the worker becomes idle and cleared while it is busy.
+// Seen marks the worker id seen at now with busy, and no longer offline.
+// available_at is set when the worker becomes idle and cleared while it
+// is busy.
 func (s *Store) Seen(
 	ctx context.Context,
 	id kernel.ULID,
@@ -185,7 +189,7 @@ func (s *Store) Seen(
 ) (worker.Worker, int64, error) {
 	var serial int64
 	w, err := scanWorker(tx.Q(ctx, s.db).QueryRow(ctx, `UPDATE workers w SET last_seen_at = $2,
-			busy = $3,
+			busy = $3, offline = false,
 			available_at = CASE WHEN $3 THEN NULL
 				WHEN w.busy OR w.available_at IS NULL THEN $2 ELSE w.available_at END
 		FROM worker_pools p
@@ -217,6 +221,61 @@ func (s *Store) Remove(ctx context.Context, id kernel.ULID) error {
 		return workerError(id, err)
 	}
 	return nil
+}
+
+// MarkOffline marks the workers last seen before before offline, and
+// answers how many it marked.
+func (s *Store) MarkOffline(ctx context.Context, before time.Time) (int, error) {
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE workers SET offline = true
+		WHERE last_seen_at < $1 AND NOT offline`, before)
+	if err != nil {
+		return 0, fmt.Errorf("workers: mark the offline workers: %w", sql.Unavailable(err))
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+// Lost deletes the worker longest unseen of those last seen before
+// before, skipping workers another transaction locks, and answers its ID;
+// false when none is left.
+func (s *Store) Lost(ctx context.Context, before time.Time) (kernel.ULID, bool, error) {
+	var id kernel.ULID
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `DELETE FROM workers WHERE id = (
+			SELECT id FROM workers WHERE last_seen_at < $1
+			ORDER BY last_seen_at, id LIMIT 1 FOR UPDATE SKIP LOCKED)
+		RETURNING id`, before).Scan(&id)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return kernel.ULID{}, false, nil
+	case err != nil:
+		return kernel.ULID{}, false, fmt.Errorf("workers: delete a lost worker: %w",
+			sql.Unavailable(err))
+	}
+	return id, true, nil
+}
+
+// PoolTimeouts reads the pools that set their own preparing timeout, of
+// every account.
+func (s *Store) PoolTimeouts(ctx context.Context) ([]workersapi.PoolTimeout, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, preparing_timeout_seconds
+		FROM worker_pools WHERE preparing_timeout_seconds IS NOT NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("workers: read the pools' preparing timeouts: %w",
+			sql.Unavailable(err))
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (workersapi.PoolTimeout, error) {
+		var (
+			t       workersapi.PoolTimeout
+			seconds int32
+		)
+		err := r.Scan(&t.Pool, &seconds)
+		t.Timeout = time.Duration(seconds) * time.Second
+		return t, err //nolint:wrapcheck // named below
+	})
+	if err != nil {
+		return nil, fmt.Errorf("workers: read the pools' preparing timeouts: %w",
+			sql.Unavailable(err))
+	}
+	return out, nil
 }
 
 // wake notifies every replica's held polls of pool, on commit when ctx
@@ -282,7 +341,8 @@ func (s *Store) OfPools(
 }
 
 // workerStatus is worker.Status in SQL over workers w.
-const workerStatus = `CASE WHEN w.drained THEN 'DRAINED' WHEN w.busy THEN 'BUSY' ELSE 'IDLE' END`
+const workerStatus = `CASE WHEN w.offline THEN 'OFFLINE' WHEN w.drained THEN 'DRAINED'
+	WHEN w.busy THEN 'BUSY' ELSE 'IDLE' END`
 
 // workerColumn is the SQL of each of worker.Fields.
 var workerColumn = map[string]sqlsearch.Column{

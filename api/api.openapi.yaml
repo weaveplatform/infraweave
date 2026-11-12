@@ -18542,6 +18542,7 @@ paths:
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-092
         - rate-limit
       x-infraweave-subject: path:workerPoolId:worker_pool
       x-rest-style: field
@@ -18597,6 +18598,7 @@ paths:
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-092
         - rate-limit
       x-infraweave-subject: path:workerPoolId:worker_pool
       x-rest-style: field
@@ -18659,6 +18661,7 @@ paths:
       x-infraweave-action: WORKER_DRAIN_SET
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-092
         - rate-limit
       x-infraweave-subject: path:workerPoolId:worker_pool
       x-rest-style: override
@@ -31367,10 +31370,12 @@ components:
         - IDLE
         - BUSY
         - DRAINED
+        - OFFLINE
       type: string
       x-enum-descriptions:
         BUSY: Worker is currently processing a worker.
         DRAINED: Worker is not accepting new work.
+        OFFLINE: Worker has not polled within the server's offline threshold. It claims no new run, and a run it holds keeps its state until the worker polls again or the run is failed as lost.
       x-graphql-type: WorkerStatus
     WorkerUsage:
       properties:

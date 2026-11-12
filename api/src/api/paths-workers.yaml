@@ -1309,6 +1309,7 @@ paths:
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-092
         - rate-limit
       x-infraweave-subject: path:workerPoolId:worker_pool
       x-rest-style: field
@@ -1364,6 +1365,7 @@ paths:
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-092
         - rate-limit
       x-infraweave-subject: path:workerPoolId:worker_pool
       x-rest-style: field
@@ -1426,6 +1428,7 @@ paths:
       x-infraweave-action: WORKER_DRAIN_SET
       x-infraweave-cost: standard
       x-infraweave-divergence:
+        - DV-092
         - rate-limit
       x-infraweave-subject: path:workerPoolId:worker_pool
       x-rest-style: override

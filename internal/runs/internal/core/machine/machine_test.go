@@ -111,7 +111,7 @@ var drivenBy = map[machine.Driver][]string{
 	},
 	machine.DriverDecision: {"T17", "T18", "T20", "T21", "T22"},
 	machine.DriverTimers:   {"T4", "T9", "T25", "T27", "T31", "T34"},
-	machine.DriverLiveness: {"T11", "T15", "T18", "T36", "T38", "T41", "T43", "T44"},
+	machine.DriverLiveness: {"T11", "T15", "T18", "T36", "T38", "T41", "T43", "T44", "T45"},
 }
 
 // TestUnitTransitionTable checks every (type, from, to, driver): Allowed
@@ -273,5 +273,27 @@ func TestUnitTransitionClaims(t *testing.T) {
 		if got != tc.to || ok != (tc.to != "") {
 			t.Errorf("Claimed(%s, %s) = %q, %v; want %q", tc.typ, tc.from, got, ok, tc.to)
 		}
+	}
+}
+
+// TestUnitTransitionLiveness checks that every state on a worker a run of
+// some type enters has a liveness edge to FAILED for that type, so the
+// reap and an ended container can fail any run a worker holds.
+func TestUnitTransitionLiveness(t *testing.T) {
+	checked := 0
+	for _, e := range machine.Edges() {
+		if !e.To.OnWorker() {
+			continue
+		}
+		for _, typ := range e.Types {
+			checked++
+			if _, ok := machine.Allowed(typ, e.To, kernel.RunStateFailed,
+				machine.DriverLiveness); !ok {
+				t.Errorf("a %s run in %s has no liveness edge to FAILED", typ, e.To)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no edge enters a state on a worker")
 	}
 }

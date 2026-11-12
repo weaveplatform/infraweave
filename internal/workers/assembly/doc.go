@@ -12,7 +12,12 @@
 // every API surface, BindScheduler binds the runs domain's
 // workersapi.Scheduler its polls claim runs through, WatchPolls wakes its
 // held polls from infraweave_runs, all of a pool's or, for a waiting run,
-// one, and StopPolls answers them as the replica shuts down; Settings are worker.poll_timeout_max; Purge deletes a deleted
+// one, and StopPolls answers them as the replica shuts down;
+// BindLiveness binds the runs domain's workersapi.Liveness, and Cron is
+// worker.reap, every 30 seconds on the scheduler queue, which marks
+// silent workers offline, deletes lost ones and fails their runs, and
+// fails overdue preparations; Settings are worker.poll_timeout_max and
+// worker.offline_after; Purge deletes a deleted
 // account's runner images, pools, workers and nonces PurgeBatch rows at a
 // time, which internal/app runs for each accessapi.Deleted.
 //
@@ -24,7 +29,8 @@
 //
 // It imports the domain's http, pg, protocol, images, pool and worker
 // packages, the access and workers api packages, internal/kernel,
-// platform/crypt, the generated worker server, platform/sql's integrity,
-// migrate and notify packages, and platform/tx. Only internal/app
+// platform/cron, platform/crypt, platform/queue, the generated worker
+// server, platform/sql's integrity, migrate and notify packages, and
+// platform/tx. Only internal/app
 // and cmd/ import it, as the constructors rule enforces.
 package assembly

@@ -319,3 +319,57 @@ type Reports interface {
 	// recorded, or ErrNoWorkspace.
 	Workspace(ctx context.Context, run kernel.ULID) (string, error)
 }
+
+// ExitReason is why a run's container ended, as its launcher reports it.
+type ExitReason string
+
+// The exit reasons: the runner ended by itself, the launcher killed it on
+// a kill signal, the host killed it for its memory, or the container is
+// gone, such as after the host restarted.
+const (
+	ExitExited      ExitReason = "exited"
+	ExitKilled      ExitReason = "killed"
+	ExitOutOfMemory ExitReason = "out-of-memory"
+	ExitMissing     ExitReason = "missing"
+)
+
+// Exit is how a run's container ended: its root process's exit code, and
+// why.
+type Exit struct {
+	Code   int
+	Reason ExitReason
+}
+
+// PoolTimeout is a pool that sets its own preparing timeout.
+type PoolTimeout struct {
+	Pool    kernel.ULID
+	Timeout time.Duration
+}
+
+// Liveness is the runs domain's side of a worker that stops polling, of a
+// run whose container ended before a report ended the run, and of a run
+// left in preparation: a back edge internal/app binds after it constructs
+// that domain. Each call joins the transaction ctx carries and fails runs
+// through the liveness edge out of the state each is in.
+//
+// ref: decision 0008 § "Liveness: offline workers and lost runs"
+type Liveness interface {
+	// Lost fails each run worker holds, with the note "worker lost", and
+	// answers how many it failed.
+	Lost(ctx context.Context, worker kernel.ULID) (int, error)
+	// Ended fails run, its container having ended as exit, when worker
+	// still holds it, and reports whether it failed it: a report that
+	// ended the run first leaves nothing to fail.
+	Ended(ctx context.Context, worker, run kernel.ULID, exit Exit) (bool, error)
+	// Overdue fails up to batch runs that entered a preparing state before
+	// now less their pool's preparing timeout, the one timeouts names or
+	// else fallback, with the note "preparing timeout", skipping runs
+	// another transaction holds, and answers how many it failed.
+	Overdue(
+		ctx context.Context,
+		now time.Time,
+		timeouts []PoolTimeout,
+		fallback time.Duration,
+		batch int,
+	) (int, error)
+}

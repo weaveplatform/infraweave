@@ -469,6 +469,17 @@
       "cause": "The handover between the server and the worker fails while the saved workspace is restored for a replan, as T11 and T36 fail the other preparing states",
       "evidence": "[I] No Spacelift source describes this edge; decision [0008](../research/decisions/0008-run-execution-and-worker-protocol.md#the-state-machine-is-the-authority) adds it as the analogue of T11 and T36",
       "source": "decision 0008"
+    },
+    {
+      "id": "T45",
+      "from": "APPLYING",
+      "to": "FAILED",
+      "runTypes": [
+        "TESTING"
+      ],
+      "cause": "The worker is lost, or the run's container ends, while a test case applies, so no worker is left to run the destroy T39 moves it on to",
+      "evidence": "[I] No Spacelift source describes this edge; decision [0008](../research/decisions/0008-run-execution-and-worker-protocol.md#the-state-machine-is-the-authority) adds it so every state on a worker has a failure for liveness, as T38 is for a tracked run",
+      "source": "decision 0008"
     }
   ]
 }

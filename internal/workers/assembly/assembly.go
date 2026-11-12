@@ -10,8 +10,10 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
@@ -46,26 +48,37 @@ func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 const Entity = "worker_pool"
 
 // Settings are the workers domain's: PollTimeoutMax, the longest a
-// worker's poll is held, worker.poll_timeout_max.
+// worker's poll is held, worker.poll_timeout_max, and OfflineAfter, how
+// long a worker goes unseen before the reap marks it offline,
+// worker.offline_after.
 //
 // ref: decision 0008 § "Configuration"
 type Settings struct {
 	PollTimeoutMax time.Duration `mapstructure:"poll_timeout_max"`
+	OfflineAfter   time.Duration `mapstructure:"offline_after"`
 }
 
 // DefaultSettings hold a poll for at most two minutes, the longest a
-// launcher asks for.
-func DefaultSettings() Settings { return Settings{PollTimeoutMax: worker.MaxWait} }
+// launcher asks for, and mark a worker offline after three default polls
+// go unseen.
+func DefaultSettings() Settings {
+	return Settings{PollTimeoutMax: worker.MaxWait, OfflineAfter: worker.DefaultOfflineAfter}
+}
 
 // ErrConfig reports a workers setting the server could not start with.
 var ErrConfig = errors.New("invalid worker configuration")
 
 // Validate rejects a poll timeout shorter than the shortest hold a
-// launcher may ask for.
+// launcher may ask for, and an offline_after no longer than the longest
+// hold, which would mark a worker offline while its poll is held.
 func (s Settings) Validate() error {
 	if s.PollTimeoutMax < worker.MinWait {
 		return fmt.Errorf("%w: worker.poll_timeout_max %s is under %s", ErrConfig,
 			s.PollTimeoutMax, worker.MinWait)
+	}
+	if s.OfflineAfter <= s.PollTimeoutMax {
+		return fmt.Errorf("%w: worker.offline_after %s is not greater than "+
+			"worker.poll_timeout_max %s", ErrConfig, s.OfflineAfter, s.PollTimeoutMax)
 	}
 	return nil
 }
@@ -84,20 +97,26 @@ type DB interface {
 // the worker API mints, the entitlements a new worker is
 // counted against, Version, the server's version, which a launcher's
 // must match to its minor version or the one before, PollMax, the
-// longest a worker's poll is held, and the log a refused worker
-// credential is recorded in.
+// longest a worker's poll is held, the reap's OfflineAfter,
+// worker.offline_after, and LostAfter, run.lost_after, PreparingTimeout,
+// the preparing timeout of a pool that sets none,
+// run.preparing_timeout_default, and the log a refused worker credential
+// and each reap are recorded in. A zero duration takes the default.
 type Deps struct {
-	DB       DB
-	Keys     pg.Sealer
-	Spaces   accessapi.Spaces
-	Authz    accessapi.Authorizer
-	Public   string
-	Tokens   accessapi.Tokens
-	Features worker.Limits
-	Version  string
-	PollMax  time.Duration
-	Log      *slog.Logger
-	Now      func() time.Time
+	DB               DB
+	Keys             pg.Sealer
+	Spaces           accessapi.Spaces
+	Authz            accessapi.Authorizer
+	Public           string
+	Tokens           accessapi.Tokens
+	Features         worker.Limits
+	Version          string
+	PollMax          time.Duration
+	OfflineAfter     time.Duration
+	LostAfter        time.Duration
+	PreparingTimeout time.Duration
+	Log              *slog.Logger
+	Now              func() time.Time
 }
 
 // Domain is the workers domain, constructed once per process.
@@ -113,11 +132,12 @@ func New(d Deps) *Domain {
 	store := pg.New(d.DB, d.Keys)
 	svc := pool.New(pool.Deps{
 		Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
-		Public: d.Public, Now: d.Now,
+		Public: d.Public, PreparingTimeout: d.PreparingTimeout, Now: d.Now,
 	})
 	wk := worker.New(worker.Deps{
 		Store: store, DB: d.DB, Tokens: d.Tokens, Limits: d.Features, Version: d.Version,
-		PollMax: d.PollMax, Now: d.Now,
+		PollMax: d.PollMax, OfflineAfter: d.OfflineAfter, LostAfter: d.LostAfter,
+		PreparingTimeout: d.PreparingTimeout, Now: d.Now,
 	})
 	log := d.Log
 	if log == nil {
@@ -202,6 +222,45 @@ func (d *Domain) BindScheduler(s workersapi.Scheduler) { d.workers.BindScheduler
 // internal/app binds after it constructs that domain, which a claimed
 // run's reports and uploads go to.
 func (d *Domain) BindReports(r workersapi.Reports) { d.workers.BindReports(r) }
+
+// BindLiveness binds the runs domain's workersapi.Liveness, a back edge
+// internal/app binds after it constructs that domain, which the reap and
+// a poll that reports an ended container fail runs through.
+func (d *Domain) BindLiveness(l workersapi.Liveness) { d.workers.BindLiveness(l) }
+
+// Reap is worker.reap, the pass that marks silent workers offline, deletes
+// lost ones and fails their runs, and fails overdue preparations. It runs
+// on the scheduler queue with the run timers, so a long maintenance job
+// never delays it, with policy Ignore, so a slow reap never overlaps the
+// next.
+//
+// ref: decision 0008 § "Liveness: offline workers and lost runs"
+// ref: decision 0011 § "Scheduling and cron"
+var Reap = queue.Kind{
+	Name:   "worker.reap",
+	Queue:  queue.Scheduler,
+	Policy: queue.Ignore,
+}
+
+// ReapEvery is how often worker.reap runs, once across the replicas.
+const ReapEvery = 30 * time.Second
+
+// Cron is the domain's periodic task, worker.reap, which logs what each
+// pass did when it did anything.
+func (d *Domain) Cron() []cron.Task {
+	return []cron.Task{{
+		Kind:  Reap,
+		Every: ReapEvery,
+		Handler: func(ctx context.Context, _ queue.Job) error {
+			r, err := d.workers.Reap(ctx)
+			if r != (worker.Reaped{}) {
+				d.log.InfoContext(ctx, "workers reaped", "offline", r.Offline, "lost", r.Lost,
+					"lost_runs", r.LostRuns, "overdue_runs", r.Overdue)
+			}
+			return err //nolint:wrapcheck // the store or the runs domain names it
+		},
+	}}
+}
 
 // Pools is what other domains call of the domain's pools, which
 // internal/app hands the stacks domain.

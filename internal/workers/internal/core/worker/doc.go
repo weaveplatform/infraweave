@@ -13,22 +13,30 @@
 // again, WakeOne ends the hold of the newest idle worker's poll of a
 // pool, and Stop answers them at once as the replica shuts down. For
 // the API it drains and undrains a worker, cycles a pool's workers, and
-// searches, suggests and lists them. A worker's Status is DRAINED, BUSY
-// or IDLE. Spec answers a run token's bearer its run's handover from the
+// searches, suggests and lists them. A worker's Status is OFFLINE,
+// DRAINED, BUSY or IDLE. Reap is worker.reap's pass: it marks workers
+// unseen for worker.offline_after offline, deletes each worker unseen for
+// run.lost_after in a transaction that fails the runs it held, and fails
+// the runs left in preparation past their pool's preparing timeout,
+// through the workersapi.Liveness BindLiveness binds. A poll that is not
+// busy and names a run fails it there when the worker still holds it, as
+// one whose container ended without a report ending it; a poll clears
+// its worker's offline mark. Spec answers a run token's bearer its run's handover from the
 // scheduler, with the account's default runner image when neither the
 // run nor its stack names one, and the run's secrets sealed to the P-256
 // key of its pool's current certificate for the run's state version.
 //
 // ref: decision 0008 § "Claiming runs", § "The worker API", § "Worker
 // status, drain, cycle and reset", § "The run specification and its
-// secrets"
+// secrets", § "Liveness: offline workers and lost runs"
 //
 // # Input and output
 //
 // New takes the Store, the pool registrations and claims begin
 // transactions on, the worker session and run tokens it mints, the limits
-// it checks, the server's version and the longest hold; BindScheduler
-// takes the runs domain's claim and handover.
+// it checks, the server's version, the longest hold and the reap's
+// clocks; BindScheduler takes the runs domain's claim and handover, and
+// BindLiveness its liveness.
 //
 // # Dependencies
 //

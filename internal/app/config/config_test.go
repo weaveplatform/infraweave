@@ -208,6 +208,26 @@ server:
 	}
 }
 
+// TestUnitLoadLiveness checks that the worker and run liveness settings
+// decode from the file and, over it, the environment.
+func TestUnitLoadLiveness(t *testing.T) {
+	t.Setenv("INFRAWEAVE_RUN_LOST_AFTER", "2h")
+	c, err := loadArgs(t, "--config", writeFile(t, `
+worker:
+  offline_after: 5m
+run:
+  lost_after: 90m
+  preparing_timeout_default: 10m
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Worker.OfflineAfter != 5*time.Minute || c.Run.LostAfter != 2*time.Hour ||
+		c.Run.PreparingTimeoutDefault != 10*time.Minute {
+		t.Errorf("worker %+v, run %+v", c.Worker, c.Run)
+	}
+}
+
 func TestUnitLoadRejects(t *testing.T) {
 	cases := []struct {
 		name string
@@ -308,6 +328,25 @@ func TestUnitLoadRejects(t *testing.T) {
 			"auth.signing.rotation",
 		},
 		{"relative issuer", "auth:\n  api_issuer: /iss\n", nil, "auth.api_issuer"},
+		{"short poll hold", "worker:\n  poll_timeout_max: 1s\n", nil, "worker.poll_timeout_max"},
+		{
+			"offline within a held poll",
+			"worker:\n  offline_after: 2m\n",
+			nil,
+			"worker.offline_after 2m0s is not greater than worker.poll_timeout_max 2m0s",
+		},
+		{
+			"lost before offline",
+			"run:\n  lost_after: 3m\n",
+			nil,
+			"run.lost_after 3m0s is not greater than worker.offline_after 3m0s",
+		},
+		{
+			"short preparing timeout",
+			"run:\n  preparing_timeout_default: 500ms\n",
+			nil,
+			"run.preparing_timeout_default",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

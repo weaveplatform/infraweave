@@ -41,7 +41,7 @@ facts shape the design.
   [run-transitions register](../../data/run-transitions.json) as data: report
   08's T1 to T43
   ([08 transition table](../reference/08-run-lifecycle.md#transition-table))
-  and T44 below, each with the register's source state, target state and run
+  and T44 and T45 below, each with the register's source state, target state and run
   types, and the driver allowed to take it. A pair not in the table is
   refused. `UNKNOWN` is served in the enum and never assigned; `PENDING` is
   absent from the served enum (decision 0021).
@@ -91,6 +91,7 @@ facts shape the design.
   | Situation | infraweave's target | Edge |
   |---|---|---|
   | Handover fails in `PREPARING_REPLAN` | `FAILED` | added as T44, the analogue of T11 and T36 |
+  | Worker lost, or container ended, while a test case is `APPLYING` | `FAILED`, by liveness alone | added as T45: T39 moves even a failed apply on to its destroy, which needs a worker |
   | `runKill` ends the process | `FAILED`, note `killed` | T15, T18, T38, T41 or T43 by the state killed in |
   | Run timeout or no-log timeout on the worker | `FAILED`, note naming the timeout | as for a kill |
   | Approval policy `reject` | `FAILED` (the rules reading of T5, T24, T29) | as listed |
@@ -111,7 +112,7 @@ facts shape the design.
 | Worker report | T10, T11, T12 to T16, T18 for a tool error, T19, T32, T35 to T43, T44 | Runner or launcher reports through `/worker/v1` |
 | Server decision after planning | T17, T18 for a plan policy `deny`, T20, T21, T22 | The server evaluates plan policies on the reported plan ([0009](0009-policy-engine-opa.md)) and picks the edge |
 | Timers | T4, T9, T25, T27, T31, T34 and the 30-day rule | Periodic task `run.timers` (every minute, [0011](0011-persistent-work-queue.md)) |
-| Liveness | the `FAILED` edge out of whichever worker state the run is in | Periodic task `worker.reap` (below) |
+| Liveness | the `FAILED` edge out of whichever worker state the run is in | Periodic task `worker.reap` (below), for a lost run and an overdue preparation, and a poll that reports the run's container ended |
 
 The worker never chooses a run's next state. It reports what happened, and the
 server answers with the state the runner is to execute next, or with `pause` or
@@ -456,7 +457,13 @@ has failed":
   transaction, fails each run the worker held that is in `PREPARING`,
   `PREPARING_APPLY`, `PREPARING_REPLAN`, `INITIALIZING`, `PLANNING`,
   `APPLYING`, `PERFORMING` or `DESTROYING`. An idle offline worker's row is
-  deleted at the same point.
+  deleted at the same point. Then it fails each run a claim moved to a
+  preparing state that no `started` report moved on within its pool's
+  preparing timeout, with the note `preparing timeout`. Each run fails
+  through its state's liveness edge, which every state on a worker has. A
+  pass deletes at most 100 lost workers and fails at most 100 overdue
+  preparations, and the next goes on; its reads skip rows another
+  transaction holds, so no run fails twice.
 - **A worker that returns in time.** A poll from an offline worker, or a
   registration that resumes it (above), clears the offline mark, and its run
   continues where it was: the runner's reports, uploads and the state backend
@@ -465,14 +472,18 @@ has failed":
 - **A worker that returns late.** Its run has already failed. Its next poll
   answers `401`, the launcher registers again, and, answered with a new
   worker, removes the old one's container.
-- `run.lost_after` must be greater than `worker.offline_after`; any other
-  pair fails the start. Both are server settings, so one installation applies
+- `run.lost_after` must be greater than `worker.offline_after`, and
+  `worker.offline_after` greater than `worker.poll_timeout_max`, which would
+  otherwise mark a worker offline while its poll is held; any other pair
+  fails the start. All are server settings, so one installation applies
   one tolerance to every pool.
 - A launcher whose container ends (exit, crash, out of memory, timeout,
   kill) or disappears reports through its next poll (`busy: false` with the
   run ID and `exit`, its code and reason, as in
   [The launcher and the runner](#the-launcher-and-the-runner)), and the server
-  fails the run if no runner report ended it.
+  fails the run if no runner report ended it, with a note of how:
+  `container exited with code N`, `container killed`, `container out of
+  memory` or `container missing`.
 
 ### Worker status, drain, cycle and reset
 
@@ -611,7 +622,7 @@ has failed":
 |---|---|---|---|
 | Run timeout | 70 minutes | launcher, from container start | `FAILED`, note `run timeout` |
 | No-log timeout | 7 minutes | launcher, from the last line on the container's output | `FAILED`, note `no log output` |
-| Preparing timeout | 15 minutes, per pool | server: no `started` report in time | `FAILED` (T11, T36, T44) |
+| Preparing timeout | 15 minutes, per pool | `worker.reap`: no `started` report in time | `FAILED` (T11, T36, T44), note `preparing timeout` |
 | Offline worker | 3 minutes (`worker.offline_after`) | `worker.reap` | no new work; the run continues |
 | Lost run | 60 minutes (`run.lost_after`) | `worker.reap` | `FAILED`, note `worker lost` |
 | Not picked up: 2 days (proposed, test) or 7 days (tracked, task, destroy) | as Spacelift | `run.timers` | `CANCELED` |

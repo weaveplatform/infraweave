@@ -88,16 +88,19 @@ func newDomains(
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
 	workers := workersassembly.New(workersassembly.Deps{
-		DB:       db.Primary(),
-		Keys:     keys,
-		Spaces:   access.Spaces(),
-		Authz:    access.Authorizer(),
-		Public:   c.Server.PublicURL,
-		Tokens:   access.Tokens(),
-		Features: features.Entitlements(),
-		Version:  buildinfo.Version(),
-		PollMax:  c.Worker.PollTimeoutMax,
-		Log:      log,
+		DB:               db.Primary(),
+		Keys:             keys,
+		Spaces:           access.Spaces(),
+		Authz:            access.Authorizer(),
+		Public:           c.Server.PublicURL,
+		Tokens:           access.Tokens(),
+		Features:         features.Entitlements(),
+		Version:          buildinfo.Version(),
+		PollMax:          c.Worker.PollTimeoutMax,
+		OfflineAfter:     c.Worker.OfflineAfter,
+		LostAfter:        c.Run.LostAfter,
+		PreparingTimeout: c.Run.PreparingTimeoutDefault,
+		Log:              log,
 	})
 	access.GuardSpaces(workers.SpaceGuard())
 	access.ResolveSubjects(workersassembly.Entity, workers.SpaceOf())
@@ -149,6 +152,7 @@ func newDomains(
 	stacks.SetStackStatus(runs.StackStatus())
 	workers.BindScheduler(runs.Scheduler())
 	workers.BindReports(runs.Reports())
+	workers.BindLiveness(runs.Liveness())
 	registry, err := expr.NewRegistry(
 		c.Expressions,
 		slices.Concat(configuration.Surfaces(), runs.Surfaces())...,
@@ -234,5 +238,6 @@ func newKinds() *outbox.Kinds {
 // cron is every domain's periodic tasks, with the nightly orphan count
 // over q, which the scheduler role runs, logging to log.
 func (d Domains) cron(q tx.Querier, log *slog.Logger) []cron.Task {
-	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), []cron.Task{orphansTask(q, log)})
+	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), d.Workers.Cron(),
+		[]cron.Task{orphansTask(q, log)})
 }

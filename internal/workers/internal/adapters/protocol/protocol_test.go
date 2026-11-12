@@ -447,6 +447,55 @@ func TestUnitProtocolAssignment(t *testing.T) {
 	}
 }
 
+// ended records each run a poll reports the container of ended.
+type ended struct {
+	workersapi.Liveness
+	runs  []kernel.ULID
+	exits []workersapi.Exit
+}
+
+func (e *ended) Ended(
+	_ context.Context,
+	_, run kernel.ULID,
+	exit workersapi.Exit,
+) (bool, error) {
+	e.runs, e.exits = append(e.runs, run), append(e.exits, exit)
+	return true, nil
+}
+
+// TestUnitProtocolEnded checks that a poll that is not busy hands the
+// service the run it names and its container's exit, a malformed run ID
+// as the zero ID, which no worker holds.
+func TestUnitProtocolEnded(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFixture(t)
+		e := &ended{}
+		f.svc.BindLiveness(e)
+		w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
+		f.store.workers[w.ID] = w
+		tok, err := f.tokens.WorkerToken(t.Context(), w.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		run := kernel.NewULID()
+		for _, body := range []map[string]any{
+			{"busy": false, "run": run.String(), "exit": map[string]any{
+				"code": 137, "reason": "out-of-memory",
+			}, "wait": 5},
+			{"busy": false, "run": "nope", "wait": 5},
+		} {
+			if code, got := f.call(t, "/poll", tok.Raw, body); code != http.StatusOK {
+				t.Errorf("poll %v = %d %v", body, code, got)
+			}
+		}
+		want := []workersapi.Exit{{Code: 137, Reason: workersapi.ExitOutOfMemory}, {}}
+		if len(e.runs) != 2 || e.runs[0] != run || !e.runs[1].IsZero() ||
+			e.exits[0] != want[0] || e.exits[1] != want[1] {
+			t.Errorf("ended %v with %v", e.runs, e.exits)
+		}
+	})
+}
+
 // TestUnitProtocolRefused checks that poll and deregister refuse a
 // request with no worker session token, or one naming an unknown worker,
 // and that a registration whose token cannot be minted fails.
