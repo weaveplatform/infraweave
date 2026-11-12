@@ -312,6 +312,44 @@ components:
           description: >-
             What the worker says about the event, such as why a phase
             failed, which the transition records as its note.
+        delta:
+          $ref: '#/components/schemas/PlanDelta'
+    PlanDelta:
+      description: >-
+        What the run's plan changes, which a succeeded report of PLANNING
+        carries and no other report does: the resources it adds, changes,
+        deletes and imports, and whether any output changes.
+      type: object
+      additionalProperties: false
+      required: [add, change, delete, import, outputs]
+      properties:
+        add:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          description: Resources the plan adds.
+        change:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          description: Resources the plan changes in place.
+        delete:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          description: Resources the plan deletes.
+        import:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          description: Resources the plan imports.
+        outputs:
+          type: boolean
+          description: Whether any of the root module's outputs changes.
     NextStep:
       description: >-
         What the worker does next. execute runs the phase of state; pause
@@ -539,8 +577,14 @@ paths:
         state version the run moved on from answers 409 invalid-state, as
         does one the run's state cannot take, unless it repeats the report
         that took the run's last transition, which answers as that report
-        did. A succeeded report of PLANNING answers 501 not-implemented
-        while the server takes no plan decision.
+        did. A succeeded report of PLANNING carries the plan's delta, and the
+        server takes the plan decision in its transaction: with no plan
+        policy attached, a proposed run, or a tracked run whose plan changes
+        nothing, finishes and answers exit; a tracked run with changes
+        applies when its stack deploys automatically and is unlocked,
+        answering execute, and waits for confirmation otherwise, answering
+        pause; a test case applies. A succeeded report of PLANNING without
+        a delta, or any other report with one, answers 400 invalid-request.
       operationId: workerRunReport
       security:
         - runToken: []
@@ -568,6 +612,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NextStep'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '409':

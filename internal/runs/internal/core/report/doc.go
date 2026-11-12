@@ -11,8 +11,11 @@
 // next step, execute, pause or exit, with the run's state version, which
 // the next report names; a report that names an older state version is
 // refused, unless it repeats the one that took the run's last transition.
-// A succeeded report of PLANNING is the plan decision's, which the
-// service does not take.
+// A succeeded report of PLANNING carries the plan's delta, and no other
+// report does; it takes the plan decision with no plan policy attached,
+// from the delta and the stack's autodeploy and lock, which the service
+// reads through Stacks: Decision moves the run to FINISHED, APPLYING or
+// UNCONFIRMED, and the delta is kept on the run.
 //
 // Uploads are keyed <account>/<run>/<state>-<stateVersion>/<name> in
 // their kind's store, recorded pending in blob_objects before their PUT
@@ -29,16 +32,18 @@
 //
 // # Input and output
 //
-// New takes the Store, the Objects of blob_objects, the lifecycle, and
-// the database a purge opens transactions on. Each call answers what
+// New takes the Store, the Objects of blob_objects, the lifecycle, the
+// Stacks the plan decision reads, and the database a purge opens
+// transactions on. Each call answers what
 // workersapi.Reports says, with workersapi's refusals and a
 // *kernel.Invalid for a declaration or upload it refuses. Nothing is
 // logged.
 //
 // # Dependencies
 //
-// It imports the workers api package, internal/kernel, platform/crypt,
-// platform/objectstore and its blobs, platform/seal, platform/tx and the
-// domain's lifecycle and machine packages. The domain's assembly
-// constructs it over the pg adapter.
+// It imports the workers and stacks api packages, internal/kernel,
+// platform/crypt, platform/objectstore and its blobs, platform/seal,
+// platform/tx and the domain's lifecycle and machine packages. The
+// domain's assembly constructs it over the pg adapter and the stacks
+// domain's Stacks.
 package report

@@ -33,6 +33,12 @@ func (s Server) WorkerRunReport(
 	if req.Body.Details != nil {
 		r.Details = *req.Body.Details
 	}
+	if d := req.Body.Delta; d != nil {
+		r.Delta = &workersapi.Delta{
+			Add: int(d.Add), Change: int(d.Change), Delete: int(d.Delete), Import: int(d.Import),
+			Outputs: d.Outputs,
+		}
+	}
 	next, err := s.svc.Report(ctx, b, run, r)
 	if err != nil {
 		return nil, s.answer(ctx, err)

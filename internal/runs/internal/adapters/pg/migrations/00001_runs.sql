@@ -14,7 +14,9 @@
 -- high; runtime_config is the runtime configuration its trigger gave,
 -- which overrides the stack's, and force_apply_mode SINGLE or CASCADE when
 -- it applies with no changes. local_preview marks a run proposed from an
--- uploaded local workspace rather than a commit of the repository.
+-- uploaded local workspace rather than a commit of the repository. delta
+-- is its plan's delta, {add, change, delete, import, outputs}, which the
+-- plan decision read, absent until the run planned.
 -- priority_tier is kernel.RunTier of priority, type and drift_detection,
 -- 1 first, the order a pool's workers claim waiting runs in.
 -- worker_pool_id is the stack's private pool when the run was created,
@@ -40,6 +42,7 @@ CREATE TABLE runs (
     runtime_config   jsonb,
     force_apply_mode text,
     local_preview    boolean     NOT NULL DEFAULT false,
+    delta            jsonb,
     priority_tier    smallint    NOT NULL DEFAULT 3,
     worker_pool_id   uuid,
     worker_id        uuid,

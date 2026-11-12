@@ -14,8 +14,9 @@ import (
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
-// TestAccReportStore checks a run's state by state version, its log
-// chunks indexed once by state version and sequence number, its other
+// TestAccReportStore checks a run's state by state version, the plan's
+// delta kept on it, its log chunks indexed once by state version and
+// sequence number, its other
 // uploads recorded once by kind and name with the last workspace read
 // back, and a deleted account's chunks and records purged a batch at a
 // time with their objects' stores and keys, another account's kept.
@@ -34,6 +35,15 @@ func TestAccReportStore(t *testing.T) {
 	}
 	if _, err := s.StateAt(ctx, acct, id, 2); !errors.Is(err, lifecycle.ErrNotFound) {
 		t.Errorf("StateAt(2) = %v", err)
+	}
+	if err := s.SetDelta(ctx, run, workersapi.Delta{Add: 1, Import: 4, Outputs: true}); err != nil {
+		t.Fatal(err)
+	}
+	var delta string
+	if err := db.QueryRow(ctx, `SELECT delta::text FROM runs WHERE id = $1`, id).
+		Scan(&delta); err != nil ||
+		delta != `{"add": 1, "change": 0, "delete": 0, "import": 4, "outputs": true}` {
+		t.Errorf("the kept delta is %s, %v", delta, err)
 	}
 
 	at := time.Unix(1_800_000_000, 0).UTC()
@@ -144,6 +154,7 @@ func TestAccReportStore(t *testing.T) {
 		}(),
 		"Record":       s.Record(ctx, run, report.Artifact{Kind: workersapi.UploadArtifact}),
 		"Workspace":    func() error { _, _, err := s.Workspace(ctx, run); return err }(),
+		"SetDelta":     s.SetDelta(ctx, run, workersapi.Delta{}),
 		"PurgeObjects": func() error { _, err := s.PurgeObjects(context.Background(), acct, 1); return err }(),
 	} {
 		if err == nil {
