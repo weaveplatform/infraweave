@@ -815,11 +815,11 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `FAILED` with `worker lost` at 60 minutes; a late poll answers `401`; a
   resumed registration after the session token expired keeps the run.
 - Gherkin acceptance with PostgreSQL, RustFS and Docker:
-  `test/acceptance/features/worker_protocol.feature`,
-  `runs_lifecycle.feature` (proposed, tracked with confirm, autodeploy, task,
+  `test/acceptance/features/workers/protocol.feature`,
+  `runs/lifecycle.feature` (proposed, tracked with confirm, autodeploy, task,
   targeted replan, stop, kill, offline worker, lost run, timers on a fake clock),
-  `runs_runner_image.feature` (a Spacelift public runner image runs unchanged) and
-  `runs_signed.feature`.
+  `runs/runner_image.feature` (a Spacelift public runner image runs unchanged) and
+  `runs/signed.feature`.
 - `api/worker.openapi.yaml` validates as OpenAPI 3, and a test checks that the
   served `/worker/v1` routes match it.
 

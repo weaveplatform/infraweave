@@ -24,7 +24,7 @@ until then the row is a rule reviewers apply by hand.
 | Vet | `make vet`: `go vet ./...`, run by the `unit` job on each operating system |
 | Lint | `make lint`: golangci-lint with `.golangci.yml` over the whole tree (`--new=false`), zero issues; the `lint` job pins the linter version from `.github/golangci-lint-version`. `gosec` runs inside it |
 | Import boundaries | From P1b: depguard in `.golangci.yml` with the rules in [repo-layout.md](repo-layout.md#depguard-rules); a forbidden import fails `make lint` |
-| Determinism | From P1b: forbidigo rejects `time.Sleep` in `_test.go` files; waiting goes through `acceptance.Eventually` or `testing/synctest` |
+| Determinism | From P1b: forbidigo rejects `time.Sleep` in `_test.go` files and in the test code under `test/`; waiting goes through `deps.Eventually` or `testing/synctest` |
 | Unit | `make test`: unit tests with `-race -shuffle=on -count=1` on `ubuntu-latest`, `macos-latest` and `windows-latest`, coverage written to `cover/unit`. From P1c, it selects `-run '^TestUnit'` across every package |
 | Test names | From P1c: `TestUnitTestNames` fails on a top-level `Test` function that is neither `TestUnit…` nor `TestAcc…` |
 | Acceptance | `make accept`: the godog features in `test/acceptance/features` on `ubuntu-latest`, coverage written to `cover/accept`. From P1c, `TestAccFeatures` runs the built `cmd/infraweave` as a subprocess against containers started by testcontainers-go, with `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, split into the `accept-core`, `accept-runs` and `accept-integrations` jobs |
@@ -38,7 +38,7 @@ until then the row is a rule reviewers apply by hand.
 | States | From P1c: `specref parity --states --check` fails when a recorded state in [capabilities.json](../data/capabilities.json) claims more than the passing `@op:` scenarios show |
 | Captures | From P1c: `TestUnitCaptureRedaction` rejects credentials and non-`example.com` e-mail addresses in `test/fixtures/captures/`; `TestAccCaptures` replays every `expect.yaml` |
 | Provider parity | From P24: `specref provider-parity` maps every Spacelift resource, data source and attribute through `api/reference/provider-parity.yaml`, and `TestAccProvider` applies, plans empty, imports and destroys each `test/terraform/<resource>/` configuration |
-| CLI | From P24b: one `cli_<area>.feature` per capability row of [report 06](../research/reference/06-spacectl-and-clients.md), driving the built `infraweavectl` |
+| CLI | From P24b: one `cli/<area>.feature` per capability row of [report 06](../research/reference/06-spacectl-and-clients.md), driving the built `infraweavectl` |
 | TypeScript | From P24c: the `console` job runs `npm ci`, `tsc --strict`, ESLint with typescript-eslint's `strict` configuration, Vitest at 95% in total and 90% per directory (the generated client excluded) and the production build in `web/console/`; the `console-e2e` job runs every Playwright journey against a real `infraweave all` built with `-cover`, and fails on a CSP violation, a request to another origin or an axe-core level AA violation ([0023](../research/decisions/0023-console.md)). golangci-lint stays the only Go linter |
 | Coverage | `make cover` (CI job `coverage`) merges every `cover/*` directory with `go tool covdata` and enforces `.testcoverage.yml`: at least 95% in total and 90% per package |
 | Vulnerabilities | `make vuln`: govulncheck at the version pinned in `go.mod`'s tool block reports nothing reachable |
@@ -73,7 +73,7 @@ A phase is complete when:
    operation it serves is reported missing.
 5. Report 26's state cells change only through the state check, never by hand
    ahead of the tests.
-6. Its acceptance features live in `test/acceptance/features/<area>_<topic>.feature`
+6. Its acceptance features live in `test/acceptance/features/<area>/<topic>.feature`
    and pass in CI with no scenario skipped.
 7. Where an exit depends on a capture of report 30, the capture is checked in
    under `test/fixtures/captures/C<n>/` and replays; until then the scenario
@@ -181,7 +181,7 @@ jobs their rows name:
 - **Real runs.** `@terraform` and `@tofu` scenarios use `terraform_data` and
   other built-ins, or a checksummed filesystem mirror, so no run downloads
   from the network. Every image is pinned by digest in
-  `test/acceptance/images.go`.
+  `test/deps/images.go`.
 - **Docker.** Locally, without a reachable Docker daemon, the harness skips
   every scenario with a dependency tag other than `@oidc` and `@ai` and prints
   what it skipped. CI sets `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, which fails

@@ -415,14 +415,14 @@ templates.
 - `TestUnitWorkflowQuoting` renders targets and workspace names containing
   quotes, spaces, `$()` and newlines, and runs the result through `sh -n`
   and `sh -c 'printf %s\n "$@"'` to prove each value stays one word.
-- `test/acceptance/features/expressions_flows.feature` (`@postgres`,
+- `test/acceptance/features/expressions/flows.feature` (`@postgres`,
   `@flows-agent`): a Transform in the steps form, a named expression, a
   `fail` routed to a Handle Error block, a retry reproducing `now` and
   `random.uuid()`.
-- `test/acceptance/features/expressions_editor.feature` (`@postgres`):
+- `test/acceptance/features/expressions/editor.feature` (`@postgres`):
   Check, Complete and Evaluate against a flow and a template, and a save
   refused with diagnostics.
-- `test/acceptance/features/expressions_deploy.feature` (`@postgres`,
+- `test/acceptance/features/expressions/deploy.feature` (`@postgres`,
   `@tofu`): a custom workflow template with a hostile workspace name, an
   interpolated environment variable reading a secret and staying masked,
   an output reference with an expression, and a notification message

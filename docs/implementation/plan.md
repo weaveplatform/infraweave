@@ -143,7 +143,7 @@ and lint is clean.
 | P6 Contexts, configuration and expressions | Done | Epic [#254](https://github.com/weaveplatform/infraweave/issues/254). Done: [#255](https://github.com/weaveplatform/infraweave/issues/255) each flat domain's logic package named `internal/core`; [#256](https://github.com/weaveplatform/infraweave/issues/256) P6's contracts in the plan and decisions: the masker in `internal/platform/mask`, the error `range`, the `/configs/{configId}` item routes, the expression endpoints, the `environment` surface, the stack guard and back edge, and captures C98 and C101 to C103 moved to P9; [#258](https://github.com/weaveplatform/infraweave/issues/258) the `configuration` domain after `stacks`, with its stream, and the `expressions` domain last, each with its `graph-` rule; [#259](https://github.com/weaveplatform/infraweave/issues/259) decision 0013's masker for literal values in `internal/platform/mask`, which the agent may import; [#260](https://github.com/weaveplatform/infraweave/issues/260) `stacksapi.Stacks.Hold` and `Find`, the `StackGuard` a stack's move and delete ask, `accessapi.SpaceNode.Inherit`, and the stack view's contexts and config elements through the `stacksapi.StackConfiguration` back edge; [#261](https://github.com/weaveplatform/infraweave/issues/261) the expression engine in `internal/platform/expr`, the `expressions` limits, and the error `range`; [#262](https://github.com/weaveplatform/infraweave/issues/262) contexts created, read, listed, searched, replaced with `PUT`, patched and deleted in spaces, their config elements added, set by name and deleted with each value sealed to its row and a write-only value answered only by its checksum, their attachments to stacks within reach, and the space and stack guards that refuse a delete or move leaving an attachment out of reach, each change a `context.changed` event in the outbox; [#263](https://github.com/weaveplatform/infraweave/issues/263) a stack's own config elements, added, set at `PUT /stacks/{stackId}/configs/{configId}`, read and deleted, never answering a write-only value, deleted with the stack, and the contexts a stack may attach; [#264](https://github.com/weaveplatform/infraweave/issues/264) contexts attached automatically to the stacks within reach that carry the label their `autoattach:<label>` names, or every one for `autoattach:*`, following label and space changes on the context's side in its write and on the stack's through a `stack.changed` consumer, under one lock per account, an automatic attachment refused a manual detach; [#265](https://github.com/weaveplatform/infraweave/issues/265) `configurationapi.Environment.Resolve`, a stack's elements by report 13's precedence with every value opened and each phase's hooks in its nesting order, the `environment` expression surface with `env` and `stack` bound from one registry `internal/app` builds, and a value's `${{ … }}` templates checked when it is saved, a stack's read of a variable it does not resolve to refused with its range, a value reading a write-only one made write-only; `expr.Check` reports each literal read with its range; [#266](https://github.com/weaveplatform/infraweave/issues/266) the `Expressions` tag's check, complete and evaluate over every registered surface, starting with `environment`, a stack the caller cannot read answering 404, a context closing `env` to the names its stack resolves to so a misspelt one is an error with its range, a write-only value evaluated masked, and the tag's `capabilities.json` record as infraweave's own product; [#267](https://github.com/weaveplatform/infraweave/issues/267) the `configuration.purge` consumer of `account.deleted`, deleting a deleted account's attachments, config elements and contexts 500 rows a statement, each its own transaction, a purge stopped part way finishing when run again |
 | P6b Sources | Done | Epic [#295](https://github.com/weaveplatform/infraweave/issues/295). Done: [#296](https://github.com/weaveplatform/infraweave/issues/296) the plan and decisions rewritten for sources before runs; [#297](https://github.com/weaveplatform/infraweave/issues/297) the `vcs` domain with the `Sources` port other domains call; [#298](https://github.com/weaveplatform/infraweave/issues/298) a Gitea fixture seeded per `@vcs` scenario; [#299](https://github.com/weaveplatform/infraweave/issues/299) refs resolved and files read from public Git repositories over HTTPS, `rawgit` passing `sourcetest` against Gitea; [#300](https://github.com/weaveplatform/infraweave/issues/300) each stack's branch head and tracked commit, `stackSyncCommit` and `stackSetCurrentCommit` |
 | P7 Run state machine and scheduling | Done | Epic [#301](https://github.com/weaveplatform/infraweave/issues/301). Done: [#302](https://github.com/weaveplatform/infraweave/issues/302) the `runs` domain after `configuration`, its tables, the run types and the stack's run projection; [#303](https://github.com/weaveplatform/infraweave/issues/303) every transition of the register held as data in the machine, every other pair refused; [#304](https://github.com/weaveplatform/infraweave/issues/304) a run moved between states in one fenced transaction, its transition recorded and `runsapi.Updated` in the outbox, and created once per stack, type and commit among runs that have not ended; [#305](https://github.com/weaveplatform/infraweave/issues/305) a stack's queued runs moved to READY in priority order by one coalesced `run.schedule` job, a blocking run once it takes the stack's run lock and a proposed run whatever the lock; [#306](https://github.com/weaveplatform/infraweave/issues/306) `runTrigger` on a stack's tracked commit or one the caller names, a locked stack taking runs from its holder alone and a disabled stack none; [#307](https://github.com/weaveplatform/infraweave/issues/307) `run`, `runStack`, `searchRuns` with offset and total, `searchRunsSuggestions`, `runCancel` (`RUN_CANCEL_BLOCKING` for the lock's holder), `runPrioritySet`, each run's `allowedActions`, and a stack's run lists from the runs domain; [#308](https://github.com/weaveplatform/infraweave/issues/308) `run` on the environment surface, declared by `runs` beside `configuration`'s `env` and `stack`; [#309](https://github.com/weaveplatform/infraweave/issues/309) the `runs.purge` consumer of `account.deleted`, 500 rows a statement. Captures C25 and C33 are not yet recorded; until they are, the scenarios assert decision 0008's choices |
-| P8 Worker protocol, private pools and the Docker launcher | Done | Epic [#358](https://github.com/weaveplatform/infraweave/issues/358). Done: [#359](https://github.com/weaveplatform/infraweave/issues/359) the claim columns, back edges, timeouts and Docker acceptance in the plan and decisions; [#361](https://github.com/weaveplatform/infraweave/issues/361) private worker pools from a CSR under an installation pool CA; [#362](https://github.com/weaveplatform/infraweave/issues/362) a stack's reachable worker pool and the account's default runner images; [#360](https://github.com/weaveplatform/infraweave/issues/360) worker session, run and in-run API tokens through `accessapi`; [#363](https://github.com/weaveplatform/infraweave/issues/363) workers registered and their polls held over `/worker/v1`, with drain and cycle; [#364](https://github.com/weaveplatform/infraweave/issues/364) ready runs claimed in priority order exactly once across instances; [#365](https://github.com/weaveplatform/infraweave/issues/365) a run's specification served with its secrets sealed to the pool's key; [#366](https://github.com/weaveplatform/infraweave/issues/366) worker reports, log chunks, artifacts and workspace uploads; [#367](https://github.com/weaveplatform/infraweave/issues/367) `infraweave launcher` running assigned runs in Docker with the runner stub; [#368](https://github.com/weaveplatform/infraweave/issues/368) silent workers marked `OFFLINE`, lost runs failed and the preparing timeout; [#369](https://github.com/weaveplatform/infraweave/issues/369) each pool's workers and queued runs sampled every minute; [#370](https://github.com/weaveplatform/infraweave/issues/370) `worker_protocol.feature` against a real `infraweave all`, launcher and Docker |
+| P8 Worker protocol, private pools and the Docker launcher | Done | Epic [#358](https://github.com/weaveplatform/infraweave/issues/358). Done: [#359](https://github.com/weaveplatform/infraweave/issues/359) the claim columns, back edges, timeouts and Docker acceptance in the plan and decisions; [#361](https://github.com/weaveplatform/infraweave/issues/361) private worker pools from a CSR under an installation pool CA; [#362](https://github.com/weaveplatform/infraweave/issues/362) a stack's reachable worker pool and the account's default runner images; [#360](https://github.com/weaveplatform/infraweave/issues/360) worker session, run and in-run API tokens through `accessapi`; [#363](https://github.com/weaveplatform/infraweave/issues/363) workers registered and their polls held over `/worker/v1`, with drain and cycle; [#364](https://github.com/weaveplatform/infraweave/issues/364) ready runs claimed in priority order exactly once across instances; [#365](https://github.com/weaveplatform/infraweave/issues/365) a run's specification served with its secrets sealed to the pool's key; [#366](https://github.com/weaveplatform/infraweave/issues/366) worker reports, log chunks, artifacts and workspace uploads; [#367](https://github.com/weaveplatform/infraweave/issues/367) `infraweave launcher` running assigned runs in Docker with the runner stub; [#368](https://github.com/weaveplatform/infraweave/issues/368) silent workers marked `OFFLINE`, lost runs failed and the preparing timeout; [#369](https://github.com/weaveplatform/infraweave/issues/369) each pool's workers and queued runs sampled every minute; [#370](https://github.com/weaveplatform/infraweave/issues/370) `workers/protocol.feature` against a real `infraweave all`, launcher and Docker |
 | P8b Managed state backend | Not started | |
 | P9 First tracked run end to end | Not started | **M3** |
 | P10 Run lifecycle completeness | Not started | |
@@ -182,7 +182,7 @@ and lint is clean.
 |---|---|---|
 | M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog and every step drives it through `pkg/sdk`; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces decision 0004's shared rules over the whole tree |
 | M2 Authorized API on PostgreSQL | P5 | An operator creates an organization with its first account, and an organization admin adds a second account whose data the first cannot see; an API key exchanges for a token that works in its own account only; spaces and roles decide every route; a feature in `features.disabled` answers `403 feature-disabled`; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
-| M3 First run | P9 | `runs_terraform.feature` and `runs_tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into the object store, masks a secret in its log and reaches `FINISHED` |
+| M3 First run | P9 | `runs/terraform.feature` and `runs/tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into the object store, masks a secret in its log and reaches `FINISHED` |
 | M4 GitOps loop | P13 | Option 5's walkthrough holds end to end against Gitea: a push opens a proposed run, a plan policy warns, the check and the pull request comment appear, and an approval policy holds a tracked run until a review |
 | M5 Deploy core | P14, P15, P16, P17b and P18b | Public worker pool and Kubernetes workers, cloud credentials through OIDC, schedules, drift detection, stack dependencies, the module and provider registries, notifications, webhooks, Slack, the event streams, the audit trail and the per-account metrics all pass their features |
 | M6 Flows | P18d | A flow's Deploy trigger block reacts to a real run and a Trigger Run block starts another; a Go app built on `pkg/flows/appsdk` runs on a Flows agent; every expression in the flow is CEL |
@@ -442,7 +442,7 @@ sit where P1b places them; the paths below are those.
    Strict YAML config with flag over environment over file. Tests:
    unit tests for `/livez`, a `501` stub, `404`, `405`
    and recovery; config precedence and unknown-key
-   rejection; `api_served.feature`.
+   rejection; `api/served.feature`.
 3. Done: [#15](https://github.com/weaveplatform/infraweave/issues/15) `internal/platform/httpkit/middleware/ratelimit`,
    `internal/platform/httpkit/middleware/idempotency` and
    `internal/platform/httpkit/page`: token buckets per caller and cost class
@@ -452,7 +452,7 @@ sit where P1b places them; the paths below are those.
    `invalid-cursor`. In-memory stores behind interfaces until P2; settings
    under `server.rate_limit` and `server.idempotency`. Tests: a
    `-race` test of concurrent reservations, limiter refill with an injected
-   clock, cursor tamper cases, `api_served.feature` scenarios for `429`,
+   clock, cursor tamper cases, `api/served.feature` scenarios for `429`,
    replay and the disabled caller. Records DV-003 to DV-007.
 4. Done: [#11](https://github.com/weaveplatform/infraweave/issues/11) `specref parity` in `internal/devtools/specref` with `make parity` and
    `make parity-baseline`: present, missing, moved and infraweave-only
@@ -601,15 +601,15 @@ passing success, denial and failure scenarios.
    `make accept` selects `-run '^TestAcc'`, so store and domain suites beside
    the code run in the acceptance job.
 2. `test/acceptance`: `TestAccFeatures` runs godog with `Strict: true` over
-   `features/<area>_<topic>.feature`; the harness builds `cmd/infraweave`
+   `features/<area>/<topic>.feature`; the harness builds `cmd/infraweave`
    once with `-cover -covermode=atomic`, runs `infraweave all` (serve plus
    scheduler) as a subprocess per scenario on a free port with `GOCOVERDIR`
    set to `cover/accept`, starts `@postgres` (PostgreSQL 18),
    `@objectstore` (RustFS) and `@oidc` dependencies lazily through
    testcontainers-go, and writes logs to
-   `test/acceptance/out/<scenario>/` on failure. `test/acceptance/images.go`
-   pins every image by digest. `acceptance.Eventually` is the only wait.
-   Feature: `acceptance_harness.feature` (skip without Docker, failure with
+   `test/acceptance/out/<scenario>/` on failure. `test/deps/images.go`
+   pins every image by digest. `deps.Eventually` is the only wait.
+   Feature: `suite/harness.feature` (skip without Docker, failure with
    `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, evidence on failure).
 3. `internal/devtools/specref`: `specref parity` decides served, served with
    divergence (`x-infraweave-divergence`), superseded (report 26 section 7)
@@ -651,7 +651,7 @@ passing success, denial and failure scenarios.
    differ from the problem registry.
 
 **Exit criteria**
-- `api_served.feature`, `reference_spec.feature` and `api_bundle.feature`
+- `api/served.feature`, `api/reference_spec.feature` and `api/bundle.feature`
   run against the subprocess binary, and its coverage reaches the merged
   profile.
 - `make verify-parity` reports the 72 scaffolded operations served and every
@@ -784,8 +784,8 @@ needs from its first database connection.
    `rate_limit_buckets` (`UNLOGGED`, one upsert per request) and
    `api_disabled_callers` with cache invalidation on `infraweave_invalidate`.
    `serve` requires `database.url` and keeps all three there. Tests: the store
-   contracts against PostgreSQL, and `api_idempotency_replicas.feature`,
-   `api_rate_limit_replicas.feature` and `api_disabled_callers.feature`
+   contracts against PostgreSQL, and `api/idempotency_replicas.feature`,
+   `api/rate_limit_replicas.feature` and `api/disabled_callers.feature`
    against two `serve` replicas on one database.
 5. `internal/platform/observe`: `log/slog` JSON to stdout with the standard
    fields, `log.level` re-read on `SIGHUP`, the redacting handler and
@@ -799,7 +799,7 @@ needs from its first database connection.
    yet; the acceptance harness runs `infraweave all`. Tests:
    `TestUnitRedactHandler`, `TestUnitRequestID`, `TestUnitServerListeners`,
    the registry with fake checks, the `SIGHUP` reload, and
-   `observability_health.feature` (readiness fails while the scenario's own
+   `platform/observability_health.feature` (readiness fails while the scenario's own
    PostgreSQL container is paused and recovers when it resumes; the
    shutdown sequence with a request in flight; the log fields; the
    `scheduler` listeners). Records DV-009 and DV-062.
@@ -814,7 +814,7 @@ needs from its first database connection.
    `08`) with `kernel.ErrUnavailable`, which the problem writer answers with
    `503 service-unavailable` and `Retry-After: 2`; any other failure stays
    `500`. Tests: the classifier against pgconn errors and SQLSTATEs, the
-   writer's `instance`, and `observability_health.feature` (a `POST` answers
+   writer's `instance`, and `platform/observability_health.feature` (a `POST` answers
    `503` while the scenario's PostgreSQL is stopped and succeeds once it
    starts; `pkg/sdk`'s `DefaultRetry` rides out the outage).
 
@@ -870,7 +870,7 @@ checks have not seen.
    queue; the daily `secrets.rotate` periodic task under
    `secrets.rotation_interval`; replicas reload the keyring on
    `infraweave_invalidate`; the idempotency store seals `body_sealed`.
-   Feature: `secrets_key_rotation.feature` (`@vault`: rotate with two
+   Feature: `platform/secrets_key_rotation.feature` (`@vault`: rotate with two
    replicas, rewrap from `local` to Vault). Records DV-048 to DV-050.
 5. CI ([0016](../research/decisions/0016-testing-and-acceptance.md)): the required `fips-only` job runs `make test` and every
    acceptance partition with the binary built with `GOFIPS140=certified`
@@ -930,7 +930,7 @@ writes it.
    logical queue.
 
 **Exit criteria**
-- `queue_periodic_tasks.feature`: two `infraweave all` instances never run
+- `platform/queue_periodic_tasks.feature`: two `infraweave all` instances never run
   one task twice; a job that exhausts its attempts is `dead` with its last
   error.
 - An enqueue rolled back with its transaction leaves no job, and a killed
@@ -987,7 +987,7 @@ members and the members each account admits.
    ([0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md)); the key's `admin` reads whether it holds a
    `space-admin` binding on the account's top space, which P4 seeds the
    `role_bindings` table for and reads, and P4b's API key bindings
-   write. Feature: `auth_api_keys.feature` (`@postgres`,
+   write. Feature: `auth/api_keys.feature` (`@postgres`,
    `@oidc`). Records DV-013 and DV-014.
 4. `internal/access/internal/core/session` and the chi
    `authn.Middleware`: session rows, the `__Host-infraweave_session` cookie
@@ -1002,7 +1002,7 @@ members and the members each account admits.
    bound to that account when `account_users` admits the member, which
    P4b's bindings and P13b's login policies extend. Operations:
    `sessions`, `sessionDelete`, `sessionDeleteAll`, `logout`,
-   `cliConfirmationToken`, `viewer`. Feature: `auth_sessions.feature`.
+   `cliConfirmationToken`, `viewer`. Feature: `auth/sessions.feature`.
 5. Account reads: `id`, `name`, `type` and the vendor-bound
    `defaultPrivateWorkerPoolRunnerImage` placeholder. The rate-limit and
    idempotency caller becomes `<kind>:<actor ID>`; `401` with
@@ -1028,7 +1028,7 @@ members and the members each account admits.
    there. `infraweave auth hash-password` reads a password on standard
    input and prints its PBKDF2-HMAC-SHA256 hash; a hash below 600,000
    iterations answers `422 validation-failed`. Feature:
-   `operator_organizations.feature`.
+   `platform/operator_organizations.feature`.
 
 **Exit criteria**
 - Every operation listed above is served and passes its success and failure
@@ -1074,10 +1074,10 @@ use.
    `managedUserGroupUpdateV2`, `managedUserGroupDelete`,
    `managedUserGroupManagedUsers`, `availableUserGroups`. Invitations are
    recorded without e-mail delivery (capture C251). Feature:
-   `access_managed_users.feature`.
+   `organization/managed_users.feature`.
 2. Personal API keys: `personalApiKeys`, `personalApiKeyCreate`,
    `personalApiKeysCount`, `personalApiKeyDisable`, with
-   `DEPROVISIONED` on owner removal. Feature: `auth_personal_keys.feature`.
+   `DEPROVISIONED` on owner removal. Feature: `auth/personal_keys.feature`.
 3. Account settings without another owner: `personalApiKeysEnabled`,
    `accountSetPersonalApiKeysEnabled`,
    `accountRequestPersonalApiKeysEnabling`, `apiKeysManageableByNonHumans`,
@@ -1094,7 +1094,7 @@ use.
    marked, at once and never as its organization's last; the deletion
    revokes its sessions, removes its rows and records an organization
    trail entry, leaving the platform's trails, events and jobs as an
-   organization delete does. Feature: `account_settings.feature`.
+   organization delete does. Feature: `organization/account_settings.feature`.
 4. `internal/features` ([0021](../research/decisions/0021-capability-scope-and-supersession.md)): `catalogue.gen.go`, which `make generate`
    writes from [docs/data/features.json](../data/features.json), the
    catalogue's one source, with the `BillingTierFeature` values each feature
@@ -1133,7 +1133,7 @@ use.
    runs, state or secrets. Organization keys exchange at `POST /auth/token`
    for a token that only the `Organization` tag accepts, and an account
    credential answers `401` there. Features:
-   `organization_accounts.feature`, `organization_limits.feature`. Records
+   `organization/accounts.feature`, `organization/limits.feature`. Records
    DV-109.
 6. The operator API's `features` operations, in the document P3 task 8
    creates, for the installation-level actions `access` does not serve:
@@ -1151,15 +1151,15 @@ use.
    `cmd/infraweavectl` starts, its command tree in `internal/ctl` over
    `pkg/sdk` only, with `profile`, `whoami`, `version`, `api` and the
    `operator` group (`tier`, `organization`, `grant`, `billing`). Features:
-   `platform_tiers.feature`, `queue_dead_letters.feature`,
-   `cli_operator.feature`.
+   `tiers/tiers.feature`, `platform/queue_dead_letters.feature`,
+   `cli/operator.feature`.
 7. Billing reads per decision 0021's vendor-bound table: `tier` as a tier
    object, `tierFeatures` as the entitlement in infraweave feature names,
    `seats`, `billedExternally`, `billingSubscription`, `onTrialUntil`,
    `availableBillingAddons`, `availableSelfServicePlans`, and the five
    subscription mutations answering `installation-unsupported`;
    `evaluateFeatureFlags` answers an empty set. Features
-   `platform_features.feature`, `platform_billing.feature`. Records DV-079
+   `tiers/features.feature`, `tiers/billing.feature`. Records DV-079
    and DV-080.
 8. The OAuth authorization server of decision 0006 in
    `internal/access/internal/core/oauth`, for MCP clients of `/mcp` and
@@ -1172,7 +1172,7 @@ use.
    URIs limited to loopback and the hosts of `oauthRedirectAllowedHosts`,
    which account admins maintain. Tests: `TestUnitPKCE`,
    `TestUnitRefreshRotation`, `TestUnitRedirectURIs`. Feature:
-   `auth_oauth_server.feature`. Records DV-113.
+   `auth/oauth_server.feature`. Records DV-113.
 9. The [domain wiring](#adding-a-domain) of `features`,
    which imports no domain and goes first in `domains.go` and the
    migration order, ahead of `access`; its tables carry organization and
@@ -1200,7 +1200,7 @@ use.
   applies without a restart; and an account credential on the operator API
   or the `Organization` tag answers `401`. Each later phase adds the
   `feature-not-in-tier` scenario of the capabilities it serves to
-  `platform_tiers.feature`.
+  `tiers/tiers.feature`.
 - An MCP client registers, completes the authorization code flow with PKCE
   `S256` and refreshes once; `plain` PKCE, a reused refresh token and a
   redirect URI outside loopback and the allowlist are refused.
@@ -1229,7 +1229,7 @@ Spaces and the evaluator decide every route from here on: deny by default,
    `accountToggleAllowNonAdminSpaceCreation` (the reference's
    `allowNonRootAdminSpaceCreation` and
    `accountToggleAllowNonRootAdminSpaceCreation`). Feature:
-   `authz_spaces.feature`. Records DV-111.
+   `authz/spaces.feature`. Records DV-111.
 2. The action catalogue: `specref` generates
    `internal/access/api/actions.gen.go` from the 150-value `Action` enum and
    `internal/access/api/actions.yaml` gives each its subject, fallback and
@@ -1268,7 +1268,7 @@ Spaces and the evaluator decide every route from here on: deny by default,
   Viewer `implemented` and API Keys, Auth and Sessions and Security Keys
   `partial`.
 - A route without a route-table entry answers `403`; a hidden space and a
-  missing one both answer `404 not found` (`api_errors.feature`).
+  missing one both answer `404 not found` (`api/errors.feature`).
 - A `space-admin` binding on one account's top space grants nothing in
   another account of the same organization.
 - Captures C115, C126 and C127 replay once recorded.
@@ -1286,7 +1286,7 @@ caller can do something.
 **Tasks**
 1. `internal/access/internal/core/role`: `roles`, `role`, `roleCreate`,
    `roleUpdate`, `roleDelete`; disabled and deprecated actions refused with
-   `422`. Feature: `authz_roles.feature`.
+   `422`. Feature: `authz/roles.feature`.
 2. `internal/access/internal/core/binding`: user, group, API key and stack
    bindings, single and batch: `userRoleBinding*` (5),
    `userGroupRoleBinding*` (5), `apiKeyRoleBinding*` (5),
@@ -1300,7 +1300,7 @@ caller can do something.
    stack binding holds the stack's ID as a plain column, `stacks`
    removes a deleted stack's bindings through `accessapi`, and the stack
    binding operations and `stacksWithAccessToSpace`, which name stacks,
-   are `stacks`' over `accessapi`. Feature: `authz_bindings.feature`.
+   are `stacks`' over `accessapi`. Feature: `authz/bindings.feature`.
 3. Grant views with the explaining evaluator: `usersWithAccessToSpace`,
    `userGroupsWithAccessToSpace`, `apiKeysWithAccessToSpace`,
    `apiKeySessionsWithAccessToSpace`, `userSessionsWithAccessToSpace`,
@@ -1330,7 +1330,7 @@ update semantics, input strictness and search every later family reuses.
    `LockForRun`, `Settings` and `StackChanged`. Operations: `stacks`,
    `stack`, `stackCreate`, `stackUpdate`, `stackDelete`, `stackReslug`,
    `stackDisable`, `stackEnable`, `stackLock`, `stackUnlock`, `starSet`.
-   Feature: `stacks_crud.feature`.
+   Feature: `stacks/crud.feature`.
 2. `internal/iac` with `terraform` and `opentofu` settings validation
    (`iac.ValidateSettings`), so vendor configuration is checked at write
    time; `iactest` contract suite. Each vendor is an option on its
@@ -1339,7 +1339,7 @@ update semantics, input strictness and search every later family reuses.
    `application/merge-patch+json` through the `PUT` path, `ETag` from the
    `version` column, `If-Match` with `412`; every input schema
    `additionalProperties: false`; label rules. Tests:
-   `api_updates.feature`, `api_strictness.feature`. Records DV-085 to
+   `api/updates.feature`, `api/strictness.feature`. Records DV-085 to
    DV-089.
 4. Stack search over P4's generic search: `searchStacks` and
    `searchStacksSuggestions`.
@@ -1368,9 +1368,9 @@ update semantics, input strictness and search every later family reuses.
    batches, and the outbox retries a purge stopped part way until it
    finishes. The nightly `integrity.orphans` task counts held IDs whose
    row is gone, per column, logging each column with any at warn until
-   P18b makes the counts a metric. Feature: `account_settings.feature`
+   P18b makes the counts a metric. Feature: `organization/account_settings.feature`
    gains a deletion that leaves no stack or entitlement row of the
-   account, and `operator_organizations.feature` the same of an
+   account, and `platform/operator_organizations.feature` the same of an
    organization.
 
 **Exit criteria**
@@ -1403,13 +1403,13 @@ environment, and the expression engine every later surface uses.
    `searchSpaceContextsSuggestions`, and the item
    `PUT /contexts/{contextId}/configs/{configId}`; `contextConfigAdd`
    answers `201` or `200` as an upsert (decision 0022). Feature:
-   `config_contexts.feature`.
+   `configuration/contexts.feature`.
 2. Stack configuration: `stackConfigElement`, `stackConfigAdd`,
    `stackConfigDelete`, `stackAttachableContexts`, and the item
    `PUT /stacks/{stackId}/configs/{configId}` answering `201` then `200`;
    `stackConfigAdd` answers `201` or `200` as an upsert (decision 0022).
    Write-only values are never readable. Feature:
-   `config_stack_elements.feature`.
+   `configuration/stack_elements.feature`.
 3. Auto-attachment: `autoattach:<label>` matching with `text[]` and GIN
    indexes, reaching child spaces by decision 0007's inheritance.
 4. `configuration/api.Environment.Resolve(target)`: the ordered elements and
@@ -1434,7 +1434,7 @@ environment, and the expression engine every later surface uses.
    `TestUnitExprDeterminism`, `TestUnitExprCostLimit`,
    `TestUnitExprTimeout`, `TestUnitExprSchemaTypes`, `TestUnitMaskOverlaps`
    and `TestUnitMaskMinimum` (the 4-byte rule, DV-051). Feature:
-   `expressions_editor.feature` against a stack, which later phases extend.
+   `expressions/editor.feature` against a stack, which later phases extend.
    Records DV-103.
 6. The [domain wiring](#adding-a-domain) of
    `configuration` and `expressions`. `configuration` follows `stacks` in
@@ -1492,10 +1492,10 @@ before any VCS integration exists.
    `stacksapi` when a stack is created or its repository, branch or provider
    changes, and through `stackSyncCommit` and `stackSetCurrentCommit`, which
    `vcs`' partial serves since `stacks` imports no `vcs`. Feature:
-   `vcs_sources.feature`.
+   `vcs/sources.feature`.
 
 **Exit criteria**
-- `vcs_sources.feature` (`@postgres`, `@vcs`): a `GIT` stack on a Gitea
+- `vcs/sources.feature` (`@postgres`, `@vcs`): a `GIT` stack on a Gitea
   repository shows the branch head as `trackedBranchHead` and
   `trackedCommit`; after a push `stackSyncCommit` moves both, and
   `stackSetCurrentCommit` pins `trackedCommit` to an older commit.
@@ -1545,7 +1545,7 @@ queued; nothing executes them until P8.
    locked stack; `run`, `runStack`, `searchRuns`,
    `searchRunsSuggestions`, `runCancel`, `runPrioritySet`, and the stack
    run lists left empty by P5, which `runs`' partial serves, since `stacks`
-   imports no `runs` package. Feature: `runs_queue.feature` (a blocking
+   imports no `runs` package. Feature: `runs/queue.feature` (a blocking
    run takes the lock, a second waits, cancel releases it). A run's
    `allowedActions` include only the transitions its state allows.
 6. The [domain wiring](#adding-a-domain) of `runs`, a
@@ -1564,7 +1564,7 @@ queued; nothing executes them until P8.
    saved; P8 renders it at the handover.
 
 **Exit criteria**
-- `runs_queue.feature` passes on two `infraweave all` instances; one
+- `runs/queue.feature` passes on two `infraweave all` instances; one
   `run.schedule` evaluation per stack burst.
 - `runTrigger`, `run`, `runStack`, `searchRuns`, `runCancel` and
   `runPrioritySet` meet decision 0016's evidence rule.
@@ -1603,7 +1603,7 @@ context in the assignment with P18b.
    `access` mints the worker session token, the run token and the in-run
    API token through `accessapi`
    ([0006](../research/decisions/0006-authentication-and-tokens.md#token-kinds)).
-   Feature: `workers_pools.feature`.
+   Feature: `workers/pools.feature`.
 2. `api/src/worker/` bundled to `api/worker.openapi.yaml`, generated into
    `internal/platform/gen/worker` and `internal/agent/wire`;
    `internal/workers/internal/adapters/protocol` serves `register`, `poll`,
@@ -1637,7 +1637,7 @@ context in the assignment with P18b.
    certificate for the state version the claim answered.
    Tests: `TestUnitHandover`, `TestUnitWorkerRunSpec`, `TestAccRunSpec`
    (the envelope opened with the pool key; another run's token `401`, a run
-   off its worker `409`), `expressions_deploy.feature`.
+   off its worker `409`), `expressions/deploy.feature`.
 4. `internal/agent`: `config`, `launcher` (register, poll, signals, drain,
    cycle, a session renewed, a restart that resumes its worker and its run
    from `worker.json`, a container's end reported through the next poll's
@@ -1695,7 +1695,7 @@ context in the assignment with P18b.
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
-- `worker_protocol.feature` (`@postgres`, `@vcs`, `@docker`): a
+- `workers/protocol.feature` (`@postgres`, `@vcs`, `@docker`): a
   launcher registers, claims a run, receives a sealed specification, starts
   a container that reports and exits; a killed launcher's worker turns
   `OFFLINE` and, with `worker.offline_after` and `run.lost_after` set to
@@ -1706,7 +1706,7 @@ context in the assignment with P18b.
   virtual time cover the default durations.
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
 - Two instances write one `worker_pool_samples` row per pool per minute.
-- The interpolation scenario of `expressions_deploy.feature`: a
+- The interpolation scenario of `expressions/deploy.feature`: a
   `${{ env.NAME }}` value reaches the run's specification rendered, and one
   that reads a secret arrives sealed and write-only.
 - Captures C58, C59, C60, C61, C62, C63 and C64 replay once recorded.
@@ -1751,7 +1751,7 @@ workspace.
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
-- `state_backend.feature` (`@terraform`, `@tofu`): the scenario acts as a
+- `state/backend.feature` (`@terraform`, `@tofu`): the scenario acts as a
   worker over `/worker/v1`, claims a run and runs `terraform` and `tofu` in a
   container with its run token; init, plan and apply go through the
   backend, and a second apply is blocked by `423` until the first ends.
@@ -1786,7 +1786,7 @@ through the backend.
    log chunks of 1 MiB or two seconds uploaded by pre-signed `PUT`
    and indexed in `run_log_chunks`; sealed artifacts with the run's artifact
    key; the encrypted workspace saved for confirmation. Feature:
-   `secrets_run_delivery.feature`.
+   `platform/secrets_run_delivery.feature`.
 4. Local workspaces: `uploadLocalWorkspace` and `runProposeLocalWorkspace`
    for local preview, beside the tracked commit P6b's `rawgit` source
    resolves.
@@ -1807,12 +1807,12 @@ through the backend.
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
-- `runs_terraform.feature` and `runs_tofu.feature` (`@postgres`,
+- `runs/terraform.feature` and `runs/tofu.feature` (`@postgres`,
   `@objectstore`, `@terraform` or `@tofu`, `@vcs`): a tracked run passes
   through report 08's states to `FINISHED`, the stored state version
   matches, the log shows five asterisks for each secret, and `run_updated`
   events are in the outbox.
-- `runs_runner_image.feature`: a Spacelift public runner image runs
+- `runs/runner_image.feature`: a Spacelift public runner image runs
   unchanged.
 - The operations of task 5 meet decision 0016's evidence rule.
 - Captures C17, C39, C42 and C104 replay once recorded.
@@ -1850,9 +1850,9 @@ that depend on them.
    `Surfaces()`, from each `internal/iac` vendor's workflow keys
    ([option 5](../research/architecture-options/5-modular-monolith.md#expressions)).
    Tests: `TestUnitWorkflowQuoting`, and
-   the hostile workspace scenario of `expressions_deploy.feature`. Records
+   the hostile workspace scenario of `expressions/deploy.feature`. Records
    DV-104.
-6. Feature: `runs_lifecycle.feature` (proposed, tracked with confirm,
+6. Feature: `runs/lifecycle.feature` (proposed, tracked with confirm,
    autodeploy, task, targeted replan, stop, kill, lost run, timers in
    virtual time).
 
@@ -1893,8 +1893,8 @@ read-only access, signed URLs, Terragrunt workspaces and retention.
    `state.purge` on stack deletion. Records DV-036.
 
 **Exit criteria**
-- `state_external_access.feature`, `state_import.feature`,
-  `state_rollback.feature` and `state_terragrunt_units.feature` pass.
+- `state/external_access.feature`, `state/import.feature`,
+  `state/rollback.feature` and `state/terragrunt_units.feature` pass.
 - Tofu Workspaces and the state operations of the Stacks tag meet decision
   0016's evidence rule.
 - Captures C106, C107, C108, C109, C110, C112, C113 and C114 replay once
@@ -1959,7 +1959,7 @@ a source credential for its repository.
    where the provider can (a GitHub installation token, a GitLab project
    access token, a Bitbucket Data Center repository access token), revoked
    when the run ends, and hands the integration's token otherwise.
-   Feature: `vcs_sources.feature` gains a private stack on each provider.
+   Feature: `vcs/sources.feature` gains a private stack on each provider.
 8. The VCS lab: Terraform roots under `test/terraform/vcs/` that create
    a repository per run on GitHub, GitLab, Bitbucket Cloud and Azure DevOps,
    a Bitbucket Data Center container the job starts with a licence from its
@@ -1968,11 +1968,11 @@ a source credential for its repository.
    them.
 
 **Exit criteria**
-- `vcs_integrations.feature` (`@postgres`, `@vcs`): each provider's
+- `vcs/integrations.feature` (`@postgres`, `@vcs`): each provider's
   integration is created, read, updated, tested and deleted; deleting one in
   use detaches its stacks; a second default for a provider answers `422`; a
   credential appears in no answer, log line, audit entry or event.
-- `vcs_sources.feature`: a private stack on each provider shows its branch
+- `vcs/sources.feature`: a private stack on each provider shows its branch
   head through its integration.
 - The operations of tasks 1 to 6 meet decision 0016's evidence rule; the
   parity baseline drops them.
@@ -2018,7 +2018,7 @@ checks, pull request comments and deployments.
    pull request comment commands on every other provider, `Comments.Upsert`
    with the hidden marker, GitHub Deployments and GitLab environments.
    Records DV-047.
-5. Features: `vcs_webhooks.feature` and `vcs_feedback.feature` (`@vcs`,
+5. Features: `vcs/webhooks.feature` and `vcs/feedback.feature` (`@vcs`,
    Gitea for real webhooks and statuses, each provider's fake for its own
    shapes, recorded payloads driving a run and a check on every provider),
    and their `@vcs-lab` scenarios against P12's lab.
@@ -2070,8 +2070,8 @@ state points, with receipts committed in the transition they justify.
    `PLANNING` and each targeted replan; push in `vcs.evaluate_event`;
    trigger through the durable `policy.trigger` job. `runReview`,
    `runPolicyReceiptSample`.
-5. Features: `policy_plan.feature`, `policy_approval.feature`,
-   `policy_push.feature`, `policy_trigger.feature`, against a real Terraform
+5. Features: `policy/plan.feature`, `policy/approval.feature`,
+   `policy/push.feature`, `policy/trigger.feature`, against a real Terraform
    run.
 6. The [domain wiring](#adding-a-domain) of `policies`,
    after `configuration` and before `runs` in `domains.go` and the
@@ -2112,9 +2112,9 @@ the tooling around evaluation: samples, captures, simulation and templates.
    that `internal/app` sets after construction (`SetEvaluator`), adding no
    import
    ([declared graph](repo-layout.md#declared-graph)). Feature:
-   `policy_login.feature`, `authz_login_policy.feature`.
+   `policy/login.feature`, `authz/login_policy.feature`.
 2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
-   `Deprecation` headers. Feature: `platform_deprecation.feature`.
+   `Deprecation` headers. Feature: `tiers/deprecation.feature`.
 3. Sampling and captures: `policy_evaluations`, hourly sample budgets in
    `policy_sample_budgets`, sealed samples in `policy-inputs`;
    `policyEvaluationSample`, `policySearchEvaluationRecords`,
@@ -2155,15 +2155,15 @@ protocol, and the worker-side initialization policy that signed runs rest on.
    `outgoingIPAddresses`, `workerPoolSearchUsers`,
    `workerPoolSearchUsersSuggestions`, and `workerPoolSearchSchedulableRuns`
    and `workerPoolSearchSchedulableRunsSuggestions`, which `runs`' partial
-   serves, since `workers` imports no `runs` package. Feature: `workers_public_pool.feature`.
+   serves, since `workers` imports no `runs` package. Feature: `workers/public_pool.feature`.
 2. `internal/agent/executor/kubernetes`: a controller that creates a pod per
    run and acts as a launcher, with `WorkerPool` and `Worker` resources.
-   Feature: `workers_kubernetes.feature` (`@kubernetes`, k3s).
+   Feature: `workers/kubernetes.feature` (`@kubernetes`, k3s).
 3. `internal/agent/initpolicy`: the worker-side initialization policy
    compiled at start over `internal/platform/rego`, with the `exec`
    built-in in a short-lived container of the run's image; a `deny` fails
-   the run from `PREPARING`. Feature: `runs_signed.feature` with a
-   signed-run JWT, and `policy_worker_initialization.feature`.
+   the run from `PREPARING`. Feature: `runs/signed.feature` with a
+   signed-run JWT, and `policy/worker_initialization.feature`.
 4. `availableAt` for autoscalers.
 
 **Exit criteria**
@@ -2190,7 +2190,7 @@ run and the discovery document cloud providers verify it against.
    `INFRAWEAVE_OIDC_TOKEN` and `/mnt/workspace/infraweave.oidc` and refreshed
    in long runs; the subject template with `accountSetOIDCSubjectTemplate`
    and its validation. Tests: golden claims and placeholders. Feature:
-   `oidc_federation.feature` (a Vault container's `jwt` auth accepts the
+   `auth/oidc_federation.feature` (a Vault container's `jwt` auth accepts the
    token with `bound_claims` on `spacePath`). Records DV-016.
 2. `internal/cloud` (flat domain): AWS integrations and attachments with the
    fixed external ID and `RoleSessionName` formats, the role trust check
@@ -2225,7 +2225,7 @@ run and the discovery document cloud providers verify it against.
    the Entra applications created through the operator-registered
    application in `cloud.azure`, or `installation-unsupported` without one;
    GCP through the OIDC token only. `integrationsCount`.
-5. Feature: `cloud_integrations.feature` (`@postgres`, `@tofu`, `@oidc`) with
+5. Feature: `integrations/cloud.feature` (`@postgres`, `@tofu`, `@oidc`) with
    read and write attachments and the external ID suffix per run type.
 
 **Exit criteria**
@@ -2279,13 +2279,13 @@ with output references and external dependencies.
    downstream run's handover, which reads the upstream outputs through
    `stateapi.Versions`, a back edge that `internal/app` sets after
    construction (`SetVersions`); its scenario joins
-   `expressions_deploy.feature`. Records DV-107.
+   `expressions/deploy.feature`. Records DV-107.
 5. `internal/runs/internal/core/dependencies`: dependent runs, skipping on
    unchanged outputs, `SKIPPED` on upstream failure; external dependencies
    with `runExternalDependencyMarkAsCompleted`.
-6. Features: `scheduler_scheduled_runs.feature`,
-   `scheduler_missed_firings.feature`, `drift_detection.feature`,
-   `stacks_dependencies.feature`.
+6. Features: `runs/scheduled_runs.feature`,
+   `runs/missed_firings.feature`, `runs/drift_detection.feature`,
+   `stacks/dependencies.feature`.
 
 **Exit criteria**
 - Drift Detection and the schedule and dependency operations of the Stacks
@@ -2353,7 +2353,7 @@ Terraform module registry protocol and `terraform login`.
 5. Test cases as `TESTING` runs created through `runsapi`, which carry the
    module's configuration elements, since `runs` cannot read `registry`;
    negative cases included.
-6. Features: `registry_protocol.feature`, `registry_modules.feature`
+6. Features: `registry/protocol.feature`, `registry/modules.feature`
    (`@vcs`, `@terraform`, `@tofu`).
 
 **Exit criteria**
@@ -2391,7 +2391,7 @@ verified with registered GPG keys.
 3. Provider protocol: `/registry/providers/v1/...` versions and download
    metadata, public providers without credentials, and
    `/registry/files/{token}` in `proxy` mode.
-4. Feature: `registry_providers.feature` (`terraform init` installs a
+4. Feature: `registry/providers.feature` (`terraform init` installs a
    provider signed by a test key; revoking removes it).
 
 **Exit criteria**
@@ -2466,9 +2466,9 @@ The Flows engine (P18c) adds its own consumer of the same fan-out.
    streams with `Last-Event-ID` resume, `reset` past retention, the
    per-identity limit and `end` on shutdown, woken by `infraweave_events`
    and `infraweave_logs`; polling stays. Records DV-095.
-8. Features: `events_webhooks.feature`, `events_notifications.feature`,
-   `events_slack.feature`, `events_streams.feature`, and the notification
-   scenario of `expressions_deploy.feature`.
+8. Features: `events/webhooks.feature`, `events/notifications.feature`,
+   `events/slack.feature`, `events/streams.feature`, and the notification
+   scenario of `expressions/deploy.feature`.
 
 **Exit criteria**
 - Notifications, Webhooks, Slack, OAuth and the group integrations of
@@ -2501,7 +2501,7 @@ own records, and the metrics and traces operators run infraweave with.
    `auditTrailWebhook`, `auditTrailDeleteWebhook`,
    `auditTrailWebhookSetHeaders`, `auditTrailWebhookDeleteHeaders`,
    `auditTrailRetentionDays`. Test: `TestUnitAuditActionsCoverMutations`.
-   Feature: `events_audit.feature` (ordered shipping across a receiver that
+   Feature: `events/audit.feature` (ordered shipping across a receiver that
    fails three times).
 2. Usage: `usage` and the usage CSV from a trailing 30-day window of run
    records and P8's `worker_pool_samples`; `runMinutesUsage`; the
@@ -2515,10 +2515,10 @@ own records, and the metrics and traces operators run infraweave with.
    `/metrics/accounts` with the exporter's series under the `infraweave_`
    prefix and with `account` and `organization` labels.
    Tests: `TestUnitAccountCollectors`, `TestUnitAccountMetricNames`.
-   Feature: `observability_metrics.feature`. Records DV-060, DV-061.
+   Feature: `platform/observability_metrics.feature`. Records DV-060, DV-061.
 4. Traces: OTLP export, sampling, spans for HTTP, pgx, object storage,
    jobs and policy evaluations; trace context carried into runs and the
-   launcher's phase spans. Feature: `observability_tracing.feature`.
+   launcher's phase spans. Feature: `platform/observability_tracing.feature`.
    Records DV-063, DV-064.
 
 **Exit criteria**
@@ -2590,7 +2590,7 @@ expression in CEL.
    `GET /api/v1/flows/flows/{flowId}/events/stream` stream and the audit trail
    under the `flows.` prefix. Input and static configuration, output
    customization and Transform are CEL, checked at save with the
-   expression endpoints of P6. Feature: `expressions_flows.feature`.
+   expression endpoints of P6. Feature: `expressions/flows.feature`.
    Records DV-096 and DV-103.
 7. Core blocks in Go in the `scheduler` process mode, with Transform's
    steps form and no Script block; HTTP Endpoint blocks, forms at
@@ -2600,7 +2600,7 @@ expression in CEL.
    `flowsIntegration`, `flowsProjects`, `flowsInstances`,
    `flowsProjectRoleBinding`, `flowsProjectRoleBindingBatchCreate`,
    `flowsProjectRoleBindingDelete`.
-8. Feature: `flows_engine.feature` (`@postgres`, `@flows-agent`: fan-out
+8. Feature: `flows/engine.feature` (`@postgres`, `@flows-agent`: fan-out
    and merge, echo, pending events, Sleep across a restart, manual retry
    and re-emit, limits, retention).
 
@@ -2644,14 +2644,14 @@ the Go app SDK, and Deploy blocks act on runs, templates and blueprints.
    ([0004](../research/decisions/0004-repository-architecture.md)), and
    `infraweave flows-agent` with the `docker` (gVisor when configured),
    `kubernetes` and `process` executors and their isolation rules. Feature:
-   `flows_agents.feature` (two `serve` replicas, an agent killed mid-task,
+   `flows/agents.feature` (two `serve` replicas, an agent killed mid-task,
    token rotation, a container never reused for another installation).
 3. Apps: an app version is an OCI image plus a manifest captured at
    publish; registries fetched hourly, with the digest checked by the agent;
    custom apps from image references, and a JavaScript bundle refused with
    `422 validation-failed`; declarative widgets validated against their
    type's schema. The `flows-apps` and `flows-agents` features gate them.
-   Feature: `flows_apps.feature`, with a fixture app built from the SDK and
+   Feature: `flows/apps.feature`, with a fixture app built from the SDK and
    a registry served by a chi test server. Records DV-098 and DV-099.
 4. Deploy blocks: trigger blocks on decision 0015's kinds, Trigger Run,
    Trigger Task, Confirm Run, Review Run, Deploy Template, Deploy Blueprint
@@ -2661,7 +2661,7 @@ the Go app SDK, and Deploy blocks act on runs, templates and blueprints.
    middleware, authorization and feature gate of an external request
    ([0004](../research/decisions/0004-repository-architecture.md)); each
    block acts with the Deploy role bindings of its Flows project. Feature:
-   `flows_deploy.feature` (`@tofu`). Records DV-067 and DV-068.
+   `flows/deploy.feature` (`@tofu`). Records DV-067 and DV-068.
 
 **Exit criteria**
 - A Run Events block reacts to a real run's state change and to a drift
@@ -2691,7 +2691,7 @@ VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
    `vcs` and the agent share; `internal/agent/vcsagent` and
    `infraweave vcs-agent` with the allowlist compiled from it,
    `--validation` and `--allowed-projects`. Test: `allowlist_test.go`.
-   Feature: `vcs_agent.feature`. Records DV-045, DV-046.
+   Feature: `vcs/agent.feature`. Records DV-045, DV-046.
 3. `BLOB` provider: `blobStorageIntegrationCreate`,
    `blobStorageIntegration`, `blobStorageIntegrationUpdate`,
    `blobStorageIntegrationDelete`, with `x-infraweave-basis: schema-only`.
@@ -2725,12 +2725,12 @@ agent command set behind the same contract.
 **Tasks**
 1. `internal/iac/terragrunt` and `internal/agent/vendors/terragrunt`:
    run-all, units with workspaces in the state backend, `terragruntVersions`,
-   `terragruntEffectiveVersion`. Feature: `vendors_terragrunt.feature`.
+   `terragruntEffectiveVersion`. Feature: `vendors/terragrunt.feature`.
 2. `internal/iac/pulumi` and the agent command set, following option 5's
-   walkthrough. Feature: `vendors_pulumi.feature`.
+   walkthrough. Feature: `vendors/pulumi.feature`.
 3. `internal/iac/cloudformation` (CDK, SAM, Serverless) and
    `internal/iac/kubernetes` (Helm, Kustomize, `kubectlVersions`). Features:
-   `vendors_cloudformation.feature`, `vendors_kubernetes.feature`
+   `vendors/cloudformation.feature`, `vendors/kubernetes.feature`
    (`@kubernetes`).
 4. Every vendor passes `iactest`; runner images for each in
    `deploy/images/`; plan sanitization per vendor. Each vendor is an option
@@ -2771,8 +2771,8 @@ that run inside runs.
    `pluginTemplateCreate`, `pluginTemplateDelete`, `plugins`, `plugin`,
    `pluginInstall`, `pluginUpdate`, `pluginDelete`,
    `runPluginLogsDownloadURL`. Records DV-081.
-4. Features: `vendors_ansible.feature`, `vendors_opentofu_migration.feature`,
-   `vendors_plugins.feature`.
+4. Features: `vendors/ansible.feature`, `vendors/opentofu_migration.feature`,
+   `vendors/plugins.feature`.
 
 **Exit criteria**
 - Ansible, OpenTofu Migration and Plugins meet decision 0016's evidence rule.
@@ -2823,8 +2823,8 @@ ServiceNow and Backstage integrations that attach to them.
    `externalIntegrationCreate`, `externalIntegrationDelete`,
    `attachableExternalIntegrationInSpace`; the Backstage key with its seat
    exemption.
-6. Features: `templates_blueprints.feature`, `templates_versions.feature`,
-   `templates_deployments.feature`, `external_integrations.feature`.
+6. Features: `templates/blueprints.feature`, `templates/versions.feature`,
+   `templates/deployments.feature`, `integrations/external.feature`.
 
 **Exit criteria**
 - Blueprints, Templates and External Integrations meet decision 0016's
@@ -2871,8 +2871,8 @@ capability gates.
 5. Forms and user guides: `genericFormsList`, `completeGenericForm`,
    `isGenericFormCompleted`, and the 20 User Guide operations from a guide
    catalogue the operator can extend.
-6. Features: `resources_view.feature`, `search_generic.feature`,
-   `console_support.feature`.
+6. Features: `resources/view.feature`, `api/search_generic.feature`,
+   `console/support.feature`.
 
 **Exit criteria**
 - Resources, Saved Filters, UI State, Forms and User Guide meet decision
@@ -2901,7 +2901,7 @@ entities.
 2. Discovery-type pools; a scan run reaches its pool through `runsapi`,
    so workers claim it on the same path as every other job and the
    launcher executes it ([declared graph](repo-layout.md#declared-graph)).
-3. Feature: `resources_scans.feature`.
+3. Feature: `resources/scans.feature`.
 
 **Exit criteria**
 - Scans meets decision 0016's evidence rule.
@@ -2930,7 +2930,7 @@ Each account still authorizes for itself (P13b).
    `oidcCreate`, `oidcUpdate`, `oidcDelete`, `oidcSubjectTemplate`,
    `samlSettings`, `samlCreate`, `samlUpdate`, `samlDelete`, `hasSSO`,
    `identityFederationUnlink`, `oauthRedirect`, `oauthToken`, `oauthUser`.
-   Feature: `auth_sso.feature` (`@oidc`, and a SAML IdP served by the
+   Feature: `auth/sso.feature` (`@oidc`, and a SAML IdP served by the
    test). Records DV-110.
 2. IdP groups at login map onto each account's managed user groups (P3b),
    which `infraweave_idp_group_mapping` manages, when the member enters
@@ -2940,18 +2940,18 @@ Each account still authorizes for itself (P13b).
    organization admin links them. Linking is explicit, needs one sign-in
    through each provider, and merges them into one member ID; nothing is
    linked by e-mail address. Feature:
-   `organization_identity_linking.feature`. Records DV-110.
+   `organization/identity_linking.feature`. Records DV-110.
 4. `internal/access/internal/core/scim`: SCIM v2 users and groups, which
    provision the organization's members, with filters, `PATCH` and
    reconciliation; `scimSettings`,
    `createOauthClientForSCIM`, `resetOauthClientForSCIM`,
    `deleteOauthClientForSCIM`; deactivation revokes sessions and personal
-   keys. Feature: `auth_scim.feature`.
+   keys. Feature: `auth/scim.feature`.
 5. `internal/access/internal/core/mfa`: WebAuthn registration and login,
    `enforceMFA`, `accountToggleEnforcingMFA`, `securityKeys`,
    `securityKeyDelete`, `userSecurityKeyDeleteAll`. MFA enforcement and the
    session lifetime are the organization's and apply in every one of its
-   accounts. Feature: `auth_mfa.feature`.
+   accounts. Feature: `auth/mfa.feature`.
 
 **Exit criteria**
 - SSO, and the Auth and Sessions and Security Keys operations above, meet
@@ -2997,7 +2997,7 @@ checks run is an [open item](#open-items).
    resource calls.
 4. A scenario for each behaviour of report 05 section 6 worth copying
    (eventual consistency, trust relationship retries, write-only values).
-5. The provider's half of `flows_clients.feature`: apply, an empty plan
+5. The provider's half of `flows/clients.feature`: apply, an empty plan
    and import of a flow, held to the `terraform-provider-flows` operations
    that the Flows reference, `api/reference/spacelift-flows/`, maps.
 
@@ -3031,15 +3031,15 @@ browser login.
    `version` and `api`, with the subcommands report 06 section 8 lists;
    run log tailing over the run log stream. The `flows` group mirrors
    `flowctl`, publishing an app version from an image reference and
-   exporting a flow; its half of `flows_clients.feature`.
+   exporting a flow; its half of `flows/clients.feature`.
 4. `infraweavectl mcp`: stdio proxied to `/mcp` with the CLI's credentials
    and no tools of its own ([0019](../research/decisions/0019-ai-provider-boundary.md)); its scenario joins
-   `mcp_server.feature`.
-5. `test/acceptance/features/cli_<area>.feature`, one per row, driving the
+   `ai/mcp_server.feature`.
+5. `test/acceptance/features/cli/<area>.feature`, one per row, driving the
    built binary with `@op:` tags.
 
 **Exit criteria**
-- Every row of report 06 section 8 has a passing `cli_<area>.feature`.
+- Every row of report 06 section 8 has a passing `cli/<area>.feature`.
 - `make build` cross-compiles `cmd/infraweavectl` for every platform.
 - Captures C22 and C23 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
@@ -3124,7 +3124,7 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
    `isInstallationProvided`, and its spend counts against the `ai-budget`
    limit (USD per 30 days), pooled across the organization's accounts,
    answering `403 limit-reached` beyond it.
-   Feature: `ai_integrations.feature` (`@ai`). Records DV-071.
+   Feature: `ai/integrations.feature` (`@ai`). Records DV-071.
 2. Wiring ([domain wiring](#adding-a-domain)):
    `intelligence`'s graph rule and shared-rule entries,
    `core-not-adapters` included, its place after `resources` in
@@ -3146,11 +3146,11 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
    calling member through `internal/platform/httpkit/dispatch`, which
    `internal/app` binds to the composed router after construction
    ([0004](../research/decisions/0004-repository-architecture.md)).
-   Feature: `ai_assistant.feature`. Records DV-072, DV-073.
+   Feature: `ai/assistant.feature`. Records DV-072, DV-073.
 5. The hosted `/mcp` server with its protected-resource metadata naming
    P3b's OAuth authorization server, `mcp:read` and `mcp:write` narrowed by
    the member's permissions, and `tools` narrowing. Feature:
-   `mcp_server.feature` (`@oidc`, an MCP client that registers and
+   `ai/mcp_server.feature` (`@oidc`, an MCP client that registers and
    authorizes through the code flow). `infraweavectl mcp`, which proxies stdio to it, lands in P24b.
 
 **Exit criteria**
@@ -3201,7 +3201,7 @@ policies, locks, review and export to a stack.
    `intentChatConversationCreate`, `intentChatConversationUpdate`,
    `intentChatConversationDelete`, `intentChatConversationTranscript`;
    the hosted `intent` tool. Records DV-070.
-4. Feature: `intent_projects.feature` (`@tofu`, lock contention, allow,
+4. Feature: `ai/intent_projects.feature` (`@tofu`, lock contention, allow,
    deny and review, import and create through a worker, export to a stack).
 
 **Exit criteria**
@@ -3235,11 +3235,11 @@ rules that make infraweave installable and upgradable.
    GCP and Azure with examples, each setting `database.iam_auth` to its
    cloud's value (`aws`, `gcp`, `azure`) over TLS, and `deploy/check.sh` in
    the gate.
-   Features: `deploy_compose.feature`, `deploy_helm.feature`
+   Features: `deploy/compose.feature`, `deploy/helm.feature`
    (`@kubernetes`). Records DV-075.
 4. Upgrades and recovery: the `upgrade_floor` per stream, mixed-version
    operation, backup and restore guidance. Feature:
-   `deploy_upgrade.feature`. `debugInfo`, `installationId` (Debug and
+   `deploy/upgrade.feature`. `debugInfo`, `installationId` (Debug and
    Infrastructure tags).
 
 **Exit criteria**

@@ -336,11 +336,11 @@ Who calls the engine, when, and what the result does to the run of decision
   corpus also tests the rewrite.
 - A contract test compares the generated `policy-contract.json` with the field lists of
   [09 section 4](../reference/09-policies.md#4-input-documents).
-- Gherkin acceptance (decision 0016): `policy_plan.feature` (deny fails, warn holds an
+- Gherkin acceptance (decision 0016): `policy/plan.feature` (deny fails, warn holds an
   autodeployed run in `UNCONFIRMED`, warn with approval sends a proposed run to
-  `PENDING_REVIEW`), `policy_approval.feature`, `policy_push.feature`,
-  `policy_trigger.feature`, `policy_login.feature`, and
-  `policy_worker_initialization.feature` with a signed-run JWT, all against PostgreSQL and
+  `PENDING_REVIEW`), `policy/approval.feature`, `policy/push.feature`,
+  `policy/trigger.feature`, `policy/login.feature`, and
+  `policy/worker_initialization.feature` with a signed-run JWT, all against PostgreSQL and
   a real Terraform run.
 - A sealing test reads a sample object directly from the object store and asserts that a
   known input value does not appear in it.

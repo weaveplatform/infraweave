@@ -12,8 +12,8 @@ can fail:
   is a parity oracle for operation coverage, shapes and client contracts
   ([01 section 12](../reference/01-spacelift-landscape.md#12-the-specification-reference-as-parity-oracle)).
   Two features already check the reference and the served bundle
-  (`test/acceptance/features/reference_spec.feature`,
-  `api_bundle.feature`).
+  (`test/acceptance/features/api/reference_spec.feature`,
+  `api/bundle.feature`).
 - **The behaviour matches Spacelift.** Runs, policies, state, VCS
   feedback and event delivery are behaviours, not shapes. They only show
   against real PostgreSQL, real object storage, a real launcher and a real
@@ -103,10 +103,19 @@ everywhere, and the reason names where the contract checks it instead.
 ### Acceptance harness
 
 - **Runner.** `TestAccFeatures` runs godog over
-  `test/acceptance/features/<area>_<topic>.feature` with `Strict: true`.
+  `test/acceptance/features/<area>/<topic>.feature` with `Strict: true`.
   Steps that drive the API use the SDK, `pkg/sdk`
   ([0001](0001-rest-first-spacelift-surface.md)), so every scenario also
   exercises it.
+- **Layout.** An area's steps live in `test/acceptance/internal/steps/<area>`,
+  beside its `features/<area>/` directory, and its `Register` adds them to
+  every scenario. `test/acceptance/internal/harness` runs the scenarios
+  and gives each one a `World`: its servers, database, tokens, answers and
+  the settings sections its servers start with. The areas share a
+  scenario only through the `World`. No area imports another, and the
+  harness imports none; depguard's `acceptance-areas` rule holds both.
+  The containers come from `test/deps`, which the tests beside the code
+  share and which imports nothing of the suite (`test-deps`).
 - **The binary under test.** The harness builds `cmd/infraweave` once with
   `-cover -covermode=atomic` and runs it as a subprocess with `GOCOVERDIR`
   set to `cover/accept`, so `infraweave serve`, `scheduler`, `launcher` and `runner` all
@@ -152,7 +161,7 @@ everywhere, and the reason names where the contract checks it instead.
   state version, the masked log, and the events emitted
   ([0015](0015-events-notifications-webhooks-audit.md)).
 - **Images.** Every container image is pinned by digest in
-  `test/acceptance/images.go`; `deps-refresh.yml` moves the pins to the
+  `test/deps/images.go`; `deps-refresh.yml` moves the pins to the
   newest release.
 
 ### Docker: skip locally, never in CI
@@ -167,7 +176,7 @@ everywhere, and the reason names where the contract checks it instead.
 ### Parity checks against the specification reference
 
 `specref` gains a `parity` subcommand, run by `make verify-parity` and by
-an acceptance scenario in `reference_spec.feature`. For every operation in
+an acceptance scenario in `api/reference_spec.feature`. For every operation in
 `api/reference/spacelift/spacelift.openapi.yaml`, and in the Flows reference
 `api/reference/spacelift-flows/flows.openapi.yaml`
 ([0018](0018-flows-runtime.md)), it decides one outcome:
@@ -258,7 +267,7 @@ its own repository (decision [0001](0001-rest-first-spacelift-surface.md)):
 
 The CLI is checked the same way against the capability list in
 [06 section 8](../reference/06-spacectl-and-clients.md#8-what-an-infraweave-cli-must-cover):
-one `cli_<area>.feature` per row, driving the built CLI binary.
+one `cli/<area>.feature` per row, driving the built CLI binary.
 
 ### Capture fixtures
 
@@ -291,7 +300,7 @@ decision 0009 as `TestUnitPolicyLibrary`.
 | Rule | Enforcement |
 |---|---|
 | No `time.Sleep` in tests | forbidigo pattern on `_test.go` files in `.golangci.yml` |
-| Waiting on asynchronous work polls a condition with a deadline, through one helper (`acceptance.Eventually`), never a fixed delay | review; the helper reports what it waited for |
+| Waiting on asynchronous work polls a condition with a deadline, through one helper (`deps.Eventually`), never a fixed delay | review; the helper reports what it waited for |
 | Unit tests use virtual time | `internal/clock` and `testing/synctest` |
 | No test depends on order | `-shuffle=on`; godog runs scenarios in random order with a printed seed |
 | No shared mutable state across scenarios | per-scenario database, bucket prefix and server |
@@ -510,14 +519,14 @@ coverage it would contribute is not waived.
 
 - `TestUnitTestNames`, `TestUnitFeaturePartitions` and
   `TestUnitCaptureRedaction` guard the rules above.
-- `test/acceptance/features/acceptance_harness.feature` proves the harness
+- `test/acceptance/features/suite/harness.feature` proves the harness
   itself: a scenario skipped without Docker, a failure with
   `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, per-scenario database isolation,
   and evidence written on failure.
-- `test/acceptance/features/runs_terraform.feature` and
-  `runs_tofu.feature` carry the first real-run scenarios.
+- `test/acceptance/features/runs/terraform.feature` and
+  `runs/tofu.feature` carry the first real-run scenarios.
 - `make verify-parity` and the state check run in the `parity` job; the
-  existing `reference_spec.feature` and `api_bundle.feature` keep running
+  existing `api/reference_spec.feature` and `api/bundle.feature` keep running
   in `accept-core`.
 - The `Quality gate` job lists every required job above in its `needs`, and
   none of the informational ones.

@@ -551,10 +551,10 @@ Departures from Spacelift, for the plan's deviations register:
   and each subject agrees with the operation's access and parameters.
 - `make verify-reference`: `actions.yaml` covers the `Action` enum exactly.
 - Gherkin acceptance against PostgreSQL in testcontainers:
-  `test/acceptance/features/authz_spaces.feature` (tree changes, refused
-  moves, grant views), `authz_bindings.feature` (each actor kind, stack
-  escalation rules), `authz_login_policy.feature` (rules, `deny_message`
-  aggregation, session revocation on change), `authz_tenancy.feature` (two
+  `test/acceptance/features/authz/spaces.feature` (tree changes, refused
+  moves, grant views), `authz/bindings.feature` (each actor kind, stack
+  escalation rules), `authz/login_policy.feature` (rules, `deny_message`
+  aggregation, session revocation on change), `authz/tenancy.feature` (two
   organizations, one with two accounts: each account sees only its own
   spaces and stacks, and another account's stack answers `404` within the
   organization and across it; a new account starts with its top space named

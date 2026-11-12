@@ -368,18 +368,18 @@ the tables of [28 section 12.10](../reference/28-data-model.md#1210-intent).
   one organization, `limit-reached` with `scope: organization` when the
   pool is spent and `scope: account` when an account limit is, with
   billing on; no metering with billing off.
-- `test/acceptance/features/ai_integrations.feature` (`@postgres`, `@ai`):
+- `test/acceptance/features/ai/integrations.feature` (`@postgres`, `@ai`):
   create and validate each provider type, sealed keys, the installation
   default, toggles, terms gating, `feature-disabled` and
   `installation-unsupported`.
-- `ai_assistant.feature` (`@postgres`, `@ai`): a conversation streamed over
+- `ai/assistant.feature` (`@postgres`, `@ai`): a conversation streamed over
   SSE, a provider switch mid-conversation, confirmation of a destructive
   call, a run summary of a failed run with a masked secret in its log.
-- `intent_projects.feature` (`@postgres`, `@tofu`): lock contention,
+- `ai/intent_projects.feature` (`@postgres`, `@tofu`): lock contention,
   policy allow, deny and review paths, an import and a create through a
   worker with a filesystem-mirrored test provider, a tampered provider
   refused, export to a stack.
-- `mcp_server.feature` (`@postgres`, `@oidc`): an MCP client from the Go
+- `ai/mcp_server.feature` (`@postgres`, `@oidc`): an MCP client from the Go
   SDK registers dynamically, is refused a non-allowlisted redirect, uses
   `mcp:read` and `mcp:write`, narrows with `tools`, and `/intent/mcp`
   answers `404`; `infraweavectl mcp` proxies the same session over stdio.

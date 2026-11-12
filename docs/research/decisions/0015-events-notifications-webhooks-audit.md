@@ -525,29 +525,29 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
   pinned or held as a fixture as PD-14 decides.
 - `TestUnitAuditActionsCoverMutations` fails when a mutating operation in
   `api/api.openapi.yaml` lacks `x-infraweave-audit-action`.
-- `test/acceptance/features/events_webhooks.feature` (`@postgres`,
+- `test/acceptance/features/events/webhooks.feature` (`@postgres`,
   `@objectstore`) runs against a chi receiver started by the test. It
   covers signed deliveries, secret headers, retries on 5xx, auto-disable
   after 10 failures with its inbox entry, the delivery log, a per-stack
   webhook on a run, and at-least-once delivery when a node is stopped
   mid-delivery.
-- `test/acceptance/features/events_notifications.feature` (`@postgres`):
+- `test/acceptance/features/events/notifications.feature` (`@postgres`):
   inbox grouping, dismissal per item, group and all, retention, and a
   notification policy routing a run to the inbox and to a webhook with a
   message template.
-- `test/acceptance/features/events_streams.feature` (`@postgres`,
+- `test/acceptance/features/events/streams.feature` (`@postgres`,
   `@objectstore`): run logs and run state streamed from two `serve`
   replicas, resume with `Last-Event-ID` after a replica stops, `reset`
   past retention, a permission revoked mid-stream, the per-identity limit,
   and polling returning the same data.
-- `test/acceptance/features/events_audit.feature` (`@postgres`): entries
+- `test/acceptance/features/events/audit.feature` (`@postgres`): entries
   for mutations with sanitized secrets, search, retention, verification on
   `auditTrailSetWebhook`, and ordered shipping across a receiver that fails
   three times.
-- `test/acceptance/features/events_slack.feature` (`@postgres`) runs against a
+- `test/acceptance/features/events/slack.feature` (`@postgres`) runs against a
   chi server modelling Slack's Web API. It covers inbound signature checks,
   message editing per run, threading and stale-update suppression.
-- `flows_deploy.feature` of [0018](0018-flows-runtime.md) covers Deploy
+- `flows/deploy.feature` of [0018](0018-flows-runtime.md) covers Deploy
   events reaching Flows triggers.
 
 ## References

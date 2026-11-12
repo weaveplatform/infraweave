@@ -230,9 +230,11 @@ infraweave/
 │   └── flows/appsdk/              the Go SDK for Flows apps, with apptest (P18d)
 ├── test/
 │   ├── acceptance/                godog features, steps and the harness; ubuntu only
-│   │   ├── features/              <area>_<topic>.feature, tagged with dependencies and @op:<operationId>
-│   │   ├── images.go              every container image, pinned by digest
+│   │   ├── features/              <area>/<topic>.feature, tagged with dependencies and @op:<operationId>
+│   │   ├── internal/harness/      runs the scenarios: World, servers, requests, tenants, partitions, captures
+│   │   ├── internal/steps/<area>/ the area's steps; Register adds them to every scenario
 │   │   └── out/<scenario>/        logs and database dump of a failed scenario; CI artefact, not committed
+│   ├── deps/                      the Docker dependencies of every TestAcc test; images.go pins each by digest
 │   ├── depguard/                  a module of its own breaking each depguard rule once; make lint-fixtures
 │   ├── fixtures/                  Terraform and OpenTofu projects, Git repositories, policy corpus (P9)
 │   │   └── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
@@ -444,19 +446,19 @@ option 5's
 | Contract suites | `TestAcc` (local disk `TestUnit`) | `internal/platform/queue/queuetest`, `internal/platform/objectstore/objectstoretest`, `internal/iac/iactest`, `internal/agent/agenttest` | ubuntu; local disk everywhere |
 | Machine | `TestUnit<Name>` | `internal/runs/internal/core/machine`: every transition row and every illegal pair | all three |
 | Policy corpus | `TestUnitPolicyLibrary` | `internal/policies/internal/combine` and `internal/platform/rego` over the example library | all three |
-| Acceptance | `TestAccFeatures` | `test/acceptance/features/<area>_<topic>.feature`, godog `Strict: true` | ubuntu |
+| Acceptance | `TestAccFeatures` | `test/acceptance/features/<area>/<topic>.feature`, godog `Strict: true` | ubuntu |
 | Captures | `TestAccCaptures`, `TestUnitCaptureRedaction` | `test/fixtures/captures/C<n>/` | ubuntu; redaction everywhere |
 | Provider | `TestAccProvider` | `test/terraform/<resource>/` | ubuntu |
-| CLI | `TestAccFeatures` | `test/acceptance/features/cli_<area>.feature`, one per row of report 06 section 8 | ubuntu |
+| CLI | `TestAccFeatures` | `test/acceptance/features/cli/<area>.feature`, one per row of report 06 section 8 | ubuntu |
 | Console unit | Vitest | beside the code in `web/console/` | ubuntu |
 | Console journeys | Playwright | `web/console/e2e/`, against a real `infraweave all` | ubuntu |
 
 - **Kind by name.** The kind belongs to the test function, not the package. A
   top-level `Test` function that is neither `TestUnit…` nor `TestAcc…` fails
   `TestUnitTestNames`.
-- **Feature files** are named `<area>_<topic>.feature`, where `<area>` is the
-  domain or concern (`runs_terraform.feature`, `events_webhooks.feature`,
-  `authz_spaces.feature`). A scenario carries dependency tags (`@postgres`,
+- **Feature files** are named `<area>/<topic>.feature`, where `<area>` is the
+  domain or concern (`runs/terraform.feature`, `events/webhooks.feature`,
+  `authz/spaces.feature`). A scenario carries dependency tags (`@postgres`,
   `@objectstore`, `@vault`, `@terraform`, `@tofu`, `@oidc`, `@vcs`, `@vcs-lab`, `@ai`,
   `@kubernetes`, `@flows-agent`), one `@op:<operationId>` tag per
   operation it exercises, and `@case:success`, `@case:denial` or
@@ -486,7 +488,7 @@ only refuses more.
 
 | Rule | Files | Mode | Entries |
 |---|---|---|---|
-| `api-packages` (rule 3) | `**/internal/*/api/**` | strict allow | `$gostd`, `$m/internal/kernel$`, `$m/internal/kernel/`, `$m/internal/platform/outbox$` |
+| `api-packages` (rule 3) | `**/internal/*/api/**`, except `**/test/acceptance/**`, whose api steps are no domain's | strict allow | `$gostd`, `$m/internal/kernel$`, `$m/internal/kernel/`, `$m/internal/platform/outbox$` |
 | `constructors` (rule 4) | everything except `**/internal/app/**` and `**/cmd/**` | deny | `$m/internal/<domain>/assembly` for each of the 19 domains |
 | `core-not-adapters` (rule 5) | `**/internal/*/internal/core/**` | deny | `$m/internal/<domain>/internal/adapters` for each of the 8 hexagon domains |
 | `shared-below-domains` (rule 6) | `**/internal/platform/**`, `**/internal/kernel/**`, `**/internal/iac/**` | deny | the 19 domain roots, `$m/internal/agent`, `$m/internal/app` |
@@ -495,6 +497,8 @@ only refuses more.
 | `public-packages` (rule 9) | `**/pkg/**` | deny | `$m/internal` |
 | `ctl` (rule 10) | `**/internal/ctl/**`, `**/cmd/infraweavectl/**` | lax: deny, then allow | deny `$m/internal` and `$m/pkg/client`; allow `$m/internal/ctl$`, `$m/internal/platform/buildinfo$` and `$m/internal/platform/private$` |
 | `iac-pure` (rule 11) | `**/internal/iac/**` | lax: deny, then allow | deny `$m/internal`, `$m/pkg` and `github.com/jackc/pgx`; allow `$m/internal/iac$` and `/`, and `$m/internal/kernel$` and `/` |
+| `acceptance-areas` (rule 12) | `**/test/acceptance/internal/**` | deny | `$m/test/acceptance/internal/steps`: an area's steps share a scenario only through `harness.World`, and the suite's root alone registers the areas |
+| `test-deps` (rule 13) | `**/test/deps/**` | deny | `$m/test/acceptance` |
 
 Rule 2 is the declared graph below: one rule per domain, which allows
 `$m/internal/platform/`, `kernel` and `iac`, its own tree and the `api/`

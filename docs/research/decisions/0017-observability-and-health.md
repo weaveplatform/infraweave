@@ -336,14 +336,14 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
   equal those in promex's collectors at the commit report 19 cites, with
   the prefix renamed and the `account` and `organization` labels added; the promex names are
   held as a fixture extracted under its MIT licence.
-- `test/acceptance/features/observability_health.feature` (`@postgres`
+- `test/acceptance/features/platform/observability_health.feature` (`@postgres`
   `@objectstore`): startup ordering; `/readyz` failing when PostgreSQL
   stops and recovering when it returns while `/livez` stays 200; the
   shutdown sequence with a request in flight.
-- `test/acceptance/features/observability_metrics.feature` (`@postgres`):
+- `test/acceptance/features/platform/observability_metrics.feature` (`@postgres`):
   scrapes `/metrics` and `/metrics/accounts` after creating pools, stacks
   and runs and checks the values.
-- `test/acceptance/features/observability_tracing.feature` (`@postgres`
+- `test/acceptance/features/platform/observability_tracing.feature` (`@postgres`
   `@objectstore` `@terraform`): an in-process OTLP receiver (a chi server
   for OTLP over HTTP) collects spans; a run's API request, job, launcher
   phases and runner environment share one trace ID.

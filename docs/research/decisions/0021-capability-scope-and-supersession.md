@@ -651,7 +651,7 @@ acceptance feature that runs work therefore runs it on a private pool.
 - **`TestUnitFeaturesConfig`** (`internal/features`) covers strict decoding
   of `features.disabled`, and the rejection of an unknown name, of
   `billing`, and of `SCANS`.
-- **`test/acceptance/features/platform_features.feature`** (`@postgres`),
+- **`test/acceptance/features/tiers/features.feature`** (`@postgres`),
   billing off:
   - `tier` answers the Enterprise tier object and `tierFeatures` every
     feature;
@@ -659,7 +659,7 @@ acceptance feature that runs work therefore runs it on a private pool.
     route and leaves other routes untouched;
   - a disabled `flows-engine` answers `feature-disabled` on Flows routes;
   - a skipped background job.
-- **`test/acceptance/features/platform_tiers.feature`**, billing on:
+- **`test/acceptance/features/tiers/tiers.feature`**, billing on:
   - an account whose organization is on Starter+ creating a schedule answers
     `feature-not-in-tier` naming Business and Enterprise;
   - a seat beyond the limit answers `limit-reached`;
@@ -671,13 +671,13 @@ acceptance feature that runs work therefore runs it on a private pool.
   - `organization create` creates the organization with its first account,
     unclaimed, and the default tier; an organization token reaches the
     `Organization` tag and no account route.
-- **`test/acceptance/features/cli_operator.feature`**: `infraweavectl
+- **`test/acceptance/features/cli/operator.feature`**: `infraweavectl
   operator` drives the operator API against `infraweave all`, printing each
   answer, and a refused change's problem.
-- **`test/acceptance/features/platform_billing.feature`**: every Billing
+- **`test/acceptance/features/tiers/billing.feature`**: every Billing
   operation answers as the vendor-bound table says, and each mutation
   answers 403 `installation-unsupported`.
-- **`test/acceptance/features/platform_deprecation.feature`**: a
+- **`test/acceptance/features/tiers/deprecation.feature`**: a
   deprecated-but-live operation, such as creating an `INITIALIZATION`
   policy, carries `Deprecation`; a superseded value, such as policy type
   `ACCESS`, fails validation with the replacement named.

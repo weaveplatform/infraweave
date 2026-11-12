@@ -556,18 +556,18 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
   release's `.proto` files.
 - `pkg/flows/appsdk` tests run a fixture app through `apptest`: `Describe`
   schemas from Go types, lifecycle, KV and widgets.
-- `test/acceptance/features/flows_engine.feature` (`@postgres`,
+- `test/acceptance/features/flows/engine.feature` (`@postgres`,
   `@flows-agent`): fan-out and merge, echo, pending events, Sleep across
   a server restart, manual retry and re-emit, monthly and hourly limits,
   retention deletion.
-- `flows_apps.feature` (`@postgres`, `@flows-agent`): a fixture registry
+- `flows/apps.feature` (`@postgres`, `@flows-agent`): a fixture registry
   served by a chi test server, digest refusal, a custom app published from
   an image built from the Go SDK, lifecycle sync serialization, KV locks,
   timers, block HTTP, widgets, a JavaScript bundle refused.
-- `flows_agents.feature` (`@postgres`, `@flows-agent`): two `serve`
+- `flows/agents.feature` (`@postgres`, `@flows-agent`): two `serve`
   replicas, an agent killed mid-task and its work taken over, pool token
   rotation, an installation's container never reused for another.
-- `flows_clients.feature` (`@postgres`, `@terraform`, `@flows-agent`):
+- `flows/clients.feature` (`@postgres`, `@terraform`, `@flows-agent`):
   `infraweavectl` publishes an app version and exports a flow;
   infraweave's provider applies, plans with no drift and imports a flow.
 - `TestUnitFlowsParity` compares `api/reference/spacelift-flows/flows.openapi.yaml`
@@ -577,7 +577,7 @@ that [0019](0019-ai-provider-boundary.md) and decision 0006 define.
 - `specref generate` fails on an RPC path of the Flows sources that
   `rest-mapping.yaml` does not map, and on a mapping whose RPC path no
   source names.
-- `flows_deploy.feature` (`@postgres`, `@tofu`, `@flows-agent`): a Deploy
+- `flows/deploy.feature` (`@postgres`, `@tofu`, `@flows-agent`): a Deploy
   trigger block reacts to a real run's state change and to a drift result,
   and Trigger Run starts one.
 
