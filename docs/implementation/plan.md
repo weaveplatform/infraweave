@@ -1675,8 +1675,12 @@ context in the assignment with P18b.
    `worker.samples.retention` (35 days). `workers/api` serves the samples,
    which P18's `worker_usage` events and P18b's usage read
    ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md),
-   [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)). Tests: `TestUnitWorkerPoolSample` in virtual time,
-   and a retention case.
+   [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)).
+   The queued count comes through `workersapi.Scheduler`, which `runs`
+   implements; `SamplesBetween` takes the account with the pool. Tests:
+   `TestUnitWorkerPoolSample` in virtual time with a retention case,
+   `TestAccWorkerPoolSamples` (two writers at once write one row per
+   pool), `TestAccClaimQueued`.
 7. The [domain wiring](#adding-a-domain) of `workers`, a
    hexagon, after `access` in `domains.go` and the migration order: its
    edges to `features` and `access`, and the edges waiting on it, `stacks`

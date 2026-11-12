@@ -80,6 +80,19 @@ func (s *store) Next(
 	}), true, nil
 }
 
+func (s *store) Waiting(
+	_ context.Context,
+	states []kernel.RunState,
+) (map[kernel.ULID]int, error) {
+	out := map[kernel.ULID]int{}
+	for _, r := range s.runs {
+		if r.WorkerPool != nil && slices.Contains(states, r.State) {
+			out[*r.WorkerPool]++
+		}
+	}
+	return out, nil
+}
+
 func (s *store) Assign(_ context.Context, run lifecycle.Run, w kernel.ULID) error {
 	s.find(run.ID).Worker = &w
 	return nil
@@ -189,6 +202,10 @@ func TestUnitClaimOrder(t *testing.T) {
 			t.Errorf("run %s claimed into %s at %d", a.Run, a.State, a.StateVersion)
 		}
 		return a.Run, ok
+	}
+	if got, err := c.Queued(t.Context()); err != nil || got[pool] != len(s.runs) ||
+		len(got) != 1 {
+		t.Errorf("Queued = %v, %v, want %d in %s", got, err, len(s.runs), pool)
 	}
 	first := kernel.NewULID()
 	for i, want := range []kernel.ULID{high, tracked, older, tied[0], tied[1], lowRun} {

@@ -576,9 +576,10 @@ func TestAccPoolSearch(t *testing.T) {
 	}
 }
 
-// TestAccPoolPurgeAndGuard deletes a pool with its workers and nonces,
-// purges a deleted account's runner images, pools, workers and nonces a
-// batch at a time, and reports the spaces pools live in.
+// TestAccPoolPurgeAndGuard deletes a pool with its workers and nonces but
+// not its samples, purges a deleted account's samples, runner images,
+// pools, workers and nonces a batch at a time, and reports the spaces
+// pools live in.
 func TestAccPoolPurgeAndGuard(t *testing.T) {
 	f := newFixture(t)
 	ctx := t.Context()
@@ -613,6 +614,9 @@ func TestAccPoolPurgeAndGuard(t *testing.T) {
 		}
 		return n
 	}
+	if n, err := f.store.Sample(ctx, time.Now(), nil); err != nil || n != 2 {
+		t.Fatalf("Sample = %d, %v", n, err)
+	}
 	guard := f.svc.SpaceGuard()
 	if in, err := guard.SpaceInUse(ctx, f.acct, f.team); err != nil || !in {
 		t.Errorf("SpaceInUse(team) = %t, %v", in, err)
@@ -626,14 +630,16 @@ func TestAccPoolPurgeAndGuard(t *testing.T) {
 	if _, err := f.svc.Delete(ctx, f.admin, ids[0].String(), kernel.Expect{}); err != nil {
 		t.Fatal(err)
 	}
-	if count("workers") != 1 || count("worker_nonces") != 1 || count("worker_pools") != 1 {
-		t.Errorf("after a delete: %d workers, %d nonces, %d pools",
-			count("workers"), count("worker_nonces"), count("worker_pools"))
+	if count("workers") != 1 || count("worker_nonces") != 1 || count("worker_pools") != 1 ||
+		count("worker_pool_samples") != 2 {
+		t.Errorf("after a delete: %d workers, %d nonces, %d pools, %d samples",
+			count("workers"), count("worker_nonces"), count("worker_pools"),
+			count("worker_pool_samples"))
 	}
 	if err := f.store.SetRunnerImages(ctx, f.acct, images.Images{Private: ptr("x")}); err != nil {
 		t.Fatal(err)
 	}
-	for range 4 {
+	for range 6 {
 		done, err := f.svc.Purge(ctx, f.acct, 1)
 		if err != nil || done {
 			t.Fatalf("Purge = %t, %v", done, err)
@@ -666,7 +672,13 @@ func TestAccUnavailable(t *testing.T) {
 		"Delete":  s.Delete(ctx, acct, p.ID),
 		"InSpace": func() error { _, err := s.InSpace(ctx, acct, p.ID); return err }(),
 		"Purge":   func() error { _, err := s.Purge(ctx, acct, 1); return err }(),
-		"Search":  func() error { _, err := s.Search(ctx, acct, search.Input{}, pool.Scope{}); return err }(),
+		"Sample":  func() error { _, err := s.Sample(ctx, time.Now(), nil); return err }(),
+		"Prune":   func() error { _, err := s.Prune(ctx, time.Now(), 1); return err }(),
+		"Between": func() error {
+			_, err := s.Between(ctx, acct, p.ID, time.Time{}, time.Now())
+			return err
+		}(),
+		"Search": func() error { _, err := s.Search(ctx, acct, search.Input{}, pool.Scope{}); return err }(),
 		"Suggest": func() error {
 			_, err := s.Suggest(ctx, acct, search.SuggestionsInput{}, pool.Scope{})
 			return err
@@ -680,7 +692,7 @@ func TestAccUnavailable(t *testing.T) {
 	if _, err := s.Share(ctx, acct, p.ID); err == nil || errors.Is(err, pool.ErrNotFound) {
 		t.Errorf("Share on a closed pool = %v", err)
 	}
-	if len(pg.Held()) != 7 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
+	if len(pg.Held()) != 8 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
 		t.Errorf("held %v, keys %v, sealed %v", pg.Held(), pg.Keys(), pg.SealedColumns())
 	}
 }

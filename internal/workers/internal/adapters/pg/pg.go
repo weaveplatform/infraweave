@@ -41,7 +41,8 @@ func Stream() migrate.Stream {
 
 // Held are the workers columns that hold other domains' rows: each
 // table's account, a pool's and a worker's organization, and a pool's
-// space.
+// space. A sample names its pool without holding it, since a deleted
+// pool's samples stay until they expire.
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "worker_pools", Columns: []string{"account_id"}},
@@ -50,6 +51,7 @@ func Held() []integrity.Held {
 		{Entity: "organization", Table: "workers", Columns: []string{"organization_id"}},
 		{Entity: "account", Table: "worker_nonces", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "worker_runner_images", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "worker_pool_samples", Columns: []string{"account_id"}},
 		{Entity: "space", Table: "worker_pools", Columns: []string{"account_id", "space_id"}},
 	}
 }
@@ -332,6 +334,7 @@ func (s *Store) InSpace(
 // purged are the tables Purge empties of an account, each with the key
 // that names a row within the account, a pool's rows last.
 var purged = []struct{ table, key string }{
+	{"worker_pool_samples", "worker_pool_id, sampled_at"},
 	{"worker_runner_images", "account_id"},
 	{"worker_nonces", "pool_id, jti"},
 	{"workers", "id"},
@@ -339,8 +342,8 @@ var purged = []struct{ table, key string }{
 }
 
 // Purge deletes up to batch of the deleted account acct's rows from the
-// first of its runner images, nonces, workers and pools that has any,
-// and reports whether none is left.
+// first of its pool samples, runner images, nonces, workers and pools
+// that has any, and reports whether none is left.
 func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {
 	for _, p := range purged {
 		tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM `+p.table+

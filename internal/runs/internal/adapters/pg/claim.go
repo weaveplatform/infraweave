@@ -131,6 +131,33 @@ func (s *Store) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULI
 	return nil
 }
 
+// Waiting counts the runs in one of states of each private pool. The
+// partial index runs_claimable serves it for the claimable states.
+func (s *Store) Waiting(
+	ctx context.Context,
+	states []kernel.RunState,
+) (map[kernel.ULID]int, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT worker_pool_id, count(*) FROM runs
+		WHERE state = ANY($1) AND worker_pool_id IS NOT NULL
+		GROUP BY worker_pool_id`, names(states))
+	if err != nil {
+		return nil, fmt.Errorf("runs: count the queued runs: %w", sql.Unavailable(err))
+	}
+	out := map[kernel.ULID]int{}
+	var (
+		pool kernel.ULID
+		n    int
+	)
+	_, err = pgx.ForEachRow(rows, []any{&pool, &n}, func() error {
+		out[pool] = n
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: count the queued runs: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 var _ schedule.LivenessStore = (*Store)(nil)
 
 // Held reads and locks the runs worker holds. The partial index

@@ -6,9 +6,11 @@
 // edge the runs domain implements: a worker's Claim of the run that has
 // waited longest in its pool's first tier, answered as an Assignment, and
 // the Handover of a claimed run, its Spec in clear and its secrets for
-// the workers domain to seal to the pool's key; ErrNotOnWorker when the
-// run is not on a worker. Waiting is the notification payload that wakes
-// a held poll for a run.
+// the workers domain to seal to the pool's key, and the Queued runs of
+// each pool that a pool Sample counts; ErrNotOnWorker when the run is not
+// on a worker. Waiting is the notification payload that wakes a held poll
+// for a run. Samples is the read of a pool's minute samples that the
+// usage assessment and the usage read models make.
 //
 // # Input and output
 //
@@ -18,5 +20,6 @@
 //
 // It imports the standard library and internal/kernel. The stacks domain
 // imports it and implements PoolGuard; the runs domain imports it and
-// implements Scheduler; the workers domain's assembly implements Pools.
+// implements Scheduler; the workers domain's assembly implements Pools
+// and Samples.
 package api

@@ -13,12 +13,16 @@
 // workersapi.Scheduler its polls claim runs through, WatchPolls wakes its
 // held polls from infraweave_runs, all of a pool's or, for a waiting run,
 // one, and StopPolls answers them as the replica shuts down;
-// BindLiveness binds the runs domain's workersapi.Liveness, and Cron is
+// BindLiveness binds the runs domain's workersapi.Liveness; Cron is
 // worker.reap, every 30 seconds on the scheduler queue, which marks
 // silent workers offline, deletes lost ones and fails their runs, and
-// fails overdue preparations; Settings are worker.poll_timeout_max and
-// worker.offline_after; Purge deletes a deleted
-// account's runner images, pools, workers and nonces PurgeBatch rows at a
+// fails overdue preparations, and worker.sample, every minute on the same
+// queue, which writes each pool's sample of its workers and queued runs,
+// counted through the bound scheduler, and deletes the expired ones;
+// Samples is the workersapi.Samples other domains read them through;
+// Settings are worker.poll_timeout_max, worker.offline_after and
+// worker.samples.retention; Purge deletes a deleted account's pool
+// samples, runner images, pools, workers and nonces PurgeBatch rows at a
 // time, which internal/app runs for each accessapi.Deleted.
 //
 // # Input and output
@@ -27,8 +31,8 @@
 //
 // # Dependencies
 //
-// It imports the domain's http, pg, protocol, images, pool and worker
-// packages, the access and workers api packages, internal/kernel,
+// It imports the domain's http, pg, protocol, images, pool, sample and
+// worker packages, the access and workers api packages, internal/kernel,
 // platform/cron, platform/crypt, platform/queue, the generated worker
 // server, platform/sql's integrity, migrate and notify packages, and
 // platform/tx. Only internal/app

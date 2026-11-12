@@ -422,6 +422,11 @@ func (s *scheduler) Claim(
 	return a, true, nil
 }
 
+// Queued counts no waiting run; the pool samples' tests count them.
+func (*scheduler) Queued(context.Context) (map[kernel.ULID]int, error) {
+	return map[kernel.ULID]int{}, nil
+}
+
 // TestUnitProtocolAssignment checks that a poll that claims a run
 // answers it with its state and run token.
 func TestUnitProtocolAssignment(t *testing.T) {
