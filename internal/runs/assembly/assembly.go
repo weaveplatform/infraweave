@@ -140,7 +140,7 @@ func New(d Deps) *Domain {
 			Environment: d.Environment, Tokens: d.Tokens,
 		}),
 		reports: report.New(report.Deps{
-			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc,
+			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
 		}),
 		trigger: trigger.New(trigger.Deps{
 			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,

@@ -144,6 +144,19 @@ components:
             title: API disabled for this caller
             status: 503
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    InvalidRequest:
+      description: >-
+        The request is malformed: its body does not match the operation's
+        schema, or carries a field the operation refuses in this case.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:invalid-request
+            title: invalid request
+            status: 400
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     InvalidState:
       description: >-
         The run is not on a worker, so its run token is refused, or the

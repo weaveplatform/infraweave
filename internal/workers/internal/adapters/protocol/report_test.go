@@ -86,6 +86,17 @@ func TestUnitProtocolRunReports(t *testing.T) {
 	}) {
 		t.Errorf("reported %+v", r.report)
 	}
+	code, _ = f.call(t, path+"/reports", token, map[string]any{
+		"stateVersion": 4, "state": "PLANNING", "event": "succeeded",
+		"delta": map[string]any{
+			"add": 1, "change": 2, "delete": 3, "import": 4, "outputs": true,
+		},
+	})
+	if code != http.StatusOK || r.report.Delta == nil || *r.report.Delta != (workersapi.Delta{
+		Add: 1, Change: 2, Delete: 3, Import: 4, Outputs: true,
+	}) {
+		t.Errorf("a report with a delta = %d, reported %+v", code, r.report)
+	}
 
 	code, signed := f.call(t, path+"/upload-urls", token, map[string]any{
 		"stateVersion": 4,
@@ -135,12 +146,12 @@ func TestUnitProtocolRunReports(t *testing.T) {
 		code int
 		typ  string
 	}{
-		workersapi.ErrNotOnWorker:    {http.StatusConflict, "invalid-state"},
-		workersapi.ErrMovedOn:        {http.StatusConflict, "invalid-state"},
-		workersapi.ErrReportRefused:  {http.StatusConflict, "invalid-state"},
-		workersapi.ErrUploadExists:   {http.StatusConflict, "already-exists"},
-		workersapi.ErrNoWorkspace:    {http.StatusNotFound, "not-found"},
-		workersapi.ErrNoPlanDecision: {http.StatusNotImplemented, "not-implemented"},
+		workersapi.ErrNotOnWorker:   {http.StatusConflict, "invalid-state"},
+		workersapi.ErrMovedOn:       {http.StatusConflict, "invalid-state"},
+		workersapi.ErrReportRefused: {http.StatusConflict, "invalid-state"},
+		workersapi.ErrUploadExists:  {http.StatusConflict, "already-exists"},
+		workersapi.ErrNoWorkspace:   {http.StatusNotFound, "not-found"},
+		workersapi.ErrDeltaRefused:  {http.StatusBadRequest, "invalid-request"},
 	} {
 		r.err = err
 		code, p := f.call(t, path+"/reports", token, report)

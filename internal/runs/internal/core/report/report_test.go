@@ -21,20 +21,43 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 var errDown = errors.New("down")
 
 // store holds one run, the states it entered by state version, its
-// indexed chunks and recorded objects; the named method in fail fails.
+// indexed chunks, recorded objects and kept deltas; the named method in
+// fail fails.
 type store struct {
 	run      lifecycle.Run
 	states   map[int64]kernel.RunState
 	chunks   map[int64]report.Chunk
 	recorded map[string]report.Artifact
+	deltas   []workersapi.Delta
 	purge    [][]report.Object
 	fail     string
+}
+
+func (s *store) SetDelta(_ context.Context, _ lifecycle.Run, d workersapi.Delta) error {
+	if err := s.err("SetDelta"); err != nil {
+		return err
+	}
+	s.deltas = append(s.deltas, d)
+	return nil
+}
+
+// stacks answers every stack's settings as settings, failing with err.
+type stacks struct {
+	settings stacksapi.Settings
+	err      error
+}
+
+func (s *stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings,
+	error,
+) {
+	return s.settings, s.err
 }
 
 func (s *store) err(m string) error {
@@ -209,6 +232,7 @@ type world struct {
 	s   *store
 	o   *objects
 	m   *mover
+	st  *stacks
 	svc *report.Service
 }
 
@@ -227,8 +251,9 @@ func newWorld(typ kernel.RunType, state kernel.RunState) *world {
 	}
 	o := &objects{begun: map[string][]byte{}, uploaded: map[string]objectstore.Object{}}
 	m := &mover{s: s}
-	return &world{s: s, o: o, m: m, svc: report.New(report.Deps{
-		DB: db{}, Store: s, Objects: o, Lifecycle: m,
+	st := &stacks{}
+	return &world{s: s, o: o, m: m, st: st, svc: report.New(report.Deps{
+		DB: db{}, Store: s, Objects: o, Lifecycle: m, Stacks: st,
 	})}
 }
 
@@ -242,12 +267,18 @@ func (w *world) report(t *testing.T, v int64, state kernel.RunState,
 	ev workersapi.ReportEvent,
 ) (workersapi.Step, error) {
 	t.Helper()
+	return w.send(t, workersapi.Report{
+		StateVersion: v, State: state, Event: ev, Details: "exit code 0",
+	})
+}
+
+// send reports r in a transaction.
+func (w *world) send(t *testing.T, r workersapi.Report) (workersapi.Step, error) {
+	t.Helper()
 	var out workersapi.Step
 	err := in(t, func(ctx context.Context) error {
 		var err error
-		out, err = w.svc.Report(ctx, w.s.run.ID, workersapi.Report{
-			StateVersion: v, State: state, Event: ev, Details: "exit code 0",
-		})
+		out, err = w.svc.Report(ctx, w.s.run.ID, r)
 		return err
 	})
 	return out, err
@@ -265,7 +296,7 @@ func want(t *testing.T, got workersapi.Step, err error, a workersapi.Action,
 // TestUnitReport walks a tracked run from its handover: the first started
 // report ends the handover, its repeat answers alike, a started report
 // of the state the run is in changes nothing, a succeeded report enters
-// the next phase, one of PLANNING needs the plan decision, and a failed
+// the next phase, one of PLANNING needs the plan's delta, and a failed
 // report ends the run; a report one behind is answered as it was only
 // when it took the run's last transition, and an older one is refused.
 func TestUnitReport(t *testing.T) {
@@ -300,7 +331,7 @@ func TestUnitReport(t *testing.T) {
 		ev    workersapi.ReportEvent
 		err   error
 	}{
-		"plan decision":     {4, kernel.RunStatePlanning, succeeded, workersapi.ErrNoPlanDecision},
+		"no delta":          {4, kernel.RunStatePlanning, succeeded, workersapi.ErrDeltaRefused},
 		"another state":     {4, kernel.RunStateApplying, failed, workersapi.ErrReportRefused},
 		"started handover":  {4, kernel.RunStateApplying, started, workersapi.ErrReportRefused},
 		"one behind, other": {3, kernel.RunStateInitializing, failed, workersapi.ErrMovedOn},
@@ -399,6 +430,149 @@ func TestUnitReportEdges(t *testing.T) {
 			StateVersion: 7,
 		}) {
 		t.Errorf("a run awaiting confirmation: %+v", s)
+	}
+}
+
+// TestUnitPlanDecision checks the plan decision with no plan policy
+// attached against each row of its table: the state it moves the run to,
+// driven by the decision, the step it answers, and the delta kept on the
+// run.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+func TestUnitPlanDecision(t *testing.T) {
+	none, adds := workersapi.Delta{}, workersapi.Delta{Add: 1}
+	auto := stacksapi.Settings{Autodeploy: true}
+	locked := stacksapi.Settings{Autodeploy: true, Lock: &stacksapi.Lock{Holder: "user:alice"}}
+	for name, tc := range map[string]struct {
+		typ    kernel.RunType
+		delta  workersapi.Delta
+		stack  stacksapi.Settings
+		to     kernel.RunState
+		action workersapi.Action
+	}{
+		"proposed with changes": {
+			kernel.RunTypeProposed, adds, auto, kernel.RunStateFinished, workersapi.ActionExit,
+		},
+		"tracked without changes": {
+			kernel.RunTypeTracked, none, auto, kernel.RunStateFinished, workersapi.ActionExit,
+		},
+		"tracked, autodeploy, unlocked": {
+			kernel.RunTypeTracked, adds, auto, kernel.RunStateApplying, workersapi.ActionExecute,
+		},
+		"tracked, outputs alone": {
+			kernel.RunTypeTracked,
+			workersapi.Delta{Outputs: true},
+			auto,
+			kernel.RunStateApplying, workersapi.ActionExecute,
+		},
+		"tracked, imports alone": {
+			kernel.RunTypeTracked,
+			workersapi.Delta{Import: 2},
+			auto,
+			kernel.RunStateApplying, workersapi.ActionExecute,
+		},
+		"tracked, deletes alone, no autodeploy": {
+			kernel.RunTypeTracked,
+			workersapi.Delta{Delete: 3},
+			stacksapi.Settings{},
+			kernel.RunStateUnconfirmed, workersapi.ActionPause,
+		},
+		"tracked, changes, locked": {
+			kernel.RunTypeTracked,
+			workersapi.Delta{Change: 1},
+			locked,
+			kernel.RunStateUnconfirmed, workersapi.ActionPause,
+		},
+		"test case without changes": {
+			kernel.RunTypeTesting, none,
+			stacksapi.Settings{},
+			kernel.RunStateApplying,
+			workersapi.ActionExecute,
+		},
+	} {
+		w := newWorld(tc.typ, kernel.RunStatePlanning)
+		w.st.settings = tc.stack
+		got, err := w.send(t, workersapi.Report{
+			StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportSucceeded,
+			Delta: &tc.delta,
+		})
+		if err != nil || got.Action != tc.action || got.State != tc.to || got.StateVersion != 3 {
+			t.Errorf("%s: step %+v, %v; want %s %s", name, got, err, tc.action, tc.to)
+		}
+		if len(w.m.reqs) != 1 || w.m.reqs[0].Driver != machine.DriverDecision ||
+			len(w.s.deltas) != 1 || w.s.deltas[0] != tc.delta {
+			t.Errorf("%s: moved %+v, kept %v", name, w.m.reqs, w.s.deltas)
+		}
+		if d := report.Decision(tc.typ, tc.delta, tc.stack); d != tc.to {
+			t.Errorf("%s: Decision = %s", name, d)
+		}
+	}
+}
+
+// TestUnitPlanDecisionReports checks the planning reports around the
+// decision: a delta on any other report and none on a succeeded one are
+// refused, a repeat finds the run's decision even after the stack
+// changed, a run the decision took off its worker is not on one, and the
+// stacks' and the store's failures fail the report.
+func TestUnitPlanDecisionReports(t *testing.T) {
+	adds := &workersapi.Delta{Add: 1}
+	planned := workersapi.Report{
+		StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportSucceeded,
+		Delta: adds,
+	}
+	w := newWorld(kernel.RunTypeTracked, kernel.RunStatePlanning)
+	failed := workersapi.Report{
+		StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportFailed,
+		Delta: adds,
+	}
+	for name, r := range map[string]workersapi.Report{
+		"a delta on a failed report": failed,
+		"no delta":                   {StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportSucceeded},
+	} {
+		if _, err := w.send(t, r); !errors.Is(err, workersapi.ErrDeltaRefused) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+
+	w.st.settings = stacksapi.Settings{Autodeploy: true}
+	got, err := w.send(t, planned)
+	want(t, got, err, workersapi.ActionExecute, kernel.RunStateApplying, 3)
+	w.st.settings.Lock = &stacksapi.Lock{Holder: "user:alice"}
+	got, err = w.send(t, planned)
+	want(t, got, err, workersapi.ActionExecute, kernel.RunStateApplying, 3)
+	if len(w.m.reqs) != 1 || len(w.s.deltas) != 1 {
+		t.Errorf("a repeated planning report moved %+v, kept %v", w.m.reqs, w.s.deltas)
+	}
+	ahead := planned
+	ahead.StateVersion = 3
+	if _, err := w.send(t, ahead); !errors.Is(err, workersapi.ErrReportRefused) {
+		t.Errorf("a planning report while APPLYING: %v", err)
+	}
+
+	w = newWorld(kernel.RunTypeTracked, kernel.RunStatePlanning)
+	got, err = w.send(t, planned)
+	want(t, got, err, workersapi.ActionPause, kernel.RunStateUnconfirmed, 3)
+	if _, err := w.send(t, planned); !errors.Is(err, workersapi.ErrNotOnWorker) {
+		t.Errorf("a repeat once UNCONFIRMED: %v", err)
+	}
+
+	w = newWorld(kernel.RunTypeProposed, kernel.RunStateApplying)
+	w.s.states[1] = kernel.RunStatePlanning
+	behind := planned
+	behind.StateVersion = 1
+	if _, err := w.send(t, behind); !errors.Is(err, workersapi.ErrMovedOn) {
+		t.Errorf("a repeat no decision explains: %v", err)
+	}
+
+	w = newWorld(kernel.RunTypeTracked, kernel.RunStatePlanning)
+	w.st.err = errDown
+	if _, err := w.send(t, planned); !errors.Is(err, errDown) || len(w.m.reqs) != 0 {
+		t.Errorf("the stacks fail: %v after %+v", err, w.m.reqs)
+	}
+	w = newWorld(kernel.RunTypeTracked, kernel.RunStatePlanning)
+	w.s.fail = "SetDelta"
+	if _, err := w.send(t, planned); !errors.Is(err, errDown) || len(w.m.reqs) != 0 {
+		t.Errorf("the delta's write fails: %v after %+v", err, w.m.reqs)
 	}
 }
 

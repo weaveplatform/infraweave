@@ -198,12 +198,32 @@ const (
 
 // Report is a worker's report on a phase of its run: the state version
 // it last learned, the state the phase is, what happened, and what the
-// worker says about it, which the transition records as its note.
+// worker says about it, which the transition records as its note. Delta
+// is the plan's, which a succeeded report of PLANNING carries and no
+// other report does.
 type Report struct {
 	StateVersion int64
 	State        kernel.RunState
 	Event        ReportEvent
 	Details      string
+	Delta        *Delta
+}
+
+// Delta is what a run's plan changes: the resources it adds, changes in
+// place, deletes and imports, and whether any root module output changes.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+type Delta struct {
+	Add     int
+	Change  int
+	Delete  int
+	Import  int
+	Outputs bool
+}
+
+// Changes reports whether the plan changes any resource or output.
+func (d Delta) Changes() bool {
+	return d.Add > 0 || d.Change > 0 || d.Delete > 0 || d.Import > 0 || d.Outputs
 }
 
 // Action is what a report's answer tells the worker to do.
@@ -285,9 +305,11 @@ var (
 	ErrMovedOn = errors.New("workers: the run moved on from that state version")
 	// ErrReportRefused reports a report the run's state cannot take.
 	ErrReportRefused = errors.New("workers: the run's state cannot take the report")
-	// ErrNoPlanDecision reports a succeeded report of PLANNING, whose plan
-	// decision the server does not take yet.
-	ErrNoPlanDecision = errors.New("workers: the server takes no plan decision")
+	// ErrDeltaRefused reports a succeeded report of PLANNING without a
+	// delta, or another report with one.
+	ErrDeltaRefused = errors.New(
+		"workers: a delta comes with a succeeded report of PLANNING, and with it alone",
+	)
 	// ErrUploadExists reports an upload whose name the run's state version
 	// already declared with another size or SHA-256, or recorded.
 	ErrUploadExists = errors.New("workers: the upload's name is taken")

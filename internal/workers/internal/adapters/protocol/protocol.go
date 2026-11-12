@@ -49,7 +49,7 @@ func bearer(ctx context.Context) (accessapi.Bearer, error) {
 // the problems that answer them: 409 invalid-state for a run off its
 // worker, a state version it moved on from, or a report its state cannot
 // take; 409 already-exists for an upload name taken; 404 for a run with
-// no workspace; and 501 for a report that needs the plan decision.
+// no workspace; and 400 for a report whose delta is missing or misplaced.
 var refusals = []struct {
 	err    error
 	typ    problem.Type
@@ -64,8 +64,8 @@ var refusals = []struct {
 	},
 	{workersapi.ErrNoWorkspace, problem.NotFound, "The run has no saved workspace."},
 	{
-		workersapi.ErrNoPlanDecision, problem.NotImplemented,
-		"The server takes no plan decision, so it cannot take a succeeded report of PLANNING.",
+		workersapi.ErrDeltaRefused, problem.InvalidRequest,
+		"A succeeded report of PLANNING carries the plan's delta, and no other report does.",
 	},
 }
 
