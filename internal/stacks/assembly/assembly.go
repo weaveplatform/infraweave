@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/http"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // Stream is the stacks domain's migration stream.
@@ -35,16 +36,18 @@ const (
 )
 
 // Deps are what the stacks domain takes from the platform and the access
-// domain: the database, the spaces a stack lives in and holds, the
-// authorizer that decides the checks beyond each route's and a stack's
-// allowedActions, the stacks' role bindings and the grants that reach a
-// space for them, and the outbox its writes append StackChanged to.
+// and workers domains: the database, the spaces a stack lives in and
+// holds, the authorizer that decides the checks beyond each route's and a
+// stack's allowedActions, the stacks' role bindings and the grants that
+// reach a space for them, the worker pools a stack names, and the outbox
+// its writes append StackChanged to.
 type Deps struct {
 	DB       pg.DB
 	Spaces   accessapi.Spaces
 	Authz    accessapi.Authorizer
 	Bindings accessapi.Bindings
 	Grants   accessapi.Grants
+	Pools    workersapi.Pools
 	Events   *outbox.Outbox
 	Now      func() time.Time
 }
@@ -61,7 +64,7 @@ func New(d Deps) *Domain {
 	store := pg.New(d.DB)
 	svc := core.New(core.Deps{
 		Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Bindings: d.Bindings,
-		Grants: d.Grants, Events: d.Events, Now: d.Now,
+		Grants: d.Grants, Pools: d.Pools, Events: d.Events, Now: d.Now,
 	})
 	return &Domain{stacks: svc, store: store, api: http.New(svc, d.Authz, d.Spaces)}
 }
@@ -122,6 +125,10 @@ func (d *Domain) SetStackStatus(s stacksapi.StackStatus) { d.api.SetStackStatus(
 // SpaceGuard is the domain's say in the access domain's space deletes and
 // moves, which internal/app registers there.
 func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.stacks }
+
+// PoolGuard is the domain's say in the workers domain's pool deletes and
+// moves, which internal/app registers there.
+func (d *Domain) PoolGuard() workersapi.PoolGuard { return d.stacks }
 
 // SpaceOf finds a stack's space by its slug, which internal/app registers
 // with the access domain for Entity.

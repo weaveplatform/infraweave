@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/http"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
@@ -60,6 +61,14 @@ func (s *store) Search(
 	return out, s.fail
 }
 
+func (s *store) RunnerImages(context.Context, kernel.AccountID) (images.Images, error) {
+	return images.Images{}, s.fail
+}
+
+func (s *store) SetRunnerImages(context.Context, kernel.AccountID, images.Images) error {
+	return s.fail
+}
+
 func (s *store) Suggest(
 	context.Context,
 	kernel.AccountID,
@@ -78,6 +87,10 @@ type spaces struct {
 
 func (s spaces) Slugs(context.Context, kernel.AccountID) (map[kernel.ULID]string, error) {
 	return map[kernel.ULID]string{}, s.fail
+}
+
+func (s spaces) Find(context.Context, kernel.AccountID, string) (kernel.ULID, error) {
+	return kernel.NewULID(), s.fail
 }
 
 func (spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode, error) {
@@ -131,7 +144,13 @@ func newFixture(t *testing.T) *fixture {
 		}
 	}
 	svc := pool.New(pool.Deps{Store: f.store, DB: db{}, Spaces: f.sp, Authz: f.az})
-	f.srv = http.New(svc, f.az, f.sp)
+	svc.BindStacks(func(_ context.Context, _ kernel.AccountID, id string) (kernel.ULID, error) {
+		if id == "gone" {
+			return kernel.ULID{}, accessapi.ErrNoSubject
+		}
+		return space, nil
+	})
+	f.srv = http.New(svc, images.New(f.store), f.az, f.sp)
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +190,27 @@ func (f *fixture) calls(ctx context.Context) map[string]error {
 			WorkerPoolId: id,
 			Body:         &api.WorkerPoolResetJSONRequestBody{CertificateSigningRequest: f.csr},
 		})),
+		"StackAttachableWorkerPools": second(f.srv.StackAttachableWorkerPools(ctx,
+			api.StackAttachableWorkerPoolsRequestObject{StackId: "infra"})),
+		"AttachableWorkerPoolsInSpace": second(f.srv.AttachableWorkerPoolsInSpace(ctx,
+			api.AttachableWorkerPoolsInSpaceRequestObject{
+				Params: api.AttachableWorkerPoolsInSpaceParams{Id: "team"},
+			})),
+		"DefaultPrivateWorkerPoolRunnerImage": second(f.srv.DefaultPrivateWorkerPoolRunnerImage(ctx,
+			api.DefaultPrivateWorkerPoolRunnerImageRequestObject{})),
+		"AccountUpdateDefaultWorkerPoolRunnerImages": second(
+			f.srv.AccountUpdateDefaultWorkerPoolRunnerImages(ctx,
+				api.AccountUpdateDefaultWorkerPoolRunnerImagesRequestObject{
+					Body: &api.AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody{},
+				})),
 	}
+}
+
+// store answers only through the store, which no access domain failure
+// reaches.
+var storeOnly = map[string]bool{
+	"SearchWorkerPools": true, "SearchWorkerPoolsSuggestions": true,
+	"DefaultPrivateWorkerPoolRunnerImage": true, "AccountUpdateDefaultWorkerPoolRunnerImages": true,
 }
 
 func second[T any](_ T, err error) error { return err }
@@ -205,8 +244,7 @@ func TestUnitFailures(t *testing.T) {
 		f := newFixture(t)
 		fail(f)
 		for call, err := range f.calls(ctx) {
-			searches := call == "SearchWorkerPools" || call == "SearchWorkerPoolsSuggestions"
-			if searches && name != "store" {
+			if storeOnly[call] && name != "store" {
 				continue
 			}
 			if !errors.Is(err, errBoom) {
@@ -229,7 +267,8 @@ func TestUnitFailures(t *testing.T) {
 	}
 }
 
-// TestUnitMissing checks that a pool the account lacks answers 404.
+// TestUnitMissing checks that a pool or a stack the account lacks
+// answers 404.
 func TestUnitMissing(t *testing.T) {
 	f := newFixture(t)
 	ctx := signedIn(t)
@@ -238,5 +277,10 @@ func TestUnitMissing(t *testing.T) {
 		if pe, ok := errors.AsType[*problem.Error](err); !ok || pe.Problem.Status != 404 {
 			t.Errorf("WorkerPool(%s) = %v", id, err)
 		}
+	}
+	_, err := f.srv.StackAttachableWorkerPools(ctx,
+		api.StackAttachableWorkerPoolsRequestObject{StackId: "gone"})
+	if pe, ok := errors.AsType[*problem.Error](err); !ok || pe.Problem.Status != 404 {
+		t.Errorf("StackAttachableWorkerPools(gone) = %v", err)
 	}
 }

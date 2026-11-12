@@ -33,7 +33,7 @@
 //
 // # Dependencies
 //
-// It imports stacksapi, the domain's core package for its port,
+// It imports stacksapi, workersapi, the domain's core package for its port,
 // internal/kernel, kernel/search, platform/sql, platform/sql/integrity,
 // platform/sql/migrate,
 // platform/sql/search, platform/tx and pgx. The stacks domain's assembly

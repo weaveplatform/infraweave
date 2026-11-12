@@ -2821,6 +2821,21 @@ type AccountUpdateAwarenessSourceSurveyRequest struct {
 	Response  *string `json:"response,omitempty"`
 }
 
+// AccountUpdateDefaultWorkerPoolRunnerImagesRequest The arguments of accountUpdateDefaultWorkerPoolRunnerImages not carried in the path.
+type AccountUpdateDefaultWorkerPoolRunnerImagesRequest struct {
+	// PrivateWorkerPoolRunnerImage The image a run on a private worker pool uses when neither its runtime configuration nor its stack names one. Null or empty takes the launcher's default.
+	PrivateWorkerPoolRunnerImage *string `json:"privateWorkerPoolRunnerImage,omitempty"`
+
+	// PublicWorkerPoolRunnerImage The image a run on the public worker pool uses when neither its runtime configuration nor its stack names one. Null or empty takes the launcher's default.
+	PublicWorkerPoolRunnerImage *string `json:"publicWorkerPoolRunnerImage,omitempty"`
+}
+
+// AccountUpdateDefaultWorkerPoolRunnerImagesResult defines model for AccountUpdateDefaultWorkerPoolRunnerImagesResult.
+type AccountUpdateDefaultWorkerPoolRunnerImagesResult struct {
+	PrivateWorkerPoolRunnerImage *string `json:"privateWorkerPoolRunnerImage,omitempty"`
+	PublicWorkerPoolRunnerImage  *string `json:"publicWorkerPoolRunnerImage,omitempty"`
+}
+
 // AccountUpdateSecurityEmailRequest The arguments of accountUpdateSecurityEmail not carried in the path.
 type AccountUpdateSecurityEmailRequest struct {
 	SecurityEmail string `json:"securityEmail"`
@@ -9931,6 +9946,12 @@ type AccountUpdateAwarenessSourceSurveyParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AccountUpdateDefaultWorkerPoolRunnerImagesParams defines parameters for AccountUpdateDefaultWorkerPoolRunnerImages.
+type AccountUpdateDefaultWorkerPoolRunnerImagesParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // AccountUpdateSecurityEmailParams defines parameters for AccountUpdateSecurityEmail.
 type AccountUpdateSecurityEmailParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -11596,6 +11617,9 @@ type AccountToggleDeletionMarkJSONRequestBody = AccountToggleDeletionMarkRequest
 
 // AccountUpdateAwarenessSourceSurveyJSONRequestBody defines body for AccountUpdateAwarenessSourceSurvey for application/json ContentType.
 type AccountUpdateAwarenessSourceSurveyJSONRequestBody = AccountUpdateAwarenessSourceSurveyRequest
+
+// AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody defines body for AccountUpdateDefaultWorkerPoolRunnerImages for application/json ContentType.
+type AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody = AccountUpdateDefaultWorkerPoolRunnerImagesRequest
 
 // AccountUpdateSecurityEmailJSONRequestBody defines body for AccountUpdateSecurityEmail for application/json ContentType.
 type AccountUpdateSecurityEmailJSONRequestBody = AccountUpdateSecurityEmailRequest
@@ -13895,6 +13919,24 @@ type ClientInterface interface {
 	// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
 	AccountUpdateAwarenessSourceSurvey(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AccountUpdateDefaultWorkerPoolRunnerImagesWithBody Account Update Default Worker Pool Runner Images
+	//
+	// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+	AccountUpdateDefaultWorkerPoolRunnerImagesWithBody(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateDefaultWorkerPoolRunnerImages Account Update Default Worker Pool Runner Images
+	//
+	// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+	AccountUpdateDefaultWorkerPoolRunnerImages(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, body AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AccountUpdateSecurityEmailWithBody Account Update Security Email
 	//
 	// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
@@ -14164,7 +14206,7 @@ type ClientInterface interface {
 
 	// AttachableWorkerPoolsInSpace Attachable Worker Pools
 	//
-	// List of worker pools that can be attached Stacks/Modules in given space.
+	// The private worker pools a stack in the space id may name, by name: those in the space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 	//
 	// Corresponds with GET /attachable-worker-pools-in-space (the `AttachableWorkerPoolsInSpace` operationId).
 	AttachableWorkerPoolsInSpace(ctx context.Context, params *AttachableWorkerPoolsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -14858,7 +14900,7 @@ type ClientInterface interface {
 
 	// DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 	//
-	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+	// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
 	//
 	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 	DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16493,7 +16535,7 @@ type ClientInterface interface {
 
 	// StackAttachableWorkerPools Stack attachable worker pools
 	//
-	// List of worker pools that can be attached to this Stack.
+	// The private worker pools this stack may name, by name: those in its space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 	//
 	// Corresponds with GET /stacks/{stackId}/attachable-worker-pools (the `StackAttachableWorkerPools` operationId).
 	StackAttachableWorkerPools(ctx context.Context, stackId string, params *StackAttachableWorkerPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -18050,6 +18092,44 @@ func (c *Client) AccountUpdateAwarenessSourceSurvey(ctx context.Context, params 
 	return c.Client.Do(req)
 }
 
+// AccountUpdateDefaultWorkerPoolRunnerImagesWithBody Account Update Default Worker Pool Runner Images
+//
+// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+func (c *Client) AccountUpdateDefaultWorkerPoolRunnerImagesWithBody(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateDefaultWorkerPoolRunnerImagesRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateDefaultWorkerPoolRunnerImages Account Update Default Worker Pool Runner Images
+//
+// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+func (c *Client) AccountUpdateDefaultWorkerPoolRunnerImages(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, body AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateDefaultWorkerPoolRunnerImagesRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AccountUpdateSecurityEmailWithBody Account Update Security Email
 //
 // Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
@@ -18679,7 +18759,7 @@ func (c *Client) AttachableVCSIntegrationsForProviderInSpace(ctx context.Context
 
 // AttachableWorkerPoolsInSpace Attachable Worker Pools
 //
-// List of worker pools that can be attached Stacks/Modules in given space.
+// The private worker pools a stack in the space id may name, by name: those in the space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 //
 // Corresponds with GET /attachable-worker-pools-in-space (the `AttachableWorkerPoolsInSpace` operationId).
 func (c *Client) AttachableWorkerPoolsInSpace(ctx context.Context, params *AttachableWorkerPoolsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -20193,7 +20273,7 @@ func (c *Client) ContextConfigSet(ctx context.Context, contextId string, configI
 
 // DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 //
-// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
 //
 // Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -23778,7 +23858,7 @@ func (c *Client) StackAttachablePolicies(ctx context.Context, stackId string, pa
 
 // StackAttachableWorkerPools Stack attachable worker pools
 //
-// List of worker pools that can be attached to this Stack.
+// The private worker pools this stack may name, by name: those in its space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 //
 // Corresponds with GET /stacks/{stackId}/attachable-worker-pools (the `StackAttachableWorkerPools` operationId).
 func (c *Client) StackAttachableWorkerPools(ctx context.Context, stackId string, params *StackAttachableWorkerPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -27034,6 +27114,61 @@ func NewAccountUpdateAwarenessSourceSurveyRequestWithBody(server string, params 
 	}
 
 	operationPath := fmt.Sprintf("/account/update-awareness-source-survey")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountUpdateDefaultWorkerPoolRunnerImagesRequest calls the generic AccountUpdateDefaultWorkerPoolRunnerImages builder with application/json body
+func NewAccountUpdateDefaultWorkerPoolRunnerImagesRequest(server string, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, body AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountUpdateDefaultWorkerPoolRunnerImagesRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountUpdateDefaultWorkerPoolRunnerImagesRequestWithBody constructs an http.Request for the AccountUpdateDefaultWorkerPoolRunnerImages method, with any body, and a specified content type
+func NewAccountUpdateDefaultWorkerPoolRunnerImagesRequestWithBody(server string, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/update-default-worker-pool-runner-images")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -45190,6 +45325,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /account/update-awareness-source-survey (the `AccountUpdateAwarenessSourceSurvey` operationId).
 	AccountUpdateAwarenessSourceSurveyWithResponse(ctx context.Context, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateAwarenessSourceSurveyResponse, error)
 
+	// AccountUpdateDefaultWorkerPoolRunnerImagesWithBodyWithResponse Account Update Default Worker Pool Runner Images
+	//
+	// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+	AccountUpdateDefaultWorkerPoolRunnerImagesWithBodyWithResponse(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateDefaultWorkerPoolRunnerImagesResponse, error)
+
+	// AccountUpdateDefaultWorkerPoolRunnerImagesWithResponse Account Update Default Worker Pool Runner Images
+	//
+	// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+	AccountUpdateDefaultWorkerPoolRunnerImagesWithResponse(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, body AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateDefaultWorkerPoolRunnerImagesResponse, error)
+
 	// AccountUpdateSecurityEmailWithBodyWithResponse Account Update Security Email
 	//
 	// Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
@@ -45499,7 +45652,7 @@ type ClientWithResponsesInterface interface {
 
 	// AttachableWorkerPoolsInSpaceWithResponse Attachable Worker Pools
 	//
-	// List of worker pools that can be attached Stacks/Modules in given space.
+	// The private worker pools a stack in the space id may name, by name: those in the space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -46261,7 +46414,7 @@ type ClientWithResponsesInterface interface {
 
 	// DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 	//
-	// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+	// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -48058,7 +48211,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackAttachableWorkerPoolsWithResponse Stack attachable worker pools
 	//
-	// List of worker pools that can be attached to this Stack.
+	// The private worker pools this stack may name, by name: those in its space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -50525,6 +50678,108 @@ func (r AccountUpdateAwarenessSourceSurveyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AccountUpdateAwarenessSourceSurveyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountUpdateDefaultWorkerPoolRunnerImagesResponse200Headers the declared response headers of an HTTP 200 response for AccountUpdateDefaultWorkerPoolRunnerImages
+type AccountUpdateDefaultWorkerPoolRunnerImagesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateDefaultWorkerPoolRunnerImagesResponse429Headers the declared response headers of an HTTP 429 response for AccountUpdateDefaultWorkerPoolRunnerImages
+type AccountUpdateDefaultWorkerPoolRunnerImagesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateDefaultWorkerPoolRunnerImagesResponse503Headers the declared response headers of an HTTP 503 response for AccountUpdateDefaultWorkerPoolRunnerImages
+type AccountUpdateDefaultWorkerPoolRunnerImagesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountUpdateDefaultWorkerPoolRunnerImagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AccountUpdateDefaultWorkerPoolRunnerImagesResult
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountUpdateDefaultWorkerPoolRunnerImagesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountUpdateDefaultWorkerPoolRunnerImagesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountUpdateDefaultWorkerPoolRunnerImagesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) GetJSON200() *AccountUpdateDefaultWorkerPoolRunnerImagesResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountUpdateDefaultWorkerPoolRunnerImagesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -84311,6 +84566,36 @@ func (c *ClientWithResponses) AccountUpdateAwarenessSourceSurveyWithResponse(ctx
 	return ParseAccountUpdateAwarenessSourceSurveyResponse(rsp)
 }
 
+// AccountUpdateDefaultWorkerPoolRunnerImagesWithBodyWithResponse Account Update Default Worker Pool Runner Images
+//
+// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+func (c *ClientWithResponses) AccountUpdateDefaultWorkerPoolRunnerImagesWithBodyWithResponse(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateDefaultWorkerPoolRunnerImagesResponse, error) {
+	rsp, err := c.AccountUpdateDefaultWorkerPoolRunnerImagesWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateDefaultWorkerPoolRunnerImagesResponse(rsp)
+}
+
+// AccountUpdateDefaultWorkerPoolRunnerImagesWithResponse Account Update Default Worker Pool Runner Images
+//
+// Set the account's default runner images, replacing both: the image a run on a private or on the public worker pool uses when neither its runtime configuration nor its stack names one. Each is trimmed, and null or empty takes the launcher's default. An image longer than 255 characters, or holding a space or a control character, answers 422 validation-failed. The answer is the images as stored.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-default-worker-pool-runner-images (the `AccountUpdateDefaultWorkerPoolRunnerImages` operationId).
+func (c *ClientWithResponses) AccountUpdateDefaultWorkerPoolRunnerImagesWithResponse(ctx context.Context, params *AccountUpdateDefaultWorkerPoolRunnerImagesParams, body AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateDefaultWorkerPoolRunnerImagesResponse, error) {
+	rsp, err := c.AccountUpdateDefaultWorkerPoolRunnerImages(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateDefaultWorkerPoolRunnerImagesResponse(rsp)
+}
+
 // AccountUpdateSecurityEmailWithBodyWithResponse Account Update Security Email
 //
 // Set the account's security contact address. An address that is not an e-mail address answers 422 validation-failed; an empty one clears it.
@@ -84836,7 +85121,7 @@ func (c *ClientWithResponses) AttachableVCSIntegrationsForProviderInSpaceWithRes
 
 // AttachableWorkerPoolsInSpaceWithResponse Attachable Worker Pools
 //
-// List of worker pools that can be attached Stacks/Modules in given space.
+// The private worker pools a stack in the space id may name, by name: those in the space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -86090,7 +86375,7 @@ func (c *ClientWithResponses) ContextConfigSetWithResponse(ctx context.Context, 
 
 // DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 //
-// The runner image a private worker pool's runs use when neither the stack nor the run names one. Until worker pools are served, the infraweave Terraform runner image.
+// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -89057,7 +89342,7 @@ func (c *ClientWithResponses) StackAttachablePoliciesWithResponse(ctx context.Co
 
 // StackAttachableWorkerPoolsWithResponse Stack attachable worker pools
 //
-// List of worker pools that can be attached to this Stack.
+// The private worker pools this stack may name, by name: those in its space and in each space above it reached through an unbroken chain of spaces that inherit, among the spaces the caller may read.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -92743,6 +93028,135 @@ func ParseAccountUpdateAwarenessSourceSurveyResponse(rsp *http.Response) (*Accou
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AccountUpdateAwarenessSourceSurveyResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountUpdateDefaultWorkerPoolRunnerImagesResponse parses an HTTP response from a AccountUpdateDefaultWorkerPoolRunnerImagesWithResponse call
+func ParseAccountUpdateDefaultWorkerPoolRunnerImagesResponse(rsp *http.Response) (*AccountUpdateDefaultWorkerPoolRunnerImagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountUpdateDefaultWorkerPoolRunnerImagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AccountUpdateDefaultWorkerPoolRunnerImagesResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountUpdateDefaultWorkerPoolRunnerImagesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountUpdateDefaultWorkerPoolRunnerImagesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountUpdateDefaultWorkerPoolRunnerImagesResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

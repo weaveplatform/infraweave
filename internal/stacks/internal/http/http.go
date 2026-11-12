@@ -583,6 +583,14 @@ func inputView(st core.Stack, space string) (api.StackInput, error) {
 	}
 	provider := api.VCSProvider(st.Provider)
 	in.Provider = &provider
+	if st.WorkerPool != nil {
+		id := st.WorkerPool.String()
+		in.WorkerPool = &id
+	}
+	if st.VCSIntegration != nil {
+		id := st.VCSIntegration.String()
+		in.VcsIntegrationId = &id
+	}
 	h := hooksOf(st.Hooks)
 	in.BeforeInit, in.AfterInit = &h.BeforeInit, &h.AfterInit
 	in.BeforePlan, in.AfterPlan = &h.BeforePlan, &h.AfterPlan

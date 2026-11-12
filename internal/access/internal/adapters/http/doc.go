@@ -18,9 +18,8 @@
 // any other caller answering 403, a refused security email or redirect
 // host answers 422 validation-failed, confirming the deletion of an
 // unmarked account or its organization's last answers 409 invalid-state,
-// and an account gone since its token was issued answers 404; id, name, type and
-// defaultPrivateWorkerPoolRunnerImage read the caller's account, name
-// through Accounts. The Organization tag's operations, through
+// and an account gone since its token was issued answers 404; id, name
+// and type read the caller's account, name through Accounts. The Organization tag's operations, through
 // orgadmin.Service, read and rename the caller's organization, create,
 // claim, rename and delete its accounts by slug, set and clear an
 // account's limits, list, deactivate and grant or revoke organization-admin

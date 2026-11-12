@@ -194,3 +194,104 @@ Feature: Private worker pools
     When token "op" gives the home organization the tier "Free" through A
     Then "GET /api/v1/worker-pools" through A with token "h" eventually answers a 403 problem "feature-not-in-tier"
     And the problem names the feature "private-worker-pools"
+
+  @op:stackCreate @op:stackUpdate @op:stack @op:stackAttachableWorkerPools @op:attachableWorkerPoolsInSpace @op:workerPoolDelete @op:workerPoolUpdate @case:success
+  Scenario: A stack names a pool its space reaches, and the pool is neither deleted nor moved out of reach while it does
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Solo","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    And the answer's id is the space "solo"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"A Top","space":"acme","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "top"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"B Team","space":"{team}","certificateSigningRequest":"{csr}"}' through B
+    And the answer's id names "teampool"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"C Solo","space":"{solo}","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "solopool"
+    When token "h" sends "GET /api/v1/attachable-worker-pools-in-space?id={team}" through B
+    Then the answer lists the worker pools "{top}, {teampool}"
+    When token "h" sends "GET /api/v1/attachable-worker-pools-in-space?id={solo}" through A
+    Then the answer lists the worker pools "{solopool}"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{teampool}"},"manageState":false}' through A
+    Then it answers 201
+    And the answer's workerPool is '{"id":"{teampool}"}'
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then the answer's workerPool is '{"id":"{teampool}"}'
+    When token "h" sends "GET /api/v1/stacks/infra/attachable-worker-pools" through A
+    Then the answer lists the worker pools "{top}, {teampool}"
+    When token "h" sends "PATCH /api/v1/stacks/infra" with '{"description":"patched"}' through B
+    Then it answers 200
+    And the answer's workerPool is '{"id":"{teampool}"}'
+    When token "h" sends "DELETE /api/v1/worker-pools/{teampool}" through A
+    Then it answers a 409 problem "invalid-state"
+    When token "h" sends "PUT /api/v1/worker-pools/{teampool}" with '{"name":"B Team","space":"{solo}"}' through B
+    Then it answers a 409 problem "invalid-state"
+    When token "h" sends "PUT /api/v1/worker-pools/{teampool}" with '{"name":"B Team","space":"acme"}' through A
+    Then it answers 200
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{team}"}' through B
+    Then it answers 200
+    And the answer leaves out "workerPool"
+    When token "h" sends "DELETE /api/v1/worker-pools/{teampool}" through A
+    Then it answers 200
+
+  @op:stackCreate @op:stackUpdate @op:stackAttachableWorkerPools @op:attachableWorkerPoolsInSpace @case:failure
+  Scenario: A stack cannot name a pool its space does not reach, nor a pool that does not exist
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Solo","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    And the answer's id is the space "solo"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Solo","space":"{solo}","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "solopool"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{solopool}"},"manageState":false}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/input/workerPool" as "not-found"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"nope"},"manageState":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/input/workerPool" as "not-found"
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}"},"manageState":false}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{solopool}"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/workerPool" as "not-found"
+    When token "h" sends "GET /api/v1/stacks/nope/attachable-worker-pools" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/attachable-worker-pools-in-space?id=nowhere" through A
+    Then it answers a 404 problem "not-found"
+
+  @op:stackAttachableWorkerPools @op:attachableWorkerPoolsInSpace @case:denial
+  Scenario: A space reader lists only the attachable pools of the spaces it reads, and none of a space it cannot read
+    Given token "h" sends "POST /api/v1/worker-pools" with '{"name":"Team","space":"{team}","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "teampool"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Legacy","space":"legacy","certificateSigningRequest":"{csr}"}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}"},"manageState":false}' through B
+    And the member key is space-reader on the space "{team}"
+    When token "m" sends "GET /api/v1/attachable-worker-pools-in-space?id={team}" through B
+    Then the answer lists the worker pools "{teampool}"
+    When token "m" sends "GET /api/v1/stacks/infra/attachable-worker-pools" through A
+    Then the answer lists the worker pools "{teampool}"
+    When token "m" sends "GET /api/v1/attachable-worker-pools-in-space?id=legacy" through B
+    Then it answers a 404 problem "not-found"
+
+  @op:accountUpdateDefaultWorkerPoolRunnerImages @op:defaultPrivateWorkerPoolRunnerImage @case:success
+  Scenario: An account admin sets the default runner images, which the default private runner image then answers
+    When token "h" sends "GET /api/v1/default-private-worker-pool-runner-image" through A
+    Then the answer is '"ghcr.io/weaveplatform/infraweave-runner-terraform"'
+    When token "h" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{"privateWorkerPoolRunnerImage":" ghcr.io/acme/runner:1 ","publicWorkerPoolRunnerImage":""}' through B
+    Then it answers 200
+    And the answer's privateWorkerPoolRunnerImage is '"ghcr.io/acme/runner:1"'
+    And the answer leaves out "publicWorkerPoolRunnerImage"
+    When token "h" sends "GET /api/v1/default-private-worker-pool-runner-image" through A
+    Then the answer is '"ghcr.io/acme/runner:1"'
+    When token "h" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{}' through B
+    Then it answers 200
+    When token "h" sends "GET /api/v1/default-private-worker-pool-runner-image" through A
+    Then the answer is '"ghcr.io/weaveplatform/infraweave-runner-terraform"'
+
+  @op:accountUpdateDefaultWorkerPoolRunnerImages @case:denial
+  Scenario: Only an account admin sets the default runner images
+    Given the member key is space-admin on the space "{team}"
+    When token "m" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{"privateWorkerPoolRunnerImage":"ghcr.io/acme/runner:1"}' through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ACCOUNT_ADMIN"'
+
+  @op:accountUpdateDefaultWorkerPoolRunnerImages @case:failure
+  Scenario: A default runner image with a space, too long, or an unknown field is refused
+    When token "h" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{"privateWorkerPoolRunnerImage":"two words"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/privateWorkerPoolRunnerImage" as "rule"
+    When token "h" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{"privateWorkerPoolRunnerImage":"ghcr.io/acme/runner","colour":"red"}' through B
+    Then it answers a 400 problem "invalid-request"

@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // SlugTaken is a slug another stack of the account holds.
@@ -143,6 +144,13 @@ type Store interface {
 	) (map[kernel.ULID]bool, error)
 	// SpaceInUse reports whether a stack of acct lives in space.
 	SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
+	// PoolInUse lists acct's stacks that name the worker pool id, by
+	// slug.
+	PoolInUse(
+		ctx context.Context,
+		acct kernel.AccountID,
+		id kernel.ULID,
+	) ([]workersapi.PoolUse, error)
 	// Hold locks acct's stack id FOR KEY SHARE until the context's
 	// transaction ends; stacksapi.ErrNotFound when acct lacks it.
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
@@ -211,8 +219,9 @@ type Events interface {
 }
 
 // Deps are what the service is constructed over. Bindings are the
-// stacks' role bindings, which the access domain keeps, and Grants
-// explains which stacks a space's grants reach.
+// stacks' role bindings, which the access domain keeps, Grants explains
+// which stacks a space's grants reach, and Pools holds the worker pool a
+// stack names; with no Pools, every pool is refused.
 type Deps struct {
 	Store    Store
 	DB       tx.Beginner
@@ -220,6 +229,7 @@ type Deps struct {
 	Authz    accessapi.Authorizer
 	Bindings accessapi.Bindings
 	Grants   accessapi.Grants
+	Pools    workersapi.Pools
 	Events   Events
 	Now      func() time.Time
 }
@@ -234,6 +244,7 @@ type Service struct {
 	authz    accessapi.Authorizer
 	bindings accessapi.Bindings
 	grants   accessapi.Grants
+	pools    workersapi.Pools
 	events   Events
 	now      func() time.Time
 
@@ -251,13 +262,14 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, bindings: d.Bindings,
-		grants: d.Grants, events: d.Events, now: now,
+		grants: d.Grants, pools: d.Pools, events: d.Events, now: now,
 	}
 }
 
 var (
 	_ stacksapi.Stacks     = (*Service)(nil)
 	_ accessapi.SpaceGuard = (*Service)(nil)
+	_ workersapi.PoolGuard = (*Service)(nil)
 )
 
 // Guard registers g, which every later move and delete of a stack asks.
@@ -753,9 +765,11 @@ func (s *Service) Update(
 	)
 }
 
-// bind binds st to the VCS integration in names, which must be of st's
-// provider and in st's space or one it inherits from; a refusal points
-// at at's vcsIntegrationId.
+// bind binds st to the worker pool and the VCS integration in names.
+// The pool must be in st's space or one it inherits from, and is held
+// for the transaction; a refusal points at at's workerPool. The
+// integration must be of st's provider and in st's space or one it
+// inherits from; a refusal points at at's vcsIntegrationId.
 func (s *Service) bind(
 	ctx context.Context,
 	acct kernel.AccountID,
@@ -763,6 +777,9 @@ func (s *Service) bind(
 	in Input,
 	at string,
 ) error {
+	if err := s.bindPool(ctx, acct, st, in, at); err != nil {
+		return err
+	}
 	if in.VCSIntegration == nil {
 		return nil
 	}
@@ -789,6 +806,37 @@ func (s *Service) bind(
 		return err //nolint:wrapcheck // the vcs domain names the read
 	}
 	st.VCSIntegration = &id
+	return nil
+}
+
+// bindPool binds st to the worker pool in names, held for the
+// transaction when st's space reaches it.
+func (s *Service) bindPool(
+	ctx context.Context,
+	acct kernel.AccountID,
+	st *Stack,
+	in Input,
+	at string,
+) error {
+	if in.WorkerPool == nil {
+		return nil
+	}
+	refused := &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
+		Pointer: at + "/workerPool", Reason: kernel.ReasonNotFound,
+		Message: fmt.Sprintf("No worker pool %q that the stack's space reaches.", *in.WorkerPool),
+	}}}
+	id, err := kernel.ParseULID(*in.WorkerPool)
+	if err != nil || s.pools == nil {
+		return refused
+	}
+	err = s.pools.Hold(ctx, acct, st.Space, id)
+	if errors.Is(err, workersapi.ErrNoPool) {
+		return refused
+	}
+	if err != nil {
+		return err //nolint:wrapcheck // the workers domain names the read
+	}
+	st.WorkerPool = &id
 	return nil
 }
 
@@ -938,6 +986,16 @@ func (s *Service) SetStar(
 		return Stack{}, err //nolint:wrapcheck // as above
 	}
 	return st, nil
+}
+
+// PoolInUse lists the stacks that name acct's worker pool id, which
+// refuses its delete and a move that leaves one out of reach.
+func (s *Service) PoolInUse(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+) ([]workersapi.PoolUse, error) {
+	return s.store.PoolInUse(ctx, acct, id) //nolint:wrapcheck // the store names the read
 }
 
 // SpaceInUse reports whether a stack lives in space, which refuses its

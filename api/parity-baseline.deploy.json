@@ -20,7 +20,6 @@
       "accountSetSpaceliftIntelligenceEnabled",
       "accountToggleEnforcingMFA",
       "accountUpdateAuthorizationScheme",
-      "accountUpdateDefaultWorkerPoolRunnerImages",
       "accountUpdateVCSEventTriggeredRunsLimit",
       "aiIntegrationToggle",
       "auditTrailRetentionDays",

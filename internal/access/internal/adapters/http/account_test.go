@@ -18,7 +18,6 @@ func TestUnitAccountReads(t *testing.T) {
 		"/id":   w.acct.String(),
 		"/name": "Acme",
 		"/type": "ORG",
-		"/default-private-worker-pool-runner-image": account.DefaultRunnerImage,
 	} {
 		rec := w.do(t, http.MethodGet, path, me, "")
 		var got string

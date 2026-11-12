@@ -2428,7 +2428,11 @@ paths:
       x-rest-style: read
   /attachable-worker-pools-in-space:
     get:
-      description: List of worker pools that can be attached Stacks/Modules in given space.
+      description: >-
+        The private worker pools a stack in the space id may name, by name:
+        those in the space and in each space above it reached through an
+        unbroken chain of spaces that inherit, among the spaces the caller
+        may read.
       operationId: attachableWorkerPoolsInSpace
       parameters:
         - in: query

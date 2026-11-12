@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
 )
 
@@ -90,6 +92,10 @@ type Store interface {
 	// Get reads acct's pool id, locked FOR UPDATE when lock is set;
 	// ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (Pool, error)
+	// Share reads the space of acct's pool id, locked FOR SHARE, so a
+	// delete or move waits for the transaction; ErrNotFound when acct
+	// lacks it.
+	Share(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (kernel.ULID, error)
 	// Delete deletes acct's pool id with its workers and their nonces.
 	Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 	// InSpace reports whether a pool of acct lives in space.
@@ -142,6 +148,10 @@ type Service struct {
 	public    string
 	preparing time.Duration
 	now       func() time.Time
+
+	mu     sync.RWMutex
+	guards []workersapi.PoolGuard
+	stacks accessapi.SpaceOf
 }
 
 // New returns the service over d.
@@ -160,7 +170,26 @@ func New(d Deps) *Service {
 	}
 }
 
-var _ accessapi.SpaceGuard = SpaceGuard{}
+var (
+	_ accessapi.SpaceGuard = SpaceGuard{}
+	_ workersapi.Pools     = (*Service)(nil)
+)
+
+// Guard registers g, which every later delete and move of a pool asks.
+func (s *Service) Guard(g workersapi.PoolGuard) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.guards = append(s.guards, g)
+}
+
+// BindStacks makes stacks what a stack's attachable pools find its space
+// with; until it runs, every stack is missing. It runs during
+// construction, before the service serves a request.
+func (s *Service) BindStacks(stacks accessapi.SpaceOf) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stacks = stacks
+}
 
 // Missing is an entity a request names that the account lacks or the
 // caller cannot read, which answers as one that does not exist: a space
@@ -174,6 +203,14 @@ func (m *Missing) Error() string { return fmt.Sprintf("workers: no %s %q", m.Kin
 type Denied struct{ Action accessapi.Action }
 
 func (d *Denied) Error() string { return fmt.Sprintf("you may not perform %s here", d.Action) }
+
+// InUse is a delete or a move refused because stacks name the pool and
+// would no longer reach it: Stacks are their slugs, sorted.
+type InUse struct{ Stacks []string }
+
+func (u *InUse) Error() string {
+	return "workers: the worker pool is used by stacks " + strings.Join(u.Stacks, ", ")
+}
 
 // Token is p's pool token, which its launchers register with.
 func (s *Service) Token(p Pool) string {
@@ -250,6 +287,106 @@ func (s *Service) Suggest(
 		return search.Suggestions{}, err
 	}
 	return s.store.Suggest(ctx, p.AccountID, in, scope) //nolint:wrapcheck // as above
+}
+
+// Hold checks that space reaches acct's pool id and holds the pool for
+// the transaction ctx carries; workersapi.ErrNoPool otherwise.
+func (s *Service) Hold(ctx context.Context, acct kernel.AccountID, space, id kernel.ULID) error {
+	at, err := s.store.Share(ctx, acct, id)
+	if errors.Is(err, ErrNotFound) {
+		return fmt.Errorf("%w: %s", workersapi.ErrNoPool, id)
+	}
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	tree, err := s.spaces.Tree(ctx, acct)
+	if err != nil {
+		return err //nolint:wrapcheck // the access domain names the read
+	}
+	if !slices.Contains(Reach(tree, space), at) {
+		return fmt.Errorf("%w: %s out of reach", workersapi.ErrNoPool, id)
+	}
+	return nil
+}
+
+// Reach is the spaces whose pools a stack in space may use: space, then
+// each ancestor reached through an unbroken chain of spaces that inherit
+// their parent's entities, nearest first.
+//
+// ref: decision 0007 § "Evaluation"
+func Reach(tree []accessapi.SpaceNode, space kernel.ULID) []kernel.ULID {
+	byID := make(map[kernel.ULID]accessapi.SpaceNode, len(tree))
+	for _, n := range tree {
+		byID[n.ID] = n
+	}
+	out := []kernel.ULID{space}
+	for x := byID[space]; x.Inherit && !x.Parent.IsZero(); x = byID[x.Parent] {
+		out = append(out, x.Parent)
+	}
+	return out
+}
+
+// AttachableToStack reads a page of the pools that p's account's stack
+// may use and p may read. The route has decided SPACE_READ on the
+// stack's space.
+func (s *Service) AttachableToStack(
+	ctx context.Context,
+	p kernel.Principal,
+	stack string,
+	in search.Input,
+) (search.Result[Pool], error) {
+	s.mu.RLock()
+	stacks := s.stacks
+	s.mu.RUnlock()
+	if stacks == nil {
+		return search.Result[Pool]{}, &Missing{Kind: "stack", ID: stack}
+	}
+	space, err := stacks(ctx, p.AccountID, stack)
+	if errors.Is(err, accessapi.ErrNoSubject) {
+		return search.Result[Pool]{}, &Missing{Kind: "stack", ID: stack}
+	}
+	if err != nil {
+		return search.Result[Pool]{}, err //nolint:wrapcheck // the stacks domain names the read
+	}
+	return s.attachable(ctx, p, space, in)
+}
+
+// AttachableInSpace reads a page of the pools that a stack in p's
+// account's space slug may use and p may read. The route has decided
+// SPACE_READ on the space.
+func (s *Service) AttachableInSpace(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	in search.Input,
+) (search.Result[Pool], error) {
+	space, err := s.spaces.Find(ctx, p.AccountID, slug)
+	if errors.Is(err, accessapi.ErrNoSpace) {
+		return search.Result[Pool]{}, &Missing{Kind: "space", ID: slug}
+	}
+	if err != nil {
+		return search.Result[Pool]{}, err //nolint:wrapcheck // the access domain names the read
+	}
+	return s.attachable(ctx, p, space, in)
+}
+
+// attachable reads a page of the pools space reaches in the spaces p may
+// read.
+func (s *Service) attachable(
+	ctx context.Context,
+	p kernel.Principal,
+	space kernel.ULID,
+	in search.Input,
+) (search.Result[Pool], error) {
+	scope, err := s.scope(ctx, p)
+	if err != nil {
+		return search.Result[Pool]{}, err
+	}
+	reach := Reach(scope.Spaces, space)
+	scope.Reachable = slices.DeleteFunc(scope.Reachable, func(id kernel.ULID) bool {
+		return !slices.Contains(reach, id)
+	})
+	return s.store.Search(ctx, p.AccountID, in, scope) //nolint:wrapcheck // the store names it
 }
 
 // Input is a pool's settings as a create or an update gives them, with
@@ -408,6 +545,9 @@ func (s *Service) Update(
 			if err := s.require(ctx, p, accessapi.ActionWorkerPoolCreate, space); err != nil {
 				return err
 			}
+			if err := s.inUse(ctx, p.AccountID, out.ID, &space); err != nil {
+				return err
+			}
 		}
 		apply(out, space, in, s.now())
 		return nil
@@ -480,9 +620,51 @@ func (s *Service) Delete(
 		if err := expect.Check(out.Version); err != nil {
 			return err //nolint:wrapcheck // kernel.ErrStale is the answer
 		}
+		if err := s.inUse(ctx, p.AccountID, out.ID, nil); err != nil {
+			return err
+		}
 		return s.store.Delete(ctx, p.AccountID, out.ID) //nolint:wrapcheck // the store names it
 	})
 	return out, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// inUse refuses, as an *InUse, a delete of acct's pool id while any
+// stack names it, or, when to is set, a move of it to the space to that
+// leaves such a stack out of reach. The pool's row is locked, so no stack
+// names it meanwhile.
+func (s *Service) inUse(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	to *kernel.ULID,
+) error {
+	s.mu.RLock()
+	guards := slices.Clone(s.guards)
+	s.mu.RUnlock()
+	var tree []accessapi.SpaceNode
+	if to != nil {
+		var err error
+		if tree, err = s.spaces.Tree(ctx, acct); err != nil {
+			return err //nolint:wrapcheck // the access domain names the read
+		}
+	}
+	var stacks []string
+	for _, g := range guards {
+		uses, err := g.PoolInUse(ctx, acct, id)
+		if err != nil {
+			return err //nolint:wrapcheck // the guarding domain names the read
+		}
+		for _, u := range uses {
+			if to == nil || !slices.Contains(Reach(tree, u.Space), *to) {
+				stacks = append(stacks, u.Stack)
+			}
+		}
+	}
+	if len(stacks) == 0 {
+		return nil
+	}
+	slices.Sort(stacks)
+	return &InUse{Stacks: stacks}
 }
 
 // Purge deletes up to batch of the deleted account acct's pools, with

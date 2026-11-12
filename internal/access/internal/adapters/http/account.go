@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 
-	"github.com/weaveplatform/infraweave/internal/access/internal/core/account"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 )
 
@@ -41,17 +40,4 @@ func (Server) Type(ctx context.Context, _ api.TypeRequestObject) (api.TypeRespon
 		return nil, err
 	}
 	return api.Type200JSONResponse{Body: api.AccountTypeORG}, nil
-}
-
-// DefaultPrivateWorkerPoolRunnerImage answers account.DefaultRunnerImage.
-func (Server) DefaultPrivateWorkerPoolRunnerImage(
-	ctx context.Context,
-	_ api.DefaultPrivateWorkerPoolRunnerImageRequestObject,
-) (api.DefaultPrivateWorkerPoolRunnerImageResponseObject, error) {
-	if _, err := principal(ctx); err != nil {
-		return nil, err
-	}
-	return api.DefaultPrivateWorkerPoolRunnerImage200JSONResponse{
-		Body: account.DefaultRunnerImage,
-	}, nil
 }

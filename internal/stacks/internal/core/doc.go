@@ -36,7 +36,11 @@
 // its provider, VCS integration, namespace, repository, URL or branch. A
 // write naming a VCS integration binds it only when the
 // stacksapi.StackIntegrations BindIntegrations binds allows it, refused
-// at vcsIntegrationId otherwise and before one is bound. DetachVCS
+// at vcsIntegrationId otherwise and before one is bound. A write naming
+// a worker pool holds it through Deps' workersapi.Pools when the stack's
+// space reaches it, refused at workerPool otherwise; PoolInUse lists the
+// stacks that name a pool for the workers domain's delete and move.
+// DetachVCS
 // detaches the stacks bound to a deleted integration, without changing
 // their versions; a detached stack's commit operations are a *Detached
 // until a write gives it a source again. Bind, BindAll, Rebind and Unbind write a stack's role
@@ -62,7 +66,7 @@
 //
 // # Dependencies
 //
-// It imports accessapi, stacksapi, internal/iac, internal/kernel,
+// It imports accessapi, stacksapi, workersapi, internal/iac, internal/kernel,
 // kernel/search, platform/outbox and platform/tx, and the standard
 // library's slices, strings and sync. The stacks domain's
 // assembly constructs it over the pg package's Store.
