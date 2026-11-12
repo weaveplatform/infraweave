@@ -36,10 +36,11 @@ const tmp = ".tmp"
 // Bucket is a directory of objects, shared by every replica through a
 // common volume.
 type Bucket struct {
-	root *os.Root
-	url  string
-	keys Keys
-	now  func() time.Time
+	root  *os.Root
+	url   string
+	keys  Keys
+	now   func() time.Time
+	stall time.Duration
 }
 
 // New opens c.Root, creating it, with signed URLs under c.URL signed by
@@ -55,7 +56,7 @@ func New(c objectstore.FSConfig, keys Keys) (*Bucket, error) {
 	if err := root.MkdirAll(tmp, 0o750); err != nil {
 		return nil, errors.Join(fmt.Errorf("fs: %w", err), root.Close())
 	}
-	return &Bucket{root: root, url: c.URL, keys: keys, now: time.Now}, nil
+	return &Bucket{root: root, url: c.URL, keys: keys, now: time.Now, stall: Stall}, nil
 }
 
 // Close releases the directory.

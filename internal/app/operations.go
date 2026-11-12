@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -56,6 +57,12 @@ type Operation struct {
 	// is the empty list, such as POST /auth/token. Every other operation
 	// requires the API's global bearerAuth.
 	Public bool
+	// Hold is how long an operation that holds its response on purpose may
+	// hold it, past the listener's write timeout: the worker poll's
+	// longest hold, which API sets. Zero for every other operation.
+	//
+	// ref: decision 0003 § "API surfaces"
+	Hold time.Duration
 	// OwnBodyBound marks an operation whose handler bounds its request body
 	// itself, so server.max_body_bytes does not: the fs driver's blob PUT,
 	// whose objects, such as state files, exceed any API body.
@@ -484,7 +491,10 @@ type Gated func(gate func(*http.Request) (featuresapi.Gate, bool)) func(http.Han
 // a request a control rejects is logged too. The body bound,
 // c.MaxBodyBytes, comes before every control that reads a body; it bounds
 // every operation's body but an OwnBodyBound one's, and a request no
-// operation serves.
+// operation serves. Last, once every control has passed the request and
+// the strict body check has read its body within the listener's
+// deadlines, an operation with a Hold has its write deadline extended
+// past it.
 // auth authenticates every request but those to a Public operation; nil
 // refuses every credential. The operator switch runs next, then the rate
 // limit, then idempotency keys, so a request one rejects never reaches the
@@ -578,8 +588,38 @@ func Guarded(
 			op, _ := resolve(req)
 			return op.Body
 		}),
+		extendHeld(log, c.Timeouts.Write, func(req *http.Request) time.Duration {
+			op, _ := resolve(req)
+			return op.Hold
+		}),
 	)
 	return r
+}
+
+// extendHeld extends the write deadline of a request whose operation
+// holds its response, to its hold plus the write timeout an answer has
+// after it, so the hold, not the listener, decides when it answers. The
+// read deadline stays the listener's: the controls before it have read
+// the body within it, and net/http clears it once a body is read whole. A
+// connection whose deadline cannot move keeps the listener's, and the
+// failure is logged, since its holds would end early.
+func extendHeld(
+	log *slog.Logger,
+	write time.Duration,
+	hold func(*http.Request) time.Duration,
+) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if d := hold(r); d > 0 {
+				err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(d + write))
+				if err != nil {
+					log.ErrorContext(r.Context(), "extend a held response's deadline",
+						"error", err)
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // access is the credential the operation needs.

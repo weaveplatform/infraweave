@@ -302,6 +302,8 @@ func TestUnitLoadRejects(t *testing.T) {
 			"needs database.url",
 		},
 		{"no body bound", "server:\n  max_body_bytes: 0\n", nil, "server.max_body_bytes"},
+		{"no write timeout", "server:\n  timeouts:\n    write: 0s\n", nil, "server.timeouts.write"},
+		{"unknown timeout", "server:\n  timeouts:\n    body: 1s\n", nil, "body"},
 		{
 			"public URL with a path",
 			"server:\n  public_url: https://iw.example.com/api\n",

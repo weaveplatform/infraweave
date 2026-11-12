@@ -2,7 +2,8 @@
 //
 // Config holds every setting, keyed as in the YAML file; Server holds the
 // listener settings of httpkit/serve, squashed to server.listen,
-// server.admin_listen and server.shutdown, beside the API's rate limits and
+// server.admin_listen, server.shutdown and server.timeouts, beside the
+// API's body bound under server.max_body_bytes, its rate limits and
 // idempotency keys under server.rate_limit and server.idempotency and the
 // public origin under server.public_url, which RequirePublicURL demands of
 // the modes that serve the API; Auth holds the auth.* token and signing-key

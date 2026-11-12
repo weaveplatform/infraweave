@@ -125,10 +125,20 @@ func (b *Bucket) verify(s, method string) (token, error) {
 // to bearer authentication and answer 401 to every signed URL.
 const Pattern = "/blobs/{token}"
 
+// Stall is how long a verified transfer may go without moving a byte
+// before its connection is cut. An object, such as a state file or a
+// workspace, may take longer to move than any fixed timeout of the
+// listener allows, so a transfer's deadlines move with each step instead.
+//
+// ref: decision 0003 § "API surfaces"
+const Stall = 30 * time.Second
+
 // Routes adds GET and PUT Pattern to r, the API listener's router.
 // They answer 403 for a token that does not verify, and a PUT whose
 // Content-Length is not the token's size 413 when larger and 400 when
-// smaller or missing.
+// smaller or missing. Once a token verifies, its transfer's deadlines move
+// to Stall past each read or write, so it keeps its connection for as
+// long as it keeps moving.
 func (b *Bucket) Routes(r chi.Router) {
 	r.Get(Pattern, b.serveGet)
 	r.Put(Pattern, b.servePut)
@@ -153,7 +163,7 @@ func (b *Bucket) serveGet(w http.ResponseWriter, r *http.Request) {
 	defer body.Close()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
-	_, _ = io.Copy(w, body)
+	_, _ = io.Copy(movingWriter{w, b.moving(w, false)}, body)
 }
 
 func (b *Bucket) servePut(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +186,8 @@ func (b *Bucket) servePut(w http.ResponseWriter, r *http.Request) {
 	if len(t.sha256) != 0 {
 		want = t.sha256
 	}
-	_, err = b.put(r.Context(), t.key, http.MaxBytesReader(w, r.Body, t.size), t.size, want)
+	body := http.MaxBytesReader(w, movingReader{r.Body, b.moving(w, true)}, t.size)
+	_, err = b.put(r.Context(), t.key, body, t.size, want)
 	switch {
 	case errors.Is(err, ErrChecksum):
 		problem.Write(
@@ -190,4 +201,52 @@ func (b *Bucket) servePut(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusOK)
 	}
+}
+
+// moving moves a verified transfer's deadlines to stall past now with
+// each step: an upload's read deadline, and the write deadline of the
+// answer that follows its body; a download's write deadline, since
+// net/http clears the read deadline once a request's body is read. A
+// writer whose deadlines cannot move keeps the listener's.
+type moving struct {
+	rc     *http.ResponseController
+	stall  time.Duration
+	upload bool
+}
+
+// moving starts the first step of w's transfer, an upload or a download.
+func (b *Bucket) moving(w http.ResponseWriter, upload bool) moving {
+	m := moving{rc: http.NewResponseController(w), stall: b.stall, upload: upload}
+	m.step()
+	return m
+}
+
+func (m moving) step() {
+	until := time.Now().Add(m.stall)
+	if m.upload {
+		_ = m.rc.SetReadDeadline(until)
+	}
+	_ = m.rc.SetWriteDeadline(until)
+}
+
+// movingReader is an upload whose every read is a step.
+type movingReader struct {
+	io.ReadCloser
+	m moving
+}
+
+func (r movingReader) Read(p []byte) (int, error) {
+	r.m.step()
+	return r.ReadCloser.Read(p) //nolint:wrapcheck // the body's own error, as io.Reader returns it
+}
+
+// movingWriter is a download whose every write is a step.
+type movingWriter struct {
+	http.ResponseWriter
+	m moving
+}
+
+func (w movingWriter) Write(p []byte) (int, error) {
+	w.m.step()
+	return w.ResponseWriter.Write(p) //nolint:wrapcheck // as above
 }

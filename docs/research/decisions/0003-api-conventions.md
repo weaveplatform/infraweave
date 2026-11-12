@@ -73,10 +73,17 @@ breaking change to retrofit once clients exist:
   9. **Bounded bodies.** A request body over `server.max_body_bytes`
      (1 MiB by default) answers `413`, problem `payload-too-large`, before
      any of it is buffered.
-  10. **Bounded connections.** The listener bounds the time a client takes
-      to send its headers and its body, and how long an idle connection is
-      kept. A response that is held on purpose, such as the worker API's
-      poll, extends its own deadline to its hold.
+  10. **Bounded connections.** Both listeners, the API's and the admin
+      listener, bound the time a client takes to send its headers
+      (`server.timeouts.header`, 10 seconds) and its whole request
+      (`server.timeouts.read`, 30 seconds, a 1 MiB body at about 35 KB/s),
+      the time a handler takes to answer (`server.timeouts.write`, 60
+      seconds) and how long an idle keep-alive connection is kept
+      (`server.timeouts.idle`, 2 minutes, longer than the 60 seconds a
+      common load balancer keeps one idle, so the balancer closes it
+      first). A handler past the write timeout loses its connection. A
+      response that is held on purpose, such as the worker API's poll,
+      extends its own write deadline to its hold plus the write timeout.
   11. **Uncacheable answers.** Every answer carries `Cache-Control: no-store`
       and `X-Content-Type-Options: nosniff`: answers carry credentials and a
       caller's own state, which no cache may keep.
@@ -95,15 +102,16 @@ breaking change to retrofit once clients exist:
   |---|---|---|---|
   | The worker API | Authorization | No account action decides a route | The worker or the run is its own subject: a session token names one worker of one pool, a run token one run, and the service reads that worker's or run's rows alone |
   | The worker API | Feature gates | No capability gates a route | `private-workers` bounds registration; gating the protocol would strand a running run when an organization's tier drops |
+  | The worker API's poll | Bounded connections | The write deadline is the longest hold, `worker.poll_timeout_max` within 120 seconds, plus `server.timeouts.write` | A poll answers when a run, a signal or its wait comes, which may be after the write timeout; a held poll holds no transaction or pooled connection, and a worker holds one poll per replica |
   | The worker API | Idempotency keys | `Idempotency-Key` is ignored | Answers carry session tokens, which a replay from the key store would hand out again; a registration's `jti` refuses a replay; a poll or an exit is safe to repeat; a report repeated one state version behind answers its step again, an upload declared again with the same size and SHA-256 is signed again, and a chunk or artifact already recorded is skipped |
   | The operator API | Authorization | No account action decides a route | Operator tokens alone reach it, and an operator holds no role in any account |
   | Searches (`POST …/search`) | Idempotency keys | `Idempotency-Key` is ignored | A search changes nothing, so a retry is already safe |
   | The break-glass login | Authentication, feature gates | No credential, no capability; each sign-in is an `expensive` draw on the client's address | It is how a credential is obtained, and no tier may lock the break-glass admin out |
   | The OAuth authorization server | Authentication, feature gates, problem details | No credential, no capability; a registration is an `expensive` draw; the token endpoint answers RFC 6749 errors | A client holds no credential until it redeems one, and OAuth clients parse RFC 6749's error shape; the consent operations, which grant, are the API's and gated there |
   | The break-glass login and OAuth | Strict bodies | The handler decodes a form or OAuth body with its own size bound | Their bodies are forms or OAuth's own shapes, which no JSON schema describes |
-  | The fs driver's `/blobs/{token}` | Authentication, feature gates, bounded bodies | The signed token is the credential; no capability; a `PUT` is bounded by the object store, not `server.max_body_bytes` | A bearer check would refuse every signed URL; the operation that signed it was gated; objects such as state files exceed any API body |
+  | The fs driver's `/blobs/{token}` | Authentication, feature gates, bounded bodies, bounded connections | The signed token is the credential; no capability; a `PUT` is bounded by the object store, not `server.max_body_bytes`; once the token verifies, the transfer's deadlines move to 30 seconds past each read of an upload or write of a download | A bearer check would refuse every signed URL; the operation that signed it was gated; objects such as state files exceed any API body and any fixed time, so a transfer keeps its connection while it moves and loses it when it stalls |
   | The console's files at `/` | Authentication, feature gates, uncacheable answers | No credential and no capability; hashed assets are cached for a year and `index.html` is `no-cache` | The files are the same for every caller and hold no credential, and a release must reach browsers on their next navigation ([0023](0023-console.md)) |
-  | The admin listener | All | A separate listener with no controls | Probes and metrics must answer while the API sheds load; it is never routed through ingress, and deployments restrict it with network policy ([0017](0017-observability-and-health.md)) |
+  | The admin listener | All but bounded connections | A separate listener with no controls but the listener's timeouts, so a probe connection cannot be held open either | Probes and metrics must answer while the API sheds load; it is never routed through ingress, and deployments restrict it with network policy ([0017](0017-observability-and-health.md)) |
 
 ### Idempotency keys
 
