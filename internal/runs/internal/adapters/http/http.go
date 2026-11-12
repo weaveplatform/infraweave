@@ -168,7 +168,7 @@ func runOf(v read.View) api.Run {
 	}
 	return api.Run{
 		AllowedActions: allowed,
-		Branch:         v.Branch,
+		Branch:         r.Commit.Branch,
 		Comments:       []api.RunComment{},
 		Commit: api.Commit{
 			Hash: r.Commit.Hash, Tag: r.Commit.Tag, Url: r.Commit.URL, Message: r.Commit.Message,

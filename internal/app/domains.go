@@ -141,6 +141,7 @@ func newDomains(
 		Keys:        keys,
 		Objects:     objects,
 		Spaces:      access.Spaces(),
+		Accounts:    access.Accounts(),
 		Authz:       access.Authorizer(),
 		Tokens:      access.Tokens(),
 		Stacks:      stacks.Stacks(),

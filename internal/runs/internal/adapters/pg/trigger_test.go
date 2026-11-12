@@ -56,7 +56,7 @@ func TestAccTrigger(t *testing.T) {
 	w.stacks.settings[w.stack] = st
 	v, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{})
 	if err != nil || v.Run.Commit.Hash != "head" || v.Run.Type != kernel.RunTypeTracked ||
-		v.Branch != "main" || v.Stack.Slug != "network" || len(v.History) != 1 ||
+		v.Run.Commit.Branch != "main" || v.Stack.Slug != "network" || len(v.History) != 1 ||
 		v.History[0].State != kernel.RunStateQueued || *v.History[0].Username != "alice" {
 		t.Fatalf("on the branch head: %+v, %v", v, err)
 	}
@@ -81,12 +81,14 @@ func TestAccTrigger(t *testing.T) {
 	again, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{
 		Type: kernel.RunTypeProposed,
 	})
-	if err != nil || again.Run.ID != v.Run.ID || string(again.Run.RuntimeConfig) == "" {
-		t.Errorf("a second trigger = %s, %v; want %s with its configuration", again.Run.ID, err,
-			v.Run.ID)
+	if err != nil || again.Run.ID != v.Run.ID || string(again.Run.RuntimeConfig) == "" ||
+		again.Run.Commit.Branch != "main" {
+		t.Errorf("a second trigger = %+v, %v; want %s with its configuration and branch",
+			again.Run, err, v.Run.ID)
 	}
 	named, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{CommitSHA: "named"})
-	if err != nil || named.Run.Commit.Hash != "named" || named.Run.Commit.Message != "Named" {
+	if err != nil || named.Run.Commit.Hash != "named" || named.Run.Commit.Message != "Named" ||
+		named.Run.Commit.Branch != "main" {
 		t.Errorf("on a named commit: %+v, %v", named.Run.Commit, err)
 	}
 

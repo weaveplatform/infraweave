@@ -58,8 +58,10 @@ type Input struct {
 // or answers the run of the stack, type and commit that has not ended. A
 // type other than TRACKED or PROPOSED, and a commit the repository lacks,
 // are a *kernel.Invalid; with no commit named, the stack's tracked commit
-// is used, else its branch head, else ErrNoCommit. The lifecycle refuses
-// a disabled stack and one another caller locked.
+// is used, else its branch head, else ErrNoCommit. A trigger names no
+// branch, so the run is created for the stack's tracked branch whatever
+// its type. The lifecycle refuses a disabled stack and one another caller
+// locked.
 //
 // ref: decision 0008 § "Who drives each transition"
 func (s *Service) Trigger(
@@ -95,6 +97,7 @@ func (s *Service) Trigger(
 		if err != nil {
 			return err
 		}
+		commit.Branch = settings.Branch
 		run, _, err := s.d.Lifecycle.Create(ctx, lifecycle.NewRun{
 			Account: p.AccountID, Stack: st.ID, Type: typ, Commit: commit,
 			Actor: lifecycle.ActorOf(p), RuntimeConfig: in.RuntimeConfig, ForceApply: in.ForceApply,

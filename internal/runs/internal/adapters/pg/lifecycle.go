@@ -23,13 +23,14 @@ var (
 // runColumns are the columns scanRun reads, in its order.
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config,
-	coalesce(force_apply_mode, ''), worker_pool_id, worker_id, created_at, updated_at`
+	coalesce(force_apply_mode, ''), local_preview, worker_pool_id, worker_id, created_at,
+	updated_at`
 
 // insertColumns are runColumns as an INSERT names them, with the
 // priority_tier the claim orders by.
 const insertColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config, force_apply_mode,
-	worker_pool_id, worker_id, created_at, updated_at, priority_tier`
+	local_preview, worker_pool_id, worker_id, created_at, updated_at, priority_tier`
 
 // scanRun reads one row of runColumns.
 func scanRun(row pgx.Row) (lifecycle.Run, error) {
@@ -40,7 +41,7 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 	)
 	err := row.Scan(&r.Account, &r.ID, &r.Stack, &typ, &state, &r.Version, &r.StateChangedAt,
 		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.RuntimeConfig, &r.ForceApply,
-		&r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt)
+		&r.LocalPreview, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
 	}
@@ -92,11 +93,11 @@ func (s *Store) Insert(ctx context.Context, run lifecycle.Run, step lifecycle.St
 	}
 	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO runs (`+insertColumns+`)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nullif($13, ''), $14, $15,
-			$16, $17, $18)`,
+			$16, $17, $18, $19)`,
 		run.Account, run.ID, run.Stack, string(run.Type), string(run.State), run.Version,
 		run.StateChangedAt, commit, run.TriggeredBy, string(run.Priority), run.DriftDetection,
-		[]byte(run.RuntimeConfig), run.ForceApply, run.WorkerPool, run.Worker, run.CreatedAt,
-		run.UpdatedAt, kernel.RunTier(run.Priority, run.Type, run.DriftDetection))
+		[]byte(run.RuntimeConfig), run.ForceApply, run.LocalPreview, run.WorkerPool, run.Worker,
+		run.CreatedAt, run.UpdatedAt, kernel.RunTier(run.Priority, run.Type, run.DriftDetection))
 	if err != nil {
 		return fmt.Errorf("runs: insert run %s: %w", run.ID, sql.Unavailable(err))
 	}

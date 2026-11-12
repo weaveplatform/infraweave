@@ -476,7 +476,8 @@ func (w *world) schedules(t *testing.T) int {
 
 // TestAccLifecycleCreate creates a run in QUEUED with its first transition,
 // its run_updated event and its stack's run.schedule; creates it once per
-// stack, type and commit among runs that have not ended; and refuses a
+// stack, type and commit among runs that have not ended, and reads back a
+// local preview's flag and its commit's branch; and refuses a
 // type no edge creates, a disabled stack, a stack another caller locked
 // and a call outside a transaction.
 func TestAccLifecycleCreate(t *testing.T) {
@@ -523,6 +524,23 @@ func TestAccLifecycleCreate(t *testing.T) {
 	proposed, created, err := w.create(t, kernel.RunTypeProposed, "abc123")
 	if err != nil || !created || proposed.ID == run.ID {
 		t.Errorf("Create of another type = %v, %v", created, err)
+	}
+	preview := lifecycle.NewRun{
+		Account: w.acct, Stack: w.stack, Type: kernel.RunTypeProposed,
+		Commit:       stacksapi.Commit{Hash: "def456", Branch: "main"},
+		Actor:        lifecycle.Actor{Caller: "user:alice", Login: "alice"},
+		LocalPreview: true,
+	}
+	for range 2 {
+		if err := w.in(t, func(ctx context.Context) error {
+			r, _, err := w.lc.Create(ctx, preview)
+			if err == nil && (!r.LocalPreview || r.Commit.Branch != "main") {
+				t.Errorf("a local preview reads back as %+v", r)
+			}
+			return err
+		}); err != nil {
+			t.Errorf("Create of a local preview = %v", err)
+		}
 	}
 	w.mustMove(t, run, kernel.RunStateDiscarded, machine.DriverAPI)
 	if _, created, err := w.create(t, kernel.RunTypeTracked, "abc123"); err != nil || !created {
