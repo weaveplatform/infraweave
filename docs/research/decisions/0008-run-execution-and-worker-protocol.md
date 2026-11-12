@@ -166,18 +166,26 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   then `run.Transition` to `PREPARING`, `PREPARING_APPLY` or `PREPARING_REPLAN`,
   sets `runs.worker_id`, marks the worker busy and issues the run token
   ([0006](0006-authentication-and-tokens.md)). Two replicas never hand one run to
-  two workers, and no replica is special.
+  two workers, and no replica is special. The poll locks the worker's row
+  first, and a worker whose last claimed run is still on a worker claims
+  none, even when its launcher, having lost the answer, reports idle; the
+  preparing timeout ends such a run.
 - **Limits applied in the claim.** Drift runs (tiers 6 and 7) are skipped when the
   pool's executing drift runs reach its drift detection run limit
   ([10 section 2.4](../reference/10-workers-and-execution.md#24-pool-settings-with-behaviour)).
+  A claim of a drift run counts under a per-pool advisory lock, so two
+  claims at once cannot pass the limit together. A high drift run is in
+  tier 1, which no limit bounds.
   On the public worker pool, an account's runs are skipped while its
   organization's accounts together have as many runs executing as the
   organization's `public-worker-slots` limit, or the account alone has as
   many as its account limit when one is set
   ([0021](0021-capability-scope-and-supersession.md#limits)).
-- **Wake-ups.** A replica holding idle polls `LISTEN`s on `infraweave_runs`. On a
-  notification for a pool it wakes one held poll for that pool, the one from the
-  most recently registered worker, which approximates Spacelift's newest-first
+- **Wake-ups.** A replica holding idle polls `LISTEN`s on `infraweave_runs`. A run
+  that enters a claimable state notifies `<pool>/<run>`, the run's ID keeping two
+  such notifications in one transaction from folding into one, and each replica
+  wakes one held poll for that pool, the one from the most recently registered
+  idle worker, which approximates Spacelift's newest-first
   assignment ([10 section 5.3](../reference/10-workers-and-execution.md#53-scheduling-inside-a-pool)).
   A woken poll that loses the `SKIP LOCKED` race goes back to waiting. A poll
   always tries one claim before it starts to wait, so a missed notification costs

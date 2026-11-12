@@ -1651,9 +1651,10 @@ context in the assignment with P18b.
    to `workers` (a stack's worker pool references `worker_pools`) and
    `runs` to `workers` (`runs.worker_id` and `runs.worker_pool_id` hold
    `workers`' IDs).
-   The protocol claims and reports through `runsapi.Scheduler` and
-   `runsapi.Reports`, back edges that `internal/app` sets after
-   construction (`BindScheduler`, `BindReports`), adding no import
+   The protocol claims and reports through `workersapi.Scheduler` and
+   `workersapi.Reports`, which `runs` implements: back edges that
+   `internal/app` sets after construction (`BindScheduler`,
+   `BindReports`), adding no import
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**

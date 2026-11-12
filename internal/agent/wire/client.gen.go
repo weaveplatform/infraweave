@@ -16,6 +16,27 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for AssignmentState.
+const (
+	PREPARING       AssignmentState = "PREPARING"
+	PREPARINGAPPLY  AssignmentState = "PREPARING_APPLY"
+	PREPARINGREPLAN AssignmentState = "PREPARING_REPLAN"
+)
+
+// Valid indicates whether the value is a known member of the AssignmentState enum.
+func (e AssignmentState) Valid() bool {
+	switch e {
+	case PREPARING:
+		return true
+	case PREPARINGAPPLY:
+		return true
+	case PREPARINGREPLAN:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProblemScope.
 const (
 	Account      ProblemScope = "account"
@@ -106,6 +127,24 @@ func (e Signal) Valid() bool {
 	}
 }
 
+// Assignment A run the poll claimed for the worker, which the launcher prepares and executes.
+type Assignment struct {
+	// Run The run's ID.
+	Run string `json:"run"`
+
+	// RunToken The run token the launcher and its runner carry as the bearer token of the run's calls, accepted while the run is on a worker.
+	RunToken string `json:"runToken"`
+
+	// RunTokenExpiresAt When the run token expires, in Unix seconds.
+	RunTokenExpiresAt int64 `json:"runTokenExpiresAt"`
+
+	// State The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
+	State AssignmentState `json:"state"`
+}
+
+// AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
+type AssignmentState string
+
 // PollRequest The worker's state, which each poll reports.
 type PollRequest struct {
 	// Busy Whether the launcher is executing a run.
@@ -126,6 +165,9 @@ type PollRequest struct {
 
 // PollResult What the server has to say to the worker. Every member is absent when it has nothing.
 type PollResult struct {
+	// Assignment A run the poll claimed for the worker, which the launcher prepares and executes.
+	Assignment *Assignment `json:"assignment,omitempty"`
+
 	// Drained Whether the worker is drained: it takes no new run and finishes its current one.
 	Drained *bool `json:"drained,omitempty"`
 
@@ -304,18 +346,18 @@ type ClientInterface interface {
 	// Corresponds with POST /deregister (the `WorkerDeregister` operationId).
 	WorkerDeregister(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// WorkerPollWithBody Poll for signals
+	// WorkerPollWithBody Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /poll (the `WorkerPoll` operationId).
 	WorkerPollWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// WorkerPoll Poll for signals
+	// WorkerPoll Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -358,9 +400,9 @@ func (c *Client) WorkerDeregister(ctx context.Context, reqEditors ...RequestEdit
 	return c.Client.Do(req)
 }
 
-// WorkerPollWithBody Poll for signals
+// WorkerPollWithBody Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes any type of body and a specified content type.
 //
@@ -377,9 +419,9 @@ func (c *Client) WorkerPollWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-// WorkerPoll Poll for signals
+// WorkerPoll Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -594,18 +636,18 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /deregister (the `WorkerDeregister` operationId).
 	WorkerDeregisterWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*WorkerDeregisterResponse, error)
 
-	// WorkerPollWithBodyWithResponse Poll for signals
+	// WorkerPollWithBodyWithResponse Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /poll (the `WorkerPoll` operationId).
 	WorkerPollWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPollResponse, error)
 
-	// WorkerPollWithResponse Poll for signals
+	// WorkerPollWithResponse Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -924,9 +966,9 @@ func (c *ClientWithResponses) WorkerDeregisterWithResponse(ctx context.Context, 
 	return ParseWorkerDeregisterResponse(rsp)
 }
 
-// WorkerPollWithBodyWithResponse Poll for signals
+// WorkerPollWithBodyWithResponse Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -939,9 +981,9 @@ func (c *ClientWithResponses) WorkerPollWithBodyWithResponse(ctx context.Context
 	return ParseWorkerPollResponse(rsp)
 }
 
-// WorkerPollWithResponse Poll for signals
+// WorkerPollWithResponse Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a signal, a change of its drain flag, or the end of its wait, whichever comes first. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

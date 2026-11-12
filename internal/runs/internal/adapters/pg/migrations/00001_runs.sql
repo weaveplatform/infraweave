@@ -12,6 +12,13 @@
 -- priority is low, normal or high; runtime_config is the runtime
 -- configuration its trigger gave, which overrides the stack's, and
 -- force_apply_mode SINGLE or CASCADE when it applies with no changes.
+-- priority_tier is kernel.RunTier of priority, type and drift_detection,
+-- 1 first, the order a pool's workers claim waiting runs in.
+-- worker_pool_id is the stack's private pool when the run was created,
+-- NULL for the public pool, and worker_id the worker that last claimed it.
+-- Neither has a foreign key, because pools and workers belong to the
+-- workers domain, and neither is a held key: a run keeps the pool it
+-- waited in and the worker that ran it after either is gone.
 CREATE TABLE runs (
     account_id       uuid        NOT NULL,
     id               uuid        NOT NULL,
@@ -26,10 +33,14 @@ CREATE TABLE runs (
     drift_detection  boolean     NOT NULL DEFAULT false,
     runtime_config   jsonb,
     force_apply_mode text,
+    priority_tier    smallint    NOT NULL DEFAULT 3,
+    worker_pool_id   uuid,
+    worker_id        uuid,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, id),
     CHECK (priority IN ('low', 'normal', 'high')),
+    CHECK (priority_tier BETWEEN 1 AND 7),
     CHECK (force_apply_mode IN ('SINGLE', 'CASCADE'))
 );
 
@@ -39,6 +50,16 @@ CREATE TABLE runs (
 CREATE INDEX runs_stack ON runs (account_id, stack_id, type, id DESC);
 CREATE INDEX runs_stack_created ON runs (account_id, stack_id, created_at);
 CREATE INDEX runs_state ON runs (account_id, state);
+
+-- A worker's claim takes the first of its pool's waiting runs in this
+-- order; the states are the ones a claim moves a run out of.
+CREATE INDEX runs_claimable ON runs (worker_pool_id, priority_tier, created_at, id)
+    WHERE state IN ('READY', 'CONFIRMED', 'REPLAN_REQUESTED');
+
+-- A claim reads whether its worker holds a run already, and how many of
+-- its pool's drift runs workers hold.
+CREATE INDEX runs_worker ON runs (worker_id, state) WHERE worker_id IS NOT NULL;
+CREATE INDEX runs_drift ON runs (worker_pool_id, state) WHERE drift_detection;
 
 -- Each transition a run went through, sequence being the state_version it
 -- moved the run to. until is when a timed state ends; username is who

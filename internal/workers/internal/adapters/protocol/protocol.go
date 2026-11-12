@@ -97,6 +97,12 @@ func (s Server) WorkerPoll(
 		return nil, s.answer(ctx, err)
 	}
 	out := gen.PollResult{}
+	if a := got.Assignment; a != nil {
+		out.Assignment = &gen.Assignment{
+			Run: a.Run.String(), State: gen.AssignmentState(a.State),
+			RunToken: a.Token.Raw, RunTokenExpiresAt: a.Token.Expires.Unix(),
+		}
+	}
 	if len(got.Signals) > 0 {
 		signals := make([]gen.Signal, 0, len(got.Signals))
 		for _, sig := range got.Signals {

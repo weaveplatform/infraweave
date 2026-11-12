@@ -11,10 +11,13 @@ import (
 // states are passive too, UNKNOWN is neither, and a value outside the
 // enum is not valid.
 func TestUnitRunStates(t *testing.T) {
-	var terminal []kernel.RunState
+	var terminal, onWorker []kernel.RunState
 	for _, s := range kernel.RunStates() {
 		if !s.Valid() {
 			t.Errorf("%s is not valid", s)
+		}
+		if s.OnWorker() {
+			onWorker = append(onWorker, s)
 		}
 		if s.Terminal() {
 			terminal = append(terminal, s)
@@ -30,7 +33,16 @@ func TestUnitRunStates(t *testing.T) {
 	if !slices.Equal(terminal, want) {
 		t.Errorf("terminal states = %v, want %v", terminal, want)
 	}
-	if kernel.RunStateUnknown.Terminal() || kernel.RunStateUnknown.Passive() {
+	held := []kernel.RunState{
+		kernel.RunStateInitializing, kernel.RunStatePlanning, kernel.RunStateApplying,
+		kernel.RunStatePerforming, kernel.RunStateDestroying, kernel.RunStatePreparing,
+		kernel.RunStatePreparingApply, kernel.RunStatePreparingReplan,
+	}
+	if !slices.Equal(onWorker, held) {
+		t.Errorf("states on a worker = %v, want %v", onWorker, held)
+	}
+	if kernel.RunStateUnknown.Terminal() || kernel.RunStateUnknown.Passive() ||
+		kernel.RunStateUnknown.OnWorker() {
 		t.Error("UNKNOWN has a flag")
 	}
 	if kernel.RunStateApplying.Passive() || !kernel.RunStateQueued.Passive() {

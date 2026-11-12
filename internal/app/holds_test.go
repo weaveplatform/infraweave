@@ -14,9 +14,11 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	opapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -41,9 +43,12 @@ func awaitLockWait(ctx context.Context, t *testing.T, q tx.Querier) {
 
 // holdWorld is the domains as the server wires them over a fresh
 // database, with an account whose top space holds two spaces, kept and
-// gone, and a member who administers the top space.
+// gone, and a member who administers the top space. db and keys build
+// another replica over the same database.
 type holdWorld struct {
 	d          Domains
+	db         *sql.DB
+	keys       *crypt.Keyring
 	q          *pgxpool.Pool
 	acct       kernel.AccountID
 	kept, gone kernel.ULID
@@ -55,10 +60,11 @@ func newHoldWorld(t *testing.T) holdWorld {
 	ctx := t.Context()
 	db := sqltest.Open(t)
 	q := db.Primary()
+	keys := testKeyring(t, q)
 	d, err := newDomains(
 		config.Defaults(),
 		db,
-		testKeyring(t, q),
+		keys,
 		nil,
 		testEvents(t, q),
 		slog.New(slog.DiscardHandler),
@@ -124,7 +130,9 @@ func newHoldWorld(t *testing.T) holdWorld {
 		Kind: kernel.PrincipalUser, ActorID: member.ULID,
 		OrganizationID: org, AccountID: acct, MemberID: member,
 	})
-	return holdWorld{d: d, q: q, acct: acct, kept: kept, gone: gone, admin: admin}
+	return holdWorld{
+		d: d, db: db, keys: keys, q: q, acct: acct, kept: kept, gone: gone, admin: admin,
+	}
 }
 
 var errRollback = errors.New("rolled back")

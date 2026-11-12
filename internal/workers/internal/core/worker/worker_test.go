@@ -31,16 +31,18 @@ import (
 var errDown = errors.New("down")
 
 // store keeps pools, nonces and workers in memory; fail names a method
-// that fails with errDown, and wake is called for each pool a drain or a
-// cycle changes, as the pg store's notification reaches WatchPolls.
+// that fails with errDown, removeOnLock a worker a locked read finds
+// gone, and wake is called for each pool a drain or a cycle changes, as
+// the pg store's notification reaches WatchPolls.
 type store struct {
-	mu      sync.Mutex
-	ca      []byte
-	pools   map[kernel.ULID]pool.Pool
-	nonces  map[string]time.Time
-	workers map[kernel.ULID]worker.Worker
-	fail    string
-	wake    func(kernel.ULID)
+	mu           sync.Mutex
+	ca           []byte
+	pools        map[kernel.ULID]pool.Pool
+	nonces       map[string]time.Time
+	workers      map[kernel.ULID]worker.Worker
+	fail         string
+	removeOnLock kernel.ULID
+	wake         func(kernel.ULID)
 }
 
 func (s *store) down(method string) error {
@@ -71,6 +73,9 @@ func (s *store) Get(
 ) (pool.Pool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.down("Get"); err != nil {
+		return pool.Pool{}, err
+	}
 	p, ok := s.pools[id]
 	if !ok || p.Account != acct {
 		return p, pool.ErrNotFound
@@ -117,11 +122,18 @@ func (s *store) Count(
 	return u, s.down("Count")
 }
 
-func (s *store) Worker(_ context.Context, id kernel.ULID, _ bool) (worker.Worker, int64, error) {
+// Worker fails on "Worker", and a locked read also on "Lock".
+func (s *store) Worker(_ context.Context, id kernel.ULID, lock bool) (worker.Worker, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.down("Worker"); err != nil {
 		return worker.Worker{}, 0, err
+	}
+	if err := s.down("Lock"); lock && err != nil {
+		return worker.Worker{}, 0, err
+	}
+	if lock && id == s.removeOnLock {
+		delete(s.workers, id)
 	}
 	w, ok := s.workers[id]
 	if !ok {
@@ -169,6 +181,18 @@ func (s *store) Seen(
 	w.LastSeenAt, w.Busy = now, busy
 	s.workers[id] = w
 	return w, s.pools[w.Pool].Serial, nil
+}
+
+func (s *store) Claimed(_ context.Context, id kernel.ULID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.down("Claimed"); err != nil {
+		return err
+	}
+	w := s.workers[id]
+	w.Busy, w.AvailableAt = true, nil
+	s.workers[id] = w
+	return nil
 }
 
 func (s *store) Remove(_ context.Context, id kernel.ULID) error {
@@ -252,14 +276,22 @@ func (s *store) OfPools(
 	return out, nil
 }
 
-// tokens mints a token naming its worker, valid for an hour.
-type tokens struct{ fail bool }
+// tokens mints a token naming its worker or run, valid for an hour;
+// fail fails the session tokens and failRun the run tokens.
+type tokens struct{ fail, failRun bool }
 
 func (t tokens) WorkerToken(_ context.Context, w kernel.ULID) (accessapi.Token, error) {
 	if t.fail {
 		return accessapi.Token{}, errDown
 	}
 	return accessapi.Token{Raw: "session " + w.String(), Expires: time.Now().Add(time.Hour)}, nil
+}
+
+func (t tokens) RunToken(_ context.Context, run kernel.ULID) (accessapi.Token, error) {
+	if t.failRun {
+		return accessapi.Token{}, errDown
+	}
+	return accessapi.Token{Raw: "run " + run.String(), Expires: time.Now().Add(time.Hour)}, nil
 }
 
 // limits refuses a new worker once the organization has max.

@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
@@ -158,6 +159,9 @@ type Store interface {
 	// available_at when it becomes idle, and answers it with its pool's
 	// current serial; ErrNotFound when none.
 	Seen(ctx context.Context, id kernel.ULID, busy bool, now time.Time) (Worker, int64, error)
+	// Claimed marks the worker id busy, as a claim leaves it until its
+	// launcher's next poll reports.
+	Claimed(ctx context.Context, id kernel.ULID) error
 	// Remove deletes the worker id; ErrNotFound when none.
 	Remove(ctx context.Context, id kernel.ULID) error
 	// Drain sets the drain flag of acct's worker id of pool and wakes the
@@ -195,9 +199,11 @@ type Store interface {
 	) (map[kernel.ULID][]Worker, error)
 }
 
-// Tokens mints the worker session tokens registrations and polls answer.
+// Tokens mints the worker session tokens registrations and polls answer,
+// and the run tokens of the runs polls claim.
 type Tokens interface {
 	WorkerToken(ctx context.Context, worker kernel.ULID) (accessapi.Token, error)
+	RunToken(ctx context.Context, run kernel.ULID) (accessapi.Token, error)
 }
 
 // Limits admits one more registered worker, as the features domain's
@@ -230,14 +236,15 @@ type Deps struct {
 // Service is the workers' logic: the worker API's registration, polls and
 // exit, and the API's drain, cycle and worker reads.
 type Service struct {
-	store   Store
-	db      tx.Beginner
-	tokens  Tokens
-	limits  Limits
-	version string
-	pollMax time.Duration
-	now     func() time.Time
-	hub     *hub
+	store     Store
+	db        tx.Beginner
+	tokens    Tokens
+	limits    Limits
+	scheduler workersapi.Scheduler
+	version   string
+	pollMax   time.Duration
+	now       func() time.Time
+	hub       *hub
 }
 
 // New returns the service over d.
@@ -255,6 +262,10 @@ func New(d Deps) *Service {
 		pollMax: pollMax, now: now, hub: newHub(),
 	}
 }
+
+// BindScheduler binds the runs domain's claim, which polls claim their
+// pool's next run through; until then a poll claims none.
+func (s *Service) BindScheduler(sch workersapi.Scheduler) { s.scheduler = sch }
 
 // Registration is a registered worker and its session token.
 type Registration struct {

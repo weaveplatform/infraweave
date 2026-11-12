@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"sync"
@@ -8,6 +9,8 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // SignalCycle asks a launcher to exit: at once when idle, after its run
@@ -23,13 +26,22 @@ type PollInput struct {
 	Wait    time.Duration
 }
 
-// PollResult is a poll's answer: the signals for the worker, its drain
-// flag, and a renewed session token when the poll's had less than
-// RenewWithin left.
+// PollResult is a poll's answer: the run it claimed for the worker, the
+// signals for the worker, its drain flag, and a renewed session token
+// when the poll's had less than RenewWithin left.
 type PollResult struct {
-	Signals []string
-	Drained bool
-	Token   *accessapi.Token
+	Assignment *Assignment
+	Signals    []string
+	Drained    bool
+	Token      *accessapi.Token
+}
+
+// Assignment is a run a poll claimed, the preparing state the claim moved
+// it to, and the run token its launcher and runner carry.
+type Assignment struct {
+	Run   kernel.ULID
+	State kernel.RunState
+	Token accessapi.Token
 }
 
 func result(w Worker) PollResult {
@@ -41,16 +53,19 @@ func result(w Worker) PollResult {
 }
 
 // Poll marks the session's worker seen with in's state and answers what
-// the server has to say to it. It answers at once with a renewed token
-// when the session's has less than RenewWithin left, with a cycle signal,
-// or when the worker's drain flag is not the one in reports; otherwise it
-// holds the request, with no transaction or pooled connection open, until
-// the worker is cycled or its drain flag changes, the same worker's next
-// poll reaches this replica, or its hold ends, so a worker holds at most
-// one poll per replica. A worker that is gone, or that registered under a
-// certificate a reset replaced, is ErrUnauthenticated.
+// the server has to say to it. An idle, undrained worker's poll first
+// claims its pool's next run, and answers at once with it. A poll also
+// answers at once with a renewed token when the session's has less than
+// RenewWithin left, with a cycle signal, or when the worker's drain flag
+// is not the one in reports; otherwise it holds the request, with no
+// transaction or pooled connection open, until a wake-up for its pool,
+// which it claims again on, the worker is cycled or its drain flag
+// changes, the same worker's next poll reaches this replica, or its hold
+// ends, so a worker holds at most one poll per replica. A worker that is
+// gone, or that registered under a certificate a reset replaced, is
+// ErrUnauthenticated.
 //
-// ref: decision 0008 § "The worker API"
+// ref: decision 0008 § "The worker API", § "Claiming runs"
 func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (PollResult, error) {
 	now := s.now()
 	w, serial, err := s.store.Seen(ctx, b.ID, in.Busy, now)
@@ -60,21 +75,20 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 	if w.Serial != serial {
 		return PollResult{}, refuse("worker %s registered under a replaced certificate", w.ID)
 	}
+	var renewed *accessapi.Token
 	if b.Expires.Sub(now) < RenewWithin {
-		out := result(w)
 		t, err := s.tokens.WorkerToken(ctx, w.ID)
 		if err != nil {
 			return PollResult{}, err //nolint:wrapcheck // the access domain names the mint
 		}
-		out.Token = &t
-		return out, nil
+		renewed = &t
 	}
-	if w.Cycle || w.Drained != in.Drained {
-		return result(w), nil
-	}
-	// The worker is reread after the wake-up is registered, so a change
-	// between Seen and the registration still ends the hold.
-	wake, ended, done := s.hub.wait(w.Pool, w.ID)
+	// The worker is reread and the claim tried after the wake-up is
+	// registered, so a change, or a run made ready, between Seen and the
+	// registration still ends the hold.
+	wake, ended, done := s.hub.wait(w.Pool, waiter{
+		worker: w.ID, registered: w.CreatedAt, claimant: w.idle(),
+	})
 	defer done()
 	timer := time.NewTimer(s.hold(in.Wait))
 	defer timer.Stop()
@@ -86,8 +100,18 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 		if cur.Serial != serial {
 			return PollResult{}, refuse("worker %s registered under a replaced certificate", w.ID)
 		}
-		if cur.Cycle || cur.Drained != in.Drained || s.hub.stopped() {
-			return result(cur), nil
+		out := result(cur)
+		out.Token = renewed
+		a, ok, err := s.claim(ctx, cur)
+		if err != nil {
+			return PollResult{}, err
+		}
+		if ok {
+			out.Assignment = &a
+		}
+		if out.Assignment != nil || out.Token != nil || cur.Cycle || cur.Drained != in.Drained ||
+			s.hub.stopped() {
+			return out, nil
 		}
 		select {
 		case <-wake:
@@ -99,6 +123,55 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 			return PollResult{}, ctx.Err() //nolint:wrapcheck // the request ended
 		}
 	}
+}
+
+// idle reports whether w may be assigned a run: it is neither busy,
+// drained nor cycled.
+func (w Worker) idle() bool { return !w.Busy && !w.Drained && !w.Cycle }
+
+// claim claims the next run of w's pool for w through the scheduler
+// internal/app binds, and reports false when w is not idle or none waits.
+// It locks w's row before it claims, so polls of one worker on two
+// replicas claim one after the other and the second finds the worker
+// busy; a run token that cannot be minted rolls the claim back.
+func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error) {
+	if s.scheduler == nil || !w.idle() {
+		return Assignment{}, false, nil
+	}
+	var out *Assignment
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		out = nil
+		cur, _, err := s.store.Worker(ctx, w.ID, true)
+		if err != nil || !cur.idle() {
+			return err //nolint:wrapcheck // the store names the read
+		}
+		p, err := s.store.Get(ctx, cur.Account, cur.Pool, false)
+		if err != nil {
+			return err //nolint:wrapcheck // the store names the read
+		}
+		c := workersapi.Claim{Account: cur.Account, Pool: cur.Pool, Worker: cur.ID}
+		if p.DriftDetectionRunLimit != nil {
+			limit := int(*p.DriftDetectionRunLimit)
+			c.DriftLimit = &limit
+		}
+		a, ok, err := s.scheduler.Claim(ctx, c)
+		if err != nil || !ok {
+			return err //nolint:wrapcheck // the runs domain names the claim
+		}
+		if err := s.store.Claimed(ctx, cur.ID); err != nil {
+			return err //nolint:wrapcheck // the store names the write
+		}
+		t, err := s.tokens.RunToken(ctx, a.Run)
+		if err != nil {
+			return err //nolint:wrapcheck // the access domain names the mint
+		}
+		out = &Assignment{Run: a.Run, State: a.State, Token: t}
+		return nil
+	})
+	if err != nil || out == nil {
+		return Assignment{}, false, s.unauthenticated(err)
+	}
+	return *out, true, nil
 }
 
 // hold is how long a poll that asks for wait is held: DefaultWait when
@@ -126,8 +199,17 @@ func (s *Service) Deregister(ctx context.Context, b accessapi.Bearer) error {
 }
 
 // Wake ends the hold of every poll held for pool, each of which rereads
-// its worker and goes on holding when nothing changed.
+// its worker, claims a run when idle, and goes on holding when nothing
+// changed.
 func (s *Service) Wake(pool kernel.ULID) { s.hub.wake(pool) }
+
+// WakeOne ends the hold of the poll held for pool that a waiting run
+// goes to: the idle worker's that registered last, which approximates
+// Spacelift's newest-first assignment. Each replica wakes one, and a
+// woken poll that loses its claim goes on holding.
+//
+// ref: decision 0008 § "Claiming runs"
+func (s *Service) WakeOne(pool kernel.ULID) { s.hub.wakeOne(pool) }
 
 // WakeAll ends the hold of every held poll, as Wake does, for a wake-up
 // that may have been missed.
@@ -147,9 +229,26 @@ func (s *Service) Stop() {
 // each worker's latest one.
 type hub struct {
 	mu       sync.Mutex
-	waiting  map[kernel.ULID]map[chan struct{}]struct{}
+	waiting  map[kernel.ULID]map[chan struct{}]waiter
 	held     map[kernel.ULID]chan struct{}
 	stopping bool
+}
+
+// waiter is a held poll's worker, when it registered, and whether it was
+// idle, so a waiting run may wake it.
+type waiter struct {
+	worker     kernel.ULID
+	registered time.Time
+	claimant   bool
+}
+
+// after reports whether w's worker registered after o's, the later ID
+// first when both registered at once.
+func (w waiter) after(o waiter) bool {
+	if !w.registered.Equal(o.registered) {
+		return w.registered.After(o.registered)
+	}
+	return bytes.Compare(w.worker[:], o.worker[:]) > 0
 }
 
 func (h *hub) stopped() bool {
@@ -160,22 +259,23 @@ func (h *hub) stopped() bool {
 
 func newHub() *hub {
 	return &hub{
-		waiting: map[kernel.ULID]map[chan struct{}]struct{}{},
+		waiting: map[kernel.ULID]map[chan struct{}]waiter{},
 		held:    map[kernel.ULID]chan struct{}{},
 	}
 }
 
-// wait registers worker's held poll for pool, ending the worker's earlier
-// one: wake receives on each wake-up, ended is closed when the worker's
-// next poll registers, and done unregisters it.
-func (h *hub) wait(pool, worker kernel.ULID) (wake, ended <-chan struct{}, done func()) {
+// wait registers w's held poll for pool, ending its worker's earlier one:
+// wake receives on each wake-up, ended is closed when the worker's next
+// poll registers, and done unregisters it.
+func (h *hub) wait(pool kernel.ULID, w waiter) (wake, ended <-chan struct{}, done func()) {
 	ch, end := make(chan struct{}, 1), make(chan struct{})
+	worker := w.worker
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.waiting[pool] == nil {
-		h.waiting[pool] = map[chan struct{}]struct{}{}
+		h.waiting[pool] = map[chan struct{}]waiter{}
 	}
-	h.waiting[pool][ch] = struct{}{}
+	h.waiting[pool][ch] = w
 	if old, ok := h.held[worker]; ok {
 		close(old)
 	}
@@ -198,6 +298,23 @@ func (h *hub) wake(pool kernel.ULID) {
 	defer h.mu.Unlock()
 	for ch := range h.waiting[pool] {
 		signal(ch)
+	}
+}
+
+func (h *hub) wakeOne(pool kernel.ULID) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	var (
+		pick chan struct{}
+		last waiter
+	)
+	for ch, w := range h.waiting[pool] {
+		if w.claimant && (pick == nil || w.after(last)) {
+			pick, last = ch, w
+		}
+	}
+	if pick != nil {
+		signal(pick)
 	}
 }
 

@@ -541,7 +541,7 @@ it adds no import.
 |---|---|---|
 | `features` | none | |
 | `access` | features | `policiesapi.Evaluator` for `LOGIN` policies |
-| `workers` | features, access | `runsapi.Scheduler`, `runsapi.Reports` for the worker protocol |
+| `workers` | features, access | `workersapi.Scheduler` and `workersapi.Reports`, which `runs` implements, for the worker protocol's claims and reports |
 | `vendors` | features, access | |
 | `stacks` | features, access, workers, vendors | `stacksapi.StackStatus`, which `runs` implements, for the stack view's blocker; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config` |
 | `configuration` | features, access, stacks | |

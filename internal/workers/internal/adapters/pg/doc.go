@@ -5,9 +5,9 @@
 // signing takes under the CA row's lock; a pool's delete, which takes its
 // workers and their nonces with it; the workers, read by their ID alone
 // as a worker session token names them, searched by the worker package's
-// Fields, counted per organization for private-workers, and drained and
-// cycled with a notification on infraweave_runs that wakes their pool's
-// held polls on commit; each pool's registration nonces, kept until they
+// Fields, counted per organization for private-workers, marked busy by a
+// claim, and drained and cycled with a notification on infraweave_runs
+// that wakes their pool's held polls on commit; each pool's registration nonces, kept until they
 // expire; and a deleted account's purge, a
 // batch of its nonces, workers or pools at a time. Stream is the
 // migration stream that creates them, Held the columns that name other
