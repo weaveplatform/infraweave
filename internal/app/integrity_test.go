@@ -3,7 +3,9 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/app/config"
@@ -15,8 +17,9 @@ import (
 
 // TestAccOrphans checks integrity.orphans over every domain's declared
 // columns on the migrated schema: nothing is logged while every held row
-// is there, and a space deleted outside any purge is logged at warn as
-// one ID stacks holds.
+// is there, a space deleted outside any purge is logged at warn as one ID
+// stacks holds, and a state workspace and lock of no stack and no run are
+// logged as the stack and run they hold.
 func TestAccOrphans(t *testing.T) {
 	ctx := t.Context()
 	db := sqltest.Open(t)
@@ -112,6 +115,32 @@ func TestAccOrphans(t *testing.T) {
 		got[0]["held"] != "stacks(account_id, space_id)" || got[0]["entity"] != "space" ||
 		got[0]["ids"] != float64(1) {
 		t.Errorf("after a space is deleted outside a purge: %v", got)
+	}
+
+	gone := kernel.NewULID()
+	if _, err := q.Exec(ctx, `INSERT INTO state_workspaces (account_id, stack_id, name)
+		VALUES ($1, $2, '')`, acct, gone); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.Exec(ctx, `INSERT INTO state_locks
+		(account_id, stack_id, workspace, lock_id, mode, run_id, info)
+		VALUES ($1, $2, '', 'a', 'shared', $3, '{}')`, acct, gone, kernel.NewULID()); err != nil {
+		t.Fatal(err)
+	}
+	lines := run()
+	state := make([]string, 0, len(lines))
+	for _, line := range lines {
+		state = append(state, fmt.Sprint(line["entity"], " ", line["held"], " ", line["ids"]))
+	}
+	want := []string{
+		"space stacks(account_id, space_id) 1",
+		"stack state_workspaces(account_id, stack_id) 1",
+		"stack state_locks(account_id, stack_id) 1",
+		"run state_locks(account_id, run_id) 1",
+	}
+	if strings.Join(state, "\n") != strings.Join(want, "\n") {
+		t.Errorf("with a workspace and lock of no stack or run:\n%s\nwant:\n%s",
+			strings.Join(state, "\n"), strings.Join(want, "\n"))
 	}
 	db.Close()
 	if err := orphansTask(q, discard()).Handler(ctx, queue.Job{}); err == nil {

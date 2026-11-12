@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
 )
@@ -40,6 +41,7 @@ func held() []integrity.Held {
 		stacksassembly.Held(),
 		configurationassembly.Held(),
 		runsassembly.Held(),
+		stateassembly.Held(),
 		vcsassembly.Held(),
 		workersassembly.Held(),
 	)
@@ -58,6 +60,7 @@ func orphansTask(q tx.Querier, log *slog.Logger) cron.Task {
 			keys := slices.Concat(
 				accessassembly.Keys(),
 				stacksassembly.Keys(),
+				runsassembly.Keys(),
 				workersassembly.Keys(),
 			)
 			counts, err := integrity.Count(ctx, q, keys, held())

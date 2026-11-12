@@ -88,7 +88,7 @@ session token, in-run API token).
 
 ### Locks
 
-- **Table `state_locks`**: `(stack_id, workspace, lock_id)` key, `mode` (`shared` or
+- **Table `state_locks`**: `(account_id, stack_id, workspace, lock_id)` key, `mode` (`shared` or
   `exclusive`), `run_id`, `info` (the `LockInfo` JSON Terraform sent, at most 16 KiB),
   `created_at`. The lock ID is the `ID` field of the `LockInfo` body.
 - **Taking a lock** runs in one transaction that locks the `state_workspaces` row
@@ -140,7 +140,8 @@ session token, in-run API token).
   `serial`, `lineage`, `client_encrypted`, `run_id` (null for imports), `rollback`,
   `rollback_username`, `rolled_back_from`, `imported`, `imported_username`,
   `imported_at`, `created_at` (answered as `lastModified`). Index
-  `(stack_id, workspace, created_at)` serves `searchManagedStateVersions`.
+  `(account_id, stack_id, workspace, created_at)` serves `searchManagedStateVersions` and
+  the version's key to its workspace.
 - **Objects.** Each version is its own object in the `states` store (decision
   [0005](0005-persistence-postgresql.md)) under
   `<account>/<stack ulid>/<sha256 of workspace name>/<version ulid>`, written once and

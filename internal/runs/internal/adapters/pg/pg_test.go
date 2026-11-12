@@ -137,7 +137,7 @@ func TestAccStoreUnavailable(t *testing.T) {
 }
 
 // TestUnitHeld declares a held stack column for each table that names a
-// stack, and the runs' account.
+// stack, and the runs' account, and the runs' key.
 func TestUnitHeld(t *testing.T) {
 	held := pg.Held()
 	if len(held) != 5 || held[0].Entity != "account" || held[0].Table != "runs" {
@@ -150,5 +150,8 @@ func TestUnitHeld(t *testing.T) {
 	}
 	if pg.Stream().Name != pg.StreamName {
 		t.Errorf("the stream is named %q", pg.Stream().Name)
+	}
+	if k := pg.Keys(); len(k) != 1 || k[0].Entity != "run" || k[0].Table != "runs" {
+		t.Errorf("Keys = %+v", k)
 	}
 }
