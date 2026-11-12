@@ -509,6 +509,22 @@ components:
           type: integer
           format: int64
           description: When the run token expires, in Unix seconds.
+    ContainerExit:
+      description: >-
+        How the container of the run a poll names ended: its root process's exit code, and why it ended.
+      type: object
+      additionalProperties: false
+      required: [code, reason]
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: The exit code of the container's root process.
+        reason:
+          type: string
+          enum: [exited, killed, out-of-memory, missing]
+          description: >-
+            exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted.
     LogChunk:
       description: An uploaded log chunk.
       type: object
@@ -581,7 +597,10 @@ components:
         run:
           type: string
           maxLength: 26
-          description: The ID of the run the launcher is executing, when busy.
+          description: >-
+            The ID of the run the launcher is executing, when busy; when not busy, the run whose container ended since the launcher's last poll, which exit describes.
+        exit:
+          $ref: '#/components/schemas/ContainerExit'
         version:
           type: string
           maxLength: 64

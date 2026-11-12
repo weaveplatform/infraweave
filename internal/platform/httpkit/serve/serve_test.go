@@ -176,7 +176,7 @@ func TestUnitRunDrains(t *testing.T) {
 	shuttingDown := make(chan struct{})
 	r.api.RegisterOnShutdown(func() { close(shuttingDown) })
 	done := make(chan error, 1)
-	go func() { done <- r.wait(ctx, discard(), nothing) }()
+	go func() { done <- r.Wait(ctx, discard(), nothing) }()
 
 	// The request runs off the test goroutine, so it reports through body
 	// rather than t.Fatal.
@@ -244,7 +244,7 @@ func TestUnitRunShutdownTimeout(t *testing.T) {
 	<-entered
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := r.wait(ctx, discard(), nothing); !errors.Is(err, context.DeadlineExceeded) {
+	if err := r.Wait(ctx, discard(), nothing); !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("got %v, want the shutdown deadline", err)
 	}
 }
@@ -255,7 +255,7 @@ func TestUnitRunListenerFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = r.apiLn.Close()
-	if err := r.wait(
+	if err := r.Wait(
 		t.Context(),
 		discard(),
 		nothing,
@@ -300,7 +300,7 @@ func TestUnitRunReadyDelay(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	stopped := make(chan struct{})
 	done := make(chan error, 1)
-	go func() { done <- r.wait(ctx, discard(), func() { close(stopped) }) }()
+	go func() { done <- r.Wait(ctx, discard(), func() { close(stopped) }) }()
 	cancel()
 	<-stopped
 	if code, body := get(t, "http://"+r.APIAddr()+"/"); code != http.StatusOK || body != "api" {

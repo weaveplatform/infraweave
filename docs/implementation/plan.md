@@ -1639,12 +1639,18 @@ context in the assignment with P18b.
    (the envelope opened with the pool key; another run's token `401`, a run
    off its worker `409`), `expressions_deploy.feature`.
 4. `internal/agent`: `config`, `launcher` (register, poll, signals, drain,
-   cycle), `executor/docker` (the launcher's own binary bind-mounted
-   read-only as the container's root process, UID 1983) and `agenttest`.
-   `internal/agent/cli` holds `infraweave launcher` and the hidden
-   `infraweave runner` stub, which `cmd/infraweave/agent.go` registers.
-   `infraweave launcher` serves `/livez` and `/readyz` on an admin
-   listener, as `serve` does.
+   cycle, a session renewed, a restart that resumes its worker and its run
+   from `worker.json`, a container's end reported through the next poll's
+   `exit`), `handoff` (the opened specification on the runner's standard
+   input), `executor/docker` (the launcher's own binary bind-mounted
+   read-only as the container's root process, UID 1983, labelled with the
+   worker and the run) and `agenttest`. `internal/agent/cli` holds
+   `infraweave launcher` and the hidden `infraweave runner` stub, which
+   reports `started` and then `failed` with a note that this build's runner
+   executes no phase; `cmd/infraweave/agent.go` registers both.
+   `infraweave launcher` serves `/livez`, `/startupz` and `/readyz` on an
+   admin listener, as `serve` does. Tests: the launcher over `agenttest` in
+   virtual time, `TestAccDockerExecutor`.
 5. Liveness: a worker unseen for `worker.offline_after` (3 minutes) is
    `OFFLINE` and receives no new work; `worker.reap` fails a run whose
    worker stays offline past `run.lost_after` (60 minutes) as a lost run

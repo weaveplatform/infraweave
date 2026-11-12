@@ -209,10 +209,13 @@ func Run(
 	if err != nil {
 		return err
 	}
-	return r.wait(ctx, log, stopping)
+	return r.Wait(ctx, log, stopping)
 }
 
-func (r *Running) wait(ctx context.Context, log *slog.Logger, stopping func()) error {
+// Wait serves until ctx is done or a listener fails, then shuts down as
+// Run does. A process that must bind its listeners before it starts other
+// work calls Start and then Wait.
+func (r *Running) Wait(ctx context.Context, log *slog.Logger, stopping func()) error {
 	var serveErr error
 	select {
 	case <-ctx.Done():

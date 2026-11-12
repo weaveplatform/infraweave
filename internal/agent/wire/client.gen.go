@@ -58,6 +58,30 @@ func (e AssignmentState) Valid() bool {
 	}
 }
 
+// Defines values for ContainerExitReason.
+const (
+	Exited      ContainerExitReason = "exited"
+	Killed      ContainerExitReason = "killed"
+	Missing     ContainerExitReason = "missing"
+	OutOfMemory ContainerExitReason = "out-of-memory"
+)
+
+// Valid indicates whether the value is a known member of the ContainerExitReason enum.
+func (e ContainerExitReason) Valid() bool {
+	switch e {
+	case Exited:
+		return true
+	case Killed:
+		return true
+	case Missing:
+		return true
+	case OutOfMemory:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for NextStepAction.
 const (
 	Execute NextStepAction = "execute"
@@ -345,6 +369,18 @@ type Assignment struct {
 // AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
 type AssignmentState string
 
+// ContainerExit How the container of the run a poll names ended: its root process's exit code, and why it ended.
+type ContainerExit struct {
+	// Code The exit code of the container's root process.
+	Code int32 `json:"code"`
+
+	// Reason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted.
+	Reason ContainerExitReason `json:"reason"`
+}
+
+// ContainerExitReason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted.
+type ContainerExitReason string
+
 // LogChunk An uploaded log chunk.
 type LogChunk struct {
 	// FirstAt When the chunk's first line was written, in Unix seconds.
@@ -388,7 +424,10 @@ type PollRequest struct {
 	// Drained The drain flag the launcher last learned. A poll whose worker's flag differs answers at once.
 	Drained *bool `json:"drained,omitempty"`
 
-	// Run The ID of the run the launcher is executing, when busy.
+	// Exit How the container of the run a poll names ended: its root process's exit code, and why it ended.
+	Exit *ContainerExit `json:"exit,omitempty"`
+
+	// Run The ID of the run the launcher is executing, when busy; when not busy, the run whose container ended since the launcher's last poll, which exit describes.
 	Run *string `json:"run,omitempty"`
 
 	// Version The launcher's version.

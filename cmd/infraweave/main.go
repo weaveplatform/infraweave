@@ -29,6 +29,7 @@ func main() {
 		authCmd(),
 		versionCmd(),
 	)
+	root.AddCommand(agentCmds()...)
 	err := root.ExecuteContext(stopOnSignal())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "infraweave:", err)
