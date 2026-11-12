@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
 )
 
 // StreamName is the runs stream's name in schema_migrations.
@@ -111,6 +112,26 @@ func (s *Store) StackOf(
 			sql.Unavailable(err))
 	}
 	return stack, true, nil
+}
+
+// RunOf reads run's account, stack and state, whichever account has it,
+// without locking its row, so a state request never waits on a move;
+// false when no account does.
+func (s *Store) RunOf(ctx context.Context, run kernel.ULID) (core.Run, bool, error) {
+	var (
+		r     core.Run
+		state string
+	)
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT account_id, stack_id, state FROM runs
+		WHERE id = $1`, run).Scan(&r.Account, &r.Stack, &state)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return core.Run{}, false, nil
+	case err != nil:
+		return core.Run{}, false, fmt.Errorf("runs: read run %s: %w", run, sql.Unavailable(err))
+	}
+	r.State = kernel.RunState(state)
+	return r, true, nil
 }
 
 // DeleteStack deletes acct's stack's outputs, tracked run, run lock and

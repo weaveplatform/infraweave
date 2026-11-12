@@ -25,7 +25,10 @@
 // environment with; SealedColumns names the run's sealed artifact key, for
 // internal/app's reseal; StackGuard is the
 // stacksapi.StackGuard internal/app registers there, so a stack's delete
-// deletes its runs in the same transaction; API is its partial of the
+// deletes its runs in the same transaction; StateAccess is the
+// runsapi.StateAccess internal/app hands the state domain, a forward edge
+// that decides a run token's access to its stack's state from the run's
+// current state; API is its partial of the
 // API's strict server, aliased RunsAPI; Held declares the columns that
 // hold the access domain's accounts and the stacks domain's stacks, and
 // Keys the runs' key, which other domains' held columns name, for the

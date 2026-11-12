@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -20,14 +21,25 @@ type Store interface {
 	) (map[kernel.ULID]kernel.ULID, error)
 	// StackOf reads the stack of acct's run, false when acct lacks it.
 	StackOf(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, bool, error)
+	// RunOf reads run's account, stack and state, whichever account has
+	// it, without locking its row; false when no account does.
+	RunOf(ctx context.Context, run kernel.ULID) (Run, bool, error)
 	// DeleteStack deletes acct's stack's runs with their transitions,
 	// and its run lock, tracked run and outputs, in the context's
 	// transaction.
 	DeleteStack(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error
 }
 
+// Run is a run as Access reads it.
+type Run struct {
+	Account kernel.AccountID
+	Stack   kernel.ULID
+	State   kernel.RunState
+}
+
 // Service is the runs domain's core: the stacksapi.StackStatus the stack
-// view reads, and the stacksapi.StackGuard a stack's move and delete ask.
+// view reads, the stacksapi.StackGuard a stack's move and delete ask, and
+// the runsapi.StateAccess the state domain asks.
 type Service struct{ store Store }
 
 // New returns the service over store.
@@ -76,4 +88,34 @@ func (s *Service) LostOnMove(context.Context, stacksapi.StackMove) ([]string, er
 func (s *Service) Deleting(ctx context.Context, st stacksapi.Stack) error {
 	//nolint:wrapcheck // the store names the delete
 	return s.store.DeleteStack(ctx, st.Account, st.ID)
+}
+
+// grants are the run states that grant their run access to its stack's
+// state: reading and a shared lock while the run plans, and writing under
+// an exclusive lock while it applies, destroys or performs a task. Every
+// other state, terminal or not, grants nothing.
+//
+// ref: decision 0010 § "Who may call what"
+var grants = map[kernel.RunState]runsapi.StateGrant{
+	kernel.RunStateInitializing: {Read: true, Lock: runsapi.StateLockShared},
+	kernel.RunStatePlanning:     {Read: true, Lock: runsapi.StateLockShared},
+	kernel.RunStateApplying:     {Read: true, Lock: runsapi.StateLockExclusive, Write: true},
+	kernel.RunStateDestroying:   {Read: true, Lock: runsapi.StateLockExclusive, Write: true},
+	kernel.RunStatePerforming:   {Read: true, Lock: runsapi.StateLockExclusive, Write: true},
+}
+
+// Access answers run's grant on stack's state from the state it reads the
+// run in: the zero grant when no account has the run, when it is another
+// stack's, or when grants holds no entry for its state.
+func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.StateGrant, error) {
+	r, ok, err := s.store.RunOf(ctx, run)
+	if err != nil {
+		return runsapi.StateGrant{}, err //nolint:wrapcheck // the store names the read
+	}
+	g, granted := grants[r.State]
+	if !ok || r.Stack != stack || !granted {
+		return runsapi.StateGrant{}, nil
+	}
+	g.Account = r.Account
+	return g, nil
 }

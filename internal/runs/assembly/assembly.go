@@ -261,6 +261,11 @@ func (d *Domain) BindExpressions(r *expr.Registry) { d.handover.BindExpressions(
 // go in its delete's transaction.
 func (d *Domain) StackGuard() stacksapi.StackGuard { return d.runs }
 
+// StateAccess decides a run token's access to its stack's state from the
+// run's current state, the forward edge internal/app hands the state
+// domain.
+func (d *Domain) StateAccess() runsapi.StateAccess { return d.runs }
+
 // RunsAPI is the domain's partial of the API's strict server, which
 // internal/app embeds under this alias.
 type RunsAPI = http.Server
