@@ -11,7 +11,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 )
 
 // TestMain migrates the platform stream and the runs stream alone: no
@@ -121,6 +124,96 @@ func TestAccStore(t *testing.T) {
 	}
 }
 
+// TestAccStoreStateAccess reads a run of every type by its ID alone, none
+// for an unknown run, and answers the core's access from the state each
+// Transition moves a tracked run to: a shared lock while it plans, writes
+// under an exclusive lock while it applies, and nothing once it finishes;
+// another account's applying run never reaches the stack.
+func TestAccStoreStateAccess(t *testing.T) {
+	ctx := t.Context()
+	w := newWorld(t)
+	for _, typ := range kernel.RunTypes() {
+		run := kernel.NewULID()
+		if _, err := w.db.Exec(ctx, `INSERT INTO runs (account_id, id, stack_id, type, state,
+			commit, triggered_by) VALUES ($1, $2, $3, $4, 'PLANNING', '{}', 'alice')`,
+			w.acct, run, w.stack, typ); err != nil {
+			t.Fatal(err)
+		}
+		want := core.Run{Account: w.acct, Stack: w.stack, State: kernel.RunStatePlanning}
+		if got, ok, err := w.store.RunOf(ctx, run); err != nil || !ok || got != want {
+			t.Errorf("RunOf a %s run = %+v, %t, %v", typ, got, ok, err)
+		}
+	}
+	if got, ok, err := w.store.RunOf(ctx, kernel.NewULID()); err != nil || ok ||
+		got != (core.Run{}) {
+		t.Errorf("RunOf an unknown run = %+v, %t, %v", got, ok, err)
+	}
+
+	access := core.New(w.store)
+	other := insertRun(t, w.db, kernel.NewAccountID(), kernel.NewULID(), false)
+	grant := func(run kernel.ULID) runsapi.StateGrant {
+		t.Helper()
+		g, err := access.Access(ctx, run, w.stack)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if g, err := access.Access(ctx, other, w.stack); err != nil ||
+			g != (runsapi.StateGrant{}) {
+			t.Errorf("another account's applying run = %+v, %v", g, err)
+		}
+		return g
+	}
+	run, _, err := w.create(t, kernel.RunTypeTracked, "abc123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g := grant(run.ID); g != (runsapi.StateGrant{}) {
+		t.Errorf("QUEUED grants %+v", g)
+	}
+	run = w.mustMove(t, run, kernel.RunStateReady, machine.DriverScheduler,
+		machine.GuardStackLockFree, machine.GuardApproved, machine.GuardUpstreamFinished,
+		machine.GuardExternalSettled, machine.GuardStackEnabled)
+	w.takeLock(t, run)
+	for _, m := range []struct {
+		to kernel.RunState
+		by machine.Driver
+	}{
+		{kernel.RunStatePreparing, machine.DriverWorkerClaim},
+		{kernel.RunStateInitializing, machine.DriverWorkerReport},
+		{kernel.RunStatePlanning, machine.DriverWorkerReport},
+	} {
+		run = w.mustMove(t, run, m.to, m.by)
+	}
+	shared := runsapi.StateGrant{Account: w.acct, Read: true, Lock: runsapi.StateLockShared}
+	if g := grant(run.ID); g != shared {
+		t.Errorf("PLANNING grants %+v, want %+v", g, shared)
+	}
+	run = w.mustMove(t, run, kernel.RunStateUnconfirmed, machine.DriverDecision)
+	if g := grant(run.ID); g != (runsapi.StateGrant{}) {
+		t.Errorf("UNCONFIRMED grants %+v", g)
+	}
+	run = w.mustMove(t, run, kernel.RunStateConfirmed, machine.DriverAPI, machine.GuardApproved)
+	for _, m := range []struct {
+		to kernel.RunState
+		by machine.Driver
+	}{
+		{kernel.RunStatePreparingApply, machine.DriverWorkerClaim},
+		{kernel.RunStateApplying, machine.DriverWorkerReport},
+	} {
+		run = w.mustMove(t, run, m.to, m.by)
+	}
+	exclusive := runsapi.StateGrant{
+		Account: w.acct, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
+	}
+	if g := grant(run.ID); g != exclusive {
+		t.Errorf("APPLYING grants %+v, want %+v", g, exclusive)
+	}
+	run = w.mustMove(t, run, kernel.RunStateFinished, machine.DriverWorkerReport)
+	if g := grant(run.ID); g != (runsapi.StateGrant{}) {
+		t.Errorf("FINISHED grants %+v", g)
+	}
+}
+
 // TestAccStoreUnavailable fails each method on a closed pool.
 func TestAccStoreUnavailable(t *testing.T) {
 	db := pool(t)
@@ -133,6 +226,9 @@ func TestAccStoreUnavailable(t *testing.T) {
 	}
 	if err := s.DeleteStack(ctx, acct, stack); err == nil {
 		t.Error("DeleteStack on a closed pool succeeded")
+	}
+	if _, _, err := s.RunOf(ctx, stack); err == nil {
+		t.Error("RunOf on a closed pool succeeded")
 	}
 }
 

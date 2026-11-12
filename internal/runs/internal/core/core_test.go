@@ -6,17 +6,24 @@ import (
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// store answers blockers and runs' stacks and records each read and
+// store answers blockers, runs' stacks and runs and records each read and
 // delete, failing with err.
 type store struct {
 	blockers map[kernel.ULID]kernel.ULID
 	stacks   map[kernel.ULID]kernel.ULID
+	runs     map[kernel.ULID]Run
 	err      error
 	reads    int
 	deleted  []kernel.ULID
+}
+
+func (s *store) RunOf(_ context.Context, run kernel.ULID) (Run, bool, error) {
+	r, ok := s.runs[run]
+	return r, ok, s.err
 }
 
 func (s *store) StackOf(
@@ -80,5 +87,54 @@ func TestUnitService(t *testing.T) {
 	}
 	if _, err := s.RunStack(ctx, acct, run); !errors.Is(err, st.err) {
 		t.Errorf("RunStack on a failing store = %v", err)
+	}
+}
+
+// TestUnitStateAccessTable checks each run state's grant on its stack's
+// state, the run's account on every grant that grants anything, and the
+// zero grant for every terminal state, another stack, an unknown run and a
+// failing store. The grant is the state's alone, so every run type that
+// reaches a state gets the same grant.
+//
+// ref: decision 0010 § "Who may call what"
+func TestUnitStateAccessTable(t *testing.T) {
+	ctx := t.Context()
+	acct, stack := kernel.NewAccountID(), kernel.NewULID()
+	shared := runsapi.StateGrant{Account: acct, Read: true, Lock: runsapi.StateLockShared}
+	exclusive := runsapi.StateGrant{
+		Account: acct, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
+	}
+	want := map[kernel.RunState]runsapi.StateGrant{
+		kernel.RunStateInitializing: shared,
+		kernel.RunStatePlanning:     shared,
+		kernel.RunStateApplying:     exclusive,
+		kernel.RunStateDestroying:   exclusive,
+		kernel.RunStatePerforming:   exclusive,
+	}
+	st := &store{runs: map[kernel.ULID]Run{}}
+	s := New(st)
+	for _, state := range kernel.RunStates() {
+		run := kernel.NewULID()
+		st.runs[run] = Run{Account: acct, Stack: stack, State: state}
+		got, err := s.Access(ctx, run, stack)
+		if err != nil || got != want[state] {
+			t.Errorf("Access in %s = %+v, %v; want %+v", state, got, err, want[state])
+		}
+		if state.Terminal() && got != (runsapi.StateGrant{}) {
+			t.Errorf("terminal %s grants %+v", state, got)
+		}
+		if got, err := s.Access(ctx, run, kernel.NewULID()); err != nil ||
+			got != (runsapi.StateGrant{}) {
+			t.Errorf("Access in %s to another stack = %+v, %v", state, got, err)
+		}
+	}
+	if got, err := s.Access(ctx, kernel.NewULID(), stack); err != nil ||
+		got != (runsapi.StateGrant{}) {
+		t.Errorf("Access of an unknown run = %+v, %v", got, err)
+	}
+	st.err = errors.New("down")
+	if got, err := s.Access(ctx, kernel.NewULID(), stack); !errors.Is(err, st.err) ||
+		got != (runsapi.StateGrant{}) {
+		t.Errorf("Access on a failing store = %+v, %v", got, err)
 	}
 }

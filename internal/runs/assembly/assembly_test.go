@@ -13,8 +13,8 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// TestUnitDomain checks that the domain answers the stack view's status
-// and the stacks guard from one service, declares its stream, held and
+// TestUnitDomain checks that the domain answers the stack view's status,
+// the stacks guard and the state access from one service, declares its stream, held and
 // sealed columns, binds the expression registry its handover renders
 // with, and that a nil domain's partial is the zero one.
 func TestUnitDomain(t *testing.T) {
@@ -29,6 +29,9 @@ func TestUnitDomain(t *testing.T) {
 	}
 	if d.Scheduler() == nil || d.Liveness() == nil {
 		t.Error("the domain has no scheduler or liveness")
+	}
+	if any(d.StateAccess()) != any(d.StackGuard()) {
+		t.Error("the state access is not the domain's service")
 	}
 	d.BindExpressions(nil)
 	var none *Domain
