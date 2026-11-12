@@ -485,10 +485,11 @@ type Guards struct {
 // gate; the features domain's Middleware is one.
 type Gated func(gate func(*http.Request) (featuresapi.Gate, bool)) func(http.Handler) http.Handler
 
-// Guarded is an API listener router: request ID and recovery, the access
-// log, the body bound, authentication, then the operator switch, rate
-// limits and idempotency keys in front of every route registered on it, so
-// a request a control rejects is logged too. The body bound,
+// Guarded is an API listener router: request ID and recovery, the marks
+// that keep every answer uncacheable and unsniffable, the access log, the
+// body bound, authentication, then the operator switch, rate limits and
+// idempotency keys in front of every route registered on it, so a request
+// a control rejects is logged and marked too. The body bound,
 // c.MaxBodyBytes, comes before every control that reads a body; it bounds
 // every operation's body but an OwnBodyBound one's, and a request no
 // operation serves. Last, once every control has passed the request and
@@ -542,6 +543,7 @@ func Guarded(
 		}
 	}
 	r = middleware.NewRouter(log,
+		middleware.Uncacheable,
 		middleware.AccessLog(log),
 		middleware.LimitBodies(c.MaxBodyBytes, func(req *http.Request) bool {
 			op, _ := resolve(req)
