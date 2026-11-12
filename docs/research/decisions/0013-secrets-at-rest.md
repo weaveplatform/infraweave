@@ -479,7 +479,7 @@ nothing about them is secret:
 - **The registry.** `TestAccSealedColumnRegistry` migrates a fresh database and
   asserts that the set of `*_sealed` columns in `pg_catalog` equals
   `crypt.Registry`.
-- **Rotation.** An acceptance feature, `secrets_key_rotation.feature`
+- **Rotation.** An acceptance feature, `platform/secrets_key_rotation.feature`
   (`@postgres`, `@vault`):
   1. populates every sealed column;
   2. rotates the data key while two server instances run;
@@ -496,7 +496,7 @@ nothing about them is secret:
   the release workflow refuses to publish a binary that does not report
   `v1.0.0` or a later certified version.
 - **Delivery and masking.**
-  - `secrets_run_delivery.feature` runs a real OpenTofu task that prints a secret
+  - `platform/secrets_run_delivery.feature` runs a real OpenTofu task that prints a secret
     variable, an `::add-mask` word and a well-known token. It asserts the log
     holds five asterisks for each, and that the bucket holds no plaintext copy
     of the plan.

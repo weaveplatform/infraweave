@@ -336,15 +336,15 @@ because they scale on different signals:
   - `tofu test` with mocked providers for the module contract: inputs,
     outputs, workload identity, no static keys, and the bucket rules
     decision 0005 names.
-- `test/acceptance/features/deploy_compose.feature` (`@postgres`): the
+- `test/acceptance/features/deploy/compose.feature` (`@postgres`): the
   compose file starts, a launcher downloads and verifies its binary from
   the server, and a tracked run finishes on it.
-- `test/acceptance/features/deploy_upgrade.feature` (`@postgres`
+- `test/acceptance/features/deploy/upgrade.feature` (`@postgres`
   `@objectstore`):
   - the previous release's binary and the candidate run together against
     one database after `migrate up`, and both serve reads and writes;
   - `migrate up` refuses to skip a major.
-- `test/acceptance/features/deploy_helm.feature` (`@kubernetes`
+- `test/acceptance/features/deploy/helm.feature` (`@kubernetes`
   `@postgres` `@objectstore`): the chart installs into the k3s container
   of [0016](0016-testing-and-acceptance.md), every process mode reports `/readyz`,
   and one tracked run finishes on an `infraweave-workers` launcher.

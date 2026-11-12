@@ -16,7 +16,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // RequireDocker is the variable that turns a missing Docker daemon from a
@@ -52,12 +52,12 @@ var (
 // package that uses DSN, Open or Empty calls it from TestMain with the
 // migration streams its tests need, in registration order: Template is
 // migrated with them once, so each test's database starts migrated. The
-// server runs test/acceptance's PostgreSQL image, the floor's or, with
+// server runs test/deps' PostgreSQL image, the floor's or, with
 // INFRAWEAVE_POSTGRES=next, the next major's, chosen here so that no suite
 // can stay on the floor in the postgres-next job. It starts on the first
 // database a test asks for, so a run of TestUnit tests starts nothing.
 func Main(m *testing.M, s ...migrate.Stream) int {
-	img, err := acceptance.Postgres()
+	img, err := deps.Postgres()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "sqltest:", err)
 		return 1

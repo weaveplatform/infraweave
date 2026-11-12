@@ -74,6 +74,9 @@ linters:
           list-mode: strict
           files:
             - "**/internal/*/api/**"
+            # the acceptance suite's api steps drive the served API; they
+            # are no domain's api package
+            - "!**/test/acceptance/**"
           allow:
             - $gostd
             - github.com/weaveplatform/infraweave/internal/kernel$
@@ -379,6 +382,19 @@ linters:
           deny:
             - pkg: github.com/weaveplatform/infraweave/internal/devtools
               desc: only tools/ and internal/devtools build on the developer tooling
+        # ref: decision 0016
+        acceptance-areas:
+          files:
+            - "**/test/acceptance/internal/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/test/acceptance/internal/steps
+              desc: an area's steps share a scenario only through harness.World, and the suite's root alone registers the areas
+        test-deps:
+          files:
+            - "**/test/deps/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/test/acceptance
+              desc: test/deps serves the acceptance suite and the tests beside the code, and imports neither
         public-packages:
           files:
             - "**/pkg/**"
@@ -443,9 +459,11 @@ linters:
 
     # fine-grained rules to drop issues by path, linter, text, or source
     rules:
-      # in test files, silence these noisy checks; tests make throwaway
-      # errors and return stub errors as they come
-      - path: _test\.go
+      # in test code, silence these noisy checks; tests make throwaway
+      # errors and return stub errors as they come. Everything under test/
+      # is test code, though the step and harness packages are not
+      # _test.go files.
+      - path: (_test\.go$|^test/)
         linters:
           - gocyclo
           - errcheck
@@ -460,8 +478,8 @@ linters:
         linters:
           - wrapcheck
 
-      # only run “forbidigo” on tests (silence everywhere else)
-      - path-except: _test\.go
+      # only run “forbidigo” on test code (silence everywhere else)
+      - path-except: (_test\.go$|^test/)
         linters:
           - forbidigo
 

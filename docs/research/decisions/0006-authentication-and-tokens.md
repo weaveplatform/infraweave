@@ -731,15 +731,15 @@ Departures from Spacelift, for the plan's deviations register:
   a value that is not positive fails the start, and an organization's
   session limit above the installation's is refused.
 - Gherkin acceptance against PostgreSQL in testcontainers:
-  `test/acceptance/features/auth_api_keys.feature` (create, exchange, reset,
-  disable, expiry, organization keys), `auth_sessions.feature` (list,
+  `test/acceptance/features/auth/api_keys.feature` (create, exchange, reset,
+  disable, expiry, organization keys), `auth/sessions.feature` (list,
   delete, forced revocation, account switching, an empty switcher for a
-  member no account admits), `auth_oauth_server.feature` (registration,
+  member no account admits), `auth/oauth_server.feature` (registration,
   consent in a browser session, redeeming, refreshing, a replayed code or
   refresh token revoking the grant, the redirect allowlist at consent, and
-  removal from the account ending the grant), `auth_mcp_oauth.feature` (a Go MCP client
+  removal from the account ending the grant), `auth/mcp_oauth.feature` (a Go MCP client
   registers, consents in a browser session, calls `/mcp`, refreshes, and is
-  refused with a token for another resource), `oidc_federation.feature` (a
+  refused with a token for another resource), `auth/oidc_federation.feature` (a
   real run's token verified against the served discovery document and JWKS,
   and accepted by a Vault container's `jwt` auth method with
   `bound_claims` on `spacePath`).

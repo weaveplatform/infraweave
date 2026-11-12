@@ -14,7 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func TestMain(m *testing.M) {
@@ -237,7 +237,7 @@ func TestAccTableWatch(t *testing.T) {
 	if err := notify.Notify(t.Context(), p, notify.Invalidate, DisabledCallersKey); err != nil {
 		t.Fatal(err)
 	}
-	if err := acceptance.Eventually(t.Context(), "the switch to follow NOTIFY",
+	if err := deps.Eventually(t.Context(), "the switch to follow NOTIFY",
 		func(ctx context.Context) (bool, error) { return table.Disabled(ctx, "a") }); err != nil {
 		t.Fatal(err)
 	}

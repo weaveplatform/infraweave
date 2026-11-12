@@ -1,18 +1,25 @@
 // Package acceptance runs the Gherkin features in features/ with godog
-// against the binary a user runs. TestAccFeatures builds
-// cmd/infraweave with coverage once, gives each scenario that needs a server
-// its own infraweave all subprocess (or scheduler, for a scenario about that
-// mode), reading its listeners from the JSON logs on its stdout, and starts
-// the dependencies a
-// selected scenario's tags name (@postgres, @objectstore, @oidc, @vault, @vcs) once, on
-// first use. Without a Docker daemon it skips the scenarios that need one,
-// unless INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, which fails the run instead. A
-// failed scenario leaves its evidence in out/<scenario>/. make accept
-// PARTITION=core|runs|integrations selects one CI partition of Partitions;
-// PARTITION=vcs-lab selects the @vcs-lab scenarios, which reach the real
-// VCS providers only the scheduled vcs-lab job provisions, and which every
-// other run excludes. INFRAWEAVE_ACCEPT_TAGS narrows a run further, as the
-// job does to one provider's @lab: tag.
+// against the binary a user runs. Each area of the product has its
+// features in features/<area>/<topic>.feature and its steps in
+// internal/steps/<area>, whose Register adds them to every scenario;
+// TestAccFeatures hands internal/harness the areas, and the harness gives
+// each scenario a World the areas' steps share. No step group reaches
+// into another, and no step text matches the steps of two areas.
+//
+// TestAccFeatures builds cmd/infraweave with coverage once, gives each
+// scenario that needs a server its own infraweave all subprocess (or
+// scheduler, for a scenario about that mode), reading its listeners from
+// the JSON logs on its stdout, and starts the dependencies a selected
+// scenario's tags name (@postgres, @objectstore, @oidc, @vault, @vcs) once,
+// on first use, from test/deps. Without a Docker daemon it skips the
+// scenarios that need one, unless INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, which
+// fails the run instead. A failed scenario leaves its evidence in
+// out/<scenario>/. make accept PARTITION=core|runs|integrations selects one
+// CI partition of Partitions; PARTITION=vcs-lab selects the @vcs-lab
+// scenarios, which reach the real VCS providers only the scheduled vcs-lab
+// job provisions, and which every other run excludes.
+// INFRAWEAVE_ACCEPT_TAGS narrows a run further, as the job does to one
+// provider's @lab: tag.
 //
 // TestAccCaptures replays the capture fixtures in test/fixtures/captures
 // (LoadCaptures, Replay) against the same binary; a failed expectation is a
@@ -31,27 +38,8 @@
 //
 // # Dependencies
 //
-// godog runs the features; testcontainers-go starts PostgreSQL (images.go),
-// shared or a scenario's own (OwnPostgres, on a fixed port so it can stop
-// and start, and which the moby client pauses; OldPostgres, below the
-// floor),
-// RustFS, Vault and Gitea, which serves HTTPS under a CA the suite makes
-// for the run and hosts each scenario's own repositories, and which a @vcs
-// scenario's servers trust through vcs.ca_file; chi serves the
-// in-process OIDC issuer, and internal/vcs/githubfake the in-process
-// GitHub host of a @github scenario, whose certificate its servers trust
-// through the same vcs.ca_file and whose operator App they name through
-// vcs.github_app; internal/vcs/gitlabfake the in-process GitLab of a
-// @gitlab scenario, trusted the same way; and
-// internal/vcs/bitbucketcloudfake the in-process Bitbucket Cloud of a
-// @bitbucket-cloud scenario, trusted the same way and reached through
-// vcs.bitbucket_cloud.api_host; and internal/vcs/bitbucketdcfake the
-// in-process Bitbucket Data Center of a @bitbucket-dc scenario, and
-// internal/vcs/azuredevopsfake the in-process Azure DevOps of an
-// @azure-devops scenario, each trusted the same way. The secrets
-// steps load the keyring and serve's blob store from internal/platform to
-// seal and read what no operation serves yet, and run infraweave secrets
-// as a subprocess. Every step and every
+// internal/harness runs the scenarios and internal/steps holds each area's
+// steps; test/deps starts the containers they need. Every step and every
 // capture replay calls the API through pkg/sdk, never the generated client
 // beneath it (TestUnitStepsUseTheSDK).
 package acceptance

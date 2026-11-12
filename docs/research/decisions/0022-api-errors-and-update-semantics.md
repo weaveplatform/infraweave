@@ -243,16 +243,16 @@ every request against the bundled spec before the handler (giving
   `application/merge-patch+json`; both are recorded in
   `x-infraweave-divergence`.
 - Gherkin features under `test/acceptance/features/`:
-  - `api_errors.feature`: a missing and a hidden stack both answer `404` with
+  - `api/errors.feature`: a missing and a hidden stack both answer `404` with
     title `not found`; no token answers `401` with `WWW-Authenticate`; an
     unknown body field answers `400` with reason `unknown-field` and its
     pointer; a confirm on a finished run answers `409 invalid-state`.
-  - `api_updates.feature`: `PUT` without an optional field resets it; `PATCH` keeps
+  - `api/updates.feature`: `PUT` without an optional field resets it; `PATCH` keeps
     it; `PATCH` with a field set to `null` resets it to its default; `PUT` with
     `null` sets a nullable field whose default is not null to null; a secret
     survives both when absent; a stale `If-Match` answers `412`;
     `PUT` on a configuration element answers `201` then `200`.
-  - `api_strictness.feature`: each rejected cron form and timezone in the table
+  - `api/strictness.feature`: each rejected cron form and timezone in the table
     answers `422` with the field's pointer; with `ZONEINFO` pointing at an empty
     directory, an IANA name such as `Europe/London` still resolves, from the
     embedded `time/tzdata`; a run whose

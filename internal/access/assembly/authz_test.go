@@ -22,7 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // rows is one account's authorization rows, which a test changes behind
@@ -161,8 +161,8 @@ func TestAccWatchAuthorization(t *testing.T) {
 		wg.Wait()
 	}()
 	db := sqltest.Open(t)
-	deps := Deps{DB: db.Primary(), Settings: DefaultSettings(), Audience: "http://iw.test/api/v1"}
-	a, b := mustNew(t, deps), mustNew(t, deps)
+	d := Deps{DB: db.Primary(), Settings: DefaultSettings(), Audience: "http://iw.test/api/v1"}
+	a, b := mustNew(t, d), mustNew(t, d)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	l := notify.NewListener(db.ConnConfig, log)
 	sub, _ := l.Subscribe(notify.Invalidate)
@@ -226,7 +226,7 @@ func TestAccWatchAuthorization(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	if err := acceptance.Eventually(ctx, "replica B to decide the claim", decide); err != nil {
+	if err := deps.Eventually(ctx, "replica B to decide the claim", decide); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := b.Authorizer().Reachable(ctx, p, accessapi.ActionStackCreate); err != nil ||

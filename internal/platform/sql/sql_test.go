@@ -12,7 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func TestMain(m *testing.M) { os.Exit(sqltest.Main(m)) }
@@ -124,7 +124,7 @@ func TestAccOpen(t *testing.T) {
 }
 
 func TestAccVersionFloor(t *testing.T) {
-	_, old := sqltest.Server(t, acceptance.ImagePostgresBelowFloor)
+	_, old := sqltest.Server(t, deps.ImagePostgresBelowFloor)
 	c := sql.Defaults()
 	c.URL = old
 	_, err := sql.Open(t.Context(), c)

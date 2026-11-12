@@ -388,11 +388,11 @@ only when the version itself is deleted.
 
 ## Verification
 
-- `test/acceptance/features/registry_protocol.feature` (`@postgres`,
+- `test/acceptance/features/registry/protocol.feature` (`@postgres`,
   `@objectstore`): discovery document, every status and body in the module
   and provider tables above, lenient version parsing, and anonymous access
   to public modules and providers.
-- `test/acceptance/features/registry_modules.feature` (`@postgres`,
+- `test/acceptance/features/registry/modules.feature` (`@postgres`,
   `@objectstore`, `@vcs`, `@terraform`, `@tofu`): a module in a Gitea
   repository with two test cases, one negative, reaches `ACTIVE`. A real
   `terraform init` and `tofu init` then resolve it through the API key
@@ -401,7 +401,7 @@ only when the version itself is deleted.
   download the module, revoking it hides the module while an in-flight run
   finishes, and a share naming an account of another organization answers
   422.
-- `test/acceptance/features/registry_providers.feature` (`@postgres`,
+- `test/acceptance/features/registry/providers.feature` (`@postgres`,
   `@objectstore`, `@terraform`): a GoReleaser-shaped fixture signed with a
   key generated in the test is published through the create, register,
   upload and publish sequence. `terraform init` then installs it with
@@ -417,7 +417,7 @@ only when the version itself is deleted.
   `infraweave_version` and `infraweave_terraform_provider`, held to
   Spacelift's `spacelift_module`, `spacelift_version` and
   `spacelift_terraform_provider` in `terraform-schema.json`.
-- `test/acceptance/features/platform_tiers.feature` (billing on): an
+- `test/acceptance/features/tiers/tiers.feature` (billing on): an
   account whose organization is on Starter+ gets `feature-not-in-tier` from
   `terraformProviderCreate` and a `text/plain` 403 from the provider
   protocol, naming Business and Enterprise.

@@ -11,7 +11,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/objectstoretest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // VaultRoot is the root token of the Vault StartVault starts.
@@ -24,11 +24,11 @@ type VaultLab struct {
 	t    *testing.T
 }
 
-// StartVault starts acceptance.ImageVault for t, skipping without Docker
+// StartVault starts deps.ImageVault for t, skipping without Docker
 // as objectstoretest.Emulator does.
 func StartVault(t *testing.T) VaultLab {
 	t.Helper()
-	addr := objectstoretest.Emulator(t, acceptance.ImageVault, "8200/tcp",
+	addr := objectstoretest.Emulator(t, deps.ImageVault, "8200/tcp",
 		testcontainers.WithEnv(map[string]string{
 			"VAULT_DEV_ROOT_TOKEN_ID": VaultRoot,
 			// Dev mode keeps everything in memory, so it needs no mlock,

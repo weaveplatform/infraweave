@@ -8,8 +8,10 @@ import (
 	"strings"
 )
 
-// packageRoots are the trees whose Go packages each need a doc.go.
-var packageRoots = []string{"internal", "pkg"}
+// packageRoots are the trees whose Go packages each need a doc.go: the
+// product's, and the test code other packages import. test/depguard is
+// left out; its packages are lint fixtures.
+var packageRoots = []string{"internal", "pkg", "test/acceptance", "test/deps"}
 
 // packageSections are the headings every package comment carries after its
 // summary, so a reader learns from go doc alone what the package touches and

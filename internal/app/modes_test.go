@@ -25,7 +25,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func local(t testing.TB) config.Config {
@@ -33,7 +33,7 @@ func local(t testing.TB) config.Config {
 	c := config.Defaults()
 	c.Server.Listen, c.Server.AdminListen = "127.0.0.1:0", "127.0.0.1:0"
 	c.Server.Shutdown.ReadyDelay = 0
-	c.Secrets.KEK = kek.Config{Provider: kek.Local, Local: kek.LocalConfig{Key: acceptance.KEK}}
+	c.Secrets.KEK = kek.Config{Provider: kek.Local, Local: kek.LocalConfig{Key: deps.KEK}}
 	c.ObjectStore.Driver = objectstore.DriverFS
 	c.ObjectStore.FS.Root, c.ObjectStore.FS.URL = t.TempDir(), "http://infraweave.test"
 	c.Server.PublicURL = "http://infraweave.test"

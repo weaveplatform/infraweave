@@ -272,7 +272,7 @@ Implemented:
 
 - `make verify-reference` checks that the committed reference is exactly what
   the snapshots generate, and that it validates as OpenAPI 3.0.3.
-- `test/acceptance/features/reference_spec.feature` checks that every root
+- `test/acceptance/features/api/reference_spec.feature` checks that every root
   field is accounted for and that no mutation is RPC-shaped, and checks the
   core collections, ids moved from inputs into paths, and auth.
 - `make verify-generate` fails when `pkg/client` differs from what the
@@ -306,7 +306,7 @@ Planned:
   handling, iteration across pages, and one typed error per slug; a test
   fails when the SDK's slugs differ from 0022's registry.
 - The CLI and provider checks of [0016](0016-testing-and-acceptance.md):
-  one `cli_<area>.feature` per row of report 06 section 8, and schema parity
+  one `cli/<area>.feature` per row of report 06 section 8, and schema parity
   and behaviour scenarios for the provider.
 
 ## References

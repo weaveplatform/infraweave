@@ -322,11 +322,11 @@ ordinary REST operations and answer the problem details of decision
 - Store contract tests against PostgreSQL and every object store driver of decision 0005 (decision 0016): versions,
   current pointer, orphan collection through `pending` `blob_objects` rows, retention.
 - Gherkin acceptance with real Terraform and OpenTofu in testcontainers:
-  `state_backend.feature` (init, plan, apply through the backend; a second apply blocked by
-  `423` until the first ends), `state_external_access.feature` (`terraform_remote_state`
-  with and without the permissions and the stack switch), `state_import.feature`,
-  `state_rollback.feature`, `state_terragrunt_units.feature` with workspace unlock, and
-  `state_force_unlock.feature` (`terraform force-unlock` from a task releases a lock left
+  `state/backend.feature` (init, plan, apply through the backend; a second apply blocked by
+  `423` until the first ends), `state/external_access.feature` (`terraform_remote_state`
+  with and without the permissions and the stack switch), `state/import.feature`,
+  `state/rollback.feature`, `state/terragrunt_units.feature` with workspace unlock, and
+  `state/force_unlock.feature` (`terraform force-unlock` from a task releases a lock left
   by a killed run).
 - A retention test on a fake clock: a non-current version is deleted after 90 days, the
   current version and a version a pending run references are kept.

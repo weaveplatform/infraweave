@@ -558,10 +558,10 @@ sees the same keys, buckets and switches.
   ([0016](0016-testing-and-acceptance.md)).
 - **0003 across replicas.** Gherkin acceptance features run two server
   instances on one database:
-  - `api_idempotency_replicas.feature`: a replay through the other instance, and
+  - `api/idempotency_replicas.feature`: a replay through the other instance, and
     in-flight takeover after a lapsed lock;
-  - `api_rate_limit_replicas.feature`: one budget shared by both instances;
-  - `api_disabled_callers.feature`: the switch takes effect on both.
+  - `api/rate_limit_replicas.feature`: one budget shared by both instances;
+  - `api/disabled_callers.feature`: the switch takes effect on both.
 
 ## References
 

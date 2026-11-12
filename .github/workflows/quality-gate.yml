@@ -231,7 +231,7 @@ jobs:
         env:
           OUTCOME: ${{ steps.accept.outcome }}
         run: |
-          img=$(sed -nE 's/^[[:space:]]*ImagePostgresNext = "([^"]+)"/\1/p' test/acceptance/images.go)
+          img=$(sed -nE 's/^[[:space:]]*ImagePostgresNext = "([^"]+)"/\1/p' test/deps/images.go)
           version=$(docker run --rm --entrypoint postgres "$img" -V)
           line="postgres-next ran on ${version} (${img%@*}): ${OUTCOME}."
           echo "$line"

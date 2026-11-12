@@ -14,16 +14,18 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/weaveplatform/infraweave/pkg/sdk"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
-var capturesRoot = filepath.Join(repoRoot, "test", "fixtures", "captures")
+var capturesRoot = filepath.Join(harness.RepoRoot, "test", "fixtures", "captures")
 
 // captureEntries reads the capture records of the open-questions register.
 //
 // ref: report 30
 func captureEntries(t *testing.T) map[string]bool {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(repoRoot, "docs", "data", "open-questions.json"))
+	data, err := os.ReadFile(filepath.Join(harness.RepoRoot, "docs", "data", "open-questions.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,23 +54,23 @@ func captureEntries(t *testing.T) map[string]bool {
 // a database of its own. A failure is a parity bug in infraweave, named by
 // its capture.
 func TestAccCaptures(t *testing.T) {
-	captures, err := LoadCaptures(capturesRoot, captureEntries(t))
+	captures, err := harness.LoadCaptures(capturesRoot, captureEntries(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	bin, err := binary(t.Context())
+	bin, err := harness.Binary(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := DockerReachable(t.Context()); err != nil {
-		if os.Getenv(envRequireDocker) == "1" {
-			t.Fatalf("%s=1, and no Docker daemon answers: %v", envRequireDocker, err)
+	if err := deps.DockerReachable(t.Context()); err != nil {
+		if os.Getenv(harness.EnvRequireDocker) == "1" {
+			t.Fatalf("%s=1, and no Docker daemon answers: %v", harness.EnvRequireDocker, err)
 		}
 		t.Skipf("the server needs PostgreSQL: %v", err)
 	}
-	cover, _ := coverDir(t)
-	deps := &Dependencies{Migrate: func(ctx context.Context, dsn string) error {
-		return Migrate(ctx, bin, cover, dsn)
+	cover, _ := harness.CoverDir(t)
+	deps := &deps.Dependencies{Migrate: func(ctx context.Context, dsn string) error {
+		return harness.Migrate(ctx, bin, cover, dsn)
 	}}
 	t.Cleanup(func() {
 		if err := deps.Close(context.WithoutCancel(t.Context())); err != nil {
@@ -79,11 +81,11 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config, err := serverConfig(db.DSN, t.TempDir(), nil)
+	config, err := harness.ServerConfig(db.DSN, t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv, err := StartServer(t.Context(), bin, t.TempDir(), cover, "all", config)
+	srv, err := harness.StartServer(t.Context(), bin, t.TempDir(), cover, "all", config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +94,7 @@ func TestAccCaptures(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	api, _, err := authenticated(t.Context(), db, "http://"+srv.API, home)
+	api, _, err := harness.Authenticated(t.Context(), db, "http://"+srv.API, harness.Home)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +105,7 @@ func TestAccCaptures(t *testing.T) {
 		}
 		t.Run(c.ID, func(t *testing.T) {
 			for i, call := range c.Calls {
-				if err := Replay(t.Context(), api, call); err != nil {
+				if err := harness.Replay(t.Context(), api, call); err != nil {
 					t.Errorf("%s call %d: %v", c.ID, i+1, err)
 				}
 			}
@@ -117,7 +119,7 @@ func TestAccCaptures(t *testing.T) {
 // here rather than committed, so no credential-shaped string sits in the
 // repository for a secret scanner to report.
 func TestUnitCaptureRedaction(t *testing.T) {
-	found, err := Leaks(capturesRoot)
+	found, err := harness.Leaks(capturesRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +146,7 @@ func TestUnitCaptureRedaction(t *testing.T) {
 			); err != nil {
 				t.Fatal(err)
 			}
-			found, err := Leaks(dir)
+			found, err := harness.Leaks(dir)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -170,22 +172,22 @@ func containsSuffix(found []string, suffix string) bool {
 // TestUnitLoadCaptures holds a capture directory to the layout: every file
 // present, both YAML files strict, and the entry a register record.
 func TestUnitLoadCaptures(t *testing.T) {
-	captures, err := LoadCaptures(capturesRoot, captureEntries(t))
-	if err != nil || len(captures) == 0 || captures[0].ID != ExampleCapture {
+	captures, err := harness.LoadCaptures(capturesRoot, captureEntries(t))
+	if err != nil || len(captures) == 0 || captures[0].ID != harness.ExampleCapture {
 		t.Fatalf("LoadCaptures = %v, %v", captures, err)
 	}
-	example, err := os.ReadDir(filepath.Join(capturesRoot, ExampleCapture))
+	example, err := os.ReadDir(filepath.Join(capturesRoot, harness.ExampleCapture))
 	if err != nil {
 		t.Fatal(err)
 	}
 	read := func(name string) string {
-		b, err := os.ReadFile(filepath.Join(capturesRoot, ExampleCapture, name))
+		b, err := os.ReadFile(filepath.Join(capturesRoot, harness.ExampleCapture, name))
 		if err != nil {
 			t.Fatal(err)
 		}
 		return string(b)
 	}
-	meta, expect := read(captureMeta), read(captureExpect)
+	meta, expect := read(harness.MetaFile), read(harness.ExpectFile)
 	asReal := strings.Replace(
 		strings.Replace(meta, "entry: C0", "entry: C7", 1),
 		"example: true",
@@ -197,22 +199,22 @@ func TestUnitLoadCaptures(t *testing.T) {
 		files     map[string]string
 		want      string
 	}{
-		{"unknown meta key", "C0", map[string]string{captureMeta: meta + "notes: hello\n"}, "field notes not found"},
-		{"unknown expect key", "C0", map[string]string{captureExpect: expect + "extra: 1\n"}, "field extra not found"},
-		{"entry not the directory", "C0", map[string]string{captureMeta: asReal}, "is not the directory's name"},
-		{"real capture marked example", "C7", map[string]string{captureMeta: strings.Replace(meta, "entry: C0", "entry: C7", 1)}, "only C0 is the example"},
-		{"entry not in the register", "C99999", map[string]string{captureMeta: strings.Replace(asReal, "C7", "C99999", 1)}, "no capture record"},
+		{"unknown meta key", "C0", map[string]string{harness.MetaFile: meta + "notes: hello\n"}, "field notes not found"},
+		{"unknown expect key", "C0", map[string]string{harness.ExpectFile: expect + "extra: 1\n"}, "field extra not found"},
+		{"entry not the directory", "C0", map[string]string{harness.MetaFile: asReal}, "is not the directory's name"},
+		{"real capture marked example", "C7", map[string]string{harness.MetaFile: strings.Replace(meta, "entry: C0", "entry: C7", 1)}, "only C0 is the example"},
+		{"entry not in the register", "C99999", map[string]string{harness.MetaFile: strings.Replace(asReal, "C7", "C99999", 1)}, "no capture record"},
 		{"directory name", "capture-1", nil, "not named C<n>"},
-		{"bad date", "C0", map[string]string{captureMeta: strings.Replace(meta, "2026-11-05", "05/11/2026", 1)}, "captured"},
-		{"bad hash", "C0", map[string]string{captureMeta: strings.Replace(meta, "sha256:1fc7", "sha1:1fc7", 1)}, "introspection"},
-		{"no calls", "C0", map[string]string{captureExpect: "calls: []\n"}, "no calls"},
-		{"bad method", "C0", map[string]string{captureExpect: strings.Replace(expect, "method: GET", "method: FETCH", 1)}, "method"},
-		{"relative path", "C0", map[string]string{captureExpect: strings.Replace(expect, "path: /api", "path: api", 1)}, "does not start with /"},
-		{"bad status", "C0", map[string]string{captureExpect: strings.Replace(expect, "status: 404", "status: 999", 1)}, "status 999"},
-		{"unregistered problem", "C0", map[string]string{captureExpect: strings.Replace(expect, "problem: not-found", "problem: teapot", 1)}, "teapot"},
-		{"not a pointer", "C0", map[string]string{captureExpect: strings.Replace(expect, "/title:", "title:", 1)}, "JSON Pointer"},
-		{"response not JSON", "C0", map[string]string{captureResponse: "{"}, "not JSON"},
-		{"request missing", "C0", map[string]string{captureRequest: ""}, captureRequest},
+		{"bad date", "C0", map[string]string{harness.MetaFile: strings.Replace(meta, "2026-11-05", "05/11/2026", 1)}, "captured"},
+		{"bad hash", "C0", map[string]string{harness.MetaFile: strings.Replace(meta, "sha256:1fc7", "sha1:1fc7", 1)}, "introspection"},
+		{"no calls", "C0", map[string]string{harness.ExpectFile: "calls: []\n"}, "no calls"},
+		{"bad method", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "method: GET", "method: FETCH", 1)}, "method"},
+		{"relative path", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "path: /api", "path: api", 1)}, "does not start with /"},
+		{"bad status", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "status: 404", "status: 999", 1)}, "status 999"},
+		{"unregistered problem", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "problem: not-found", "problem: teapot", 1)}, "teapot"},
+		{"not a pointer", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "/title:", "title:", 1)}, "JSON Pointer"},
+		{"response not JSON", "C0", map[string]string{harness.ResponseFile: "{"}, "not JSON"},
+		{"request missing", "C0", map[string]string{harness.RequestFile: ""}, harness.RequestFile},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := filepath.Join(t.TempDir(), tc.dir)
@@ -234,8 +236,8 @@ func TestUnitLoadCaptures(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := LoadCaptures(filepath.Dir(dir), map[string]bool{"C7": true})
-			if !errors.Is(err, ErrCapture) || !strings.Contains(err.Error(), tc.want) {
+			_, err := harness.LoadCaptures(filepath.Dir(dir), map[string]bool{"C7": true})
+			if !errors.Is(err, harness.ErrCapture) || !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("LoadCaptures = %v, want %q", err, tc.want)
 			}
 		})
@@ -271,32 +273,32 @@ func TestUnitReplay(t *testing.T) {
 		return c
 	}
 	api := client(srv.URL)
-	call := CaptureCall{
+	call := harness.CaptureCall{
 		Method: http.MethodPost, Path: "/api/v1/things",
 		Headers: map[string]string{"X-Test": "yes"},
 		Body:    map[string]any{"name": "n1"},
-		Expect: CaptureExpect{Status: 409, Problem: "already-exists", Body: map[string]any{
+		Expect: harness.CaptureExpect{Status: 409, Problem: "already-exists", Body: map[string]any{
 			"/status": 409, "/echo": "n1", "/header": "yes",
 			"/items/0/a~1b": "slash", "/items/0/c~0d": "tilde",
 		}},
 	}
-	if err := Replay(t.Context(), api, call); err != nil {
+	if err := harness.Replay(t.Context(), api, call); err != nil {
 		t.Fatalf("Replay = %v", err)
 	}
-	for name, mutate := range map[string]func(c *CaptureCall){
-		"status":  func(c *CaptureCall) { c.Expect.Status = 501 },
-		"problem": func(c *CaptureCall) { c.Expect.Problem = "not-found" },
-		"no problem": func(c *CaptureCall) {
-			*c = CaptureCall{Method: http.MethodGet, Path: "/api/v1/text", Expect: CaptureExpect{Status: 200, Problem: "not-found"}}
+	for name, mutate := range map[string]func(c *harness.CaptureCall){
+		"status":  func(c *harness.CaptureCall) { c.Expect.Status = 501 },
+		"problem": func(c *harness.CaptureCall) { c.Expect.Problem = "not-found" },
+		"no problem": func(c *harness.CaptureCall) {
+			*c = harness.CaptureCall{Method: http.MethodGet, Path: "/api/v1/text", Expect: harness.CaptureExpect{Status: 200, Problem: "not-found"}}
 		},
-		"body value":     func(c *CaptureCall) { c.Expect.Body = map[string]any{"/status": 500} },
-		"missing field":  func(c *CaptureCall) { c.Expect.Body = map[string]any{"/nope": 1} },
-		"index range":    func(c *CaptureCall) { c.Expect.Body = map[string]any{"/items/5": 1} },
-		"index not int":  func(c *CaptureCall) { c.Expect.Body = map[string]any{"/items/x": 1} },
-		"through scalar": func(c *CaptureCall) { c.Expect.Body = map[string]any{"/status/x": 1} },
-		"unencodable":    func(c *CaptureCall) { c.Expect.Body = map[string]any{"/status": func() {}} },
-		"not JSON answer": func(c *CaptureCall) {
-			*c = CaptureCall{Method: http.MethodGet, Path: "/api/v1/text", Expect: CaptureExpect{
+		"body value":     func(c *harness.CaptureCall) { c.Expect.Body = map[string]any{"/status": 500} },
+		"missing field":  func(c *harness.CaptureCall) { c.Expect.Body = map[string]any{"/nope": 1} },
+		"index range":    func(c *harness.CaptureCall) { c.Expect.Body = map[string]any{"/items/5": 1} },
+		"index not int":  func(c *harness.CaptureCall) { c.Expect.Body = map[string]any{"/items/x": 1} },
+		"through scalar": func(c *harness.CaptureCall) { c.Expect.Body = map[string]any{"/status/x": 1} },
+		"unencodable":    func(c *harness.CaptureCall) { c.Expect.Body = map[string]any{"/status": func() {}} },
+		"not JSON answer": func(c *harness.CaptureCall) {
+			*c = harness.CaptureCall{Method: http.MethodGet, Path: "/api/v1/text", Expect: harness.CaptureExpect{
 				Status: 200, Body: map[string]any{"/a": 1},
 			}}
 		},
@@ -304,22 +306,22 @@ func TestUnitReplay(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			c := call
 			mutate(&c)
-			if err := Replay(t.Context(), api, c); !errors.Is(err, ErrParity) {
+			if err := harness.Replay(t.Context(), api, c); !errors.Is(err, harness.ErrParity) {
 				t.Errorf("Replay = %v, want a parity error", err)
 			}
 		})
 	}
-	if err := Replay(t.Context(), api, CaptureCall{
-		Method: http.MethodGet, Path: "/api/v1/text", Expect: CaptureExpect{Status: 200},
+	if err := harness.Replay(t.Context(), api, harness.CaptureCall{
+		Method: http.MethodGet, Path: "/api/v1/text", Expect: harness.CaptureExpect{Status: 200},
 	}); err != nil {
 		t.Errorf("a status-only expectation on a non-JSON answer: %v", err)
 	}
-	if err := Replay(
+	if err := harness.Replay(
 		t.Context(),
 		client("http://127.0.0.1:0"),
 		call,
 	); err == nil ||
-		errors.Is(err, ErrParity) {
+		errors.Is(err, harness.ErrParity) {
 		t.Errorf("an unreachable server: %v", err)
 	}
 }

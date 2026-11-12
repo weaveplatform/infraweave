@@ -373,7 +373,8 @@ keys.
 | `pkg/` | Public, importable packages: the generated client `pkg/client/api` and the SDK over it, `pkg/sdk` |
 | `tools/` | Developer tooling (`tools/specref`, `tools/openapi-bundle`); excluded from the coverage gate |
 | `docs/` | Research and decision records |
-| `test/acceptance/` | Gherkin features run by godog (`TestAccFeatures`) against the committed reference and the built `infraweave` binary, with PostgreSQL and the object store started by testcontainers from the digests in `images.go`; a failed scenario leaves its logs, configuration and database dump in `test/acceptance/out/<scenario>/` |
+| `test/acceptance/` | Gherkin features run by godog (`TestAccFeatures`) against the committed reference and the built `infraweave` binary: `features/<area>/`, each area's steps in `internal/steps/<area>/` and the harness in `internal/harness/`; a failed scenario leaves its logs, configuration and database dump in `test/acceptance/out/<scenario>/` |
+| `test/deps/` | The Docker dependencies of every `TestAcc` test, PostgreSQL, the object store, Vault, Gitea and the OIDC issuer, started by testcontainers from the digests in `images.go` |
 | `test/fixtures/captures/` | Redacted exchanges with Spacelift's real API, each with the REST calls that stand for it; `TestAccCaptures` replays them and `TestUnitCaptureRedaction` refuses credentials ([layout](test/fixtures/captures/README.md)) |
 | `test/depguard/` | A module of its own that breaks each depguard rule once, for `make lint-fixtures` |
 

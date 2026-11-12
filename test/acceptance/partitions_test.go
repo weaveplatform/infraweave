@@ -1,24 +1,31 @@
 package acceptance
 
 import (
-	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
-	"testing/synctest"
-	"time"
 
 	gherkin "github.com/cucumber/gherkin/go/v42"
 	messages "github.com/cucumber/messages/go/v34"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // scenarioTags parses every feature under dir and returns each scenario's
-// tags, its feature's included, keyed by "file: scenario".
+// tags, its feature's included, keyed by "path: scenario", the path below dir.
 func scenarioTags(t *testing.T, dir string) map[string][]string {
 	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(dir, "*.feature"))
+	var paths []string
+	err := filepath.WalkDir(dir, func(p string, _ fs.DirEntry, err error) error {
+		if strings.HasSuffix(p, ".feature") {
+			paths = append(paths, p)
+		}
+		return err
+	})
 	if err != nil || len(paths) == 0 {
 		t.Fatalf("no features in %s: %v", dir, err)
 	}
@@ -38,7 +45,8 @@ func scenarioTags(t *testing.T, dir string) map[string][]string {
 			for _, tg := range pk.Tags {
 				tags = append(tags, tg.Name)
 			}
-			out[filepath.Base(p)+": "+pk.Name] = tags
+			rel, _ := filepath.Rel(dir, p)
+			out[filepath.ToSlash(rel)+": "+pk.Name] = tags
 		}
 	}
 	return out
@@ -51,13 +59,13 @@ func scenarioTags(t *testing.T, dir string) map[string][]string {
 // ref: decision 0016
 func TestUnitFeaturePartitions(t *testing.T) {
 	for name, tags := range scenarioTags(t, "features") {
-		if _, err := Place(tags); err != nil {
+		if _, err := harness.Place(tags); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
 	unlisted := 0
 	for name, tags := range scenarioTags(t, filepath.Join("testdata", "partitions")) {
-		if _, err := Place(tags); errors.Is(err, ErrUnlistedTag) {
+		if _, err := harness.Place(tags); errors.Is(err, harness.ErrUnlistedTag) {
 			unlisted++
 		} else if err != nil || name != "unlisted.feature: A listed scenario" {
 			t.Errorf("%s: %v", name, err)
@@ -86,12 +94,17 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@provider:resource:spacelift_stack", "@terraform"}, "runs"},
 		{[]string{"@postgres", "@vcs", "@vcs-lab", "@lab:gitlab"}, "vcs-lab"},
 	} {
-		got, err := Place(tc.tags)
+		got, err := harness.Place(tc.tags)
 		if err != nil || got != tc.want {
 			t.Errorf("Place(%q) = %q, %v; want %q", tc.tags, got, err, tc.want)
 		}
 	}
-	if _, err := Place([]string{"@postgres", "@redis"}); !errors.Is(err, ErrUnlistedTag) {
+	if _, err := harness.Place(
+		[]string{"@postgres", "@redis"},
+	); !errors.Is(
+		err,
+		harness.ErrUnlistedTag,
+	) {
 		t.Errorf("an unlisted tag placed: %v", err)
 	}
 }
@@ -105,12 +118,12 @@ func TestUnitTagExpression(t *testing.T) {
 			"@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai",
 		"core": "~@vcs-lab && ~@docker && ~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
 	} {
-		got, err := TagExpression(name)
+		got, err := harness.TagExpression(name)
 		if err != nil || got != want {
 			t.Errorf("TagExpression(%q) = %q, %v; want %q", name, got, err, want)
 		}
 	}
-	if _, err := TagExpression("everything"); !errors.Is(err, ErrUnknownPartition) {
+	if _, err := harness.TagExpression("everything"); !errors.Is(err, harness.ErrUnknownPartition) {
 		t.Errorf("an unknown partition: %v", err)
 	}
 	for want, exprs := range map[string][]string{
@@ -118,69 +131,23 @@ func TestUnitTagExpression(t *testing.T) {
 		"@vcs-lab":                {"@vcs-lab", ""},
 		"@vcs-lab && @lab:gitlab": {"@vcs-lab", "", "@lab:gitlab"},
 	} {
-		if got := And(exprs...); got != want {
+		if got := harness.And(exprs...); got != want {
 			t.Errorf("And(%q) = %q, want %q", exprs, got, want)
 		}
 	}
 }
 
 func TestUnitDockerTags(t *testing.T) {
-	got := dockerTags([]string{"@postgres", "@oidc", "@ai", "@op:stacks", "@vcs"})
+	got := harness.DockerTags([]string{"@postgres", "@oidc", "@ai", "@op:stacks", "@vcs"})
 	if !slices.Equal(got, []string{"@postgres", "@vcs"}) {
 		t.Errorf("dockerTags = %q", got)
 	}
 }
 
 func TestUnitSlug(t *testing.T) {
-	if got := slug(
+	if got := harness.Slug(
 		"A failed scenario's evidence, @postgres!",
 	); got != "a-failed-scenario-s-evidence-postgres" {
 		t.Errorf("slug = %q", got)
 	}
-}
-
-// TestUnitEventually runs in virtual time, so its deadlines cost nothing.
-func TestUnitEventually(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		polls := 0
-		err := Eventually(t.Context(), "the third poll", func(context.Context) (bool, error) {
-			polls++
-			return polls == 3, nil
-		})
-		if err != nil || polls != 3 {
-			t.Errorf("Eventually = %v after %d polls", err, polls)
-		}
-	})
-	synctest.Test(t, func(t *testing.T) {
-		start := time.Now()
-		last := errors.New("connection refused")
-		err := Eventually(t.Context(), "a dependency", func(context.Context) (bool, error) {
-			return false, last
-		})
-		if !errors.Is(err, ErrTimedOut) || !errors.Is(err, last) ||
-			err.Error() != "waiting for a dependency: timed out (last: connection refused)" {
-			t.Errorf("Eventually = %v", err)
-		}
-		if elapsed := time.Since(start); elapsed < waitLimit {
-			t.Errorf("gave up after %s, before the %s limit", elapsed, waitLimit)
-		}
-	})
-	synctest.Test(t, func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-		defer cancel()
-		err := Eventually(ctx, "nothing", func(context.Context) (bool, error) { return false, nil })
-		if err == nil || err.Error() != "waiting for nothing: timed out" {
-			t.Errorf("Eventually = %v", err)
-		}
-	})
-	synctest.Test(t, func(t *testing.T) {
-		polls := 0
-		err := Eventually(t.Context(), "a process", func(context.Context) (bool, error) {
-			polls++
-			return false, errPermanent
-		})
-		if !errors.Is(err, errPermanent) || polls != 1 {
-			t.Errorf("a permanent error polled %d times: %v", polls, err)
-		}
-	})
 }

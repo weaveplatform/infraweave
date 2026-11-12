@@ -400,13 +400,13 @@ the launcher's mapping of pool names to endpoints is 0008's.
   creates.
 - Gherkin features under `test/acceptance/features/`, against PostgreSQL in a
   container and a fake VCS served by chi:
-  - `vcs_webhooks.feature`: a signed push creates one tracked run; a bad
+  - `vcs/webhooks.feature`: a signed push creates one tracked run; a bad
     signature answers `401` and stores no row; the same delivery ID twice
     stores one row and one run; a replica stopped after acknowledging, before
     processing, leaves the job to another replica, which creates the run once.
-  - `vcs_feedback.feature`: individual and aggregated checks post in state
+  - `vcs/feedback.feature`: individual and aggregated checks post in state
     order; a comment upsert after a simulated crash edits the existing comment.
-  - `vcs_agent.feature`: an integration with `api_host` `private://pool`
+  - `vcs/agent.feature`: an integration with `api_host` `private://pool`
     lists branches through a connected agent; a disallowed path is refused; no
     connected agent answers `502 upstream-error`.
 

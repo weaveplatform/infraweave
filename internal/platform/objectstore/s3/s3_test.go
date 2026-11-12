@@ -15,7 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/objectstoretest"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/s3"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 const accessKey, secretKey = "infraweave-test", "infraweave-test-secret"
@@ -29,14 +29,14 @@ var static = config.WithCredentialsProvider(
 func TestAccS3Contract(t *testing.T) {
 	endpoint := objectstoretest.Emulator(
 		t,
-		acceptance.ImageObjectStore,
+		deps.ImageObjectStore,
 		"9000/tcp",
 		testcontainers.WithEnv(map[string]string{
 			"RUSTFS_ACCESS_KEY": accessKey,
 			"RUSTFS_SECRET_KEY": secretKey,
 		}),
 		testcontainers.WithWaitStrategy(
-			wait.ForHTTP(acceptance.ObjectStoreReady).WithPort("9000/tcp"),
+			wait.ForHTTP(deps.ObjectStoreReady).WithPort("9000/tcp"),
 		),
 	)
 	c := objectstore.Defaults().S3

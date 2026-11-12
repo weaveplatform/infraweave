@@ -407,10 +407,10 @@ work at once.
   accepted expressions round-trip.
 - **Scheduler.** Acceptance features run two server instances on one
   database:
-  - `scheduler_scheduled_runs.feature`: each fire time produces one run;
-  - `scheduler_missed_firings.feature`: downtime coalesces missed fire times;
-  - `queue_periodic_tasks.feature`: tasks never overlap.
-- **Dead letters.** `queue_dead_letters.feature` lists, retries and discards a dead
+  - `runs/scheduled_runs.feature`: each fire time produces one run;
+  - `runs/missed_firings.feature`: downtime coalesces missed fire times;
+  - `platform/queue_periodic_tasks.feature`: tasks never overlap.
+- **Dead letters.** `platform/queue_dead_letters.feature` lists, retries and discards a dead
   job through the operator API.
 
 ## References

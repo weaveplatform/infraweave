@@ -8066,7 +8066,7 @@
         {
           "file": "docs/research/decisions/0018-flows-runtime.md",
           "present": [
-            "`flows_agents.feature` (`@postgres`, `@flows-agent`)"
+            "`flows/agents.feature` (`@postgres`, `@flows-agent`)"
           ]
         }
       ]
@@ -8105,14 +8105,14 @@
         {
           "file": "docs/research/decisions/0008-run-execution-and-worker-protocol.md",
           "present": [
-            "`runs_runner_image.feature`",
-            "`test/acceptance/features/worker_protocol.feature`"
+            "`runs/runner_image.feature`",
+            "`test/acceptance/features/workers/protocol.feature`"
           ]
         },
         {
           "file": "docs/research/decisions/0009-policy-engine-opa.md",
           "present": [
-            "`policy_worker_initialization.feature`"
+            "`policy/worker_initialization.feature`"
           ]
         }
       ]
@@ -9700,8 +9700,8 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "`vendors_plugins.feature`",
-            "`resources_scans.feature`"
+            "`vendors/plugins.feature`",
+            "`resources/scans.feature`"
           ],
           "absent": [
             "`plugins.feature`",
@@ -9846,7 +9846,7 @@
           "file": "docs/implementation/definition-of-done.md",
           "present": [
             "From P1b: forbidigo rejects `time.Sleep` in `_test.go` files",
-            "From P24b: one `cli_<area>.feature` per capability row"
+            "From P24b: one `cli/<area>.feature` per capability row"
           ]
         }
       ]
@@ -11149,7 +11149,7 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "`flows_engine.feature` (`@postgres`, `@flows-agent`"
+            "`flows/engine.feature` (`@postgres`, `@flows-agent`"
           ]
         }
       ]
