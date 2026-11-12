@@ -24,3 +24,7 @@ internal/vcs/down/down.go graph-vcs github.com/weaveplatform/infraweave/internal
 internal/vendors/down/down.go graph-vendors github.com/weaveplatform/infraweave/internal/stacks/api
 internal/workers/up/up.go graph-workers github.com/weaveplatform/infraweave/internal/stacks/api
 pkg/y/y.go public-packages github.com/weaveplatform/infraweave/internal/kernel
+test/acceptance/internal/harness/harness.go acceptance-areas github.com/weaveplatform/infraweave/test/acceptance/internal/steps/auth
+test/acceptance/internal/steps/api/api.go acceptance-areas github.com/weaveplatform/infraweave/test/acceptance/internal/steps/auth
+test/acceptance/internal/steps/api/api.go forbidigo time.Sleep
+test/deps/deps.go test-deps github.com/weaveplatform/infraweave/test/acceptance

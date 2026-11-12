@@ -39,9 +39,10 @@
 //     its record ids are unique, its links resolve, every id a document or
 //     register cites exists, and the files and phrases its records name
 //     agree with it (registers.go);
-//   - every Go package under internal/ and pkg/ has a doc.go whose package
-//     comment says what the package is and does, then has "# Input and
-//     output" and "# Dependencies" sections (packages.go);
+//   - every Go package under internal/, pkg/, test/acceptance/ and
+//     test/deps/ has a doc.go whose package comment says what the package
+//     is and does, then has "# Input and output" and "# Dependencies"
+//     sections (packages.go);
 //   - every citation of a decision, a report or a register record in a Go
 //     comment, a migration, a YAML file, the Makefile or a scenario sits on
 //     a ref: line of its own, so the comment around it stands on its own
@@ -53,7 +54,7 @@
 // file under docs/, GLOSSARY.md, the registers and schemas under docs/data,
 // each Spacelift product's reference spec, the source and configuration
 // files it scans for docs/ paths and citations, and the doc.go of every Go
-// package under internal/ and pkg/. It writes nothing and touches no
+// package under internal/, pkg/, test/acceptance/ and test/deps/. It writes nothing and touches no
 // network; it returns the findings, sorted by path and line.
 //
 // # Dependencies
