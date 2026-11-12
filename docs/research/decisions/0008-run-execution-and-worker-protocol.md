@@ -249,11 +249,11 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   | `POST /worker/v1/poll` | launcher, session | Heartbeat; returns an assignment, signals, the drain flag and a renewed session token |
   | `POST /worker/v1/deregister` | launcher, session | Clean exit; the worker row is removed |
   | `GET /worker/v1/runs/{run}/spec` | launcher, run token | The run specification |
-  | `POST /worker/v1/runs/{run}/reports` | runner or launcher, run token | Phase started, succeeded, failed or stopped; answers the next step |
-  | `POST /worker/v1/runs/{run}/upload-urls` | runner, run token | Pre-signed `PUT` URLs for log chunks, sealed run artifacts, the workspace and observability artifacts, each for a declared size and SHA-256 |
-  | `POST /worker/v1/runs/{run}/log-chunks` | runner, run token | Records uploaded chunks in `run_log_chunks` |
-  | `POST /worker/v1/runs/{run}/artifacts` | runner, run token | Records uploaded run artifacts (kind, object key, size, SHA-256) |
-  | `GET /worker/v1/runs/{run}/workspace` | launcher, run token | `307` to a pre-signed `GET` of the saved workspace |
+  | `POST /worker/v1/runs/{run}/reports` | runner or launcher, run token | Phase started, succeeded, failed or stopped, for the run's current state version; answers the next step |
+  | `POST /worker/v1/runs/{run}/upload-urls` | runner, run token | Pre-signed `PUT` URLs for log chunks, sealed run artifacts, the workspace and observability artifacts, each for a declared kind, name, size and SHA-256 under the run's current state and state version |
+  | `POST /worker/v1/runs/{run}/log-chunks` | runner, run token | Commits uploaded chunks and indexes them in `run_log_chunks` |
+  | `POST /worker/v1/runs/{run}/artifacts` | runner, run token | Commits uploaded run artifacts, workspaces and observability artifacts and records them in `run_artifacts` |
+  | `GET /worker/v1/runs/{run}/workspace` | launcher, run token | `307` to a pre-signed `GET` of the run's latest saved workspace; `404` when it has none |
 
 - **The poll.** The request carries `{busy, drained, run, version}`, where
   `drained` is the drain flag the launcher last learned. The server updates
@@ -352,17 +352,37 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   runner executes the hooks and the vendor commands of each state in one shell
   session, and `after_run` runs whenever the runner processed the run.
 - **Reports.** A report is `{stateVersion, state, event, details}` with `event`
-  `started`, `succeeded`, `failed` or `stopped`. The first `started` report ends
-  the handover (T10, T32, T35). The server answers with the next step: a state to
-  execute, `pause` (the run waits in `UNCONFIRMED` or `PENDING_REVIEW`, and the
-  container exits) or `exit`. A `409` means the run moved on, for example a timer
-  ended it, and the runner exits without further reports.
+  `started`, `succeeded`, `failed` or `stopped`, and names the run's current
+  state version.
+  - **`started`** of the state a preparing run moves to ends the handover
+    (T10, T32, T35). `started` of the state the run is already in moves
+    nothing and answers that state.
+  - **`succeeded`, `failed` and `stopped`** name the run's current state and
+    take its worker-report edge: to the next phase, to `FAILED` or to
+    `STOPPED`. A report the state has no such edge for answers `409`
+    `invalid-state`.
+  - **The answer** is the next step: a state to execute, `pause` (the run
+    waits in `UNCONFIRMED` or `PENDING_REVIEW`, and the container exits) or
+    `exit` for a terminal state, with the state version the next report
+    names.
+  - **A repeated report.** A report whose answer was lost names the state
+    version before the current one. When that report takes the run to the
+    state it is in, the server answers the same step again and moves
+    nothing, so a runner retries a report safely.
+  - **A run that moved on.** Any other report for an earlier state version,
+    or for a run no longer on a worker, answers `409` `invalid-state`, for
+    example when a timer ended the run, and the runner exits without further
+    reports.
 - **After planning** the runner uploads plan JSON and the delta, then reports
   `succeeded`. In that request's transaction the server evaluates the plan
   policies on the uploaded plan ([0009](0009-policy-engine-opa.md)), records the
   receipts, and takes T17, T18, T20, T21 or T22 by the rules of
   [09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated). The
-  run stays `PLANNING` until then, so a worker cannot skip a policy.
+  run stays `PLANNING` until then, so a worker cannot skip a policy. A server
+  without the plan decision answers that report `501` `not-implemented` and
+  leaves the run in `PLANNING`, so no build moves a run past its plan
+  unchecked; a `failed` or `stopped` report of `PLANNING` is taken as in any
+  state.
 
 ### Logs and artifacts
 
@@ -374,20 +394,51 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   stack enables them, each replaced by five asterisks. Values shorter than 4 bytes
   are not masked, which is 0013's rule, not Spacelift's. Log chunks are therefore
   stored as masked plaintext.
+- **Uploads.** `upload-urls` takes up to 64 declarations of `{kind, name,
+  size, sha256}` for the run's current state version and answers a pre-signed
+  `PUT` for each, under `<account>/<run>/<state>-<stateVersion>/<name>` in the
+  kind's store. A name is 1 to 128 letters, digits, `.`, `_` and `-`, starting
+  with a letter or digit, so no upload leaves its run's prefix.
+
+  | Kind | Store | Largest object |
+  |---|---|---|
+  | `log-chunk` | `run-logs` | 1 MiB |
+  | `artifact` | `run-artifacts`, sealed | 512 MiB |
+  | `workspace` | `workspaces` | 2 GiB |
+  | `observability` | `run-observability` | 64 MiB |
+
+  Each URL holds a `pending` row of `blob_objects` for the declared size and
+  SHA-256 ([0005](0005-persistence-postgresql.md)). A declaration repeated
+  with the same size and SHA-256 signs the same object again, so a runner
+  retries one safely; one that differs, or names an object already recorded,
+  answers `409` `already-exists`.
 - **Chunks.** The runner writes masked lines to stdout, which the launcher reads,
-  and to chunks of at most 1 MiB or two seconds. Each chunk is uploaded by
-  pre-signed `PUT` to `run-logs` under
-  `<account>/<run>/<state>-<stateVersion>/<seq>`, then indexed in
-  `run_log_chunks(run, state_version, seq, object key, bytes, first_at, last_at)`.
+  and to chunks of at most 1 MiB or two seconds. A chunk's name is its
+  sequence number. Each chunk is uploaded by pre-signed `PUT`, then
+  `log-chunks` commits it and indexes it in
+  `run_log_chunks(run, state_version, seq, state, object key, bytes, first_at, last_at)`;
+  a chunk already indexed is skipped, so a repeated `seq` is not duplicated.
   Readers tail the index; logs therefore exist per state and state version.
 - **Artifacts.** Plan JSON, changes, outputs and anything else the server or a
   policy reads are sealed by the runner with the run's artifact key, in 0013's
   streaming format (64 KiB AES-256-GCM segments, the same code in the same
-  binary), uploaded to `run-artifacts` by pre-signed `PUT` (at most 512 MiB each)
-  and recorded through `POST .../artifacts`. The server opens them with
+  binary), uploaded to `run-artifacts` by pre-signed `PUT` and recorded
+  through `POST .../artifacts`. The server opens them with
   `runs.artifact_key_sealed`. The binary plan file travels only inside the
-  encrypted workspace, which the server cannot read. Observability artifacts go to
-  `run-observability` by pre-signed `PUT`.
+  encrypted workspace, which the server cannot read.
+- **Records.** `POST .../artifacts` commits run artifacts, the workspace and
+  observability artifacts and records each in
+  `run_artifacts(run, state_version, kind, name, object key, size, sha256)`;
+  one already recorded is skipped. An upload missing from the store or
+  unlike its declaration answers `422` `validation-failed`, pointing at the
+  entry, and stays `pending` until `blob.expire` removes it.
+- **The workspace.** `GET .../workspace` answers `307` to a pre-signed `GET`
+  of the run's most recently recorded workspace, which the launcher
+  downloads for `PREPARING_APPLY` and `PREPARING_REPLAN`, or `404`
+  `not-found` when the run recorded none.
+- **Deletion.** An account's purge deletes its runs' chunk and artifact
+  records with their objects. A run deleted with its stack leaves its
+  objects to their stores' retention, which bounds them.
 
 ### Liveness: offline workers and lost runs
 
@@ -687,6 +738,14 @@ offers this policy is available to it alone; 0009 lists built-ins.
 - `internal/workers` protocol adapter tests: registration refused for a foreign chain, a reset
   serial, a replayed `jti` and a skewed `iat`; poll hold, wake-up and timeout;
   signals; session renewal; `409` on a stale report.
+- `TestUnitReport` and `TestUnitReportEdges` (`internal/runs/internal/core/report`):
+  every worker-report edge by event, a repeated report answered again, a
+  stale one refused, and `PLANNING`'s `succeeded` answering `501`.
+- `TestAccRunReports` (`internal/app`, PostgreSQL and the `fs` driver): the
+  handover ended once, uploads under the run's prefix, a chunk indexed once,
+  an artifact the runner sealed opened by the server, the workspace's `307`,
+  another run's token `401`, and the account's purge of the records and
+  their objects.
 - `internal/workers` reap tests on a fake clock: offline at 3 minutes with the
   run untouched; a poll at 59 minutes clears the mark and the run finishes;
   `FAILED` with `worker lost` at 60 minutes; a late poll answers `401`; a

@@ -117,6 +117,124 @@ paths:
           $ref: '#/components/responses/ApiDisabled'
         default:
           $ref: '#/components/responses/Problem'
+  /runs/{run}/artifacts:
+    post:
+      summary: Record a run's uploaded artifacts
+      description: >-
+        Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+      operationId: workerRunArtifacts
+      security:
+        - runToken: []
+      tags:
+        - Runs
+      parameters:
+        - $ref: '#/components/parameters/Run'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArtifactsRequest'
+      responses:
+        '204':
+          description: The uploads are recorded.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /runs/{run}/log-chunks:
+    post:
+      summary: Index a run's uploaded log chunks
+      description: >-
+        Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+      operationId: workerRunLogChunks
+      security:
+        - runToken: []
+      tags:
+        - Runs
+      parameters:
+        - $ref: '#/components/parameters/Run'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogChunksRequest'
+      responses:
+        '204':
+          description: The chunks are indexed.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /runs/{run}/reports:
+    post:
+      summary: Report a phase of a run
+      description: >-
+        Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+      operationId: workerRunReport
+      security:
+        - runToken: []
+      tags:
+        - Runs
+      parameters:
+        - $ref: '#/components/parameters/Run'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunReport'
+      responses:
+        '200':
+          description: What the worker does next.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NextStep'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
   /runs/{run}/spec:
     get:
       summary: Read a run's specification
@@ -128,13 +246,7 @@ paths:
       tags:
         - Runs
       parameters:
-        - name: run
-          in: path
-          required: true
-          schema:
-            type: string
-            maxLength: 26
-          description: The run's ID.
+        - $ref: '#/components/parameters/Run'
       responses:
         '200':
           description: The run's specification.
@@ -151,6 +263,86 @@ paths:
                 $ref: '#/components/schemas/RunSpec'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /runs/{run}/upload-urls:
+    post:
+      summary: Sign upload URLs for a run's objects
+      description: >-
+        Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+      operationId: workerRunUploadURLs
+      security:
+        - runToken: []
+      tags:
+        - Runs
+      parameters:
+        - $ref: '#/components/parameters/Run'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadURLsRequest'
+      responses:
+        '200':
+          description: Where to upload each object.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadURLs'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /runs/{run}/workspace:
+    get:
+      summary: Fetch a run's saved workspace
+      description: >-
+        Redirects to a pre-signed GET of the workspace the run last recorded, which is encrypted to the pool's key. A run that recorded none answers 404.
+      operationId: workerRunWorkspace
+      security:
+        - runToken: []
+      tags:
+        - Runs
+      parameters:
+        - $ref: '#/components/parameters/Run'
+      responses:
+        '307':
+          description: The workspace's pre-signed GET URL is in Location.
+          headers:
+            Location:
+              schema:
+                type: string
+              description: The pre-signed GET URL.
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/InvalidState'
         '429':
@@ -177,6 +369,15 @@ components:
       description: Seconds to wait before retrying.
       schema:
         type: integer
+  parameters:
+    Run:
+      name: run
+      in: path
+      required: true
+      schema:
+        type: string
+        maxLength: 26
+      description: The run's ID.
   responses:
     ApiDisabled:
       description: The operator has disabled the API for this caller.
@@ -193,7 +394,8 @@ components:
             status: 503
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     InvalidState:
-      description: The run is not on a worker, so its run token is refused.
+      description: >-
+        The run is not on a worker, so its run token is refused, or the request names a state version the run moved on from, or a report its state cannot take.
       content:
         application/problem+json:
           schema:
@@ -204,6 +406,12 @@ components:
             status: 409
             detail: The run is not on a worker.
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    NotFound:
+      description: No such resource.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     Problem:
       description: The request failed; the body says why.
       content:
@@ -243,6 +451,37 @@ components:
             status: 401
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
   schemas:
+    ArtifactRecord:
+      description: An uploaded artifact, workspace or observability artifact.
+      type: object
+      additionalProperties: false
+      required: [kind, name]
+      properties:
+        kind:
+          type: string
+          enum: [artifact, workspace, observability]
+          description: The upload's kind.
+        name:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'
+          description: The upload's name.
+    ArtifactsRequest:
+      description: Uploads of the run's current state, to be recorded.
+      type: object
+      additionalProperties: false
+      required: [stateVersion, artifacts]
+      properties:
+        stateVersion:
+          type: integer
+          format: int64
+          minimum: 1
+          description: The run's current state version.
+        artifacts:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/ArtifactRecord'
     Assignment:
       description: >-
         A run the poll claimed for the worker, which the launcher prepares and executes.
@@ -270,6 +509,61 @@ components:
           type: integer
           format: int64
           description: When the run token expires, in Unix seconds.
+    LogChunk:
+      description: An uploaded log chunk.
+      type: object
+      additionalProperties: false
+      required: [seq, firstAt, lastAt]
+      properties:
+        seq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The chunk's sequence number, its upload's name.
+        firstAt:
+          type: integer
+          format: int64
+          minimum: 0
+          description: When the chunk's first line was written, in Unix seconds.
+        lastAt:
+          type: integer
+          format: int64
+          minimum: 0
+          description: When the chunk's last line was written, in Unix seconds.
+    LogChunksRequest:
+      description: Log chunks of the run's current state, uploaded and to be indexed.
+      type: object
+      additionalProperties: false
+      required: [stateVersion, chunks]
+      properties:
+        stateVersion:
+          type: integer
+          format: int64
+          minimum: 1
+          description: The run's current state version.
+        chunks:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/LogChunk'
+    NextStep:
+      description: >-
+        What the worker does next. execute runs the phase of state; pause ends the container while the run waits in state for a decision; exit ends it, the run having ended in state.
+      type: object
+      required: [action, state, stateVersion]
+      properties:
+        action:
+          type: string
+          enum: [execute, pause, exit]
+          description: What the worker does next.
+        state:
+          type: string
+          description: The run's state now.
+        stateVersion:
+          type: integer
+          format: int64
+          description: The run's state version now, which the next report names.
     PollRequest:
       description: The worker's state, which each poll reports.
       type: object
@@ -420,6 +714,31 @@ components:
           type: integer
           format: int64
           description: When the session token expires, in Unix seconds.
+    RunReport:
+      description: >-
+        What happened to a phase of the run: it started, succeeded, failed or stopped.
+      type: object
+      additionalProperties: false
+      required: [stateVersion, state, event]
+      properties:
+        stateVersion:
+          type: integer
+          format: int64
+          minimum: 1
+          description: >-
+            The state version the worker last learned: its assignment's, then each report's answer's.
+        state:
+          $ref: '#/components/schemas/WorkerState'
+        event:
+          type: string
+          enum: [started, succeeded, failed, stopped]
+          description: >-
+            started names the phase the worker begins; the first, which names the state its preparation leads to, ends the handover. succeeded, failed and stopped name the state the run is in. A launcher whose preparation fails reports failed for the preparing state.
+        details:
+          type: string
+          maxLength: 1024
+          description: >-
+            What the worker says about the event, such as why a phase failed, which the transition records as its note.
     RunSpec:
       description: >-
         What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token and the run's artifact key are in sealed, which only the pool's private key opens.
@@ -635,6 +954,97 @@ components:
         stop or kill asks the launcher to stop or kill its current run; cycle asks it to exit, at once when idle, after its run when busy.
       type: string
       enum: [stop, kill, cycle]
+    SignedUpload:
+      description: Where to upload one declared object.
+      type: object
+      required: [kind, name, key, url, headers]
+      properties:
+        kind:
+          $ref: '#/components/schemas/UploadKind'
+        name:
+          type: string
+          description: The object's name, as declared.
+        key:
+          type: string
+          description: >-
+            The object's key: the run's account and ID, the state and state version, and the name, as account/run/STATE-stateVersion/name.
+        url:
+          type: string
+          description: >-
+            The pre-signed PUT URL, which accepts only the declared size and, where the store can bind it, the declared SHA-256, until it expires.
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: The headers the PUT must carry, which the signature covers.
+    Upload:
+      description: An object the worker means to upload, as it declares it.
+      type: object
+      additionalProperties: false
+      required: [kind, name, size, sha256]
+      properties:
+        kind:
+          $ref: '#/components/schemas/UploadKind'
+        name:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'
+          description: >-
+            The object's name within the run's state version, never reused there. A log chunk's is its sequence number in decimal, from 0.
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 2147483648
+          description: >-
+            The object's size in bytes, as uploaded: at most 1 MiB for a log chunk, 512 MiB for an artifact, 2 GiB for the workspace and 64 MiB for an observability artifact.
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: The SHA-256 of the object's bytes as uploaded, in hex.
+    UploadKind:
+      description: >-
+        What an upload holds, which decides its store: a log chunk, a run artifact sealed with the run's artifact key, the workspace encrypted to the pool's key, or an observability artifact.
+      type: string
+      enum: [log-chunk, artifact, workspace, observability]
+    UploadURLs:
+      description: Where to upload each declared object, in the order declared.
+      type: object
+      required: [uploads]
+      properties:
+        uploads:
+          type: array
+          items:
+            $ref: '#/components/schemas/SignedUpload'
+    UploadURLsRequest:
+      description: The objects the worker means to upload in the run's current state.
+      type: object
+      additionalProperties: false
+      required: [stateVersion, uploads]
+      properties:
+        stateVersion:
+          type: integer
+          format: int64
+          minimum: 1
+          description: The run's current state version.
+        uploads:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/Upload'
+          description: The objects, each with a name of its own.
+    WorkerState:
+      description: A state in which a worker holds the run.
+      type: string
+      enum:
+        - PREPARING
+        - PREPARING_APPLY
+        - PREPARING_REPLAN
+        - INITIALIZING
+        - PLANNING
+        - APPLYING
+        - DESTROYING
+        - PERFORMING
   securitySchemes:
     bearerAuth:
       type: http

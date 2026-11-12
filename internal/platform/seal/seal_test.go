@@ -502,3 +502,28 @@ func TestUnitEnvelope(t *testing.T) {
 		t.Errorf("sealing for an overlong run ID: %v", err)
 	}
 }
+
+// TestUnitArtifactKey checks that an artifact's content key is HKDF-SHA256
+// of the artifact key with info infraweave/artifact/<key>: the same for
+// one object, another for another object or artifact key, and none for a
+// short artifact key.
+func TestUnitArtifactKey(t *testing.T) {
+	a, err := seal.ArtifactKey(key(1), "acct/run/PLANNING-4/plan.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// HKDF-SHA256 by RFC 5869's steps, computed apart from crypto/hkdf.
+	if got := hex.EncodeToString(a); got !=
+		"b7960a7679713a1b01274685b3a51d8ba584ada119d52f6020277fd51615f600" {
+		t.Fatalf("ArtifactKey = %s", got)
+	}
+	again, _ := seal.ArtifactKey(key(1), "acct/run/PLANNING-4/plan.json")
+	other, _ := seal.ArtifactKey(key(1), "acct/run/PLANNING-4/changes.json")
+	theirs, _ := seal.ArtifactKey(key(2), "acct/run/PLANNING-4/plan.json")
+	if !bytes.Equal(a, again) || bytes.Equal(a, other) || bytes.Equal(a, theirs) {
+		t.Error("an artifact's content key is not its own")
+	}
+	if _, err := seal.ArtifactKey(key(1)[:16], "k"); !errors.Is(err, seal.ErrKeySize) {
+		t.Errorf("a 16-byte artifact key: %v", err)
+	}
+}

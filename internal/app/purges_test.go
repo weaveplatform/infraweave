@@ -34,6 +34,7 @@ func TestAccPurges(t *testing.T) {
 		db,
 		testKeyring(t, q),
 		nil,
+		nil,
 		events,
 		slog.New(slog.DiscardHandler),
 	)
@@ -47,6 +48,7 @@ func TestAccPurges(t *testing.T) {
 		config.Defaults(),
 		db,
 		testKeyring(t, q),
+		nil,
 		nil,
 		events,
 		slog.New(slog.DiscardHandler),

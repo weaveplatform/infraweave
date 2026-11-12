@@ -33,17 +33,7 @@ import (
 func TestAccRunSpec(t *testing.T) {
 	w := newClaimWorld(t)
 	ctx := t.Context()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), NotAfter: time.Now().Add(time.Hour)}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, key.Public(), key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pool := w.pool(t, w.acct, nil)
-	w.exec(t, `UPDATE worker_pools SET certificate = $1 WHERE id = $2`, der, pool)
+	pool, key := w.certified(t)
 	for _, v := range []api.ConfigInput{
 		{Id: "REGION", Value: "eu"},
 		{Id: "TOKEN", Value: "s3cret", WriteOnly: true},
@@ -127,4 +117,22 @@ func TestAccRunSpec(t *testing.T) {
 	wantProblem(t, get(kernel.NewULID()), http.StatusUnauthorized, "credential is refused")
 	w.exec(t, `UPDATE runs SET state = 'FINISHED' WHERE id = $1`, run)
 	wantProblem(t, get(run), http.StatusConflict, "not on a worker")
+}
+
+// certified inserts a pool of the world's account whose certificate
+// certifies a P-256 key, and answers the pool and the key.
+func (w *claimWorld) certified(t *testing.T) (kernel.ULID, *ecdsa.PrivateKey) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), NotAfter: time.Now().Add(time.Hour)}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, key.Public(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := w.pool(t, w.acct, nil)
+	w.exec(t, `UPDATE worker_pools SET certificate = $1 WHERE id = $2`, der, pool)
+	return pool, key
 }

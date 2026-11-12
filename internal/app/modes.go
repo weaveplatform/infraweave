@@ -127,7 +127,8 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	// Every domain appends to and subscribes on this one outbox, and
 	// registers its event kinds, before the scheduler starts.
 	events := outbox.New(db.Primary(), queue.New(db.Primary()), newKinds())
-	domains, err := newDomains(c, db, keys, kms, events, log)
+	blobRecords := serving(c.ObjectStore, db.Primary(), keys, objs)
+	domains, err := newDomains(c, db, keys, blobRecords.Objects, kms, events, log)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
@@ -182,7 +183,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 		g,
 		domains,
 		platform(db.Primary(), provider),
-		serving(c.ObjectStore, db.Primary(), keys, objs),
+		blobRecords,
 		health,
 	)
 	err = serve.Run(ctx, c.Server.Config, log, api, admin, health.Stop)
@@ -280,9 +281,9 @@ func platform(pool keysDB, provider kek.Provider) Platform {
 	}
 }
 
-// serving is the API role's object storage: blob records over
-// objectstore.WriterOnly of the store, so no serve dependency holds the
-// Store, and the fs driver's routes.
+// serving is object storage as every role's domains and the API hold it:
+// blob records over objectstore.WriterOnly of the store, so no serve
+// dependency holds the Store, and the fs driver's routes.
 func serving(c objectstore.Config, pool queue.DB, keys *crypt.Keyring, o objects) Blobs {
 	w := objectstore.WriterOnly(o.store)
 	return Blobs{

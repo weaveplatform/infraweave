@@ -95,7 +95,7 @@ breaking change to retrofit once clients exist:
   |---|---|---|---|
   | The worker API | Authorization | No account action decides a route | The worker or the run is its own subject: a session token names one worker of one pool, a run token one run, and the service reads that worker's or run's rows alone |
   | The worker API | Feature gates | No capability gates a route | `private-workers` bounds registration; gating the protocol would strand a running run when an organization's tier drops |
-  | The worker API | Idempotency keys | `Idempotency-Key` is ignored | Answers carry session tokens, which a replay from the key store would hand out again; a registration's `jti` refuses a replay, and a poll or an exit is safe to repeat |
+  | The worker API | Idempotency keys | `Idempotency-Key` is ignored | Answers carry session tokens, which a replay from the key store would hand out again; a registration's `jti` refuses a replay; a poll or an exit is safe to repeat; a report repeated one state version behind answers its step again, an upload declared again with the same size and SHA-256 is signed again, and a chunk or artifact already recorded is skipped |
   | The operator API | Authorization | No account action decides a route | Operator tokens alone reach it, and an operator holds no role in any account |
   | Searches (`POST …/search`) | Idempotency keys | `Idempotency-Key` is ignored | A search changes nothing, so a retry is already safe |
   | The break-glass login | Authentication, feature gates | No credential, no capability; each sign-in is an `expensive` draw on the client's address | It is how a credential is obtained, and no tier may lock the break-glass admin out |

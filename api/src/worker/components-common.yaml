@@ -145,7 +145,10 @@ components:
             status: 503
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     InvalidState:
-      description: The run is not on a worker, so its run token is refused.
+      description: >-
+        The run is not on a worker, so its run token is refused, or the
+        request names a state version the run moved on from, or a report
+        its state cannot take.
       content:
         application/problem+json:
           schema:
@@ -156,6 +159,12 @@ components:
             status: 409
             detail: The run is not on a worker.
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    NotFound:
+      description: No such resource.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     Problem:
       description: The request failed; the body says why.
       content:

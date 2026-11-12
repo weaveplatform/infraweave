@@ -256,8 +256,10 @@ the owning record beside it.
     HKDF-SHA256 of the artifact key with info `infraweave/artifact/<object key>`.
     It seals the object in the format above, the same code in the same binary,
     and uploads it with a pre-signed `PUT`.
-  - **Committing the upload.** The server derives the same content key from
-    `runs.artifact_key_sealed` and seals it into `blob_objects`.
+  - **Declaring the upload.** Before it signs the `PUT`, the server derives
+    the same content key from `runs.artifact_key_sealed` and seals it into
+    the upload's `pending` row of `blob_objects`, so the object opens once
+    the upload commits.
   - The bucket therefore never holds a readable plan, and the bytes never pass
     through the API.
 

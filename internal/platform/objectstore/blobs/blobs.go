@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"time"
 
@@ -53,9 +54,11 @@ var (
 	// ErrChecksum reports an upload whose bytes do not match the SHA-256
 	// its row declares.
 	ErrChecksum = errors.New("object does not match its declared SHA-256")
-	// ErrSealed reports a signed upload to a sealed store, whose objects
-	// the server seals as it writes them.
-	ErrSealed = errors.New("a sealed store takes no signed upload")
+	// ErrSealed reports a signed upload of plaintext to a sealed store,
+	// whose objects are sealed before they are stored.
+	ErrSealed = errors.New("a sealed store takes no signed upload of plaintext")
+	// ErrNotSealed reports a sealed upload to a store that is not sealed.
+	ErrNotSealed = errors.New("a store that is not sealed takes no sealed upload")
 	// ErrDeclared reports a signed upload declared with a negative size or
 	// a SHA-256 of other than 32 bytes.
 	ErrDeclared = errors.New("invalid declared size or SHA-256")
@@ -124,6 +127,12 @@ const begin = `
 INSERT INTO blob_objects (store, key, size, sha256, state, content_key_sealed, expires_at)
 VALUES ($1, $2, $3, $4, 'pending', $5, now() + $6::interval)`
 
+// redeclared reports whether the key's row is pending with the declared
+// size and SHA-256.
+const redeclared = `
+SELECT EXISTS (SELECT 1 FROM blob_objects
+WHERE store = $1 AND key = $2 AND state = 'pending' AND size = $3 AND sha256 = $4)`
+
 func (o *Objects) begin(
 	ctx context.Context,
 	store objectstore.Name,
@@ -135,29 +144,32 @@ func (o *Objects) begin(
 	if d := o.retention.Of(store); d > 0 {
 		expires = &d
 	}
-	if _, err := o.db.Exec(ctx, begin, store, key, size, sum, sealed, expires); err != nil {
-		if inUse(err) {
-			return fmt.Errorf("%w: %s/%s", ErrKeyInUse, store, key)
-		}
+	_, err := o.db.Exec(ctx, begin, store, key, size, sum, sealed, expires)
+	if err == nil {
+		return nil
+	}
+	if !inUse(err) {
 		return fmt.Errorf("blobs: begin %s/%s: %w", store, key, sql.Unavailable(err))
+	}
+	// A signed upload declared again as it was, whose first answer may
+	// have been lost, is signed again; a Put, which declares no SHA-256,
+	// never is.
+	var again bool
+	if sum != nil {
+		if err := o.db.QueryRow(ctx, redeclared, store, key, size, sum).Scan(&again); err != nil {
+			return fmt.Errorf("blobs: begin %s/%s: %w", store, key, sql.Unavailable(err))
+		}
+	}
+	if !again {
+		return fmt.Errorf("%w: %s/%s", ErrKeyInUse, store, key)
 	}
 	return nil
 }
 
-// Begin records a pending object of size bytes and SHA-256 sum before a
-// signed PUT URL for it is issued. CommitUpload makes it live.
-func (o *Objects) Begin(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	size int64,
-	sum []byte,
-) error {
+// declared checks a signed upload's store, key, size and SHA-256.
+func declared(store objectstore.Name, key string, size int64, sum []byte) error {
 	if err := check(store, key); err != nil {
 		return err
-	}
-	if store.Sealed() {
-		return fmt.Errorf("%w: %s", ErrSealed, store)
 	}
 	if size < 0 || len(sum) != sha256.Size {
 		return fmt.Errorf(
@@ -169,7 +181,96 @@ func (o *Objects) Begin(
 			len(sum),
 		)
 	}
+	return nil
+}
+
+// Begin records a pending object of size bytes and SHA-256 sum before a
+// signed PUT URL for it is issued. CommitUpload makes it live. A key
+// already pending with the same size and SHA-256 is no error, so a
+// caller whose first answer was lost signs the URL again.
+func (o *Objects) Begin(
+	ctx context.Context,
+	store objectstore.Name,
+	key string,
+	size int64,
+	sum []byte,
+) error {
+	if err := declared(store, key, size, sum); err != nil {
+		return err
+	}
+	if store.Sealed() {
+		return fmt.Errorf("%w: %s", ErrSealed, store)
+	}
 	return o.begin(ctx, store, key, size, sum, nil)
+}
+
+// BeginSealed records a pending object of a sealed store before a signed
+// PUT URL for it is issued, as Begin does, for an uploader that seals the
+// object itself under content, a content key the server derives too:
+// size and sum are the sealed bytes'. content is sealed into the row, so
+// Open reads the object as it reads one Put sealed.
+//
+// ref: decision 0013 § "Sealed objects"
+func (o *Objects) BeginSealed(
+	ctx context.Context,
+	store objectstore.Name,
+	key string,
+	size int64,
+	sum, content []byte,
+) error {
+	if err := declared(store, key, size, sum); err != nil {
+		return err
+	}
+	if !store.Sealed() {
+		return fmt.Errorf("%w: %s", ErrNotSealed, store)
+	}
+	if len(content) != seal.KeySize {
+		return fmt.Errorf("%w: %s/%s: %d-byte content key", ErrDeclared, store, key,
+			len(content))
+	}
+	aad, err := contentKey.AAD([]string{string(store), key})
+	if err != nil {
+		return err //nolint:wrapcheck // cannot fail: two parts
+	}
+	sealed, err := o.keys.Seal(ctx, aad, content)
+	if err != nil {
+		return fmt.Errorf("blobs: seal %s/%s's content key: %w", store, key, err)
+	}
+	return o.begin(ctx, store, key, size, sum, sealed)
+}
+
+// SignPut signs a PUT URL for a pending object, bound to its declared
+// size and SHA-256 as far as the driver binds them.
+func (o *Objects) SignPut(
+	ctx context.Context,
+	store objectstore.Name,
+	key string,
+	size int64,
+	sum []byte,
+) (objectstore.Signed, error) {
+	//nolint:wrapcheck // the drivers' errors name the key
+	return o.w.SignURL(ctx, http.MethodPut, store, key, 0,
+		objectstore.Constraints{Size: size, SHA256: sum})
+}
+
+// SignGet signs a GET URL for a live object, or answers
+// objectstore.ErrNotFound. The URL hands out the bytes as stored, sealed
+// when the store is.
+func (o *Objects) SignGet(
+	ctx context.Context,
+	store objectstore.Name,
+	key string,
+) (objectstore.Signed, error) {
+	var sealed []byte
+	if err := tx.Q(ctx, o.db).QueryRow(ctx, live, store, key).Scan(&sealed); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return objectstore.Signed{}, objectstore.ErrNotFound
+		}
+		return objectstore.Signed{}, fmt.Errorf("blobs: sign %s/%s: %w", store, key,
+			sql.Unavailable(err))
+	}
+	//nolint:wrapcheck // the drivers' errors name the key
+	return o.w.SignURL(ctx, http.MethodGet, store, key, 0, objectstore.Constraints{})
 }
 
 // uploaded records the SHA-256 of a server-side write once its upload
@@ -305,40 +406,47 @@ FOR UPDATE`
 // CommitUpload makes an object a signed PUT uploaded live, in the
 // transaction on ctx, once Head shows the declared size and, on gcs and
 // azureblob, whose URLs bind no SHA-256, the object read back matches the
-// declared SHA-256. A mismatch leaves the row pending for blob.expire.
-func (o *Objects) CommitUpload(ctx context.Context, store objectstore.Name, key string) error {
+// declared SHA-256, and returns that size and SHA-256. A mismatch leaves
+// the row pending for blob.expire.
+func (o *Objects) CommitUpload(
+	ctx context.Context,
+	store objectstore.Name,
+	key string,
+) (objectstore.Object, error) {
 	var (
-		size int64
-		sum  []byte
+		obj objectstore.Object
+		sum []byte
 	)
-	if err := tx.Q(ctx, o.db).QueryRow(ctx, pending, store, key).Scan(&size, &sum); err != nil {
+	err := tx.Q(ctx, o.db).QueryRow(ctx, pending, store, key).Scan(&obj.Size, &sum)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("%w: %s/%s", ErrNotUploaded, store, key)
+			return obj, fmt.Errorf("%w: %s/%s", ErrNotUploaded, store, key)
 		}
-		return fmt.Errorf("blobs: commit %s/%s: %w", store, key, sql.Unavailable(err))
+		return obj, fmt.Errorf("blobs: commit %s/%s: %w", store, key, sql.Unavailable(err))
 	}
+	copy(obj.SHA256[:], sum)
 	got, err := o.w.Head(ctx, store, key)
 	switch {
 	case errors.Is(err, objectstore.ErrNotFound):
-		return fmt.Errorf("%w: %s/%s", ErrNotUploaded, store, key)
+		return obj, fmt.Errorf("%w: %s/%s", ErrNotUploaded, store, key)
 	case err != nil:
-		return err //nolint:wrapcheck // the driver's errors name the key
-	case got != size:
-		return fmt.Errorf(
+		return obj, err //nolint:wrapcheck // the driver's errors name the key
+	case got != obj.Size:
+		return obj, fmt.Errorf(
 			"%w: %s/%s holds %d bytes, want %d",
 			objectstore.ErrSize,
 			store,
 			key,
 			got,
-			size,
+			obj.Size,
 		)
 	}
 	if o.readBack {
 		if err := o.compare(ctx, store, key, sum); err != nil {
-			return err
+			return obj, err
 		}
 	}
-	return o.Commit(ctx, store, key)
+	return obj, o.Commit(ctx, store, key)
 }
 
 func (o *Objects) compare(

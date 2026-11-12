@@ -176,3 +176,146 @@ type Scheduler interface {
 // PostgreSQL does to identical payloads. A payload of the pool's ID alone
 // wakes every held poll of the pool.
 func Waiting(pool, run kernel.ULID) string { return pool.String() + "/" + run.String() }
+
+// ReportEvent is what a worker's report says of a phase of its run.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+type ReportEvent string
+
+// The report events.
+const (
+	ReportStarted   ReportEvent = "started"
+	ReportSucceeded ReportEvent = "succeeded"
+	ReportFailed    ReportEvent = "failed"
+	ReportStopped   ReportEvent = "stopped"
+)
+
+// Report is a worker's report on a phase of its run: the state version
+// it last learned, the state the phase is, what happened, and what the
+// worker says about it, which the transition records as its note.
+type Report struct {
+	StateVersion int64
+	State        kernel.RunState
+	Event        ReportEvent
+	Details      string
+}
+
+// Action is what a report's answer tells the worker to do.
+type Action string
+
+// The actions: execute the phase of the answer's state, pause while the
+// run waits for a decision, or exit, the run having ended.
+const (
+	ActionExecute Action = "execute"
+	ActionPause   Action = "pause"
+	ActionExit    Action = "exit"
+)
+
+// Step is a report's answer: what the worker does next, and the run's
+// state and state version now, which its next report names.
+type Step struct {
+	Action       Action
+	State        kernel.RunState
+	StateVersion int64
+}
+
+// UploadKind is what an upload holds, which decides its store.
+type UploadKind string
+
+// The upload kinds: a log chunk, in run-logs; a run artifact the runner
+// sealed with the run's artifact key, in run-artifacts; the workspace,
+// encrypted to the pool's key, in workspaces; an observability artifact,
+// in run-observability.
+//
+// ref: decision 0008 § "Logs and artifacts"
+const (
+	UploadLogChunk      UploadKind = "log-chunk"
+	UploadArtifact      UploadKind = "artifact"
+	UploadWorkspace     UploadKind = "workspace"
+	UploadObservability UploadKind = "observability"
+)
+
+// Upload is an object a worker declares before it uploads it: its kind,
+// its name within the run's state version, a log chunk's being its
+// sequence number in decimal, and the size and SHA-256 of its bytes as
+// uploaded.
+type Upload struct {
+	Kind   UploadKind
+	Name   string
+	Size   int64
+	SHA256 []byte
+}
+
+// SignedUpload is where to upload a declared object: its kind and name,
+// its key within its store, the pre-signed PUT URL, and the headers the
+// PUT must carry.
+type SignedUpload struct {
+	Kind   UploadKind
+	Name   string
+	Key    string
+	URL    string
+	Header map[string]string
+}
+
+// LogChunk is an uploaded log chunk: its sequence number and when its
+// first and last lines were written.
+type LogChunk struct {
+	Seq     int64
+	FirstAt time.Time
+	LastAt  time.Time
+}
+
+// Recorded is an uploaded object other than a log chunk, to record by
+// its kind and name.
+type Recorded struct {
+	Kind UploadKind
+	Name string
+}
+
+// Refusals of Reports, besides ErrNotOnWorker.
+var (
+	// ErrMovedOn reports a call naming a state version the run moved on
+	// from.
+	ErrMovedOn = errors.New("workers: the run moved on from that state version")
+	// ErrReportRefused reports a report the run's state cannot take.
+	ErrReportRefused = errors.New("workers: the run's state cannot take the report")
+	// ErrNoPlanDecision reports a succeeded report of PLANNING, whose plan
+	// decision the server does not take yet.
+	ErrNoPlanDecision = errors.New("workers: the server takes no plan decision")
+	// ErrUploadExists reports an upload whose name the run's state version
+	// already declared with another size or SHA-256, or recorded.
+	ErrUploadExists = errors.New("workers: the upload's name is taken")
+	// ErrNoWorkspace reports a run that recorded no workspace.
+	ErrNoWorkspace = errors.New("workers: the run recorded no workspace")
+)
+
+// Reports is the runs domain's side of a claimed run's calls, a back edge
+// internal/app binds after it constructs that domain. Each call names the
+// run a run token names and joins the transaction ctx carries; each
+// answers ErrNotOnWorker when no account has the run or it is not on a
+// private pool's worker, and each that names a state version answers
+// ErrMovedOn unless it is the run's.
+//
+// ref: decisions 0004 and 0008 § "The worker API"
+type Reports interface {
+	// Report moves run as r reports and answers what the worker does
+	// next. A started report of the state the run's preparation leads to
+	// ends the handover, and one of the state the run is in changes
+	// nothing. A report that repeats the one that took the run's last
+	// transition answers as that one did.
+	Report(ctx context.Context, run kernel.ULID, r Report) (Step, error)
+	// Uploads records each declared object of run's state version as
+	// pending, under the run's own key prefix, and signs a PUT URL for it.
+	// A *kernel.Invalid names the declarations it refuses.
+	Uploads(ctx context.Context, run kernel.ULID, version int64, u []Upload) ([]SignedUpload, error)
+	// LogChunks indexes uploaded log chunks of run's state version, once
+	// each upload matches its declaration; a chunk already indexed is
+	// left as it is.
+	LogChunks(ctx context.Context, run kernel.ULID, version int64, c []LogChunk) error
+	// Artifacts records uploaded objects of run's state version, as
+	// LogChunks indexes log chunks.
+	Artifacts(ctx context.Context, run kernel.ULID, version int64, r []Recorded) error
+	// Workspace is a pre-signed GET URL of the workspace run last
+	// recorded, or ErrNoWorkspace.
+	Workspace(ctx context.Context, run kernel.ULID) (string, error)
+}

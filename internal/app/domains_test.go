@@ -32,6 +32,7 @@ func TestAccJobEntitlements(t *testing.T) {
 		db,
 		testKeyring(t, db.Primary()),
 		nil,
+		nil,
 		testEvents(t, db.Primary()),
 		slog.New(slog.DiscardHandler),
 	)
@@ -93,6 +94,7 @@ func TestAccSeatRace(t *testing.T) {
 		c,
 		db,
 		testKeyring(t, db.Primary()),
+		nil,
 		nil,
 		testEvents(t, db.Primary()),
 		slog.New(slog.DiscardHandler),

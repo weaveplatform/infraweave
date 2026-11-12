@@ -1,6 +1,7 @@
 -- Runs: each account's runs, the state transitions of each, the run that
--- holds each stack's run lock, each stack's tracked run and the outputs
--- of its last applied run.
+-- holds each stack's run lock, each stack's tracked run, the outputs of
+-- its last applied run, and the log chunks and other objects each run's
+-- worker uploaded.
 -- ref: decisions 0004, 0005 and 0008; report 08
 
 -- stack_id has no foreign key because stacks belong to the stacks domain:
@@ -130,3 +131,48 @@ CREATE TABLE stack_outputs (
 );
 
 CREATE INDEX stack_outputs_run ON stack_outputs (account_id, run_id);
+
+-- The log chunks each run's worker uploaded and indexed, by the state
+-- version they were written in and their sequence number there, which
+-- readers tail. state is the state of that state version; object_key is
+-- the chunk's key in the run-logs store,
+-- <account>/<run>/<state>-<state_version>/<seq>; bytes is its size, and
+-- first_at and last_at when its first and last lines were written. An
+-- account's purge deletes each chunk's object with its row; a run deleted
+-- with its stack leaves its objects to the store's retention.
+CREATE TABLE run_log_chunks (
+    account_id    uuid        NOT NULL,
+    run_id        uuid        NOT NULL,
+    state_version bigint      NOT NULL,
+    seq           bigint      NOT NULL,
+    state         text        NOT NULL,
+    object_key    text        NOT NULL,
+    bytes         bigint      NOT NULL,
+    first_at      timestamptz NOT NULL,
+    last_at       timestamptz NOT NULL,
+    PRIMARY KEY (account_id, run_id, state_version, seq),
+    FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE,
+    CHECK (seq >= 0 AND bytes >= 0 AND last_at >= first_at)
+);
+
+-- The other objects each run's worker uploaded and recorded, by the state
+-- version they were uploaded in, their kind and their name: an artifact,
+-- in run-artifacts, sealed with the run's artifact key; the workspace, in
+-- workspaces, encrypted to the pool's key; or an observability artifact,
+-- in run-observability. object_key is <account>/<run>/<state>-<state_version>/<name>
+-- in that store, and size and sha256 the bytes as uploaded. Objects go as
+-- a log chunk's do.
+CREATE TABLE run_artifacts (
+    account_id    uuid        NOT NULL,
+    run_id        uuid        NOT NULL,
+    state_version bigint      NOT NULL,
+    kind          text        NOT NULL,
+    name          text        NOT NULL,
+    object_key    text        NOT NULL,
+    size          bigint      NOT NULL,
+    sha256        bytea       NOT NULL,
+    recorded_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, run_id, state_version, kind, name),
+    FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE,
+    CHECK (kind IN ('artifact', 'workspace', 'observability'))
+);
