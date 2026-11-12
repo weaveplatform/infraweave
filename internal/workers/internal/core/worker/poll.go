@@ -37,11 +37,13 @@ type PollResult struct {
 }
 
 // Assignment is a run a poll claimed, the preparing state the claim moved
-// it to, and the run token its launcher and runner carry.
+// it to, the run's state version after it, and the run token its launcher
+// and runner carry.
 type Assignment struct {
-	Run   kernel.ULID
-	State kernel.RunState
-	Token accessapi.Token
+	Run          kernel.ULID
+	State        kernel.RunState
+	StateVersion int64
+	Token        accessapi.Token
 }
 
 func result(w Worker) PollResult {
@@ -165,7 +167,7 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		if err != nil {
 			return err //nolint:wrapcheck // the access domain names the mint
 		}
-		out = &Assignment{Run: a.Run, State: a.State, Token: t}
+		out = &Assignment{Run: a.Run, State: a.State, StateVersion: a.StateVersion, Token: t}
 		return nil
 	})
 	if err != nil || out == nil {

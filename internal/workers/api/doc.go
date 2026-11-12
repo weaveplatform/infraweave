@@ -5,7 +5,10 @@
 // move ask for the rows that name it, as PoolUses. Scheduler is the back
 // edge the runs domain implements: a worker's Claim of the run that has
 // waited longest in its pool's first tier, answered as an Assignment, and
-// Waiting the notification payload that wakes a held poll for a run.
+// the Handover of a claimed run, its Spec in clear and its secrets for
+// the workers domain to seal to the pool's key; ErrNotOnWorker when the
+// run is not on a worker. Waiting is the notification payload that wakes
+// a held poll for a run.
 //
 // # Input and output
 //

@@ -81,11 +81,17 @@ components:
         A run the poll claimed for the worker, which the launcher prepares
         and executes.
       type: object
-      required: [run, state, runToken, runTokenExpiresAt]
+      required: [run, state, stateVersion, runToken, runTokenExpiresAt]
       properties:
         run:
           type: string
           description: The run's ID.
+        stateVersion:
+          type: integer
+          format: int64
+          description: >-
+            The run's state version after the claim, which the run's
+            specification is sealed for until the run reports it started.
         state:
           type: string
           enum: [PREPARING, PREPARING_APPLY, PREPARING_REPLAN]

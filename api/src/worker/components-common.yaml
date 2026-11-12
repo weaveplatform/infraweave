@@ -99,7 +99,8 @@ components:
       description: >-
         The request carries no valid credential: no worker session token, an
         expired one, or one whose worker is gone or registered under a pool
-        certificate a reset replaced.
+        certificate a reset replaced; on a run's calls, no run token, an
+        expired one, or one for another run.
       content:
         application/problem+json:
           schema:
@@ -143,6 +144,18 @@ components:
             title: API disabled for this caller
             status: 503
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    InvalidState:
+      description: The run is not on a worker, so its run token is refused.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:invalid-state
+            title: invalid state
+            status: 409
+            detail: The run is not on a worker.
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     Problem:
       description: The request failed; the body says why.
       content:
@@ -157,3 +170,11 @@ components:
       description: >-
         A worker session token, which a registration answers and a poll
         renews.
+    runToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        A run token, which the poll that claimed the run answers in its
+        assignment. It authenticates only that run's calls, and only while
+        the run is on a worker.

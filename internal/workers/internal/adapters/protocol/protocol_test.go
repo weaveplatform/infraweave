@@ -30,6 +30,7 @@ import (
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/protocol"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
@@ -107,6 +108,10 @@ func (s *store) Seen(
 
 func (s *store) Get(context.Context, kernel.AccountID, kernel.ULID, bool) (pool.Pool, error) {
 	return s.pool, nil
+}
+
+func (*store) RunnerImages(context.Context, kernel.AccountID) (images.Images, error) {
+	return images.Images{}, nil
 }
 
 func (s *store) Claimed(_ context.Context, id kernel.ULID) error {
@@ -244,13 +249,18 @@ func newFixture(t *testing.T) *fixture {
 }
 
 // authenticate stands in for the worker API's authenticator: it puts the
-// Bearer of a session token the fake verifies on the request's context,
-// and passes any other request on bare, as the route table never does.
+// Bearer of a session token the fake verifies, or of a run token, on the
+// request's context, and passes any other request on bare, as the route
+// table never does.
 func (f *fixture) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if b, err := f.tokens.VerifyWorker(r.Context(), raw); ok && err == nil {
 			r = r.WithContext(accessapi.WithBearer(r.Context(), b))
+		}
+		id, run := strings.CutPrefix(raw, "run.")
+		if u, err := kernel.ParseULID(id); run && err == nil {
+			r = r.WithContext(accessapi.WithBearer(r.Context(), accessapi.Bearer{ID: u}))
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -388,8 +398,17 @@ func TestUnitProtocolHold(t *testing.T) {
 	})
 }
 
-// scheduler hands out run once.
-type scheduler struct{ run *workersapi.Assignment }
+// scheduler hands out run once, and hands over handover, or fails with
+// err.
+type scheduler struct {
+	run      *workersapi.Assignment
+	handover workersapi.Handover
+	err      error
+}
+
+func (s *scheduler) Handover(context.Context, kernel.ULID) (workersapi.Handover, error) {
+	return s.handover, s.err
+}
 
 func (s *scheduler) Claim(
 	context.Context,
@@ -407,7 +426,9 @@ func (s *scheduler) Claim(
 // answers it with its state and run token.
 func TestUnitProtocolAssignment(t *testing.T) {
 	f := newFixture(t)
-	a := workersapi.Assignment{Run: kernel.NewULID(), State: kernel.RunStatePreparingApply}
+	a := workersapi.Assignment{
+		Run: kernel.NewULID(), State: kernel.RunStatePreparingApply, StateVersion: 7,
+	}
 	f.svc.BindScheduler(&scheduler{run: &a})
 	w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
 	f.store.workers[w.ID] = w
@@ -417,8 +438,8 @@ func TestUnitProtocolAssignment(t *testing.T) {
 	}
 	code, body := f.call(t, "/poll", tok.Raw, map[string]any{"busy": false})
 	want := map[string]any{
-		"run": a.Run.String(), "state": "PREPARING_APPLY", "runToken": "run." + a.Run.String(),
-		"runTokenExpiresAt": float64(1e9),
+		"run": a.Run.String(), "state": "PREPARING_APPLY", "stateVersion": float64(7),
+		"runToken": "run." + a.Run.String(), "runTokenExpiresAt": float64(1e9),
 	}
 	if got, _ := body["assignment"].(map[string]any); code != http.StatusOK ||
 		!maps.Equal(got, want) {

@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
@@ -191,6 +192,9 @@ type Store interface {
 		pool, space kernel.ULID,
 		in search.SuggestionsInput,
 	) (search.Suggestions, error)
+	// RunnerImages reads acct's default runner images, both nil when it
+	// sets none.
+	RunnerImages(ctx context.Context, acct kernel.AccountID) (images.Images, error)
 	// OfPools reads the workers of acct's pools, by pool, oldest first.
 	OfPools(
 		ctx context.Context,

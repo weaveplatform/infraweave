@@ -15,8 +15,8 @@ type PrincipalKind string
 // The principal kinds. A user is a member signed in, an API key a key's
 // token, and a run a run's in-run token; organization is an organization
 // key's token, break_glass an organization's break-glass sign-in, operator
-// an operator key's token, worker a launcher's worker session token, and
-// anonymous no credential.
+// an operator key's token, worker a launcher's worker session token,
+// runner a claimed run's run token, and anonymous no credential.
 //
 // ref: decision 0006
 const (
@@ -27,6 +27,7 @@ const (
 	PrincipalBreakGlass   PrincipalKind = "break_glass"
 	PrincipalOperator     PrincipalKind = "operator"
 	PrincipalWorker       PrincipalKind = "worker"
+	PrincipalRunner       PrincipalKind = "runner"
 	PrincipalAnonymous    PrincipalKind = "anonymous"
 )
 
@@ -42,6 +43,7 @@ var PrincipalKinds = []PrincipalKind{
 	PrincipalBreakGlass,
 	PrincipalOperator,
 	PrincipalWorker,
+	PrincipalRunner,
 	PrincipalAnonymous,
 }
 

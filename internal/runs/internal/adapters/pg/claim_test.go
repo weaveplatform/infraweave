@@ -118,12 +118,13 @@ func TestAccClaim(t *testing.T) {
 		),
 	}
 
+	// Each run waits at state version 1, and its claim moves it to 2.
 	none := 0
 	for i, want := range []workersapi.Assignment{
-		{Run: first, State: kernel.RunStatePreparing},
-		{Run: confirmed, State: kernel.RunStatePreparingApply},
-		{Run: replan, State: kernel.RunStatePreparingReplan},
-		{Run: low, State: kernel.RunStatePreparing},
+		{Run: first, State: kernel.RunStatePreparing, StateVersion: 2},
+		{Run: confirmed, State: kernel.RunStatePreparingApply, StateVersion: 2},
+		{Run: replan, State: kernel.RunStatePreparingReplan, StateVersion: 2},
+		{Run: low, State: kernel.RunStatePreparing, StateVersion: 2},
 	} {
 		worker := kernel.NewULID()
 		got, ok, err := w.take(t, c, pool, worker, &none)
@@ -371,7 +372,7 @@ func TestAccClaimAnnounce(t *testing.T) {
 // closed pool.
 func TestAccClaimStoreUnavailable(t *testing.T) {
 	db := pool(t)
-	s := pg.New(db)
+	s := pg.New(db, nil)
 	db.Close()
 	ctx := context.Background()
 	acct, id := kernel.NewAccountID(), kernel.NewULID()

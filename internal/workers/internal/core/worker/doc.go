@@ -14,21 +14,25 @@
 // pool, and Stop answers them at once as the replica shuts down. For
 // the API it drains and undrains a worker, cycles a pool's workers, and
 // searches, suggests and lists them. A worker's Status is DRAINED, BUSY
-// or IDLE.
+// or IDLE. Spec answers a run token's bearer its run's handover from the
+// scheduler, with the account's default runner image when neither the
+// run nor its stack names one, and the run's secrets sealed to the P-256
+// key of its pool's current certificate for the run's state version.
 //
 // ref: decision 0008 § "Claiming runs", § "The worker API", § "Worker
-// status, drain, cycle and reset"
+// status, drain, cycle and reset", § "The run specification and its
+// secrets"
 //
 // # Input and output
 //
 // New takes the Store, the pool registrations and claims begin
 // transactions on, the worker session and run tokens it mints, the limits
 // it checks, the server's version and the longest hold; BindScheduler
-// takes the runs domain's claim.
+// takes the runs domain's claim and handover.
 //
 // # Dependencies
 //
 // It imports go-jose, the access, features and workers api packages,
-// internal/kernel and its search package, platform/tx and the domain's
-// pool package. The domain's assembly constructs it over the pg adapter.
+// internal/kernel and its search package, platform/seal, platform/tx and
+// the domain's images and pool packages. The domain's assembly constructs it over the pg adapter.
 package worker

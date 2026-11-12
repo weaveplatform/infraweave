@@ -104,12 +104,31 @@ func TestUnitWorkerTokens(t *testing.T) {
 			t.Errorf("AuthenticateWorker of a %s token = %v", name, err)
 		}
 	}
+	p, c, err = w.s.AuthenticateRunner(ctx, rt.Raw)
+	if err != nil || p.Kind != kernel.PrincipalRunner || p.ActorID != run ||
+		!p.AccountID.IsZero() || !c.Expiry.Equal(rt.Expires) {
+		t.Errorf("AuthenticateRunner = %+v, %+v, %v", p, c, err)
+	}
+	for name, raw := range map[string]string{"worker": wt.Raw, "API": api} {
+		if _, _, err := w.s.AuthenticateRunner(
+			ctx,
+			raw,
+		); !errors.Is(
+			err,
+			authn.ErrUnauthenticated,
+		) {
+			t.Errorf("AuthenticateRunner of a %s token = %v", name, err)
+		}
+	}
 	w.f.fail = "Verify"
 	if _, err := w.s.VerifyWorker(ctx, wt.Raw); !errors.Is(err, errDown) {
 		t.Errorf("Verify down = %v", err)
 	}
 	if _, _, err := w.s.AuthenticateWorker(ctx, wt.Raw); !errors.Is(err, errDown) {
 		t.Errorf("AuthenticateWorker with Verify down = %v", err)
+	}
+	if _, _, err := w.s.AuthenticateRunner(ctx, rt.Raw); !errors.Is(err, errDown) {
+		t.Errorf("AuthenticateRunner with Verify down = %v", err)
 	}
 	w.f.fail = "Issue"
 	if _, err := w.s.WorkerToken(ctx, worker); !errors.Is(err, errDown) {

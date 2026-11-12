@@ -14,17 +14,23 @@ import (
 )
 
 // TestUnitDomain checks that the domain answers the stack view's status
-// and the stacks guard from one service, declares its stream and held
-// columns, and that a nil domain's partial is the zero one.
+// and the stacks guard from one service, declares its stream, held and
+// sealed columns, binds the expression registry its handover renders
+// with, and that a nil domain's partial is the zero one.
 func TestUnitDomain(t *testing.T) {
 	d := New(Deps{})
 	if d.StackStatus() == nil || d.StackGuard() == nil ||
 		any(d.StackStatus()) != any(d.StackGuard()) {
 		t.Error("the status and the guard are not the domain's service")
 	}
-	if Stream().Name != pg.StreamName || !reflect.DeepEqual(Held(), pg.Held()) {
-		t.Errorf("stream %q, held %v", Stream().Name, Held())
+	if Stream().Name != pg.StreamName || !reflect.DeepEqual(Held(), pg.Held()) ||
+		!reflect.DeepEqual(SealedColumns(), pg.SealedColumns()) {
+		t.Errorf("stream %q, held %v, sealed %v", Stream().Name, Held(), SealedColumns())
 	}
+	if d.Scheduler() == nil {
+		t.Error("the domain has no scheduler")
+	}
+	d.BindExpressions(nil)
 	var none *Domain
 	if !reflect.ValueOf(none.API()).IsZero() {
 		t.Error("a nil domain's partial is not the zero one")

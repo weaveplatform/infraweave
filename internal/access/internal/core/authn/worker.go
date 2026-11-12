@@ -63,6 +63,27 @@ func (s *Service) VerifyRun(ctx context.Context, raw string) (accessapi.Bearer, 
 	return s.verifyBare(ctx, raw, token.KindRunner, accessapi.RunnerAudience)
 }
 
+// AuthenticateRunner is the principal a run token acts as, a runner whose
+// actor is the run, with no account or session, and the token's claims;
+// any other token is ErrUnauthenticated. Whether the run is still on a
+// worker is the worker API's to decide, since only the runs domain knows.
+//
+// ref: decision 0006 § "The principal"
+func (s *Service) AuthenticateRunner(
+	ctx context.Context,
+	raw string,
+) (kernel.Principal, token.Claims, error) {
+	b, err := s.VerifyRun(ctx, raw)
+	if errors.Is(err, accessapi.ErrInvalidToken) {
+		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
+	}
+	if err != nil {
+		return kernel.Principal{}, token.Claims{}, err
+	}
+	return kernel.Principal{Kind: kernel.PrincipalRunner, ActorID: b.ID},
+		token.Claims{Kind: token.KindRunner, Subject: b.ID.String(), Expiry: b.Expires}, nil
+}
+
 // bare issues a token of kind for audience naming id, with no session
 // row: its jti is a fresh ULID that nothing records.
 func (s *Service) bare(

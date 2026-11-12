@@ -25,3 +25,7 @@ func (UnimplementedStrict) WorkerPoll(context.Context, WorkerPollRequestObject) 
 func (UnimplementedStrict) WorkerRegister(context.Context, WorkerRegisterRequestObject) (WorkerRegisterResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "workerRegister", Route: "POST /register"}
 }
+
+func (UnimplementedStrict) WorkerRunSpec(context.Context, WorkerRunSpecRequestObject) (WorkerRunSpecResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunSpec", Route: "GET /runs/{run}/spec"}
+}

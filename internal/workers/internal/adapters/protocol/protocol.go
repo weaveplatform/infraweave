@@ -2,20 +2,24 @@ package protocol
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	gen "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
 // Server is the worker API's strict server. The worker API's
 // authenticator, in front of every route but the registration, puts the
-// worker session token's accessapi.Bearer on each request's context.
+// worker session token's or, on a run's calls, the run token's
+// accessapi.Bearer on each request's context.
 type Server struct {
 	svc *worker.Service
 	log *slog.Logger
@@ -29,24 +33,27 @@ var _ gen.StrictServerInterface = Server{}
 // ref: decision 0008 § "The worker API"
 func New(svc *worker.Service, log *slog.Logger) Server { return Server{svc: svc, log: log} }
 
-// bearer is the request's worker session token, or a 401 problem for a
-// request the authenticator did not admit, which the route table never
-// sends.
+// bearer is the request's worker session token or run token, or a 401
+// problem for a request the authenticator did not admit, which the route
+// table never sends.
 func bearer(ctx context.Context) (accessapi.Bearer, error) {
 	b, ok := accessapi.BearerFrom(ctx)
 	if !ok {
 		//nolint:wrapcheck // a problem, answered as it is
-		return b, problem.Unauthenticated.Error(
-			"The request carries no valid worker session token.",
-		)
+		return b, problem.Unauthenticated.Error("The request carries no valid token.")
 	}
 	return b, nil
 }
 
 // answer maps the service's refusals to problems: a refused credential
-// to 401, which the log records with its reason, and the private-workers
-// limit to 403 limit-reached. A *kernel.Invalid is answered as it is.
+// to 401, which the log records with its reason, the private-workers
+// limit to 403 limit-reached, and a run not on a worker to 409
+// invalid-state. A *kernel.Invalid is answered as it is.
 func (s Server) answer(ctx context.Context, err error) error {
+	if errors.Is(err, workersapi.ErrNotOnWorker) {
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.InvalidState.Error("The run is not on a worker.")
+	}
 	if errors.Is(err, worker.ErrUnauthenticated) {
 		s.log.InfoContext(ctx, "worker credential refused", "reason", err.Error())
 		//nolint:wrapcheck // a problem, answered as it is
@@ -99,7 +106,7 @@ func (s Server) WorkerPoll(
 	out := gen.PollResult{}
 	if a := got.Assignment; a != nil {
 		out.Assignment = &gen.Assignment{
-			Run: a.Run.String(), State: gen.AssignmentState(a.State),
+			Run: a.Run.String(), State: gen.AssignmentState(a.State), StateVersion: a.StateVersion,
 			RunToken: a.Token.Raw, RunTokenExpiresAt: a.Token.Expires.Unix(),
 		}
 	}
@@ -133,4 +140,99 @@ func (s Server) WorkerDeregister(
 		return nil, s.answer(ctx, err)
 	}
 	return gen.WorkerDeregister204Response{}, nil
+}
+
+// WorkerRunSpec answers the specification of the run the run token names,
+// its secrets sealed to the run's pool's key.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+func (s Server) WorkerRunSpec(
+	ctx context.Context,
+	req gen.WorkerRunSpecRequestObject,
+) (gen.WorkerRunSpecResponseObject, error) {
+	b, err := bearer(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// A malformed ID parses as the zero ULID, which no run token names,
+	// so the service refuses it as another run's.
+	run, _ := kernel.ParseULID(req.Run)
+	spec, err := s.svc.Spec(ctx, b, run)
+	if err != nil {
+		return nil, s.answer(ctx, err)
+	}
+	return gen.WorkerRunSpec200JSONResponse{Body: runSpec(spec)}, nil
+}
+
+// runSpec is spec as the worker API answers it.
+func runSpec(spec worker.RunSpec) gen.RunSpec {
+	r, st, c := spec.Run, spec.Stack, spec.Commit
+	out := gen.RunSpec{
+		Run: gen.RunSpecRun{
+			Id: r.ID.String(), Type: gen.RunSpecRunType(r.Type), State: string(r.State),
+			StateVersion: r.StateVersion, TriggeredBy: r.TriggeredBy,
+			Priority: gen.RunSpecRunPriority(r.Priority), DriftDetection: r.DriftDetection,
+			CreatedAt: r.CreatedAt.Unix(),
+		},
+		Stack: gen.RunSpecStack{
+			Id: st.Slug, Name: st.Name, Space: st.Space, Labels: nonNil(st.Labels),
+			Repository: st.Repository, Branch: st.Branch, ProjectRoot: st.ProjectRoot,
+			Vendor: st.Vendor, VendorConfig: object(st.VendorConfig),
+		},
+		Commit: gen.RunSpecCommit{
+			Hash: c.Hash, Tag: optional(c.Tag), Url: optional(c.URL), Message: c.Message,
+			AuthorName: c.AuthorName, AuthorLogin: c.AuthorLogin, Timestamp: c.Timestamp.Unix(),
+		},
+		RunnerImage: spec.RunnerImage,
+		Hooks:       spec.Hooks,
+		Environment: make([]gen.RunSpecVariable, 0, len(spec.Environment)),
+		Files:       make([]gen.RunSpecFile, 0, len(spec.Files)),
+		Sealed:      spec.Sealed,
+	}
+	if out.Hooks == nil {
+		out.Hooks = map[string][]string{}
+	}
+	if spec.RuntimeConfig != nil {
+		rc := object(spec.RuntimeConfig)
+		out.RuntimeConfig = &rc
+	}
+	for _, v := range spec.Environment {
+		out.Environment = append(out.Environment,
+			gen.RunSpecVariable{Name: v.Name, Value: v.Value, WriteOnly: v.WriteOnly})
+	}
+	for _, f := range spec.Files {
+		file := gen.RunSpecFile{
+			Path: f.Path, FileMode: f.Mode, Checksum: f.Checksum, WriteOnly: f.WriteOnly,
+		}
+		if f.Content != nil {
+			file.Content = &f.Content
+		}
+		out.Files = append(out.Files, file)
+	}
+	return out
+}
+
+// object is raw, a JSON object, as a map, empty when raw holds none.
+func object(raw json.RawMessage) map[string]any {
+	out := map[string]any{}
+	if err := json.Unmarshal(raw, &out); err != nil || out == nil {
+		return map[string]any{}
+	}
+	return out
+}
+
+// optional is s, nil when empty.
+func optional(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// nonNil is s, an empty slice when nil, so the answer carries [].
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
 }

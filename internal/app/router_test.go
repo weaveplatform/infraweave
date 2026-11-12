@@ -13,6 +13,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
@@ -200,4 +201,10 @@ func TestUnitWorkerRoutes(t *testing.T) {
 		op.Gate.Feature != "" {
 		t.Errorf("the poll's operation is %+v", op)
 	}
+	if op := apiOperations()[http.MethodGet+" "+WorkerBaseURL+"/runs/{run}/spec"]; !op.Worker ||
+		!op.Runner || op.access() != accessapi.Runner || op.Required != nil {
+		t.Errorf("the spec's operation is %+v", op)
+	}
+	rec = request(t, h, http.MethodGet, WorkerBaseURL+"/runs/"+kernel.NewULID().String()+"/spec")
+	wantProblem(t, rec, http.StatusUnauthorized, "no valid credential")
 }

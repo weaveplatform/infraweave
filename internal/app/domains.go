@@ -130,12 +130,15 @@ func newDomains(
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
 	runs := runsassembly.New(runsassembly.Deps{
-		DB:     db.Primary(),
-		Spaces: access.Spaces(),
-		Authz:  access.Authorizer(),
-		Stacks: stacks.Stacks(),
-		Events: events,
-		Jobs:   queue.New(db.Primary()),
+		DB:          db.Primary(),
+		Keys:        keys,
+		Spaces:      access.Spaces(),
+		Authz:       access.Authorizer(),
+		Tokens:      access.Tokens(),
+		Stacks:      stacks.Stacks(),
+		Environment: configuration.Environment(),
+		Events:      events,
+		Jobs:        queue.New(db.Primary()),
 	})
 	stacks.GuardStacks(runs.StackGuard())
 	access.ResolveSubjects(runsassembly.Entity, runs.SpaceOf())
@@ -149,6 +152,7 @@ func newDomains(
 		return Domains{}, err //nolint:wrapcheck // names the surface or the setting
 	}
 	configuration.BindExpressions(registry)
+	runs.BindExpressions(registry)
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:       db.Primary(),
 		Keys:     keys,

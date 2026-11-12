@@ -19,6 +19,9 @@
 -- Neither has a foreign key, because pools and workers belong to the
 -- workers domain, and neither is a held key: a run keeps the pool it
 -- waited in and the worker that ran it after either is gone.
+-- artifact_key_sealed is the run's 256-bit artifact key, sealed by the
+-- keyring, made the first time the run's specification is handed over;
+-- the runner seals the run's artifacts with it.
 CREATE TABLE runs (
     account_id       uuid        NOT NULL,
     id               uuid        NOT NULL,
@@ -36,6 +39,7 @@ CREATE TABLE runs (
     priority_tier    smallint    NOT NULL DEFAULT 3,
     worker_pool_id   uuid,
     worker_id        uuid,
+    artifact_key_sealed bytea,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, id),
@@ -50,6 +54,10 @@ CREATE TABLE runs (
 CREATE INDEX runs_stack ON runs (account_id, stack_id, type, id DESC);
 CREATE INDEX runs_stack_created ON runs (account_id, stack_id, created_at);
 CREATE INDEX runs_state ON runs (account_id, state);
+
+-- A run token names its run by ID alone, with no account, so an ID names
+-- one run in the installation and the worker API finds the run by it.
+CREATE UNIQUE INDEX runs_id ON runs (id);
 
 -- A worker's claim takes the first of its pool's waiting runs in this
 -- order; the states are the ones a claim moves a run out of.

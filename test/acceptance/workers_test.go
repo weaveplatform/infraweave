@@ -28,10 +28,13 @@ import (
 )
 
 // workerSteps make a pool key's certificate signing request, check the
-// pool token a pool answers against the pool CA and the pool's row, and
-// register and poll launchers through the worker API's generated client.
+// pool token a pool answers against the pool CA and the pool's row,
+// register and poll launchers through the worker API's generated client,
+// and check a run's specification, opening its sealed part with the
+// pool's key.
 //
-// ref: decision 0008 § "The worker API"
+// ref: decision 0008 § "The worker API", § "The run specification and its
+// secrets"
 type workerSteps struct {
 	o *orgSteps
 	// keys are the pool keys by the name of their request.
@@ -68,6 +71,14 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the launcher "(\w+)" holds a poll with '([^']*)' through ([AB])$`, w.hold)
 	sc.Step(`^the held poll of "(\w+)" answers within (\d+) seconds$`, w.answered)
 	sc.Step(`^the answer lists the workers "([^"]*)"$`, w.lists)
+	sc.Step(`^the answer assigns the run "(\w+)", its run token kept as "(\w+)"$`, w.assigned)
+	sc.Step(`^the specification's variable "(\w+)" is "([^"]+)"$`, w.variable)
+	sc.Step(`^the specification's variable "(\w+)" is write-only$`,
+		func(name string) error { return w.variable(name, "") })
+	sc.Step(
+		`^the specification's sealed part opens with the key of "(\w+)" to the secret "(\w+)" as "([^"]*)"$`,
+		w.sealed,
+	)
 }
 
 // request keeps base64 of the PEM of a certificate signing request for a

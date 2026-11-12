@@ -46,16 +46,14 @@ var (
 	driftTier = kernel.RunTier(kernel.RunPriorityNormal, kernel.RunTypeTracked, true)
 )
 
-// Claims is the runs domain's workersapi.Scheduler: a worker's poll
-// claims its pool's next run through it.
+// Claims is the claim of the runs domain's workersapi.Scheduler: a
+// worker's poll claims its pool's next run through it.
 //
 // ref: decision 0008 § "Claiming runs"
 type Claims struct {
 	store     ClaimStore
 	lifecycle *lifecycle.Lifecycle
 }
-
-var _ workersapi.Scheduler = (*Claims)(nil)
 
 // NewClaims returns the claims over store and l.
 func NewClaims(store ClaimStore, l *lifecycle.Lifecycle) *Claims {
@@ -99,7 +97,8 @@ func (s *Claims) Claim(
 	if err := s.store.Assign(ctx, moved, c.Worker); err != nil {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the write
 	}
-	return workersapi.Assignment{Run: moved.ID, State: moved.State}, true, nil
+	return workersapi.Assignment{Run: moved.ID, State: moved.State, StateVersion: moved.Version},
+		true, nil
 }
 
 // limited reports whether c's pool bounds its drift detection runs.

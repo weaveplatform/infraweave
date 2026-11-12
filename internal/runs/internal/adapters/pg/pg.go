@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
@@ -45,11 +46,21 @@ func Held() []integrity.Held {
 	}
 }
 
-// Store is the runs domain's storage over a database.
-type Store struct{ db tx.Querier }
+// Store is the runs domain's storage over a database, sealing its sealed
+// column through seal.
+type Store struct {
+	db   tx.Querier
+	seal Sealer
+}
 
-// New returns the store over db.
-func New(db tx.Querier) *Store { return &Store{db: db} }
+// Sealer seals and opens a column's values; crypt.Keyring is one.
+type Sealer interface {
+	SealColumn(ctx context.Context, c crypt.Column, pk []string, plaintext []byte) ([]byte, error)
+	OpenColumn(ctx context.Context, c crypt.Column, pk []string, sealed []byte) (crypt.Value, error)
+}
+
+// New returns the store over db, sealing through seal.
+func New(db tx.Querier, seal Sealer) *Store { return &Store{db: db, seal: seal} }
 
 // Blockers reads which run holds the run lock of each of acct's stacks,
 // keyed by stack ID; a stack whose lock no run holds is absent.

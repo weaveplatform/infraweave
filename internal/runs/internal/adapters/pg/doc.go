@@ -19,18 +19,24 @@
 // pool's next run, skipping locked rows, records the run's worker, counts
 // a pool's drift runs on workers under a per-pool advisory lock, and
 // reports whether a worker holds a run; Announce notifies
-// infraweave_runs that a run waits in its pool. Held names the columns
-// that hold the access domain's accounts and the stacks domain's stacks.
-// Every method joins the transaction its context carries.
+// infraweave_runs that a run waits in its pool. For a run's handover it
+// reads and locks a run by its ID alone, as a run token names it, and
+// makes the run's artifact key once, sealed to its row in
+// artifact_key_sealed, which SealedColumns names, and opens it on every
+// later read. Held names the columns that hold the access domain's
+// accounts and the stacks domain's stacks. Every method joins the
+// transaction its context carries.
 //
 // # Input and output
 //
-// It reads and writes PostgreSQL through the querier it is given.
+// It reads and writes PostgreSQL through the querier it is given, and
+// seals and opens the artifact key through the Sealer it is given.
 //
 // # Dependencies
 //
-// It imports pgx, workersapi, the domain's lifecycle and schedule,
-// internal/kernel, platform/sql, platform/sql/integrity,
-// platform/sql/migrate, platform/sql/notify and platform/tx. The runs domain's assembly
-// constructs it.
+// It imports pgx, workersapi, the domain's handover, lifecycle and
+// schedule, internal/kernel, platform/crypt, platform/sql,
+// platform/sql/integrity, platform/sql/migrate, platform/sql/notify and
+// platform/tx. The runs domain's assembly constructs it over the
+// platform's keyring.
 package pg

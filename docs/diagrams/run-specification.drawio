@@ -1,0 +1,229 @@
+<mxfile host="localhost">
+  <diagram id="run-spec" name="Run specification">
+    <mxGraphModel dx="1279" dy="971" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1010" pageHeight="1006" background="#161823" math="0" shadow="0" adaptiveColors="none">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;fontStyle=1;" value="A run&#39;s specification at handover" vertex="1">
+          <mxGeometry height="24" width="700" x="30" y="24" as="geometry" />
+        </mxCell>
+        <mxCell id="sub" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#9aa0b4;align=left;verticalAlign=top;spacing=0;" value="A worker that claimed a run fetches the run&#39;s specification with the run token its poll answered. The runs domain builds it in one transaction; the workers domain seals its secrets to the key of the pool&#39;s current certificate, for that run at that state version, so only the customer&#39;s launcher can open them." vertex="1">
+          <mxGeometry height="32" width="950" x="30" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="launcher" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#ec4899;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="82" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="launcher-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtc2VydmVyIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiNlYzQ4OTkiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHg9IjIiIHk9IjIiIHJ4PSIyIiByeT0iMiIgLz4KICA8cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iOCIgeD0iMiIgeT0iMTQiIHJ4PSIyIiByeT0iMiIgLz4KICA8bGluZSB4MT0iNiIgeDI9IjYuMDEiIHkxPSI2IiB5Mj0iNiIgLz4KICA8bGluZSB4MT0iNiIgeDI9IjYuMDEiIHkxPSIxOCIgeTI9IjE4IiAvPgo8L3N2Zz4K;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="96" y="124" as="geometry" />
+        </mxCell>
+        <mxCell id="launcher-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="launcher" vertex="1">
+          <mxGeometry height="22" width="84" x="68" y="174" as="geometry" />
+        </mxCell>
+        <mxCell id="launcher-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="the customer&#39;s host, holding the pool&#39;s private key" vertex="1">
+          <mxGeometry height="30" width="170" x="25" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="launcher-life" edge="1" parent="1" style="endArrow=none;html=1;strokeColor=#3a3f55;strokeWidth=1.2;dashed=1;dashPattern=4 4;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="238" as="sourcePoint" />
+            <mxPoint x="110" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="workers" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#8b5cf6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="272" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="workers-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtaW5ib3giCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzhiNWNmNiIKICBzdHJva2Utd2lkdGg9IjEuNiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwb2x5bGluZSBwb2ludHM9IjIyIDEyIDE2IDEyIDE0IDE1IDEwIDE1IDggMTIgMiAxMiIgLz4KICA8cGF0aCBkPSJNNS40NSA1LjExIDIgMTJ2NmEyIDIgMCAwIDAgMiAyaDE2YTIgMiAwIDAgMCAyLTJ2LTZsLTMuNDUtNi44OUEyIDIgMCAwIDAgMTYuNzYgNEg3LjI0YTIgMiAwIDAgMC0xLjc5IDEuMTF6IiAvPgo8L3N2Zz4K;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="286" y="124" as="geometry" />
+        </mxCell>
+        <mxCell id="workers-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="workers" vertex="1">
+          <mxGeometry height="22" width="84" x="258" y="174" as="geometry" />
+        </mxCell>
+        <mxCell id="workers-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="/worker/v1 protocol and worker.Spec" vertex="1">
+          <mxGeometry height="30" width="170" x="215" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="workers-life" edge="1" parent="1" style="endArrow=none;html=1;strokeColor=#3a3f55;strokeWidth=1.2;dashed=1;dashPattern=4 4;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="238" as="sourcePoint" />
+            <mxPoint x="300" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="runs" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#8b5cf6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="462" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="runs-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtZmlsZS1jb2RlIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiM4YjVjZjYiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTEwIDEyLjUgOCAxNWwyIDIuNSIgLz4KICA8cGF0aCBkPSJtMTQgMTIuNSAyIDIuNS0yIDIuNSIgLz4KICA8cGF0aCBkPSJNMTQgMnY0YTIgMiAwIDAgMCAyIDJoNCIgLz4KICA8cGF0aCBkPSJNMTUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjd6IiAvPgo8L3N2Zz4K;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="476" y="124" as="geometry" />
+        </mxCell>
+        <mxCell id="runs-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="runs handover" vertex="1">
+          <mxGeometry height="22" width="111" x="435" y="174" as="geometry" />
+        </mxCell>
+        <mxCell id="runs-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="builds the specification" vertex="1">
+          <mxGeometry height="30" width="170" x="405" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="runs-life" edge="1" parent="1" style="endArrow=none;html=1;strokeColor=#3a3f55;strokeWidth=1.2;dashed=1;dashPattern=4 4;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="238" as="sourcePoint" />
+            <mxPoint x="490" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="domains" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#8b5cf6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="652" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="domains-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtbGF5ZXJzIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiM4YjVjZjYiCiAgc3Ryb2tlLXdpZHRoPSIxLjYiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJtMTIuODMgMi4xOGEyIDIgMCAwIDAtMS42NiAwTDIuNiA2LjA4YTEgMSAwIDAgMCAwIDEuODNsOC41OCAzLjkxYTIgMiAwIDAgMCAxLjY2IDBsOC41OC0zLjlhMSAxIDAgMCAwIDAtMS44M1oiIC8+CiAgPHBhdGggZD0ibTIyIDE3LjY1LTkuMTcgNC4xNmEyIDIgMCAwIDEtMS42NiAwTDIgMTcuNjUiIC8+CiAgPHBhdGggZD0ibTIyIDEyLjY1LTkuMTcgNC4xNmEyIDIgMCAwIDEtMS42NiAwTDIgMTIuNjUiIC8+Cjwvc3ZnPgo=;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="666" y="124" as="geometry" />
+        </mxCell>
+        <mxCell id="domains-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="configuration · access · stacks" vertex="1">
+          <mxGeometry height="22" width="237" x="562" y="174" as="geometry" />
+        </mxCell>
+        <mxCell id="domains-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="the environment, in-run tokens and the stack" vertex="1">
+          <mxGeometry height="30" width="170" x="595" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="domains-life" edge="1" parent="1" style="endArrow=none;html=1;strokeColor=#3a3f55;strokeWidth=1.2;dashed=1;dashPattern=4 4;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="680" y="238" as="sourcePoint" />
+            <mxPoint x="680" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pg" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#3b82f6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="842" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="pg-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtZGF0YWJhc2UiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzNiODJmNiIKICBzdHJva2Utd2lkdGg9IjEuNiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxlbGxpcHNlIGN4PSIxMiIgY3k9IjUiIHJ4PSI5IiByeT0iMyIgLz4KICA8cGF0aCBkPSJNMyA1VjE5QTkgMyAwIDAgMCAyMSAxOVY1IiAvPgogIDxwYXRoIGQ9Ik0zIDEyQTkgMyAwIDAgMCAyMSAxMiIgLz4KPC9zdmc+Cg==;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="856" y="124" as="geometry" />
+        </mxCell>
+        <mxCell id="pg-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="PostgreSQL" vertex="1">
+          <mxGeometry height="22" width="90" x="825" y="174" as="geometry" />
+        </mxCell>
+        <mxCell id="pg-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="runs, sealed by the keyring" vertex="1">
+          <mxGeometry height="30" width="170" x="785" y="202" as="geometry" />
+        </mxCell>
+        <mxCell id="pg-life" edge="1" parent="1" style="endArrow=none;html=1;strokeColor=#3a3f55;strokeWidth=1.2;dashed=1;dashPattern=4 4;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="870" y="238" as="sourcePoint" />
+            <mxPoint x="870" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#2ee6c5;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;" value="POST /worker/v1/poll&lt;br&gt;session token">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="276" as="sourcePoint" />
+            <mxPoint x="300" y="276" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#2ee6c5;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;dashed=1;" value="assignment: run, state,&lt;br&gt;stateVersion, run token">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="322" as="sourcePoint" />
+            <mxPoint x="110" y="322" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#2ee6c5;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;" value="GET /worker/v1/runs/{run}/spec&lt;br&gt;run token, a runner principal">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="368" as="sourcePoint" />
+            <mxPoint x="300" y="368" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;" value="Scheduler.Handover(run), in one transaction">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="414" as="sourcePoint" />
+            <mxPoint x="490" y="414" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;" value="Handed: lock the run by its ID alone · 409 unless on a worker">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="460" as="sourcePoint" />
+            <mxPoint x="870" y="460" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;" value="settings, labels, space slug, Environment.Resolve">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="506" as="sourcePoint" />
+            <mxPoint x="680" y="506" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="n1" parent="1" style="rounded=1;arcSize=12;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;fillColor=#1d2030;strokeColor=#f5b13d;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;" value="renders ${{ }} against env, stack and run; a value that reads a secret becomes one" vertex="1">
+          <mxGeometry height="44" width="176" x="502" y="538" as="geometry" />
+        </mxCell>
+        <mxCell id="n1-dot" parent="1" style="ellipse;fillColor=#f5b13d;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="8" width="8" x="486" y="556" as="geometry" />
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;" value="mint the in-run API token">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="614" as="sourcePoint" />
+            <mxPoint x="680" y="614" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;" value="ArtifactKey: made once, keyring-sealed in runs.artifact_key_sealed">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="660" as="sourcePoint" />
+            <mxPoint x="870" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;dashed=1;" value="spec + secrets: environment,&lt;br&gt;files, apiToken, artifactKey">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="706" as="sourcePoint" />
+            <mxPoint x="300" y="706" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="n2" parent="1" style="rounded=1;arcSize=12;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;fillColor=#1d2030;strokeColor=#f5b13d;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;" value="fills in the account&#39;s default runner image; seals the secrets to the pool key, bound to the run and stateVersion" vertex="1">
+          <mxGeometry height="56" width="176" x="312" y="738" as="geometry" />
+        </mxCell>
+        <mxCell id="n2-dot" parent="1" style="ellipse;fillColor=#f5b13d;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="8" width="8" x="296" y="762" as="geometry" />
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" style="rounded=1;arcSize=16;strokeColor=#2ee6c5;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;verticalAlign=bottom;spacingBottom=2;dashed=1;" value="200 RunSpec:&lt;br&gt;the clear part and sealed">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="826" as="sourcePoint" />
+            <mxPoint x="110" y="826" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="n3" parent="1" style="rounded=1;arcSize=12;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;fillColor=#1d2030;strokeColor=#2ee6c5;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;" value="opens sealed with the pool&#39;s private key, which never leaves the customer&#39;s host" vertex="1">
+          <mxGeometry height="44" width="176" x="122" y="858" as="geometry" />
+        </mxCell>
+        <mxCell id="n3-dot" parent="1" style="ellipse;fillColor=#2ee6c5;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="8" width="8" x="106" y="876" as="geometry" />
+        </mxCell>
+        <mxCell id="lg0" parent="1" style="rounded=1;arcSize=20;fillColor=#1d2030;strokeColor=#ec4899;" value="" vertex="1">
+          <mxGeometry height="14" width="16" x="30" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg0t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Customer host" vertex="1">
+          <mxGeometry height="16" width="110" x="58" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" parent="1" style="rounded=1;arcSize=20;fillColor=#1d2030;strokeColor=#8b5cf6;" value="" vertex="1">
+          <mxGeometry height="14" width="16" x="180" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="infraweave server" vertex="1">
+          <mxGeometry height="16" width="130" x="208" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" parent="1" style="rounded=1;arcSize=20;fillColor=#1d2030;strokeColor=#3b82f6;" value="" vertex="1">
+          <mxGeometry height="14" width="16" x="350" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Store" vertex="1">
+          <mxGeometry height="16" width="70" x="378" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" edge="1" parent="1" style="endArrow=block;endFill=1;endSize=5;strokeColor=#2ee6c5;strokeWidth=1.6;html=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="456" y="973" as="sourcePoint" />
+            <mxPoint x="478" y="973" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg3t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Worker API request" vertex="1">
+          <mxGeometry height="16" width="150" x="488" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4" edge="1" parent="1" style="endArrow=block;endFill=1;endSize=5;strokeColor=#f5b13d;strokeWidth=1.6;html=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="646" y="973" as="sourcePoint" />
+            <mxPoint x="668" y="973" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg4t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Call between domains" vertex="1">
+          <mxGeometry height="16" width="160" x="678" y="966" as="geometry" />
+        </mxCell>
+        <mxCell id="lg5" edge="1" parent="1" style="endArrow=block;endFill=1;endSize=5;strokeColor=#64748b;strokeWidth=1.6;dashed=1;html=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="846" y="973" as="sourcePoint" />
+            <mxPoint x="868" y="973" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg5t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Answer (dashed)" vertex="1">
+          <mxGeometry height="16" width="130" x="878" y="966" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
