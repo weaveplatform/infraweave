@@ -1,0 +1,214 @@
+<mxfile host="localhost">
+  <diagram id="api-surfaces" name="API surfaces">
+    <mxGraphModel dx="1394" dy="744" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1010" pageHeight="790" background="#161823" math="0" shadow="0" adaptiveColors="none">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;fontStyle=1;" value="API surfaces" vertex="1">
+          <mxGeometry height="24" width="700" x="30" y="24" as="geometry" />
+        </mxCell>
+        <mxCell id="sub" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#9aa0b4;align=left;verticalAlign=top;spacing=0;" value="One listener serves three APIs behind the same router and controls, each from its own OpenAPI document with its own generated server and client. Each accepts only its own credentials, so no token of one authenticates on another. /api/v1 is the public, supported API with a public client; /operator/v1 serves the installation&#39;s operator alone; /worker/v1 is the launcher&#39;s internal protocol, whose client stays inside internal/agent." vertex="1">
+          <mxGeometry height="44" width="950" x="30" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="callers" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#64748b;strokeWidth=1.2;dashed=1;" value="" vertex="1">
+          <mxGeometry height="500" width="190" x="30" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="callers-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#64748b;align=center;verticalAlign=middle;spacing=2;" value="Callers" vertex="1">
+          <mxGeometry height="22" width="70" x="90" y="109" as="geometry" />
+        </mxCell>
+        <mxCell id="srv" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#211f35;strokeColor=#8b5cf6;strokeWidth=1.2;" value="" vertex="1">
+          <mxGeometry height="500" width="330" x="270" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="srv-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#8b5cf6;align=center;verticalAlign=middle;spacing=2;" value="infraweave serve · one listener" vertex="1">
+          <mxGeometry height="22" width="210" x="330" y="109" as="geometry" />
+        </mxCell>
+        <mxCell id="code" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
+          <mxGeometry height="500" width="330" x="650" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="code-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="Contract and generated code" vertex="1">
+          <mxGeometry height="22" width="190" x="720" y="109" as="geometry" />
+        </mxCell>
+        <mxCell id="api-caller" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#64748b;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="97" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="api-caller-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtdXNlci1yb3VuZCIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSIjNjQ3NDhiIgogIHN0cm9rZS13aWR0aD0iMS42IgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSI4IiByPSI1IiAvPgogIDxwYXRoIGQ9Ik0yMCAyMWE4IDggMCAwIDAtMTYgMCIgLz4KPC9zdmc+Cg==;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="111" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="api-caller-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="API clients" vertex="1">
+          <mxGeometry height="22" width="84" x="83" y="214" as="geometry" />
+        </mxCell>
+        <mxCell id="api-caller-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="the web console, the CLI, the Terraform provider and scripts" vertex="1">
+          <mxGeometry height="44" width="160" x="45" y="242" as="geometry" />
+        </mxCell>
+        <mxCell id="api-surface" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#8b5cf6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="407" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="api-surface-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtZ2xvYmUiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzhiNWNmNiIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgLz4KICA8cGF0aCBkPSJNMTIgMmExNC41IDE0LjUgMCAwIDAgMCAyMCAxNC41IDE0LjUgMCAwIDAgMC0yMCIgLz4KICA8cGF0aCBkPSJNMiAxMmgyMCIgLz4KPC9zdmc+Cg==;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="421" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="api-surface-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="/api/v1" vertex="1">
+          <mxGeometry height="22" width="64" x="403" y="214" as="geometry" />
+        </mxCell>
+        <mxCell id="api-surface-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="Spacelift-mirrored; the route table decides each action, feature, rate limit and idempotency key" vertex="1">
+          <mxGeometry height="44" width="220" x="325" y="242" as="geometry" />
+        </mxCell>
+        <mxCell id="api-contract" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#3b82f6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="787" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="api-contract-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtZmlsZS1jb2RlIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMzYjgyZjYiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTEwIDEyLjUgOCAxNWwyIDIuNSIgLz4KICA8cGF0aCBkPSJtMTQgMTIuNSAyIDIuNS0yIDIuNSIgLz4KICA8cGF0aCBkPSJNMTQgMnY0YTIgMiAwIDAgMCAyIDJoNCIgLz4KICA8cGF0aCBkPSJNMTUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjd6IiAvPgo8L3N2Zz4K;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="801" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="api-contract-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="api/src/api/" vertex="1">
+          <mxGeometry height="22" width="92" x="769" y="214" as="geometry" />
+        </mxCell>
+        <mxCell id="api-contract-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="api/api.openapi.yaml → gen/api, pkg/client/api" vertex="1">
+          <mxGeometry height="44" width="200" x="715" y="242" as="geometry" />
+        </mxCell>
+        <mxCell id="api-badge" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#2ee6c5;align=center;verticalAlign=middle;spacing=2;fontSize=10;" value="Public · supported" vertex="1">
+          <mxGeometry height="22" width="118" x="470" y="152" as="geometry" />
+        </mxCell>
+        <mxCell id="api-in" edge="1" parent="1" source="api-caller" style="edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=16;strokeColor=#2ee6c5;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="api-surface" value="API key · session · OAuth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="api-gen" edge="1" parent="1" source="api-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;dashed=1;exitX=0;exitY=0.8;exitDx=0;exitDy=0;entryX=1;entryY=0.8;entryDx=0;entryDy=0;" target="api-surface" value="strict server">
+          <mxGeometry relative="1" x="0.5" as="geometry" />
+        </mxCell>
+        <mxCell id="op-caller" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#64748b;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="97" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="op-caller-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUta2V5LXJvdW5kIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiM2NDc0OGIiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTIuNTg2IDE3LjQxNEEyIDIgMCAwIDAgMiAxOC44MjhWMjFhMSAxIDAgMCAwIDEgMWgzYTEgMSAwIDAgMCAxLTF2LTFhMSAxIDAgMCAxIDEtMWgxYTEgMSAwIDAgMCAxLTF2LTFhMSAxIDAgMCAxIDEtMWguMTcyYTIgMiAwIDAgMCAxLjQxNC0uNTg2bC44MTQtLjgxNGE2LjUgNi41IDAgMSAwLTQtNHoiIC8+CiAgPGNpcmNsZSBjeD0iMTYuNSIgY3k9IjcuNSIgcj0iLjUiIC8+Cjwvc3ZnPgo=;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="111" y="334" as="geometry" />
+        </mxCell>
+        <mxCell id="op-caller-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="Operator" vertex="1">
+          <mxGeometry height="22" width="72" x="89" y="384" as="geometry" />
+        </mxCell>
+        <mxCell id="op-caller-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="the installation&#39;s operator" vertex="1">
+          <mxGeometry height="44" width="160" x="45" y="412" as="geometry" />
+        </mxCell>
+        <mxCell id="op-surface" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#8b5cf6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="407" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="op-surface-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtc2hpZWxkLWNoZWNrIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiM4YjVjZjYiCiAgc3Ryb2tlLXdpZHRoPSIxLjYiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMjAgMTNjMCA1LTMuNSA3LjUtNy42NiA4Ljk1YTEgMSAwIDAgMS0uNjctLjAxQzcuNSAyMC41IDQgMTggNCAxM1Y2YTEgMSAwIDAgMSAxLTFjMiAwIDQuNS0xLjIgNi4yNC0yLjcyYTEuMTcgMS4xNyAwIDAgMSAxLjUyIDBDMTQuNTEgMy44MSAxNyA1IDE5IDVhMSAxIDAgMCAxIDEgMXoiIC8+CiAgPHBhdGggZD0ibTkgMTIgMiAyIDQtNCIgLz4KPC9zdmc+Cg==;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="421" y="334" as="geometry" />
+        </mxCell>
+        <mxCell id="op-surface-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="/operator/v1" vertex="1">
+          <mxGeometry height="22" width="90" x="390" y="384" as="geometry" />
+        </mxCell>
+        <mxCell id="op-surface-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="organizations, tiers, the queue and data keys; no Spacelift counterpart" vertex="1">
+          <mxGeometry height="44" width="220" x="325" y="412" as="geometry" />
+        </mxCell>
+        <mxCell id="op-contract" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#3b82f6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="787" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="op-contract-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtZmlsZS1jb2RlIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMzYjgyZjYiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTEwIDEyLjUgOCAxNWwyIDIuNSIgLz4KICA8cGF0aCBkPSJtMTQgMTIuNSAyIDIuNS0yIDIuNSIgLz4KICA8cGF0aCBkPSJNMTQgMnY0YTIgMiAwIDAgMCAyIDJoNCIgLz4KICA8cGF0aCBkPSJNMTUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjd6IiAvPgo8L3N2Zz4K;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="801" y="334" as="geometry" />
+        </mxCell>
+        <mxCell id="op-contract-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="api/src/operator/" vertex="1">
+          <mxGeometry height="22" width="114" x="758" y="384" as="geometry" />
+        </mxCell>
+        <mxCell id="op-contract-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="api/operator.openapi.yaml → gen/operator, pkg/client/operator" vertex="1">
+          <mxGeometry height="44" width="200" x="715" y="412" as="geometry" />
+        </mxCell>
+        <mxCell id="op-badge" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#f5b13d;align=center;verticalAlign=middle;spacing=2;fontSize=10;" value="Operators only" vertex="1">
+          <mxGeometry height="22" width="118" x="470" y="322" as="geometry" />
+        </mxCell>
+        <mxCell id="op-in" edge="1" parent="1" source="op-caller" style="edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=16;strokeColor=#2ee6c5;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="op-surface" value="operator token">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="op-gen" edge="1" parent="1" source="op-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;dashed=1;exitX=0;exitY=0.8;exitDx=0;exitDy=0;entryX=1;entryY=0.8;entryDx=0;entryDy=0;" target="op-surface" value="strict server">
+          <mxGeometry relative="1" x="0.5" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-caller" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#64748b;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="97" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-caller-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtc2VydmVyIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiM2NDc0OGIiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHg9IjIiIHk9IjIiIHJ4PSIyIiByeT0iMiIgLz4KICA8cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iOCIgeD0iMiIgeT0iMTQiIHJ4PSIyIiByeT0iMiIgLz4KICA8bGluZSB4MT0iNiIgeDI9IjYuMDEiIHkxPSI2IiB5Mj0iNiIgLz4KICA8bGluZSB4MT0iNiIgeDI9IjYuMDEiIHkxPSIxOCIgeTI9IjE4IiAvPgo8L3N2Zz4K;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="111" y="504" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-caller-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="Launcher" vertex="1">
+          <mxGeometry height="22" width="70" x="90" y="554" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-caller-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="a worker host running infraweave launcher" vertex="1">
+          <mxGeometry height="44" width="160" x="45" y="582" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-surface" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#8b5cf6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="407" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-surface-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtdGVybWluYWwiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzhiNWNmNiIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cG9seWxpbmUgcG9pbnRzPSI0IDE3IDEwIDExIDQgNSIgLz4KICA8bGluZSB4MT0iMTIiIHgyPSIyMCIgeTE9IjE5IiB5Mj0iMTkiIC8+Cjwvc3ZnPgo=;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="421" y="504" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-surface-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="/worker/v1" vertex="1">
+          <mxGeometry height="22" width="80" x="395" y="554" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-surface-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="register, poll, deregister; no account action, feature gate or idempotency key" vertex="1">
+          <mxGeometry height="44" width="220" x="325" y="582" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-contract" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#3b82f6;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="56" width="56" x="787" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-contract-i" parent="1" style="shape=image;image=data:image/svg+xml,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYwLjQ2MC4wIC0gSVNDIC0tPgo8c3ZnCiAgY2xhc3M9Imx1Y2lkZSBsdWNpZGUtZmlsZS1jb2RlIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMzYjgyZjYiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTEwIDEyLjUgOCAxNWwyIDIuNSIgLz4KICA8cGF0aCBkPSJtMTQgMTIuNSAyIDIuNS0yIDIuNSIgLz4KICA8cGF0aCBkPSJNMTQgMnY0YTIgMiAwIDAgMCAyIDJoNCIgLz4KICA8cGF0aCBkPSJNMTUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjd6IiAvPgo8L3N2Zz4K;imageAspect=1;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="801" y="504" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-contract-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="api/src/worker/" vertex="1">
+          <mxGeometry height="22" width="106" x="762" y="554" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-contract-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="api/worker.openapi.yaml → gen/worker, internal/agent/wire" vertex="1">
+          <mxGeometry height="44" width="200" x="715" y="582" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-badge" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#64748b;align=center;verticalAlign=middle;spacing=2;fontSize=10;" value="Internal protocol" vertex="1">
+          <mxGeometry height="22" width="118" x="470" y="492" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-in" edge="1" parent="1" source="wk-caller" style="edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=16;strokeColor=#2ee6c5;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="wk-surface" value="pool-key JWS, then session token">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wk-gen" edge="1" parent="1" source="wk-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=1;arcSize=16;strokeColor=#f5b13d;strokeWidth=1.6;startArrow=oval;startFill=1;startSize=6;endArrow=block;endFill=1;endSize=7;html=1;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;labelBackgroundColor=#161823;dashed=1;exitX=0;exitY=0.8;exitDx=0;exitDy=0;entryX=1;entryY=0.8;entryDx=0;entryDy=0;" target="wk-surface" value="strict server">
+          <mxGeometry relative="1" x="0.5" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#f5b13d;strokeWidth=1.2;dashed=1;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="90" width="950" x="30" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="note-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#f5b13d;align=center;verticalAlign=middle;spacing=2;" value="What is a strict server?" vertex="1">
+          <mxGeometry height="22" width="170" x="420" y="639" as="geometry" />
+        </mxCell>
+        <mxCell id="note-x" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#c8ccda;align=left;verticalAlign=top;spacing=0;" value="The typed handler that oapi-codegen writes from a contract (strict-server: true in api/oapi-server-&amp;lt;svc&amp;gt;.yaml). Each operation becomes a Go method that takes a typed request (path, query, headers and the decoded JSON body) and returns one of the typed responses the contract declares, so a handler cannot answer a shape the contract lacks. The generated wrapper decodes and writes the HTTP, and an error becomes a problem+json answer; the domain code implements only the methods. It types requests but does not validate bounds or unknown fields: the shared router checks those before the handler, on every surface." vertex="1">
+          <mxGeometry height="68" width="914" x="48" y="666" as="geometry" />
+        </mxCell>
+        <mxCell id="lg0" parent="1" style="rounded=1;arcSize=20;fillColor=#1d2030;strokeColor=#8b5cf6;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="14" width="16" x="30" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="lg0t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="infraweave server" vertex="1">
+          <mxGeometry height="16" width="120" x="58" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" parent="1" style="rounded=1;arcSize=20;fillColor=#1d2030;strokeColor=#3b82f6;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="14" width="16" x="190" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Contracts" vertex="1">
+          <mxGeometry height="16" width="70" x="218" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" parent="1" style="rounded=1;arcSize=20;fillColor=#1d2030;strokeColor=#64748b;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="14" width="16" x="300" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Callers" vertex="1">
+          <mxGeometry height="16" width="60" x="328" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" edge="1" parent="1" style="endArrow=block;endFill=1;endSize=5;strokeColor=#2ee6c5;strokeWidth=1.6;html=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="773" as="sourcePoint" />
+            <mxPoint x="422" y="773" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg3t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="Request, with its credential" vertex="1">
+          <mxGeometry height="16" width="170" x="428" y="766" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4" edge="1" parent="1" style="endArrow=block;endFill=1;endSize=5;strokeColor=#f5b13d;strokeWidth=1.6;dashed=1;html=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="610" y="773" as="sourcePoint" />
+            <mxPoint x="632" y="773" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lg4t" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;" value="make generate" vertex="1">
+          <mxGeometry height="16" width="110" x="638" y="766" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
