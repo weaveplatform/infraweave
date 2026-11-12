@@ -14,7 +14,10 @@
 // setting, with 422 validation-failed and an errors member, a
 // FieldError for each field refused, with its range when the fault lies
 // in source text, kernel.ErrStale with 412
-// precondition-failed, and anything else through Failure.
+// precondition-failed, and anything else through Failure. A body that ran
+// past the server's bound, an *http.MaxBytesError, answers TooLarge's 413
+// payload-too-large, whether the generated handler (RequestError) or a
+// control that reads the body first (BodyError) meets it.
 //
 // ref: decision 0022
 //

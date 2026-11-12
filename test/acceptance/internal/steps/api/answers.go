@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,8 +15,8 @@ import (
 
 // answerSteps are the steps every area's scenarios send requests and
 // check answers with: a request sent through either server by the
-// browser or with a named token, and the last answer's status, problem
-// and members.
+// browser or with a named token, or with a body of a given size, and the
+// last answer's status, problem and members.
 type answerSteps struct{ w *harness.World }
 
 func (a *answerSteps) register(sc *godog.ScenarioContext) {
@@ -23,10 +24,32 @@ func (a *answerSteps) register(sc *godog.ScenarioContext) {
 		`^(the browser|token "\w+") sends "([A-Z]+) ([^"]+)"(?: with '([^']*)')? through ([AB])$`,
 		a.w.SendAs,
 	)
+	sc.Step(`^token "(\w+)" sends "([A-Z]+) ([^"]+)" with a body of (\d+) bytes through ([AB])$`,
+		a.sized)
 	sc.Step(`^it answers (\d+)$`, a.answers)
 	sc.Step(`^it answers a (\d+) problem "([a-z-]+)"$`, a.answersProblem)
 	sc.Step(`^the answer's (\w+) is '([^']*)'$`, a.member)
 	sc.Step(`^the answer leaves out "([^"]+)"$`, a.leavesOut)
+}
+
+// sized sends a JSON object of exactly size bytes, whose one member no
+// schema names, with the named token.
+func (a *answerSteps) sized(
+	ctx context.Context,
+	name, method, path string,
+	size int,
+	replica string,
+) error {
+	const frame = len(`{"x":""}`)
+	if size < frame {
+		return fmt.Errorf("%w: a body of %d bytes is under %d", harness.ErrStep, size, frame)
+	}
+	body := json.RawMessage(`{"x":"` + strings.Repeat("x", size-frame) + `"}`)
+	r, err := a.w.Do(ctx, replica, name, method, a.w.Resolve(path), body)
+	if err != nil && r.Status == 0 {
+		return err
+	}
+	return nil
 }
 
 func (a *answerSteps) answers(code int) error {

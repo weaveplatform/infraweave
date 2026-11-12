@@ -25,13 +25,6 @@ const ReplayedHeader = "Idempotency-Replayed"
 // maxLength in api/src/api/components-common.yaml.
 const MaxKeyLength = 255
 
-// MaxBody is the largest body fingerprinted, the default of
-// api.max_body_bytes. The body is held in memory to hash it before the
-// handler reads it, so without a bound one request could exhaust memory.
-//
-// ref: decision 0022
-const MaxBody = 1 << 20
-
 // Config holds the server.idempotency settings.
 type Config struct {
 	// TTL is how long a key is kept.
@@ -71,7 +64,10 @@ func (c Config) Validate() error {
 // Middleware applies the key to POST and PATCH requests that applies
 // accepts; the server's applies excludes searches, which change nothing, and
 // requests no operation serves. Every other request passes untouched, as
-// does one without the header. caller scopes the keys.
+// does one without the header. caller scopes the keys. It holds a keyed
+// request's body in memory to hash it before the handler reads it, so it
+// runs behind middleware.LimitBodies, whose bound is the only one: a body
+// past it answers 413 payload-too-large here as it would in the handler.
 func Middleware(
 	store Store,
 	caller func(*http.Request) string,
@@ -111,14 +107,9 @@ func (g guard) serve(
 			"Send one %s of 1 to %d characters.", Header, MaxKeyLength)))
 		return
 	}
-	body, err := io.ReadAll(io.LimitReader(r.Body, MaxBody+1))
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		problem.Write(w, problem.InvalidRequest.New("The request body could not be read."))
-		return
-	}
-	if len(body) > MaxBody {
-		problem.Write(w, problem.PayloadTooLarge.New(fmt.Sprintf(
-			"A request with an %s may carry at most %d bytes.", Header, MaxBody)))
+		problem.BodyError(w, err)
 		return
 	}
 	r.Body = io.NopCloser(bytes.NewReader(body))

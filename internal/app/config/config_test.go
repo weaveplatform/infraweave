@@ -301,6 +301,7 @@ func TestUnitLoadRejects(t *testing.T) {
 			nil,
 			"needs database.url",
 		},
+		{"no body bound", "server:\n  max_body_bytes: 0\n", nil, "server.max_body_bytes"},
 		{
 			"public URL with a path",
 			"server:\n  public_url: https://iw.example.com/api\n",
@@ -442,6 +443,11 @@ func TestUnitServerValidate(t *testing.T) {
 			"no key lifetime",
 			func(s *Server) { s.Idempotency.TTL = 0 },
 			"server.idempotency.ttl must be positive",
+		},
+		{
+			"a negative body bound",
+			func(s *Server) { s.MaxBodyBytes = -1 },
+			"server.max_body_bytes must be positive, got -1",
 		},
 	}
 	for _, tc := range cases {

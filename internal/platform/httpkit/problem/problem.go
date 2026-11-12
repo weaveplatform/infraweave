@@ -289,9 +289,30 @@ func Failure(w http.ResponseWriter, err error) {
 }
 
 // RequestError answers a request the generated handler couldn't decode
-// (a malformed body or parameter) with 400.
+// (a malformed body or parameter) with 400, or with TooLarge's 413 when
+// its body ran past the server's bound.
 func RequestError(w http.ResponseWriter, _ *http.Request, err error) {
+	if tooLarge, ok := errors.AsType[*http.MaxBytesError](err); ok {
+		Write(w, TooLarge(tooLarge.Limit))
+		return
+	}
 	Write(w, InvalidRequest.New(err.Error()))
+}
+
+// BodyError answers a request whose body could not be read: TooLarge's 413
+// when it ran past the server's bound, an *http.MaxBytesError, and 400
+// invalid-request otherwise.
+func BodyError(w http.ResponseWriter, err error) {
+	if tooLarge, ok := errors.AsType[*http.MaxBytesError](err); ok {
+		Write(w, TooLarge(tooLarge.Limit))
+		return
+	}
+	Write(w, InvalidRequest.New("The request body could not be read."))
+}
+
+// TooLarge is payload-too-large for a body over limit bytes.
+func TooLarge(limit int64) Problem {
+	return PayloadTooLarge.New(fmt.Sprintf("A request body may carry at most %d bytes.", limit))
 }
 
 // ResponseError answers an error a strict handler returned: its problem for

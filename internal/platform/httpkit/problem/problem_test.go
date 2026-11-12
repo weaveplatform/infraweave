@@ -89,6 +89,34 @@ func TestUnitRequestError(t *testing.T) {
 	}
 }
 
+// TestUnitBodyPastTheBound checks that a body that ran past the server's
+// bound answers 413 naming the bound, whether the generated handler or a
+// control meets it, and that BodyError answers any other read failure 400.
+func TestUnitBodyPastTheBound(t *testing.T) {
+	past := fmt.Errorf("can't decode JSON body: %w", &http.MaxBytesError{Limit: 64})
+	for name, answer := range map[string]func(http.ResponseWriter, error){
+		"RequestError": func(w http.ResponseWriter, err error) {
+			RequestError(w, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil),
+				err)
+		},
+		"BodyError": BodyError,
+	} {
+		rec := httptest.NewRecorder()
+		answer(rec, past)
+		if p := decode(t, rec); rec.Code != http.StatusRequestEntityTooLarge ||
+			p.Type != TypePrefix+PayloadTooLarge.Slug ||
+			p.Detail != "A request body may carry at most 64 bytes." {
+			t.Errorf("%s: %d %+v", name, rec.Code, p)
+		}
+	}
+	rec := httptest.NewRecorder()
+	BodyError(rec, errors.New("connection reset"))
+	if p := decode(t, rec); rec.Code != http.StatusBadRequest ||
+		p.Detail != "The request body could not be read." {
+		t.Errorf("an unreadable body: %d %+v", rec.Code, p)
+	}
+}
+
 func TestUnitResponseErrorProblem(t *testing.T) {
 	rec := httptest.NewRecorder()
 	err := fmt.Errorf("list: %w", InvalidCursor.Error("The cursor belongs to another list."))
