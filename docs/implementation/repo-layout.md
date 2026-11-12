@@ -154,6 +154,7 @@ infraweave/
 │   │   ├── wire/                  GENERATED worker protocol client
 │   │   ├── executor/docker/       one run container per job, own binary mounted (P8)
 │   │   ├── executor/kubernetes/   WorkerPool and Worker controller, pod per run (P14)
+│   │   ├── backend/               infraweave_backend.tf and the TF_HTTP_* credentials for a managed-state run (P8b)
 │   │   ├── exec/                  runner: phases, hooks, workspace, log streaming (P9)
 │   │   ├── vendors/               command sets per vendor (P9, P20, P20b)
 │   │   ├── initpolicy/            worker-side initialization policy over platform/rego (P14)
@@ -196,7 +197,7 @@ infraweave/
 │   ├── vendors/                   flat: tool version catalogue (P5, P20), refreshed from the release indexes
 │   │   └── api/ assembly/ internal/{core,http,pg,index/indextest}/
 │   ├── state/                     flat: Terraform http backend, versions, locks, import, rollback (P8b, P11)
-│   │   └── api/ assembly/ internal/{core,backend,http,pg}/
+│   │   └── api/ assembly/ internal/{core,backend,http,pg}/   api/: Versions, Outputs
 │   ├── vcs/                       hexagon: sources, integrations, webhooks, routing, feedback (P6b, P12, P12b, P19b)
 │   │   └── api/ assembly/ internal/{core/{source,integration,intake,normalize,route,feedback,pullrequest,port},
 │   │                              adapters/{http,github,gitlab,bitbucketcloud,bitbucketdc,azuredevops,rawgit,agentgateway,pg}}/

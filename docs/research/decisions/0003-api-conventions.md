@@ -37,11 +37,12 @@ breaking change to retrofit once clients exist:
   | The API | `/api/v1` | `api/api.openapi.yaml` | API tokens and browser sessions ([0006](0006-authentication-and-tokens.md)) |
   | The operator API | `/operator/v1` | `api/operator.openapi.yaml` | Operator tokens ([0021](0021-capability-scope-and-supersession.md)) |
   | The worker API | `/worker/v1` | `api/worker.openapi.yaml` | Worker session tokens, and run tokens on the runner's routes ([0008](0008-run-execution-and-worker-protocol.md)) |
+  | The state backend | `/state/v1` | none: Terraform's `http` backend protocol ([0010](0010-state-backend.md)) | Run tokens, and for external access the API's credentials, as the HTTP Basic password ([0006](0006-authentication-and-tokens.md)) |
   | Routes beside the documents | the break-glass login, the OAuth authorization server, the fs driver's `/blobs/{token}`, the console at `/` ([0023](0023-console.md)) | none | Their own, as the exceptions below say |
 
-  A surface added later, such as the state backend or an inbound webhook,
-  joins the same listener behind the same controls, and records here any
-  control it departs from.
+  A surface added later, such as an inbound webhook, joins the same
+  listener behind the same controls, and records here any control it
+  departs from.
 - **Shared controls.** Every request passes the same chain, in this order,
   whichever surface it reaches:
   1. **Request ID and recovery.** Every answer carries `X-Request-Id`, and a
@@ -111,6 +112,14 @@ breaking change to retrofit once clients exist:
   | The break-glass login and OAuth | Strict bodies | The handler decodes a form or OAuth body with its own size bound | Their bodies are forms or OAuth's own shapes, which no JSON schema describes |
   | The fs driver's `/blobs/{token}` | Authentication, feature gates, bounded bodies, bounded connections | The signed token is the credential; no capability; a `PUT` is bounded by the object store, not `server.max_body_bytes`; once the token verifies, the transfer's deadlines move to 30 seconds past each read of an upload or write of a download | A bearer check would refuse every signed URL; the operation that signed it was gated; objects such as state files exceed any API body and any fixed time, so a transfer keeps its connection while it moves and loses it when it stalls |
   | The console's files at `/` | Authentication, feature gates, uncacheable answers | No credential and no capability; hashed assets are cached for a year and `index.html` is `no-cache` | The files are the same for every caller and hold no credential, and a release must reach browsers on their next navigation ([0023](0023-console.md)) |
+  | The state backend | Authentication | HTTP Basic with the username `run`, the credential as the password, and the challenge `Basic realm="infraweave-state"` | Terraform's and OpenTofu's `http` backend sends Basic credentials alone |
+  | The state backend | Authorization | No account action decides a run token's route: `runsapi.StateAccess` grants what the run's current state allows | The run is its own subject, as on the worker API, and loses access the moment it moves on |
+  | The state backend | Feature gates | No capability gates a route | The operation that created the run was gated; gating state would strand an apply part way when an organization's tier drops |
+  | The state backend | Idempotency keys | `Idempotency-Key` is ignored | Terraform sends none; an identical body adds no version, a write must name the exclusive lock it holds, and a `LOCK` repeating a held lock's ID is granted again |
+  | The state backend | Strict bodies | The handler checks a state or `LockInfo` body as JSON | They are Terraform's shapes, which no schema describes |
+  | The state backend | Bounded bodies | A `POST` is bounded by `state.max_size` (512 MiB) and a `LockInfo` by 16 KiB, not by `server.max_body_bytes` | A state file exceeds any API body |
+  | The state backend | Bounded connections | Once the credential verifies, a transfer's deadlines move to 30 seconds past each read of a `POST`'s body or write of a `GET`'s | A state transfer exceeds any fixed time, so it keeps its connection while it moves and loses it when it stalls, as the fs blobs do |
+  | The state backend | Problem details | A `423` answers the holder's `LockInfo` | Terraform names the lock's holder from that body |
   | The admin listener | All but bounded connections | A separate listener with no controls but the listener's timeouts, so a probe connection cannot be held open either | Probes and metrics must answer while the API sheds load; it is never routed through ingress, and deployments restrict it with network policy ([0017](0017-observability-and-health.md)) |
 
 ### Idempotency keys

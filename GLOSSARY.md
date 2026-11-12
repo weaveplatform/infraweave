@@ -164,6 +164,32 @@ _Avoid_: dead worker, lost worker
 A run that fails because its worker stayed offline past the installation's tolerance, which is the same for every pool.
 _Avoid_: orphaned run, zombie run
 
+### State
+
+**Managed state**:
+A stack's Terraform or OpenTofu state kept by infraweave, rather than in a backend the stack's code declares.
+_Avoid_: remote state, state file
+
+**State backend**:
+Where a run's Terraform or OpenTofu reads, locks and writes its stack's managed state.
+_Avoid_: state server
+
+**Workspace**:
+One separately locked and versioned state of a stack: its default state, or one Terragrunt unit's.
+_Avoid_: Terraform workspace, which is a CLI feature infraweave does not use
+
+**State version**:
+One stored copy of a workspace's state, never changed once written; the newest is the current version.
+_Avoid_: state revision, snapshot
+
+**State lock**:
+A run's claim on a workspace while it reads or changes state: shared while it plans, so plans run side by side, and exclusive while it applies.
+_Avoid_: stack lock, which is a person's hold on the whole stack
+
+**Force-unlock**:
+Releasing every lock on a workspace at once, which only a run that could take the exclusive lock may do, and which the audit trail records.
+_Avoid_: unlock
+
 ### Access
 
 **Role**:
