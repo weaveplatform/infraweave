@@ -1,8 +1,11 @@
 // Package serve runs a process's HTTP listeners: the admin listener, which
 // carries the probes, and the API listener of a mode that serves the API.
 //
-// Config is server.listen, server.admin_listen and server.shutdown, with
-// their Defaults and Validate; ErrConfig marks an invalid setting. Start
+// Config is server.listen, server.admin_listen, server.shutdown and
+// server.timeouts, with their Defaults and Validate; ErrConfig marks an
+// invalid setting. Timeouts bound, on both listeners alike, the time a
+// client takes to send its headers and its whole request, the time a
+// handler takes to answer, and how long an idle connection is kept. Start
 // binds the admin listener and, when it is given an API handler, the API
 // listener; Running reports their addresses and shuts them down. Run serves
 // until its context ends, then shuts down: it calls the stopping function
@@ -16,8 +19,7 @@
 //
 // # Input and output
 //
-// It opens TCP listeners and serves HTTP on them, bounding the time a client
-// may take to send its headers. It logs "listening" with the bound addresses
+// It opens TCP listeners and serves HTTP on them within Timeouts. It logs "listening" with the bound addresses
 // and "shutting down" with the ready delay and the timeout, and routes
 // net/http's own errors to the given slog.Logger at error level.
 //

@@ -19,6 +19,27 @@ type Config struct {
 	Listen      string   `mapstructure:"listen"`
 	AdminListen string   `mapstructure:"admin_listen"`
 	Shutdown    Shutdown `mapstructure:"shutdown"`
+	Timeouts    Timeouts `mapstructure:"timeouts"`
+}
+
+// Timeouts bound the time a connection holds a listener, so a slow or idle
+// client cannot pin connections and goroutines. A handler that holds its
+// response on purpose extends its own deadlines through
+// http.ResponseController.
+//
+// ref: decision 0003 § "API surfaces"
+type Timeouts struct {
+	// Header bounds the time a client takes to send a request's headers.
+	Header time.Duration `mapstructure:"header"`
+	// Read bounds the time a client takes to send a whole request, its
+	// headers and its body.
+	Read time.Duration `mapstructure:"read"`
+	// Write bounds the time from the end of a request's headers to the end
+	// of its response; a handler that outlives it loses its connection.
+	Write time.Duration `mapstructure:"write"`
+	// Idle bounds how long a keep-alive connection waits for its next
+	// request.
+	Idle time.Duration `mapstructure:"idle"`
 }
 
 // Shutdown holds the graceful shutdown settings.
@@ -37,6 +58,19 @@ func Defaults() Config {
 		Listen:      ":8080",
 		AdminListen: ":9090",
 		Shutdown:    Shutdown{ReadyDelay: 5 * time.Second, Timeout: 30 * time.Second},
+		Timeouts:    DefaultTimeouts(),
+	}
+}
+
+// DefaultTimeouts give a client 10 seconds for its headers and 30 for its
+// whole request, a bound body of 1 MiB at about 35 KB/s; a handler 60
+// seconds to answer; and an idle connection two minutes, longer than the
+// 60 seconds a common load balancer keeps one idle, so the balancer
+// rather than infraweave closes it and never sends on a closed one.
+func DefaultTimeouts() Timeouts {
+	return Timeouts{
+		Header: 10 * time.Second, Read: 30 * time.Second,
+		Write: 60 * time.Second, Idle: 2 * time.Minute,
 	}
 }
 
@@ -66,6 +100,30 @@ func (c Config) Validate() error {
 	if c.Shutdown.Timeout <= 0 {
 		errs = append(errs, fmt.Errorf("%w: server.shutdown.timeout must be positive, got %s",
 			ErrConfig, c.Shutdown.Timeout))
+	}
+	return errors.Join(append(errs, c.Timeouts.validate())...)
+}
+
+// validate rejects a timeout that is not positive, which net/http would
+// read as none, and a header timeout longer than the whole request's,
+// which could never apply.
+func (t Timeouts) validate() error {
+	var errs []error
+	for _, d := range []struct {
+		key string
+		d   time.Duration
+	}{
+		{"header", t.Header}, {"read", t.Read}, {"write", t.Write}, {"idle", t.Idle},
+	} {
+		if d.d <= 0 {
+			errs = append(errs, fmt.Errorf("%w: server.timeouts.%s must be positive, got %s",
+				ErrConfig, d.key, d.d))
+		}
+	}
+	if t.Header > t.Read {
+		errs = append(errs, fmt.Errorf(
+			"%w: server.timeouts.header %s is longer than server.timeouts.read %s",
+			ErrConfig, t.Header, t.Read))
 	}
 	return errors.Join(errs...)
 }
@@ -117,7 +175,7 @@ func Start(
 		if err != nil {
 			return nil, fmt.Errorf("listen on server.listen: %w", err)
 		}
-		r.api, r.apiLn = newHTTPServer(api, log), ln
+		r.api, r.apiLn = newHTTPServer(api, c.Timeouts, log), ln
 	}
 	admLn, err := lc.Listen(ctx, "tcp", c.AdminListen)
 	if err != nil {
@@ -126,7 +184,7 @@ func Start(
 		}
 		return nil, fmt.Errorf("listen on server.admin_listen: %w", err)
 	}
-	r.admin, r.admLn = newHTTPServer(admin, log), admLn
+	r.admin, r.admLn = newHTTPServer(admin, c.Timeouts, log), admLn
 	attrs := []any{"admin", admLn.Addr().String()}
 	if r.api != nil {
 		attrs = append([]any{"api", r.apiLn.Addr().String()}, attrs...)
@@ -154,12 +212,15 @@ func (r *Running) servers() []served {
 	return []served{{r.api, r.apiLn}, {r.admin, r.admLn}}
 }
 
-// newHTTPServer bounds the time a client may take to send its headers, so
-// a slow client cannot hold a connection open indefinitely.
-func newHTTPServer(h http.Handler, log *slog.Logger) *http.Server {
+// newHTTPServer serves h within t, the admin listener as the API's, so
+// neither a slow client nor an idle one holds a connection indefinitely.
+func newHTTPServer(h http.Handler, t Timeouts, log *slog.Logger) *http.Server {
 	return &http.Server{
 		Handler:           h,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: t.Header,
+		ReadTimeout:       t.Read,
+		WriteTimeout:      t.Write,
+		IdleTimeout:       t.Idle,
 		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelError),
 	}
 }

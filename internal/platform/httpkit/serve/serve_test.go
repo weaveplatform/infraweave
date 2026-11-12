@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"io"
@@ -57,6 +58,31 @@ func TestUnitValidate(t *testing.T) {
 			"no timeout",
 			func(c *Config) { c.Shutdown.Timeout = 0 },
 			"server.shutdown.timeout must be positive",
+		},
+		{
+			"no read timeout",
+			func(c *Config) { c.Timeouts.Read = 0 },
+			"server.timeouts.read must be positive, got 0s",
+		},
+		{
+			"a negative idle timeout",
+			func(c *Config) { c.Timeouts.Idle = -time.Second },
+			"server.timeouts.idle must be positive, got -1s",
+		},
+		{
+			"no write timeout",
+			func(c *Config) { c.Timeouts.Write = 0 },
+			"server.timeouts.write must be positive",
+		},
+		{
+			"no header timeout",
+			func(c *Config) { c.Timeouts.Header = 0 },
+			"server.timeouts.header must be positive",
+		},
+		{
+			"headers longer than the request",
+			func(c *Config) { c.Timeouts.Header = time.Minute },
+			"server.timeouts.header 1m0s is longer than server.timeouts.read 30s",
 		},
 	}
 	for _, tc := range cases {
@@ -317,4 +343,87 @@ func TestUnitRunReadyDelay(t *testing.T) {
 	if err := Run(ctx, c, discard(), text("api"), text("admin"), nothing); err != nil {
 		t.Errorf("Run after a short delay: %v", err)
 	}
+}
+
+// TestUnitTimeouts checks the bounds on each listener: a client that
+// sends its headers and then trickles its body is cut off at the read
+// timeout, an idle keep-alive connection is closed at the idle timeout,
+// and a handler that outlives the write timeout loses its connection.
+func TestUnitTimeouts(t *testing.T) {
+	c := local()
+	c.Timeouts = Timeouts{
+		Header: 200 * time.Millisecond, Read: 300 * time.Millisecond,
+		Write: 300 * time.Millisecond, Idle: 300 * time.Millisecond,
+	}
+	h := http.NewServeMux()
+	h.HandleFunc("POST /", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := io.ReadAll(r.Body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	})
+	h.HandleFunc("GET /", func(http.ResponseWriter, *http.Request) {})
+	h.HandleFunc("GET /slow", func(w http.ResponseWriter, _ *http.Request) {
+		<-time.After(time.Second)
+		_, _ = w.Write([]byte("late"))
+	})
+	r, err := Start(t.Context(), c, discard(), h, h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = r.Shutdown(context.Background()) })
+	for name, addr := range map[string]string{"API": r.APIAddr(), "admin": r.AdminAddr()} {
+		t.Run(name, func(t *testing.T) {
+			conn := dial(t, addr)
+			_, _ = io.WriteString(conn, "POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\na")
+			// The server cuts the request off: a 400 from the handler's
+			// failed read, or a closed connection, never the client's own
+			// deadline.
+			code, err := status(bufio.NewReader(conn))
+			if ne, ok := errors.AsType[net.Error](err); ok && ne.Timeout() ||
+				err == nil && code != http.StatusBadRequest {
+				t.Errorf("a trickled body = %d, %v; want it cut off", code, err)
+			}
+
+			conn = dial(t, addr)
+			rd := bufio.NewReader(conn)
+			_, _ = io.WriteString(conn, "GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+			if code, err := status(rd); err != nil || code != http.StatusOK {
+				t.Fatalf("GET = %d, %v", code, err)
+			}
+			if _, err := rd.ReadByte(); !errors.Is(err, io.EOF) {
+				t.Errorf("an idle connection = %v, want closed by the server", err)
+			}
+
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet,
+				"http://"+addr+"/slow", nil)
+			if resp, err := http.DefaultClient.Do(req); err == nil {
+				body, _ := io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+				t.Errorf("a handler past the write timeout answered %d %q", resp.StatusCode, body)
+			}
+		})
+	}
+}
+
+// status reads one response from rd and closes its body.
+func status(rd *bufio.Reader) (int, error) {
+	resp, err := http.ReadResponse(rd, nil)
+	if err != nil {
+		return 0, err //nolint:wrapcheck // the test reads the connection's own error
+	}
+	_ = resp.Body.Close()
+	return resp.StatusCode, nil
+}
+
+// dial opens a connection to addr that gives up after five seconds, far
+// past every timeout under test.
+func dial(t *testing.T, addr string) net.Conn {
+	t.Helper()
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	return conn
 }

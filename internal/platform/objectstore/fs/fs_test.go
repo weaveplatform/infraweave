@@ -262,3 +262,91 @@ func TestUnitFSLayout(t *testing.T) {
 		t.Error("a root under a file opened")
 	}
 }
+
+// TestUnitFSMovingTransfers checks, on a listener whose read and write
+// timeouts are far shorter than the transfers, that an upload trickled
+// past them and a download read slowly past them both complete while
+// they keep moving, and that an upload that stalls for longer than Stall
+// loses its connection and stores nothing.
+func TestUnitFSMovingTransfers(t *testing.T) {
+	r := chi.NewRouter()
+	srv := httptest.NewUnstartedServer(r)
+	srv.Config.ReadTimeout, srv.Config.WriteTimeout = 300*time.Millisecond, 300*time.Millisecond
+	srv.Start()
+	t.Cleanup(srv.Close)
+	b, err := fs.New(objectstore.FSConfig{
+		Root: filepath.Join(t.TempDir(), "objects"), URL: srv.URL,
+	}, keys{active: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = b.Close() })
+	fs.SetStall(b, time.Second)
+	b.Routes(r)
+	ctx := t.Context()
+	sign := func(method, key string, size int64) string {
+		s, err := b.SignURL(ctx, method, key, time.Minute, objectstore.Constraints{Size: size})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s.URL
+	}
+	// upload sends size bytes in chunks, each after wait.
+	upload := func(key string, size, chunks int, wait time.Duration) (int, error) {
+		pr, pw := io.Pipe()
+		go func() {
+			for range chunks {
+				<-time.After(wait)
+				if _, err := pw.Write(bytes.Repeat([]byte("x"), size/chunks)); err != nil {
+					return
+				}
+			}
+			_ = pw.Close()
+		}()
+		req, _ := http.NewRequestWithContext(ctx, http.MethodPut, sign(http.MethodPut, key,
+			int64(size)), pr)
+		req.ContentLength = int64(size)
+		resp, err := http.DefaultClient.Do(req)
+		_ = pr.Close()
+		if err != nil {
+			return 0, err
+		}
+		_ = resp.Body.Close()
+		return resp.StatusCode, nil
+	}
+	if code, err := upload("s/trickled", 6<<10, 6, 150*time.Millisecond); err != nil ||
+		code != http.StatusOK {
+		t.Errorf("a trickled upload = %d, %v", code, err)
+	}
+	if code, err := upload("s/stalled", 2<<10, 2, 2*time.Second); err == nil &&
+		code == http.StatusOK {
+		t.Error("a stalled upload completed")
+	}
+	if _, err := b.Head(ctx, "s/stalled"); !errors.Is(err, objectstore.ErrNotFound) {
+		t.Errorf("a stalled upload stored: %v", err)
+	}
+
+	const size = 16 << 20
+	if _, err := b.Put(ctx, "s/large", bytes.NewReader(make([]byte, size)), size); err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, sign(http.MethodGet, "s/large", 0),
+		nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	got, buf := 0, make([]byte, 64<<10)
+	for {
+		n, err := io.ReadFull(resp.Body, buf)
+		got += n
+		if err != nil {
+			break
+		}
+		<-time.After(5 * time.Millisecond)
+	}
+	if got != size {
+		t.Errorf("a slow download read %d of %d bytes", got, size)
+	}
+}

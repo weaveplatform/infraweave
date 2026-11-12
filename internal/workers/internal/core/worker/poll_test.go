@@ -91,6 +91,20 @@ func TestUnitWorkerPollHold(t *testing.T) {
 	}
 }
 
+// TestUnitWorkerLongestHold checks that the longest hold is the server's
+// maximum, within MaxWait, so a response held for it never outlives it.
+func TestUnitWorkerLongestHold(t *testing.T) {
+	for pollMax, want := range map[time.Duration]time.Duration{
+		0:                worker.MaxWait,
+		30 * time.Second: 30 * time.Second,
+		time.Hour:        worker.MaxWait,
+	} {
+		if got := newFixture(t, worker.Deps{PollMax: pollMax}).svc.LongestHold(); got != want {
+			t.Errorf("PollMax %s: LongestHold %s, want %s", pollMax, got, want)
+		}
+	}
+}
+
 // TestUnitWorkerPollOnce checks that a worker's next poll ends its held
 // one at once, so each worker holds one poll, and that another worker's
 // poll ends none.

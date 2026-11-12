@@ -192,8 +192,12 @@ func (s *Service) hold(wait time.Duration) time.Duration {
 	if wait == 0 {
 		wait = DefaultWait
 	}
-	return min(max(wait, MinWait), MaxWait, s.pollMax)
+	return min(max(wait, MinWait), s.LongestHold())
 }
+
+// LongestHold is the longest any poll is held: the server's PollMax,
+// within MaxWait.
+func (s *Service) LongestHold() time.Duration { return min(MaxWait, s.pollMax) }
 
 // unauthenticated is a worker the store does not find as
 // ErrUnauthenticated, and any other error as it is.

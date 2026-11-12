@@ -120,7 +120,7 @@ func launch(cmd *cobra.Command, d deps) error {
 	h.Ready("docker", e.Ping)
 	srv, err := serve.Start(ctx, serve.Config{
 		Listen: serve.Defaults().Listen, AdminListen: lc.AdminListen,
-		Shutdown: serve.Shutdown{Timeout: shutdownTimeout},
+		Shutdown: serve.Shutdown{Timeout: shutdownTimeout}, Timeouts: serve.DefaultTimeouts(),
 	}, log, nil, observe.Probes(log, h))
 	if err != nil {
 		return err //nolint:wrapcheck // serve names the listener

@@ -2,8 +2,10 @@ package app
 
 import (
 	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -116,7 +118,7 @@ func API(
 	if d.Access != nil {
 		require = d.Access.Requirer()
 	}
-	r := Guarded(log, c, apiOperations(), g,
+	r := Guarded(log, c, withPollHold(apiOperations(), d.Workers.PollHold()), g,
 		byPrefix{api: d.Auth, operator: d.OperatorAuth, worker: d.WorkerAuth}, require, gated)
 	if b.Routes != nil {
 		b.Routes(r)
@@ -178,6 +180,20 @@ func API(
 		ErrorHandlerFunc: problem.RequestError,
 	})
 	return r
+}
+
+// withPollHold is ops with the worker poll's Hold, poll: a poll answers when a
+// run, a signal or its wait comes, which may be after the listener's write
+// timeout.
+//
+// ref: decision 0008 § "The worker API"
+func withPollHold(ops Operations, poll time.Duration) Operations {
+	ops = maps.Clone(ops)
+	key := http.MethodPost + " " + WorkerBaseURL + "/poll"
+	op := ops[key]
+	op.Hold = poll
+	ops[key] = op
+	return ops
 }
 
 // byPrefix authenticates a request under OperatorBaseURL with operator,

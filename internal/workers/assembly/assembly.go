@@ -185,6 +185,19 @@ func (d *Domain) Protocol() workerapi.StrictServerInterface {
 	return protocol.New(d.workers, d.log)
 }
 
+// PollHold is the longest a worker's poll is held, worker.poll_timeout_max
+// within the longest hold a launcher may ask for, which internal/app lets
+// the poll's response outlive the listener's write timeout by. A nil
+// domain's is that longest hold.
+//
+// ref: decision 0003 § "API surfaces"
+func (d *Domain) PollHold() time.Duration {
+	if d == nil {
+		return worker.MaxWait
+	}
+	return d.workers.LongestHold()
+}
+
 // WatchPolls ends the holds of this replica's held polls until ctx ends,
 // from sub, a subscription to infraweave_runs: a pool's ID wakes the
 // pool's polls, a workersapi.Waiting payload one of them, and a Resync,
