@@ -36,9 +36,9 @@ func (f *fixture) get(t *testing.T, path, token string) (int, map[string]any) {
 }
 
 // TestUnitProtocolRunSpec checks that a run's specification answers each
-// part of the handover, a write-only variable and file by name alone,
-// and sealed, which the pool's private key opens to the handover's
-// secrets for the run's state version.
+// part of the handover, its state backend among them, a write-only
+// variable and file by name alone, and sealed, which the pool's private
+// key opens to the handover's secrets for the run's state version.
 func TestUnitProtocolRunSpec(t *testing.T) {
 	f := newFixture(t)
 	f.store.pool.Certificate = f.cert.Raw
@@ -65,6 +65,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			},
 			RuntimeConfig: json.RawMessage(`{"projectRoot":"infra"}`),
 			RunnerImage:   &image,
+			StateBackend:  &workersapi.StateBackend{Path: "/state/v1/stacks/" + run.String()},
 			Hooks:         map[string][]string{"beforeInit": {"echo hi"}},
 			Environment: []workersapi.Variable{
 				{Name: "REGION", Value: &value}, {Name: "TOKEN", WriteOnly: true},
@@ -110,6 +111,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		},
 		"runtimeConfig": map[string]any{"projectRoot": "infra"},
 		"runnerImage":   "ghcr.io/acme/runner",
+		"stateBackend":  map[string]any{"path": "/state/v1/stacks/" + run.String()},
 		"hooks":         map[string]any{"beforeInit": []any{"echo hi"}},
 		"environment": []any{
 			map[string]any{"name": "REGION", "value": "eu", "writeOnly": false},
@@ -137,7 +139,8 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 // no token, another run's token and a malformed run ID with 401, a run
 // not on a worker with 409 invalid-state, and a template that fails to
 // render with 422; and that a handover with nothing optional answers
-// empty hooks, environment and files rather than null.
+// empty hooks, environment and files rather than null, and no state
+// backend.
 func TestUnitProtocolRunSpecRefused(t *testing.T) {
 	f := newFixture(t)
 	f.store.pool.Certificate = f.cert.Raw
@@ -162,7 +165,8 @@ func TestUnitProtocolRunSpecRefused(t *testing.T) {
 	code, body := f.get(t, path, "run."+run.String())
 	if code != http.StatusOK || !reflect.DeepEqual(body["hooks"], map[string]any{}) ||
 		!reflect.DeepEqual(body["environment"], []any{}) ||
-		!reflect.DeepEqual(body["files"], []any{}) || body["runtimeConfig"] != nil {
+		!reflect.DeepEqual(body["files"], []any{}) || body["runtimeConfig"] != nil ||
+		body["stateBackend"] != nil {
 		t.Errorf("a bare handover = %d %v", code, body)
 	}
 	sch.err = workersapi.ErrNotOnWorker

@@ -459,6 +459,23 @@ func TestUnitHandoverMetadata(t *testing.T) {
 	}
 }
 
+// TestUnitHandoverStateBackend checks that the specification names the
+// state backend, StatePath and the stack's ULID, exactly when infraweave
+// keeps the stack's state.
+func TestUnitHandoverStateBackend(t *testing.T) {
+	w := newWorld(t)
+	h, err := w.handover(t, w.run.ID)
+	if err != nil || h.Spec.StateBackend != nil {
+		t.Errorf("a stack without managed state = %+v, %v", h.Spec.StateBackend, err)
+	}
+	w.stacks.settings.ManagesState = true
+	h, err = w.handover(t, w.run.ID)
+	want := "/state/v1/stacks/" + w.run.Stack.String()
+	if err != nil || h.Spec.StateBackend == nil || h.Spec.StateBackend.Path != want {
+		t.Errorf("a stack with managed state = %+v, %v; want %s", h.Spec.StateBackend, err, want)
+	}
+}
+
 // renderer fails every Check with check and every Evaluate with eval.
 type renderer struct{ check, eval error }
 

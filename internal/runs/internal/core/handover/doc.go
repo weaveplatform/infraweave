@@ -10,8 +10,9 @@
 // artifact key; every other value, the TF_VAR_infraweave_ variables a
 // variable of the same name overrides, the hooks, the runtime
 // configuration and the runner image the run or its stack names go into
-// the Spec in clear. The workers domain seals the secrets to the pool's
-// key.
+// the Spec in clear, with StatePath and the stack's ULID as the state
+// backend of a stack whose state infraweave keeps. The workers domain
+// seals the secrets to the pool's key.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 // ref: decision 0013 § "Delivery to runs"

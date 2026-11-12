@@ -230,6 +230,9 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 		rc := object(spec.RuntimeConfig)
 		out.RuntimeConfig = &rc
 	}
+	if spec.StateBackend != nil {
+		out.StateBackend = &gen.RunSpecStateBackend{Path: spec.StateBackend.Path}
+	}
 	for _, v := range spec.Environment {
 		out.Environment = append(out.Environment,
 			gen.RunSpecVariable{Name: v.Name, Value: v.Value, WriteOnly: v.WriteOnly})

@@ -85,9 +85,12 @@ type Spec struct {
 	// RunnerImage is the runtime configuration's or the stack's image;
 	// nil when neither names one.
 	RunnerImage *string
-	Hooks       map[string][]string
-	Environment []Variable
-	Files       []File
+	// StateBackend is the stack's managed state backend, nil when
+	// infraweave does not keep the stack's state.
+	StateBackend *StateBackend
+	Hooks        map[string][]string
+	Environment  []Variable
+	Files        []File
 }
 
 // SpecRun is the run a Spec is for, at the state version its secrets are
@@ -115,6 +118,13 @@ type SpecStack struct {
 	ProjectRoot  *string
 	Vendor       string
 	VendorConfig json.RawMessage
+}
+
+// StateBackend is a Spec's managed state backend: Path is where the
+// server serves the stack's state, which the runner resolves against the
+// server URL its launcher reaches.
+type StateBackend struct {
+	Path string
 }
 
 // SpecCommit is the commit a Spec's run works on.

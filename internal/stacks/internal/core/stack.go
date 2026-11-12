@@ -26,12 +26,9 @@ type Stack struct {
 	EnableSensitiveOutputUpload  bool
 	EnableWellKnownSecretMasking bool
 	SkipVendorBinaryDownload     bool
-	// ManagesState is whether infraweave keeps the stack's state, which
-	// its creation decides once.
-	ManagesState bool
-	CreatedAt    time.Time
-	State        kernel.StackState
-	Blocked      bool
+	CreatedAt                    time.Time
+	State                        kernel.StackState
+	Blocked                      bool
 }
 
 // DefaultProvider is the VCS provider of a stack whose input names none.
