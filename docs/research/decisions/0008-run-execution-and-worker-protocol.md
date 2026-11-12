@@ -463,14 +463,16 @@ has failed":
   keep working, because the run token outlives the run by an hour and is
   checked against the run's state, not the worker's.
 - **A worker that returns late.** Its run has already failed. Its next poll
-  answers `401`, the launcher kills the container, and it registers again as a
-  new worker.
+  answers `401`, the launcher registers again, and, answered with a new
+  worker, removes the old one's container.
 - `run.lost_after` must be greater than `worker.offline_after`; any other
   pair fails the start. Both are server settings, so one installation applies
   one tolerance to every pool.
-- A launcher that loses its container (crash, out of memory, timeout, kill)
-  reports through its next poll (`busy: false` with the run ID, exit code and
-  reason), and the server fails the run if no runner report ended it.
+- A launcher whose container ends (exit, crash, out of memory, timeout,
+  kill) or disappears reports through its next poll (`busy: false` with the
+  run ID and `exit`, its code and reason, as in
+  [The launcher and the runner](#the-launcher-and-the-runner)), and the server
+  fails the run if no runner report ended it.
 
 ### Worker status, drain, cycle and reset
 
@@ -546,7 +548,32 @@ has failed":
   replacing the image's `ENTRYPOINT` and `CMD`. The runner is statically linked,
   so it runs on any image's libc. The container runs as UID and GID 1983, with the
   workspace at `/mnt/workspace`, the tool binaries mounted read-only, and the
-  launcher's network, runtime and extra mount settings.
+  launcher's network, runtime and extra mount settings. Each container is
+  labelled `io.infraweave.worker` and `io.infraweave.run` with the worker's
+  and the run's IDs.
+- **The handoff.** The launcher writes the run's endpoint, run token,
+  assigned state and state version, the specification without its sealed
+  part, and the opened secrets as one JSON document to the runner's standard
+  input, then closes it. Docker keeps a container's environment and command
+  in its configuration on the host's disk, so the opened secrets never go
+  there. The runner reads at most 64 MiB, rejects unknown fields, and reports
+  `started` for the state the assigned one leads to (`INITIALIZING`,
+  `PLANNING` or `APPLYING`), which ends the handover.
+- **Resuming.** `worker.json` in `launcher.cache_dir` keeps the pool, the
+  worker, the run it executes and the exit of a container whose end the
+  server has not acknowledged. A restarted launcher registers naming that
+  worker, finds the run's container by its labels and follows its output, or
+  reports the stored exit, or reports the run `missing` when its container is
+  gone. An answer naming another worker means the server lost the old one
+  and failed its run, so the launcher removes that container. A launcher
+  stopped while it executes a run keeps its worker and its container for the
+  restart; an idle one deregisters.
+- **A container that ends** cuts the launcher's held poll short. Its next
+  poll carries `busy: false`, the run and `exit` with the code and the reason
+  (`exited`, `killed`, `out-of-memory`, or `missing` with code `-1`), and the
+  launcher repeats it until the server answers.
+- **The admin listener** (`launcher.admin_listen`, `:9091`, one above the
+  server's) answers decision 0017's probes for the launcher.
 - **Kubernetes.** A controller that creates a pod per run acts as a launcher on
   this same protocol. Its resources and behaviour are outside this record.
 
@@ -628,7 +655,8 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `worker.public_pool.allowed_registries`.
 - **Launcher:** `launcher.token`, `launcher.private_key`, `launcher.poll_timeout`
   (60s), `launcher.run_timeout` (70m), `launcher.log_timeout` (7m),
-  `launcher.cache_dir`, `launcher.metadata`, `launcher.default_runner_image`,
+  `launcher.cache_dir`, `launcher.metadata`, `launcher.admin_listen` (`:9091`),
+  `launcher.log.*`, `launcher.default_runner_image`,
   `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
   `launcher.mask_envs`, `launcher.whitelist_envs`, `launcher.tool_mirror`,
   `launcher.docker.config_dir`, `.network`, `.runtime`, `.extra_mounts`,
@@ -746,6 +774,14 @@ offers this policy is available to it alone; 0009 lists built-ins.
   an artifact the runner sealed opened by the server, the workspace's `307`,
   another run's token `401`, and the account's purge of the records and
   their objects.
+- `internal/agent/launcher` tests over `agenttest`'s fake worker API and
+  executor, in virtual time: registration and deregistration, an assignment
+  prepared and started with its handoff, `stop`, `kill`, `cycle` and
+  `drained`, a resumed run, a stored or missing exit after a restart, a
+  refused session that keeps or loses the worker, backoff, and a failed
+  preparation reported. `TestAccDockerExecutor` (Docker): the runner runs
+  as PID 1 with UID and GID 1983 in `/mnt/workspace` and reads its standard
+  input, and a container is found again, stopped, killed and missing.
 - `internal/workers` reap tests on a fake clock: offline at 3 minutes with the
   run untouched; a poll at 59 minutes clears the mark and the run finishes;
   `FAILED` with `worker lost` at 60 minutes; a late poll answers `401`; a
