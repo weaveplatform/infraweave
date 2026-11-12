@@ -209,12 +209,16 @@ server:
 }
 
 // TestUnitLoadLiveness checks that the worker and run liveness settings
-// decode from the file and, over it, the environment.
+// and the sample retention decode from the file and, over it, the
+// environment.
 func TestUnitLoadLiveness(t *testing.T) {
 	t.Setenv("INFRAWEAVE_RUN_LOST_AFTER", "2h")
+	t.Setenv("INFRAWEAVE_WORKER_SAMPLES_RETENTION", "72h")
 	c, err := loadArgs(t, "--config", writeFile(t, `
 worker:
   offline_after: 5m
+  samples:
+    retention: 24h
 run:
   lost_after: 90m
   preparing_timeout_default: 10m
@@ -223,7 +227,8 @@ run:
 		t.Fatal(err)
 	}
 	if c.Worker.OfflineAfter != 5*time.Minute || c.Run.LostAfter != 2*time.Hour ||
-		c.Run.PreparingTimeoutDefault != 10*time.Minute {
+		c.Run.PreparingTimeoutDefault != 10*time.Minute ||
+		c.Worker.Samples.Retention != 72*time.Hour {
 		t.Errorf("worker %+v, run %+v", c.Worker, c.Run)
 	}
 }
@@ -334,6 +339,12 @@ func TestUnitLoadRejects(t *testing.T) {
 			"worker:\n  offline_after: 2m\n",
 			nil,
 			"worker.offline_after 2m0s is not greater than worker.poll_timeout_max 2m0s",
+		},
+		{
+			"short sample retention",
+			"worker:\n  samples:\n    retention: 30s\n",
+			nil,
+			"worker.samples.retention 30s is under 1m0s",
 		},
 		{
 			"lost before offline",

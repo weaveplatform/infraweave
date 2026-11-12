@@ -19,8 +19,8 @@
 // objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS;
 // Vendors holds the vendors.* release indexes the version catalogue
 // refreshes from, the vendors domain's assembly Settings; Worker holds
-// worker.poll_timeout_max and worker.offline_after, the workers domain's
-// assembly Settings; Run holds run.lost_after and
+// worker.poll_timeout_max, worker.offline_after and
+// worker.samples.retention, the workers domain's assembly Settings; Run holds run.lost_after and
 // run.preparing_timeout_default, the runs domain's assembly Settings, and
 // Load rejects a run.lost_after no greater than worker.offline_after.
 // Defaults are what an empty configuration

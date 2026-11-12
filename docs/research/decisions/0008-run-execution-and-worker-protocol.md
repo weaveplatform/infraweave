@@ -532,13 +532,26 @@ has failed":
   row per pool to `worker_pool_samples(account_id, worker_pool_id,
   sampled_at, busy_workers, registered_workers, queued_runs)`, primary key
   `(account_id, worker_pool_id, sampled_at)`; `sampled_at` is the minute,
-  so a second run in the same minute is a no-op. The public pool has one
-  row per account that has runs on it, counting that account's busy
-  workers and queued runs, and its registered workers.
+  so a second run in the same minute is a no-op, and two replicas writing
+  the same minute at once write one row per pool between them. The busy
+  and registered counts are the pool's `workers` rows, an offline worker
+  included until the reap deletes it; the queued count is the pool's runs
+  a claim may take (`READY`, `CONFIRMED` and `REPLAN_REQUESTED`), which
+  the runs domain counts through `workersapi.Scheduler`, the back edge
+  claims use. The public pool has one row per account that has runs on
+  it, counting that account's busy workers and queued runs, and its
+  registered workers; those rows begin with the public pool itself. A
+  deleted pool's samples stay until they expire, so a usage window that
+  covers its last days still counts them, and a deleted account's go with
+  its purge.
 - **Retention.** `worker.samples.retention`, default 35 days: a month of
-  daily assessments plus a margin. The same task deletes older rows.
+  daily assessments plus a margin. The same task deletes older rows, at
+  most 100,000 a pass, so a shortened retention's backlog never holds up
+  the next minute's sample.
 - **Readers.** Other domains read samples only through the workers
-  domain's `api/` package, `SamplesBetween(pool, from, to)`; the worker
+  domain's `api/` package, `SamplesBetween(account, pool, from, to)`,
+  oldest first over `[from, to)`; the account scopes the read as every
+  other read of a pool is scoped; the worker
   usage assessment of [0015](0015-events-notifications-webhooks-audit.md)
   and the usage read models are its readers. No other domain queries the
   table.
@@ -661,7 +674,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
 ### Configuration
 
 - **Server:** `worker.poll_timeout_max` (120s), `worker.offline_after` (3m),
-  `run.lost_after` (60m),
+  `worker.samples.retention` (35 days, at least a minute), `run.lost_after` (60m),
   `run.preparing_timeout_default` (15m), `run.timers.*`,
   `worker.public_pool.allowed_registries`.
 - **Launcher:** `launcher.token`, `launcher.private_key`, `launcher.poll_timeout`
@@ -770,10 +783,11 @@ offers this policy is available to it alone; 0009 lists built-ins.
   order with oldest first, one claim per run under 50 concurrent pollers, drift
   limit, and the `public-worker-slots` limit pooled per organization with an
   account limit below it.
-- `internal/workers` sample tests on a fake clock: one row per pool per
-  minute, a repeated minute writes nothing, rows older than
-  `worker.samples.retention` are deleted, and `SamplesBetween` returns the
-  window.
+- `TestUnitWorkerPoolSample` (`internal/workers/internal/core/sample`, in
+  virtual time): one row per pool per minute, a repeated minute writes
+  nothing, rows older than `worker.samples.retention` are deleted, and
+  `SamplesBetween` returns the window; `TestAccWorkerPoolSamples`: two
+  replicas sampling the same minute at once write one row per pool.
 - `internal/workers` protocol adapter tests: registration refused for a foreign chain, a reset
   serial, a replayed `jti` and a skewed `iat`; poll hold, wake-up and timeout;
   signals; session renewal; `409` on a stale report.

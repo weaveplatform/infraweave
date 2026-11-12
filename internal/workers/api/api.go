@@ -168,6 +168,12 @@ type Scheduler interface {
 	//
 	// ref: decision 0008 § "The run specification and its secrets"
 	Handover(ctx context.Context, run kernel.ULID) (Handover, error)
+	// Queued counts the runs waiting for a worker of each private pool,
+	// of every account: the runs a claim may take. A pool none waits for
+	// is absent.
+	//
+	// ref: decision 0008 § "Pool samples"
+	Queued(ctx context.Context) (map[kernel.ULID]int, error)
 }
 
 // Waiting is the infraweave_runs payload that says run waits in pool,
@@ -372,4 +378,31 @@ type Liveness interface {
 		fallback time.Duration,
 		batch int,
 	) (int, error)
+}
+
+// Sample is a pool's figures at the minute At: its busy and registered
+// workers and the runs waiting for one.
+type Sample struct {
+	At         time.Time
+	Busy       int
+	Registered int
+	Queued     int
+}
+
+// Samples is what other domains read of the pools' minute samples, the
+// worker usage assessment and the usage read models among them; no other
+// domain queries the samples' table.
+//
+// ref: decision 0008 § "Pool samples"
+type Samples interface {
+	// SamplesBetween reads acct's samples of pool taken from from up to,
+	// not including, to, oldest first. Samples older than
+	// worker.samples.retention are gone, so a window reaching further back
+	// answers only what is kept.
+	SamplesBetween(
+		ctx context.Context,
+		acct kernel.AccountID,
+		pool kernel.ULID,
+		from, to time.Time,
+	) ([]Sample, error)
 }

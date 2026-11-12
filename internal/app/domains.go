@@ -100,6 +100,7 @@ func newDomains(
 		OfflineAfter:     c.Worker.OfflineAfter,
 		LostAfter:        c.Run.LostAfter,
 		PreparingTimeout: c.Run.PreparingTimeoutDefault,
+		SampleRetention:  c.Worker.Samples.Retention,
 		Log:              log,
 	})
 	access.GuardSpaces(workers.SpaceGuard())

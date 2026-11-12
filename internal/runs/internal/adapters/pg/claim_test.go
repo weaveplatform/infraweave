@@ -3,6 +3,7 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"maps"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
@@ -156,6 +158,35 @@ func TestAccClaim(t *testing.T) {
 			(state != kernel.RunStateReady && state != kernel.RunStateQueued) {
 			t.Errorf("run %s, which no claim may take, is %s by %v", id, state, by)
 		}
+	}
+}
+
+// TestAccClaimQueued checks that Queued counts the runs a claim may take
+// in each private pool, of every account, and no run that waits for the
+// scheduler, holds a worker, has finished or is in the public pool.
+func TestAccClaimQueued(t *testing.T) {
+	w := newWorld(t)
+	c := schedule.NewClaims(w.store, w.lc)
+	tracked, normal := kernel.RunTypeTracked, kernel.RunPriorityNormal
+	waiting, quiet := kernel.NewULID(), kernel.NewULID()
+	for _, s := range machine.Claimable() {
+		w.waits(t, w.acct, waiting, s, tracked, normal, false, w.now)
+	}
+	w.waits(t, kernel.NewAccountID(), waiting, kernel.RunStateReady, tracked, normal, false,
+		w.now)
+	for _, s := range []kernel.RunState{
+		kernel.RunStateQueued, kernel.RunStatePreparing, kernel.RunStateFinished,
+	} {
+		w.waits(t, w.acct, quiet, s, tracked, normal, false, w.now)
+	}
+	public := w.waits(t, w.acct, quiet, kernel.RunStateReady, tracked, normal, false, w.now)
+	if _, err := w.db.Exec(t.Context(), `UPDATE runs SET worker_pool_id = NULL WHERE id = $1`,
+		public); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.Queued(t.Context())
+	if want := map[kernel.ULID]int{waiting: 4}; err != nil || !maps.Equal(got, want) {
+		t.Errorf("Queued = %v, %v, want %v", got, err, want)
 	}
 }
 
@@ -380,8 +411,9 @@ func TestAccClaimStoreUnavailable(t *testing.T) {
 	_, holdingErr := s.Holding(ctx, acct, id)
 	_, driftingErr := s.Drifting(ctx, acct, id)
 	_, _, nextErr := s.Next(ctx, acct, id, kernel.RunStates(), 7)
+	_, waitingErr := s.Waiting(ctx, kernel.RunStates())
 	for name, err := range map[string]error{
-		"Holding": holdingErr, "Drifting": driftingErr, "Next": nextErr,
+		"Holding": holdingErr, "Drifting": driftingErr, "Next": nextErr, "Waiting": waitingErr,
 		"TakeDrift": s.TakeDrift(ctx, acct, id), "Assign": s.Assign(ctx, run, id),
 		"Announce": s.Announce(ctx, run),
 	} {

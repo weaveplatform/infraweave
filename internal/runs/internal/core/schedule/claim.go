@@ -35,6 +35,9 @@ type ClaimStore interface {
 	) (lifecycle.Run, bool, error)
 	// Assign writes worker as run's worker.
 	Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error
+	// Waiting counts the runs in one of states of each private pool, of
+	// every account; a pool with none is absent.
+	Waiting(ctx context.Context, states []kernel.RunState) (map[kernel.ULID]int, error)
 }
 
 // The tiers a claim reads, as kernel.RunTier gives them: lastTier is the
@@ -128,4 +131,11 @@ func (s *Claims) drift(
 	}
 	//nolint:wrapcheck // the store names the read
 	return s.store.Next(ctx, c.Account, c.Pool, machine.Claimable(), driftTier-1)
+}
+
+// Queued counts the runs waiting for a worker of each private pool, as
+// workersapi.Scheduler's Queued says: the runs in a state a claim takes a
+// run out of.
+func (s *Claims) Queued(ctx context.Context) (map[kernel.ULID]int, error) {
+	return s.store.Waiting(ctx, machine.Claimable()) //nolint:wrapcheck // the store names the read
 }

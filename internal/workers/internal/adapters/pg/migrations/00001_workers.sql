@@ -110,3 +110,22 @@ CREATE TABLE worker_runner_images (
     public_image  text,
     updated_at    timestamptz NOT NULL DEFAULT now()
 );
+
+-- worker.sample's count of a pool's workers and of the runs waiting for
+-- one, each minute, kept for worker.samples.retention. sampled_at is the
+-- minute, so a second sample in the same minute writes nothing. A deleted
+-- pool's samples stay until they expire, so a usage window that covers
+-- the pool's last days still counts them.
+CREATE TABLE worker_pool_samples (
+    account_id         uuid        NOT NULL,
+    worker_pool_id     uuid        NOT NULL,
+    sampled_at         timestamptz NOT NULL,
+    busy_workers       integer     NOT NULL,
+    registered_workers integer     NOT NULL,
+    queued_runs        integer     NOT NULL,
+    PRIMARY KEY (account_id, worker_pool_id, sampled_at)
+);
+
+-- The prune deletes the samples older than the retention, of every
+-- account.
+CREATE INDEX worker_pool_samples_at ON worker_pool_samples (sampled_at);

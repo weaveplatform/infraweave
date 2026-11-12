@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/protocol"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/sample"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
@@ -48,29 +49,43 @@ func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 const Entity = "worker_pool"
 
 // Settings are the workers domain's: PollTimeoutMax, the longest a
-// worker's poll is held, worker.poll_timeout_max, and OfflineAfter, how
-// long a worker goes unseen before the reap marks it offline,
-// worker.offline_after.
+// worker's poll is held, worker.poll_timeout_max, OfflineAfter, how long
+// a worker goes unseen before the reap marks it offline,
+// worker.offline_after, and Samples, worker.samples.
 //
 // ref: decision 0008 § "Configuration"
 type Settings struct {
-	PollTimeoutMax time.Duration `mapstructure:"poll_timeout_max"`
-	OfflineAfter   time.Duration `mapstructure:"offline_after"`
+	PollTimeoutMax time.Duration  `mapstructure:"poll_timeout_max"`
+	OfflineAfter   time.Duration  `mapstructure:"offline_after"`
+	Samples        SampleSettings `mapstructure:"samples"`
+}
+
+// SampleSettings are the pool samples': Retention, how long a sample is
+// kept, worker.samples.retention.
+//
+// ref: decision 0008 § "Pool samples"
+type SampleSettings struct {
+	Retention time.Duration `mapstructure:"retention"`
 }
 
 // DefaultSettings hold a poll for at most two minutes, the longest a
-// launcher asks for, and mark a worker offline after three default polls
-// go unseen.
+// launcher asks for, mark a worker offline after three default polls go
+// unseen, and keep a pool's samples for 35 days.
 func DefaultSettings() Settings {
-	return Settings{PollTimeoutMax: worker.MaxWait, OfflineAfter: worker.DefaultOfflineAfter}
+	return Settings{
+		PollTimeoutMax: worker.MaxWait, OfflineAfter: worker.DefaultOfflineAfter,
+		Samples: SampleSettings{Retention: sample.DefaultRetention},
+	}
 }
 
 // ErrConfig reports a workers setting the server could not start with.
 var ErrConfig = errors.New("invalid worker configuration")
 
 // Validate rejects a poll timeout shorter than the shortest hold a
-// launcher may ask for, and an offline_after no longer than the longest
-// hold, which would mark a worker offline while its poll is held.
+// launcher may ask for, an offline_after no longer than the longest
+// hold, which would mark a worker offline while its poll is held, and a
+// sample retention under a minute, which would delete each sample as it
+// is written.
 func (s Settings) Validate() error {
 	if s.PollTimeoutMax < worker.MinWait {
 		return fmt.Errorf("%w: worker.poll_timeout_max %s is under %s", ErrConfig,
@@ -79,6 +94,10 @@ func (s Settings) Validate() error {
 	if s.OfflineAfter <= s.PollTimeoutMax {
 		return fmt.Errorf("%w: worker.offline_after %s is not greater than "+
 			"worker.poll_timeout_max %s", ErrConfig, s.OfflineAfter, s.PollTimeoutMax)
+	}
+	if s.Samples.Retention < time.Minute {
+		return fmt.Errorf("%w: worker.samples.retention %s is under %s", ErrConfig,
+			s.Samples.Retention, time.Minute)
 	}
 	return nil
 }
@@ -100,8 +119,9 @@ type DB interface {
 // longest a worker's poll is held, the reap's OfflineAfter,
 // worker.offline_after, and LostAfter, run.lost_after, PreparingTimeout,
 // the preparing timeout of a pool that sets none,
-// run.preparing_timeout_default, and the log a refused worker credential
-// and each reap are recorded in. A zero duration takes the default.
+// run.preparing_timeout_default, SampleRetention, worker.samples.retention,
+// and the log a refused worker credential and each reap are recorded in.
+// A zero duration takes the default.
 type Deps struct {
 	DB               DB
 	Keys             pg.Sealer
@@ -115,6 +135,7 @@ type Deps struct {
 	OfflineAfter     time.Duration
 	LostAfter        time.Duration
 	PreparingTimeout time.Duration
+	SampleRetention  time.Duration
 	Log              *slog.Logger
 	Now              func() time.Time
 }
@@ -123,6 +144,7 @@ type Deps struct {
 type Domain struct {
 	svc     *pool.Service
 	workers *worker.Service
+	samples *sample.Service
 	api     http.Server
 	log     *slog.Logger
 }
@@ -143,8 +165,9 @@ func New(d Deps) *Domain {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
+	samples := sample.New(sample.Deps{Store: store, Retention: d.SampleRetention, Now: d.Now})
 	return &Domain{
-		svc: svc, workers: wk, log: log,
+		svc: svc, workers: wk, samples: samples, log: log,
 		api: http.New(svc, images.New(store), wk, d.Authz, d.Spaces),
 	}
 }
@@ -215,8 +238,11 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 
 // BindScheduler binds the runs domain's workersapi.Scheduler, a back
 // edge internal/app binds after it constructs that domain, which polls
-// claim runs through.
-func (d *Domain) BindScheduler(s workersapi.Scheduler) { d.workers.BindScheduler(s) }
+// claim runs through and the pool samples count queued runs through.
+func (d *Domain) BindScheduler(s workersapi.Scheduler) {
+	d.workers.BindScheduler(s)
+	d.samples.Bind(s)
+}
 
 // BindReports binds the runs domain's workersapi.Reports, a back edge
 // internal/app binds after it constructs that domain, which a claimed
@@ -245,8 +271,25 @@ var Reap = queue.Kind{
 // ReapEvery is how often worker.reap runs, once across the replicas.
 const ReapEvery = 30 * time.Second
 
-// Cron is the domain's periodic task, worker.reap, which logs what each
-// pass did when it did anything.
+// Sample is worker.sample, the pass that writes each pool's sample for
+// the minute and deletes the expired ones. It runs on the scheduler queue
+// beside worker.reap, with policy Ignore, so a slow prune never overlaps
+// the next pass.
+//
+// ref: decision 0008 § "Pool samples"
+// ref: decision 0011 § "Scheduling and cron"
+var Sample = queue.Kind{
+	Name:   "worker.sample",
+	Queue:  queue.Scheduler,
+	Policy: queue.Ignore,
+}
+
+// SampleEvery is how often worker.sample runs, once across the replicas:
+// the samples' resolution.
+const SampleEvery = time.Minute
+
+// Cron is the domain's periodic tasks: worker.reap, which logs what each
+// pass did when it did anything, and worker.sample.
 func (d *Domain) Cron() []cron.Task {
 	return []cron.Task{{
 		Kind:  Reap,
@@ -259,8 +302,21 @@ func (d *Domain) Cron() []cron.Task {
 			}
 			return err //nolint:wrapcheck // the store or the runs domain names it
 		},
+	}, {
+		Kind:  Sample,
+		Every: SampleEvery,
+		Handler: func(ctx context.Context, _ queue.Job) error {
+			r, err := d.samples.Sample(ctx)
+			d.log.DebugContext(ctx, "worker pools sampled", "written", r.Written,
+				"pruned", r.Pruned)
+			return err //nolint:wrapcheck // the store or the runs domain names it
+		},
 	}}
 }
+
+// Samples is what other domains read of the pools' samples, which
+// internal/app hands the domains that assess and report usage.
+func (d *Domain) Samples() workersapi.Samples { return d.samples }
 
 // Pools is what other domains call of the domain's pools, which
 // internal/app hands the stacks domain.

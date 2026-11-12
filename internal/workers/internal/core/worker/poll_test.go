@@ -403,6 +403,11 @@ func (s *scheduler) Claim(
 	return a, true, nil
 }
 
+// Queued counts no waiting run; the pool samples' tests count them.
+func (*scheduler) Queued(context.Context) (map[kernel.ULID]int, error) {
+	return map[kernel.ULID]int{}, nil
+}
+
 // wait makes a run wait for a claim.
 func (s *scheduler) wait() workersapi.Assignment {
 	s.mu.Lock()
