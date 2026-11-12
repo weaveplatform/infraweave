@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // StreamName is the stacks stream's name in schema_migrations.
@@ -38,12 +39,13 @@ func Stream() migrate.Stream {
 	return migrate.Stream{Name: StreamName, Files: sub}
 }
 
-// Held are the stacks columns that hold the access domain's rows: a
-// stack's account, and its space within that account.
+// Held are the stacks columns that hold other domains' rows: a stack's
+// account, its space within that account, and the worker pool it names.
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "stacks", Columns: []string{"account_id"}},
 		{Entity: "space", Table: "stacks", Columns: []string{"account_id", "space_id"}},
+		{Entity: "worker_pool", Table: "stacks", Columns: []string{"account_id", "worker_pool_id"}},
 	}
 }
 
@@ -592,6 +594,35 @@ func (s *Store) Starred(
 	out := make(map[kernel.ULID]bool, len(starred))
 	for _, id := range starred {
 		out[id] = true
+	}
+	return out, nil
+}
+
+// PoolInUse lists acct's stacks that name the worker pool id, by slug.
+func (s *Store) PoolInUse(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+) ([]workersapi.PoolUse, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT slug, space_id FROM stacks
+		WHERE account_id = $1 AND worker_pool_id = $2 ORDER BY slug`, acct, id)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"stacks: read stacks of worker pool %s: %w",
+			id,
+			sql.Unavailable(err),
+		)
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (workersapi.PoolUse, error) {
+		var u workersapi.PoolUse
+		return u, r.Scan(&u.Stack, &u.Space)
+	})
+	if err != nil {
+		return nil, fmt.Errorf(
+			"stacks: read stacks of worker pool %s: %w",
+			id,
+			sql.Unavailable(err),
+		)
 	}
 	return out, nil
 }

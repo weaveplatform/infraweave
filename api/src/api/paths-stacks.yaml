@@ -7882,7 +7882,10 @@ paths:
       x-rest-style: field
   /stacks/{stackId}/attachable-worker-pools:
     get:
-      description: List of worker pools that can be attached to this Stack.
+      description: >-
+        The private worker pools this stack may name, by name: those in its
+        space and in each space above it reached through an unbroken chain
+        of spaces that inherit, among the spaces the caller may read.
       operationId: stackAttachableWorkerPools
       x-infraweave-feature: stacks
       x-infraweave-action: SPACE_READ

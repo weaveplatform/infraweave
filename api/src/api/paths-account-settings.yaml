@@ -52,6 +52,36 @@ components:
         - completed
       type: object
       x-graphql-args-of: accountUpdateAwarenessSourceSurvey
+    AccountUpdateDefaultWorkerPoolRunnerImagesRequest:
+      additionalProperties: false
+      description: The arguments of accountUpdateDefaultWorkerPoolRunnerImages not carried in the path.
+      properties:
+        privateWorkerPoolRunnerImage:
+          description: >-
+            The image a run on a private worker pool uses when neither its
+            runtime configuration nor its stack names one. Null or empty
+            takes the launcher's default.
+          nullable: true
+          type: string
+        publicWorkerPoolRunnerImage:
+          description: >-
+            The image a run on the public worker pool uses when neither its
+            runtime configuration nor its stack names one. Null or empty
+            takes the launcher's default.
+          nullable: true
+          type: string
+      type: object
+      x-graphql-args-of: accountUpdateDefaultWorkerPoolRunnerImages
+    AccountUpdateDefaultWorkerPoolRunnerImagesResult:
+      properties:
+        privateWorkerPoolRunnerImage:
+          nullable: true
+          type: string
+        publicWorkerPoolRunnerImage:
+          nullable: true
+          type: string
+      type: object
+      x-graphql-type: AccountUpdateDefaultWorkerPoolRunnerImagesResult
     AccountUpdateSecurityEmailRequest:
       additionalProperties: false
       description: The arguments of accountUpdateSecurityEmail not carried in the path.
@@ -596,6 +626,66 @@ paths:
       x-bruno: Advanced/Account Settings/Account Update Awareness Source Survey.bru
       x-graphql:
         field: accountUpdateAwarenessSourceSurvey
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/update-default-worker-pool-runner-images:
+    post:
+      description: >-
+        Set the account's default runner images, replacing both: the image a
+        run on a private or on the public worker pool uses when neither its
+        runtime configuration nor its stack names one. Each is trimmed, and
+        null or empty takes the launcher's default. An image longer than 255
+        characters, or holding a space or a control character, answers 422
+        validation-failed. The answer is the images as stored.
+      operationId: accountUpdateDefaultWorkerPoolRunnerImages
+      x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              privateWorkerPoolRunnerImage: ghcr.io/example/runner:latest
+            schema:
+              $ref: '#/components/schemas/AccountUpdateDefaultWorkerPoolRunnerImagesRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountUpdateDefaultWorkerPoolRunnerImagesResult'
+          description: The accountUpdateDefaultWorkerPoolRunnerImages result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Update Default Worker Pool Runner Images
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Update Default Worker Pool Runner Images.bru
+      x-graphql:
+        field: accountUpdateDefaultWorkerPoolRunnerImages
         operation: mutation
         type: Mutation
       x-infraweave-cost: standard

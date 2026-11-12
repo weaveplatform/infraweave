@@ -324,6 +324,9 @@ func TestAccStoreUnavailable(t *testing.T) {
 	if _, err := s.SpaceInUse(ctx, acct, id); err == nil {
 		t.Error("SpaceInUse on a closed pool succeeded")
 	}
+	if _, err := s.PoolInUse(ctx, acct, id); err == nil {
+		t.Error("PoolInUse on a closed pool succeeded")
+	}
 	st := core.Stack{}
 	st.Account, st.ID = acct, id
 	actor := core.Actor{Kind: kernel.PrincipalAPIKey, ID: id}

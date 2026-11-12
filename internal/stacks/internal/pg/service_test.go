@@ -23,6 +23,7 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // spaces are an account's spaces by slug, recording each hold.
@@ -135,6 +136,7 @@ type fixture struct {
 	spaces                *spaces
 	authz                 authz
 	ledger                *ledger
+	pools                 *pools
 	acct                  kernel.AccountID
 	team, hidden          kernel.ULID
 	admin, writer, reader kernel.Principal
@@ -169,13 +171,14 @@ func newFixture(t *testing.T) fixture {
 		reader.Caller(): {team: read},
 	}
 	l := &ledger{spaces: sp, authz: az, rows: map[kernel.ULID]accessapi.RoleBinding{}}
+	wp := &pools{reach: map[kernel.ULID]kernel.ULID{}}
 	svc := core.New(core.Deps{
-		Store: pg.New(db), DB: db, Spaces: sp, Authz: az, Bindings: l, Grants: l,
+		Store: pg.New(db), DB: db, Spaces: sp, Authz: az, Bindings: l, Grants: l, Pools: wp,
 		Events: outbox.New(db, queue.New(db), kinds),
 		Now:    func() time.Time { return time.Unix(1_800_000_000, 0) },
 	})
 	return fixture{
-		db: db, svc: svc, spaces: sp, authz: az, ledger: l, acct: acct, team: team,
+		db: db, svc: svc, spaces: sp, authz: az, ledger: l, pools: wp, acct: acct, team: team,
 		hidden: hidden, admin: admin, writer: writer, reader: reader,
 	}
 }
@@ -285,7 +288,7 @@ func TestAccServiceCreate(t *testing.T) {
 		TerraformVersion: new("latest"),
 	}
 	want := []string{
-		"/input/name", "/input/repository", "/input/branch", "/input/workerPool",
+		"/input/name", "/input/repository", "/input/branch",
 		"/input/terraformVersion", "/input/vendorConfig",
 		"/input/vendorConfig/terraform/version",
 	}
@@ -918,6 +921,70 @@ func TestAccServiceIntegration(t *testing.T) {
 	}
 	if read, err = f.svc.Settings(ctx, f.acct, st.ID); err != nil || read.VCSDetached {
 		t.Errorf("Settings after the rebind = %+v, %v", read, err)
+	}
+}
+
+// pools holds each pool for the one space reach names for it, failing
+// every hold when err is set.
+type pools struct {
+	reach map[kernel.ULID]kernel.ULID
+	err   error
+}
+
+func (p *pools) Hold(_ context.Context, _ kernel.AccountID, space, id kernel.ULID) error {
+	switch {
+	case p.err != nil:
+		return p.err
+	case p.reach[id] != space:
+		return workersapi.ErrNoPool
+	}
+	return nil
+}
+
+// TestAccServicePool checks that a stack keeps a worker pool its space
+// reaches, refused at workerPool otherwise, and that PoolInUse lists the
+// stacks naming a pool.
+func TestAccServicePool(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t)
+	wp := kernel.NewULID()
+	f.pools.reach[wp] = f.team
+	in := input("Infra")
+	in.Space, in.WorkerPool = "team", new(wp.String())
+	st, err := f.svc.Create(ctx, f.admin, "", false, in)
+	if err != nil || st.WorkerPool == nil || *st.WorkerPool != wp {
+		t.Fatalf("Create = %+v, %v", st, err)
+	}
+	read, err := f.svc.Settings(ctx, f.acct, st.ID)
+	if err != nil || read.WorkerPool == nil || *read.WorkerPool != wp {
+		t.Errorf("Settings = %+v, %v", read, err)
+	}
+	uses, err := f.svc.PoolInUse(ctx, f.acct, wp)
+	if err != nil || !slices.Equal(uses, []workersapi.PoolUse{{Stack: "infra", Space: f.team}}) {
+		t.Errorf("PoolInUse = %v, %v", uses, err)
+	}
+	for name, id := range map[string]string{
+		"a bad ID": "not-a-ulid", "a pool out of reach": kernel.NewULID().String(),
+	} {
+		other := in
+		other.WorkerPool = new(id)
+		_, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, other)
+		if got := pointers(t, err); len(got) != 1 || got[0] != "/workerPool" {
+			t.Errorf("an update naming %s: %v", name, got)
+		}
+	}
+	f.pools.err = kernel.ErrUnavailable
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); !errors.Is(
+		err, kernel.ErrUnavailable) {
+		t.Errorf("Update with the workers domain down = %v", err)
+	}
+	f.pools.err = nil
+	in.WorkerPool = nil
+	if _, err := f.svc.Update(ctx, f.admin, "infra", kernel.Expect{}, in); err != nil {
+		t.Fatal(err)
+	}
+	if uses, err := f.svc.PoolInUse(ctx, f.acct, wp); err != nil || len(uses) != 0 {
+		t.Errorf("PoolInUse once the stack names none = %v, %v", uses, err)
 	}
 }
 

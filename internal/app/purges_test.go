@@ -113,6 +113,8 @@ func TestAccPurges(t *testing.T) {
 				VALUES ($1, $2, $3, 2)`, []any{kernel.NewULID(), pool}},
 			{`INSERT INTO worker_nonces (account_id, pool_id, jti, expires_at)
 				VALUES ($1, $2, 'j', now())`, []any{pool}},
+			{`INSERT INTO worker_runner_images (account_id, private_image)
+				VALUES ($1, 'x')`, nil},
 		} {
 			if _, err := q.Exec(ctx, stmt.sql, append([]any{x.acct}, stmt.args...)...); err != nil {
 				t.Fatal(err)
@@ -138,7 +140,8 @@ func TestAccPurges(t *testing.T) {
 			+ (SELECT count(*) FROM context_attachments WHERE account_id = $2)
 			+ (SELECT count(*) FROM worker_pools WHERE account_id = $2)
 			+ (SELECT count(*) FROM workers WHERE account_id = $2)
-			+ (SELECT count(*) FROM worker_nonces WHERE account_id = $2)`,
+			+ (SELECT count(*) FROM worker_nonces WHERE account_id = $2)
+			+ (SELECT count(*) FROM worker_runner_images WHERE account_id = $2)`,
 			x.org, x.acct)
 	}
 
@@ -149,8 +152,8 @@ func TestAccPurges(t *testing.T) {
 	if n := count(`SELECT count(*) FROM accounts WHERE id = $1`, gone.acct); n != 0 {
 		t.Errorf("the deleted organization's account is still there")
 	}
-	if n := held(gone); n != 12 {
-		t.Fatalf("before the purges: %d rows of the deleted organization, want 12", n)
+	if n := held(gone); n != 13 {
+		t.Fatalf("before the purges: %d rows of the deleted organization, want 13", n)
 	}
 
 	reg := queue.NewRegistry()
@@ -177,15 +180,15 @@ func TestAccPurges(t *testing.T) {
 		case <-tick.C:
 		}
 	}
-	if n := held(kept); n != 12 {
-		t.Errorf("another organization keeps %d rows, want 12", n)
+	if n := held(kept); n != 13 {
+		t.Errorf("another organization keeps %d rows, want 13", n)
 	}
 
 	if err := d.Features.Purge(ctx, kept.org, kept.acct, false); err != nil {
 		t.Fatal(err)
 	}
-	if n := held(kept); n != 11 {
-		t.Errorf("after an account's own features purge, %d rows, want 11", n)
+	if n := held(kept); n != 12 {
+		t.Errorf("after an account's own features purge, %d rows, want 12", n)
 	}
 }
 

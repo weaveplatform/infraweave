@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -12,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
@@ -21,14 +23,21 @@ import (
 // 404 for a pool the caller cannot read.
 type Server struct {
 	svc    *pool.Service
+	images *images.Service
 	authz  accessapi.Authorizer
 	spaces accessapi.Spaces
 }
 
-// New returns the partial over the service, deciding allowedActions with
-// authz and naming spaces through spaces.
-func New(svc *pool.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
-	return Server{svc: svc, authz: authz, spaces: spaces}
+// New returns the partial over the pools' and the runner images'
+// services, deciding allowedActions with authz and naming spaces through
+// spaces.
+func New(
+	svc *pool.Service,
+	img *images.Service,
+	authz accessapi.Authorizer,
+	spaces accessapi.Spaces,
+) Server {
+	return Server{svc: svc, images: img, authz: authz, spaces: spaces}
 }
 
 // WorkerPools lists the pools of the caller's account in the spaces it
@@ -41,27 +50,131 @@ func (s Server) WorkerPools(
 	if err != nil {
 		return nil, err
 	}
-	in := search.Input{First: req.Params.Limit}
-	if req.Params.Cursor != nil {
-		in.After = *req.Params.Cursor
-	}
-	res, err := s.svc.Search(ctx, p, in)
+	res, err := s.svc.Search(ctx, p, pageInput(req.Params.Cursor, req.Params.Limit))
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a bad cursor is a problem
 	}
+	out, err := s.page(ctx, p, res)
+	if err != nil {
+		return nil, err
+	}
+	return api.WorkerPools200JSONResponse{Body: out}, nil
+}
+
+// StackAttachableWorkerPools lists the pools a stack may name, among the
+// spaces the caller may read.
+func (s Server) StackAttachableWorkerPools(
+	ctx context.Context,
+	req api.StackAttachableWorkerPoolsRequestObject,
+) (api.StackAttachableWorkerPoolsResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.svc.AttachableToStack(ctx, p, req.StackId,
+		pageInput(req.Params.Cursor, req.Params.Limit))
+	if err != nil {
+		return nil, poolError(err)
+	}
+	out, err := s.page(ctx, p, res)
+	if err != nil {
+		return nil, err
+	}
+	return api.StackAttachableWorkerPools200JSONResponse{Body: out}, nil
+}
+
+// AttachableWorkerPoolsInSpace lists the pools a stack in a space may
+// name, among the spaces the caller may read.
+func (s Server) AttachableWorkerPoolsInSpace(
+	ctx context.Context,
+	req api.AttachableWorkerPoolsInSpaceRequestObject,
+) (api.AttachableWorkerPoolsInSpaceResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.svc.AttachableInSpace(ctx, p, req.Params.Id,
+		pageInput(req.Params.Cursor, req.Params.Limit))
+	if err != nil {
+		return nil, poolError(err)
+	}
+	out, err := s.page(ctx, p, res)
+	if err != nil {
+		return nil, err
+	}
+	return api.AttachableWorkerPoolsInSpace200JSONResponse{Body: out}, nil
+}
+
+// pageInput is the search a page's cursor and limit ask for, by name.
+func pageInput(cursor *api.Cursor, limit *api.Limit) search.Input {
+	in := search.Input{First: limit}
+	if cursor != nil {
+		in.After = *cursor
+	}
+	return in
+}
+
+// page is res as a page of views as p sees them.
+func (s Server) page(
+	ctx context.Context,
+	p kernel.Principal,
+	res search.Result[pool.Pool],
+) (api.WorkerPoolPage, error) {
 	all := make([]pool.Pool, 0, len(res.Edges))
 	for _, e := range res.Edges {
 		all = append(all, e.Node)
 	}
 	views, err := s.views(ctx, p, all...)
 	if err != nil {
-		return nil, err
+		return api.WorkerPoolPage{}, err
 	}
 	out := api.WorkerPoolPage{Items: views}
 	if res.HasNext {
 		out.NextCursor = &res.End
 	}
-	return api.WorkerPools200JSONResponse{Body: out}, nil
+	return out, nil
+}
+
+// DefaultPrivateWorkerPoolRunnerImage answers the image the caller's
+// account's runs on private pools use when neither their runtime
+// configuration nor their stack names one.
+func (s Server) DefaultPrivateWorkerPoolRunnerImage(
+	ctx context.Context,
+	_ api.DefaultPrivateWorkerPoolRunnerImageRequestObject,
+) (api.DefaultPrivateWorkerPoolRunnerImageResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	image, err := s.images.Private(ctx, p.AccountID)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
+	return api.DefaultPrivateWorkerPoolRunnerImage200JSONResponse{Body: image}, nil
+}
+
+// AccountUpdateDefaultWorkerPoolRunnerImages replaces the caller's
+// account's default runner images and answers them as stored.
+func (s Server) AccountUpdateDefaultWorkerPoolRunnerImages(
+	ctx context.Context,
+	req api.AccountUpdateDefaultWorkerPoolRunnerImagesRequestObject,
+) (api.AccountUpdateDefaultWorkerPoolRunnerImagesResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	got, err := s.images.Set(ctx, p.AccountID, images.Images{
+		Private: req.Body.PrivateWorkerPoolRunnerImage,
+		Public:  req.Body.PublicWorkerPoolRunnerImage,
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck // a *kernel.Invalid is answered as it is; the store names the write
+	}
+	return api.AccountUpdateDefaultWorkerPoolRunnerImages200JSONResponse{
+		Body: api.AccountUpdateDefaultWorkerPoolRunnerImagesResult{
+			PrivateWorkerPoolRunnerImage: got.Private, PublicWorkerPoolRunnerImage: got.Public,
+		},
+	}, nil
 }
 
 // SearchWorkerPools searches the pools of the caller's account in the
@@ -417,6 +530,12 @@ func poolError(err error) error {
 		p := problem.Forbidden.New(fmt.Sprintf("You may not perform %s here.", d.Action))
 		p.Action = string(d.Action)
 		return &problem.Error{Problem: p}
+	}
+	if u, ok := errors.AsType[*pool.InUse](err); ok {
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.InvalidState.Error(fmt.Sprintf(
+			"Stacks name this worker pool and would no longer reach it: %s.",
+			strings.Join(u.Stacks, ", ")))
 	}
 	if m, ok := errors.AsType[*pool.Missing](err); ok {
 		//nolint:wrapcheck // a problem, answered as it is

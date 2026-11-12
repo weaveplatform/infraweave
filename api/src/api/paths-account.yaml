@@ -22,8 +22,9 @@ paths:
     get:
       description: >-
         The runner image a private worker pool's runs use when neither the
-        stack nor the run names one. Until worker pools are served, the
-        infraweave Terraform runner image.
+        stack nor the run names one: the account's default, as
+        accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the
+        launcher's default, the infraweave Terraform runner image.
       operationId: defaultPrivateWorkerPoolRunnerImage
       x-infraweave-feature: account-details
       x-infraweave-action: AUTHENTICATED

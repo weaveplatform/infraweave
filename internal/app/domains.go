@@ -96,8 +96,11 @@ func newDomains(
 		Authz:    access.Authorizer(),
 		Bindings: access.Bindings(),
 		Grants:   access.Grants(),
+		Pools:    workers.Pools(),
 		Events:   events,
 	})
+	workers.GuardPools(stacks.PoolGuard())
+	workers.BindStacks(stacks.SpaceOf())
 	access.GuardSpaces(stacks.SpaceGuard())
 	access.ResolveSubjects(stacksassembly.Entity, stacks.SpaceOf())
 	access.ResolveSubjects(stacksassembly.BindingEntity, stacks.BindingSpaceOf())

@@ -55,7 +55,11 @@ func orphansTask(q tx.Querier, log *slog.Logger) cron.Task {
 		Kind:  CountOrphans,
 		Every: orphansEvery,
 		Handler: func(ctx context.Context, _ queue.Job) error {
-			keys := slices.Concat(accessassembly.Keys(), stacksassembly.Keys())
+			keys := slices.Concat(
+				accessassembly.Keys(),
+				stacksassembly.Keys(),
+				workersassembly.Keys(),
+			)
 			counts, err := integrity.Count(ctx, q, keys, held())
 			if err != nil {
 				return err //nolint:wrapcheck // names the column

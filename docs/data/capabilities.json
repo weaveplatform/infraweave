@@ -58,7 +58,7 @@
         "phase": "P3",
         "also": "P8, P14, P15",
         "state": "partial",
-        "notes": "`id`, `name`, `type` and `defaultPrivateWorkerPoolRunnerImage` are served (P3), the image as infraweave's Terraform runner image until P8 sets an account's default; `defaultPublicWorkerPoolRunnerImage`, `outgoingIPAddresses` and `spaceliftAwsAccountId` arrive with their phases"
+        "notes": "`id`, `name`, `type` and `defaultPrivateWorkerPoolRunnerImage` are served (P3), the image as the account's default that `accountUpdateDefaultWorkerPoolRunnerImages` sets (P8), else infraweave's Terraform runner image; `defaultPublicWorkerPoolRunnerImage`, `outgoingIPAddresses` and `spaceliftAwsAccountId` arrive with their phases"
       }
     },
     {

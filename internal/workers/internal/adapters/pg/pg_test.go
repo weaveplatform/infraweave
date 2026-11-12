@@ -12,6 +12,7 @@ import (
 	"errors"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -25,8 +26,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
@@ -571,8 +574,8 @@ func TestAccPoolSearch(t *testing.T) {
 }
 
 // TestAccPoolPurgeAndGuard deletes a pool with its workers and nonces,
-// purges a deleted account a batch at a time, and reports the spaces
-// pools live in.
+// purges a deleted account's runner images, pools, workers and nonces a
+// batch at a time, and reports the spaces pools live in.
 func TestAccPoolPurgeAndGuard(t *testing.T) {
 	f := newFixture(t)
 	ctx := t.Context()
@@ -623,7 +626,10 @@ func TestAccPoolPurgeAndGuard(t *testing.T) {
 		t.Errorf("after a delete: %d workers, %d nonces, %d pools",
 			count("workers"), count("worker_nonces"), count("worker_pools"))
 	}
-	for range 3 {
+	if err := f.store.SetRunnerImages(ctx, f.acct, images.Images{Private: ptr("x")}); err != nil {
+		t.Fatal(err)
+	}
+	for range 4 {
 		done, err := f.svc.Purge(ctx, f.acct, 1)
 		if err != nil || done {
 			t.Fatalf("Purge = %t, %v", done, err)
@@ -667,8 +673,11 @@ func TestAccUnavailable(t *testing.T) {
 			t.Errorf("%s on a closed pool = %v", name, err)
 		}
 	}
-	if len(pg.Held()) != 4 || len(pg.SealedColumns()) != 1 {
-		t.Errorf("held %v, sealed %v", pg.Held(), pg.SealedColumns())
+	if _, err := s.Share(ctx, acct, p.ID); err == nil || errors.Is(err, pool.ErrNotFound) {
+		t.Errorf("Share on a closed pool = %v", err)
+	}
+	if len(pg.Held()) != 5 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
+		t.Errorf("held %v, keys %v, sealed %v", pg.Held(), pg.Keys(), pg.SealedColumns())
 	}
 }
 
@@ -681,5 +690,267 @@ func TestAccWriteMissing(t *testing.T) {
 	})
 	if !errors.Is(err, pool.ErrNotFound) {
 		t.Errorf("Write of a missing pool = %v", err)
+	}
+}
+
+// guard reports uses as the stacks that name every pool, failing when
+// err is set.
+type guard struct {
+	uses []workersapi.PoolUse
+	err  error
+}
+
+func (g guard) PoolInUse(
+	context.Context,
+	kernel.AccountID,
+	kernel.ULID,
+) ([]workersapi.PoolUse, error) {
+	return g.uses, g.err
+}
+
+// TestAccHold checks that a space holds the pools of the spaces it
+// reaches through inheriting spaces, and no other.
+func TestAccHold(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	top, err := f.svc.Create(ctx, f.admin, pool.Input{Name: "Top"}, f.csr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	team, err := f.svc.Create(ctx, f.admin, pool.Input{Name: "Team", Space: "team"}, f.csr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct {
+		space, id kernel.ULID
+		ok        bool
+	}{
+		"its own space's":            {space: f.team, id: team.ID, ok: true},
+		"an inherited space's":       {space: f.team, id: top.ID, ok: true},
+		"a space that inherits none": {space: f.hidden, id: top.ID},
+		"a space below's":            {space: f.acct.ULID, id: team.ID},
+		"a missing pool":             {space: f.team, id: kernel.NewULID()},
+	} {
+		err := f.svc.Hold(ctx, f.acct, tc.space, tc.id)
+		if tc.ok && err != nil || !tc.ok && !errors.Is(err, workersapi.ErrNoPool) {
+			t.Errorf("Hold of %s = %v", name, err)
+		}
+	}
+	deps := f.deps
+	deps.Spaces = spaces{nodes: f.tree.nodes, err: errDown}
+	if err := pool.New(deps).Hold(ctx, f.acct, f.team, top.ID); !errors.Is(err, errDown) {
+		t.Errorf("Hold with spaces down = %v", err)
+	}
+}
+
+// TestAccAttachable lists the pools a stack or a space reaches, among the
+// spaces the caller reads.
+func TestAccAttachable(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	for _, in := range []pool.Input{
+		{Name: "Top"}, {Name: "Team", Space: "team"}, {Name: "Hidden", Space: "hidden"},
+	} {
+		if _, err := f.svc.Create(ctx, f.admin, in, f.csr); err != nil {
+			t.Fatal(err)
+		}
+	}
+	names := func(res search.Result[pool.Pool], err error) []string {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := make([]string, 0, len(res.Edges))
+		for _, e := range res.Edges {
+			out = append(out, e.Node.Name)
+		}
+		return out
+	}
+	for _, tc := range []struct {
+		who   kernel.Principal
+		space string
+		want  []string
+	}{
+		{f.admin, "team", []string{"Team", "Top"}},
+		{f.admin, "hidden", []string{"Hidden"}},
+		{f.admin, "acme", []string{"Top"}},
+		{f.reader, "team", []string{"Team", "Top"}},
+		{f.reader, "hidden", nil},
+	} {
+		got := names(f.svc.AttachableInSpace(ctx, tc.who, tc.space, search.Input{}))
+		if !slices.Equal(got, tc.want) {
+			t.Errorf(
+				"%s's pools attachable in %s = %v, want %v",
+				tc.who.Login,
+				tc.space,
+				got,
+				tc.want,
+			)
+		}
+	}
+	if _, err := f.svc.AttachableInSpace(ctx, f.admin, "nowhere", search.Input{}); !isMissing(err) {
+		t.Errorf("AttachableInSpace(nowhere) = %v", err)
+	}
+	if _, err := f.svc.AttachableToStack(ctx, f.admin, "infra", search.Input{}); !isMissing(err) {
+		t.Errorf("AttachableToStack before a binding = %v", err)
+	}
+	f.svc.BindStacks(func(_ context.Context, _ kernel.AccountID, id string) (kernel.ULID, error) {
+		switch id {
+		case "gone":
+			return kernel.ULID{}, accessapi.ErrNoSubject
+		case "down":
+			return kernel.ULID{}, errDown
+		}
+		return f.team, nil
+	})
+	if got := names(
+		f.svc.AttachableToStack(ctx, f.admin, "infra", search.Input{}),
+	); !slices.Equal(
+		got,
+		[]string{"Team", "Top"},
+	) {
+		t.Errorf("the pools attachable to a stack in team = %v", got)
+	}
+	if _, err := f.svc.AttachableToStack(ctx, f.admin, "gone", search.Input{}); !isMissing(err) {
+		t.Errorf("AttachableToStack(gone) = %v", err)
+	}
+	if _, err := f.svc.AttachableToStack(
+		ctx,
+		f.admin,
+		"down",
+		search.Input{},
+	); !errors.Is(
+		err,
+		errDown,
+	) {
+		t.Errorf("AttachableToStack with stacks down = %v", err)
+	}
+	deps := f.deps
+	deps.Spaces = spaces{nodes: f.tree.nodes, err: errDown}
+	if _, err := pool.New(deps).AttachableInSpace(ctx, f.admin, "team",
+		search.Input{}); !errors.Is(err, errDown) {
+		t.Errorf("AttachableInSpace with spaces down = %v", err)
+	}
+	deps = f.deps
+	deps.Authz = authz{grants: f.grants, err: errDown}
+	svc := pool.New(deps)
+	svc.BindStacks(func(context.Context, kernel.AccountID, string) (kernel.ULID, error) {
+		return f.team, nil
+	})
+	if _, err := svc.AttachableToStack(
+		ctx,
+		f.admin,
+		"infra",
+		search.Input{},
+	); !errors.Is(
+		err,
+		errDown,
+	) {
+		t.Errorf("AttachableToStack with authz down = %v", err)
+	}
+}
+
+// TestAccInUse checks that a pool a stack names refuses its delete, and a
+// move that leaves the stack out of reach, naming the stacks.
+func TestAccInUse(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	p, err := f.svc.Create(ctx, f.admin, pool.Input{Name: "Top"}, f.csr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.svc.Guard(guard{uses: []workersapi.PoolUse{
+		{Stack: "web", Space: f.team}, {Stack: "api", Space: f.acct.ULID},
+	}})
+	f.svc.Guard(guard{})
+	_, err = f.svc.Delete(ctx, f.admin, p.ID.String(), kernel.Expect{})
+	if u, ok := errors.AsType[*pool.InUse](
+		err,
+	); !ok ||
+		!slices.Equal(u.Stacks, []string{"api", "web"}) ||
+		u.Error() == "" {
+		t.Errorf("Delete of a pool in use = %v", err)
+	}
+	_, err = f.svc.Update(ctx, f.admin, p.ID.String(), kernel.Expect{},
+		pool.Input{Name: "Top", Space: "team"})
+	if u, ok := errors.AsType[*pool.InUse](err); !ok || !slices.Equal(u.Stacks, []string{"api"}) {
+		t.Errorf("a move out of api's reach = %v", err)
+	}
+
+	other := pool.New(f.deps)
+	other.Guard(guard{uses: []workersapi.PoolUse{{Stack: "web", Space: f.team}}})
+	if _, err := other.Update(ctx, f.admin, p.ID.String(), kernel.Expect{},
+		pool.Input{Name: "Top", Space: "team"}); err != nil {
+		t.Errorf("a move within web's reach = %v", err)
+	}
+	failing := pool.New(f.deps)
+	failing.Guard(guard{err: errDown})
+	if _, err := failing.Delete(
+		ctx,
+		f.admin,
+		p.ID.String(),
+		kernel.Expect{},
+	); !errors.Is(
+		err,
+		errDown,
+	) {
+		t.Errorf("Delete with the guard down = %v", err)
+	}
+	deps := f.deps
+	deps.Spaces = treeFails{spaces{nodes: f.tree.nodes}}
+	moving := pool.New(deps)
+	moving.Guard(guard{})
+	if _, err := moving.Update(ctx, f.admin, p.ID.String(), kernel.Expect{},
+		pool.Input{Name: "Top", Space: "acme"}); !errors.Is(err, errDown) {
+		t.Errorf("a move with the tree down = %v", err)
+	}
+}
+
+// treeFails fails Tree alone.
+type treeFails struct{ spaces }
+
+func (treeFails) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode, error) {
+	return nil, errDown
+}
+
+// TestAccRunnerImages sets and reads an account's default runner images.
+func TestAccRunnerImages(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	img := images.New(f.store)
+	if got, err := img.Private(ctx, f.acct); err != nil || got != images.DefaultPrivate {
+		t.Errorf("Private with none set = %q, %v", got, err)
+	}
+	set, err := img.Set(
+		ctx,
+		f.acct,
+		images.Images{Private: ptr(" ghcr.io/acme/runner:1 "), Public: ptr("")},
+	)
+	if err != nil || *set.Private != "ghcr.io/acme/runner:1" || set.Public != nil {
+		t.Errorf("Set = %+v, %v", set, err)
+	}
+	if got, err := img.Private(ctx, f.acct); err != nil || got != "ghcr.io/acme/runner:1" {
+		t.Errorf("Private = %q, %v", got, err)
+	}
+	if _, err := img.Set(ctx, f.acct, images.Images{}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := img.Private(ctx, f.acct); err != nil || got != images.DefaultPrivate {
+		t.Errorf("Private once cleared = %q, %v", got, err)
+	}
+	_, err = img.Set(ctx, f.acct, images.Images{
+		Private: ptr("two words"), Public: ptr(strings.Repeat("x", 256)),
+	})
+	inv, ok := errors.AsType[*kernel.Invalid](err)
+	if !ok || len(inv.Errors) != 2 || inv.Errors[0].Pointer != "/privateWorkerPoolRunnerImage" ||
+		inv.Errors[1].Reason != kernel.ReasonMaxLength {
+		t.Errorf("Set of refused images = %v", err)
+	}
+	f.db.Close()
+	if _, err := img.Private(ctx, f.acct); err == nil {
+		t.Error("Private read a closed pool")
+	}
+	if _, err := img.Set(ctx, f.acct, images.Images{}); err == nil {
+		t.Error("Set wrote a closed pool")
 	}
 }

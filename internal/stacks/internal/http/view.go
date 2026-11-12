@@ -91,6 +91,9 @@ func viewOf(
 	if st.VCSIntegration != nil {
 		v.VcsIntegration = &api.VCSIntegrationRef{Id: st.VCSIntegration.String()}
 	}
+	if st.WorkerPool != nil {
+		v.WorkerPool = &api.WorkerPoolRef{Id: st.WorkerPool.String()}
+	}
 	if l := st.Lock; l != nil {
 		at := unix(l.At.Unix())
 		v.LockedAt, v.LockedBy = &at, &l.By

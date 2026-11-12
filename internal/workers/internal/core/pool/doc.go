@@ -5,10 +5,15 @@
 // may read keeping the rest out; replaces their settings, a move needing
 // WORKER_POOL_CREATE on the new space; resets a pool's certificate under
 // a new serial, which leaves registrations under the old one behind; and
-// deletes a pool with its workers. Token is a pool's pool token and
-// PreparingTimeout its effective preparing timeout. SpaceOf finds a
-// pool's space for the access domain's middleware, and SpaceGuard
-// refuses deleting a space a pool lives in.
+// deletes a pool with its workers. A delete, and a move that leaves a
+// stack naming the pool out of reach, are refused as an InUse naming the
+// stacks the registered workersapi.PoolGuards report. Hold holds a pool
+// for a stack in a space that reaches it, as workersapi.Pools, and the
+// attachable reads list the pools a stack, through the stacks domain's
+// SpaceOf that BindStacks binds, or a space reaches. Token is a pool's
+// pool token and PreparingTimeout its effective preparing timeout.
+// SpaceOf finds a pool's space for the access domain's middleware, and
+// SpaceGuard refuses deleting a space a pool lives in.
 //
 // ref: decisions 0007 and 0008
 //
@@ -20,7 +25,7 @@
 //
 // # Dependencies
 //
-// It imports the access api package, internal/kernel and its search
-// package, platform/tx and the domain's credential package. The domain's
-// assembly constructs it over the pg adapter.
+// It imports the access and workers api packages, internal/kernel and
+// its search package, platform/tx and the domain's credential package.
+// The domain's assembly constructs it over the pg adapter.
 package pool

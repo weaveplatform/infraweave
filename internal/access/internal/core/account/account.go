@@ -8,15 +8,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// DefaultRunnerImage is the runner image a private worker pool's runs use
-// when neither the stack nor the run names one, which
-// defaultPrivateWorkerPoolRunnerImage answers until P8's launcher sets
-// the account's default. It is untagged, so it resolves to the latest
-// release of the Terraform runner image.
-//
-// ref: decision 0008
-const DefaultRunnerImage = "ghcr.io/weaveplatform/infraweave-runner-terraform"
-
 // Account is a business entity within an organization and the data
 // boundary. Its slug is unique across the installation and never changes;
 // its name may. An account starts unclaimed until an organization admin

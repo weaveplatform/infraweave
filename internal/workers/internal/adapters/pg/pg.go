@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	sqlsearch "github.com/weaveplatform/infraweave/internal/platform/sql/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
@@ -44,7 +45,16 @@ func Held() []integrity.Held {
 		{Entity: "account", Table: "worker_pools", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "workers", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "worker_nonces", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "worker_runner_images", Columns: []string{"account_id"}},
 		{Entity: "space", Table: "worker_pools", Columns: []string{"account_id", "space_id"}},
+	}
+}
+
+// Keys are the workers domain's rows other domains hold: a pool, by its
+// account and ULID.
+func Keys() []integrity.Key {
+	return []integrity.Key{
+		{Entity: "worker_pool", Table: "worker_pools", Columns: []string{"account_id", "id"}},
 	}
 }
 
@@ -77,7 +87,10 @@ type Store struct {
 // New returns the store on db, sealing the pool CA's key under seal.
 func New(db tx.Querier, seal Sealer) *Store { return &Store{db: db, seal: seal} }
 
-var _ pool.Store = (*Store)(nil)
+var (
+	_ pool.Store   = (*Store)(nil)
+	_ images.Store = (*Store)(nil)
+)
 
 // Authority reads the pool CA, creating it with mint when there is none,
 // and takes its next serial, which locks the CA's row until ctx's
@@ -223,6 +236,54 @@ func (s *Store) Get(
 	return p, nil
 }
 
+// Share reads the space of acct's pool id, locked FOR SHARE.
+func (s *Store) Share(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+) (kernel.ULID, error) {
+	var space kernel.ULID
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT space_id FROM worker_pools
+		WHERE account_id = $1 AND id = $2 FOR SHARE`, acct, id).Scan(&space)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return space, fmt.Errorf("%w: %s", pool.ErrNotFound, id)
+	case err != nil:
+		return space, fmt.Errorf("workers: hold worker pool %s: %w", id, sql.Unavailable(err))
+	}
+	return space, nil
+}
+
+// RunnerImages reads acct's default runner images, both nil when it sets
+// none.
+func (s *Store) RunnerImages(ctx context.Context, acct kernel.AccountID) (images.Images, error) {
+	var out images.Images
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT private_image, public_image
+		FROM worker_runner_images WHERE account_id = $1`, acct).Scan(&out.Private, &out.Public)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return out, fmt.Errorf("workers: read account %s's runner images: %w", acct,
+			sql.Unavailable(err))
+	}
+	return out, nil
+}
+
+// SetRunnerImages writes acct's default runner images.
+func (s *Store) SetRunnerImages(
+	ctx context.Context,
+	acct kernel.AccountID,
+	in images.Images,
+) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO worker_runner_images
+		(account_id, private_image, public_image) VALUES ($1, $2, $3)
+		ON CONFLICT (account_id) DO UPDATE SET private_image = $2, public_image = $3,
+			updated_at = now()`, acct, in.Private, in.Public)
+	if err != nil {
+		return fmt.Errorf("workers: write account %s's runner images: %w", acct,
+			sql.Unavailable(err))
+	}
+	return nil
+}
+
 // Delete deletes acct's pool id with its workers and their nonces.
 func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
 	for _, stmt := range []string{
@@ -255,14 +316,15 @@ func (s *Store) InSpace(
 // purged are the tables Purge empties of an account, each with the key
 // that names a row within the account, a pool's rows last.
 var purged = []struct{ table, key string }{
+	{"worker_runner_images", "account_id"},
 	{"worker_nonces", "pool_id, jti"},
 	{"workers", "id"},
 	{"worker_pools", "id"},
 }
 
 // Purge deletes up to batch of the deleted account acct's rows from the
-// first of its nonces, workers and pools that has any, and reports
-// whether none is left.
+// first of its runner images, nonces, workers and pools that has any,
+// and reports whether none is left.
 func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {
 	for _, p := range purged {
 		tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM `+p.table+

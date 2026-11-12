@@ -58,6 +58,10 @@ func (UnimplementedStrict) AccountUpdateAwarenessSourceSurvey(context.Context, A
 	return nil, &problem.NotImplementedError{OperationID: "accountUpdateAwarenessSourceSurvey", Route: "POST /account/update-awareness-source-survey"}
 }
 
+func (UnimplementedStrict) AccountUpdateDefaultWorkerPoolRunnerImages(context.Context, AccountUpdateDefaultWorkerPoolRunnerImagesRequestObject) (AccountUpdateDefaultWorkerPoolRunnerImagesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountUpdateDefaultWorkerPoolRunnerImages", Route: "POST /account/update-default-worker-pool-runner-images"}
+}
+
 func (UnimplementedStrict) AccountUpdateSecurityEmail(context.Context, AccountUpdateSecurityEmailRequestObject) (AccountUpdateSecurityEmailResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "accountUpdateSecurityEmail", Route: "POST /account/update-security-email"}
 }

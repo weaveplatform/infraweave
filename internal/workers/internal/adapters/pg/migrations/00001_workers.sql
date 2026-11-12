@@ -77,3 +77,14 @@ CREATE TABLE worker_nonces (
     expires_at timestamptz NOT NULL,
     PRIMARY KEY (account_id, pool_id, jti)
 );
+
+-- An account's default runner images, which accountUpdateDefaultWorkerPoolRunnerImages
+-- sets: the image a run on a private or a public pool uses when neither
+-- its runtime configuration nor its stack names one. NULL takes the
+-- launcher's default. An account with neither set has no row.
+CREATE TABLE worker_runner_images (
+    account_id    uuid        PRIMARY KEY,
+    private_image text,
+    public_image  text,
+    updated_at    timestamptz NOT NULL DEFAULT now()
+);

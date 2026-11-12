@@ -163,9 +163,9 @@ func TestUnitServerListeners(t *testing.T) {
 			}
 			if code := get(
 				t,
-				"http://"+r.APIAddr()+"/api/v1/stacks/infra/attachable-worker-pools",
+				"http://"+r.APIAddr()+"/api/v1/stacks/infra/attachable-policies",
 			); code != http.StatusNotImplemented {
-				t.Errorf("API /api/v1/stacks/infra/attachable-worker-pools: %d, want 501", code)
+				t.Errorf("API /api/v1/stacks/infra/attachable-policies: %d, want 501", code)
 			}
 		})
 	}
