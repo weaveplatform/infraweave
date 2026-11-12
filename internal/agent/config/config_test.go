@@ -77,13 +77,15 @@ func TestUnitLoadPrecedence(t *testing.T) {
     zone: a
   docker:
     network: runs
+    runner_binary: /opt/linux/infraweave
 `)
 	c, err := load(t, "--config", f)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.Launcher.AdminListen != ":7000" || c.Launcher.PollTimeout != 30*time.Second ||
-		c.Launcher.Docker.Network != "runs" || c.Launcher.Metadata["zone"] != "a" {
+		c.Launcher.Docker.Network != "runs" || c.Launcher.Metadata["zone"] != "a" ||
+		c.Launcher.Docker.RunnerBinary != "/opt/linux/infraweave" {
 		t.Fatalf("file: %+v", c.Launcher)
 	}
 

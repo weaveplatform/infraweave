@@ -55,7 +55,9 @@ func Launcher() *cobra.Command {
 		// held for up to launcher.poll_timeout.
 		doer: &http.Client{},
 		engine: func(c config.Docker) (Engine, error) {
-			return docker.New(docker.Config{Network: c.Network, Runtime: c.Runtime})
+			return docker.New(docker.Config{
+				Binary: c.RunnerBinary, Network: c.Network, Runtime: c.Runtime,
+			})
 		},
 	})
 }

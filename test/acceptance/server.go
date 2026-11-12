@@ -120,6 +120,26 @@ func StartServer(
 	bin, dir, coverDir, mode string,
 	config []byte,
 ) (*Server, error) {
+	return start(ctx, bin, dir, coverDir, mode, config, nil)
+}
+
+// StartLauncher is StartServer for infraweave launcher, which reaches the
+// Docker daemon at dockerHost.
+func StartLauncher(
+	ctx context.Context,
+	bin, dir, coverDir string,
+	config []byte,
+	dockerHost string,
+) (*Server, error) {
+	return start(ctx, bin, dir, coverDir, "launcher", config, []string{"DOCKER_HOST=" + dockerHost})
+}
+
+func start(
+	ctx context.Context,
+	bin, dir, coverDir, mode string,
+	config []byte,
+	env []string,
+) (*Server, error) {
 	path := filepath.Join(dir, "config.yaml")
 	if err := os.WriteFile(path, config, 0o600); err != nil {
 		return nil, fmt.Errorf("write config: %w", err)
@@ -128,6 +148,7 @@ func StartServer(
 	// The process outlives the step that starts it; Stop ends it.
 	s.cmd = exec.Command(bin, mode, "--config", path) //nolint:noctx // see above
 	s.cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir, "INFRAWEAVE_SECRETS_KEK="+KEK)
+	s.cmd.Env = append(s.cmd.Env, env...)
 	s.cmd.Stdout, s.cmd.Stderr = &s.stdout, &s.stderr
 	if err := s.cmd.Start(); err != nil {
 		return nil, fmt.Errorf("start infraweave: %w", err)

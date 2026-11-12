@@ -36,7 +36,10 @@ var Labs = []Partition{
 //
 // ref: decision 0016
 var Partitions = []Partition{
-	{Name: "runs", Tags: []string{"@terraform", "@tofu", "@kubernetes", "@flows-agent"}},
+	{
+		Name: "runs",
+		Tags: []string{"@docker", "@terraform", "@tofu", "@kubernetes", "@flows-agent"},
+	},
 	{
 		Name: "integrations",
 		Tags: []string{

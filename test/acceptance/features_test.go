@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -289,6 +290,9 @@ type world struct {
 	// queue is the queue settings the next server the scenario starts
 	// runs with; nil keeps the defaults.
 	queue map[string]any
+	// sections are further top-level sections every server of the
+	// scenario starts with, such as worker and run, by their key.
+	sections map[string]map[string]any
 	// git seeds the scenario's @vcs repositories, whose CA every server of
 	// a @vcs scenario trusts.
 	git *giteaSteps
@@ -467,6 +471,11 @@ func (w *world) startServer(ctx context.Context, settings map[string]any) (*Serv
 	}
 	if w.queue != nil {
 		if config, err = withSection(config, "queue", w.queue); err != nil {
+			return nil, err
+		}
+	}
+	for _, key := range slices.Sorted(maps.Keys(w.sections)) {
+		if config, err = withSection(config, key, w.sections[key]); err != nil {
 			return nil, err
 		}
 	}

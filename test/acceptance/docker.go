@@ -136,7 +136,7 @@ type Dependencies struct {
 	// starts migrated. Nil leaves the template empty.
 	Migrate func(ctx context.Context, dsn string) error
 
-	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce sync.Once
+	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce, launchOnce sync.Once
 
 	pg       *Database
 	pgErr    error
@@ -151,6 +151,9 @@ type Dependencies struct {
 	giteaErr error
 	repos    atomic.Int64
 	keys     atomic.Int64
+
+	launchers Launchers
+	launchErr error
 
 	mu      sync.Mutex
 	cleanup []func(context.Context) error
@@ -496,6 +499,16 @@ func (d *Dependencies) onClose(f func(context.Context) error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.cleanup = append(d.cleanup, f)
+}
+
+// Launchers returns what a @docker scenario's launchers need, building it
+// into dir from the module at root on first use; Close removes the image.
+func (d *Dependencies) Launchers(ctx context.Context, root, dir string) (*Launchers, error) {
+	d.launchOnce.Do(func() {
+		d.launchErr = d.launchers.prepare(ctx, root, dir)
+		d.onClose(d.launchers.Close)
+	})
+	return &d.launchers, d.launchErr
 }
 
 // Close stops every dependency that started.
