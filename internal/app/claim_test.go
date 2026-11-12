@@ -38,7 +38,8 @@ func newClaimWorld(t *testing.T) *claimWorld {
 		cancel()
 		wg.Wait()
 	})
-	b, err := newDomains(config.Defaults(), h.db, h.keys, nil, testEvents(t, h.q), discard())
+	b, err := newDomains(config.Defaults(), h.db, h.keys, h.blobs.Objects, nil, testEvents(t, h.q),
+		discard())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +183,7 @@ func claimed(t *testing.T, p polled) kernel.ULID {
 		return kernel.ULID{}
 	}
 	run, err := kernel.ParseULID(p.a.Run)
-	if err != nil || p.a.State != workerapi.PREPARING || p.a.RunToken == "" {
+	if err != nil || p.a.State != workerapi.AssignmentStatePREPARING || p.a.RunToken == "" {
 		t.Errorf("assignment %+v", *p.a)
 	}
 	return run

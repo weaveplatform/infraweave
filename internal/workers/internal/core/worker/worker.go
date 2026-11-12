@@ -245,6 +245,7 @@ type Service struct {
 	tokens    Tokens
 	limits    Limits
 	scheduler workersapi.Scheduler
+	reports   workersapi.Reports
 	version   string
 	pollMax   time.Duration
 	now       func() time.Time
@@ -270,6 +271,10 @@ func New(d Deps) *Service {
 // BindScheduler binds the runs domain's claim, which polls claim their
 // pool's next run through; until then a poll claims none.
 func (s *Service) BindScheduler(sch workersapi.Scheduler) { s.scheduler = sch }
+
+// BindReports binds the runs domain's reports, which a claimed run's
+// reports and uploads go to; until then each answers ErrNotOnWorker.
+func (s *Service) BindReports(r workersapi.Reports) { s.reports = r }
 
 // Registration is a registered worker and its session token.
 type Registration struct {

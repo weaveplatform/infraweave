@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
@@ -42,15 +43,20 @@ func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 // the operations whose subject is a run.
 const Entity = "run"
 
+// Objects are the objects a run's worker uploads, as blob_objects
+// records them; blobs.Objects is one.
+type Objects = report.Objects
+
 // Deps are what the runs domain takes from the platform and the domains
 // before it: the database, the keys a run's artifact key is sealed under,
-// the access domain's spaces, authorizer and the tokens a handover mints,
-// the stacks domain, the configuration domain's environment, which a
-// handover opens, the outbox its runs' events go to, the queue its jobs
-// go to, and a clock, time.Now when nil.
+// the objects its workers upload, the access domain's spaces, authorizer
+// and the tokens a handover mints, the stacks domain, the configuration
+// domain's environment, which a handover opens, the outbox its runs'
+// events go to, the queue its jobs go to, and a clock, time.Now when nil.
 type Deps struct {
 	DB          queue.DB
 	Keys        pg.Sealer
+	Objects     Objects
 	Spaces      accessapi.Spaces
 	Authz       accessapi.Authorizer
 	Tokens      handover.Tokens
@@ -69,6 +75,7 @@ type Domain struct {
 	scheduler *schedule.Scheduler
 	claims    *schedule.Claims
 	handover  *handover.Service
+	reports   *report.Service
 	trigger   *trigger.Service
 	read      *read.Service
 	control   *control.Service
@@ -93,6 +100,9 @@ func New(d Deps) *Domain {
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Environment: d.Environment,
 			Tokens: d.Tokens,
 		}),
+		reports: report.New(report.Deps{
+			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc,
+		}),
 		trigger: trigger.New(trigger.Deps{
 			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,
 		}),
@@ -112,11 +122,21 @@ func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.read.SpaceOf }
 // transaction holds an account's every run and transition at once.
 const PurgeBatch = 500
 
-// Purge deletes the deleted account acct's runs, with their transitions,
-// and its stacks' run locks, tracked runs and outputs, PurgeBatch rows at
-// a time. internal/app runs it for each accessapi.Deleted; a purge
-// stopped part way keeps what it deleted, and running it again finishes.
+// Purge deletes the deleted account acct's runs' log chunks and other
+// uploads with their objects, then its runs, with their transitions, and
+// its stacks' run locks, tracked runs and outputs, PurgeBatch rows at a
+// time. internal/app runs it for each accessapi.Deleted; a purge stopped
+// part way keeps what it deleted, and running it again finishes.
 func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	for {
+		done, err := d.reports.PurgeObjects(ctx, acct, PurgeBatch)
+		if err != nil {
+			return err //nolint:wrapcheck // the service names the purge
+		}
+		if done {
+			break
+		}
+	}
 	for {
 		done, err := d.store.Purge(ctx, acct, PurgeBatch)
 		if err != nil || done {
@@ -178,6 +198,10 @@ type scheduler struct {
 	*schedule.Claims
 	*handover.Service
 }
+
+// Reports is the domain's side of a claimed run's reports and uploads, a
+// back edge internal/app binds in the workers domain.
+func (d *Domain) Reports() workersapi.Reports { return d.reports }
 
 // BindExpressions binds the expression registry, which internal/app
 // builds from the domains' Surfaces after constructing them, and which a

@@ -5,15 +5,20 @@
 //
 // Objects is serve's side, over an objectstore.Writer. Begin records a
 // pending row for a signed upload's declared size and SHA-256 before the
-// URL is issued; Put records one and writes the object itself, sealing a
-// sealed store's object under a content key of its own, which it seals
-// into content_key_sealed with associated data
-// blob_objects.content_key_sealed:<store>/<key>. Both insert on the pool
-// outside the caller's transaction, so a rollback leaves the row for
-// blob.expire. Commit and CommitUpload run in the caller's transaction:
-// CommitUpload checks the size with Head and, on gcs and azureblob, whose
-// URLs bind no SHA-256, reads the object back to compare; a mismatch
-// leaves the row pending. Open reads a live object, opening a sealed one.
+// URL is issued, and finds it again when the same declaration repeats;
+// BeginSealed does so for an upload to a sealed store that its uploader
+// sealed under a content key the server derives too. SignPut and SignGet
+// sign the URLs, a GET only for a live object. Put records a row and
+// writes the object itself, sealing a sealed store's object under a
+// content key of its own. Each sealed content key goes into
+// content_key_sealed with associated data
+// blob_objects.content_key_sealed:<store>/<key>. Begin, BeginSealed and
+// Put insert on the pool outside the caller's transaction, so a rollback
+// leaves the row for blob.expire. Commit and CommitUpload run in the
+// caller's transaction: CommitUpload checks the size with Head and, on gcs
+// and azureblob, whose URLs bind no SHA-256, reads the object back to
+// compare, and answers the size and SHA-256; a mismatch leaves the row
+// pending. Open reads a live object, opening a sealed one.
 // Delete marks the row deleting and enqueues blob.delete in the caller's
 // transaction. Reaper is the scheduler's side, over the full Store:
 // blob.delete removes the object and then the row, and blob.expire marks

@@ -42,13 +42,14 @@ func awaitLockWait(ctx context.Context, t *testing.T, q tx.Querier) {
 }
 
 // holdWorld is the domains as the server wires them over a fresh
-// database, with an account whose top space holds two spaces, kept and
-// gone, and a member who administers the top space. db and keys build
-// another replica over the same database.
+// database and an fs object store, with an account whose top space holds
+// two spaces, kept and gone, and a member who administers the top space.
+// db, keys and blobs build another replica over the same database.
 type holdWorld struct {
 	d          Domains
 	db         *sql.DB
 	keys       *crypt.Keyring
+	blobs      Blobs
 	q          *pgxpool.Pool
 	acct       kernel.AccountID
 	kept, gone kernel.ULID
@@ -61,10 +62,12 @@ func newHoldWorld(t *testing.T) holdWorld {
 	db := sqltest.Open(t)
 	q := db.Primary()
 	keys := testKeyring(t, q)
+	b := testObjects(t, q, keys)
 	d, err := newDomains(
 		config.Defaults(),
 		db,
 		keys,
+		b.Objects,
 		nil,
 		testEvents(t, q),
 		slog.New(slog.DiscardHandler),
@@ -131,7 +134,8 @@ func newHoldWorld(t *testing.T) holdWorld {
 		OrganizationID: org, AccountID: acct, MemberID: member,
 	})
 	return holdWorld{
-		d: d, db: db, keys: keys, q: q, acct: acct, kept: kept, gone: gone, admin: admin,
+		d: d, db: db, keys: keys, blobs: b, q: q, acct: acct, kept: kept, gone: gone,
+		admin: admin,
 	}
 }
 

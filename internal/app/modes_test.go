@@ -55,6 +55,20 @@ func testEvents(t testing.TB, db queue.DB) *outbox.Outbox {
 	return outbox.New(db, queue.New(db), newKinds())
 }
 
+// testObjects is object storage as serve holds it, over an fs store in a
+// directory of the test's own, with the fs driver's signed-URL routes.
+func testObjects(t testing.TB, db queue.DB, keys *crypt.Keyring) Blobs {
+	t.Helper()
+	c := objectstore.Defaults()
+	c.Driver, c.FS.Root, c.FS.URL = objectstore.DriverFS, t.TempDir(), "http://infraweave.test"
+	o, err := openObjects(t.Context(), c, keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(o.close)
+	return serving(c, db, keys, o)
+}
+
 func testKeyring(t testing.TB, db crypt.Querier) *crypt.Keyring {
 	t.Helper()
 	p, closeKEK, err := openKEK(t.Context(), local(t).Secrets.KEK)

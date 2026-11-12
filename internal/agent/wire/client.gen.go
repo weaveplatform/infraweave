@@ -16,21 +16,63 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for ArtifactRecordKind.
+const (
+	ArtifactRecordKindArtifact      ArtifactRecordKind = "artifact"
+	ArtifactRecordKindObservability ArtifactRecordKind = "observability"
+	ArtifactRecordKindWorkspace     ArtifactRecordKind = "workspace"
+)
+
+// Valid indicates whether the value is a known member of the ArtifactRecordKind enum.
+func (e ArtifactRecordKind) Valid() bool {
+	switch e {
+	case ArtifactRecordKindArtifact:
+		return true
+	case ArtifactRecordKindObservability:
+		return true
+	case ArtifactRecordKindWorkspace:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AssignmentState.
 const (
-	PREPARING       AssignmentState = "PREPARING"
-	PREPARINGAPPLY  AssignmentState = "PREPARING_APPLY"
-	PREPARINGREPLAN AssignmentState = "PREPARING_REPLAN"
+	AssignmentStatePREPARING       AssignmentState = "PREPARING"
+	AssignmentStatePREPARINGAPPLY  AssignmentState = "PREPARING_APPLY"
+	AssignmentStatePREPARINGREPLAN AssignmentState = "PREPARING_REPLAN"
 )
 
 // Valid indicates whether the value is a known member of the AssignmentState enum.
 func (e AssignmentState) Valid() bool {
 	switch e {
-	case PREPARING:
+	case AssignmentStatePREPARING:
 		return true
-	case PREPARINGAPPLY:
+	case AssignmentStatePREPARINGAPPLY:
 		return true
-	case PREPARINGREPLAN:
+	case AssignmentStatePREPARINGREPLAN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NextStepAction.
+const (
+	Execute NextStepAction = "execute"
+	Exit    NextStepAction = "exit"
+	Pause   NextStepAction = "pause"
+)
+
+// Valid indicates whether the value is a known member of the NextStepAction enum.
+func (e NextStepAction) Valid() bool {
+	switch e {
+	case Execute:
+		return true
+	case Exit:
+		return true
+	case Pause:
 		return true
 	default:
 		return false
@@ -57,49 +99,73 @@ func (e ProblemScope) Valid() bool {
 
 // Defines values for ProblemFieldErrorReason.
 const (
-	Duplicate    ProblemFieldErrorReason = "duplicate"
-	Enum         ProblemFieldErrorReason = "enum"
-	Format       ProblemFieldErrorReason = "format"
-	MaxLength    ProblemFieldErrorReason = "max-length"
-	Maximum      ProblemFieldErrorReason = "maximum"
-	MinLength    ProblemFieldErrorReason = "min-length"
-	Minimum      ProblemFieldErrorReason = "minimum"
-	NotFound     ProblemFieldErrorReason = "not-found"
-	Pattern      ProblemFieldErrorReason = "pattern"
-	Required     ProblemFieldErrorReason = "required"
-	Rule         ProblemFieldErrorReason = "rule"
-	Type         ProblemFieldErrorReason = "type"
-	UnknownField ProblemFieldErrorReason = "unknown-field"
+	ProblemFieldErrorReasonDuplicate    ProblemFieldErrorReason = "duplicate"
+	ProblemFieldErrorReasonEnum         ProblemFieldErrorReason = "enum"
+	ProblemFieldErrorReasonFormat       ProblemFieldErrorReason = "format"
+	ProblemFieldErrorReasonMaxLength    ProblemFieldErrorReason = "max-length"
+	ProblemFieldErrorReasonMaximum      ProblemFieldErrorReason = "maximum"
+	ProblemFieldErrorReasonMinLength    ProblemFieldErrorReason = "min-length"
+	ProblemFieldErrorReasonMinimum      ProblemFieldErrorReason = "minimum"
+	ProblemFieldErrorReasonNotFound     ProblemFieldErrorReason = "not-found"
+	ProblemFieldErrorReasonPattern      ProblemFieldErrorReason = "pattern"
+	ProblemFieldErrorReasonRequired     ProblemFieldErrorReason = "required"
+	ProblemFieldErrorReasonRule         ProblemFieldErrorReason = "rule"
+	ProblemFieldErrorReasonType         ProblemFieldErrorReason = "type"
+	ProblemFieldErrorReasonUnknownField ProblemFieldErrorReason = "unknown-field"
 )
 
 // Valid indicates whether the value is a known member of the ProblemFieldErrorReason enum.
 func (e ProblemFieldErrorReason) Valid() bool {
 	switch e {
-	case Duplicate:
+	case ProblemFieldErrorReasonDuplicate:
 		return true
-	case Enum:
+	case ProblemFieldErrorReasonEnum:
 		return true
-	case Format:
+	case ProblemFieldErrorReasonFormat:
 		return true
-	case MaxLength:
+	case ProblemFieldErrorReasonMaxLength:
 		return true
-	case Maximum:
+	case ProblemFieldErrorReasonMaximum:
 		return true
-	case MinLength:
+	case ProblemFieldErrorReasonMinLength:
 		return true
-	case Minimum:
+	case ProblemFieldErrorReasonMinimum:
 		return true
-	case NotFound:
+	case ProblemFieldErrorReasonNotFound:
 		return true
-	case Pattern:
+	case ProblemFieldErrorReasonPattern:
 		return true
-	case Required:
+	case ProblemFieldErrorReasonRequired:
 		return true
-	case Rule:
+	case ProblemFieldErrorReasonRule:
 		return true
-	case Type:
+	case ProblemFieldErrorReasonType:
 		return true
-	case UnknownField:
+	case ProblemFieldErrorReasonUnknownField:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunReportEvent.
+const (
+	Failed    RunReportEvent = "failed"
+	Started   RunReportEvent = "started"
+	Stopped   RunReportEvent = "stopped"
+	Succeeded RunReportEvent = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the RunReportEvent enum.
+func (e RunReportEvent) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case Started:
+		return true
+	case Stopped:
+		return true
+	case Succeeded:
 		return true
 	default:
 		return false
@@ -178,6 +244,86 @@ func (e Signal) Valid() bool {
 	}
 }
 
+// Defines values for UploadKind.
+const (
+	UploadKindArtifact      UploadKind = "artifact"
+	UploadKindLogChunk      UploadKind = "log-chunk"
+	UploadKindObservability UploadKind = "observability"
+	UploadKindWorkspace     UploadKind = "workspace"
+)
+
+// Valid indicates whether the value is a known member of the UploadKind enum.
+func (e UploadKind) Valid() bool {
+	switch e {
+	case UploadKindArtifact:
+		return true
+	case UploadKindLogChunk:
+		return true
+	case UploadKindObservability:
+		return true
+	case UploadKindWorkspace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkerState.
+const (
+	WorkerStateAPPLYING        WorkerState = "APPLYING"
+	WorkerStateDESTROYING      WorkerState = "DESTROYING"
+	WorkerStateINITIALIZING    WorkerState = "INITIALIZING"
+	WorkerStatePERFORMING      WorkerState = "PERFORMING"
+	WorkerStatePLANNING        WorkerState = "PLANNING"
+	WorkerStatePREPARING       WorkerState = "PREPARING"
+	WorkerStatePREPARINGAPPLY  WorkerState = "PREPARING_APPLY"
+	WorkerStatePREPARINGREPLAN WorkerState = "PREPARING_REPLAN"
+)
+
+// Valid indicates whether the value is a known member of the WorkerState enum.
+func (e WorkerState) Valid() bool {
+	switch e {
+	case WorkerStateAPPLYING:
+		return true
+	case WorkerStateDESTROYING:
+		return true
+	case WorkerStateINITIALIZING:
+		return true
+	case WorkerStatePERFORMING:
+		return true
+	case WorkerStatePLANNING:
+		return true
+	case WorkerStatePREPARING:
+		return true
+	case WorkerStatePREPARINGAPPLY:
+		return true
+	case WorkerStatePREPARINGREPLAN:
+		return true
+	default:
+		return false
+	}
+}
+
+// ArtifactRecord An uploaded artifact, workspace or observability artifact.
+type ArtifactRecord struct {
+	// Kind The upload's kind.
+	Kind ArtifactRecordKind `json:"kind"`
+
+	// Name The upload's name.
+	Name string `json:"name"`
+}
+
+// ArtifactRecordKind The upload's kind.
+type ArtifactRecordKind string
+
+// ArtifactsRequest Uploads of the run's current state, to be recorded.
+type ArtifactsRequest struct {
+	Artifacts []ArtifactRecord `json:"artifacts"`
+
+	// StateVersion The run's current state version.
+	StateVersion int64 `json:"stateVersion"`
+}
+
 // Assignment A run the poll claimed for the worker, which the launcher prepares and executes.
 type Assignment struct {
 	// Run The run's ID.
@@ -198,6 +344,41 @@ type Assignment struct {
 
 // AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
 type AssignmentState string
+
+// LogChunk An uploaded log chunk.
+type LogChunk struct {
+	// FirstAt When the chunk's first line was written, in Unix seconds.
+	FirstAt int64 `json:"firstAt"`
+
+	// LastAt When the chunk's last line was written, in Unix seconds.
+	LastAt int64 `json:"lastAt"`
+
+	// Seq The chunk's sequence number, its upload's name.
+	Seq int64 `json:"seq"`
+}
+
+// LogChunksRequest Log chunks of the run's current state, uploaded and to be indexed.
+type LogChunksRequest struct {
+	Chunks []LogChunk `json:"chunks"`
+
+	// StateVersion The run's current state version.
+	StateVersion int64 `json:"stateVersion"`
+}
+
+// NextStep What the worker does next. execute runs the phase of state; pause ends the container while the run waits in state for a decision; exit ends it, the run having ended in state.
+type NextStep struct {
+	// Action What the worker does next.
+	Action NextStepAction `json:"action"`
+
+	// State The run's state now.
+	State string `json:"state"`
+
+	// StateVersion The run's state version now, which the next report names.
+	StateVersion int64 `json:"stateVersion"`
+}
+
+// NextStepAction What the worker does next.
+type NextStepAction string
 
 // PollRequest The worker's state, which each poll reports.
 type PollRequest struct {
@@ -300,6 +481,24 @@ type Registration struct {
 	// Worker The worker's ID, which a later registration names to resume it.
 	Worker string `json:"worker"`
 }
+
+// RunReport What happened to a phase of the run: it started, succeeded, failed or stopped.
+type RunReport struct {
+	// Details What the worker says about the event, such as why a phase failed, which the transition records as its note.
+	Details *string `json:"details,omitempty"`
+
+	// Event started names the phase the worker begins; the first, which names the state its preparation leads to, ends the handover. succeeded, failed and stopped name the state the run is in. A launcher whose preparation fails reports failed for the preparing state.
+	Event RunReportEvent `json:"event"`
+
+	// State A state in which a worker holds the run.
+	State WorkerState `json:"state"`
+
+	// StateVersion The state version the worker last learned: its assignment's, then each report's answer's.
+	StateVersion int64 `json:"stateVersion"`
+}
+
+// RunReportEvent started names the phase the worker begins; the first, which names the state its preparation leads to, ends the handover. succeeded, failed and stopped name the state the run is in. A launcher whose preparation fails reports failed for the preparing state.
+type RunReportEvent string
 
 // RunSpec What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token and the run's artifact key are in sealed, which only the pool's private key opens.
 type RunSpec struct {
@@ -469,11 +668,70 @@ type RunSpecVariable struct {
 // Signal stop or kill asks the launcher to stop or kill its current run; cycle asks it to exit, at once when idle, after its run when busy.
 type Signal string
 
+// SignedUpload Where to upload one declared object.
+type SignedUpload struct {
+	// Headers The headers the PUT must carry, which the signature covers.
+	Headers map[string]string `json:"headers"`
+
+	// Key The object's key: the run's account and ID, the state and state version, and the name, as account/run/STATE-stateVersion/name.
+	Key string `json:"key"`
+
+	// Kind What an upload holds, which decides its store: a log chunk, a run artifact sealed with the run's artifact key, the workspace encrypted to the pool's key, or an observability artifact.
+	Kind UploadKind `json:"kind"`
+
+	// Name The object's name, as declared.
+	Name string `json:"name"`
+
+	// Url The pre-signed PUT URL, which accepts only the declared size and, where the store can bind it, the declared SHA-256, until it expires.
+	Url string `json:"url"`
+}
+
+// Upload An object the worker means to upload, as it declares it.
+type Upload struct {
+	// Kind What an upload holds, which decides its store: a log chunk, a run artifact sealed with the run's artifact key, the workspace encrypted to the pool's key, or an observability artifact.
+	Kind UploadKind `json:"kind"`
+
+	// Name The object's name within the run's state version, never reused there. A log chunk's is its sequence number in decimal, from 0.
+	Name string `json:"name"`
+
+	// Sha256 The SHA-256 of the object's bytes as uploaded, in hex.
+	Sha256 string `json:"sha256"`
+
+	// Size The object's size in bytes, as uploaded: at most 1 MiB for a log chunk, 512 MiB for an artifact, 2 GiB for the workspace and 64 MiB for an observability artifact.
+	Size int64 `json:"size"`
+}
+
+// UploadKind What an upload holds, which decides its store: a log chunk, a run artifact sealed with the run's artifact key, the workspace encrypted to the pool's key, or an observability artifact.
+type UploadKind string
+
+// UploadURLs Where to upload each declared object, in the order declared.
+type UploadURLs struct {
+	Uploads []SignedUpload `json:"uploads"`
+}
+
+// UploadURLsRequest The objects the worker means to upload in the run's current state.
+type UploadURLsRequest struct {
+	// StateVersion The run's current state version.
+	StateVersion int64 `json:"stateVersion"`
+
+	// Uploads The objects, each with a name of its own.
+	Uploads []Upload `json:"uploads"`
+}
+
+// WorkerState A state in which a worker holds the run.
+type WorkerState string
+
+// Run defines model for Run.
+type Run = string
+
 // ApiDisabled An RFC 9457 problem detail. Every error response uses the status code and this body.
 type ApiDisabled = Problem
 
 // InvalidState An RFC 9457 problem detail. Every error response uses the status code and this body.
 type InvalidState = Problem
+
+// NotFound An RFC 9457 problem detail. Every error response uses the status code and this body.
+type NotFound = Problem
 
 // TooManyRequests An RFC 9457 problem detail. Every error response uses the status code and this body.
 type TooManyRequests = Problem
@@ -486,6 +744,18 @@ type WorkerPollJSONRequestBody = PollRequest
 
 // WorkerRegisterJSONRequestBody defines body for WorkerRegister for application/json ContentType.
 type WorkerRegisterJSONRequestBody = RegisterRequest
+
+// WorkerRunArtifactsJSONRequestBody defines body for WorkerRunArtifacts for application/json ContentType.
+type WorkerRunArtifactsJSONRequestBody = ArtifactsRequest
+
+// WorkerRunLogChunksJSONRequestBody defines body for WorkerRunLogChunks for application/json ContentType.
+type WorkerRunLogChunksJSONRequestBody = LogChunksRequest
+
+// WorkerRunReportJSONRequestBody defines body for WorkerRunReport for application/json ContentType.
+type WorkerRunReportJSONRequestBody = RunReport
+
+// WorkerRunUploadURLsJSONRequestBody defines body for WorkerRunUploadURLs for application/json ContentType.
+type WorkerRunUploadURLsJSONRequestBody = UploadURLsRequest
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -604,12 +874,91 @@ type ClientInterface interface {
 	// Corresponds with POST /register (the `WorkerRegister` operationId).
 	WorkerRegister(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// WorkerRunArtifactsWithBody Record a run's uploaded artifacts
+	//
+	// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+	WorkerRunArtifactsWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunArtifacts Record a run's uploaded artifacts
+	//
+	// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+	WorkerRunArtifacts(ctx context.Context, run Run, body WorkerRunArtifactsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunLogChunksWithBody Index a run's uploaded log chunks
+	//
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+	WorkerRunLogChunksWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunLogChunks Index a run's uploaded log chunks
+	//
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+	WorkerRunLogChunks(ctx context.Context, run Run, body WorkerRunLogChunksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunReportWithBody Report a phase of a run
+	//
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+	WorkerRunReportWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunReport Report a phase of a run
+	//
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+	WorkerRunReport(ctx context.Context, run Run, body WorkerRunReportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// WorkerRunSpec Read a run's specification
 	//
 	// Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
 	//
 	// Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
-	WorkerRunSpec(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	WorkerRunSpec(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunUploadURLsWithBody Sign upload URLs for a run's objects
+	//
+	// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+	WorkerRunUploadURLsWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunUploadURLs Sign upload URLs for a run's objects
+	//
+	// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+	WorkerRunUploadURLs(ctx context.Context, run Run, body WorkerRunUploadURLsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunWorkspace Fetch a run's saved workspace
+	//
+	// Redirects to a pre-signed GET of the workspace the run last recorded, which is encrypted to the pool's key. A run that recorded none answers 404.
+	//
+	// Corresponds with GET /runs/{run}/workspace (the `WorkerRunWorkspace` operationId).
+	WorkerRunWorkspace(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // WorkerDeregister Deregister a worker
@@ -705,13 +1054,182 @@ func (c *Client) WorkerRegister(ctx context.Context, body WorkerRegisterJSONRequ
 	return c.Client.Do(req)
 }
 
+// WorkerRunArtifactsWithBody Record a run's uploaded artifacts
+//
+// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+func (c *Client) WorkerRunArtifactsWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunArtifactsRequestWithBody(c.Server, run, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunArtifacts Record a run's uploaded artifacts
+//
+// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+func (c *Client) WorkerRunArtifacts(ctx context.Context, run Run, body WorkerRunArtifactsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunArtifactsRequest(c.Server, run, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunLogChunksWithBody Index a run's uploaded log chunks
+//
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+func (c *Client) WorkerRunLogChunksWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunLogChunksRequestWithBody(c.Server, run, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunLogChunks Index a run's uploaded log chunks
+//
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+func (c *Client) WorkerRunLogChunks(ctx context.Context, run Run, body WorkerRunLogChunksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunLogChunksRequest(c.Server, run, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunReportWithBody Report a phase of a run
+//
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+func (c *Client) WorkerRunReportWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunReportRequestWithBody(c.Server, run, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunReport Report a phase of a run
+//
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+func (c *Client) WorkerRunReport(ctx context.Context, run Run, body WorkerRunReportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunReportRequest(c.Server, run, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // WorkerRunSpec Read a run's specification
 //
 // Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
 //
 // Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
-func (c *Client) WorkerRunSpec(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) WorkerRunSpec(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewWorkerRunSpecRequest(c.Server, run)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunUploadURLsWithBody Sign upload URLs for a run's objects
+//
+// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+func (c *Client) WorkerRunUploadURLsWithBody(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunUploadURLsRequestWithBody(c.Server, run, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunUploadURLs Sign upload URLs for a run's objects
+//
+// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+func (c *Client) WorkerRunUploadURLs(ctx context.Context, run Run, body WorkerRunUploadURLsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunUploadURLsRequest(c.Server, run, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunWorkspace Fetch a run's saved workspace
+//
+// Redirects to a pre-signed GET of the workspace the run last recorded, which is encrypted to the pool's key. A run that recorded none answers 404.
+//
+// Corresponds with GET /runs/{run}/workspace (the `WorkerRunWorkspace` operationId).
+func (c *Client) WorkerRunWorkspace(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunWorkspaceRequest(c.Server, run)
 	if err != nil {
 		return nil, err
 	}
@@ -829,8 +1347,149 @@ func NewWorkerRegisterRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
+// NewWorkerRunArtifactsRequest calls the generic WorkerRunArtifacts builder with application/json body
+func NewWorkerRunArtifactsRequest(server string, run Run, body WorkerRunArtifactsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerRunArtifactsRequestWithBody(server, run, "application/json", bodyReader)
+}
+
+// NewWorkerRunArtifactsRequestWithBody constructs an http.Request for the WorkerRunArtifacts method, with any body, and a specified content type
+func NewWorkerRunArtifactsRequestWithBody(server string, run Run, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "run", run, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/artifacts", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerRunLogChunksRequest calls the generic WorkerRunLogChunks builder with application/json body
+func NewWorkerRunLogChunksRequest(server string, run Run, body WorkerRunLogChunksJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerRunLogChunksRequestWithBody(server, run, "application/json", bodyReader)
+}
+
+// NewWorkerRunLogChunksRequestWithBody constructs an http.Request for the WorkerRunLogChunks method, with any body, and a specified content type
+func NewWorkerRunLogChunksRequestWithBody(server string, run Run, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "run", run, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/log-chunks", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerRunReportRequest calls the generic WorkerRunReport builder with application/json body
+func NewWorkerRunReportRequest(server string, run Run, body WorkerRunReportJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerRunReportRequestWithBody(server, run, "application/json", bodyReader)
+}
+
+// NewWorkerRunReportRequestWithBody constructs an http.Request for the WorkerRunReport method, with any body, and a specified content type
+func NewWorkerRunReportRequestWithBody(server string, run Run, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "run", run, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/reports", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewWorkerRunSpecRequest constructs an http.Request for the WorkerRunSpec method
-func NewWorkerRunSpecRequest(server string, run string) (*http.Request, error) {
+func NewWorkerRunSpecRequest(server string, run Run) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -846,6 +1505,87 @@ func NewWorkerRunSpecRequest(server string, run string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/runs/%s/spec", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewWorkerRunUploadURLsRequest calls the generic WorkerRunUploadURLs builder with application/json body
+func NewWorkerRunUploadURLsRequest(server string, run Run, body WorkerRunUploadURLsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerRunUploadURLsRequestWithBody(server, run, "application/json", bodyReader)
+}
+
+// NewWorkerRunUploadURLsRequestWithBody constructs an http.Request for the WorkerRunUploadURLs method, with any body, and a specified content type
+func NewWorkerRunUploadURLsRequestWithBody(server string, run Run, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "run", run, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/upload-urls", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerRunWorkspaceRequest constructs an http.Request for the WorkerRunWorkspace method
+func NewWorkerRunWorkspaceRequest(server string, run Run) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "run", run, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/workspace", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -952,6 +1692,60 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /register (the `WorkerRegister` operationId).
 	WorkerRegisterWithResponse(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRegisterResponse, error)
 
+	// WorkerRunArtifactsWithBodyWithResponse Record a run's uploaded artifacts
+	//
+	// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+	WorkerRunArtifactsWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunArtifactsResponse, error)
+
+	// WorkerRunArtifactsWithResponse Record a run's uploaded artifacts
+	//
+	// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+	WorkerRunArtifactsWithResponse(ctx context.Context, run Run, body WorkerRunArtifactsJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunArtifactsResponse, error)
+
+	// WorkerRunLogChunksWithBodyWithResponse Index a run's uploaded log chunks
+	//
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+	WorkerRunLogChunksWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunLogChunksResponse, error)
+
+	// WorkerRunLogChunksWithResponse Index a run's uploaded log chunks
+	//
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+	WorkerRunLogChunksWithResponse(ctx context.Context, run Run, body WorkerRunLogChunksJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunLogChunksResponse, error)
+
+	// WorkerRunReportWithBodyWithResponse Report a phase of a run
+	//
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+	WorkerRunReportWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunReportResponse, error)
+
+	// WorkerRunReportWithResponse Report a phase of a run
+	//
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+	WorkerRunReportWithResponse(ctx context.Context, run Run, body WorkerRunReportJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunReportResponse, error)
+
 	// WorkerRunSpecWithResponse Read a run's specification
 	//
 	// Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
@@ -959,7 +1753,34 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
-	WorkerRunSpecWithResponse(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*WorkerRunSpecResponse, error)
+	WorkerRunSpecWithResponse(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*WorkerRunSpecResponse, error)
+
+	// WorkerRunUploadURLsWithBodyWithResponse Sign upload URLs for a run's objects
+	//
+	// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+	WorkerRunUploadURLsWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunUploadURLsResponse, error)
+
+	// WorkerRunUploadURLsWithResponse Sign upload URLs for a run's objects
+	//
+	// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+	WorkerRunUploadURLsWithResponse(ctx context.Context, run Run, body WorkerRunUploadURLsJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunUploadURLsResponse, error)
+
+	// WorkerRunWorkspaceWithResponse Fetch a run's saved workspace
+	//
+	// Redirects to a pre-signed GET of the workspace the run last recorded, which is encrypted to the pool's key. A run that recorded none answers 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{run}/workspace (the `WorkerRunWorkspace` operationId).
+	WorkerRunWorkspaceWithResponse(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*WorkerRunWorkspaceResponse, error)
 }
 
 // WorkerDeregisterResponse204Headers the declared response headers of an HTTP 204 response for WorkerDeregister
@@ -1240,6 +2061,298 @@ func (r WorkerRegisterResponse) ContentType() string {
 	return ""
 }
 
+// WorkerRunArtifactsResponse204Headers the declared response headers of an HTTP 204 response for WorkerRunArtifacts
+type WorkerRunArtifactsResponse204Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunArtifactsResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunArtifacts
+type WorkerRunArtifactsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunArtifactsResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunArtifacts
+type WorkerRunArtifactsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunArtifactsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *WorkerRunArtifactsResponse204Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunArtifactsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunArtifactsResponse503Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunArtifactsResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRunArtifactsResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunArtifactsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunArtifactsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunArtifactsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunArtifactsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunArtifactsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunArtifactsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunArtifactsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerRunLogChunksResponse204Headers the declared response headers of an HTTP 204 response for WorkerRunLogChunks
+type WorkerRunLogChunksResponse204Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunLogChunksResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunLogChunks
+type WorkerRunLogChunksResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunLogChunksResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunLogChunks
+type WorkerRunLogChunksResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunLogChunksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *WorkerRunLogChunksResponse204Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunLogChunksResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunLogChunksResponse503Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunLogChunksResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRunLogChunksResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunLogChunksResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunLogChunksResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunLogChunksResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunLogChunksResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunLogChunksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunLogChunksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunLogChunksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerRunReportResponse200Headers the declared response headers of an HTTP 200 response for WorkerRunReport
+type WorkerRunReportResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunReportResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunReport
+type WorkerRunReportResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunReportResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunReport
+type WorkerRunReportResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunReportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *NextStep
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerRunReportResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunReportResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunReportResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerRunReportResponse) GetJSON200() *NextStep {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunReportResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRunReportResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunReportResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunReportResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunReportResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunReportResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunReportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunReportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunReportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // WorkerRunSpecResponse200Headers the declared response headers of an HTTP 200 response for WorkerRunSpec
 type WorkerRunSpecResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -1342,6 +2455,211 @@ func (r WorkerRunSpecResponse) ContentType() string {
 	return ""
 }
 
+// WorkerRunUploadURLsResponse200Headers the declared response headers of an HTTP 200 response for WorkerRunUploadURLs
+type WorkerRunUploadURLsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunUploadURLsResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunUploadURLs
+type WorkerRunUploadURLsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunUploadURLsResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunUploadURLs
+type WorkerRunUploadURLsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunUploadURLsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *UploadURLs
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerRunUploadURLsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunUploadURLsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunUploadURLsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerRunUploadURLsResponse) GetJSON200() *UploadURLs {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunUploadURLsResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRunUploadURLsResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunUploadURLsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunUploadURLsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunUploadURLsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunUploadURLsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunUploadURLsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunUploadURLsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunUploadURLsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerRunWorkspaceResponse307Headers the declared response headers of an HTTP 307 response for WorkerRunWorkspace
+type WorkerRunWorkspaceResponse307Headers struct {
+	Location            *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunWorkspaceResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunWorkspace
+type WorkerRunWorkspaceResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunWorkspaceResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunWorkspace
+type WorkerRunWorkspaceResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunWorkspaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers307 the parsed response headers for an HTTP 307 response
+	Headers307 *WorkerRunWorkspaceResponse307Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunWorkspaceResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunWorkspaceResponse503Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunWorkspaceResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerRunWorkspaceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRunWorkspaceResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunWorkspaceResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunWorkspaceResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunWorkspaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunWorkspaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunWorkspaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunWorkspaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunWorkspaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // WorkerDeregisterWithResponse Deregister a worker
 //
 // Removes the worker, which a launcher calls as it exits. Its session token authenticates nothing afterwards.
@@ -1417,6 +2735,96 @@ func (c *ClientWithResponses) WorkerRegisterWithResponse(ctx context.Context, bo
 	return ParseWorkerRegisterResponse(rsp)
 }
 
+// WorkerRunArtifactsWithBodyWithResponse Record a run's uploaded artifacts
+//
+// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+func (c *ClientWithResponses) WorkerRunArtifactsWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunArtifactsResponse, error) {
+	rsp, err := c.WorkerRunArtifactsWithBody(ctx, run, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunArtifactsResponse(rsp)
+}
+
+// WorkerRunArtifactsWithResponse Record a run's uploaded artifacts
+//
+// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/artifacts (the `WorkerRunArtifacts` operationId).
+func (c *ClientWithResponses) WorkerRunArtifactsWithResponse(ctx context.Context, run Run, body WorkerRunArtifactsJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunArtifactsResponse, error) {
+	rsp, err := c.WorkerRunArtifacts(ctx, run, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunArtifactsResponse(rsp)
+}
+
+// WorkerRunLogChunksWithBodyWithResponse Index a run's uploaded log chunks
+//
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+func (c *ClientWithResponses) WorkerRunLogChunksWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunLogChunksResponse, error) {
+	rsp, err := c.WorkerRunLogChunksWithBody(ctx, run, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunLogChunksResponse(rsp)
+}
+
+// WorkerRunLogChunksWithResponse Index a run's uploaded log chunks
+//
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
+func (c *ClientWithResponses) WorkerRunLogChunksWithResponse(ctx context.Context, run Run, body WorkerRunLogChunksJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunLogChunksResponse, error) {
+	rsp, err := c.WorkerRunLogChunks(ctx, run, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunLogChunksResponse(rsp)
+}
+
+// WorkerRunReportWithBodyWithResponse Report a phase of a run
+//
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+func (c *ClientWithResponses) WorkerRunReportWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunReportResponse, error) {
+	rsp, err := c.WorkerRunReportWithBody(ctx, run, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunReportResponse(rsp)
+}
+
+// WorkerRunReportWithResponse Report a phase of a run
+//
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/reports (the `WorkerRunReport` operationId).
+func (c *ClientWithResponses) WorkerRunReportWithResponse(ctx context.Context, run Run, body WorkerRunReportJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunReportResponse, error) {
+	rsp, err := c.WorkerRunReport(ctx, run, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunReportResponse(rsp)
+}
+
 // WorkerRunSpecWithResponse Read a run's specification
 //
 // Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
@@ -1424,12 +2832,57 @@ func (c *ClientWithResponses) WorkerRegisterWithResponse(ctx context.Context, bo
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
-func (c *ClientWithResponses) WorkerRunSpecWithResponse(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*WorkerRunSpecResponse, error) {
+func (c *ClientWithResponses) WorkerRunSpecWithResponse(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*WorkerRunSpecResponse, error) {
 	rsp, err := c.WorkerRunSpec(ctx, run, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseWorkerRunSpecResponse(rsp)
+}
+
+// WorkerRunUploadURLsWithBodyWithResponse Sign upload URLs for a run's objects
+//
+// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+func (c *ClientWithResponses) WorkerRunUploadURLsWithBodyWithResponse(ctx context.Context, run Run, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerRunUploadURLsResponse, error) {
+	rsp, err := c.WorkerRunUploadURLsWithBody(ctx, run, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunUploadURLsResponse(rsp)
+}
+
+// WorkerRunUploadURLsWithResponse Sign upload URLs for a run's objects
+//
+// Answers a pre-signed PUT URL for each declared object of the run's current state, under the run's own key prefix, bound to the declared size and, where the store can bind it, the declared SHA-256. A name already declared with the same size and SHA-256 and not yet recorded is signed again; one declared otherwise answers 409 already-exists.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/upload-urls (the `WorkerRunUploadURLs` operationId).
+func (c *ClientWithResponses) WorkerRunUploadURLsWithResponse(ctx context.Context, run Run, body WorkerRunUploadURLsJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunUploadURLsResponse, error) {
+	rsp, err := c.WorkerRunUploadURLs(ctx, run, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunUploadURLsResponse(rsp)
+}
+
+// WorkerRunWorkspaceWithResponse Fetch a run's saved workspace
+//
+// Redirects to a pre-signed GET of the workspace the run last recorded, which is encrypted to the pool's key. A run that recorded none answers 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{run}/workspace (the `WorkerRunWorkspace` operationId).
+func (c *ClientWithResponses) WorkerRunWorkspaceWithResponse(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*WorkerRunWorkspaceResponse, error) {
+	rsp, err := c.WorkerRunWorkspace(ctx, run, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunWorkspaceResponse(rsp)
 }
 
 // ParseWorkerDeregisterResponse parses an HTTP response from a WorkerDeregisterWithResponse call
@@ -1794,6 +3247,385 @@ func ParseWorkerRegisterResponse(rsp *http.Response) (*WorkerRegisterResponse, e
 	return response, nil
 }
 
+// ParseWorkerRunArtifactsResponse parses an HTTP response from a WorkerRunArtifactsWithResponse call
+func ParseWorkerRunArtifactsResponse(rsp *http.Response) (*WorkerRunArtifactsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunArtifactsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers WorkerRunArtifactsResponse204Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers204 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunArtifactsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunArtifactsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerRunLogChunksResponse parses an HTTP response from a WorkerRunLogChunksWithResponse call
+func ParseWorkerRunLogChunksResponse(rsp *http.Response) (*WorkerRunLogChunksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunLogChunksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers WorkerRunLogChunksResponse204Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers204 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunLogChunksResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunLogChunksResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerRunReportResponse parses an HTTP response from a WorkerRunReportWithResponse call
+func ParseWorkerRunReportResponse(rsp *http.Response) (*WorkerRunReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunReportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NextStep
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerRunReportResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunReportResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunReportResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseWorkerRunSpecResponse parses an HTTP response from a WorkerRunSpecWithResponse call
 func ParseWorkerRunSpecResponse(rsp *http.Response) (*WorkerRunSpecResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1910,6 +3742,274 @@ func ParseWorkerRunSpecResponse(rsp *http.Response) (*WorkerRunSpecResponse, err
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers WorkerRunSpecResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerRunUploadURLsResponse parses an HTTP response from a WorkerRunUploadURLsWithResponse call
+func ParseWorkerRunUploadURLsResponse(rsp *http.Response) (*WorkerRunUploadURLsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunUploadURLsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UploadURLs
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerRunUploadURLsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunUploadURLsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunUploadURLsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerRunWorkspaceResponse parses an HTTP response from a WorkerRunWorkspaceWithResponse call
+func ParseWorkerRunWorkspaceResponse(rsp *http.Response) (*WorkerRunWorkspaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunWorkspaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 307:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 307:
+		var headers WorkerRunWorkspaceResponse307Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers307 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunWorkspaceResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunWorkspaceResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

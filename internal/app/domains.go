@@ -54,14 +54,17 @@ type Domains struct {
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
-// tokens through kms under the kms backend, with c's settings; the domains
-// append their events to events, whose kinds newKinds registered, and
-// subscribe their purges there, logging to log. It fails on a setting a domain reads a file
-// for, and on an outbox whose purges are already subscribed.
+// tokens through kms under the kms backend, with c's settings; runs'
+// workers upload through objects, nil for a test that uploads nothing.
+// The domains append their events to events, whose kinds newKinds
+// registered, and subscribe their purges there, logging to log. It fails
+// on a setting a domain reads a file for, and on an outbox whose purges
+// are already subscribed.
 func newDomains(
 	c config.Config,
 	db *sql.DB,
 	keys *crypt.Keyring,
+	objects runsassembly.Objects,
 	kms []signer.KMS,
 	events *outbox.Outbox,
 	log *slog.Logger,
@@ -132,6 +135,7 @@ func newDomains(
 	runs := runsassembly.New(runsassembly.Deps{
 		DB:          db.Primary(),
 		Keys:        keys,
+		Objects:     objects,
 		Spaces:      access.Spaces(),
 		Authz:       access.Authorizer(),
 		Tokens:      access.Tokens(),
@@ -144,6 +148,7 @@ func newDomains(
 	access.ResolveSubjects(runsassembly.Entity, runs.SpaceOf())
 	stacks.SetStackStatus(runs.StackStatus())
 	workers.BindScheduler(runs.Scheduler())
+	workers.BindReports(runs.Reports())
 	registry, err := expr.NewRegistry(
 		c.Expressions,
 		slices.Concat(configuration.Surfaces(), runs.Surfaces())...,

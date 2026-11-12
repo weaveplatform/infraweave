@@ -14,6 +14,9 @@
 //     Each side holds one segment at a time; the Writer refuses a 2^32nd
 //     segment. ObjectSize gives the sealed size of a plaintext size, so a
 //     store can declare it before it writes.
+//   - ArtifactKey derives a run artifact's content key from the run's
+//     artifact key and the object's key, by HKDF-SHA256, for the object
+//     stream.
 //   - The pool envelope, SealEnvelope and OpenEnvelope: 0x01 | ephemeral
 //     P-256 public key | nonce | ciphertext and tag, under HKDF-SHA256 of
 //     an ECDH shared secret with the pool's key. The associated data is

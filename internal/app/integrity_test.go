@@ -26,6 +26,7 @@ func TestAccOrphans(t *testing.T) {
 		db,
 		testKeyring(t, q),
 		nil,
+		nil,
 		testEvents(t, q),
 		slog.New(slog.DiscardHandler),
 	)

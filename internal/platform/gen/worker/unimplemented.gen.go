@@ -26,6 +26,26 @@ func (UnimplementedStrict) WorkerRegister(context.Context, WorkerRegisterRequest
 	return nil, &problem.NotImplementedError{OperationID: "workerRegister", Route: "POST /register"}
 }
 
+func (UnimplementedStrict) WorkerRunArtifacts(context.Context, WorkerRunArtifactsRequestObject) (WorkerRunArtifactsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunArtifacts", Route: "POST /runs/{run}/artifacts"}
+}
+
+func (UnimplementedStrict) WorkerRunLogChunks(context.Context, WorkerRunLogChunksRequestObject) (WorkerRunLogChunksResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunLogChunks", Route: "POST /runs/{run}/log-chunks"}
+}
+
+func (UnimplementedStrict) WorkerRunReport(context.Context, WorkerRunReportRequestObject) (WorkerRunReportResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunReport", Route: "POST /runs/{run}/reports"}
+}
+
 func (UnimplementedStrict) WorkerRunSpec(context.Context, WorkerRunSpecRequestObject) (WorkerRunSpecResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "workerRunSpec", Route: "GET /runs/{run}/spec"}
+}
+
+func (UnimplementedStrict) WorkerRunUploadURLs(context.Context, WorkerRunUploadURLsRequestObject) (WorkerRunUploadURLsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunUploadURLs", Route: "POST /runs/{run}/upload-urls"}
+}
+
+func (UnimplementedStrict) WorkerRunWorkspace(context.Context, WorkerRunWorkspaceRequestObject) (WorkerRunWorkspaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunWorkspace", Route: "GET /runs/{run}/workspace"}
 }

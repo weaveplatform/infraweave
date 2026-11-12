@@ -20,21 +20,63 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for ArtifactRecordKind.
+const (
+	ArtifactRecordKindArtifact      ArtifactRecordKind = "artifact"
+	ArtifactRecordKindObservability ArtifactRecordKind = "observability"
+	ArtifactRecordKindWorkspace     ArtifactRecordKind = "workspace"
+)
+
+// Valid indicates whether the value is a known member of the ArtifactRecordKind enum.
+func (e ArtifactRecordKind) Valid() bool {
+	switch e {
+	case ArtifactRecordKindArtifact:
+		return true
+	case ArtifactRecordKindObservability:
+		return true
+	case ArtifactRecordKindWorkspace:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AssignmentState.
 const (
-	PREPARING       AssignmentState = "PREPARING"
-	PREPARINGAPPLY  AssignmentState = "PREPARING_APPLY"
-	PREPARINGREPLAN AssignmentState = "PREPARING_REPLAN"
+	AssignmentStatePREPARING       AssignmentState = "PREPARING"
+	AssignmentStatePREPARINGAPPLY  AssignmentState = "PREPARING_APPLY"
+	AssignmentStatePREPARINGREPLAN AssignmentState = "PREPARING_REPLAN"
 )
 
 // Valid indicates whether the value is a known member of the AssignmentState enum.
 func (e AssignmentState) Valid() bool {
 	switch e {
-	case PREPARING:
+	case AssignmentStatePREPARING:
 		return true
-	case PREPARINGAPPLY:
+	case AssignmentStatePREPARINGAPPLY:
 		return true
-	case PREPARINGREPLAN:
+	case AssignmentStatePREPARINGREPLAN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NextStepAction.
+const (
+	Execute NextStepAction = "execute"
+	Exit    NextStepAction = "exit"
+	Pause   NextStepAction = "pause"
+)
+
+// Valid indicates whether the value is a known member of the NextStepAction enum.
+func (e NextStepAction) Valid() bool {
+	switch e {
+	case Execute:
+		return true
+	case Exit:
+		return true
+	case Pause:
 		return true
 	default:
 		return false
@@ -61,49 +103,73 @@ func (e ProblemScope) Valid() bool {
 
 // Defines values for ProblemFieldErrorReason.
 const (
-	Duplicate    ProblemFieldErrorReason = "duplicate"
-	Enum         ProblemFieldErrorReason = "enum"
-	Format       ProblemFieldErrorReason = "format"
-	MaxLength    ProblemFieldErrorReason = "max-length"
-	Maximum      ProblemFieldErrorReason = "maximum"
-	MinLength    ProblemFieldErrorReason = "min-length"
-	Minimum      ProblemFieldErrorReason = "minimum"
-	NotFound     ProblemFieldErrorReason = "not-found"
-	Pattern      ProblemFieldErrorReason = "pattern"
-	Required     ProblemFieldErrorReason = "required"
-	Rule         ProblemFieldErrorReason = "rule"
-	Type         ProblemFieldErrorReason = "type"
-	UnknownField ProblemFieldErrorReason = "unknown-field"
+	ProblemFieldErrorReasonDuplicate    ProblemFieldErrorReason = "duplicate"
+	ProblemFieldErrorReasonEnum         ProblemFieldErrorReason = "enum"
+	ProblemFieldErrorReasonFormat       ProblemFieldErrorReason = "format"
+	ProblemFieldErrorReasonMaxLength    ProblemFieldErrorReason = "max-length"
+	ProblemFieldErrorReasonMaximum      ProblemFieldErrorReason = "maximum"
+	ProblemFieldErrorReasonMinLength    ProblemFieldErrorReason = "min-length"
+	ProblemFieldErrorReasonMinimum      ProblemFieldErrorReason = "minimum"
+	ProblemFieldErrorReasonNotFound     ProblemFieldErrorReason = "not-found"
+	ProblemFieldErrorReasonPattern      ProblemFieldErrorReason = "pattern"
+	ProblemFieldErrorReasonRequired     ProblemFieldErrorReason = "required"
+	ProblemFieldErrorReasonRule         ProblemFieldErrorReason = "rule"
+	ProblemFieldErrorReasonType         ProblemFieldErrorReason = "type"
+	ProblemFieldErrorReasonUnknownField ProblemFieldErrorReason = "unknown-field"
 )
 
 // Valid indicates whether the value is a known member of the ProblemFieldErrorReason enum.
 func (e ProblemFieldErrorReason) Valid() bool {
 	switch e {
-	case Duplicate:
+	case ProblemFieldErrorReasonDuplicate:
 		return true
-	case Enum:
+	case ProblemFieldErrorReasonEnum:
 		return true
-	case Format:
+	case ProblemFieldErrorReasonFormat:
 		return true
-	case MaxLength:
+	case ProblemFieldErrorReasonMaxLength:
 		return true
-	case Maximum:
+	case ProblemFieldErrorReasonMaximum:
 		return true
-	case MinLength:
+	case ProblemFieldErrorReasonMinLength:
 		return true
-	case Minimum:
+	case ProblemFieldErrorReasonMinimum:
 		return true
-	case NotFound:
+	case ProblemFieldErrorReasonNotFound:
 		return true
-	case Pattern:
+	case ProblemFieldErrorReasonPattern:
 		return true
-	case Required:
+	case ProblemFieldErrorReasonRequired:
 		return true
-	case Rule:
+	case ProblemFieldErrorReasonRule:
 		return true
-	case Type:
+	case ProblemFieldErrorReasonType:
 		return true
-	case UnknownField:
+	case ProblemFieldErrorReasonUnknownField:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunReportEvent.
+const (
+	Failed    RunReportEvent = "failed"
+	Started   RunReportEvent = "started"
+	Stopped   RunReportEvent = "stopped"
+	Succeeded RunReportEvent = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the RunReportEvent enum.
+func (e RunReportEvent) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case Started:
+		return true
+	case Stopped:
+		return true
+	case Succeeded:
 		return true
 	default:
 		return false
@@ -182,6 +248,86 @@ func (e Signal) Valid() bool {
 	}
 }
 
+// Defines values for UploadKind.
+const (
+	UploadKindArtifact      UploadKind = "artifact"
+	UploadKindLogChunk      UploadKind = "log-chunk"
+	UploadKindObservability UploadKind = "observability"
+	UploadKindWorkspace     UploadKind = "workspace"
+)
+
+// Valid indicates whether the value is a known member of the UploadKind enum.
+func (e UploadKind) Valid() bool {
+	switch e {
+	case UploadKindArtifact:
+		return true
+	case UploadKindLogChunk:
+		return true
+	case UploadKindObservability:
+		return true
+	case UploadKindWorkspace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkerState.
+const (
+	WorkerStateAPPLYING        WorkerState = "APPLYING"
+	WorkerStateDESTROYING      WorkerState = "DESTROYING"
+	WorkerStateINITIALIZING    WorkerState = "INITIALIZING"
+	WorkerStatePERFORMING      WorkerState = "PERFORMING"
+	WorkerStatePLANNING        WorkerState = "PLANNING"
+	WorkerStatePREPARING       WorkerState = "PREPARING"
+	WorkerStatePREPARINGAPPLY  WorkerState = "PREPARING_APPLY"
+	WorkerStatePREPARINGREPLAN WorkerState = "PREPARING_REPLAN"
+)
+
+// Valid indicates whether the value is a known member of the WorkerState enum.
+func (e WorkerState) Valid() bool {
+	switch e {
+	case WorkerStateAPPLYING:
+		return true
+	case WorkerStateDESTROYING:
+		return true
+	case WorkerStateINITIALIZING:
+		return true
+	case WorkerStatePERFORMING:
+		return true
+	case WorkerStatePLANNING:
+		return true
+	case WorkerStatePREPARING:
+		return true
+	case WorkerStatePREPARINGAPPLY:
+		return true
+	case WorkerStatePREPARINGREPLAN:
+		return true
+	default:
+		return false
+	}
+}
+
+// ArtifactRecord An uploaded artifact, workspace or observability artifact.
+type ArtifactRecord struct {
+	// Kind The upload's kind.
+	Kind ArtifactRecordKind `json:"kind"`
+
+	// Name The upload's name.
+	Name string `json:"name"`
+}
+
+// ArtifactRecordKind The upload's kind.
+type ArtifactRecordKind string
+
+// ArtifactsRequest Uploads of the run's current state, to be recorded.
+type ArtifactsRequest struct {
+	Artifacts []ArtifactRecord `json:"artifacts"`
+
+	// StateVersion The run's current state version.
+	StateVersion int64 `json:"stateVersion"`
+}
+
 // Assignment A run the poll claimed for the worker, which the launcher prepares and executes.
 type Assignment struct {
 	// Run The run's ID.
@@ -202,6 +348,41 @@ type Assignment struct {
 
 // AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
 type AssignmentState string
+
+// LogChunk An uploaded log chunk.
+type LogChunk struct {
+	// FirstAt When the chunk's first line was written, in Unix seconds.
+	FirstAt int64 `json:"firstAt"`
+
+	// LastAt When the chunk's last line was written, in Unix seconds.
+	LastAt int64 `json:"lastAt"`
+
+	// Seq The chunk's sequence number, its upload's name.
+	Seq int64 `json:"seq"`
+}
+
+// LogChunksRequest Log chunks of the run's current state, uploaded and to be indexed.
+type LogChunksRequest struct {
+	Chunks []LogChunk `json:"chunks"`
+
+	// StateVersion The run's current state version.
+	StateVersion int64 `json:"stateVersion"`
+}
+
+// NextStep What the worker does next. execute runs the phase of state; pause ends the container while the run waits in state for a decision; exit ends it, the run having ended in state.
+type NextStep struct {
+	// Action What the worker does next.
+	Action NextStepAction `json:"action"`
+
+	// State The run's state now.
+	State string `json:"state"`
+
+	// StateVersion The run's state version now, which the next report names.
+	StateVersion int64 `json:"stateVersion"`
+}
+
+// NextStepAction What the worker does next.
+type NextStepAction string
 
 // PollRequest The worker's state, which each poll reports.
 type PollRequest struct {
@@ -304,6 +485,24 @@ type Registration struct {
 	// Worker The worker's ID, which a later registration names to resume it.
 	Worker string `json:"worker"`
 }
+
+// RunReport What happened to a phase of the run: it started, succeeded, failed or stopped.
+type RunReport struct {
+	// Details What the worker says about the event, such as why a phase failed, which the transition records as its note.
+	Details *string `json:"details,omitempty"`
+
+	// Event started names the phase the worker begins; the first, which names the state its preparation leads to, ends the handover. succeeded, failed and stopped name the state the run is in. A launcher whose preparation fails reports failed for the preparing state.
+	Event RunReportEvent `json:"event"`
+
+	// State A state in which a worker holds the run.
+	State WorkerState `json:"state"`
+
+	// StateVersion The state version the worker last learned: its assignment's, then each report's answer's.
+	StateVersion int64 `json:"stateVersion"`
+}
+
+// RunReportEvent started names the phase the worker begins; the first, which names the state its preparation leads to, ends the handover. succeeded, failed and stopped name the state the run is in. A launcher whose preparation fails reports failed for the preparing state.
+type RunReportEvent string
 
 // RunSpec What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token and the run's artifact key are in sealed, which only the pool's private key opens.
 type RunSpec struct {
@@ -473,11 +672,70 @@ type RunSpecVariable struct {
 // Signal stop or kill asks the launcher to stop or kill its current run; cycle asks it to exit, at once when idle, after its run when busy.
 type Signal string
 
+// SignedUpload Where to upload one declared object.
+type SignedUpload struct {
+	// Headers The headers the PUT must carry, which the signature covers.
+	Headers map[string]string `json:"headers"`
+
+	// Key The object's key: the run's account and ID, the state and state version, and the name, as account/run/STATE-stateVersion/name.
+	Key string `json:"key"`
+
+	// Kind What an upload holds, which decides its store: a log chunk, a run artifact sealed with the run's artifact key, the workspace encrypted to the pool's key, or an observability artifact.
+	Kind UploadKind `json:"kind"`
+
+	// Name The object's name, as declared.
+	Name string `json:"name"`
+
+	// Url The pre-signed PUT URL, which accepts only the declared size and, where the store can bind it, the declared SHA-256, until it expires.
+	Url string `json:"url"`
+}
+
+// Upload An object the worker means to upload, as it declares it.
+type Upload struct {
+	// Kind What an upload holds, which decides its store: a log chunk, a run artifact sealed with the run's artifact key, the workspace encrypted to the pool's key, or an observability artifact.
+	Kind UploadKind `json:"kind"`
+
+	// Name The object's name within the run's state version, never reused there. A log chunk's is its sequence number in decimal, from 0.
+	Name string `json:"name"`
+
+	// Sha256 The SHA-256 of the object's bytes as uploaded, in hex.
+	Sha256 string `json:"sha256"`
+
+	// Size The object's size in bytes, as uploaded: at most 1 MiB for a log chunk, 512 MiB for an artifact, 2 GiB for the workspace and 64 MiB for an observability artifact.
+	Size int64 `json:"size"`
+}
+
+// UploadKind What an upload holds, which decides its store: a log chunk, a run artifact sealed with the run's artifact key, the workspace encrypted to the pool's key, or an observability artifact.
+type UploadKind string
+
+// UploadURLs Where to upload each declared object, in the order declared.
+type UploadURLs struct {
+	Uploads []SignedUpload `json:"uploads"`
+}
+
+// UploadURLsRequest The objects the worker means to upload in the run's current state.
+type UploadURLsRequest struct {
+	// StateVersion The run's current state version.
+	StateVersion int64 `json:"stateVersion"`
+
+	// Uploads The objects, each with a name of its own.
+	Uploads []Upload `json:"uploads"`
+}
+
+// WorkerState A state in which a worker holds the run.
+type WorkerState string
+
+// Run defines model for Run.
+type Run = string
+
 // ApiDisabled An RFC 9457 problem detail. Every error response uses the status code and this body.
 type ApiDisabled = Problem
 
 // InvalidState An RFC 9457 problem detail. Every error response uses the status code and this body.
 type InvalidState = Problem
+
+// NotFound An RFC 9457 problem detail. Every error response uses the status code and this body.
+type NotFound = Problem
 
 // TooManyRequests An RFC 9457 problem detail. Every error response uses the status code and this body.
 type TooManyRequests = Problem
@@ -491,6 +749,18 @@ type WorkerPollJSONRequestBody = PollRequest
 // WorkerRegisterJSONRequestBody defines body for WorkerRegister for application/json ContentType.
 type WorkerRegisterJSONRequestBody = RegisterRequest
 
+// WorkerRunArtifactsJSONRequestBody defines body for WorkerRunArtifacts for application/json ContentType.
+type WorkerRunArtifactsJSONRequestBody = ArtifactsRequest
+
+// WorkerRunLogChunksJSONRequestBody defines body for WorkerRunLogChunks for application/json ContentType.
+type WorkerRunLogChunksJSONRequestBody = LogChunksRequest
+
+// WorkerRunReportJSONRequestBody defines body for WorkerRunReport for application/json ContentType.
+type WorkerRunReportJSONRequestBody = RunReport
+
+// WorkerRunUploadURLsJSONRequestBody defines body for WorkerRunUploadURLs for application/json ContentType.
+type WorkerRunUploadURLsJSONRequestBody = UploadURLsRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// WorkerDeregister Deregister a worker
@@ -502,9 +772,24 @@ type ServerInterface interface {
 	// WorkerRegister Register a worker
 	// (POST /register)
 	WorkerRegister(w http.ResponseWriter, r *http.Request)
+	// WorkerRunArtifacts Record a run's uploaded artifacts
+	// (POST /runs/{run}/artifacts)
+	WorkerRunArtifacts(w http.ResponseWriter, r *http.Request, run Run)
+	// WorkerRunLogChunks Index a run's uploaded log chunks
+	// (POST /runs/{run}/log-chunks)
+	WorkerRunLogChunks(w http.ResponseWriter, r *http.Request, run Run)
+	// WorkerRunReport Report a phase of a run
+	// (POST /runs/{run}/reports)
+	WorkerRunReport(w http.ResponseWriter, r *http.Request, run Run)
 	// WorkerRunSpec Read a run's specification
 	// (GET /runs/{run}/spec)
-	WorkerRunSpec(w http.ResponseWriter, r *http.Request, run string)
+	WorkerRunSpec(w http.ResponseWriter, r *http.Request, run Run)
+	// WorkerRunUploadURLs Sign upload URLs for a run's objects
+	// (POST /runs/{run}/upload-urls)
+	WorkerRunUploadURLs(w http.ResponseWriter, r *http.Request, run Run)
+	// WorkerRunWorkspace Fetch a run's saved workspace
+	// (GET /runs/{run}/workspace)
+	WorkerRunWorkspace(w http.ResponseWriter, r *http.Request, run Run)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -529,9 +814,39 @@ func (_ Unimplemented) WorkerRegister(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// WorkerRunArtifacts Record a run's uploaded artifacts
+// (POST /runs/{run}/artifacts)
+func (_ Unimplemented) WorkerRunArtifacts(w http.ResponseWriter, r *http.Request, run Run) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// WorkerRunLogChunks Index a run's uploaded log chunks
+// (POST /runs/{run}/log-chunks)
+func (_ Unimplemented) WorkerRunLogChunks(w http.ResponseWriter, r *http.Request, run Run) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// WorkerRunReport Report a phase of a run
+// (POST /runs/{run}/reports)
+func (_ Unimplemented) WorkerRunReport(w http.ResponseWriter, r *http.Request, run Run) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // WorkerRunSpec Read a run's specification
 // (GET /runs/{run}/spec)
-func (_ Unimplemented) WorkerRunSpec(w http.ResponseWriter, r *http.Request, run string) {
+func (_ Unimplemented) WorkerRunSpec(w http.ResponseWriter, r *http.Request, run Run) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// WorkerRunUploadURLs Sign upload URLs for a run's objects
+// (POST /runs/{run}/upload-urls)
+func (_ Unimplemented) WorkerRunUploadURLs(w http.ResponseWriter, r *http.Request, run Run) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// WorkerRunWorkspace Fetch a run's saved workspace
+// (GET /runs/{run}/workspace)
+func (_ Unimplemented) WorkerRunWorkspace(w http.ResponseWriter, r *http.Request, run Run) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -586,6 +901,84 @@ func (siw *ServerInterfaceWrapper) WorkerRegister(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// WorkerRunArtifacts operation middleware
+func (siw *ServerInterfaceWrapper) WorkerRunArtifacts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "run" -------------
+	var run Run
+
+	err = runtime.BindStyledParameterWithOptions("simple", "run", chi.URLParam(r, "run"), &run, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "run", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.WorkerRunArtifacts(w, r, run)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// WorkerRunLogChunks operation middleware
+func (siw *ServerInterfaceWrapper) WorkerRunLogChunks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "run" -------------
+	var run Run
+
+	err = runtime.BindStyledParameterWithOptions("simple", "run", chi.URLParam(r, "run"), &run, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "run", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.WorkerRunLogChunks(w, r, run)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// WorkerRunReport operation middleware
+func (siw *ServerInterfaceWrapper) WorkerRunReport(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "run" -------------
+	var run Run
+
+	err = runtime.BindStyledParameterWithOptions("simple", "run", chi.URLParam(r, "run"), &run, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "run", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.WorkerRunReport(w, r, run)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // WorkerRunSpec operation middleware
 func (siw *ServerInterfaceWrapper) WorkerRunSpec(w http.ResponseWriter, r *http.Request) {
 
@@ -593,7 +986,7 @@ func (siw *ServerInterfaceWrapper) WorkerRunSpec(w http.ResponseWriter, r *http.
 	_ = err
 
 	// ------------- Path parameter "run" -------------
-	var run string
+	var run Run
 
 	err = runtime.BindStyledParameterWithOptions("simple", "run", chi.URLParam(r, "run"), &run, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
 	if err != nil {
@@ -603,6 +996,58 @@ func (siw *ServerInterfaceWrapper) WorkerRunSpec(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.WorkerRunSpec(w, r, run)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// WorkerRunUploadURLs operation middleware
+func (siw *ServerInterfaceWrapper) WorkerRunUploadURLs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "run" -------------
+	var run Run
+
+	err = runtime.BindStyledParameterWithOptions("simple", "run", chi.URLParam(r, "run"), &run, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "run", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.WorkerRunUploadURLs(w, r, run)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// WorkerRunWorkspace operation middleware
+func (siw *ServerInterfaceWrapper) WorkerRunWorkspace(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "run" -------------
+	var run Run
+
+	err = runtime.BindStyledParameterWithOptions("simple", "run", chi.URLParam(r, "run"), &run, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "run", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.WorkerRunWorkspace(w, r, run)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -735,7 +1180,22 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/register", wrapper.WorkerRegister)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/runs/{run}/artifacts", wrapper.WorkerRunArtifacts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/runs/{run}/log-chunks", wrapper.WorkerRunLogChunks)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/runs/{run}/reports", wrapper.WorkerRunReport)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/runs/{run}/spec", wrapper.WorkerRunSpec)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/runs/{run}/upload-urls", wrapper.WorkerRunUploadURLs)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/runs/{run}/workspace", wrapper.WorkerRunWorkspace)
 	})
 
 	return r
@@ -751,6 +1211,8 @@ type ApiDisabledApplicationProblemPlusJSONResponse struct {
 }
 
 type InvalidStateApplicationProblemPlusJSONResponse Problem
+
+type NotFoundApplicationProblemPlusJSONResponse Problem
 
 type ProblemApplicationProblemPlusJSONResponse Problem
 
@@ -1119,8 +1581,403 @@ func (response WorkerRegisterdefaultApplicationProblemPlusJSONResponse) VisitWor
 	return err
 }
 
+type WorkerRunArtifactsRequestObject struct {
+	Run  Run `json:"run"`
+	Body *WorkerRunArtifactsJSONRequestBody
+}
+
+type WorkerRunArtifactsResponseObject interface {
+	VisitWorkerRunArtifactsResponse(w http.ResponseWriter) error
+}
+
+type WorkerRunArtifacts204ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type WorkerRunArtifacts204Response struct {
+	Headers WorkerRunArtifacts204ResponseHeaders
+}
+
+func (response WorkerRunArtifacts204Response) VisitWorkerRunArtifactsResponse(w http.ResponseWriter) error {
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(204)
+	return nil
+}
+
+type WorkerRunArtifacts401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunArtifacts401ApplicationProblemPlusJSONResponse) VisitWorkerRunArtifactsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunArtifacts409ApplicationProblemPlusJSONResponse struct {
+	InvalidStateApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunArtifacts409ApplicationProblemPlusJSONResponse) VisitWorkerRunArtifactsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunArtifacts429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunArtifacts429ApplicationProblemPlusJSONResponse) VisitWorkerRunArtifactsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunArtifacts503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunArtifacts503ApplicationProblemPlusJSONResponse) VisitWorkerRunArtifactsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunArtifactsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response WorkerRunArtifactsdefaultApplicationProblemPlusJSONResponse) VisitWorkerRunArtifactsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunLogChunksRequestObject struct {
+	Run  Run `json:"run"`
+	Body *WorkerRunLogChunksJSONRequestBody
+}
+
+type WorkerRunLogChunksResponseObject interface {
+	VisitWorkerRunLogChunksResponse(w http.ResponseWriter) error
+}
+
+type WorkerRunLogChunks204ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type WorkerRunLogChunks204Response struct {
+	Headers WorkerRunLogChunks204ResponseHeaders
+}
+
+func (response WorkerRunLogChunks204Response) VisitWorkerRunLogChunksResponse(w http.ResponseWriter) error {
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(204)
+	return nil
+}
+
+type WorkerRunLogChunks401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunLogChunks401ApplicationProblemPlusJSONResponse) VisitWorkerRunLogChunksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunLogChunks409ApplicationProblemPlusJSONResponse struct {
+	InvalidStateApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunLogChunks409ApplicationProblemPlusJSONResponse) VisitWorkerRunLogChunksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunLogChunks429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunLogChunks429ApplicationProblemPlusJSONResponse) VisitWorkerRunLogChunksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunLogChunks503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunLogChunks503ApplicationProblemPlusJSONResponse) VisitWorkerRunLogChunksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunLogChunksdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response WorkerRunLogChunksdefaultApplicationProblemPlusJSONResponse) VisitWorkerRunLogChunksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunReportRequestObject struct {
+	Run  Run `json:"run"`
+	Body *WorkerRunReportJSONRequestBody
+}
+
+type WorkerRunReportResponseObject interface {
+	VisitWorkerRunReportResponse(w http.ResponseWriter) error
+}
+
+type WorkerRunReport200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type WorkerRunReport200JSONResponse struct {
+	Body    NextStep
+	Headers WorkerRunReport200ResponseHeaders
+}
+
+func (response WorkerRunReport200JSONResponse) VisitWorkerRunReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunReport401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunReport401ApplicationProblemPlusJSONResponse) VisitWorkerRunReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunReport409ApplicationProblemPlusJSONResponse struct {
+	InvalidStateApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunReport409ApplicationProblemPlusJSONResponse) VisitWorkerRunReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunReport429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunReport429ApplicationProblemPlusJSONResponse) VisitWorkerRunReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunReport503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunReport503ApplicationProblemPlusJSONResponse) VisitWorkerRunReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunReportdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response WorkerRunReportdefaultApplicationProblemPlusJSONResponse) VisitWorkerRunReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type WorkerRunSpecRequestObject struct {
-	Run string `json:"run"`
+	Run Run `json:"run"`
 }
 
 type WorkerRunSpecResponseObject interface {
@@ -1255,6 +2112,291 @@ func (response WorkerRunSpecdefaultApplicationProblemPlusJSONResponse) VisitWork
 	return err
 }
 
+type WorkerRunUploadURLsRequestObject struct {
+	Run  Run `json:"run"`
+	Body *WorkerRunUploadURLsJSONRequestBody
+}
+
+type WorkerRunUploadURLsResponseObject interface {
+	VisitWorkerRunUploadURLsResponse(w http.ResponseWriter) error
+}
+
+type WorkerRunUploadURLs200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type WorkerRunUploadURLs200JSONResponse struct {
+	Body    UploadURLs
+	Headers WorkerRunUploadURLs200ResponseHeaders
+}
+
+func (response WorkerRunUploadURLs200JSONResponse) VisitWorkerRunUploadURLsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunUploadURLs401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunUploadURLs401ApplicationProblemPlusJSONResponse) VisitWorkerRunUploadURLsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunUploadURLs409ApplicationProblemPlusJSONResponse struct {
+	InvalidStateApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunUploadURLs409ApplicationProblemPlusJSONResponse) VisitWorkerRunUploadURLsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunUploadURLs429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunUploadURLs429ApplicationProblemPlusJSONResponse) VisitWorkerRunUploadURLsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunUploadURLs503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunUploadURLs503ApplicationProblemPlusJSONResponse) VisitWorkerRunUploadURLsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunUploadURLsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response WorkerRunUploadURLsdefaultApplicationProblemPlusJSONResponse) VisitWorkerRunUploadURLsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunWorkspaceRequestObject struct {
+	Run Run `json:"run"`
+}
+
+type WorkerRunWorkspaceResponseObject interface {
+	VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type WorkerRunWorkspace307ResponseHeaders struct {
+	Location            *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type WorkerRunWorkspace307Response struct {
+	Headers WorkerRunWorkspace307ResponseHeaders
+}
+
+func (response WorkerRunWorkspace307Response) VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error {
+	if response.Headers.Location != nil {
+		w.Header().Set("Location", fmt.Sprint(*response.Headers.Location))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(307)
+	return nil
+}
+
+type WorkerRunWorkspace401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunWorkspace401ApplicationProblemPlusJSONResponse) VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunWorkspace404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunWorkspace404ApplicationProblemPlusJSONResponse) VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunWorkspace409ApplicationProblemPlusJSONResponse struct {
+	InvalidStateApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunWorkspace409ApplicationProblemPlusJSONResponse) VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunWorkspace429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunWorkspace429ApplicationProblemPlusJSONResponse) VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunWorkspace503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunWorkspace503ApplicationProblemPlusJSONResponse) VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunWorkspacedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response WorkerRunWorkspacedefaultApplicationProblemPlusJSONResponse) VisitWorkerRunWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// WorkerDeregister Deregister a worker
@@ -1266,9 +2408,24 @@ type StrictServerInterface interface {
 	// WorkerRegister Register a worker
 	// (POST /register)
 	WorkerRegister(ctx context.Context, request WorkerRegisterRequestObject) (WorkerRegisterResponseObject, error)
+	// WorkerRunArtifacts Record a run's uploaded artifacts
+	// (POST /runs/{run}/artifacts)
+	WorkerRunArtifacts(ctx context.Context, request WorkerRunArtifactsRequestObject) (WorkerRunArtifactsResponseObject, error)
+	// WorkerRunLogChunks Index a run's uploaded log chunks
+	// (POST /runs/{run}/log-chunks)
+	WorkerRunLogChunks(ctx context.Context, request WorkerRunLogChunksRequestObject) (WorkerRunLogChunksResponseObject, error)
+	// WorkerRunReport Report a phase of a run
+	// (POST /runs/{run}/reports)
+	WorkerRunReport(ctx context.Context, request WorkerRunReportRequestObject) (WorkerRunReportResponseObject, error)
 	// WorkerRunSpec Read a run's specification
 	// (GET /runs/{run}/spec)
 	WorkerRunSpec(ctx context.Context, request WorkerRunSpecRequestObject) (WorkerRunSpecResponseObject, error)
+	// WorkerRunUploadURLs Sign upload URLs for a run's objects
+	// (POST /runs/{run}/upload-urls)
+	WorkerRunUploadURLs(ctx context.Context, request WorkerRunUploadURLsRequestObject) (WorkerRunUploadURLsResponseObject, error)
+	// WorkerRunWorkspace Fetch a run's saved workspace
+	// (GET /runs/{run}/workspace)
+	WorkerRunWorkspace(ctx context.Context, request WorkerRunWorkspaceRequestObject) (WorkerRunWorkspaceResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -1396,8 +2553,107 @@ func (sh *strictHandler) WorkerRegister(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// WorkerRunArtifacts operation middleware
+func (sh *strictHandler) WorkerRunArtifacts(w http.ResponseWriter, r *http.Request, run Run) {
+	var request WorkerRunArtifactsRequestObject
+
+	request.Run = run
+
+	var body WorkerRunArtifactsJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.WorkerRunArtifacts(ctx, request.(WorkerRunArtifactsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "WorkerRunArtifacts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(WorkerRunArtifactsResponseObject); ok {
+		if err := validResponse.VisitWorkerRunArtifactsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// WorkerRunLogChunks operation middleware
+func (sh *strictHandler) WorkerRunLogChunks(w http.ResponseWriter, r *http.Request, run Run) {
+	var request WorkerRunLogChunksRequestObject
+
+	request.Run = run
+
+	var body WorkerRunLogChunksJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.WorkerRunLogChunks(ctx, request.(WorkerRunLogChunksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "WorkerRunLogChunks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(WorkerRunLogChunksResponseObject); ok {
+		if err := validResponse.VisitWorkerRunLogChunksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// WorkerRunReport operation middleware
+func (sh *strictHandler) WorkerRunReport(w http.ResponseWriter, r *http.Request, run Run) {
+	var request WorkerRunReportRequestObject
+
+	request.Run = run
+
+	var body WorkerRunReportJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.WorkerRunReport(ctx, request.(WorkerRunReportRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "WorkerRunReport")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(WorkerRunReportResponseObject); ok {
+		if err := validResponse.VisitWorkerRunReportResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // WorkerRunSpec operation middleware
-func (sh *strictHandler) WorkerRunSpec(w http.ResponseWriter, r *http.Request, run string) {
+func (sh *strictHandler) WorkerRunSpec(w http.ResponseWriter, r *http.Request, run Run) {
 	var request WorkerRunSpecRequestObject
 
 	request.Run = run
@@ -1422,105 +2678,198 @@ func (sh *strictHandler) WorkerRunSpec(w http.ResponseWriter, r *http.Request, r
 	}
 }
 
+// WorkerRunUploadURLs operation middleware
+func (sh *strictHandler) WorkerRunUploadURLs(w http.ResponseWriter, r *http.Request, run Run) {
+	var request WorkerRunUploadURLsRequestObject
+
+	request.Run = run
+
+	var body WorkerRunUploadURLsJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.WorkerRunUploadURLs(ctx, request.(WorkerRunUploadURLsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "WorkerRunUploadURLs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(WorkerRunUploadURLsResponseObject); ok {
+		if err := validResponse.VisitWorkerRunUploadURLsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// WorkerRunWorkspace operation middleware
+func (sh *strictHandler) WorkerRunWorkspace(w http.ResponseWriter, r *http.Request, run Run) {
+	var request WorkerRunWorkspaceRequestObject
+
+	request.Run = run
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.WorkerRunWorkspace(ctx, request.(WorkerRunWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "WorkerRunWorkspace")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(WorkerRunWorkspaceResponseObject); ok {
+		if err := validResponse.VisitWorkerRunWorkspaceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"64W9ilcEnCj49PHpfwYA",
+	"7H17cxs3tudXQfVOlWZqm3pZVibyX4wtT5Q4tkpSkjs35U1B3YckRk2gB0BLYlz67lvn4NHoZjcpy07u",
+	"ZNf/JBaJ58HBD+fND1mhlrWSIK3JTj5kC+AlaPrnBbfwRiyFpf/gJyWYQovaCiWzk+xqAazgNS+EXTE1",
+	"Y3YBTHMLkwrbs+umuAHL7EIYpuHfDRjLSg13bKbVcjfLM1MsYMlxXLuqITvJhLQwB509POTt5Bew5EIK",
+	"OV9fwM8LVUEY27AKZpYJyeyCh9k/ZhoDA3u8hELJ0rBGWlGlIzNh2KypKsbnXMjt84DVq+nMgh6fwyp2",
+	"x5FwMFMa92X1Ssj5lrEf8qzmmi/BhmNr5PBZ6UbuGHb2CgcU+GHN7SLLM8mXOKRuZJZnSE2hocxOrG4g",
+	"nXnJ79+AnNtFdnJ4nIeFGKvxbGgdGkytpAFaxrQWr4Th1xWOhVwmLUiiMK/rShQcV7ZXa3VdwfJ//8so",
+	"WjXc82VdAf5TSGO5LHCSRssTIWea3wG/hRN/4ic/XP707rvjZ+ffnv/z/NW70+Ofzl49/+7nf37zzRmS",
+	"zHLbmOzk+f6zPLPC4qDZ9PyMlX5VbKa0486CVxXoLO6pN51f4wmvxSR0zh5S0vxFwyw7yf7XXnuX9ty3",
+	"Zu/c9XYUWj8UVYPmVmm24KZdGl4lXGtviXhy6QVFDplErhpahW+9l/AfLeRM3vJKlJeWW3ja8ZRguaha",
+	"1sILIZVlSjLO7pS+ccv9TKd4tP91e4rCLZ4ZWv22Y/OtJ6715zq34R3nzCgmrKGvrboBaqRh1hgoc0an",
+	"GRGL4cUzjLt9sFvQRijpWjSSLdUtlDg44iX15UxDrbSlGVyngktcguU3sIt7e6vsa9XIj7lyn0yOt4qZ",
+	"plgwDUY1unALCe3/wHVcJaSdcVFB+YKIea3KFTN8ZdjdYkWLu1LqBy5XF66x+R/Fp6PDhLPxOWLu+YT7",
+	"AqCEcit/t0/uZ4Qlhzc7ZuBBj5jkoEsofFUKZSwrKm4MMjwsa7v6PGCVZ/81iY/0JEoiG7t35ZbeEB15",
+	"4lHDtD3WhvIywyOHwdZE7x8lb+wCpEU2+x9+H4/2D1r+a2hhSovfoDxhySIRmKJosI0jm972Phvm+std",
+	"cK0FIPgy9xAUGkqcjlcn+KHDYmbAOEBFHM4Zlwzua9wAUxIIUJUEdrdQBkIXYdgcP1SaaZgLYwGbN7IE",
+	"RN9aqYoVoK2Y0c4IkA1YpqGueIF4Q2+BE7TwCpkc16ObbYvAO8WlsgvQ2HqXZEZPFRKmcE5e2AsolCZ+",
+	"4WUpkDS8Otd4Ea0Ak53MeGWgT7qpZE1dKV5CybgfKKcdm5oXtFl1bUDf8mtRoSwfGuENrpPRP2Q3wj0t",
+	"62fjZtgxDJtgR5DNMjv5JQuDZXkWp8zyrDNj9n5Nngxi6ca5sAktklsLGr/+P79MJ//NJ7/tT75+3/5z",
+	"99fJ+w/7+cHhVw9/ydZF11Tq/cXt0U/frktd/wsKApNwFsY/Hx95Gj/S4k1UmByvNFqDtO5Rz5lV7BqY",
+	"psOGcv0YAk3pD2FhabbdrB4DPeQozp+5nsdHebYU0v91ELfMteYrbEqr+smJJ5tUi84ugjyDq58pveTW",
+	"qS3HRxlNJ5bNMp0t1ZbS4+hMnidbHzwbY8RcLj2Q9q6Bu4cLYLWqKnysxDJqARAFuLuFKBb0ScUbWeCN",
+	"rDXUXINhXJYM7qFoLJj1U9GPUbzW2Fw38gqxYbSrlyM7K8KFeDFTgiZAXDFunLgDXIP2vbpc5hCJFwXU",
+	"FkrcagXheyaMQ69Wdh9d6ylBmJnaIZ0cWhHWrcEBnsmZkOxHKe6ZcQrvIGf0ucFz3zB16CuajU7Ti8zt",
+	"7Cfs/OL0fHpx9vYfDmLd56jF1xWXBqGvBo2LMHnb9tfp+fmbf/oehZIzoZFTYl96oKHT4+L0/M307fAk",
+	"0UIQIDF2y/KsN2nnEzfoIDg+9kp2VQuOMlVLr5TZffMaCve4YXNhmAEeVOVgAnHEdZqIYYKuu7YOprYe",
+	"Z+9yO5tD0ON6Vz3ejCHGG7r9b9T85aKRN5/wPlZqzgocY/16z4Q2diPLU8cdw6glqwRKF9ywOy2sBfk4",
+	"/o/IuD90Fyr+yCVU/HdagYF/j1gC/cwGX0VZAJPN8hp0Tji19mJ/1Kz9FwH+jSP444hE2cQRT3yr3wRu",
+	"2Pxct9KVLP3bLWQJ90NPtxvu0e92ZOk/74vtdzx0PG/h3l5aqIcYmtvkWWalAsMk3Nvd8ADjDtyDVy+4",
+	"ATwgmvgFq3ljgAGZVJExlbRcSNC99w5trQZvhNu8g+4SCoHrfsHgXlg3iLB57LTgt0LO8XMoY98BAa2w",
+	"g5Qf31byPPgN4qC4E/zmXtjxZ2A7/kt1N/ieP+0VkeoufTlw+cEwRRatpzwEnmAjb8EQ75yrqnrarb6K",
+	"9A9bC9sBXiycdOift/WTvW7MahB/SXfrCGnCeF5FjuFOr4sbuVaqAi5xJ6VG9vR61Yw3ld2wcGrMZhWf",
+	"dydzgA9cSyh32dTtItVtd4zrVYrZDLRhXJo7+r9lShYwvLRRkfbsVYKI49tGwoJkSDScYLMLIc9uN7Fi",
+	"mGDHpECVDHl8NDAk3vIOZY/3+2T9Vt2xJZer8CrSdlA7Bc2WfMUWqipbvYE2JCzZ61Fjx8O1ypNzl121",
+	"fbEfCUhSsUrJOfEHl/QgqjvJlvweIbV/XZ4dum15uD3cT8D3+daLRPw5fl9MU3lyDMJSWDknb5ThK/xf",
+	"i1e77PQW9IotYXntTppfG5B2iCgDoNhRzjZqq23L/v0Yu3WtAcc3P2HC2cVxRUzCHXEqvtAzIYVZgKGD",
+	"CC+gkiNXwFuRHqXygIQ7KLuGp09Wf9xgIzriNE46ZvRCtsSvwyKVhEQJJktaSedWgTGOQQ+es6WQjQXn",
+	"Ux1+OsRc8sqM6GXuy97B4C0pkNI44KOkn0saJ3uI83sB52GIv1uHw5p4f/H6Jfv66PlXzFsomXNeBXYG",
+	"rcng57yXrDHgMYBMpKxQJTjRbiEMeRPWeTt4wwZv1h1dEa3knN0Ju+i4xAeJSwsaoO1rpVlwZ/n+tDD6",
+	"hHS2iXN85O4pmwmoyvRie0/Uow/AE/U1jnOKi1o/i9TF92GD0ZY2HejvH5+cccNGjNee4u0AZ6/oz/+a",
+	"+Fd/cla2Z+as7dEyzGVn25Wam0FCV+ORDfQVPnL0j4lGgiJhydXFcSviFn0jjr+HhzeFqmH4GHuj3iVQ",
+	"pvScS/FbcK2Q1dkbqXhRqEbaHeP6k3Lnx0glyHSELM98r1EJshm5xt9eXZ2nlyBnGmrg1hsEikqAtMaZ",
+	"OiplgAk7+Jitg5r3N6yjmVkobZlplkuuY1BJ4BocZ5DO7oP10X68OEORlJ7ox4xzy6vmcedFe6bjDWfx",
+	"FKnXkSEewvtxWEtu4MA+3T0PAlm8cEPXvgtbSzCGz0dv7qwxvMrpsGtQdTVMtVrh/gYX9t3lu7fs3H3P",
+	"/oowfPz1/sHfmJBerghoujaoBm6GNagVdXRbdvzvvesdnlTsWnNZLPxzE25G34flv4lH1/oSSOqaVE62",
+	"JIEs+cPLY62clmeNvJHqTk5oYVmelY3z4uEcUtnJjNzyKFJXMHATe5wRaBoJkcezGuKSC++seppCNPXO",
+	"LufNzen5hjK8VUAItBMRj93AwAOYjjDECfi44Ov/3c+XOTu9PHx+nHv1pNbKQoGg4kB8x7D750WE8mQB",
+	"qesNgyJIgMPvnLSzy87wb75CawwJp47/HJlOqGWejnf26gUT3OZRfEV2cptfk9ZyIgeqXuIWonikZsk1",
+	"wxVWqrh5wf5lRc44IziJEwbhmCG3ujg1cGqbBRlGfBF0m5zZQZ3nBVPueeO6WLhGC2XsjvFPPrdsqYxl",
+	"x0esWHDNCwvavGBLsLzklpMH0hEEFx9aPztkjhENcwd3HTAzuEVuYGWGBw8SSANtg8Pnz1/Q56G7jTpj",
+	"cDBEcHfnxzSYZhk18RuA2gQXhwt+cZqGM9OgON/6KRId8NnhV8d/33a5Orw6fp3GmNlhY/QO++0El0xH",
+	"AF+/Jx+hTvyBakRrEunPSgKyc0yj+yicmm+MMWpR5nLnlbqfBpHddd20BrqagRM4q7gF3YEoHzkVucYL",
+	"HptP3c/bI8WAgjfIEY28IJPQR0Iryf8LXteAiIoaUGuu9NaTk8SHQuKli/vJfQwT8r6xqq6hHFM7zHZD",
+	"I4U/8WvVuE/hFqRtZdm7xSouLCgQrYHPai6N8CEg6D6OZy2Vhd4FPNg/HDLD0ITry/TbDucZjbnJyq9h",
+	"LqR54R99bWxYWtvHmSfpMSBPreORCjgF1eatKXjBZaluQe8OkBnvr6czDZ2MnHhIhUTjWrR1hResnRVH",
+	"M9E75scOPmbXEKE12o2DYOIpgfwYloYXm/rjh25lm43AmzS5n4malzEGcqvldz0o0R9Iamk8Iaq3hh18",
+	"huwCpHuLHBV2gq1xx3xmz0KwFTvmGrm2lzUUI/eDxyAAPF0JUJpgEghPN7chypMzA4V2gd8L0MCEZAWS",
+	"wbEmuthgomTl+zpCMCEnODbipAPUqNWSYT1EM+Dzyrgb1LlcA5fTiMNCGFM1yAETdaGWG6LkAkN40rx0",
+	"jfGKyluh1UjwROsLSJqxW64FBiybnF2v6NachGtT3CAvkIVNSQv31uzkcfNnb19fTH8+nf50+it9dvX6",
+	"15+mF7+2VoBf26FTPcaANe27EJpEKQxvLV1dvONalGAebejw1PjJDzlk5piJCkYUZfqKLVHJhrJVbhzB",
+	"YtQTEanmdvGxq3othle0UMq5EocfpMTFOKIxt0N193RKfhBEYgrtXC45ScDXK/dhfDdcpsKZFJYktJkF",
+	"fV5x52d2lozS2TRW5P1g31D78NQE6VW17tXAK4xbS5o2zomoTTfUwz8uQwulhV15tLEEw6Nj8MaqJbcC",
+	"BZi2S2TTF27l8QUM6w270CgEGb+b3WwAZryb5BFHickZroMEfbYc1b0FfpV6nKMTkx4KQ/rPSWhgxRJc",
+	"oMq8CSG5OYPKQPc6xk9aO5L3izgd32MLQo3ZZdPEti+VBP/iUtxieNESBQVdGn60seAhXOdLWuY417q0",
+	"k0H0Wd9mQiGrxXwOms35bdQiIg6kZHAcl3eADDmsWEBxgwJSDHAmnk2p4KShdh4iyyBHOBBfP1vPBpf0",
+	"lJAchSpqHuJsPHB4rD+fHD4/ZnVzXYkCAd+d9/XKAtu/3z9w0aT1ApagebXWmv31+Dk1NjlrJLKkBmOg",
+	"/BuqpgeHExpHKonAFIB5enqJo0z+8fIHVoh6ARqvkvuaz513y7ehKYRh337/6vXk8tspfuRv4OnLV98y",
+	"s+CafCG4U6c903oxNJwZXtk4qZAzxVrs38PdT0DeQqVq2Ls9YDNVVerOgQF2aPcchsAuydaNWyk3RhWC",
+	"7JWo++JqHd2CQHf2Cq13JLmyvzZC2oPjnF2L+QRkKbj8W9rSEQlZIpVCXLfjo143o7o+UWejolyPXoSV",
+	"aaDsh/+y5E81a7M9uvITnt+IU7+4eSQcXVLb0ais4ibLgzgRnpuuoBCexcjxG6Swl1EuWb/dbpI2NgPf",
+	"TG+66zkRKT79jZoLuXEk1w6PF5vm7f2ttboV+Cyhuc70/H4tFV3/t6MxyP1pQmDT2kALbhabhkBA4mYx",
+	"2HejeTaJMosvnx/Q9xsc0/L58HiWz5NRyBaGm8JblzMxY1wOW2oRlY3ly3pTWFo75pKX8FQjRqOrLaSs",
+	"8dlU0iuD7qRp9XjacruRgE6rJXyHD9KtbmBzktYGjfQVbJURUbtMVAns419/kNYpoP6tGAotg+LGNMth",
+	"El1+O50kGO2HpJNYwP3gySY5KcMyb7u09XeStitMsptHoRd2+0GVsHHSpSpJVVKFRf9EEEeP9/dfpHZC",
+	"XMYmiYTyXzfNgw1ypqHiFq2+SSyEO6xB8xbu952stkQJJUfK20eSpBYvC3i72lBUQt9Z4PJ425nzlhc2",
+	"MOqmROEB7tLk+dsa84133Ld96jUvtZjZV2BhNIqupSNOWVJTw6jfcBSHKJ8Qmh+0jE1dQ5vUllOpO3L6",
+	"6CWv8N0U88WnRO/FK9WVHZDQTn74jLF9W+fqMSkFRDQU9vrIw/XyM5TfjNCVHuzg8PatnSXGs1U4949w",
+	"BbfbDb7fNhb/3fm7y9NXWZ5dXUxffu/+Nb38Hv93ennlovRfnV5eXbyj6PzpxeXpdv+dSDyMI+HtKSES",
+	"Xltj/zy5ehtus1cphvdeV1yQVozw7zvshOh+b7Nx/RPDdDhqqVIHgAbb6CGzE6/FBu9C3xC2nnvQqrga",
+	"ChC3zqWQmIqm52e/Xr37/vQtOvrS5ETnCgg5890oX0rByEPKRprwMSz2+U08xj/T39KnumiCMfB72Ig4",
+	"qJ9dC9uxHeatAUwFp80MbLFIjrOf3tE7ASQ88oMZME8aUt8e9X73rIhjlqm1fgMGqI5J1dnl0A+K1tWc",
+	"aZAlXp5oeRxUw6PNbmwdW/ezeV1dIahj4OutpYcPwzpUvEJDjNhlkE1IEBTADZBfDCS4uICJ4Y7uu9aM",
+	"wqzmxc3wHRp7a4P9xVTNfLBjxa+hMps7uzaoYYeco8cbOcczSsPoo1pcrRVS+UKpEXG4FBoKq9qgJQ21",
+	"MoI+6Wq1Qn6k3S7K1kGm1UqNmNjinJu32bYbHMbl6A6PUDXzsMN4nqOy8C3IUunNayHDj7G6KWyjgVml",
+	"Eon+6vTiYvr63cUPG4Z/qkHROiObAWuF7MQHjtxZEdOCA4kiy3ZIn4ebFAnQW+qGuxsdEENhrEOul57C",
+	"2AfKjspI4ZbCB+xRKEZo7h2Zf/nwgT08MAvLuuIWmCYXqjeRdMFi/C4lSxi9TiOBdq474buwpr8cE0Gf",
+	"THF/+fB2+sPpgyv75N9/s4CqWtdF4zbX9NGnqm+RuJ+svHmGaucd4g4fCD3gP1c1U5rdCKxEZW5M1+xo",
+	"Feu0SAPedSNfsGJVVOA6CiIiZhrlISfEEVCUFeTeRRJK23SyOloXtqqzPMOZUGjFoQfVnkuKsHJ58INU",
+	"JhjwWXXIfayEoiJrsqPIOjcmdUaeKHEg6/lRiIbnP16xZeOLTaxSWYmC2wmrCvQvmEHB42ZMhnNNdkxr",
+	"z/eilvPIEGejsbmNPuCy7CpprbkeeYcute+9pxu5d3k1vTqdpMrG3ug9DPUcNpmK3UF9jy03vqFxZ3FV",
+	"4dgGpx615dUaJj4CEQ/hx4s30eVLieum9YlHvjDiNyIUtiT2IeopTQWS2LWg2Ky828cbxHKf2Ewld0jW",
+	"2v2oEhHurN1+2oI3Q5e45fiPS052I6QhGEvg0rR3xOG6DVszTAxckd/tqENgpB02KeRMgotBprhHi+dD",
+	"MTQht3aH3iRh11KHmZC4JbGkGGStlmz/04t95JlZ8MPnx48yksZ9khuNkhV8qm9qN00XtD/5mk9m7z8c",
+	"H41MLn7bRlNsgqN7110y6UmMrzxgP4hvfCxkJGTOnh8ctl/IpNjLIfuH/7hjwCQgOT5K+4xXglkP3Ak5",
+	"aocHR18d/f3Z8dHfPyqPu3uLiDLxdMbvz/eDJWhcPE9I5HepdwE2kIdKn+5FoHDSpZor2BC2Gl7wGP28",
+	"HqmT96gIstArqqjR9d9S021kbY2G8wktKFH0PrpmjiPRjxdvzPaHlUK0ei9rL3IjBfAumrgxHp/H3nnz",
+	"h/K5UsYIg48zAe7w6cm/bjSzAVFZB886WfLrtPhjk+3zlPaje/PR4M7r7oOiZiHz9NHxR+15Pbr2wOaI",
+	"vU0nm0YoDmUG4Rd4LiH8y58cXfXUJPzEKit5dvb27Ops+ubsv32fN9O3b90/qVPHEuybnF6gcop/DFqE",
+	"DRQNGnUvkZ7eyAJcg542dtH+9Tqc/3c/X2XryRnDmZ2BDJ246JjULUuqV0b2Wgl3JhaRJVWEZm2fp4W1",
+	"db8U0aNWppvecmJiqbPX++hKfzhxdUL2wkYHDLpexuO2V7tIlu6rbbWLtmz2gfIWZ2pMBFVWFapivNWl",
+	"TA38JhqaXUBiJxYYGdFl+oc4Kn9w7WsQ0wZMy7/XK9IoREgOFTb3PI0540RNr7G7Kk+2U73AJ9oiWeig",
+	"0xQER60S2klDngtqeTHU1a8DCcyufXx4h6nSTJwhXlzvEbKOc8+ISZhtOMpkN0mt1A5XxGEwlSQmIcRS",
+	"f5GdjvYPdtklvpGVmIUcdEYKEeiaa+urshKXNNaI0iflcLybzDR6FgxYscBsCEZKEh2ypD5Btr97sLuP",
+	"d0bVIHktspPs2e7+7jMnDi7oqu+1pMc/a2UGbIcXgEWrzEAJsoT3HMW4Sc7urJ9q0rs/oTQB6e13XDsv",
+	"RCzZeVaiREDzvWpX2SvhfLh/tDFVxFdL7BX6/H+wXufR/sFYt0iwvR/Xq14eHX69vV+/GO1Dnj3ff7a9",
+	"X1pgm8wZvsDFtn5tkc0884m22UnWckGEpoyChQy+pY5TTPYeO+0hJm3iaJf7YNfKrLiMMCq7g9qGUUvo",
+	"1c848cK4l1Vcxh73MIf/KhZczqMs0xZDibWVQZbhW5zJXybSQAu1BF+ca5dNg2Grkb5gROBqwlqHwL52",
+	"pwioBGVc1o6r20OT4BYokYck56oEY4MGSbPFIAFmBd1vxHny8vrQBbzEVM5IzZgLG8DtVOqu7WluBKWm",
+	"tO+eX4VuJD0eSoLPBfekWRve5yl3i8N0MWRjHYh+yZggXYYKFBQY7AA/njvRiKYLnXFxC0pXlhBG8uGa",
+	"1IKoXd1hvtLh/v4YaGE1E1+tHoz9RpWrDUV0P7LCdFJY6KErz1rdwMMaSO5/5qmpRstACdzxKi25D6v1",
+	"odqx/soXVP6TozIyBGEloQNZgn3dlTFsfozEsSaDdlJx+8IcRf3nriSyaZZdQVCEml90g9MEbWc8XyBA",
+	"e5mZ6oRUVaeuxcsp7aoVBkOqd9CVQQuOHp0k5Zddw0p5C3i/Vka3KIdDvERQfNat4/CCcb8pB0c+1avw",
+	"QZqucGcq4yO4+ypOnbzvWsOtUI1BvFS6rbcZJj48HKrR4hDY5XAm6Yz+BYmD+HKtY1B4kUpvnx8O+6UF",
+	"/mBI7KRij9QF35aB/QUG/5ww6K0n2ckv71NQvHi0oIqoufdBN/Jhr1MyewwYfXJzaJoUSXfgO2zF3VQc",
+	"1AlKdgFCe9OiaevJrbmvgv9hl72TwHilgZerWAeciSCHGafNumYORYLdEiHIGBIIQ3lJZdmS22KxGY5G",
+	"4aWRseJ51v2toV+GT7Ntskfpbu9/H2Baq8P+KGQ62lRS3lAOblp3/Qt0DELH/iOgo/MTQ38yvPmQ2EJ/",
+	"ef/Qgx9kj/gzD2s/rZDKZheNHMCi6OrZAEZnVEDYtH6qz48yFK7YKxCOEmbXC4vyDy0g4pGvbTwAR6Hl",
+	"7w9JsbDzfxQkrZWb/hRI8qfuqgLEatJfAOkLIPUAiaBiHY9a5NgKSL5cyWNsetzGPPleAeDWjO9UmUeV",
+	"tPEGI48Cd+NVv9uMRz9uKDk9UNxlGr6j5X7Er6wlmuLXrPO7cS6eSbn097VQl+RX2NCgSBY0YX21RBPD",
+	"gcOKrFI3yRiuBlgsshPt/34t3JPdj1AKqu8ciRo+VzMWPJax6/P9A8TaiVjWFSxBdn/0w5uRYo1cTJWI",
+	"BdA3YK9jhv8o4G1X9Qerp7GC/SZ73VCx9y84/gXH1wRLusgJvBKmb0Vv4ysczYd+wHbqoWA9p28zfOfB",
+	"G21iZthgjQosBsmSSIC1WgaJlzZ4B+Lv45C9LdRGTxz46/iLc/Sj02kIV2/LKh8bvs3kllSDjRH040hH",
+	"taOejnO/l0nML2z8l0n7qV5fAOcL4AwCDm/12A7DbMUcJ2VOGl1tkBoD9vCBmG7CiaEQxM2/tCPLNu/b",
+	"1xzCuJpaw0zc5zEX+bNFh5PngS9bY1xsEONDKeuyr1vTv6WybAW2Y8DzVCDXwotecoNdgL4TBjpiqJ94",
+	"AvfCWLMBrJLYz/8k0Ww9YPMPFtESugwKaQNRsW2ayRfU/IKaPdTEUObALchV7Y/+7RjPOds17jase0xw",
+	"uwCXUmp81dgWQf9xepWW4aVhoghHymQAnKBKCrMpRj3KbwvednUV31ogOtqAPD8nMeqfQVZ6tv/VeNgZ",
+	"zbNj+vTAF8WlOr5RgzJP+HhrzpEfLcaQ8oHksYf8CxqkaHC0vV/8Yfr/3+HjNZVliFIXv4WyZewB3OiP",
+	"nAaQ+7HJjuPu26hzfHp+5m7NTNwz1QtfQON8BawSxoJ08dOUnpftud57twd0Tf3aPoyEqFNmefpDAi5Y",
+	"rvIByvgXRq/uhqSfk+iufcjXxxwIGo54Zk2icaYMaZLBiYIP7x/+7wA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

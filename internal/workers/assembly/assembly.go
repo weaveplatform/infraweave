@@ -198,6 +198,11 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 // claim runs through.
 func (d *Domain) BindScheduler(s workersapi.Scheduler) { d.workers.BindScheduler(s) }
 
+// BindReports binds the runs domain's workersapi.Reports, a back edge
+// internal/app binds after it constructs that domain, which a claimed
+// run's reports and uploads go to.
+func (d *Domain) BindReports(r workersapi.Reports) { d.workers.BindReports(r) }
+
 // Pools is what other domains call of the domain's pools, which
 // internal/app hands the stacks domain.
 func (d *Domain) Pools() workersapi.Pools { return d.svc }

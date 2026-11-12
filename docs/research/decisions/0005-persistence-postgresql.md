@@ -325,7 +325,10 @@ sees the same keys, buckets and switches.
     `deleting`. Tables that reference an object have a foreign key to it.
   - **Writing.** A row is inserted as `pending` in its own statement, outside
     the caller's transaction, before the upload (`Put`) or before a
-    pre-signed `PUT` URL is issued (`Begin`). The transaction that records the
+    pre-signed `PUT` URL is issued (`Begin`, or `BeginSealed` for an object
+    its uploader seals under a content key the server derives too). A
+    declaration repeated with the same size and SHA-256 finds its `pending`
+    row again, so a retried request signs the same object. The transaction that records the
     business change marks it `live` (`Commit`, or `CommitUpload` after a
     signed upload). A `pending`
     row older than 24 hours is deleted by `blob.expire`, together with any

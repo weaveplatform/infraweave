@@ -74,7 +74,8 @@ func TestUnitBlobsUnreachable(t *testing.T) {
 		"Put":    func() error { _, err := o.Put(ctx, objectstore.Uploads, "acct/k", bytes.NewReader(nil), 0); return err },
 		"Commit": func() error { return o.Commit(ctx, objectstore.Uploads, "acct/k") },
 		"CommitUpload": func() error {
-			return o.CommitUpload(ctx, objectstore.Uploads, "acct/k")
+			_, err := o.CommitUpload(ctx, objectstore.Uploads, "acct/k")
+			return err
 		},
 		"Open":   func() error { _, err := o.Open(ctx, objectstore.Uploads, "acct/k"); return err },
 		"Expire": func() error { _, err := r.Expire(ctx, 10); return err },
@@ -182,7 +183,8 @@ func TestAccBlobsBrokenBucket(t *testing.T) {
 	h.signed(t, "acct/upload", []byte("y"), []byte("y"))
 	commit := func(o *blobs.Objects) error {
 		return tx.Do(ctx, h.pool, tx.Options{}, func(ctx context.Context) error {
-			return o.CommitUpload(ctx, objectstore.Uploads, "acct/upload")
+			_, err := o.CommitUpload(ctx, objectstore.Uploads, "acct/upload")
+			return err
 		})
 	}
 	if err := commit(o); !errors.Is(err, errBucket) {

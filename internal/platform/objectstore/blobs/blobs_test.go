@@ -420,7 +420,8 @@ func (h *harness) signed(t *testing.T, key string, declared, body []byte) {
 func (h *harness) commitUpload(t *testing.T, key string) error {
 	t.Helper()
 	return tx.Do(t.Context(), h.pool, tx.Options{}, func(ctx context.Context) error {
-		return h.o.CommitUpload(ctx, objectstore.Uploads, key)
+		_, err := h.o.CommitUpload(ctx, objectstore.Uploads, key)
+		return err
 	})
 }
 
@@ -498,17 +499,14 @@ func TestAccBlobsRefusals(t *testing.T) {
 	if err := h.o.Begin(ctx, objectstore.Uploads, "acct/once", 0, sum[:]); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.o.Begin(
-		ctx,
-		objectstore.Uploads,
-		"acct/once",
-		0,
-		sum[:],
-	); !errors.Is(
+	if err := h.o.Begin(ctx, objectstore.Uploads, "acct/once", 0, sum[:]); err != nil {
+		t.Errorf("a pending upload declared again as it was: %v", err)
+	}
+	if err := h.o.Begin(ctx, objectstore.Uploads, "acct/once", 1, sum[:]); !errors.Is(
 		err,
 		blobs.ErrKeyInUse,
 	) {
-		t.Errorf("a key written twice: %v", err)
+		t.Errorf("a key declared again otherwise: %v", err)
 	}
 	if _, err := h.o.Put(
 		ctx,
@@ -550,5 +548,91 @@ func TestAccBlobsRefusals(t *testing.T) {
 		objectstore.ErrNotFound,
 	) {
 		t.Errorf("Open of a pending object: %v", err)
+	}
+}
+
+// TestAccBlobsSealedUpload checks an upload its uploader sealed: the row
+// holds the content key the uploader sealed with, sealed in turn, so the
+// committed object opens to the plaintext; a store that is not sealed and
+// a content key of the wrong size are refused, a commit answers the
+// declared size and SHA-256, and a committed key is not declared again.
+func TestAccBlobsSealedUpload(t *testing.T) {
+	h := open(t, objectstore.DriverFS)
+	ctx := t.Context()
+	content := bytes.Repeat([]byte{9}, seal.KeySize)
+	body := bytes.Repeat([]byte("plan-json-marker "), 9000)
+	var sealed bytes.Buffer
+	sw, err := seal.NewWriter(&sealed, content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sw.Write(body); err != nil {
+		t.Fatal(err)
+	}
+	if err := sw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(sealed.Bytes())
+	size := int64(sealed.Len())
+	const key = "acct/run/PLANNING-4/plan.json"
+	for name, err := range map[string]error{
+		"plain store": h.o.BeginSealed(ctx, objectstore.Uploads, "acct/p", size, sum[:], content),
+		"short key":   h.o.BeginSealed(ctx, objectstore.RunArtifacts, key, size, sum[:], content[:16]),
+		"bad size":    h.o.BeginSealed(ctx, objectstore.RunArtifacts, key, -1, sum[:], content),
+	} {
+		want := blobs.ErrDeclared
+		if name == "plain store" {
+			want = blobs.ErrNotSealed
+		}
+		if !errors.Is(err, want) {
+			t.Errorf("%s: %v, want %v", name, err, want)
+		}
+	}
+	for range 2 {
+		if err := h.o.BeginSealed(ctx, objectstore.RunArtifacts, key, size, sum[:],
+			content); err != nil {
+			t.Fatal(err)
+		}
+	}
+	signed, err := h.o.SignPut(ctx, objectstore.RunArtifacts, key, size, sum[:])
+	if err != nil || !strings.HasPrefix(signed.URL, "http://infraweave.test/blobs/") {
+		t.Fatalf("SignPut = %+v, %v", signed, err)
+	}
+	if _, err := h.o.SignGet(ctx, objectstore.RunArtifacts, key); !errors.Is(
+		err, objectstore.ErrNotFound) {
+		t.Errorf("SignGet of a pending object: %v", err)
+	}
+	if _, err := h.store.Put(ctx, objectstore.RunArtifacts, key, bytes.NewReader(sealed.Bytes()),
+		size); err != nil {
+		t.Fatal(err)
+	}
+	var obj objectstore.Object
+	if err := tx.Do(ctx, h.pool, tx.Options{}, func(ctx context.Context) error {
+		obj, err = h.o.CommitUpload(ctx, objectstore.RunArtifacts, key)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if obj.Size != size || obj.SHA256 != sum {
+		t.Errorf("CommitUpload = %+v", obj)
+	}
+	if !bytes.Equal(h.read(t, objectstore.RunArtifacts, key), body) {
+		t.Error("the uploader's sealed object did not open")
+	}
+	if got, err := h.o.SignGet(ctx, objectstore.RunArtifacts, key); err != nil ||
+		!strings.HasPrefix(got.URL, "http://infraweave.test/blobs/") {
+		t.Errorf("SignGet = %+v, %v", got, err)
+	}
+	if err := h.o.BeginSealed(ctx, objectstore.RunArtifacts, key, size, sum[:],
+		content); !errors.Is(err, blobs.ErrKeyInUse) {
+		t.Errorf("a live key declared again: %v", err)
+	}
+	h.pool.Close()
+	if err := h.o.BeginSealed(ctx, objectstore.RunArtifacts, key, size, sum[:],
+		content); err == nil || errors.Is(err, blobs.ErrKeyInUse) {
+		t.Errorf("BeginSealed on a closed pool: %v", err)
+	}
+	if _, err := h.o.SignGet(ctx, objectstore.RunArtifacts, key); err == nil {
+		t.Error("SignGet on a closed pool succeeded")
 	}
 }

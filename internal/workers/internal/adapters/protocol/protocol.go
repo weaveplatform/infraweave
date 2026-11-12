@@ -45,14 +45,39 @@ func bearer(ctx context.Context) (accessapi.Bearer, error) {
 	return b, nil
 }
 
+// refusals are the runs domain's refusals of a claimed run's calls and
+// the problems that answer them: 409 invalid-state for a run off its
+// worker, a state version it moved on from, or a report its state cannot
+// take; 409 already-exists for an upload name taken; 404 for a run with
+// no workspace; and 501 for a report that needs the plan decision.
+var refusals = []struct {
+	err    error
+	typ    problem.Type
+	detail string
+}{
+	{workersapi.ErrNotOnWorker, problem.InvalidState, "The run is not on a worker."},
+	{workersapi.ErrMovedOn, problem.InvalidState, "The run moved on from that state version."},
+	{workersapi.ErrReportRefused, problem.InvalidState, "The run's state cannot take this report."},
+	{
+		workersapi.ErrUploadExists, problem.AlreadyExists,
+		"The run's state version already declared or recorded an upload of that name.",
+	},
+	{workersapi.ErrNoWorkspace, problem.NotFound, "The run has no saved workspace."},
+	{
+		workersapi.ErrNoPlanDecision, problem.NotImplemented,
+		"The server takes no plan decision, so it cannot take a succeeded report of PLANNING.",
+	},
+}
+
 // answer maps the service's refusals to problems: a refused credential
 // to 401, which the log records with its reason, the private-workers
-// limit to 403 limit-reached, and a run not on a worker to 409
-// invalid-state. A *kernel.Invalid is answered as it is.
+// limit to 403 limit-reached, and the runs domain's refusals as refusals
+// lists. A *kernel.Invalid is answered as it is.
 func (s Server) answer(ctx context.Context, err error) error {
-	if errors.Is(err, workersapi.ErrNotOnWorker) {
-		//nolint:wrapcheck // a problem, answered as it is
-		return problem.InvalidState.Error("The run is not on a worker.")
+	for _, r := range refusals {
+		if errors.Is(err, r.err) {
+			return r.typ.Error(r.detail) //nolint:wrapcheck // a problem, answered as it is
+		}
 	}
 	if errors.Is(err, worker.ErrUnauthenticated) {
 		s.log.InfoContext(ctx, "worker credential refused", "reason", err.Error())

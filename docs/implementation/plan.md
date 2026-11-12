@@ -1612,10 +1612,18 @@ context in the assignment with P18b.
    claim with `FOR UPDATE SKIP LOCKED` in
    `internal/runs/internal/core/schedule`, over the columns `runs` gains in
    its `CREATE`: `worker_id`, `worker_pool_id` and `priority_tier`, with
-   the claim's partial index.
+   the claim's partial index. `internal/runs/internal/core/report` takes
+   reports through the worker-report edges, with a report one state
+   version behind answered again, and a `succeeded` report of `PLANNING`
+   answering `501` until P9 task 5's plan decision; it signs uploads under
+   `<account>/<run>/<state>-<stateVersion>/<name>`, sealed artifacts under
+   the content key `seal.ArtifactKey` derives, and commits them into
+   `run_log_chunks` and `run_artifacts`, which the account purge deletes
+   with their objects.
    Tests: `TestUnitWorkerRegistration` (foreign chain, reset serial,
    replayed `jti`, skewed `iat`), `TestAccRunClaim` (50 concurrent pollers,
-   one claim per run). Records DV-008, DV-024, DV-027.
+   one claim per run), `TestUnitReport`, `TestAccReportStore`,
+   `TestAccRunReports`. Records DV-008, DV-024, DV-027.
 3. `internal/runs/internal/core/handover`: the run specification with the
    environment resolved by P6's `configuration/api.Environment`, the run
    token, the in-run API token, and the secret part sealed to the pool key
@@ -1761,7 +1769,7 @@ through the backend.
    `runLogsDownloadURL`, `runChangesV2`, `runChangesV3`, plus
    `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns` with
    data. The plan decision after `PLANNING` takes T20 or T21 with no policy
-   attached.
+   attached, where P8 answers a `succeeded` report of `PLANNING` `501`.
 6. Runner images: `deploy/images/runner-terraform` and
    `deploy/images/runner-opentofu` definitions meeting decision 0008's
    contract; the harness builds `infraweave-runner:acceptance`. In-run
