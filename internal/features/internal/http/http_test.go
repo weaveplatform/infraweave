@@ -15,7 +15,6 @@ import (
 
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/features/internal/core"
-	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
 
@@ -198,13 +197,12 @@ func TestUnitFeatureMiddlewareBody(t *testing.T) {
 		p.Type != problem.TypePrefix+problem.InvalidRequest.Slug {
 		t.Errorf("an unreadable body: %d %+v", rec.Code, p)
 	}
-	big := `{"name":"` + strings.Repeat("x", MaxBody) + `"}`
-	rec, _ = serve(t, &allower{}, apiKeys, true, strings.NewReader(big))
+	// The server's body bound wraps the body before the gate reads it.
+	big := nethttp.MaxBytesReader(nil, io.NopCloser(strings.NewReader(`{"name":"long"}`)), 8)
+	rec, read := serve(t, &allower{}, apiKeys, true, big)
 	if p := decode(t, rec); rec.Code != nethttp.StatusRequestEntityTooLarge ||
-		p.Type != problem.TypePrefix+problem.PayloadTooLarge.Slug {
-		t.Errorf("a body over MaxBody: %d %+v", rec.Code, p)
-	}
-	if MaxBody != idempotency.MaxBody {
-		t.Errorf("MaxBody %d, idempotency.MaxBody %d", MaxBody, idempotency.MaxBody)
+		p.Type != problem.TypePrefix+problem.PayloadTooLarge.Slug ||
+		!strings.Contains(p.Detail, "at most 8 bytes") || read != "" {
+		t.Errorf("a body past the bound: %d %+v, handler read %q", rec.Code, p, read)
 	}
 }

@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -99,4 +100,58 @@ func registered(p problem.Problem) bool {
 			return reflect.DeepEqual(want, p)
 		},
 	)
+}
+
+// TestUnitLimitBodies checks that a Content-Length over the bound answers
+// 413 before the handler runs, that a chunked body stops at the bound with
+// an *http.MaxBytesError while one at the bound reads whole, and that an
+// exempt request and one with no body pass untouched.
+func TestUnitLimitBodies(t *testing.T) {
+	var (
+		read int
+		err  error
+	)
+	h := RequestID(LimitBodies(8, func(r *http.Request) bool { return r.URL.Path == "/exempt" })(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var b []byte
+			b, err = io.ReadAll(r.Body)
+			read = len(b)
+			w.WriteHeader(http.StatusNoContent)
+		})))
+	send := func(target, body string, chunked bool) *httptest.ResponseRecorder {
+		read, err = -1, nil
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, target,
+			strings.NewReader(body))
+		if chunked {
+			r.ContentLength = -1
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec
+	}
+	rec := send("/", "123456789", false)
+	wantProblem(t, rec, http.StatusRequestEntityTooLarge, "at most 8 bytes")
+	if read != -1 {
+		t.Error("a Content-Length over the bound reached the handler")
+	}
+	send("/", "123456789", true)
+	if mbe, ok := errors.AsType[*http.MaxBytesError](err); !ok || mbe.Limit != 8 {
+		t.Errorf("a chunked body past the bound read %d bytes, %v", read, err)
+	}
+	for _, chunked := range []bool{false, true} {
+		if rec := send("/", "12345678", chunked); rec.Code != http.StatusNoContent ||
+			read != 8 || err != nil {
+			t.Errorf("a body at the bound, chunked %v: %d, read %d, %v", chunked, rec.Code, read,
+				err)
+		}
+	}
+	if rec := send("/exempt", "123456789", false); rec.Code != http.StatusNoContent ||
+		read != 9 || err != nil {
+		t.Errorf("an exempt body: %d, read %d, %v", rec.Code, read, err)
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
+	if rec.Code != http.StatusNoContent || read != 0 {
+		t.Errorf("no body: %d, read %d", rec.Code, read)
+	}
 }

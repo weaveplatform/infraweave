@@ -72,12 +72,20 @@ func TestUnitAPIOperations(t *testing.T) {
 		"GET /oauth/authorize":                        {Public: true},
 		"POST /oauth/token":                           {Public: true},
 		"GET /blobs/{token}":                          {Public: true},
-		"PUT /blobs/{token}":                          {Public: true},
+		"PUT /blobs/{token}":                          {Public: true, OwnBodyBound: true},
 	} {
 		got := ops[key]
 		got.Required, got.Body = nil, nil
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("%s: %+v, want %+v", key, got, want)
+		}
+	}
+	// Only the blob PUT departs from the body bound.
+	// ref: decision 0003 § "API surfaces"
+	for key, op := range ops {
+		if op.OwnBodyBound != (key == http.MethodPut+" "+fs.Pattern) {
+			t.Errorf("%s: OwnBodyBound %v; only the blob PUT bounds its own body", key,
+				op.OwnBodyBound)
 		}
 	}
 	// Every API operation names its action and subject; nothing else does.

@@ -18,9 +18,10 @@
 //
 // # Input and output
 //
-// For a request that carries a key it reads the body, up to MaxBody (a larger
-// one answers 413 payload-too-large), to fingerprint it with SHA-256, then
-// restores it for the handler; it records the response and replays it from
+// For a request that carries a key it reads the body, which
+// middleware.LimitBodies bounds ahead of it (a larger one answers 413
+// payload-too-large), to fingerprint it with SHA-256, then restores it for
+// the handler; it records the response and replays it from
 // the store. Postgres reads and writes the platform stream's
 // idempotency_keys table, its locks and expiry on the database clock; Memory
 // keeps everything in process memory by the clock it is given. A failing

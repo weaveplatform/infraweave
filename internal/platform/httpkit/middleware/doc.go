@@ -8,6 +8,11 @@
 // in base32, echoes it, and carries it on the context for RequestIDFrom.
 // Recover turns a panic into a 500 problem whose detail reveals nothing, and
 // re-raises http.ErrAbortHandler. AccessLog logs one line per request.
+// LimitBodies bounds every request body to server.max_body_bytes
+// (DefaultMaxBody by default) but those of the routes it exempts: a larger
+// Content-Length answers 413 payload-too-large at once, and any other body
+// stops at the bound with an *http.MaxBytesError, which problem answers
+// with the same 413.
 // The API's rate limits and idempotency keys are its subpackages,
 // ratelimit and idempotency.
 //
@@ -15,8 +20,8 @@
 //
 // # Input and output
 //
-// It reads requests and writes problem responses and the X-Request-Id
-// header. AccessLog logs the method, the chi route pattern, the status, the
+// It reads requests, wraps a bounded request's body, and writes problem
+// responses and the X-Request-Id header. AccessLog logs the method, the chi route pattern, the status, the
 // bytes written, the duration, the client address and the user agent at
 // info, never a body; a recovered panic is logged with its request ID. Both
 // go through the given slog.Logger.

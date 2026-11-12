@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
@@ -97,6 +98,13 @@ type Server struct {
 	// ref: decision 0020
 	PublicURL string `mapstructure:"public_url"`
 
+	// MaxBodyBytes is server.max_body_bytes: the largest request body any
+	// API surface reads. A larger one answers 413 payload-too-large before
+	// any control or handler buffers it.
+	//
+	// ref: decision 0003 § "API surfaces"
+	MaxBodyBytes int64 `mapstructure:"max_body_bytes"`
+
 	RateLimit   ratelimit.Config   `mapstructure:"rate_limit"`
 	Idempotency idempotency.Config `mapstructure:"idempotency"`
 }
@@ -105,9 +113,10 @@ type Server struct {
 func Defaults() Config {
 	return Config{
 		Server: Server{
-			Config:      serve.Defaults(),
-			RateLimit:   ratelimit.Defaults(),
-			Idempotency: idempotency.Defaults(),
+			Config:       serve.Defaults(),
+			MaxBodyBytes: middleware.DefaultMaxBody,
+			RateLimit:    ratelimit.Defaults(),
+			Idempotency:  idempotency.Defaults(),
 		},
 		Database:    sql.Defaults(),
 		Log:         observe.LogDefaults(),
@@ -128,6 +137,10 @@ func Defaults() Config {
 // before anything listens rather than as a bind error on one listener.
 func (s Server) Validate() error {
 	errs := []error{s.Config.Validate()}
+	if s.MaxBodyBytes <= 0 {
+		errs = append(errs, fmt.Errorf("%w: server.max_body_bytes must be positive, got %d",
+			serve.ErrConfig, s.MaxBodyBytes))
+	}
 	if err := s.RateLimit.Validate(); err != nil {
 		errs = append(errs, fmt.Errorf("%w: server.rate_limit.%w", serve.ErrConfig, err))
 	}

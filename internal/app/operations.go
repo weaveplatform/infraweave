@@ -56,6 +56,12 @@ type Operation struct {
 	// is the empty list, such as POST /auth/token. Every other operation
 	// requires the API's global bearerAuth.
 	Public bool
+	// OwnBodyBound marks an operation whose handler bounds its request body
+	// itself, so server.max_body_bytes does not: the fs driver's blob PUT,
+	// whose objects, such as state files, exceed any API body.
+	//
+	// ref: decision 0003 § "API surfaces"
+	OwnBodyBound bool
 	// Organization marks an operation whose x-infraweave-access is
 	// organization: it serves any session of an organization, with an
 	// account or none, such as the viewer or the account switcher. Every
@@ -449,10 +455,11 @@ var apiOperations = sync.OnceValue(func() Operations {
 	// which the driver verifies; a bearer check in front would answer 401
 	// to every one. Each draws on the standard budget of the client's
 	// address and names no feature, since the URL was signed by an
-	// operation already gated.
+	// operation already gated. A PUT's body is bounded by the size the URL
+	// was signed for, which the driver enforces, not by the API's bound.
 	// ref: decision 0005
 	ops[http.MethodGet+" "+fs.Pattern] = Operation{Public: true}
-	ops[http.MethodPut+" "+fs.Pattern] = Operation{Public: true}
+	ops[http.MethodPut+" "+fs.Pattern] = Operation{Public: true, OwnBodyBound: true}
 	return ops
 })
 
@@ -472,9 +479,12 @@ type Guards struct {
 type Gated func(gate func(*http.Request) (featuresapi.Gate, bool)) func(http.Handler) http.Handler
 
 // Guarded is an API listener router: request ID and recovery, the access
-// log, authentication, then the operator switch, rate limits and
-// idempotency keys in front of every route registered on it, so a request
-// a control rejects is logged too.
+// log, the body bound, authentication, then the operator switch, rate
+// limits and idempotency keys in front of every route registered on it, so
+// a request a control rejects is logged too. The body bound,
+// c.MaxBodyBytes, comes before every control that reads a body; it bounds
+// every operation's body but an OwnBodyBound one's, and a request no
+// operation serves.
 // auth authenticates every request but those to a Public operation; nil
 // refuses every credential. The operator switch runs next, then the rate
 // limit, then idempotency keys, so a request one rejects never reaches the
@@ -523,6 +533,10 @@ func Guarded(
 	}
 	r = middleware.NewRouter(log,
 		middleware.AccessLog(log),
+		middleware.LimitBodies(c.MaxBodyBytes, func(req *http.Request) bool {
+			op, _ := resolve(req)
+			return op.OwnBodyBound
+		}),
 		auth.Middleware(func(req *http.Request) accessapi.Access {
 			op, _ := resolve(req)
 			return op.access()

@@ -234,13 +234,20 @@ func TestUnitRejectedBeforeTheStore(t *testing.T) {
 		q    req
 		want problem.Type
 	}{
-		"empty key":  {req{method: http.MethodPost, target: "/", keys: []string{""}}, problem.InvalidRequest},
-		"long key":   {req{method: http.MethodPost, target: "/", keys: []string{strings.Repeat("k", 256)}}, problem.InvalidRequest},
-		"two keys":   {req{method: http.MethodPost, target: "/", keys: []string{"a", "b"}}, problem.InvalidRequest},
-		"large body": {req{method: http.MethodPost, target: "/", body: strings.Repeat("x", MaxBody+1), keys: []string{"k"}}, problem.PayloadTooLarge},
+		"empty key": {req{method: http.MethodPost, target: "/", keys: []string{""}}, problem.InvalidRequest},
+		"long key":  {req{method: http.MethodPost, target: "/", keys: []string{strings.Repeat("k", 256)}}, problem.InvalidRequest},
+		"two keys":  {req{method: http.MethodPost, target: "/", keys: []string{"a", "b"}}, problem.InvalidRequest},
 	} {
 		t.Run(name, func(t *testing.T) { wantProblem(t, send(h, tc.q), tc.want) })
 	}
+	// The server's body bound wraps the body before the key reads it.
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/",
+		strings.NewReader(strings.Repeat("x", 65)))
+	r.Header.Set(Header, "k")
+	rec := httptest.NewRecorder()
+	r.Body = http.MaxBytesReader(rec, r.Body, 64)
+	h.ServeHTTP(rec, r)
+	wantProblem(t, rec, problem.PayloadTooLarge)
 	if store.calls.Load() != 0 {
 		t.Errorf("rejected requests reached the store %d times", store.calls.Load())
 	}

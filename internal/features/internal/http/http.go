@@ -37,13 +37,8 @@ func Middleware(
 				return
 			}
 			needs, err := needed(r, g)
-			switch {
-			case errors.Is(err, errTooLarge):
-				problem.Write(w, problem.PayloadTooLarge.New(fmt.Sprintf(
-					"A request body may carry at most %d bytes.", MaxBody)))
-				return
-			case err != nil:
-				problem.Write(w, problem.InvalidRequest.New("The request body could not be read."))
+			if err != nil {
+				problem.BodyError(w, err)
 				return
 			}
 			for _, f := range needs {
@@ -62,29 +57,20 @@ func Middleware(
 	}
 }
 
-// MaxBody is the largest body an option-gated operation's request may
-// carry. It is held in memory to find the options it sets, so without a
-// bound one request could exhaust memory; it equals idempotency.MaxBody, so
-// a body one middleware admits the other admits too.
-const MaxBody = 1 << 20
-
-var errTooLarge = errors.New("the body is over MaxBody")
-
 // needed is the features r needs: its operation's capability, then each
 // option whose value its body sets, where a gate with no value is set by
 // any value but null. The body is read and restored, and one that is not
-// JSON sets no option; the strict handler refuses it.
+// JSON sets no option; the strict handler refuses it. The body is held in
+// memory, so the server's body bound stands in front of the gate, and a
+// body past it fails the read with its *http.MaxBytesError.
 func needed(r *nethttp.Request, g featuresapi.Gate) ([]string, error) {
 	needs := []string{g.Feature}
 	if len(g.Options) == 0 || r.Body == nil {
 		return needs, nil
 	}
-	body, err := io.ReadAll(io.LimitReader(r.Body, MaxBody+1))
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read the body: %w", err)
-	}
-	if len(body) > MaxBody {
-		return nil, errTooLarge
 	}
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	var doc any

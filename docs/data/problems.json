@@ -117,7 +117,7 @@
       "id": "payload-too-large",
       "status": 413,
       "title": "payload too large",
-      "when": "The body exceeds `api.max_body_bytes` (default 1 MiB)",
+      "when": "The body exceeds `server.max_body_bytes` (default 1 MiB)",
       "decision": "0022"
     },
     {
