@@ -14,6 +14,43 @@ type RunSources interface {
 	Release(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error
 }
 
+// StateLock is the lock on its stack's state that a run may take.
+type StateLock int
+
+const (
+	// StateLockNone grants no lock.
+	StateLockNone StateLock = iota
+	// StateLockShared grants a lock that other shared holders hold too,
+	// as runs that only read the state do.
+	StateLockShared
+	// StateLockExclusive grants a lock no other run holds, as a run that
+	// writes the state needs.
+	StateLockExclusive
+)
+
+// StateGrant is what a run may do with its stack's managed state in the
+// run's current state; the zero StateGrant grants nothing. Account is the
+// run's account, which the state domain scopes its rows by, so no part of
+// a request's URL chooses the account it reaches.
+//
+// ref: decision 0010 § "Who may call what"
+type StateGrant struct {
+	Account kernel.AccountID
+	Read    bool
+	Lock    StateLock
+	Write   bool
+}
+
+// StateAccess decides a run token's access to a stack's managed state, a
+// forward edge internal/app hands the state domain.
+type StateAccess interface {
+	// Access answers run's grant on stack's state: the zero StateGrant
+	// when no account has the run, when it is another stack's, or when its
+	// state grants nothing. It reads the run on every call, so a run that
+	// ends or stops loses its access at once, whatever its token's expiry.
+	Access(ctx context.Context, run, stack kernel.ULID) (StateGrant, error)
+}
+
 // UpdatedKind is the event the runs domain appends to the outbox each
 // time a run changes state, its creation included.
 //
