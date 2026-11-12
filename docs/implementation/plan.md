@@ -1615,7 +1615,7 @@ context in the assignment with P18b.
    the claim's partial index. `internal/runs/internal/core/report` takes
    reports through the worker-report edges, with a report one state
    version behind answered again, and a `succeeded` report of `PLANNING`
-   answering `501` until P9 task 5's plan decision; it signs uploads under
+   answering `501` until P8b task 4's plan decision; it signs uploads under
    `<account>/<run>/<state>-<stateVersion>/<name>`, sealed artifacts under
    the content key `seal.ArtifactKey` derives, and commits them into
    `run_log_chunks` and `run_artifacts`, which the account purge deletes
@@ -1714,48 +1714,73 @@ context in the assignment with P18b.
 
 ## P8b: Managed state backend
 
-Decisions: [0010](../research/decisions/0010-state-backend.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0005](../research/decisions/0005-persistence-postgresql.md).
+Decisions: [0010](../research/decisions/0010-state-backend.md), [0003](../research/decisions/0003-api-conventions.md), [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P8.
 
 Terraform and OpenTofu reach infraweave's `http` state backend with the run
 token, so the first run stores its state in infraweave rather than in its
-workspace.
+workspace. A plan with no policy attached is decided here, so a run reaches
+`APPLYING` before P9's runner executes phases. External access, import,
+rollback, the signed URLs, Tofu Workspaces and retention are P11's.
 
 **Tasks**
 1. `internal/state` (flat domain) with `state_workspaces`, `state_locks` and
    `managed_state_versions`; `api/` with `Versions.Latest` and `Outputs`.
 2. `internal/state/internal/backend`: `GET`, `POST`, `LOCK` and `UNLOCK` on
    `/state/v1/stacks/{stack}` and the workspace form, registered with
-   `chi.RegisterMethod`; the authorization table per run state through
-   `runs/api.StateAccess`; shared and exclusive locks with `423` and the
-   holder's `LockInfo`; plain-text errors. Tests:
-   `TestUnitStateAccessTable`, `TestUnitLockConflicts`.
+   `chi.RegisterMethod`, on the API listener behind the shared controls of
+   [0003](../research/decisions/0003-api-conventions.md) with the deviations
+   it records for the state backend: HTTP Basic, no account action and no
+   capability, idempotency keys ignored, the handler's own JSON checks and
+   body bounds, deadlines that move with a transfer, and a `423` answering
+   the holder's `LockInfo`, every other error being a problem detail. The
+   authorization table per run state through `runsapi.StateAccess`; shared
+   and exclusive locks with `423` and the holder's `LockInfo`; the
+   empty-body `UNLOCK` that force-unlocks for a caller that may take the
+   exclusive lock, with its audit entry. Run tokens are the surface's only
+   credential until P11's external access. Tests:
+   `TestUnitStateAccessTable`, `TestUnitLockConflicts`,
+   `TestUnitStateSurface`.
 3. Writing a version: `pending` blob row, SHA-256 of the body and the
    `Content-MD5` check, which `fips140=only` accepts without checking
    (DV-094), the size limit,
    sealing into `states`, client-encrypted bodies, no new version for an
-   identical body, `state.indexed` enqueued. Reading streams and unseals.
-4. The runner's `infraweave_backend.tf` with `TF_HTTP_USERNAME` and
-   `TF_HTTP_PASSWORD`. `state` releases the locks a run still holds when
-   `runs` emits that run's terminal event, since a run transition writes
-   only `runs`' tables, and `runsapi.StateAccess` refuses a lock to a run
-   that is no longer active
+   identical body. Reading streams and unseals. `state.indexed` is P22's,
+   with the resources view that consumes it.
+4. The plan decision with no plan policy attached: a `succeeded` report of
+   `PLANNING` carries the plan's `delta`, and the server takes T17, T20 or
+   T21 by [0008](../research/decisions/0008-run-execution-and-worker-protocol.md#phases-reports-and-the-plan-decision)'s
+   table, so a tracked run on an autodeploy stack reaches `APPLYING`. P13
+   adds the plan policies to the same decision.
+5. The run specification's `stateBackend.path` for a stack that manages
+   state, and the agent's `infraweave_backend.tf` with `TF_HTTP_USERNAME` and
+   `TF_HTTP_PASSWORD`, which P9's runner and this phase's acceptance share.
+   `state` releases the locks a run still holds when `runs` emits that run's
+   terminal event, since a run transition writes only `runs`' tables, and
+   `runsapi.StateAccess` refuses a lock to a run that is no longer active
    ([0004](../research/decisions/0004-repository-architecture.md#constraints)).
-   Records DV-032 to DV-035.
-5. The [domain wiring](#adding-a-domain) of `state`, after
+   Records DV-034 and DV-035.
+6. The [domain wiring](#adding-a-domain) of `state`, after
    `runs` in `domains.go` and the migration order: its edges to
    `features`, `access`, `stacks` and `runs`, with `state_workspaces`
-   referencing `stacks`. `runs` reads `stateapi.Versions` through a back
-   edge bound by its first use at handover, P16's output references
-   ([declared graph](repo-layout.md#declared-graph)).
+   referencing `stacks`. Its `stacksapi.StackGuard` enqueues `state.purge`
+   in a stack's delete, and its purge of `account.deleted` deletes a deleted
+   account's state, each with its objects. `runs` reads `stateapi.Versions`
+   through a back edge bound by its first use at handover, P16's output
+   references ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**
-- `state/backend.feature` (`@terraform`, `@tofu`): the scenario acts as a
-  worker over `/worker/v1`, claims a run and runs `terraform` and `tofu` in a
-  container with its run token; init, plan and apply go through the
-  backend, and a second apply is blocked by `423` until the first ends.
+- `state/backend.feature` (`@postgres`, `@objectstore`, `@docker`, with
+  `@terraform` or `@tofu`): the scenario acts as a worker over `/worker/v1`,
+  claims a tracked run on an autodeploy stack and runs `terraform` and
+  `tofu` in a container with its run token; init, plan and apply go through
+  the backend and the run reaches `FINISHED`, and a second apply of the same
+  run waits on `423` until the first unlocks.
 - A state with a known secret output is unreadable in the object store.
+- Every shared control of decision 0003 holds on `/state/v1`, but the
+  deviations it records for the state backend.
+- Deleting the stack, and then its account, leaves no state row or object.
 - Captures C105 and C111 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -1794,8 +1819,8 @@ through the backend.
 5. Run operations: `runConfirm`, `runDiscard`, `runLogs`,
    `runLogsDownloadURL`, `runChangesV2`, `runChangesV3`, plus
    `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns` with
-   data. The plan decision after `PLANNING` takes T20 or T21 with no policy
-   attached, where P8 answers a `succeeded` report of `PLANNING` `501`.
+   data. `runChangesV2` and `runChangesV3` read the plan's changes beside
+   the `delta` P8b's plan decision keeps.
 6. Runner images: `deploy/images/runner-terraform` and
    `deploy/images/runner-opentofu` definitions meeting decision 0008's
    contract; the harness builds `infraweave-runner:acceptance`. In-run
@@ -1878,7 +1903,7 @@ read-only access, signed URLs, Terragrunt workspaces and retention.
 **Tasks**
 1. `stateUploadUrl` and `stateDownloadUrl` with tokens under
    `DeriveKey("state-upload-url")`; `PUT /state/v1/uploads/{token}` and
-   `GET /state/v1/download/{token}`.
+   `GET /state/v1/download/{token}`. Records DV-033.
 2. Import at creation, by `state` on `StackCreated` carrying the
    `stackObjectID` of `stackCreate`, and later
    (`stackManagedStateImport`), with decision 0010's checks; rollback
@@ -1887,11 +1912,12 @@ read-only access, signed URLs, Terragrunt workspaces and retention.
 3. External access with `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD`;
    `terraform_remote_state` through the `http` backend with a token. No
    Terraform Cloud service is served or listed in discovery ([0010](../research/decisions/0010-state-backend.md)).
+   The API's credentials join run tokens on `/state/v1`. Records DV-032.
 4. Tofu Workspaces: `searchTofuWorkspaces`,
    `searchTofuWorkspacesSuggestions`, `tofuWorkspaceUnlock`,
    `tofuWorkspaceUnlockAll`; retention with `state.noncurrent_retention`
-   (90 days by default) applied by the daily `state.retention` task, and
-   `state.purge` on stack deletion. Records DV-036.
+   (90 days by default) applied by the daily `state.retention` task.
+   Records DV-036.
 
 **Exit criteria**
 - `state/external_access.feature`, `state/import.feature`,
@@ -2845,7 +2871,8 @@ capability gates.
 
 **Tasks**
 1. `internal/resources` (flat domain): managed entities indexed from
-   `state.indexed` and plan changes. Operations: `searchManagedEntities`,
+   `state.indexed`, which a state version's transaction enqueues from this
+   phase, and plan changes. Operations: `searchManagedEntities`,
    `searchManagedEntitiesSuggestions`,
    `searchManagedEntitiesGroupByProviders`,
    `searchManagedEntitiesGroupByStacks`,

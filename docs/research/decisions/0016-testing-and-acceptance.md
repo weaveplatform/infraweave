@@ -160,6 +160,14 @@ everywhere, and the reason names where the contract checks it instead.
   run's state transitions against report 08's state machine, the stored
   state version, the masked log, and the events emitted
   ([0015](0015-events-notifications-webhooks-audit.md)).
+- **The state backend before the runner.** `state/backend.feature`
+  (`@postgres`, `@objectstore` and `@docker`, with `@terraform` or `@tofu`)
+  proves the backend before the runner executes phases: the harness acts as
+  the worker over `/worker/v1`, claims the run, opens its sealed
+  specification with the pool key and reports each phase, and runs the
+  pinned `terraform` or `tofu` binary in `infraweave-runner:acceptance` with
+  the backend file and credentials the agent writes
+  ([0010](0010-state-backend.md)).
 - **Images.** Every container image is pinned by digest in
   `test/deps/images.go`; `deps-refresh.yml` moves the pins to the
   newest release.

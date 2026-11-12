@@ -24,8 +24,11 @@ drivers, including local disk, where neither can be assumed.
 
 ### Endpoints
 
-Package `internal/statebackend` serves the backend on chi under `/state/v1`, with `LOCK`
-and `UNLOCK` registered as methods through `chi.RegisterMethod`.
+The flat `state` domain ([0004](0004-repository-architecture.md)) serves the backend from
+`internal/state/internal/backend` on chi under `/state/v1`, with `LOCK` and `UNLOCK`
+registered as methods through `chi.RegisterMethod`. The routes sit on the API listener
+behind the controls every API surface shares, and depart from them only where decision
+[0003](0003-api-conventions.md) records it.
 
 | Method and path | Purpose |
 |---|---|
@@ -117,8 +120,11 @@ session token, in-run API token).
 - **Writes under a lock.** `POST` carries the lock ID in the `ID` query parameter, as
   Terraform sends it. A `POST` whose ID does not name an exclusive lock held by the same run
   answers `423`.
-- **Locks die with their run.** The transition of a run into a terminal state deletes its
-  locks in the same transaction (decision [0008](0008-run-execution-and-worker-protocol.md)).
+- **Locks die with their run.** A run transition writes only the `runs` domain's tables, so
+  `state` deletes a run's locks when it consumes the run's terminal `run_updated`, and
+  `runsapi.StateAccess` refuses a lock to a run that is no longer active
+  (decision [0008](0008-run-execution-and-worker-protocol.md)). A stopped, killed or failed
+  run never keeps a lock.
 - **Operator release.** `tofuWorkspaceUnlock` and `tofuWorkspaceUnlockAll`
   ([16 section 8](../reference/16-state-management.md#8-terragrunt-units-and-workspace-locks))
   delete lock rows for one workspace or every workspace of a stack, and need
@@ -164,9 +170,10 @@ session token, in-run API token).
 4. When the SHA-256 equals the current version's, no version is added and the object is
    deleted: a run with no changes creates none
    ([16 section 6.2](../reference/16-state-management.md#62-behaviour)).
-5. Otherwise one transaction marks the object `live`, inserts the version row, moves
-   `current_version_id` and enqueues `state.indexed` (decision [0011](0011-persistent-work-queue.md)) for consumers
-   that read state, such as the resources view.
+5. Otherwise one transaction marks the object `live`, inserts the version row and moves
+   `current_version_id`. A consumer that reads state, such as the resources view, adds its
+   `state.indexed` job to this transaction: a job kind is enqueued only where a handler
+   runs it (decision [0011](0011-persistent-work-queue.md)).
 6. An object whose transaction never commits keeps its `pending` row, and decision
    [0005](0005-persistence-postgresql.md)'s cleanup deletes both after 24 hours, so no
    bucket listing is needed.
@@ -223,24 +230,32 @@ version answers `204`, which Terraform reads as no state.
   deletes their rows and objects. The current version and versions referenced by a
   non-terminal run are never deleted. Rolling back to a deleted version answers `404`,
   problem `not-found`.
-- **Stack deletion** with resources kept deletes the stack's version rows and objects only
-  after the stack row is gone, through a `state.purge` job.
+- **Stack deletion.** `state` registers its `stacksapi.StackGuard` with the `stacks` domain
+  ([0004](0004-repository-architecture.md)). A stack's delete enqueues a `state.purge` job
+  in its own transaction, so a delete that rolls back enqueues nothing, and the job deletes
+  the stack's workspaces, locks, version rows and objects once the stack row is gone. A
+  deleted account's state goes the same way, through `state`'s purge of `account.deleted`.
 
 ### Errors on the backend paths
 
-The backend paths answer what Terraform's `http` client expects, not problem details:
+Every error on the backend paths is a problem detail of decision
+[0022](0022-api-errors-and-update-semantics.md), as on every other surface, but a lock
+conflict, whose body Terraform reads:
 
 | Status | When | Body |
 |---|---|---|
 | `200` | success | state, or empty |
 | `204` | `GET` with no state | empty |
-| `400` | bad `Content-MD5` (not under `fips140=only`), body not JSON, `LockInfo` not JSON | plain text |
-| `401` | missing or invalid credentials, with `WWW-Authenticate: Basic realm="infraweave-state"` | plain text |
-| `403` | valid credentials without the right in the table above, or an empty-body `UNLOCK` from a caller that may not force-unlock | plain text |
-| `404` | unknown stack or workspace, or the stack does not manage state | plain text |
-| `405` | any other method | plain text |
-| `413` | body over `state.max_size` | plain text |
+| `400` | bad `Content-MD5` (not under `fips140=only`), body not JSON, `LockInfo` not JSON | problem `invalid-request` |
+| `401` | missing or invalid credentials, or another surface's credential, with `WWW-Authenticate: Basic realm="infraweave-state"` | problem `unauthenticated` |
+| `403` | valid credentials without the right in the table above, or an empty-body `UNLOCK` from a caller that may not force-unlock | problem `forbidden` |
+| `404` | unknown stack or workspace, or the stack does not manage state | problem `not-found` |
+| `405` | any other method | problem `method-not-allowed` |
+| `413` | body over `state.max_size`, or a `LockInfo` over 16 KiB | problem `payload-too-large` |
 | `423` | lock conflict | the holder's `LockInfo` JSON |
+
+The shared controls' own refusals, such as `429` and a panic's `500`, are problems here as
+on every surface.
 
 The public API operations (import, rollback, the URL operations, workspace unlock) are
 ordinary REST operations and answer the problem details of decision
@@ -272,6 +287,11 @@ ordinary REST operations and answer the problem details of decision
 - **Rejected: locks in the object store.** Conditional writes differ across S3-compatible
   stores and do not exist on local disk; PostgreSQL row locks are already the
   serialization point for runs.
+- **Problem details on the backend paths.** Terraform's `http` client reads the body of a
+  `423` alone, as the lock it conflicts with, and reports only the status of any other
+  error, so a problem costs it nothing, and every other client of `/state/v1` handles
+  errors as on the other surfaces ([0003](0003-api-conventions.md)). The `423` keeps the
+  `LockInfo` body because Terraform names the lock's holder from it.
 - **Force-unlock on an empty body.** Refusing it would leave `terraform force-unlock`
   always failing, so the usual Terraform answer to a stuck lock would not work. Limiting
   it to callers that may take the exclusive lock keeps it where an apply could already
@@ -312,8 +332,9 @@ ordinary REST operations and answer the problem details of decision
 
 ## Verification
 
-- `internal/statebackend` unit tests: the authorization table per run state; every lock
-  row of the conflict table; lock release on terminal transitions; empty-body `UNLOCK`
+- `internal/state` unit tests: the authorization table per run state; every lock
+  row of the conflict table; lock release on a run's terminal `run_updated`; every shared
+  control of decision 0003 on `/state/v1`, but the deviations it records; empty-body `UNLOCK`
   allowed for an exclusive-lock caller with an audit entry and refused with `403` for any
   other; `Content-MD5` mismatch answering `400`, and the same request accepted under
   `GODEBUG=fips140=only` with the body's SHA-256 recorded; no `Content-MD5` on reads; the

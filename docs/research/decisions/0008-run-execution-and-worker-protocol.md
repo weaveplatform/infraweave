@@ -308,6 +308,12 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   message when the template reads a secret, so a failure cannot echo one.
 - **The runner image** is the run's runtime configuration's, else the
   stack's, else the account's default for private pools.
+- **The state backend.** For a stack that manages state, the clear part
+  names `stateBackend.path`, `/state/v1/stacks/<stack ULID>`, and a stack
+  without managed state has no `stateBackend`. The runner resolves the path
+  against the server URL its launcher reaches, so the backend answers behind
+  the same relay or private address as the protocol, and its credential is
+  the run token the runner already holds ([0010](0010-state-backend.md)).
 - **infraweave's own variables.** The variables infraweave sets in a run are
   named `INFRAWEAVE_*`, and the Terraform metadata variables
   `TF_VAR_infraweave_*`, where Spacelift's are `SPACELIFT_*` and
@@ -374,16 +380,27 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
     or for a run no longer on a worker, answers `409` `invalid-state`, for
     example when a timer ended the run, and the runner exits without further
     reports.
-- **After planning** the runner uploads plan JSON and the delta, then reports
-  `succeeded`. In that request's transaction the server evaluates the plan
-  policies on the uploaded plan ([0009](0009-policy-engine-opa.md)), records the
-  receipts, and takes T17, T18, T20, T21 or T22 by the rules of
-  [09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated). The
-  run stays `PLANNING` until then, so a worker cannot skip a policy. A server
-  without the plan decision answers that report `501` `not-implemented` and
-  leaves the run in `PLANNING`, so no build moves a run past its plan
-  unchecked; a `failed` or `stopped` report of `PLANNING` is taken as in any
-  state.
+- **After planning** the runner uploads plan JSON, then reports `succeeded`
+  with the plan's `delta`: the counts of resources to add, change, delete and
+  import, and whether any output changes. A `succeeded` report of `PLANNING`
+  without a `delta`, or any other report with one, answers `400`
+  `invalid-request`. In that request's transaction the server evaluates the
+  plan policies on the uploaded plan ([0009](0009-policy-engine-opa.md)),
+  records the receipts, and takes T17, T18, T20, T21 or T22 by the rules of
+  [09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated).
+  The run stays `PLANNING` until then, so a worker cannot skip a policy. With
+  no plan policy attached, the decision reads the delta alone:
+
+  | Run | Delta | Stack | Edge | Answer |
+  |---|---|---|---|---|
+  | proposed | any | any | T17 to `FINISHED` | `exit` |
+  | tracked | no resource or output change | any | T17 to `FINISHED` | `exit` |
+  | tracked | changes | autodeploy on and unlocked | T21 to `APPLYING` | `execute` |
+  | tracked | changes | autodeploy off, or locked | T20 to `UNCONFIRMED` | `pause` |
+  | test case | any | any | T21 to `APPLYING` | `execute` |
+
+  The run keeps its delta for its changes view. A `failed` or `stopped`
+  report of `PLANNING` is taken as in any state.
 
 ### Logs and artifacts
 
@@ -796,7 +813,8 @@ offers this policy is available to it alone; 0009 lists built-ins.
   signals; session renewal; `409` on a stale report.
 - `TestUnitReport` and `TestUnitReportEdges` (`internal/runs/internal/core/report`):
   every worker-report edge by event, a repeated report answered again, a
-  stale one refused, and `PLANNING`'s `succeeded` answering `501`.
+  stale one refused, and `PLANNING`'s `succeeded` taking each row of the
+  decision with no plan policy attached, refused `400` without its `delta`.
 - `TestAccRunReports` (`internal/app`, PostgreSQL and the `fs` driver): the
   handover ended once, uploads under the run's prefix, a chunk indexed once,
   an artifact the runner sealed opened by the server, the workspace's `307`,
