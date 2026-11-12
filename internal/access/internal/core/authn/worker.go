@@ -26,8 +26,28 @@ func (s *Service) WorkerToken(ctx context.Context, worker kernel.ULID) (accessap
 }
 
 // VerifyWorker is the worker a worker session token names.
-func (s *Service) VerifyWorker(ctx context.Context, raw string) (kernel.ULID, error) {
+func (s *Service) VerifyWorker(ctx context.Context, raw string) (accessapi.Bearer, error) {
 	return s.verifyBare(ctx, raw, token.KindWorker, accessapi.WorkerAudience)
+}
+
+// AuthenticateWorker is the principal a worker session token acts as, a
+// worker with no account or session, and the token's claims, of which the
+// worker API reads the expiry; any other token is ErrUnauthenticated.
+//
+// ref: decision 0006 § "Token kinds"
+func (s *Service) AuthenticateWorker(
+	ctx context.Context,
+	raw string,
+) (kernel.Principal, token.Claims, error) {
+	b, err := s.VerifyWorker(ctx, raw)
+	if errors.Is(err, accessapi.ErrInvalidToken) {
+		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
+	}
+	if err != nil {
+		return kernel.Principal{}, token.Claims{}, err
+	}
+	return kernel.Principal{Kind: kernel.PrincipalWorker, ActorID: b.ID},
+		token.Claims{Kind: token.KindWorker, Subject: b.ID.String(), Expiry: b.Expires}, nil
 }
 
 // RunToken is a run token for run: aud infraweave-runner, sub the run,
@@ -39,7 +59,7 @@ func (s *Service) RunToken(ctx context.Context, run kernel.ULID) (accessapi.Toke
 }
 
 // VerifyRun is the run a run token names.
-func (s *Service) VerifyRun(ctx context.Context, raw string) (kernel.ULID, error) {
+func (s *Service) VerifyRun(ctx context.Context, raw string) (accessapi.Bearer, error) {
 	return s.verifyBare(ctx, raw, token.KindRunner, accessapi.RunnerAudience)
 }
 
@@ -65,26 +85,26 @@ func (s *Service) bare(
 	return accessapi.Token{Raw: raw, Expires: c.Expiry}, nil
 }
 
-// verifyBare is the ID a bare token of kind for audience names; any other
-// token is accessapi.ErrInvalidToken.
+// verifyBare is the ID a bare token of kind for audience names and its
+// expiry; any other token is accessapi.ErrInvalidToken.
 func (s *Service) verifyBare(
 	ctx context.Context,
 	raw string,
 	kind token.Kind,
 	audience string,
-) (kernel.ULID, error) {
+) (accessapi.Bearer, error) {
 	c, err := s.d.Tokens.Verify(ctx, raw, audience)
 	if errors.Is(err, token.ErrToken) {
-		return kernel.ULID{}, accessapi.ErrInvalidToken
+		return accessapi.Bearer{}, accessapi.ErrInvalidToken
 	}
 	if err != nil {
-		return kernel.ULID{}, err //nolint:wrapcheck // the store names the read
+		return accessapi.Bearer{}, err //nolint:wrapcheck // the store names the read
 	}
 	id, err := kernel.ParseULID(c.Subject)
 	if c.Kind != kind || err != nil {
-		return kernel.ULID{}, accessapi.ErrInvalidToken
+		return accessapi.Bearer{}, accessapi.ErrInvalidToken
 	}
-	return id, nil
+	return accessapi.Bearer{ID: id, Expires: c.Expiry}, nil
 }
 
 // InRunToken is an in-run API token for r's run: an API token whose sub is

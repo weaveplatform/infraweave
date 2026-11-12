@@ -50,11 +50,13 @@ func TestUnitWorkerTokens(t *testing.T) {
 	if !wt.Expires.Equal(t0.Add(time.Hour)) || !rt.Expires.Equal(t0.Add(24*time.Hour)) {
 		t.Errorf("expiries = %s, %s", wt.Expires, rt.Expires)
 	}
-	if got, err := w.s.VerifyWorker(ctx, wt.Raw); err != nil || got != worker {
-		t.Errorf("VerifyWorker = %s, %v", got, err)
+	if got, err := w.s.VerifyWorker(ctx, wt.Raw); err != nil || got.ID != worker ||
+		!got.Expires.Equal(wt.Expires) {
+		t.Errorf("VerifyWorker = %+v, %v", got, err)
 	}
-	if got, err := w.s.VerifyRun(ctx, rt.Raw); err != nil || got != run {
-		t.Errorf("VerifyRun = %s, %v", got, err)
+	if got, err := w.s.VerifyRun(ctx, rt.Raw); err != nil || got.ID != run ||
+		!got.Expires.Equal(rt.Expires) {
+		t.Errorf("VerifyRun = %+v, %v", got, err)
 	}
 	api, _ := w.exchange(t)
 	// Each audience takes only its own kind: a token of the right audience
@@ -66,7 +68,7 @@ func TestUnitWorkerTokens(t *testing.T) {
 	}
 	for name, tc := range map[string]struct {
 		raw    string
-		verify func(context.Context, string) (kernel.ULID, error)
+		verify func(context.Context, string) (accessapi.Bearer, error)
 	}{
 		"run token as worker's": {rt.Raw, w.s.VerifyWorker},
 		"worker token as run's": {wt.Raw, w.s.VerifyRun},
@@ -86,9 +88,28 @@ func TestUnitWorkerTokens(t *testing.T) {
 			t.Errorf("%s token on the API = %v", name, err)
 		}
 	}
+	p, c, err := w.s.AuthenticateWorker(ctx, wt.Raw)
+	if err != nil || p.Kind != kernel.PrincipalWorker || p.ActorID != worker ||
+		!p.AccountID.IsZero() || !c.Expiry.Equal(wt.Expires) {
+		t.Errorf("AuthenticateWorker = %+v, %+v, %v", p, c, err)
+	}
+	for name, raw := range map[string]string{"run": rt.Raw, "API": api, "garbage": "garbage"} {
+		if _, _, err := w.s.AuthenticateWorker(
+			ctx,
+			raw,
+		); !errors.Is(
+			err,
+			authn.ErrUnauthenticated,
+		) {
+			t.Errorf("AuthenticateWorker of a %s token = %v", name, err)
+		}
+	}
 	w.f.fail = "Verify"
 	if _, err := w.s.VerifyWorker(ctx, wt.Raw); !errors.Is(err, errDown) {
 		t.Errorf("Verify down = %v", err)
+	}
+	if _, _, err := w.s.AuthenticateWorker(ctx, wt.Raw); !errors.Is(err, errDown) {
+		t.Errorf("AuthenticateWorker with Verify down = %v", err)
 	}
 	w.f.fail = "Issue"
 	if _, err := w.s.WorkerToken(ctx, worker); !errors.Is(err, errDown) {

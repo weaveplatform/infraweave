@@ -13,6 +13,7 @@ import (
 	expressionsassembly "github.com/weaveplatform/infraweave/internal/expressions/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
@@ -47,6 +48,9 @@ type Domains struct {
 	// OperatorAuth authenticates the operator API's requests, admitting
 	// operator principals alone; nil refuses every credential.
 	OperatorAuth accessapi.Authenticator
+	// WorkerAuth authenticates the worker API's requests, admitting worker
+	// session tokens alone; nil refuses every credential.
+	WorkerAuth accessapi.Authenticator
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
@@ -81,11 +85,16 @@ func newDomains(
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
 	workers := workersassembly.New(workersassembly.Deps{
-		DB:     db.Primary(),
-		Keys:   keys,
-		Spaces: access.Spaces(),
-		Authz:  access.Authorizer(),
-		Public: c.Server.PublicURL,
+		DB:       db.Primary(),
+		Keys:     keys,
+		Spaces:   access.Spaces(),
+		Authz:    access.Authorizer(),
+		Public:   c.Server.PublicURL,
+		Tokens:   access.Tokens(),
+		Features: features.Entitlements(),
+		Version:  buildinfo.Version(),
+		PollMax:  c.Worker.PollTimeoutMax,
+		Log:      log,
 	})
 	access.GuardSpaces(workers.SpaceGuard())
 	access.ResolveSubjects(workersassembly.Entity, workers.SpaceOf())
@@ -169,6 +178,7 @@ func newDomains(
 		Expressions:   expressionsassembly.New(registry),
 		Auth:          access.Authenticator(),
 		OperatorAuth:  access.OperatorAuthenticator(),
+		WorkerAuth:    access.WorkerAuthenticator(),
 	}
 	if err := subscribePurges(events, d); err != nil {
 		return Domains{}, err

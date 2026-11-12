@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
+	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/idempotency"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
@@ -37,6 +38,14 @@ type Operation struct {
 	// Search marks a search, which changes nothing and so ignores
 	// Idempotency-Key.
 	Search bool
+	// Worker marks an operation of the worker API, which a worker session
+	// token authenticates. It decides no account action and no feature,
+	// and ignores Idempotency-Key: its answers carry session tokens, which
+	// a replay would hand out again, and a registration's jti already
+	// refuses a replay.
+	//
+	// ref: decision 0003 § "API surfaces"
+	Worker bool
 	// Public marks an operation that takes no credential, whose security
 	// is the empty list, such as POST /auth/token. Every other operation
 	// requires the API's global bearerAuth.
@@ -137,6 +146,35 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				Body:              strictBody(body),
 				Gate:              gate,
 				Required:          required,
+			}
+		}
+	}
+	return ops, nil
+}
+
+// workerOperationsOf reads each operation of the worker API's doc,
+// mounted under base, as operationsOf does but for what Operation.Worker
+// leaves out: no action, feature or organization access applies.
+//
+// ref: decisions 0003 and 0008
+func workerOperationsOf(doc *openapi3.T, base string) (Operations, error) {
+	ops := Operations{}
+	for path, item := range doc.Paths.Map() {
+		for method, op := range item.Operations() {
+			cost := ratelimit.Standard
+			if v, ok := op.Extensions["x-infraweave-cost"]; ok {
+				s, _ := v.(string)
+				cost = ratelimit.Class(s)
+				if cost != ratelimit.Standard && cost != ratelimit.Expensive {
+					return nil, fmt.Errorf("%w: %s %s has x-infraweave-cost %v",
+						errSpec, method, path, v)
+				}
+			}
+			ops[method+" "+base+path] = Operation{
+				Cost:   cost,
+				Public: op.Security != nil && len(*op.Security) == 0,
+				Worker: true,
+				Body:   strictBody(mediaOf(op)),
 			}
 		}
 	}
@@ -333,8 +371,9 @@ func patchSchema(s *openapi3.Schema, done map[*openapi3.Schema]*openapi3.Schema)
 	return &p
 }
 
-// apiOperations reads the embedded specs once: the API's under BaseURL
-// and the operator API's under OperatorBaseURL, which one router serves.
+// apiOperations reads the embedded specs once: the API's under BaseURL,
+// the operator API's under OperatorBaseURL and the worker API's under
+// WorkerBaseURL, which one router serves.
 // It cannot fail at run time unless a generated package is corrupt, which
 // TestUnitAPIOperations would already have caught.
 var apiOperations = sync.OnceValue(func() Operations {
@@ -355,6 +394,15 @@ var apiOperations = sync.OnceValue(func() Operations {
 		}
 		maps.Copy(ops, some)
 	}
+	worker, err := workerapi.GetSpec()
+	if err != nil {
+		panic(fmt.Sprintf("load the embedded spec of %s: %v", WorkerBaseURL, err))
+	}
+	some, err := workerOperationsOf(worker, WorkerBaseURL)
+	if err != nil {
+		panic(err.Error())
+	}
+	maps.Copy(ops, some)
 	// The break-glass login is a page, not an operation of either API, but
 	// the same controls stand in front of it: no credential, and each
 	// sign-in an expensive draw on the client's address, which slows a
@@ -492,7 +540,7 @@ func Guarded(
 		idempotency.Middleware(g.Keys, caller,
 			func(req *http.Request) bool {
 				op, ok := resolve(req)
-				return ok && !op.Search
+				return ok && !op.Search && !op.Worker
 			}, log),
 		strictBodies(func(req *http.Request) *openapi3.RequestBody {
 			op, _ := resolve(req)
@@ -507,6 +555,8 @@ func (o Operation) access() accessapi.Access {
 	switch {
 	case o.Public:
 		return accessapi.Public
+	case o.Worker:
+		return accessapi.Worker
 	case o.Organization:
 		return accessapi.Organization
 	case o.OrganizationAdmin:

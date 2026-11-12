@@ -1,5 +1,6 @@
 // Package pool keeps an account's private worker pools: Service creates
-// one in a space from a certificate signing request for an EC P-256 key,
+// one in a space, recording its account's organization, from a
+// certificate signing request for an EC P-256 key,
 // which the installation's pool CA, created on first use, signs under a
 // new serial; reads, searches and suggests them, the spaces its caller
 // may read keeping the rest out; replaces their settings, a move needing

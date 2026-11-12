@@ -1,4 +1,4 @@
-# 0003: Idempotency keys, rate limits and cursor pagination
+# 0003: API surfaces, idempotency keys, rate limits and cursor pagination
 
 Status: Accepted
 
@@ -6,8 +6,14 @@ Status: Accepted
 
 infraweave's served API (`api/api.openapi.yaml`) is scaffolded family by
 family from the Spacelift reference ([0001](0001-rest-first-spacelift-surface.md)).
-The reference inherits three gaps from GraphQL. Each would be a breaking
-change to retrofit once clients exist:
+The server answers more than one API: the served document, the operator
+API and the worker API, and routes beside them. Controls that differ by
+surface leave one surface weaker than the rest, which an attacker who holds
+that surface's credential, or a compromised client of it, finds first; and
+each difference is one more thing to know when a fault is traced.
+
+The reference also inherits three gaps from GraphQL. Each would be a
+breaking change to retrofit once clients exist:
 
 - **No safe retry.** A create that times out can't be retried without risking
   a duplicate stack, run or policy. Terraform providers and CI scripts retry
@@ -21,6 +27,83 @@ change to retrofit once clients exist:
   server must load it all to answer.
 
 ## Decision
+
+### API surfaces
+
+- **Surfaces.** One API listener serves every surface:
+
+  | Surface | Prefix | Document | Credential |
+  |---|---|---|---|
+  | The API | `/api/v1` | `api/api.openapi.yaml` | API tokens and browser sessions ([0006](0006-authentication-and-tokens.md)) |
+  | The operator API | `/operator/v1` | `api/operator.openapi.yaml` | Operator tokens ([0021](0021-capability-scope-and-supersession.md)) |
+  | The worker API | `/worker/v1` | `api/worker.openapi.yaml` | Worker session tokens, and run tokens on the runner's routes ([0008](0008-run-execution-and-worker-protocol.md)) |
+  | Routes beside the documents | the break-glass login, the OAuth authorization server, the fs driver's `/blobs/{token}`, the console at `/` ([0023](0023-console.md)) | none | Their own, as the exceptions below say |
+
+  A surface added later, such as the state backend or an inbound webhook,
+  joins the same listener behind the same controls, and records here any
+  control it departs from.
+- **Shared controls.** Every request passes the same chain, in this order,
+  whichever surface it reaches:
+  1. **Request ID and recovery.** Every answer carries `X-Request-Id`, and a
+     panic answers a `500` problem that names the request and nothing else.
+  2. **Access log.** Every request is logged, including one a later control
+     refuses.
+  3. **Authentication.** Each surface has its own authenticator, chosen by
+     the path's prefix, and each route admits one surface's credential. A
+     credential of another surface is no credential: `401`, problem
+     `unauthenticated`, with `WWW-Authenticate: Bearer`.
+  4. **The route table.** Every route is an operation of its surface's
+     document or an entry beside them with a written reason. A route the
+     router serves that the table lacks answers `403`, so a route cannot be
+     mounted without deciding its controls.
+  5. **Authorization and feature gates**
+     ([0007](0007-authorization-spaces-and-roles.md),
+     [0021](0021-capability-scope-and-supersession.md)), where the
+     deviations below do not exempt the route. A refusal costs no budget.
+  6. **The operator switch and rate limits,** keyed by the caller: the
+     principal's `<kind>:<actor ID>`, or the client's address on a route
+     that takes no credential.
+  7. **Idempotency keys** on `POST` and `PATCH`.
+  8. **Strict bodies.** Every JSON request body's schema sets
+     `additionalProperties: false`, and the request is checked against it
+     before the handler: an unknown member, a missing required one or a
+     value outside the schema's bounds (`maxLength`, `minimum` and the like)
+     answers `400`, problem `invalid-request`, with each fault's pointer
+     ([0022](0022-api-errors-and-update-semantics.md)).
+  9. **Bounded bodies.** A request body over `server.max_body_bytes`
+     (1 MiB by default) answers `413`, problem `payload-too-large`, before
+     any of it is buffered.
+  10. **Bounded connections.** The listener bounds the time a client takes
+      to send its headers and its body, and how long an idle connection is
+      kept. A response that is held on purpose, such as the worker API's
+      poll, extends its own deadline to its hold.
+  11. **Uncacheable answers.** Every answer carries `Cache-Control: no-store`
+      and `X-Content-Type-Options: nosniff`: answers carry credentials and a
+      caller's own state, which no cache may keep.
+  12. **Problem details.** Every error is an RFC 9457 problem whose type is
+      in the problem register, so a client of any surface handles errors the
+      same way.
+- **Bounds in the domains.** A domain bounds what it parses and stores,
+  such as labels or a worker's registration, whether or not the document
+  also bounds it, so a value that reaches the domain by another path is
+  bounded too. Where both bound a value the two numbers match, and the
+  domain's constant names the document's.
+- **Deviations by intent.** A route departs from a shared control only as
+  this table says, and the route table's entry for it says why in the code:
+
+  | Routes | Control | Deviation | Why |
+  |---|---|---|---|
+  | The worker API | Authorization | No account action decides a route | The worker is its own subject: its session token names one worker of one pool, and the service reads that worker's rows alone |
+  | The worker API | Feature gates | No capability gates a route | `private-workers` bounds registration; gating the protocol would strand a running run when an organization's tier drops |
+  | The worker API | Idempotency keys | `Idempotency-Key` is ignored | Answers carry session tokens, which a replay from the key store would hand out again; a registration's `jti` refuses a replay, and a poll or an exit is safe to repeat |
+  | The operator API | Authorization | No account action decides a route | Operator tokens alone reach it, and an operator holds no role in any account |
+  | Searches (`POST …/search`) | Idempotency keys | `Idempotency-Key` is ignored | A search changes nothing, so a retry is already safe |
+  | The break-glass login | Authentication, feature gates | No credential, no capability; each sign-in is an `expensive` draw on the client's address | It is how a credential is obtained, and no tier may lock the break-glass admin out |
+  | The OAuth authorization server | Authentication, feature gates, problem details | No credential, no capability; a registration is an `expensive` draw; the token endpoint answers RFC 6749 errors | A client holds no credential until it redeems one, and OAuth clients parse RFC 6749's error shape; the consent operations, which grant, are the API's and gated there |
+  | The break-glass login and OAuth | Strict bodies | The handler decodes a form or OAuth body with its own size bound | Their bodies are forms or OAuth's own shapes, which no JSON schema describes |
+  | The fs driver's `/blobs/{token}` | Authentication, feature gates, bounded bodies | The signed token is the credential; no capability; a `PUT` is bounded by the object store, not `server.max_body_bytes` | A bearer check would refuse every signed URL; the operation that signed it was gated; objects such as state files exceed any API body |
+  | The console's files at `/` | Authentication, feature gates, uncacheable answers | No credential and no capability; hashed assets are cached for a year and `index.html` is `no-cache` | The files are the same for every caller and hold no credential, and a release must reach browsers on their next navigation ([0023](0023-console.md)) |
+  | The admin listener | All | A separate listener with no controls | Probes and metrics must answer while the API sheds load; it is never routed through ingress, and deployments restrict it with network policy ([0017](0017-observability-and-health.md)) |
 
 ### Idempotency keys
 
@@ -162,6 +245,11 @@ The scaffolder adds them to each operation and records each addition in
 
 ## Rationale
 
+- **One set of controls, deviations by name.** A surface whose only client
+  is our own still faces whoever holds its credential: a compromised
+  launcher, or a stolen worker session token, sends whatever it likes. The
+  same controls on every surface leave none weaker, and one table of
+  deviations is where a reviewer looks for the exceptions.
 - **Keys, not natural deduplication.** A create has no natural key that
   survives a retry: two stacks may legitimately share a name across spaces.
   Only the client knows whether two requests are the same intent.
@@ -202,10 +290,19 @@ The scaffolder adds them to each operation and records each addition in
   one set of keys.
 - **The caller is a principal.** The caller is `<kind>:<actor ID>` from
   decision 0006, so all sessions of one API key share one budget, and the
-  operator switch targets a principal, not an address.
+  operator switch targets a principal, not an address. A route that takes
+  no credential keys on the client's address.
+- **One chain.** The controls live in one router in front of every surface,
+  not in each surface's handlers, so a surface cannot be mounted without
+  them and a control's change reaches every surface at once.
 
 ## Verification
 
+- `internal/app` checks that every operation of the three documents is in
+  the route table with its surface's credential, that a route of one
+  surface refuses another's credential, and that an unknown member, a
+  missing required member and a value over a schema's bound are refused
+  before the handler.
 - `api/api_test.go` checks that every component named above exists in the
   bundled spec, that every problem response's example `type` is a slug of
   the problem register with its status and title, and that a response uses

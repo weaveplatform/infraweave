@@ -18,8 +18,9 @@ import (
 )
 
 // Authenticator is accessapi.Authenticator over the authn service: the
-// API's, which accepts a bearer token or a browser session's cookie, or
-// the operator API's, which accepts operator tokens alone.
+// API's, which accepts a bearer token or a browser session's cookie, the
+// operator API's, which accepts operator tokens alone, or the worker
+// API's, which accepts worker session tokens alone.
 type Authenticator struct {
 	token   func(ctx context.Context, raw string, reach authn.Reach) (kernel.Principal, token.Claims, error)
 	browser func(
@@ -30,6 +31,11 @@ type Authenticator struct {
 	// origin is the public URL's origin, which a cookie-authenticated
 	// write must name in its Origin header.
 	origin string
+	// worker is set on the worker API's authenticator, which alone admits
+	// a route of accessapi.Worker, so a request routed to the wrong
+	// authenticator is refused rather than authenticated as another
+	// surface's caller.
+	worker bool
 }
 
 var _ accessapi.Authenticator = Authenticator{}
@@ -54,6 +60,22 @@ func NewOperatorAuthenticator(auth *authn.Service) Authenticator {
 		) (kernel.Principal, token.Claims, error) {
 			return auth.AuthenticateOperator(ctx, raw)
 		},
+	}
+}
+
+// NewWorkerAuthenticator returns the worker API's middleware source over
+// auth. It puts the worker session token's accessapi.Bearer on the
+// request's context beside the principal.
+func NewWorkerAuthenticator(auth *authn.Service) Authenticator {
+	return Authenticator{
+		token: func(
+			ctx context.Context,
+			raw string,
+			_ authn.Reach,
+		) (kernel.Principal, token.Claims, error) {
+			return auth.AuthenticateWorker(ctx, raw)
+		},
+		worker: true,
 	}
 }
 
@@ -103,6 +125,10 @@ func (a Authenticator) Middleware(
 				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestKey{}, rec)))
 				return
 			}
+			if (acc == accessapi.Worker) != a.worker {
+				unauthenticated(w)
+				return
+			}
 			reach := reaches[acc]
 			var (
 				p   kernel.Principal
@@ -128,6 +154,12 @@ func (a Authenticator) Middleware(
 				return
 			}
 			ctx := kernel.WithPrincipal(context.WithValue(r.Context(), requestKey{}, rec), p)
+			if a.worker {
+				ctx = accessapi.WithBearer(
+					ctx,
+					accessapi.Bearer{ID: p.ActorID, Expires: rec.expiry},
+				)
+			}
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

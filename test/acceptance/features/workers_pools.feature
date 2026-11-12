@@ -295,3 +295,97 @@ Feature: Private worker pools
     And the problem refuses the field "/privateWorkerPoolRunnerImage" as "rule"
     When token "h" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{"privateWorkerPoolRunnerImage":"ghcr.io/acme/runner","colour":"red"}' through B
     Then it answers a 400 problem "invalid-request"
+
+  @op:workerDrainSet @op:workerPoolCycle @op:workerPoolSearchWorkers @op:workerPoolSearchWorkersSuggestions @op:workerPool @case:success
+  Scenario: A launcher registers and polls, an account admin drains, finds and cycles it, and it deregisters
+    Given token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"{team}","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "pool"
+    And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "first"
+    When the launcher "l" registers with the key of "csr" and the certificate "first" through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/worker-pools/{pool}" through B
+    Then the answer's workersCount is '1'
+    And the answer's busyWorkers is '0'
+    When token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    Then the answer is '{}'
+    When the launcher "l" holds a poll with '{"busy":true,"wait":60}' through A
+    And token "h" sends "PUT /api/v1/worker-pools/{pool}/workers/{l}/drain" with '{"drain":true}' through B
+    Then it answers 200
+    And the answer's status is '"DRAINED"'
+    And the held poll of "l" answers within 10 seconds
+    And the answer is '{"drained":true}'
+    When token "h" sends "GET /api/v1/worker-pools/{pool}/search-workers?input=%7B%22predicates%22%3A%5B%7B%22field%22%3A%22status%22%2C%22constraint%22%3A%7B%22enumEquals%22%3A%5B%22DRAINED%22%5D%7D%7D%5D%7D" through A
+    Then the answer lists the workers "l"
+    When token "h" sends "GET /api/v1/worker-pools/{pool}/search-workers?input=%7B%22predicates%22%3A%5B%7B%22field%22%3A%22status%22%2C%22constraint%22%3A%7B%22enumEquals%22%3A%5B%22IDLE%22%5D%7D%7D%5D%7D" through B
+    Then the answer lists the workers ""
+    When token "h" sends "GET /api/v1/worker-pools/{pool}/search-workers-suggestions?input=%7B%22fields%22%3A%5B%22status%22%5D%7D" through A
+    Then it answers 200
+    When the launcher "l" holds a poll with '{"busy":true,"drained":true,"wait":60}' through B
+    And token "h" sends "POST /api/v1/worker-pools/{pool}/cycle" through A
+    Then it answers 200
+    And the held poll of "l" answers within 10 seconds
+    And the answer is '{"drained":true,"signals":["cycle"]}'
+    When token "l" sends "POST /worker/v1/deregister" through A
+    Then it answers 204
+    When token "l" sends "POST /worker/v1/poll" with '{"busy":false}' through B
+    Then it answers a 401 problem "unauthenticated"
+    When token "h" sends "GET /api/v1/worker-pools/{pool}" through A
+    Then the answer's workersCount is '0'
+
+  @op:workerDrainSet @op:workerPoolCycle @op:workerPoolSearchWorkers @op:workerPoolSearchWorkersSuggestions @case:denial
+  Scenario: The worker API refuses a user token, a replayed registration and a replaced certificate, and a registration beyond private-workers
+    Given the operator key is exchanged through A for token "op"
+    And token "op" gives the home organization the tier "Starter+" through A
+    And token "op" turns billing on through A
+    And "GET /api/v1/worker-pools" through B with token "h" eventually answers 200
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"{team}","certificateSigningRequest":"{csr}"}' through B
+    And the answer's id names "pool"
+    And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "first"
+    When token "h" sends "POST /worker/v1/poll" with '{"busy":false}' through B
+    Then it answers a 401 problem "unauthenticated"
+    When the launcher "l" registers with the key of "csr" and the certificate "first" through B
+    Then it answers 200
+    When the launcher "l" sends its registration again through B
+    Then it answers a 401 problem "unauthenticated"
+    When the launcher "l2" registers with the key of "csr" and the certificate "first" through B
+    Then it answers 200
+    When the launcher "l3" registers with the key of "csr" and the certificate "first" through B
+    Then it answers a 403 problem "limit-reached"
+    And the problem names the limit "private-workers" of the organization at 2
+    When the launcher "l" registers with the key of "csr" and the certificate "first" as the worker "l" through B
+    Then it answers 200
+    And the answer's worker is '"{l}"'
+    When token "m" sends "PUT /api/v1/worker-pools/{pool}/workers/{l}/drain" with '{"drain":true}' through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "POST /api/v1/worker-pools/{pool}/cycle" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/worker-pools/{pool}/search-workers?input=%7B%7D" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/worker-pools/{pool}/search-workers-suggestions?input=%7B%7D" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/worker-pools/{pool}/reset" with '{"certificateSigningRequest":"{csr2}"}' through B
+    And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "second"
+    And token "l" sends "POST /worker/v1/poll" with '{"busy":false}' through B
+    Then it answers a 401 problem "unauthenticated"
+    When the launcher "old" registers with the key of "csr" and the certificate "first" through B
+    Then it answers a 401 problem "unauthenticated"
+    When the launcher "l" registers with the key of "csr2" and the certificate "second" as the worker "l" through B
+    Then it answers 200
+    And the answer's worker is '"{l}"'
+
+  @op:workerDrainSet @op:workerPoolCycle @op:workerPoolSearchWorkers @op:workerPoolSearchWorkersSuggestions @case:failure
+  Scenario: A drain of a worker the pool lacks, a cycle of no pool, a bad cursor and a malformed registration are refused
+    Given token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "pool"
+    When token "h" sends "PUT /api/v1/worker-pools/{pool}/workers/nope/drain" with '{"drain":true}' through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "PUT /api/v1/worker-pools/{pool}/workers/01KACME000000000000000000A/drain" with '{"drain":true,"colour":"red"}' through B
+    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "POST /api/v1/worker-pools/nope/cycle" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/worker-pools/{pool}/search-workers?input=%7B%22after%22%3A%22nope%22%7D" through B
+    Then it answers a 400 problem "invalid-cursor"
+    When token "h" sends "GET /api/v1/worker-pools/nope/search-workers-suggestions?input=%7B%7D" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /worker/v1/register" with '{"registration":"garbage"}' through A
+    Then it answers a 401 problem "unauthenticated"

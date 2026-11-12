@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
@@ -152,4 +153,51 @@ func TestUnitOperatorRoutes(t *testing.T) {
 		http.StatusUnauthorized,
 		"no valid credential",
 	)
+}
+
+// TestUnitWorkerRoutes checks that the worker API stands behind the
+// controls of every surface with its own authenticator: with none, a
+// credential the API's authenticator admits answers 401 there, while the
+// public registration reaches its handler past the strict body check,
+// and /worker/v10 is not under the worker API.
+func TestUnitWorkerRoutes(t *testing.T) {
+	c := config.Defaults().Server
+	h := API(discard(), c, memory(c), Domains{Auth: byAddress{}}, Platform{}, Blobs{})
+	rec := request(t, h, http.MethodPost, WorkerBaseURL+"/poll")
+	wantProblem(t, rec, http.StatusUnauthorized, "no valid credential")
+	if got := rec.Header().Get("WWW-Authenticate"); got != "Bearer" {
+		t.Errorf("WWW-Authenticate %q", got)
+	}
+	if rec.Header().Get("X-RateLimit-Limit") != "" {
+		t.Error("a refused credential drew from a bucket")
+	}
+	send := func(body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
+			WorkerBaseURL+"/register", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+	rec = send(`{"registration":"x"}`)
+	wantProblem(t, rec, http.StatusNotImplemented, "workerRegister")
+	if rec.Header().Get("X-RateLimit-Limit") == "" {
+		t.Error("the registration drew from no bucket")
+	}
+	long := `{"registration":"` + strings.Repeat("x", 32769) + `"}`
+	for _, body := range []string{`{"registration":"x","colour":"red"}`, `{}`, long} {
+		var p problem.Problem
+		rec := send(body)
+		if json.Unmarshal(rec.Body.Bytes(), &p) != nil || rec.Code != http.StatusBadRequest ||
+			p.Type != problem.TypePrefix+problem.InvalidRequest.Slug {
+			t.Errorf("%s answered %d %s", body, rec.Code, rec.Body)
+		}
+	}
+	wantProblem(t, request(t, h, http.MethodPost, "/worker/v10/poll"), http.StatusNotFound,
+		"/worker/v10/poll")
+	if op := apiOperations()[http.MethodPost+" "+WorkerBaseURL+"/poll"]; !op.Worker ||
+		op.access() != accessapi.Worker || op.Body == nil || op.Required != nil ||
+		op.Gate.Feature != "" {
+		t.Errorf("the poll's operation is %+v", op)
+	}
 }

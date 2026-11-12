@@ -1,0 +1,10 @@
+# oapi-codegen configuration for the worker API's Go client, which the
+# launcher calls (make generate). It lives under internal/agent, whose
+# package graph holds no server code.
+package: wire
+output: internal/agent/wire/client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: true

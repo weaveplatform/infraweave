@@ -158,7 +158,7 @@ generate: bundle
 
 ## verify-generate: fail if the committed bundles, generated code or docs/data view differ from what make generate writes
 verify-generate: generate
-	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen pkg/client $(DATA_VIEW) $(CATALOGUE) $(ACTIONS) || \
+	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen internal/agent/wire pkg/client $(DATA_VIEW) $(CATALOGUE) $(ACTIONS) || \
 		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
 
 ## reference: regenerate each product's OpenAPI reference and coverage report from its snapshots

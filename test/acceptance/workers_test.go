@@ -13,19 +13,46 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net/http"
+	"slices"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/cucumber/godog"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/weaveplatform/infraweave/internal/agent/wire"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// workerSteps make a pool key's certificate signing request and check
-// the pool token a pool answers against the pool CA and the pool's row.
+// workerSteps make a pool key's certificate signing request, check the
+// pool token a pool answers against the pool CA and the pool's row, and
+// register and poll launchers through the worker API's generated client.
 //
 // ref: decision 0008 § "The worker API"
-type workerSteps struct{ o *orgSteps }
+type workerSteps struct {
+	o *orgSteps
+	// keys are the pool keys by the name of their request.
+	keys map[string]crypto.Signer
+	// certs are the pool certificates by the name their serial is kept
+	// as, each with its pool's ID.
+	certs map[string]poolCert
+	// registrations are each launcher's last signed registration.
+	registrations map[string]string
+	// held are each launcher's poll in flight.
+	held map[string]chan response
+}
+
+type poolCert struct {
+	cert *x509.Certificate
+	pool string
+}
 
 func (w *workerSteps) register(sc *godog.ScenarioContext) {
+	w.keys, w.certs = map[string]crypto.Signer{}, map[string]poolCert{}
+	w.registrations, w.held = map[string]string{}, map[string]chan response{}
 	sc.Step(`^a certificate signing request for an? (P-256|P-384|RSA) key is kept as "(\w+)"$`,
 		w.request)
 	sc.Step(
@@ -33,6 +60,14 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		w.token,
 	)
 	sc.Step(`^the pool "(\w+)" no longer has the serial kept as "(\w+)"$`, w.replaced)
+	sc.Step(
+		`^the launcher "(\w+)" registers with the key of "(\w+)" and the certificate "(\w+)"(?: as the worker "(\w+)")? through ([AB])$`,
+		w.registerLauncher,
+	)
+	sc.Step(`^the launcher "(\w+)" sends its registration again through ([AB])$`, w.replay)
+	sc.Step(`^the launcher "(\w+)" holds a poll with '([^']*)' through ([AB])$`, w.hold)
+	sc.Step(`^the held poll of "(\w+)" answers within (\d+) seconds$`, w.answered)
+	sc.Step(`^the answer lists the workers "([^"]*)"$`, w.lists)
 }
 
 // request keeps base64 of the PEM of a certificate signing request for a
@@ -51,6 +86,7 @@ func (w *workerSteps) request(kind, name string) error {
 	if err != nil {
 		return fmt.Errorf("a %s key: %w", kind, err)
 	}
+	w.keys[name] = key
 	der, err := x509.CreateCertificateRequest(rand.Reader,
 		&x509.CertificateRequest{Subject: pkix.Name{CommonName: "acceptance"}}, key)
 	if err != nil {
@@ -123,6 +159,7 @@ func (w *workerSteps) token(ctx context.Context, pool, name string) error {
 			cert.SerialNumber, serial)
 	}
 	w.o.ids[name] = strconv.FormatInt(serial, 10)
+	w.certs[name] = poolCert{cert: cert, pool: t.Pool}
 	return nil
 }
 
@@ -154,6 +191,164 @@ func (w *workerSteps) row(ctx context.Context, query string, args []any, dest ..
 	defer conn.Close(context.WithoutCancel(ctx))
 	if err := conn.QueryRow(ctx, query, args...).Scan(dest...); err != nil {
 		return fmt.Errorf("%w: %s: %w", errStep, query, err)
+	}
+	return nil
+}
+
+// wire is a client of the worker API through replica.
+func (w *workerSteps) wire(replica string) (*wire.ClientWithResponses, error) {
+	i := 0
+	if replica == "B" {
+		i = 1
+	}
+	c, err := wire.NewClientWithResponses("http://" + w.o.a.s.w.servers[i].API + "/worker/v1")
+	if err != nil {
+		return nil, fmt.Errorf("worker client: %w", err)
+	}
+	return c, nil
+}
+
+// registerLauncher signs a registration with the key of key under the
+// certificate kept as cert, naming the worker kept as named when set, and
+// sends it through replica. A registration answered 200 keeps its worker
+// as launcher and its session token as the token launcher.
+func (w *workerSteps) registerLauncher(
+	ctx context.Context,
+	launcher, key, cert, named, replica string,
+) error {
+	pc, ok := w.certs[cert]
+	if !ok || w.keys[key] == nil {
+		return fmt.Errorf("%w: no certificate %q or key %q", errStep, cert, key)
+	}
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: w.keys[key]},
+		(&jose.SignerOptions{}).WithHeader("x5c",
+			[]string{base64.StdEncoding.EncodeToString(pc.cert.Raw)}))
+	if err != nil {
+		return fmt.Errorf("signer: %w", err)
+	}
+	payload := map[string]any{
+		"pool": pc.pool, "iat": time.Now().Unix(), "jti": kernel.NewULID().String(),
+		"version": "1.0.0", "os": "linux", "arch": "amd64",
+		"metadata": map[string]string{"host": launcher},
+	}
+	if named != "" {
+		payload["worker"] = w.o.ids[named]
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("registration: %w", err)
+	}
+	obj, err := signer.Sign(b)
+	if err != nil {
+		return fmt.Errorf("sign: %w", err)
+	}
+	raw, err := obj.CompactSerialize()
+	if err != nil {
+		return fmt.Errorf("sign: %w", err)
+	}
+	w.registrations[launcher] = raw
+	return w.replay(ctx, launcher, replica)
+}
+
+// replay sends launcher's last registration through replica, with no
+// token.
+func (w *workerSteps) replay(ctx context.Context, launcher, replica string) error {
+	r, err := w.o.a.do(ctx, replica, "", http.MethodPost, "/worker/v1/register",
+		wire.WorkerRegisterJSONRequestBody{Registration: w.registrations[launcher]})
+	if err != nil && r.status == 0 {
+		return err
+	}
+	var reg wire.Registration
+	if r.status == http.StatusOK {
+		if err := json.Unmarshal(r.body, &reg); err != nil {
+			return fmt.Errorf("%w: the registration answered %s", errStep, r.body)
+		}
+		w.o.ids[launcher] = reg.Worker
+		w.o.a.tokens[launcher] = reg.SessionToken
+	}
+	return nil
+}
+
+// hold sends a poll of raw for launcher through replica, which the
+// server may hold, and returns once the server has marked the worker seen
+// by it, which a poll reporting busy shows.
+func (w *workerSteps) hold(ctx context.Context, launcher, raw, replica string) error {
+	c, err := w.wire(replica)
+	if err != nil {
+		return err
+	}
+	var in wire.WorkerPollJSONRequestBody
+	if err := json.Unmarshal([]byte(raw), &in); err != nil || !in.Busy {
+		return fmt.Errorf("%w: a held poll reports busy: %s", errStep, raw)
+	}
+	token := w.o.a.tokens[launcher]
+	done := make(chan response, 1)
+	w.held[launcher] = done
+	go func() {
+		resp, err := c.WorkerPollWithResponse(context.WithoutCancel(ctx), in,
+			func(_ context.Context, r *http.Request) error {
+				r.Header.Set("Authorization", "Bearer "+token)
+				return nil
+			})
+		if err != nil {
+			done <- response{err: err}
+			return
+		}
+		done <- response{status: resp.StatusCode(), header: resp.HTTPResponse.Header, body: resp.Body}
+	}()
+	return Eventually(ctx, "the held poll's worker busy", func(ctx context.Context) (bool, error) {
+		var busy bool
+		err := w.row(ctx, `SELECT busy FROM workers WHERE id = $1`,
+			[]any{uuidOf(w.o.ids[launcher])}, &busy)
+		return busy, err
+	})
+}
+
+// answered waits up to secs for launcher's held poll to answer, and
+// makes its answer the last.
+func (w *workerSteps) answered(launcher string, secs int) error {
+	select {
+	case r := <-w.held[launcher]:
+		if r.status == 0 {
+			return fmt.Errorf("%w: the held poll failed: %w", errStep, r.err)
+		}
+		w.o.a.s.sent = append(w.o.a.s.sent, r)
+		return nil
+	case <-time.After(time.Duration(secs) * time.Second):
+		return fmt.Errorf(
+			"%w: the held poll of %q did not answer within %ds",
+			errStep,
+			launcher,
+			secs,
+		)
+	}
+}
+
+// lists checks the last answer, a page of workers, against the workers
+// kept as want, comma-separated, in the page's order.
+func (w *workerSteps) lists(want string) error {
+	var page struct {
+		Edges []struct {
+			Node struct {
+				ID string `json:"id"`
+			} `json:"node"`
+		} `json:"edges"`
+	}
+	r := w.o.a.s.last()
+	if r.status != http.StatusOK || json.Unmarshal(r.body, &page) != nil {
+		return fmt.Errorf("%w: answered %d %s", errStep, r.status, r.body)
+	}
+	var got, wanted []string
+	for _, e := range page.Edges {
+		got = append(got, e.Node.ID)
+	}
+	for name := range strings.SplitSeq(want, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			wanted = append(wanted, w.o.ids[name])
+		}
+	}
+	if !slices.Equal(got, wanted) {
+		return fmt.Errorf("%w: the workers are %v, want %v", errStep, got, wanted)
 	}
 	return nil
 }

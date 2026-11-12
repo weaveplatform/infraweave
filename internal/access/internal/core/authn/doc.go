@@ -23,7 +23,9 @@
 // the break-glass admin's or an organization key's session is, so API
 // key and run tokens are refused there.
 // AuthenticateOperator does so for the operator API, admitting operator
-// sessions alone, so neither API accepts the other's tokens.
+// sessions alone, so neither API accepts the other's tokens, and
+// AuthenticateWorker for the worker API, admitting worker session tokens
+// alone as a principal of kind worker.
 // AuthenticateGrant does so for an MCP surface: it admits an OAuth access
 // token only when its session is an OAuth grant for that resource whose
 // scopes include the token's, and the principal holds the token's scopes.
@@ -53,7 +55,7 @@
 // session token and a run token, with audiences
 // accessapi.WorkerAudience and accessapi.RunnerAudience and no session
 // row, which VerifyWorker and VerifyRun read back as the worker or run
-// they name. InRunToken issues an in-run API token: an API token whose
+// they name and when they expire. InRunToken issues an in-run API token: an API token whose
 // session has actor kind run and whose sub is the stack's slug and the
 // run. Its principal is completed at each authentication from the
 // accessapi.Runs that BindRuns binds, acting as the run's stack from the

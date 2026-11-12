@@ -146,6 +146,13 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 			notify.Invalidate,
 		) // one of notify.Channels, so never an error
 		wg.Go(func() { domains.Features.WatchEntitlements(background, entitlements) })
+		polls, _ := l.Subscribe(notify.Runs) // one of notify.Channels, so never an error
+		wg.Go(func() { domains.Workers.WatchPolls(background, polls) })
+		// A held poll would hold the drain for its whole wait.
+		wg.Go(func() {
+			<-ctx.Done()
+			domains.Workers.StopPolls()
+		})
 	}
 	stopScheduler := func() {}
 	if m.Scheduler {

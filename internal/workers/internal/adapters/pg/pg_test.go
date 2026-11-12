@@ -117,6 +117,7 @@ type fixture struct {
 	store                *pg.Store
 	deps                 pool.Deps
 	svc                  *pool.Service
+	org                  kernel.OrganizationID
 	acct                 kernel.AccountID
 	admin, reader, mover kernel.Principal
 	team, hidden         kernel.ULID
@@ -141,7 +142,8 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	f := &fixture{
-		db: db, keys: keys, acct: kernel.NewAccountID(), team: kernel.NewULID(),
+		db: db, keys: keys, org: kernel.NewOrganizationID(), acct: kernel.NewAccountID(),
+		team:   kernel.NewULID(),
 		hidden: kernel.NewULID(), csr: request(t),
 	}
 	f.tree = spaces{nodes: []accessapi.SpaceNode{
@@ -151,10 +153,11 @@ func newFixture(t *testing.T) *fixture {
 	}}
 	principal := func(login string) kernel.Principal {
 		return kernel.Principal{
-			Kind:      kernel.PrincipalAPIKey,
-			ActorID:   kernel.NewULID(),
-			AccountID: f.acct,
-			Login:     login,
+			Kind:           kernel.PrincipalAPIKey,
+			ActorID:        kernel.NewULID(),
+			OrganizationID: f.org,
+			AccountID:      f.acct,
+			Login:          login,
 		}
 	}
 	f.admin, f.reader, f.mover = principal("admin"), principal("reader"), principal("mover")
@@ -586,8 +589,9 @@ func TestAccPoolPurgeAndGuard(t *testing.T) {
 			t.Fatal(err)
 		}
 		ids = append(ids, p.ID)
-		if _, err := f.db.Exec(ctx, `INSERT INTO workers (account_id, id, pool_id, serial)
-			VALUES ($1, $2, $3, $4)`, f.acct, kernel.NewULID(), p.ID, p.Serial); err != nil {
+		if _, err := f.db.Exec(ctx, `INSERT INTO workers
+			(account_id, organization_id, id, pool_id, serial) VALUES ($1, $2, $3, $4, $5)`,
+			f.acct, f.org, kernel.NewULID(), p.ID, p.Serial); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := f.db.Exec(
@@ -676,7 +680,7 @@ func TestAccUnavailable(t *testing.T) {
 	if _, err := s.Share(ctx, acct, p.ID); err == nil || errors.Is(err, pool.ErrNotFound) {
 		t.Errorf("Share on a closed pool = %v", err)
 	}
-	if len(pg.Held()) != 5 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
+	if len(pg.Held()) != 7 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
 		t.Errorf("held %v, keys %v, sealed %v", pg.Held(), pg.Keys(), pg.SealedColumns())
 	}
 }

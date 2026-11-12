@@ -1,0 +1,159 @@
+# Shapes every worker family shares, the same as the API's
+# components-common.yaml, so the worker API answers problems as the API
+# does; problem type slugs must be ones that record lists.
+components:
+  schemas:
+    Problem:
+      description: >-
+        An RFC 9457 problem detail. Every error response uses the status code
+        and this body.
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          description: A URI naming the problem type.
+        title:
+          type: string
+          description: A short summary of the problem type.
+        status:
+          type: integer
+          format: int32
+          description: The HTTP status code, repeated for clients that lose it.
+        detail:
+          type: string
+          description: What went wrong with this request.
+        instance:
+          type: string
+          description: >-
+            The request this problem answers, as urn:infraweave:request: and
+            the request ID the X-Request-Id response header carries and the
+            server logs.
+        limit:
+          type: string
+          description: The limit of limit-reached, such as private-workers.
+        scope:
+          type: string
+          enum: [organization, account]
+          description: >-
+            For limit-reached, whether the organization's pool or the
+            account's limit was reached.
+        value:
+          type: integer
+          format: int64
+          description: For limit-reached, that scope's limit.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProblemFieldError'
+          description: >-
+            For invalid-request and validation-failed, each field the server
+            refused.
+    ProblemFieldError:
+      description: A field of the request the server refused.
+      type: object
+      required: [pointer, reason, message]
+      properties:
+        pointer:
+          type: string
+          description: A JSON Pointer (RFC 6901) into the body.
+        reason:
+          type: string
+          enum:
+            - required
+            - type
+            - enum
+            - format
+            - pattern
+            - min-length
+            - max-length
+            - minimum
+            - maximum
+            - unknown-field
+            - duplicate
+            - not-found
+            - rule
+          description: Why the field was refused, for clients to branch on.
+        message:
+          type: string
+          description: The refusal, for people.
+  headers:
+    RateLimitLimit:
+      description: The capacity of the rate-limit bucket this request drew from.
+      schema:
+        type: integer
+    RateLimitRemaining:
+      description: Whole requests left in that bucket.
+      schema:
+        type: integer
+    RateLimitReset:
+      description: Seconds until that bucket is full again.
+      schema:
+        type: integer
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      schema:
+        type: integer
+  responses:
+    Unauthenticated:
+      description: >-
+        The request carries no valid credential: no worker session token, an
+        expired one, or one whose worker is gone or registered under a pool
+        certificate a reset replaced.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:unauthenticated
+            title: 'unauthorized: authentication required'
+            status: 401
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    TooManyRequests:
+      description: The caller's rate-limit bucket for this operation's cost class is empty.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/RateLimitLimit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/RateLimitRemaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/RateLimitReset'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:rate-limited
+            title: Rate limit exceeded
+            status: 429
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    ApiDisabled:
+      description: The operator has disabled the API for this caller.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:api-disabled
+            title: API disabled for this caller
+            status: 503
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    Problem:
+      description: The request failed; the body says why.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        A worker session token, which a registration answers and a poll
+        renews.

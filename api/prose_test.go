@@ -73,12 +73,17 @@ components:
 // public documentation, whose readers cannot follow a reference into the
 // repository's design records.
 func TestUnitServedProse(t *testing.T) {
-	operator, err := os.ReadFile("operator.openapi.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, v := range append(projectReferences(t, api.Served), projectReferences(t, operator)...) {
+	for _, v := range projectReferences(t, api.Served) {
 		t.Error(v)
+	}
+	for _, file := range []string{"operator.openapi.yaml", "worker.openapi.yaml"} {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range projectReferences(t, b) {
+			t.Errorf("%s: %s", file, v)
+		}
 	}
 	want := []string{".components.schemas.Tier.description: A tier (decision 0021, DV-079)."}
 	if got := projectReferences(t, []byte(proseFixture)); !slices.Equal(got, want) {

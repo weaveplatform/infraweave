@@ -364,6 +364,12 @@ func (d *Domain) OperatorAuthenticator() accessapi.Authenticator {
 	return http.NewOperatorAuthenticator(d.authn)
 }
 
+// WorkerAuthenticator is the middleware that authenticates the worker
+// API's requests, accepting worker session tokens alone.
+func (d *Domain) WorkerAuthenticator() accessapi.Authenticator {
+	return http.NewWorkerAuthenticator(d.authn)
+}
+
 // WatchSessions keeps the replica's session cache in step with
 // revocations until ctx ends: a session:<id> message on sub, a
 // subscription to infraweave_invalidate, drops that session, and a Resync,

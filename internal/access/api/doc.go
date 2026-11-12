@@ -1,7 +1,9 @@
 // Package api is what other packages call of the access domain:
 // Authenticator, the middleware internal/app puts in front of every API
 // route, which puts the principal in each authenticated request's
-// context, given each route's Access: Account, Organization or Public.
+// context, given each route's Access: Account, Organization, Public or
+// Worker; WithBearer and BearerFrom carry a worker session token's Bearer
+// on the worker API's requests.
 // LoginPattern is the break-glass login's route, beside the APIs, and
 // the OAuth patterns are the authorization server's for MCP clients.
 // Authorizer decides the authorization checks for every domain: whether a

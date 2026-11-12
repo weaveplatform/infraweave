@@ -334,8 +334,8 @@ works.
 
 | Field | Meaning |
 |---|---|
-| `Kind` | `user`, `api_key`, `run`, `organization`, `break_glass`, `operator`, `anonymous` |
-| `ActorID` | user ULID, API key ULID, organization key ULID, organization ULID for `break_glass`, or run ULID |
+| `Kind` | `user`, `api_key`, `run`, `organization`, `break_glass`, `operator`, `worker`, `anonymous` |
+| `ActorID` | user ULID, API key ULID, organization key ULID, organization ULID for `break_glass`, run ULID, or worker ULID |
 | `SessionID` | the session ULID |
 | `OrganizationID`, `AccountID`, `MemberID` | from the session; `AccountID` is empty for an organization or break-glass principal and for a member session no account admits; `MemberID` is empty for both of the first two |
 | `Login`, `Teams`, `Admin` | from the session |
@@ -350,6 +350,13 @@ works.
   token whose audience is the operator API, and every other route treats that
   token as no credential. An operator principal holds no role in any
   organization or account ([0007](0007-authorization-spaces-and-roles.md)).
+- **Worker principals.** The worker API of
+  [0008](0008-run-execution-and-worker-protocol.md) accepts a worker session
+  token on its launcher's routes, as a `worker` principal whose actor is the
+  worker, with no session, organization or account; the token's worker and
+  expiry ride on the request beside it, for the poll's renewal. A worker
+  principal holds no role, and every other route treats its token as no
+  credential.
 - **Organization principals.** The routes of the `Organization` tag accept
   an organization token, a break-glass session, and a member session or CLI
   token whose member holds the organization admin role, whichever account

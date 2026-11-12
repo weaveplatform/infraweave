@@ -71,6 +71,7 @@ func TestUnitPrincipalKinds(t *testing.T) {
 		"organization",
 		"break_glass",
 		"operator",
+		"worker",
 		"anonymous",
 	}
 	if len(PrincipalKinds) != len(want) {
