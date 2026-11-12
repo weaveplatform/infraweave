@@ -11,6 +11,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	gen "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/protocol"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
@@ -103,6 +105,17 @@ func (s *store) Seen(
 	return w, serial, err
 }
 
+func (s *store) Get(context.Context, kernel.AccountID, kernel.ULID, bool) (pool.Pool, error) {
+	return s.pool, nil
+}
+
+func (s *store) Claimed(_ context.Context, id kernel.ULID) error {
+	w := s.workers[id]
+	w.Busy = true
+	s.workers[id] = w
+	return nil
+}
+
 func (s *store) Remove(_ context.Context, id kernel.ULID) error {
 	if _, ok := s.workers[id]; !ok {
 		return worker.ErrNotFound
@@ -131,6 +144,10 @@ func (t *tokens) WorkerToken(_ context.Context, w kernel.ULID) (accessapi.Token,
 	raw := "session." + w.String()
 	t.expires[raw] = time.Now().Add(time.Hour)
 	return accessapi.Token{Raw: raw, Expires: t.expires[raw]}, t.fail
+}
+
+func (t *tokens) RunToken(_ context.Context, run kernel.ULID) (accessapi.Token, error) {
+	return accessapi.Token{Raw: "run." + run.String(), Expires: time.Unix(1e9, 0)}, t.fail
 }
 
 func (t *tokens) VerifyWorker(_ context.Context, raw string) (accessapi.Bearer, error) {
@@ -171,6 +188,7 @@ func (l limits) CheckLimit(
 
 type fixture struct {
 	h      http.Handler
+	svc    *worker.Service
 	store  *store
 	tokens *tokens
 	key    *ecdsa.PrivateKey
@@ -207,11 +225,11 @@ func newFixture(t *testing.T) *fixture {
 		store:  &store{ca: ca.Certificate.Raw, pool: p, workers: map[kernel.ULID]worker.Worker{}},
 		tokens: &tokens{expires: map[string]time.Time{}}, key: key, cert: cert,
 	}
-	svc := worker.New(worker.Deps{
+	f.svc = worker.New(worker.Deps{
 		Store: f.store, DB: db{}, Tokens: f.tokens, Limits: limits{max: 1}, Version: "devel",
 	})
 	strict := gen.NewStrictHandlerWithOptions(
-		protocol.New(svc, slog.New(slog.DiscardHandler)),
+		protocol.New(f.svc, slog.New(slog.DiscardHandler)),
 		nil,
 		gen.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,
@@ -368,6 +386,44 @@ func TestUnitProtocolHold(t *testing.T) {
 			t.Errorf("held poll = %d %v after %v", code, body, time.Since(start))
 		}
 	})
+}
+
+// scheduler hands out run once.
+type scheduler struct{ run *workersapi.Assignment }
+
+func (s *scheduler) Claim(
+	context.Context,
+	workersapi.Claim,
+) (workersapi.Assignment, bool, error) {
+	if s.run == nil {
+		return workersapi.Assignment{}, false, nil
+	}
+	a := *s.run
+	s.run = nil
+	return a, true, nil
+}
+
+// TestUnitProtocolAssignment checks that a poll that claims a run
+// answers it with its state and run token.
+func TestUnitProtocolAssignment(t *testing.T) {
+	f := newFixture(t)
+	a := workersapi.Assignment{Run: kernel.NewULID(), State: kernel.RunStatePreparingApply}
+	f.svc.BindScheduler(&scheduler{run: &a})
+	w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
+	f.store.workers[w.ID] = w
+	tok, err := f.tokens.WorkerToken(t.Context(), w.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, body := f.call(t, "/poll", tok.Raw, map[string]any{"busy": false})
+	want := map[string]any{
+		"run": a.Run.String(), "state": "PREPARING_APPLY", "runToken": "run." + a.Run.String(),
+		"runTokenExpiresAt": float64(1e9),
+	}
+	if got, _ := body["assignment"].(map[string]any); code != http.StatusOK ||
+		!maps.Equal(got, want) {
+		t.Errorf("assigning poll = %d %v", code, body)
+	}
 }
 
 // TestUnitProtocolRefused checks that poll and deregister refuse a

@@ -76,12 +76,40 @@ components:
         asks it to exit, at once when idle, after its run when busy.
       type: string
       enum: [stop, kill, cycle]
+    Assignment:
+      description: >-
+        A run the poll claimed for the worker, which the launcher prepares
+        and executes.
+      type: object
+      required: [run, state, runToken, runTokenExpiresAt]
+      properties:
+        run:
+          type: string
+          description: The run's ID.
+        state:
+          type: string
+          enum: [PREPARING, PREPARING_APPLY, PREPARING_REPLAN]
+          description: >-
+            The state the claim moved the run to: PREPARING for a run that
+            plans or performs, PREPARING_APPLY for a confirmed run that
+            applies, PREPARING_REPLAN for a run that plans again.
+        runToken:
+          type: string
+          description: >-
+            The run token the launcher and its runner carry as the bearer
+            token of the run's calls, accepted while the run is on a worker.
+        runTokenExpiresAt:
+          type: integer
+          format: int64
+          description: When the run token expires, in Unix seconds.
     PollResult:
       description: >-
         What the server has to say to the worker. Every member is absent when
         it has nothing.
       type: object
       properties:
+        assignment:
+          $ref: '#/components/schemas/Assignment'
         signals:
           type: array
           items:
@@ -147,13 +175,18 @@ paths:
           $ref: '#/components/responses/Problem'
   /poll:
     post:
-      summary: Poll for signals
+      summary: Poll for runs and signals
       description: >-
-        Reports the worker's state and waits for something to answer: a
-        signal, a change of its drain flag, or the end of its wait, whichever
-        comes first. A poll whose session token has less than 15 minutes left
-        answers at once with a renewed one, and a worker's next poll answers
-        its held one at once. The answer is always 200.
+        Reports the worker's state and waits for something to answer: a run
+        of its pool, a signal, a change of its drain flag, or the end of its
+        wait, whichever comes first. An idle, undrained worker that holds no
+        run is assigned its pool's next waiting run: the oldest of the first
+        priority tier, with drift detection runs of normal or low priority
+        skipped while the pool's running ones reach its drift detection run
+        limit. A poll whose
+        session token has less than 15 minutes left answers at once with a
+        renewed one, and a worker's next poll answers its held one at once.
+        The answer is always 200.
       operationId: workerPoll
       tags:
         - Workers

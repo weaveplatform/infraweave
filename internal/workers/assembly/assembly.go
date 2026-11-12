@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -141,10 +142,11 @@ func (d *Domain) Protocol() workerapi.StrictServerInterface {
 	return protocol.New(d.workers, d.log)
 }
 
-// WatchPolls ends the holds of this replica's held polls until ctx ends:
-// a pool's ID on sub, a subscription to infraweave_runs, wakes the pool's
-// polls, and a Resync, after which messages may have been lost, wakes
-// them all. Each woken poll rereads its worker.
+// WatchPolls ends the holds of this replica's held polls until ctx ends,
+// from sub, a subscription to infraweave_runs: a pool's ID wakes the
+// pool's polls, a workersapi.Waiting payload one of them, and a Resync,
+// after which messages may have been lost, all of them. Each woken poll
+// rereads its worker and claims a run when idle.
 func (d *Domain) WatchPolls(ctx context.Context, sub *notify.Subscription) {
 	watchPolls(ctx, d.workers, sub.C)
 }
@@ -159,10 +161,16 @@ func watchPolls(ctx context.Context, svc *worker.Service, msgs <-chan notify.Mes
 		case <-ctx.Done():
 			return
 		case m := <-msgs:
-			if m.Resync {
+			pool, _, one := strings.Cut(m.Payload, "/")
+			id, err := kernel.ParseULID(pool)
+			switch {
+			case m.Resync:
 				svc.WakeAll()
-			} else if pool, err := kernel.ParseULID(m.Payload); err == nil {
-				svc.Wake(pool)
+			case err != nil:
+			case one:
+				svc.WakeOne(id)
+			default:
+				svc.Wake(id)
 			}
 		}
 	}
@@ -184,6 +192,11 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 		}
 	}
 }
+
+// BindScheduler binds the runs domain's workersapi.Scheduler, a back
+// edge internal/app binds after it constructs that domain, which polls
+// claim runs through.
+func (d *Domain) BindScheduler(s workersapi.Scheduler) { d.workers.BindScheduler(s) }
 
 // Pools is what other domains call of the domain's pools, which
 // internal/app hands the stacks domain.

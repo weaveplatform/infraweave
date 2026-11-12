@@ -22,7 +22,8 @@ const (
 	// Jobs carries a queue name and wakes idle queue workers.
 	// ref: decision 0011
 	Jobs = "infraweave_jobs"
-	// Runs carries a worker pool ID and wakes held worker polls.
+	// Runs carries a worker pool ID, which wakes the pool's held worker
+	// polls, or a pool and run ID, which wakes one of them.
 	// ref: decision 0008
 	Runs = "infraweave_runs"
 	// VCSAgent carries a VCS agent pool ID or a request ID.

@@ -239,6 +239,13 @@ func (f failing) Projection(
 	return f.Store.Projection(ctx, a, stack, states)
 }
 
+func (f failing) Announce(ctx context.Context, run lifecycle.Run) error {
+	if f.fail == "Announce" {
+		return errInjected
+	}
+	return f.Store.Announce(ctx, run)
+}
+
 func (f failing) Append(ctx context.Context, ev outbox.Event) (outbox.Event, error) {
 	if f.fail == "Append" {
 		return outbox.Event{}, errInjected
@@ -836,10 +843,13 @@ func TestAccLifecycleConcurrent(t *testing.T) {
 func TestAccLifecycleFailures(t *testing.T) {
 	for _, fail := range []string{
 		"Lock", "Move", "Insert", "Active", "Track", "Unlock", "Projection", "Append",
-		"EnqueueTx", "Get", "LockForRun", "SetRunState", "Release",
+		"EnqueueTx", "Get", "LockForRun", "SetRunState", "Release", "Announce",
 	} {
 		t.Run(fail, func(t *testing.T) {
 			w := newWorld(t)
+			st := w.stacks.settings[w.stack]
+			st.WorkerPool = &w.stack
+			w.stacks.settings[w.stack] = st
 			run, _, err := w.create(t, kernel.RunTypeTracked, "abc123")
 			if err != nil {
 				t.Fatal(err)

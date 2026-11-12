@@ -3,7 +3,8 @@
 // deregistering workers through the worker package. internal/app mounts
 // it behind the controls every API surface shares, whose authenticator
 // admits worker session tokens alone and puts each one's bearer on the
-// request's context, which Server hands the service. A credential the
+// request's context, which Server hands the service. A poll's answer
+// carries the run it claimed, its state and its run token. A credential the
 // service refuses is logged with its reason and answered 401 without it,
 // and a registration beyond the private-workers limit answers 403
 // limit-reached.

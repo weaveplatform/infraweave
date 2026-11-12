@@ -15,9 +15,13 @@
 // the run lock a run holds, and reads a stack's state and blocked from its
 // tracked run's transitions and its run lock. For the scheduler it reads
 // a stack's queued runs, oldest first, and takes a stack's run lock for a
-// run when no run holds it. Held names the columns that hold the access domain's accounts and the
-// stacks domain's stacks. Every method joins the transaction its context
-// carries.
+// run when no run holds it. For a worker's claim it reads and locks a
+// pool's next run, skipping locked rows, records the run's worker, counts
+// a pool's drift runs on workers under a per-pool advisory lock, and
+// reports whether a worker holds a run; Announce notifies
+// infraweave_runs that a run waits in its pool. Held names the columns
+// that hold the access domain's accounts and the stacks domain's stacks.
+// Every method joins the transaction its context carries.
 //
 // # Input and output
 //
@@ -25,7 +29,8 @@
 //
 // # Dependencies
 //
-// It imports pgx, the domain's lifecycle and schedule, internal/kernel, platform/sql,
-// platform/sql/integrity, platform/sql/migrate and platform/tx. The runs domain's assembly
+// It imports pgx, workersapi, the domain's lifecycle and schedule,
+// internal/kernel, platform/sql, platform/sql/integrity,
+// platform/sql/migrate, platform/sql/notify and platform/tx. The runs domain's assembly
 // constructs it.
 package pg

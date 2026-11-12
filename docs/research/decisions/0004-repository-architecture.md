@@ -344,8 +344,9 @@ change.
   reads run state (`stacksapi.StackStatus`, which `runs` implements), `runs` reads VCS sources,
   cloud credentials and state versions at handover (`vcsapi.Sources`,
   `cloudapi.Credentials`, `stateapi.Versions`), the worker protocol in
-  `workers` claims and reports through `runsapi.Scheduler` and
-  `runsapi.Reports`, and `access` evaluates `LOGIN` policies through
+  `workers` claims and reports through `workersapi.Scheduler` and
+  `workersapi.Reports`, which `runs` implements, and `access` evaluates
+  `LOGIN` policies through
   `policiesapi.Evaluator`. The
   [declared graph](../../implementation/repo-layout.md#declared-graph)
   lists every edge, the back edges and the construction order.

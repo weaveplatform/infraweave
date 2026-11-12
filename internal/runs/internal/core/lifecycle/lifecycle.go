@@ -106,6 +106,8 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // state_version; TriggeredBy is the login or trigger that created it;
 // RuntimeConfig is the runtime configuration its trigger gave, nil for
 // none, and ForceApply SINGLE or CASCADE when it applies with no changes.
+// WorkerPool is the stack's private pool when the run was created, nil
+// for the public pool, and Worker the worker that last claimed it.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -120,6 +122,8 @@ type Run struct {
 	DriftDetection bool
 	RuntimeConfig  json.RawMessage
 	ForceApply     string
+	WorkerPool     *kernel.ULID
+	Worker         *kernel.ULID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -162,6 +166,9 @@ type Store interface {
 	// Unlock deletes the stack run lock run holds, and reports whether it
 	// held one.
 	Unlock(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (bool, error)
+	// Announce tells the held polls of run's pool, once the transaction
+	// commits, that run waits for a worker.
+	Announce(ctx context.Context, run Run) error
 	// Projection reads stack's state, the last state of its tracked run
 	// that is one of states, NONE without one, and whether a run holds its
 	// run lock.
@@ -331,7 +338,8 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 		Account: n.Account, ID: kernel.NewULID(), Stack: n.Stack, Type: n.Type,
 		State: kernel.RunStateQueued, Version: 1, StateChangedAt: now, Commit: n.Commit,
 		TriggeredBy: n.Actor.Login, Priority: priority, DriftDetection: n.DriftDetection,
-		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, CreatedAt: now, UpdatedAt: now,
+		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, WorkerPool: st.WorkerPool,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	step := Step{
 		Sequence: 1, State: kernel.RunStateQueued, At: now,
@@ -349,7 +357,8 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 // consequences are what run's entering step.State causes in its
 // transaction: on a terminal state the release of its stack run lock and
 // of its credentials, the stack's projection when the run tracks the
-// stack or released the lock, its event, and the stack's scheduling.
+// stack or released the lock, its event, the stack's scheduling, and the
+// announcement to its private pool when it waits for a worker.
 func (l *Lifecycle) consequences(ctx context.Context, run Run, step Step) error {
 	released := false
 	if run.State.Terminal() {
@@ -377,6 +386,11 @@ func (l *Lifecycle) consequences(ctx context.Context, run Run, step Step) error 
 	}
 	if err := l.updated(ctx, run, step); err != nil {
 		return err
+	}
+	if run.WorkerPool != nil && slices.Contains(machine.Claimable(), run.State) {
+		if err := l.d.Store.Announce(ctx, run); err != nil {
+			return err //nolint:wrapcheck // the store names the notification
+		}
 	}
 	if step.Sequence == 1 || run.State.Terminal() || run.State == kernel.RunStateUnconfirmed {
 		_, err := l.d.Jobs.EnqueueTx(ctx, ScheduleKind, Schedule{Stack: run.Stack},

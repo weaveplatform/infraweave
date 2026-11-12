@@ -114,6 +114,32 @@ func Next(t kernel.RunType, from kernel.RunState) []Edge {
 	return out
 }
 
+// Claimed is the state a worker's claim moves a run of type t out of
+// from into, and false when no claim takes such a run.
+//
+// ref: decision 0008 § "Claiming runs"
+func Claimed(t kernel.RunType, from kernel.RunState) (kernel.RunState, bool) {
+	for _, e := range edges {
+		if e.From == from && slices.Contains(e.Types, t) &&
+			slices.Contains(e.Drivers, DriverWorkerClaim) {
+			return e.To, true
+		}
+	}
+	return "", false
+}
+
+// Claimable lists the states a worker's claim takes some run out of, in
+// the register's order: the states a run waits for a worker in.
+func Claimable() []kernel.RunState {
+	var out []kernel.RunState
+	for _, e := range edges {
+		if slices.Contains(e.Drivers, DriverWorkerClaim) && !slices.Contains(out, e.From) {
+			out = append(out, e.From)
+		}
+	}
+	return out
+}
+
 func (e Edge) clone() Edge {
 	e.Types = slices.Clone(e.Types)
 	e.Drivers = slices.Clone(e.Drivers)

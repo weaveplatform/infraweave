@@ -13,7 +13,9 @@
 // of accessapi.Deleted. StackStatus
 // is the stacksapi.StackStatus internal/app binds in the stacks domain,
 // the back edge the stack view reads each stack's blocker through;
-// StackGuard is the
+// Scheduler is the workersapi.Scheduler internal/app binds in the workers
+// domain, the back edge a worker's poll claims its pool's next run
+// through; StackGuard is the
 // stacksapi.StackGuard internal/app registers there, so a stack's delete
 // deletes its runs in the same transaction; API is its partial of the
 // API's strict server, aliased RunsAPI; Held declares the columns that
@@ -28,7 +30,7 @@
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, configapi, internal/kernel, the domain's
+// It imports runsapi, stacksapi, configapi, workersapi, internal/kernel, the domain's
 // core, lifecycle,
 // schedule, surface, trigger, http and pg packages, platform/expr,
 // platform/outbox, platform/queue,

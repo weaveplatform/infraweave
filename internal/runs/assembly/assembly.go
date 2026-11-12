@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // Stream is the runs domain's migration stream.
@@ -56,6 +57,7 @@ type Domain struct {
 	runs      *core.Service
 	lifecycle *lifecycle.Lifecycle
 	scheduler *schedule.Scheduler
+	claims    *schedule.Claims
 	trigger   *trigger.Service
 	read      *read.Service
 	control   *control.Service
@@ -75,6 +77,7 @@ func New(d Deps) *Domain {
 		scheduler: schedule.New(schedule.Deps{
 			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs,
 		}),
+		claims: schedule.NewClaims(store, lc),
 		trigger: trigger.New(trigger.Deps{
 			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,
 		}),
@@ -148,6 +151,11 @@ func (d *Domain) BindSources(s runsapi.RunSources, r stacksapi.StackSources) {
 // blocking each stack and to runStack's read of a run's stack, a back
 // edge internal/app binds in the stacks domain.
 func (d *Domain) StackStatus() stacksapi.StackStatus { return d.runs }
+
+// Scheduler is the domain's side of the worker protocol, a back edge
+// internal/app binds in the workers domain, whose polls claim runs
+// through it.
+func (d *Domain) Scheduler() workersapi.Scheduler { return d.claims }
 
 // StackGuard is the domain's say in the stacks domain's moves and
 // deletes, which internal/app registers there, so a deleted stack's runs

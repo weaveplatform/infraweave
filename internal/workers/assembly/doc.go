@@ -9,9 +9,10 @@
 // stacks domain, GuardPools registers the stacks domain's
 // workersapi.PoolGuard and BindStacks its SpaceOf; Protocol is the worker
 // API's strict server, which internal/app mounts behind the controls of
-// every API surface, WatchPolls wakes its held polls
-// from infraweave_runs and StopPolls answers them as the replica shuts
-// down; Settings are worker.poll_timeout_max; Purge deletes a deleted
+// every API surface, BindScheduler binds the runs domain's
+// workersapi.Scheduler its polls claim runs through, WatchPolls wakes its
+// held polls from infraweave_runs, all of a pool's or, for a waiting run,
+// one, and StopPolls answers them as the replica shuts down; Settings are worker.poll_timeout_max; Purge deletes a deleted
 // account's runner images, pools, workers and nonces PurgeBatch rows at a
 // time, which internal/app runs for each accessapi.Deleted.
 //

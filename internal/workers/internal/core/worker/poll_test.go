@@ -1,9 +1,11 @@
 package worker_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -11,6 +13,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
@@ -363,4 +366,194 @@ func TestUnitWorkerManage(t *testing.T) {
 	if w.Status() != worker.StatusDrained {
 		t.Errorf("drained status = %s", w.Status())
 	}
+}
+
+// scheduler hands out runs in order, recording each claim; err fails
+// every claim.
+type scheduler struct {
+	mu     sync.Mutex
+	runs   []workersapi.Assignment
+	claims []workersapi.Claim
+	err    error
+}
+
+func (s *scheduler) Claim(
+	_ context.Context,
+	c workersapi.Claim,
+) (workersapi.Assignment, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.claims = append(s.claims, c)
+	if s.err != nil || len(s.runs) == 0 {
+		return workersapi.Assignment{}, false, s.err
+	}
+	a := s.runs[0]
+	s.runs = s.runs[1:]
+	return a, true, nil
+}
+
+// wait makes a run wait for a claim.
+func (s *scheduler) wait() workersapi.Assignment {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	a := workersapi.Assignment{Run: kernel.NewULID(), State: kernel.RunStatePreparing}
+	s.runs = append(s.runs, a)
+	return a
+}
+
+// claimed reports whether h is an answer with a, with its run token.
+func claimed(h held, a workersapi.Assignment) bool {
+	got := h.got.Assignment
+	return h.err == nil && got != nil && got.Run == a.Run && got.State == a.State &&
+		got.Token.Raw == "run "+a.Run.String()
+}
+
+// TestUnitWorkerPollClaim checks that an idle, undrained worker's poll
+// claims its pool's next run before it holds, with the pool's drift
+// limit and a run token, that the claim marks the worker busy, and that
+// a busy, drained or cycled worker claims nothing.
+func TestUnitWorkerPollClaim(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFixture(t, worker.Deps{})
+		sch := &scheduler{}
+		f.svc.BindScheduler(sch)
+		limit := int32(2)
+		p := f.pool
+		p.DriftDetectionRunLimit = &limit
+		f.store.pools[p.ID] = p
+		w, b := f.add()
+
+		a := sch.wait()
+		if h := <-f.poll(b, worker.PollInput{}); !claimed(h, a) || h.took != 0 {
+			t.Errorf("claim = %+v", h)
+		}
+		if !f.store.workers[w.ID].Busy {
+			t.Error("the claim left the worker idle")
+		}
+		want := workersapi.Claim{Account: w.Account, Pool: w.Pool, Worker: w.ID}
+		if len(sch.claims) != 1 || sch.claims[0].DriftLimit == nil ||
+			*sch.claims[0].DriftLimit != 2 {
+			t.Fatalf("claims = %+v", sch.claims)
+		}
+		sch.claims[0].DriftLimit = nil
+		if sch.claims[0] != want {
+			t.Errorf("claim = %+v, want %+v", sch.claims[0], want)
+		}
+
+		sch.wait()
+		sch.claims = nil
+		if h := <-f.poll(b, worker.PollInput{Busy: true, Wait: worker.MinWait}); h.err != nil ||
+			h.got.Assignment != nil {
+			t.Errorf("busy = %+v", h)
+		}
+		for name, set := range map[string]func(*worker.Worker){
+			"drained": func(w *worker.Worker) { w.Drained = true },
+			"cycled":  func(w *worker.Worker) { w.Cycle = true },
+		} {
+			cur := w
+			set(&cur)
+			f.store.workers[w.ID] = cur
+			if h := <-f.poll(b, worker.PollInput{Drained: cur.Drained}); h.err != nil ||
+				h.got.Assignment != nil {
+				t.Errorf("%s = %+v", name, h)
+			}
+		}
+		if len(sch.claims) != 0 {
+			t.Errorf("claims of a worker that may not claim = %+v", sch.claims)
+		}
+	})
+}
+
+// TestUnitWorkerPollWakeOne checks that a run made ready while polls are
+// held wakes the newest idle worker's poll alone, which claims it, and
+// that a woken poll that finds no run goes on holding.
+func TestUnitWorkerPollWakeOne(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFixture(t, worker.Deps{})
+		sch := &scheduler{}
+		f.svc.BindScheduler(sch)
+		registered := func(at time.Time) (worker.Worker, accessapi.Bearer) {
+			w, b := f.add()
+			w.CreatedAt = at
+			f.store.workers[w.ID] = w
+			return w, b
+		}
+		now := time.Now()
+		_, older := registered(now.Add(-time.Hour))
+		_, newest := registered(now)
+		_, busy := registered(now.Add(time.Hour))
+		olderCh := f.poll(older, worker.PollInput{})
+		newestCh := f.poll(newest, worker.PollInput{})
+		busyCh := f.poll(busy, worker.PollInput{Busy: true})
+		pending(t, newestCh)
+
+		f.svc.WakeOne(f.pool.ID)
+		pending(t, newestCh)
+		<-time.After(time.Second)
+		a := sch.wait()
+		f.svc.WakeOne(kernel.NewULID())
+		f.svc.WakeOne(f.pool.ID)
+		if h := <-newestCh; !claimed(h, a) || h.took != time.Second {
+			t.Errorf("the newest poll = %+v", h)
+		}
+		pending(t, olderCh)
+		for name, ch := range map[string]<-chan held{"older": olderCh, "busy": busyCh} {
+			if h := <-ch; h.err != nil || h.got.Assignment != nil || h.took != worker.DefaultWait {
+				t.Errorf("the %s poll = %+v", name, h)
+			}
+		}
+
+		// Two workers that registered at once go by their IDs.
+		first, firstB := registered(now)
+		second, secondB := registered(now)
+		if bytes.Compare(first.ID[:], second.ID[:]) > 0 {
+			firstB, secondB = secondB, firstB
+		}
+		low, high := f.poll(firstB, worker.PollInput{}), f.poll(secondB, worker.PollInput{})
+		pending(t, high)
+		a = sch.wait()
+		f.svc.WakeOne(f.pool.ID)
+		if h := <-high; !claimed(h, a) {
+			t.Errorf("the later ID's poll = %+v", h)
+		}
+		f.svc.Stop()
+		if h := <-low; h.err != nil || h.got.Assignment != nil {
+			t.Errorf("the earlier ID's poll = %+v", h)
+		}
+	})
+}
+
+// TestUnitWorkerPollClaimFails checks that a failing claim fails the
+// poll, rolling back what it wrote, and that a worker gone before its
+// claim is ErrUnauthenticated.
+func TestUnitWorkerPollClaimFails(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFixture(t, worker.Deps{Tokens: tokens{failRun: true}})
+		sch := &scheduler{}
+		f.svc.BindScheduler(sch)
+		_, b := f.add()
+		sch.wait()
+		if h := <-f.poll(b, worker.PollInput{}); !errors.Is(h.err, errDown) {
+			t.Errorf("run token down = %+v", h)
+		}
+		// Lock and Get fail before the claim, and Claimed after it.
+		sch.wait()
+		for _, method := range []string{"Lock", "Get", "Claimed"} {
+			f.store.fail = method
+			if h := <-f.poll(b, worker.PollInput{}); !errors.Is(h.err, errDown) {
+				t.Errorf("%s down = %+v", method, h)
+			}
+		}
+		f.store.fail = ""
+		sch.err = errDown
+		if h := <-f.poll(b, worker.PollInput{}); !errors.Is(h.err, errDown) {
+			t.Errorf("claim down = %+v", h)
+		}
+
+		gone, gb := f.add()
+		f.store.removeOnLock = gone.ID
+		if h := <-f.poll(gb, worker.PollInput{}); !errors.Is(h.err, worker.ErrUnauthenticated) {
+			t.Errorf("removed before the claim = %+v", h)
+		}
+	})
 }

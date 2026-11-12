@@ -32,28 +32,29 @@ const (
 	RunStatePendingReview   RunState = "PENDING_REVIEW"
 )
 
-// runStates are each RunState's flags: whether a run in it has ended, and
-// whether it is passive, nothing executing in it. UNKNOWN is neither.
-var runStates = map[RunState]struct{ terminal, passive bool }{
+// runStates are each RunState's flags: whether a run in it has ended,
+// whether it is passive, nothing executing in it, as the reference flags
+// it, and whether a worker holds a run in it. UNKNOWN is none of them.
+var runStates = map[RunState]struct{ terminal, passive, onWorker bool }{
 	RunStateUnknown:         {},
 	RunStateQueued:          {passive: true},
 	RunStateCanceled:        {terminal: true, passive: true},
-	RunStateInitializing:    {passive: true},
-	RunStatePlanning:        {passive: true},
+	RunStateInitializing:    {passive: true, onWorker: true},
+	RunStatePlanning:        {passive: true, onWorker: true},
 	RunStateFailed:          {terminal: true, passive: true},
 	RunStateFinished:        {terminal: true, passive: true},
 	RunStateUnconfirmed:     {},
 	RunStateDiscarded:       {terminal: true, passive: true},
 	RunStateConfirmed:       {},
-	RunStateApplying:        {},
-	RunStatePerforming:      {},
+	RunStateApplying:        {onWorker: true},
+	RunStatePerforming:      {onWorker: true},
 	RunStateStopped:         {terminal: true, passive: true},
-	RunStateDestroying:      {},
-	RunStatePreparing:       {passive: true},
-	RunStatePreparingApply:  {passive: true},
+	RunStateDestroying:      {onWorker: true},
+	RunStatePreparing:       {passive: true, onWorker: true},
+	RunStatePreparingApply:  {passive: true, onWorker: true},
 	RunStateSkipped:         {terminal: true, passive: true},
 	RunStateReplanRequested: {},
-	RunStatePreparingReplan: {},
+	RunStatePreparingReplan: {onWorker: true},
 	RunStateReady:           {passive: true},
 	RunStatePendingReview:   {},
 }
@@ -82,6 +83,14 @@ func (s RunState) Terminal() bool { return runStates[s].terminal }
 // Passive reports whether nothing executes in s, as the reference's state
 // table flags it.
 func (s RunState) Passive() bool { return runStates[s].passive }
+
+// OnWorker reports whether a worker holds a run in s: from the claim that
+// moves it to a preparing state until its phase ends, so the worker takes
+// no other run meanwhile. A run waiting for a person, such as UNCONFIRMED,
+// holds no worker.
+//
+// ref: decision 0008 § "Claiming runs"
+func (s RunState) OnWorker() bool { return runStates[s].onWorker }
 
 // RunType is the kind of a run, which decides the states it passes
 // through.

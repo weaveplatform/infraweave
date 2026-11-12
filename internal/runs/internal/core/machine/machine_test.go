@@ -246,3 +246,32 @@ func TestUnitTransitionGuards(t *testing.T) {
 		t.Error("changing an edge handed out changed the machine")
 	}
 }
+
+// TestUnitTransitionClaims checks the states a worker's claim takes a run
+// out of, and where each run type goes: READY to PREPARING for every type,
+// CONFIRMED and REPLAN_REQUESTED for a tracked run alone.
+func TestUnitTransitionClaims(t *testing.T) {
+	want := []kernel.RunState{
+		kernel.RunStateReady, kernel.RunStateReplanRequested, kernel.RunStateConfirmed,
+	}
+	if got := machine.Claimable(); !slices.Equal(got, want) {
+		t.Errorf("Claimable() = %v, want %v", got, want)
+	}
+	for _, tc := range []struct {
+		typ  kernel.RunType
+		from kernel.RunState
+		to   kernel.RunState
+	}{
+		{kernel.RunTypeProposed, kernel.RunStateReady, kernel.RunStatePreparing},
+		{kernel.RunTypeTask, kernel.RunStateReady, kernel.RunStatePreparing},
+		{kernel.RunTypeTracked, kernel.RunStateConfirmed, kernel.RunStatePreparingApply},
+		{kernel.RunTypeTracked, kernel.RunStateReplanRequested, kernel.RunStatePreparingReplan},
+		{kernel.RunTypeProposed, kernel.RunStateConfirmed, ""},
+		{kernel.RunTypeTracked, kernel.RunStateQueued, ""},
+	} {
+		got, ok := machine.Claimed(tc.typ, tc.from)
+		if got != tc.to || ok != (tc.to != "") {
+			t.Errorf("Claimed(%s, %s) = %q, %v; want %q", tc.typ, tc.from, got, ok, tc.to)
+		}
+	}
+}

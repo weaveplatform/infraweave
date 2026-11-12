@@ -197,6 +197,16 @@ func (s *Store) Seen(
 	return w, serial, nil
 }
 
+// Claimed marks the worker id busy and clears its available_at.
+func (s *Store) Claimed(ctx context.Context, id kernel.ULID) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE workers SET busy = true, available_at = NULL
+		WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("workers: mark worker %s busy: %w", id, sql.Unavailable(err))
+	}
+	return nil
+}
+
 // Remove deletes the worker id.
 func (s *Store) Remove(ctx context.Context, id kernel.ULID) error {
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM workers WHERE id = $1`, id)

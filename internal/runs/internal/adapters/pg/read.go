@@ -253,15 +253,18 @@ func (s *Store) Holder(
 	return run, true, nil
 }
 
-// SetPriority writes run's priority and its updated_at, at.
+// SetPriority writes run's priority, the priority_tier it puts the run
+// in, and its updated_at, at.
 func (s *Store) SetPriority(
 	ctx context.Context,
 	run lifecycle.Run,
 	p kernel.RunPriority,
 	at time.Time,
 ) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs SET priority = $3, updated_at = $4
-		WHERE account_id = $1 AND id = $2`, run.Account, run.ID, string(p), at)
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs
+		SET priority = $3, priority_tier = $4, updated_at = $5
+		WHERE account_id = $1 AND id = $2`,
+		run.Account, run.ID, string(p), kernel.RunTier(p, run.Type, run.DriftDetection), at)
 	if err != nil {
 		return fmt.Errorf("runs: set the priority of run %s: %w", run.ID, sql.Unavailable(err))
 	}
