@@ -1,4 +1,4 @@
-package acceptance
+package vcs
 
 import (
 	"context"
@@ -10,11 +10,15 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // vcsSteps read the commits a stack tracks, against the commits the
 // Gitea steps kept, which the scenario's requests name as {key}.
-type vcsSteps struct{ o *orgSteps }
+type vcsSteps struct {
+	w *harness.World
+}
 
 func (v *vcsSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
@@ -41,12 +45,12 @@ func (v *vcsSteps) integration(
 	ctx context.Context,
 	provider, name, space, isDefault, key string,
 ) error {
-	keys, pool, err := v.o.a.s.keyring(ctx)
+	keys, pool, err := v.w.Keyring(ctx)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
-	acct, id := uuidOf(tenants["home"].account), kernel.NewULID()
+	acct, id := harness.UUIDOf(harness.Tenants["home"].Account), kernel.NewULID()
 	sealed := make([][]byte, 2)
 	for i, col := range []string{"credentials_sealed", "webhook_secret_sealed"} {
 		c := crypt.Column{Table: "vcs_integrations", Name: col, Key: []string{"account_id", "id"}}
@@ -61,14 +65,14 @@ func (v *vcsSteps) integration(
 		SELECT $1, $2, $3, $4, $5, sp.id, $6, '{infra}', $7, $8, $9 FROM spaces sp
 		WHERE sp.account_id = $1 AND sp.slug = $10`,
 		acct, id.UUID(), provider, kernel.SlugFrom(name).String(), name, name+" of the team",
-		isDefault != "", sealed[0], sealed[1], v.o.resolve(space))
+		isDefault != "", sealed[0], sealed[1], v.w.Resolve(space))
 	if err != nil {
 		return fmt.Errorf("write integration %s: %w", key, err)
 	}
 	if tag.RowsAffected() != 1 {
-		return fmt.Errorf("%w: no space %q for integration %s", errStep, space, key)
+		return fmt.Errorf("%w: no space %q for integration %s", harness.ErrStep, space, key)
 	}
-	v.o.ids[key] = id.String()
+	v.w.IDs[key] = id.String()
 	return nil
 }
 
@@ -77,11 +81,16 @@ func (v *vcsSteps) next(key string) error {
 	var page struct {
 		Next string `json:"nextCursor"`
 	}
-	r := v.o.a.s.last()
-	if json.Unmarshal(r.body, &page) != nil || page.Next == "" {
-		return fmt.Errorf("%w: the answer has no nextCursor: %d %s", errStep, r.status, r.body)
+	r := v.w.Last()
+	if json.Unmarshal(r.Body, &page) != nil || page.Next == "" {
+		return fmt.Errorf(
+			"%w: the answer has no nextCursor: %d %s",
+			harness.ErrStep,
+			r.Status,
+			r.Body,
+		)
 	}
-	v.o.ids[key] = page.Next
+	v.w.IDs[key] = page.Next
 	return nil
 }
 
@@ -95,16 +104,16 @@ func (v *vcsSteps) users(want string) error {
 			} `json:"node"`
 		} `json:"edges"`
 	}
-	r := v.o.a.s.last()
-	if json.Unmarshal(r.body, &page) != nil {
-		return fmt.Errorf("%w: the answer is no search: %d %s", errStep, r.status, r.body)
+	r := v.w.Last()
+	if json.Unmarshal(r.Body, &page) != nil {
+		return fmt.Errorf("%w: the answer is no search: %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	got := make([]string, 0, len(page.Edges))
 	for _, e := range page.Edges {
 		got = append(got, e.Node.StackID)
 	}
 	if strings.Join(got, ", ") != want {
-		return fmt.Errorf("%w: the stacks using it are %q, not %q", errStep, got, want)
+		return fmt.Errorf("%w: the stacks using it are %q, not %q", harness.ErrStep, got, want)
 	}
 	return nil
 }
@@ -122,9 +131,9 @@ type tracked struct {
 
 func (v *vcsSteps) answer() (tracked, error) {
 	var t tracked
-	r := v.o.a.s.last()
-	if err := json.Unmarshal(r.body, &t); err != nil {
-		return t, fmt.Errorf("%w: no stack in %d %s", errStep, r.status, r.body)
+	r := v.w.Last()
+	if err := json.Unmarshal(r.Body, &t); err != nil {
+		return t, fmt.Errorf("%w: no stack in %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	return t, nil
 }
@@ -133,10 +142,15 @@ func (v *vcsSteps) answer() (tracked, error) {
 // kept as head when it is not empty.
 func (v *vcsSteps) check(t tracked, commit, head string) error {
 	switch {
-	case t.Commit == nil || t.Commit.Hash != v.o.ids[commit]:
-		return fmt.Errorf("%w: tracked commit %+v, want %s", errStep, t.Commit, v.o.ids[commit])
-	case head != "" && (t.Head == nil || t.Head.Hash != v.o.ids[head]):
-		return fmt.Errorf("%w: branch head %+v, want %s", errStep, t.Head, v.o.ids[head])
+	case t.Commit == nil || t.Commit.Hash != v.w.IDs[commit]:
+		return fmt.Errorf(
+			"%w: tracked commit %+v, want %s",
+			harness.ErrStep,
+			t.Commit,
+			v.w.IDs[commit],
+		)
+	case head != "" && (t.Head == nil || t.Head.Hash != v.w.IDs[head]):
+		return fmt.Errorf("%w: branch head %+v, want %s", harness.ErrStep, t.Head, v.w.IDs[head])
 	}
 	return nil
 }
@@ -155,7 +169,7 @@ func (v *vcsSteps) setBy(not string) error {
 		return err
 	}
 	if (t.SetBy == "infraweave") == (not != "") {
-		return fmt.Errorf("%w: tracked commit set by %q", errStep, t.SetBy)
+		return fmt.Errorf("%w: tracked commit set by %q", harness.ErrStep, t.SetBy)
 	}
 	return nil
 }
@@ -164,11 +178,11 @@ func (v *vcsSteps) setBy(not string) error {
 // domain's consumer sets after the stack's write commits.
 func (v *vcsSteps) eventually(ctx context.Context, token, stack, commit, replica string) error {
 	//nolint:wrapcheck // names what it waited for
-	return Eventually(
+	return deps.Eventually(
 		ctx,
 		"stack "+stack+" to track "+commit,
 		func(ctx context.Context) (bool, error) {
-			if err := v.o.send(
+			if err := v.w.SendAs(
 				ctx,
 				`token "`+token+`"`,
 				"GET",

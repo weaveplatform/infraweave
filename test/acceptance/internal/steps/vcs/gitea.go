@@ -1,12 +1,17 @@
-package acceptance
+package vcs
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"slices"
 	"strconv"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // giteaSteps seed and read the scenario's repositories on the @vcs Gitea.
@@ -15,18 +20,14 @@ import (
 //
 // ref: decision 0016
 type giteaSteps struct {
-	w     *world
-	gitea *Gitea
+	w     *harness.World
+	gitea *deps.Gitea
 	// repos maps a scenario's repository name to the repository Gitea holds.
 	repos map[string]string
 	// last is each repository's newest commit the scenario made.
 	last map[string]string
 	// kept are commit SHAs the scenario kept by name.
 	kept map[string]string
-	// ids are the names a request's {name} resolves, which the API steps
-	// share: each repository's clone URL as {name.url} and each kept
-	// commit as {key}.
-	ids map[string]string
 }
 
 func (g *giteaSteps) register(sc *godog.ScenarioContext) {
@@ -42,11 +43,30 @@ func (g *giteaSteps) register(sc *godog.ScenarioContext) {
 // scenario has not made, or a head that is not the one expected.
 var ErrGiteaStep = errors.New("gitea step")
 
+// VCS starts the scenario's Gitea for a @vcs scenario, whose CA every
+// server of the scenario trusts.
+func (g *giteaSteps) VCS(ctx context.Context, w *harness.World) (map[string]any, []byte, error) {
+	if !slices.Contains(w.Tags, "@vcs") {
+		return nil, nil, nil
+	}
+	if err := g.start(ctx); err != nil {
+		return nil, nil, err
+	}
+	ca, err := os.ReadFile(g.gitea.CAFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("gitea CA: %w", err)
+	}
+	return nil, ca, nil
+}
+
+// Stop leaves the shared Gitea running for later scenarios.
+func (*giteaSteps) Stop() {}
+
 func (g *giteaSteps) start(ctx context.Context) error {
 	if g.gitea != nil {
 		return nil
 	}
-	gt, err := g.w.s.deps.Gitea(ctx)
+	gt, err := g.w.Suite.Deps.Gitea(ctx)
 	if err != nil {
 		return err //nolint:wrapcheck // names @vcs
 	}
@@ -66,14 +86,14 @@ func (g *giteaSteps) repository(ctx context.Context, name string, table *godog.T
 		}
 		files[row.Cells[0].Value] = row.Cells[1].Value
 	}
-	repo := name + "-" + strconv.FormatInt(g.w.s.deps.repos.Add(1), 10)
+	repo := name + "-" + strconv.FormatInt(g.w.Suite.Deps.Serial(), 10)
 	sha, err := g.gitea.CreateRepository(ctx, repo, files)
 	if err != nil {
 		return err
 	}
 	g.repos[name], g.last[name] = repo, sha
-	if g.ids != nil {
-		g.ids[name+".url"] = g.gitea.CloneURL(repo)
+	if g.w.IDs != nil {
+		g.w.IDs[name+".url"] = g.gitea.CloneURL(repo)
 	}
 	return nil
 }
@@ -93,7 +113,7 @@ func (g *giteaSteps) commit(ctx context.Context, branch, name, path string) erro
 	if err != nil {
 		return err
 	}
-	content := "change " + strconv.FormatInt(g.w.s.deps.repos.Add(1), 10) + "\n"
+	content := "change " + strconv.FormatInt(g.w.Suite.Deps.Serial(), 10) + "\n"
 	sha, err := g.gitea.Commit(ctx, repo, branch, map[string]string{path: content}, "change "+path)
 	if err != nil {
 		return err
@@ -116,8 +136,8 @@ func (g *giteaSteps) keepHead(ctx context.Context, branch, name, key string) err
 		return err
 	}
 	g.kept[key] = sha
-	if g.ids != nil {
-		g.ids[key] = sha
+	if g.w.IDs != nil {
+		g.w.IDs[key] = sha
 	}
 	return nil
 }

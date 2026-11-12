@@ -18,7 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/gcs"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/objectstoretest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // signer is a throwaway service account key: fake-gcs-server holds no
@@ -61,7 +61,7 @@ func TestAccGCSCloud(t *testing.T) {
 
 // TestAccGCSContract runs the contract against fake-gcs-server.
 func TestAccGCSContract(t *testing.T) {
-	endpoint := objectstoretest.Emulator(t, acceptance.ImageFakeGCS, "4443/tcp",
+	endpoint := objectstoretest.Emulator(t, deps.ImageFakeGCS, "4443/tcp",
 		testcontainers.WithCmd("-scheme", "http", "-port", "4443", "-backend", "memory"),
 		testcontainers.WithWaitStrategy(wait.ForHTTP("/storage/v1/b").WithPort("4443/tcp")),
 	)

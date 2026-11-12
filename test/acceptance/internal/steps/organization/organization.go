@@ -1,12 +1,10 @@
-package acceptance
+package organization
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,36 +12,23 @@ import (
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // orgSteps drive the Organization tag as an organization admin's browser
 // or a token. A request's path and body name the scenario's members and
-// organization keys as {name}, which ids resolves.
+// organization keys as {name}, which the World's IDs resolve.
 type orgSteps struct {
-	a *authSteps
-	b *browserSteps
-	// ids are the scenario's members and organization keys by name.
-	ids map[string]string
+	w *harness.World
 	// secrets are the organization keys' secrets by name, which only their
 	// creation answered.
 	secrets map[string]string
-	// tag are the answers of the Organization tag's requests, by the
-	// request's method and path.
-	tag map[string][][]byte
 }
 
 func (o *orgSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the organization "([a-z-]+)" has the active members "([^"]+)"$`, o.members)
 	sc.Step(`^the home account's member holds organization-admin$`, o.homeAdmin)
-	sc.Step(
-		`^(the browser|token "\w+") sends "([A-Z]+) ([^"]+)"(?: with '([^']*)')? through ([AB])$`,
-		o.send,
-	)
-	sc.Step(`^it answers (\d+)$`, o.answers)
-	sc.Step(`^it answers a (\d+) problem "([a-z-]+)"$`, o.answersProblem)
 	sc.Step(`^the answer lists the accounts "([^"]*)"$`, o.listsAccounts)
-	sc.Step(`^the answer's (\w+) is '([^']*)'$`, o.member)
-	sc.Step(`^the answer leaves out "([^"]+)"$`, o.leavesOut)
 	sc.Step(`^the answer sets the account's limit "([a-z-]+)" to (\d+)$`, o.limitSet)
 	sc.Step(`^the browser creates the organization key "(\w+)" through ([AB])$`, o.createKey)
 	sc.Step(
@@ -70,12 +55,19 @@ func (o *orgSteps) members(ctx context.Context, slug, names string) error {
 	for name := range strings.SplitSeq(names, ",") {
 		name = strings.TrimSpace(name)
 		id := kernel.NewMemberID()
-		o.ids[name] = id.String()
-		rows = append(rows, fmt.Sprintf(`((SELECT id FROM organizations WHERE slug = %s),
+		o.w.IDs[name] = id.String()
+		rows = append(rows, fmt.Sprintf(
+			`((SELECT id FROM organizations WHERE slug = %s),
 			'%s', %s, %[3]s, %s, 'active')`,
-			literal(slug), id.UUID(), literal(name), literal(name+"@example.com")))
+			harness.Literal(
+				slug,
+			),
+			id.UUID(),
+			harness.Literal(name),
+			harness.Literal(name+"@example.com"),
+		))
 	}
-	_, err := o.a.s.query(
+	_, err := o.w.Query(
 		ctx,
 		`INSERT INTO members (organization_id, id, login, name, email, status)
 		VALUES `+strings.Join(rows, ", "),
@@ -86,73 +78,10 @@ func (o *orgSteps) members(ctx context.Context, slug, names string) error {
 // homeAdmin grants the home organization's seeded member the organization
 // role, as an organization admin would.
 func (o *orgSteps) homeAdmin(ctx context.Context) error {
-	_, err := o.a.s.query(ctx, fmt.Sprintf(`INSERT INTO organization_admins
+	_, err := o.w.Query(ctx, fmt.Sprintf(`INSERT INTO organization_admins
 		(organization_id, member_id, created_by) VALUES ('%s', '%s', 'acceptance')`,
-		uuidOf(home.org), uuidOf(memberID)))
+		harness.UUIDOf(harness.Home.Org), harness.UUIDOf(harness.MemberID)))
 	return err
-}
-
-// resolve replaces each {name} in s with the scenario's ID of name, each
-// {n × c} with the character c n times and each {n labels} with n
-// distinct JSON strings, comma-separated, for bodies too long to write out.
-func (o *orgSteps) resolve(s string) string {
-	for name, id := range o.ids {
-		s = strings.ReplaceAll(s, "{"+name+"}", id)
-	}
-	s = repeated.ReplaceAllStringFunc(s, func(m string) string {
-		g := repeated.FindStringSubmatch(m)
-		n, _ := strconv.Atoi(g[1])
-		return strings.Repeat(g[2], n)
-	})
-	return labelList.ReplaceAllStringFunc(s, func(m string) string {
-		n, _ := strconv.Atoi(labelList.FindStringSubmatch(m)[1])
-		labels := make([]string, n)
-		for i := range labels {
-			labels[i] = fmt.Sprintf(`"label-%d"`, i)
-		}
-		return strings.Join(labels, ",")
-	})
-}
-
-var (
-	repeated  = regexp.MustCompile(`\{(\d+) × (.)\}`)
-	labelList = regexp.MustCompile(`\{(\d+) labels\}`)
-)
-
-// send sends the request through the browser, as a write from the public
-// URL's page, or with the named token.
-func (o *orgSteps) send(ctx context.Context, who, method, path, raw, replica string) error {
-	path, raw = o.resolve(path), o.resolve(raw)
-	var (
-		r   response
-		err error
-	)
-	if who == "the browser" {
-		r, err = o.b.do(ctx, replica, method, path, publicURL, body(raw))
-	} else {
-		name := strings.TrimSuffix(strings.TrimPrefix(who, `token "`), `"`)
-		r, err = o.a.do(ctx, replica, name, method, path, body(raw))
-	}
-	if err != nil && r.status == 0 {
-		return err
-	}
-	if strings.HasPrefix(path, "/api/v1/organization") {
-		key := method + " " + path
-		o.tag[key] = append(o.tag[key], r.body)
-	}
-	return nil
-}
-
-func (o *orgSteps) answers(code int) error {
-	r := o.a.s.last()
-	if r.status != code {
-		return fmt.Errorf("%w: answered %d, want %d: %s", errStep, r.status, code, r.body)
-	}
-	return nil
-}
-
-func (o *orgSteps) answersProblem(code, slug string) error {
-	return isProblem(o.a.s.last(), "the request", code, slug)
 }
 
 // listsAccounts checks the last answer, a page of accounts, against want:
@@ -164,9 +93,9 @@ func (o *orgSteps) listsAccounts(want string) error {
 			Claimed bool   `json:"claimed"`
 		} `json:"items"`
 	}
-	r := o.a.s.last()
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &page) != nil {
-		return fmt.Errorf("%w: answered %d %s", errStep, r.status, r.body)
+	r := o.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &page) != nil {
+		return fmt.Errorf("%w: answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	got := make([]string, 0, len(page.Items))
 	for _, a := range page.Items {
@@ -179,33 +108,10 @@ func (o *orgSteps) listsAccounts(want string) error {
 	if strings.Join(got, ", ") != want {
 		return fmt.Errorf(
 			"%w: the accounts are %q, want %q",
-			errStep,
+			harness.ErrStep,
 			strings.Join(got, ", "),
 			want,
 		)
-	}
-	return nil
-}
-
-// member checks the last answer's top-level member name against want as
-// JSON, with each {name} resolved.
-func (o *orgSteps) member(name, want string) error {
-	var got map[string]json.RawMessage
-	var g, w any
-	r := o.a.s.last()
-	if json.Unmarshal(r.body, &got) != nil || json.Unmarshal(got[name], &g) != nil ||
-		json.Unmarshal([]byte(o.resolve(want)), &w) != nil || !reflect.DeepEqual(g, w) {
-		return fmt.Errorf("%w: %s is not %s: %d %s", errStep, name, want, r.status, r.body)
-	}
-	return nil
-}
-
-// leavesOut checks that the last answer names nothing of text, such as
-// another organization's account.
-func (o *orgSteps) leavesOut(text string) error {
-	r := o.a.s.last()
-	if r.status != http.StatusOK || strings.Contains(string(r.body), text) {
-		return fmt.Errorf("%w: the answer names %q: %d %s", errStep, text, r.status, r.body)
 	}
 	return nil
 }
@@ -219,21 +125,28 @@ func (o *orgSteps) limitSet(name string, value int64) error {
 			Value *int64 `json:"value"`
 		} `json:"limits"`
 	}
-	r := o.a.s.last()
-	if r.status == http.StatusOK && json.Unmarshal(r.body, &u) == nil {
+	r := o.w.Last()
+	if r.Status == http.StatusOK && json.Unmarshal(r.Body, &u) == nil {
 		for _, l := range u.Limits {
 			if l.Name == name && l.Value != nil && *l.Value == value {
 				return nil
 			}
 		}
 	}
-	return fmt.Errorf("%w: the limit %q is not %d: %d %s", errStep, name, value, r.status, r.body)
+	return fmt.Errorf(
+		"%w: the limit %q is not %d: %d %s",
+		harness.ErrStep,
+		name,
+		value,
+		r.Status,
+		r.Body,
+	)
 }
 
 // createKey creates an organization key through the browser and keeps its
 // ID and secret.
 func (o *orgSteps) createKey(ctx context.Context, name, replica string) error {
-	if err := o.send(ctx, "the browser", http.MethodPost, "/api/v1/organization/keys",
+	if err := o.w.SendAs(ctx, "the browser", http.MethodPost, "/api/v1/organization/keys",
 		fmt.Sprintf(`{"name":%q}`, name), replica); err != nil {
 		return err
 	}
@@ -241,43 +154,48 @@ func (o *orgSteps) createKey(ctx context.Context, name, replica string) error {
 		ID     string `json:"id"`
 		Secret string `json:"secret"`
 	}
-	r := o.a.s.last()
-	if r.status != http.StatusCreated || json.Unmarshal(r.body, &k) != nil ||
+	r := o.w.Last()
+	if r.Status != http.StatusCreated || json.Unmarshal(r.Body, &k) != nil ||
 		!strings.HasPrefix(k.Secret, "iwo_") || len(k.Secret) != len("iwo_")+43 {
-		return fmt.Errorf("%w: the key's creation answered %d %s", errStep, r.status, r.body)
+		return fmt.Errorf(
+			"%w: the key's creation answered %d %s",
+			harness.ErrStep,
+			r.Status,
+			r.Body,
+		)
 	}
-	o.ids[name], o.secrets[name] = k.ID, k.Secret
+	o.w.IDs[name], o.secrets[name] = k.ID, k.Secret
 	return nil
 }
 
-func (o *orgSteps) exchange(ctx context.Context, name, replica string) (response, error) {
-	return o.a.do(ctx, replica, "", http.MethodPost, "/api/v1/auth/token",
-		map[string]string{"id": o.ids[name], "secret": o.secrets[name]})
+func (o *orgSteps) exchange(ctx context.Context, name, replica string) (harness.Response, error) {
+	return o.w.Do(ctx, replica, "", http.MethodPost, "/api/v1/auth/token",
+		map[string]string{"id": o.w.IDs[name], "secret": o.secrets[name]})
 }
 
 // exchangeKey exchanges the organization key for an organization token.
 func (o *orgSteps) exchangeKey(ctx context.Context, name, replica, tok string) error {
 	r, err := o.exchange(ctx, name, replica)
-	if err != nil && r.status == 0 {
+	if err != nil && r.Status == 0 {
 		return err
 	}
 	var u struct {
 		ID  string `json:"id"`
 		JWT string `json:"jwt"`
 	}
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &u) != nil || u.JWT == "" {
-		return fmt.Errorf("%w: the exchange answered %d %s", errStep, r.status, r.body)
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &u) != nil || u.JWT == "" {
+		return fmt.Errorf("%w: the exchange answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
-	o.a.tokens[tok] = u.JWT
+	o.w.Tokens[tok] = u.JWT
 	return nil
 }
 
 func (o *orgSteps) exchangeRefused(ctx context.Context, name, replica, code, slug string) error {
 	r, err := o.exchange(ctx, name, replica)
-	if err != nil && r.status == 0 {
+	if err != nil && r.Status == 0 {
 		return err
 	}
-	return isProblem(r, "the organization key's exchange", code, slug)
+	return harness.IsProblem(r, "the organization key's exchange", code, slug)
 }
 
 // accountData are the members an answer naming an account's stacks, runs,
@@ -288,8 +206,8 @@ var accountData = []string{"stack", "stacks", "run", "runs", "state", "secret", 
 // namesNoAccountData checks every answer of the tag in the scenario for a
 // member of accountData at any depth.
 func (o *orgSteps) namesNoAccountData() error {
-	if len(o.tag) == 0 {
-		return fmt.Errorf("%w: the scenario sent the tag nothing", errStep)
+	if len(o.w.Answers) == 0 {
+		return fmt.Errorf("%w: the scenario sent the tag nothing", harness.ErrStep)
 	}
 	var walk func(v any) string
 	walk = func(v any) string {
@@ -312,7 +230,7 @@ func (o *orgSteps) namesNoAccountData() error {
 		}
 		return ""
 	}
-	for req, bodies := range o.tag {
+	for req, bodies := range o.w.Answers {
 		if req == "POST /api/v1/organization/keys" {
 			continue
 		}
@@ -322,7 +240,7 @@ func (o *orgSteps) namesNoAccountData() error {
 				continue
 			}
 			if bad := walk(v); bad != "" {
-				return fmt.Errorf("%w: %s answered a %q member: %s", errStep, req, bad, b)
+				return fmt.Errorf("%w: %s answered a %q member: %s", harness.ErrStep, req, bad, b)
 			}
 		}
 	}
@@ -339,7 +257,7 @@ func (o *orgSteps) usage(
 	n2 int64,
 	a2 string,
 ) error {
-	if err := o.send(ctx, "the browser", http.MethodGet, "/api/v1/organization/usage", "",
+	if err := o.w.SendAs(ctx, "the browser", http.MethodGet, "/api/v1/organization/usage", "",
 		replica); err != nil {
 		return err
 	}
@@ -354,9 +272,9 @@ func (o *orgSteps) usage(
 			} `json:"limits"`
 		} `json:"items"`
 	}
-	r := o.a.s.last()
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &page) != nil {
-		return fmt.Errorf("%w: the usage answered %d %s", errStep, r.status, r.body)
+	r := o.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &page) != nil {
+		return fmt.Errorf("%w: the usage answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	seats := map[string]string{}
 	for _, u := range page.Items {
@@ -367,7 +285,7 @@ func (o *orgSteps) usage(
 		}
 	}
 	if seats[a1] != strconv.FormatInt(n1, 10) || seats[a2] != strconv.FormatInt(n2, 10) {
-		return fmt.Errorf("%w: the usage counts seats %v: %s", errStep, seats, r.body)
+		return fmt.Errorf("%w: the usage counts seats %v: %s", harness.ErrStep, seats, r.Body)
 	}
 	return nil
 }

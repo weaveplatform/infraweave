@@ -16,7 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // TestAccGuardedReplicas runs two routers on one database with serve's
@@ -125,7 +125,7 @@ func TestAccGuardedReplicas(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, r := range map[string]*chi.Mux{"a": a, "b": b} {
-		err := acceptance.Eventually(t.Context(), name+" to disable the caller",
+		err := deps.Eventually(t.Context(), name+" to disable the caller",
 			func(context.Context) (bool, error) {
 				return send( //nolint:contextcheck // send builds a request of its own
 					r,

@@ -1,4 +1,4 @@
-package acceptance
+package authz
 
 import (
 	"context"
@@ -9,10 +9,14 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // grantViewSteps drive the views of who holds a space.
-type grantViewSteps struct{ o *orgSteps }
+type grantViewSteps struct {
+	w *harness.World
+}
 
 // grantViews are each view's path by the name a step gives it.
 var grantViews = map[string]string{
@@ -58,13 +62,13 @@ func (s *grantViewSteps) list(
 	}
 	raw, err := json.Marshal(in)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errStep, err)
+		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
-	q := url.Values{"space": {s.o.resolve(slug)}, "input": {string(raw)}}
+	q := url.Values{"space": {s.w.Resolve(slug)}, "input": {string(raw)}}
 	if mode != "" {
 		q.Set("mode", mode)
 	}
-	return s.o.send(
+	return s.w.SendAs(
 		ctx,
 		who,
 		http.MethodGet,
@@ -76,11 +80,11 @@ func (s *grantViewSteps) list(
 
 // suggest reads the suggestions of the view of slug, in mode.
 func (s *grantViewSteps) suggest(ctx context.Context, who, view, slug, mode, replica string) error {
-	q := url.Values{"space": {s.o.resolve(slug)}, "input": {"{}"}}
+	q := url.Values{"space": {s.w.Resolve(slug)}, "input": {"{}"}}
 	if mode != "" {
 		q.Set("mode", mode)
 	}
-	return s.o.send(ctx, who, http.MethodGet,
+	return s.w.SendAs(ctx, who, http.MethodGet,
 		"/api/v1/"+grantViews[view]+"-suggestions?"+q.Encode(), "", replica)
 }
 
@@ -152,9 +156,9 @@ func (s *grantViewSteps) edges() ([]json.RawMessage, error) {
 			Node json.RawMessage `json:"node"`
 		} `json:"edges"`
 	}
-	last := s.o.a.s.last()
-	if last.status != http.StatusOK || json.Unmarshal(last.body, &page) != nil {
-		return nil, fmt.Errorf("%w: no page: %d %s", errStep, last.status, last.body)
+	last := s.w.Last()
+	if last.Status != http.StatusOK || json.Unmarshal(last.Body, &page) != nil {
+		return nil, fmt.Errorf("%w: no page: %d %s", harness.ErrStep, last.Status, last.Body)
 	}
 	out := make([]json.RawMessage, 0, len(page.Edges))
 	for _, e := range page.Edges {
@@ -165,7 +169,7 @@ func (s *grantViewSteps) edges() ([]json.RawMessage, error) {
 
 // row is the last answer's row naming name, by ID or by login.
 func (s *grantViewSteps) row(name string) (holderNode, json.RawMessage, error) {
-	id := s.o.resolve(name)
+	id := s.w.Resolve(name)
 	edges, err := s.edges()
 	if err != nil {
 		return holderNode{}, nil, err
@@ -180,7 +184,12 @@ func (s *grantViewSteps) row(name string) (holderNode, json.RawMessage, error) {
 			return n, raw, nil
 		}
 	}
-	return holderNode{}, nil, fmt.Errorf("%w: no holder %s: %s", errStep, id, s.o.a.s.last().body)
+	return holderNode{}, nil, fmt.Errorf(
+		"%w: no holder %s: %s",
+		harness.ErrStep,
+		id,
+		s.w.Last().Body,
+	)
 }
 
 func (s *grantViewSteps) count(n int) error {
@@ -191,10 +200,10 @@ func (s *grantViewSteps) count(n int) error {
 	if len(edges) != n {
 		return fmt.Errorf(
 			"%w: %d holders, want %d: %s",
-			errStep,
+			harness.ErrStep,
 			len(edges),
 			n,
-			s.o.a.s.last().body,
+			s.w.Last().Body,
 		)
 	}
 	return nil
@@ -207,10 +216,10 @@ func (s *grantViewSteps) holds(name, role, slug, source, via string) error {
 	if err != nil {
 		return err
 	}
-	slug = s.o.resolve(slug)
+	slug = s.w.Resolve(slug)
 	binding := ""
 	if _, quoted, ok := strings.Cut(via, `"`); ok {
-		binding = s.o.resolve(strings.TrimSuffix(quoted, `"`))
+		binding = s.w.Resolve(strings.TrimSuffix(quoted, `"`))
 	}
 	for _, g := range n.Roles {
 		if g.Role.ID == role && g.Space.ID == slug && g.Source == source &&
@@ -220,7 +229,7 @@ func (s *grantViewSteps) holds(name, role, slug, source, via string) error {
 	}
 	return fmt.Errorf(
 		"%w: %s holds %+v, not %s on %s as %s",
-		errStep,
+		harness.ErrStep,
 		name,
 		n.Roles,
 		role,
@@ -236,14 +245,14 @@ func (s *grantViewSteps) sessions(name, role string, n int) error {
 		return err
 	}
 	if got := h.sessionsOf(raw); got != n {
-		return fmt.Errorf("%w: %s has %d sessions, want %d", errStep, name, got, n)
+		return fmt.Errorf("%w: %s has %d sessions, want %d", harness.ErrStep, name, got, n)
 	}
 	for _, g := range h.Roles {
 		if g.Role.ID == role {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: %s holds %+v, not %s", errStep, name, h.Roles, role)
+	return fmt.Errorf("%w: %s holds %+v, not %s", harness.ErrStep, name, h.Roles, role)
 }
 
 // suggestions checks the last answer's count.
@@ -251,10 +260,16 @@ func (s *grantViewSteps) suggestions(n int) error {
 	var out struct {
 		FilteredCount int `json:"filteredCount"`
 	}
-	last := s.o.a.s.last()
-	if last.status != http.StatusOK || json.Unmarshal(last.body, &out) != nil ||
+	last := s.w.Last()
+	if last.Status != http.StatusOK || json.Unmarshal(last.Body, &out) != nil ||
 		out.FilteredCount != n {
-		return fmt.Errorf("%w: want a count of %d: %d %s", errStep, n, last.status, last.body)
+		return fmt.Errorf(
+			"%w: want a count of %d: %d %s",
+			harness.ErrStep,
+			n,
+			last.Status,
+			last.Body,
+		)
 	}
 	return nil
 }

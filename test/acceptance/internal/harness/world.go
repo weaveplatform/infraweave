@@ -1,380 +1,70 @@
-package acceptance
+package harness
 
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
-	"strconv"
 	"strings"
-	"sync"
-	"testing"
-	"time"
 
-	"github.com/cucumber/godog"
-
+	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
-// The environment the suite reads. make accept sets PARTITION; CI sets
-// REQUIRE_DOCKER; the rest let the harness feature run the suite nested
-// over fixture features without touching the real outputs.
-const (
-	envRequireDocker = "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"
-	envPartition     = "INFRAWEAVE_ACCEPT_PARTITION"
-	envSeed          = "INFRAWEAVE_ACCEPT_SEED"
-	envFeatures      = "INFRAWEAVE_ACCEPT_FEATURES"
-	// envTags narrows the partition's scenarios to those matching a
-	// further tag expression, such as one provider's @lab: tag.
-	envTags     = "INFRAWEAVE_ACCEPT_TAGS"
-	envOut      = "INFRAWEAVE_ACCEPT_OUT"
-	envCucumber = "INFRAWEAVE_ACCEPT_CUCUMBER"
-	envBinary   = "INFRAWEAVE_ACCEPT_BINARY"
-	// envNoDocker makes the suite treat the daemon as unreachable. The
-	// harness feature's nested runs need that on a host whose daemon
-	// answers, and no Docker variable can hide it: testcontainers falls
-	// back to the default socket when DOCKER_HOST does not answer.
-	envNoDocker = "INFRAWEAVE_ACCEPT_NO_DOCKER"
-)
+// ErrStep is the failure of a step whose check does not hold, which each
+// step wraps with what it found.
+var ErrStep = errors.New("step failed")
 
-// errNoDocker is the reachability error envNoDocker reports.
-var errNoDocker = errors.New(envNoDocker + "=1")
-
-// repoRoot is the module root, relative to this package.
-var repoRoot = filepath.Join("..", "..")
-
-var errStep = errors.New("step failed")
-
-// suite is what every scenario of one test binary shares: the settings, the
-// lazily started dependencies, the built binary and the skip record.
-type suite struct {
-	features, out, cucumber, coverDir string
-	requireDocker                     bool
-	dockerErr                         error
-	deps                              *Dependencies
-
-	mu      sync.Mutex
-	skipped map[string][]string // scenario name → the tags that needed Docker
-}
-
-func newSuite(t *testing.T) *suite {
-	t.Helper()
-	s := &suite{
-		features:      envOr(envFeatures, "features"),
-		out:           envOr(envOut, "out"),
-		requireDocker: os.Getenv(envRequireDocker) == "1",
-		deps:          &Dependencies{},
-		skipped:       map[string][]string{},
-	}
-	var given bool
-	s.coverDir, given = coverDir(t)
-	// godog's report lands beside the coverage for specref parity --states.
-	if given {
-		s.cucumber = filepath.Join(s.coverDir, "cucumber.json")
-	}
-	if v, ok := os.LookupEnv(envCucumber); ok {
-		s.cucumber = v
-	}
-	s.deps.Migrate = func(ctx context.Context, dsn string) error {
-		bin, err := binary(ctx)
-		if err != nil {
-			return err
-		}
-		return Migrate(ctx, bin, s.coverDir, dsn)
-	}
-	return s
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-// coverDir is where the subprocesses write coverage: make accept's
-// -test.gocoverdir, so their counters merge with the test binary's, and
-// otherwise a directory that is thrown away. given reports which.
-func coverDir(t *testing.T) (dir string, given bool) {
-	t.Helper()
-	if f := flag.Lookup("test.gocoverdir"); f != nil && f.Value.String() != "" {
-		return f.Value.String(), true
-	}
-	return t.TempDir(), false
-}
-
-// The infraweave binary every test of this test binary runs.
-var built struct {
-	once sync.Once
-	bin  string
-	err  error
-}
-
-// binary builds infraweave once per test binary, or uses the one a nesting
-// run passed down. The binary outlives any one test, so it goes to a
-// directory of its own that TestMain removes.
-func binary(ctx context.Context) (string, error) {
-	built.once.Do(func() {
-		if built.bin = os.Getenv(envBinary); built.bin != "" {
-			return
-		}
-		root, err := filepath.Abs(repoRoot)
-		if err != nil {
-			built.err = fmt.Errorf("repository root: %w", err)
-			return
-		}
-		built.bin, built.err = BuildBinary(ctx, root, buildDir, "infraweave")
-	})
-	return built.bin, built.err
-}
-
-// The infraweavectl binary every test of this test binary runs.
-var builtCtl struct {
-	once sync.Once
-	bin  string
-	err  error
-}
-
-// ctlBinary builds infraweavectl once per test binary, beside infraweave.
-// The harness feature's nested runs run no scenario that needs it.
-func ctlBinary(ctx context.Context) (string, error) {
-	builtCtl.once.Do(func() {
-		root, err := filepath.Abs(repoRoot)
-		if err != nil {
-			builtCtl.err = fmt.Errorf("repository root: %w", err)
-			return
-		}
-		builtCtl.bin, builtCtl.err = BuildBinary(ctx, root, buildDir, "infraweavectl")
-	})
-	return builtCtl.bin, builtCtl.err
-}
-
-// dockerTags are the scenario's tags that need a Docker daemon: every
-// dependency tag except @oidc, @github, @gitlab, @bitbucket-cloud,
-// @bitbucket-dc and @azure-devops, which run in process, and @ai, whose provider is a fake on loopback.
-func dockerTags(tags []string) []string {
-	var out []string
-	for _, t := range tags {
-		if !Exempt(t) && t != "@oidc" && t != "@ai" && t != "@github" && t != "@gitlab" &&
-			t != "@bitbucket-cloud" && t != "@bitbucket-dc" &&
-			t != "@azure-devops" {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
-func (s *suite) skip(name string, tags []string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.skipped[name] = tags
-}
-
-// buildDir holds the built binary for the life of the test binary.
-var buildDir string
-
-func TestMain(m *testing.M) {
-	var err error
-	if buildDir, err = os.MkdirTemp("", "infraweave-build-"); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	code := m.Run()
-	_ = os.RemoveAll(buildDir)
-	os.Exit(code)
-}
-
-func TestAccFeatures(t *testing.T) {
-	s := newSuite(t)
-	s.dockerErr = errNoDocker
-	if os.Getenv(envNoDocker) != "1" {
-		s.dockerErr = DockerReachable(t.Context())
-	}
-	if s.requireDocker && s.dockerErr != nil {
-		t.Fatalf("%s=1, and no Docker daemon answers: %v", envRequireDocker, s.dockerErr)
-	}
-	t.Cleanup(func() {
-		if err := s.deps.Close(context.WithoutCancel(t.Context())); err != nil {
-			t.Error(err)
-		}
-	})
-	tags, err := TagExpression(os.Getenv(envPartition))
-	if err != nil {
-		t.Fatal(err)
-	}
-	tags = And(tags, os.Getenv(envTags))
-	seed := time.Now().UnixNano()
-	if v := os.Getenv(envSeed); v != "" {
-		if seed, err = strconv.ParseInt(v, 10, 64); err != nil {
-			t.Fatalf("%s: %v", envSeed, err)
-		}
-	}
-	fmt.Printf("acceptance: scenario order seed %d (%s=%d repeats it); partition %q\n",
-		seed, envSeed, seed, os.Getenv(envPartition))
-	format := "pretty"
-	if s.cucumber != "" {
-		format += ",cucumber:" + s.cucumber
-	}
-	status := godog.TestSuite{
-		ScenarioInitializer: s.initScenario,
-		Options: &godog.Options{
-			Format:      format,
-			Paths:       []string{s.features},
-			Tags:        tags,
-			Strict:      true,
-			Randomize:   seed,
-			Concurrency: runtime.GOMAXPROCS(0),
-		},
-	}.Run()
-	if len(s.skipped) > 0 {
-		names := slices.Sorted(func(yield func(string) bool) {
-			for n := range s.skipped {
-				if !yield(n) {
-					return
-				}
-			}
-		})
-		fmt.Printf(
-			"acceptance: no Docker daemon (%v), so %d scenarios were skipped:\n",
-			s.dockerErr,
-			len(names),
-		)
-		for _, n := range names {
-			fmt.Printf("  %s (%s)\n", n, strings.Join(s.skipped[n], " "))
-		}
-		if s.requireDocker {
-			t.Errorf("%s=1, and %d scenarios were skipped", envRequireDocker, len(names))
-		}
-	}
-	if status != 0 {
-		t.Fatal("acceptance features failed")
-	}
-}
-
-// world is one scenario's state, shared by its step groups.
-type world struct {
-	s    *suite
-	name string
-	tags []string
-	dir  string
-	// servers are the scenario's infraweave processes, each a replica on
+// World is one scenario's state, shared by its step groups.
+type World struct {
+	Suite *Suite
+	Name  string
+	Tags  []string
+	Dir   string
+	// Servers are the scenario's infraweave processes, each a replica on
 	// the scenario's database, in the order they started.
-	servers []*Server
-	db      *Database
-	// ownPG is the scenario's own PostgreSQL container, when it has one.
-	ownPG *OwnPostgres
-	// api and admin call the first server's two listeners through pkg/sdk;
-	// apis call each server's API listener, in the order of servers.
-	api, admin *sdk.Client
-	apis       []*sdk.Client
-	// tokens are the API tokens apis hold, for a request no client sends.
-	tokens []string
-	// kek is the secrets.kek settings the scenario's servers and commands
-	// run with; nil is the local KEK.
-	kek map[string]any
-	// auth is the auth settings every server of the scenario starts with;
-	// nil keeps the defaults.
-	auth map[string]any
-	// features is the features settings every server of the scenario
-	// starts with; nil keeps the defaults.
-	features map[string]any
-	// vendors is the release indexes every server of the scenario reads;
-	// nil reads offlineIndexes.
-	vendors map[string]any
-	// queue is the queue settings the next server the scenario starts
-	// runs with; nil keeps the defaults.
-	queue map[string]any
-	// sections are further top-level sections every server of the
-	// scenario starts with, such as worker and run, by their key.
-	sections map[string]map[string]any
-	// git seeds the scenario's @vcs repositories, whose CA every server of
-	// a @vcs scenario trusts.
-	git *giteaSteps
-	// github is a @github scenario's GitHub host, whose certificate every
-	// server of the scenario trusts.
-	github *githubSteps
-	// gitlab is a @gitlab scenario's GitLab, whose certificate every
-	// server of the scenario trusts.
-	gitlab *gitlabSteps
-	// bitbucketCloud is a @bitbucket-cloud scenario's Bitbucket Cloud,
-	// which every server of the scenario reaches and trusts.
-	bitbucketCloud *bitbucketCloudSteps
-	// bitbucketDC is a @bitbucket-dc scenario's Bitbucket Data Center,
-	// whose certificate every server of the scenario trusts.
-	bitbucketDC *bitbucketDCSteps
-	// azureDevOps is an @azure-devops scenario's Azure DevOps, whose
-	// certificate every server of the scenario trusts.
-	azureDevOps *azureDevOpsSteps
-}
-
-func (s *suite) initScenario(sc *godog.ScenarioContext) {
-	w := &world{s: s}
-	sc.Before(func(ctx context.Context, p *godog.Scenario) (context.Context, error) {
-		w.name = p.Name
-		for _, t := range p.Tags {
-			w.tags = append(w.tags, t.Name)
-		}
-		if need := dockerTags(w.tags); len(need) > 0 && s.dockerErr != nil {
-			s.skip(p.Name, need)
-			return ctx, godog.ErrSkip
-		}
-		dir, err := os.MkdirTemp("", "infraweave-accept-")
-		if err != nil {
-			return ctx, fmt.Errorf("scenario dir: %w", err)
-		}
-		w.dir = dir
-		return ctx, nil
-	})
-	sc.After(func(ctx context.Context, _ *godog.Scenario, err error) (context.Context, error) {
-		ctx = context.WithoutCancel(ctx)
-		if err != nil && w.dir != "" {
-			err = errors.Join(err, w.evidence(ctx))
-		}
-		for _, srv := range w.servers {
-			err = errors.Join(err, srv.Stop(ctx))
-		}
-		if w.db != nil {
-			err = errors.Join(err, w.db.Drop(ctx))
-		}
-		if w.ownPG != nil {
-			err = errors.Join(err, w.ownPG.Terminate(ctx))
-		}
-		w.github.stop()
-		w.gitlab.stop()
-		w.bitbucketCloud.stop()
-		w.bitbucketDC.stop()
-		w.azureDevOps.stop()
-		if w.dir != "" {
-			err = errors.Join(err, os.RemoveAll(w.dir))
-		}
-		return ctx, err
-	})
-	(&referenceSteps{}).register(sc)
-	(&deploySteps{}).register(sc)
-	git := &giteaSteps{w: w}
-	w.git = git
-	w.github = &githubSteps{}
-	w.gitlab = &gitlabSteps{}
-	w.bitbucketCloud = &bitbucketCloudSteps{}
-	w.bitbucketDC = &bitbucketDCSteps{}
-	w.azureDevOps = &azureDevOpsSteps{}
-	(&servedSteps{w: w}).register(sc)
-	(&observeSteps{w: w}).register(sc)
-	(&startupSteps{w: w}).register(sc)
-	(&harnessSteps{w: w}).register(sc)
-	git.register(sc)
+	Servers []*Server
+	db      *deps.Database
+	// OwnPG is the scenario's own PostgreSQL container, when it has one.
+	OwnPG *deps.OwnPostgres
+	// API and Admin call the first server's two listeners through pkg/sdk;
+	// APIs call each server's API listener, in the order of Servers.
+	API, Admin *sdk.Client
+	APIs       []*sdk.Client
+	// APITokens are the API tokens APIs hold, for a request no client sends.
+	APITokens []string
+	// Sent holds every answer of the scenario, the last one last.
+	Sent []Response
+	// Tokens are the scenario's named API tokens, and IDs the names a
+	// request's {name} resolves to: IDs, clone URLs and kept commits.
+	Tokens, IDs map[string]string
+	// Answers are the bodies of the answers to SendAs, by the request's
+	// method and path.
+	Answers map[string][][]byte
+	// Jar is the scenario's browser.
+	Jar *Jar
+	// Vault is the Vault KEK the data keys are wrapped by after a rewrap;
+	// nil while they are under the local KEK.
+	Vault *kek.VaultConfig
+	// Settings are the top-level sections every server of the scenario
+	// starts with over ServerConfig's, by their key, such as secrets for
+	// the KEK, auth, features, vendors, queue, worker and run.
+	Settings map[string]map[string]any
+	// Fakes are the stand-ins for the services the scenario's servers
+	// reach, which the scenario's tags start, in the order their
+	// certificates join vcs.ca_file.
+	Fakes []Fake
 }
 
 var nonWord = regexp.MustCompile(`[^a-z0-9]+`)
 
-// slug names a scenario's evidence directory.
-func slug(name string) string {
+// Slug names a scenario's evidence directory.
+func Slug(name string) string {
 	return strings.Trim(nonWord.ReplaceAllString(strings.ToLower(name), "-"), "-")
 }
 
@@ -384,13 +74,13 @@ func slug(name string) string {
 // took a database, a dump of it.
 //
 // ref: decision 0016
-func (w *world) evidence(ctx context.Context) error {
-	dir := filepath.Join(w.s.out, slug(w.name))
+func (w *World) evidence(ctx context.Context) error {
+	dir := filepath.Join(w.Suite.Out, Slug(w.Name))
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("evidence: %w", err)
 	}
 	var err error
-	for i, srv := range w.servers {
+	for i, srv := range w.Servers {
 		d := dir
 		if i > 0 {
 			d = filepath.Join(dir, fmt.Sprintf("server-%d", i+1))
@@ -406,16 +96,16 @@ func (w *world) evidence(ctx context.Context) error {
 			os.WriteFile(filepath.Join(dir, "pg_dump.sql"), []byte(dump), 0o600),
 		)
 	}
-	fmt.Printf("acceptance: evidence of %q is in %s\n", w.name, dir)
+	fmt.Printf("acceptance: evidence of %q is in %s\n", w.Name, dir)
 	return err
 }
 
-// database returns the scenario's own database, creating it on first use.
-func (w *world) database(ctx context.Context) (*Database, error) {
+// Database returns the scenario's own database, creating it on first use.
+func (w *World) Database(ctx context.Context) (*deps.Database, error) {
 	if w.db != nil {
 		return w.db, nil
 	}
-	db, err := w.s.deps.Postgres(ctx)
+	db, err := w.Suite.Deps.Postgres(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -423,133 +113,75 @@ func (w *world) database(ctx context.Context) (*Database, error) {
 	return db, nil
 }
 
-// querier is the scenario's database: its own PostgreSQL's when it has
+// Querier is the scenario's database: its own PostgreSQL's when it has
 // one, else its database in the shared container.
-func (w *world) querier(ctx context.Context) (querier, error) {
-	if w.ownPG != nil {
-		return w.ownPG, nil
+func (w *World) Querier(ctx context.Context) (Querier, error) {
+	if w.OwnPG != nil {
+		return w.OwnPG, nil
 	}
-	return w.database(ctx)
+	return w.Database(ctx)
 }
 
-// objects is the scenario's object storage root, which all its servers
+// Objects is the scenario's object storage root, which all its servers
 // share.
-func (w *world) objects() string { return filepath.Join(w.dir, "objects") }
+func (w *World) Objects() string { return filepath.Join(w.Dir, "objects") }
 
 // errNeedsPostgres is returned when a scenario without @postgres starts a
 // server, which needs the scenario's database.
 var errNeedsPostgres = errors.New("a scenario that starts infraweave needs @postgres")
 
-// startServer runs one more infraweave all on the scenario's database, with
-// settings over serverConfig's server settings.
-func (w *world) startServer(ctx context.Context, settings map[string]any) (*Server, error) {
-	if !slices.Contains(w.tags, "@postgres") {
+// StartServer runs one more infraweave all on the scenario's database, with
+// settings over ServerConfig's server settings.
+func (w *World) StartServer(ctx context.Context, settings map[string]any) (*Server, error) {
+	if !slices.Contains(w.Tags, "@postgres") {
 		return nil, errNeedsPostgres
 	}
-	db, err := w.database(ctx)
+	db, err := w.Database(ctx)
 	if err != nil {
 		return nil, err
 	}
-	config, err := serverConfigKEK(db.DSN, w.objects(), settings, w.kek)
+	config, err := ServerConfig(db.DSN, w.Objects(), settings)
 	if err != nil {
 		return nil, err
 	}
-	if w.auth != nil {
-		if config, err = withSection(config, "auth", w.auth); err != nil {
-			return nil, err
-		}
-	}
-	if w.features != nil {
-		if config, err = withSection(config, "features", w.features); err != nil {
-			return nil, err
-		}
-	}
-	if w.vendors != nil {
-		if config, err = withSection(config, "vendors", w.vendors); err != nil {
-			return nil, err
-		}
-	}
-	if w.queue != nil {
-		if config, err = withSection(config, "queue", w.queue); err != nil {
-			return nil, err
-		}
-	}
-	for _, key := range slices.Sorted(maps.Keys(w.sections)) {
-		if config, err = withSection(config, key, w.sections[key]); err != nil {
+	for _, key := range slices.Sorted(maps.Keys(w.Settings)) {
+		if config, err = withSection(config, key, w.Settings[key]); err != nil {
 			return nil, err
 		}
 	}
 	if config, err = w.vcs(ctx, config); err != nil {
 		return nil, err
 	}
-	return w.launch(ctx, "all", config)
+	return w.Launch(ctx, "all", config)
 }
 
-// vcs is config with the vcs settings the scenario's tags need: a @vcs
-// scenario's servers trust its Gitea, a @github scenario's trust its
-// GitHub host and name its operator App, a @gitlab scenario's trust its
-// GitLab, a @bitbucket-cloud scenario's trust and reach its Bitbucket
-// Cloud, a @bitbucket-dc scenario's trust its Bitbucket Data Center, and
-// an @azure-devops scenario's trust its Azure DevOps, and a @vcs-lab
-// scenario's reach its lab (labVCS), under one vcs.ca_file holding every
-// certificate they trust.
-func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
+// Fake is a stand-in for a service the scenario's servers reach, which
+// the scenario's tags start. VCS starts it on first use when the tags
+// name it and returns the vcs settings and the certificates every server
+// of the scenario needs, none when it is not running; Stop stops it.
+type Fake interface {
+	VCS(ctx context.Context, w *World) (map[string]any, []byte, error)
+	Stop()
+}
+
+// vcs is config with the vcs settings the scenario's fakes give, under one
+// vcs.ca_file holding every certificate they trust.
+func (w *World) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	vcs := map[string]any{}
 	var cas []byte
-	if slices.Contains(w.tags, "@vcs") {
-		if err := w.git.start(ctx); err != nil {
-			return nil, err
-		}
-		ca, err := os.ReadFile(w.git.gitea.CAFile)
-		if err != nil {
-			return nil, fmt.Errorf("gitea CA: %w", err)
-		}
-		cas = append(cas, ca...)
-	}
-	if slices.Contains(w.tags, "@github") && w.github.srv == nil {
-		app, ca, err := w.github.start(w.dir)
+	for _, f := range w.Fakes {
+		settings, ca, err := f.VCS(ctx, w)
 		if err != nil {
 			return nil, err
 		}
-		vcs["github_app"] = app
+		maps.Copy(vcs, settings)
 		cas = append(cas, ca...)
-	} else if w.github.srv != nil {
-		vcs["github_app"] = w.github.app0
-		cas = append(cas, w.github.srv.CA...)
 	}
-	if slices.Contains(w.tags, "@gitlab") && w.gitlab.srv == nil {
-		cas = append(cas, w.gitlab.start()...)
-	} else if w.gitlab.srv != nil {
-		cas = append(cas, w.gitlab.srv.CA...)
-	}
-	if slices.Contains(w.tags, "@bitbucket-cloud") && w.bitbucketCloud.srv == nil {
-		cas = append(cas, w.bitbucketCloud.start()...)
-	} else if w.bitbucketCloud.srv != nil {
-		cas = append(cas, w.bitbucketCloud.srv.CA...)
-	}
-	if slices.Contains(w.tags, "@bitbucket-dc") && w.bitbucketDC.srv == nil {
-		cas = append(cas, w.bitbucketDC.start()...)
-	} else if w.bitbucketDC.srv != nil {
-		cas = append(cas, w.bitbucketDC.srv.CA...)
-	}
-	if slices.Contains(w.tags, "@azure-devops") && w.azureDevOps.srv == nil {
-		cas = append(cas, w.azureDevOps.start()...)
-	} else if w.azureDevOps.srv != nil {
-		cas = append(cas, w.azureDevOps.srv.CA...)
-	}
-	if w.bitbucketCloud.srv != nil {
-		vcs["bitbucket_cloud"] = map[string]any{"api_host": w.bitbucketCloud.apiHost()}
-	}
-	ca, err := labVCS(w.dir, w.tags, vcs)
-	if err != nil {
-		return nil, err
-	}
-	cas = append(cas, ca...)
 	if len(vcs) == 0 && len(cas) == 0 {
 		return config, nil
 	}
 	if len(cas) > 0 {
-		file := filepath.Join(w.dir, "vcs-ca.pem")
+		file := filepath.Join(w.Dir, "vcs-ca.pem")
 		if err := os.WriteFile(file, cas, 0o600); err != nil {
 			return nil, fmt.Errorf("vcs CA: %w", err)
 		}
@@ -558,27 +190,38 @@ func (w *world) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	return withSection(config, "vcs", vcs)
 }
 
-// launch runs one more infraweave process mode with config and gives the
+// KEK is the secrets.kek settings the scenario's servers and commands
+// run with; nil is the local KEK.
+func (w *World) KEK() map[string]any {
+	k, _ := w.Settings["secrets"]["kek"].(map[string]any)
+	return k
+}
+
+// SetKEK makes kek the secrets.kek settings of the servers the scenario
+// starts from now on and of its commands.
+func (w *World) SetKEK(kek map[string]any) { w.Settings["secrets"] = SecretsWith(kek) }
+
+// Launch runs one more infraweave process mode with config and gives the
 // scenario SDK clients for its listeners.
-func (w *world) launch(ctx context.Context, mode string, config []byte) (*Server, error) {
-	bin, err := binary(ctx)
+func (w *World) Launch(ctx context.Context, mode string, config []byte) (*Server, error) {
+	bin, err := Binary(ctx)
 	if err != nil {
 		return nil, err
 	}
-	dir := w.dir
-	if len(w.servers) > 0 {
-		dir = filepath.Join(w.dir, fmt.Sprintf("server-%d", len(w.servers)+1))
+	dir := w.Dir
+	if len(w.Servers) > 0 {
+		dir = filepath.Join(w.Dir, fmt.Sprintf("server-%d", len(w.Servers)+1))
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return nil, fmt.Errorf("server dir: %w", err)
 		}
 	}
-	srv, err := StartServer(ctx, bin, dir, w.s.coverDir, mode, config)
+	srv, err := StartServer(ctx, bin, dir, w.Suite.CoverDir, mode, config)
 	if err != nil {
 		return nil, err
 	}
-	w.servers = append(w.servers, srv)
-	if len(w.servers) == 1 {
-		if w.admin, err = sdk.New("http://"+srv.Admin, sdk.WithRetry(sdk.NoRetry)); err != nil {
+	w.Servers = append(w.Servers, srv)
+	if len(w.Servers) == 1 {
+		if w.Admin, err = sdk.New("http://"+srv.Admin, sdk.WithRetry(sdk.NoRetry)); err != nil {
 			return nil, fmt.Errorf("sdk: %w", err)
 		}
 	}
@@ -588,17 +231,17 @@ func (w *world) launch(ctx context.Context, mode string, config []byte) (*Server
 	// Every route but a few needs a credential, so the scenario's clients
 	// hold a token of the home tenant's key.
 	// ref: decision 0006
-	db, err := w.querier(ctx)
+	db, err := w.Querier(ctx)
 	if err != nil {
 		return nil, err
 	}
-	api, tok, err := authenticated(ctx, db, "http://"+srv.API, home)
+	api, tok, err := Authenticated(ctx, db, "http://"+srv.API, Home)
 	if err != nil {
 		return nil, fmt.Errorf("API client: %w", err)
 	}
-	w.apis, w.tokens = append(w.apis, api), append(w.tokens, tok)
-	if len(w.servers) == 1 {
-		w.api = api
+	w.APIs, w.APITokens = append(w.APIs, api), append(w.APITokens, tok)
+	if len(w.Servers) == 1 {
+		w.API = api
 	}
 	return srv, nil
 }

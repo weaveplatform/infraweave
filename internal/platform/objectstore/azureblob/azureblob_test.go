@@ -12,7 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/azureblob"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/objectstoretest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // Azurite's well-known development account, which every Azurite holds.
@@ -48,7 +48,7 @@ func TestAccAzureBlobCloud(t *testing.T) {
 
 // TestAccAzureBlobContract runs the contract against Azurite.
 func TestAccAzureBlobContract(t *testing.T) {
-	endpoint := objectstoretest.Emulator(t, acceptance.ImageAzurite, "10000/tcp",
+	endpoint := objectstoretest.Emulator(t, deps.ImageAzurite, "10000/tcp",
 		// The SDK speaks a newer service version than Azurite announces.
 		testcontainers.WithCmd("azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000",
 			"--inMemoryPersistence", "--skipApiVersionCheck"),

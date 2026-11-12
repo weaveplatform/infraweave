@@ -1,12 +1,15 @@
-package acceptance
+package vcs
 
 import (
+	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/bitbucketdcfake"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // bitbucketDCSteps run the Bitbucket Data Center a @bitbucket-dc
@@ -14,11 +17,9 @@ import (
 // certificate they trust through vcs.ca_file. Its URL is
 // {bitbucketDCHost} to the scenario's requests.
 type bitbucketDCSteps struct {
+	w    *harness.World
 	fake *bitbucketdcfake.Fake
 	srv  *bitbucketdcfake.Server
-	// ids are the scenario's kept values, which the requests name as
-	// {key}, shared with the organization steps.
-	ids map[string]string
 }
 
 func (b *bitbucketDCSteps) register(sc *godog.ScenarioContext) {
@@ -38,12 +39,28 @@ func (b *bitbucketDCSteps) register(sc *godog.ScenarioContext) {
 func (b *bitbucketDCSteps) start() []byte {
 	b.fake = bitbucketdcfake.New()
 	b.srv = b.fake.Start()
-	b.ids["bitbucketDCHost"] = b.srv.URL
+	b.w.IDs["bitbucketDCHost"] = b.srv.URL
 	return b.srv.CA
 }
 
-// stop stops the fake, if the scenario started it.
-func (b *bitbucketDCSteps) stop() {
+// VCS starts the fake for a @bitbucket-dc scenario on first use, and returns the
+// vcs settings and certificate every server of the scenario needs while
+// it runs.
+func (b *bitbucketDCSteps) VCS(
+	_ context.Context,
+	w *harness.World,
+) (map[string]any, []byte, error) {
+	if slices.Contains(w.Tags, "@bitbucket-dc") && b.srv == nil {
+		return nil, b.start(), nil
+	}
+	if b.srv != nil {
+		return nil, b.srv.CA, nil
+	}
+	return nil, nil, nil
+}
+
+// Stop stops the fake, if the scenario started it.
+func (b *bitbucketDCSteps) Stop() {
 	if b.srv != nil {
 		b.srv.Close()
 	}
@@ -54,10 +71,10 @@ func (b *bitbucketDCSteps) user(username, key string) error {
 	if b.fake == nil {
 		return fmt.Errorf(
 			"%w: a Bitbucket Data Center user needs a @bitbucket-dc scenario",
-			errStep,
+			harness.ErrStep,
 		)
 	}
-	b.ids[key] = b.fake.AddToken(username)
+	b.w.IDs[key] = b.fake.AddToken(username)
 	return nil
 }
 
@@ -69,7 +86,7 @@ func (b *bitbucketDCSteps) repository(path, username, key string) error {
 		return err
 	}
 	b.fake.Grant(project, slug, username, bitbucketdcfake.Admin)
-	b.ids[key] = b.fake.Repo(project, slug).Commit("main", "first", map[string]string{
+	b.w.IDs[key] = b.fake.Repo(project, slug).Commit("main", "first", map[string]string{
 		"main.tf": "# first\n",
 	})
 	return nil
@@ -82,7 +99,7 @@ func (b *bitbucketDCSteps) commit(branch, path, key string) error {
 	if err != nil {
 		return err
 	}
-	b.ids[key] = b.fake.Repo(project, slug).Commit(branch, key, map[string]string{
+	b.w.IDs[key] = b.fake.Repo(project, slug).Commit(branch, key, map[string]string{
 		"main.tf": "# " + key + "\n",
 	})
 	return nil
@@ -94,7 +111,7 @@ func (b *bitbucketDCSteps) split(path string) (project, slug string, err error) 
 	if b.fake == nil || !ok || project == "" || slug == "" {
 		return "", "", fmt.Errorf(
 			"%w: no Bitbucket Data Center repository %q in this scenario",
-			errStep,
+			harness.ErrStep,
 			path,
 		)
 	}

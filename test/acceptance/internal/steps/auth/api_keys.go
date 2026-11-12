@@ -1,4 +1,4 @@
-package acceptance
+package auth
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // keySteps are the steps of the API keys, on authSteps' servers and named
@@ -19,7 +21,7 @@ import (
 //
 // ref: decision 0006
 type keySteps struct {
-	a *authSteps
+	w *harness.World
 	// keys are the scenario's created keys by name.
 	keys map[string]*createdKey
 }
@@ -137,7 +139,7 @@ func (k *keySteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
 		`^creating an OIDC key through ([AB]) with token "(\w+)" for the shared issuer over plain HTTP answers a 422 problem "validation-failed"$`,
 		func(ctx context.Context, replica, tok string) error {
-			iss, err := k.a.s.w.s.deps.OIDC()
+			iss, err := k.w.Suite.Deps.OIDC()
 			if err != nil {
 				return err
 			}
@@ -169,36 +171,36 @@ func (k *keySteps) register(sc *godog.ScenarioContext) {
 // scenarios' keys may manage keys; account_settings.feature covers the
 // setting itself.
 func (k *keySteps) nonHumans(ctx context.Context, who string) error {
-	t := tenants[who]
-	db, err := k.a.s.w.querier(ctx)
+	t := harness.Tenants[who]
+	db, err := k.w.Querier(ctx)
 	if err != nil {
 		return err
 	}
-	if err := t.seed(ctx, db); err != nil {
+	if err := t.Seed(ctx, db); err != nil {
 		return err
 	}
 	_, err = db.Query(ctx, fmt.Sprintf(`INSERT INTO account_settings
-		(account_id, api_key_non_human_managers) VALUES ('%s', true)`, uuidOf(t.account)))
+		(account_id, api_key_non_human_managers) VALUES ('%s', true)`, harness.UUIDOf(t.Account)))
 	return err //nolint:wrapcheck // the querier names the query
 }
 
 // servers starts the scenario's two servers trusting the shared issuer's
 // certificate through auth.oidc_api_keys.ca_file and allowing it alone.
 func (k *keySteps) servers(ctx context.Context) error {
-	w := k.a.s.w
-	iss, err := w.s.deps.OIDC()
+	w := k.w
+	iss, err := w.Suite.Deps.OIDC()
 	if err != nil {
 		return err
 	}
-	ca := filepath.Join(w.dir, "oidc-ca.pem")
+	ca := filepath.Join(w.Dir, "oidc-ca.pem")
 	if err := os.WriteFile(ca, iss.CertPEM(), 0o600); err != nil {
 		return fmt.Errorf("oidc ca: %w", err)
 	}
-	w.auth = map[string]any{"oidc_api_keys": map[string]any{
+	w.Settings["auth"] = map[string]any{"oidc_api_keys": map[string]any{
 		"allowed_issuers": []string{iss.URL()},
 		"ca_file":         ca,
 	}}
-	return k.a.s.twoReplicas(ctx)
+	return k.w.TwoReplicas(ctx)
 }
 
 // call sends method to path through replica with the named token, and
@@ -208,18 +210,25 @@ func (k *keySteps) call(
 	replica, tok, method, path string,
 	body, out any,
 	want int,
-) (response, error) {
-	r, err := k.a.do(ctx, replica, tok, method, path, body)
+) (harness.Response, error) {
+	r, err := k.w.Do(ctx, replica, tok, method, path, body)
 	if err != nil {
 		return r, err
 	}
-	if want != 0 && r.status != want {
-		return r, fmt.Errorf("%w: %s %s answered %d, want %d: %s", errStep, method, path, r.status,
-			want, r.body)
+	if want != 0 && r.Status != want {
+		return r, fmt.Errorf(
+			"%w: %s %s answered %d, want %d: %s",
+			harness.ErrStep,
+			method,
+			path,
+			r.Status,
+			want,
+			r.Body,
+		)
 	}
 	if out != nil {
-		if err := json.Unmarshal(r.body, out); err != nil {
-			return r, fmt.Errorf("%w: %s %s: %w: %s", errStep, method, path, err, r.body)
+		if err := json.Unmarshal(r.Body, out); err != nil {
+			return r, fmt.Errorf("%w: %s %s: %w: %s", harness.ErrStep, method, path, err, r.Body)
 		}
 	}
 	return r, nil
@@ -228,7 +237,7 @@ func (k *keySteps) call(
 func (k *keySteps) key(name string) (*createdKey, error) {
 	c, ok := k.keys[name]
 	if !ok {
-		return nil, fmt.Errorf("%w: no key %q", errStep, name)
+		return nil, fmt.Errorf("%w: no key %q", harness.ErrStep, name)
 	}
 	return c, nil
 }
@@ -251,7 +260,7 @@ func (k *keySteps) create(
 		return err
 	}
 	if v.Secret == nil || v.Name != name || v.Admin || v.Type != "SECRET" {
-		return fmt.Errorf("%w: created %+v", errStep, v)
+		return fmt.Errorf("%w: created %+v", harness.ErrStep, v)
 	}
 	k.keys[name] = &createdKey{
 		id:        v.ID,
@@ -275,7 +284,7 @@ func (k *keySteps) secretOnce(ctx context.Context, name, replica string) error {
 	}
 	if c.answer.Secret == nil || !strings.HasPrefix(*c.answer.Secret, "iwk_") || v.Secret != nil ||
 		v.ID != c.id {
-		return fmt.Errorf("%w: create answered %+v, read %+v", errStep, c.answer, v)
+		return fmt.Errorf("%w: create answered %+v, read %+v", harness.ErrStep, c.answer, v)
 	}
 	return nil
 }
@@ -286,14 +295,17 @@ func (k *keySteps) noSecret(name string) error {
 		return err
 	}
 	if c.answer.Secret != nil {
-		return fmt.Errorf("%w: the OIDC key was answered with a secret", errStep)
+		return fmt.Errorf("%w: the OIDC key was answered with a secret", harness.ErrStep)
 	}
 	return nil
 }
 
 // exchangeWith trades the key id for a token with secret through replica.
-func (k *keySteps) exchangeWith(ctx context.Context, replica, id, secret string) (response, error) {
-	return k.a.do(ctx, replica, "", http.MethodPost, "/api/v1/auth/token",
+func (k *keySteps) exchangeWith(
+	ctx context.Context,
+	replica, id, secret string,
+) (harness.Response, error) {
+	return k.w.Do(ctx, replica, "", http.MethodPost, "/api/v1/auth/token",
 		map[string]string{"id": id, "secret": secret})
 }
 
@@ -310,14 +322,14 @@ func (k *keySteps) exchange(ctx context.Context, name, replica, tok string) erro
 }
 
 // keep names the token of an exchange's answer.
-func (k *keySteps) keep(r response, tok string) error {
+func (k *keySteps) keep(r harness.Response, tok string) error {
 	var u struct {
 		JWT string `json:"jwt"`
 	}
-	if err := json.Unmarshal(r.body, &u); err != nil || r.status != http.StatusOK || u.JWT == "" {
-		return fmt.Errorf("%w: the exchange answered %d %s", errStep, r.status, r.body)
+	if err := json.Unmarshal(r.Body, &u); err != nil || r.Status != http.StatusOK || u.JWT == "" {
+		return fmt.Errorf("%w: the exchange answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
-	k.a.tokens[tok] = u.JWT
+	k.w.Tokens[tok] = u.JWT
 	return nil
 }
 
@@ -333,10 +345,10 @@ func (k *keySteps) exchangeUntilExpiry(ctx context.Context, name, replica string
 	var u struct {
 		ValidUntil int64 `json:"validUntil"`
 	}
-	if err := json.Unmarshal(r.body, &u); err != nil || r.status != http.StatusOK ||
+	if err := json.Unmarshal(r.Body, &u); err != nil || r.Status != http.StatusOK ||
 		u.ValidUntil > c.expiresAt || u.ValidUntil < c.expiresAt-5 {
 		return fmt.Errorf("%w: the token is valid until %d, the key expires at %d: %s",
-			errStep, u.ValidUntil, c.expiresAt, r.body)
+			harness.ErrStep, u.ValidUntil, c.expiresAt, r.Body)
 	}
 	return nil
 }
@@ -356,7 +368,13 @@ func (k *keySteps) viewer(ctx context.Context, replica, tok, name, teams string)
 		return err
 	}
 	if u.ID != "api::"+c.id || u.Name != name || !slices.Equal(u.Teams, strings.Split(teams, ",")) {
-		return fmt.Errorf("%w: viewer %+v, want key %s with teams %s", errStep, u, c.id, teams)
+		return fmt.Errorf(
+			"%w: viewer %+v, want key %s with teams %s",
+			harness.ErrStep,
+			u,
+			c.id,
+			teams,
+		)
 	}
 	return nil
 }
@@ -386,7 +404,7 @@ func (k *keySteps) listed(ctx context.Context, replica, tok, name string) error 
 		}
 		for _, v := range page.Items {
 			if v.Secret != nil {
-				return fmt.Errorf("%w: the list answered %s's secret", errStep, v.ID)
+				return fmt.Errorf("%w: the list answered %s's secret", harness.ErrStep, v.ID)
 			}
 			ids = append(ids, v.ID)
 		}
@@ -395,7 +413,7 @@ func (k *keySteps) listed(ctx context.Context, replica, tok, name string) error 
 		}
 		path = "/api/v1/api-keys?limit=1&cursor=" + *page.NextCursor
 	}
-	want := []string{home.key}
+	want := []string{harness.Home.Key}
 	if name != "" {
 		c, err := k.key(name)
 		if err != nil {
@@ -406,7 +424,7 @@ func (k *keySteps) listed(ctx context.Context, replica, tok, name string) error 
 	slices.Sort(ids)
 	slices.Sort(want)
 	if !slices.Equal(ids, want) {
-		return fmt.Errorf("%w: listed %v, want %v", errStep, ids, want)
+		return fmt.Errorf("%w: listed %v, want %v", harness.ErrStep, ids, want)
 	}
 	return nil
 }
@@ -436,7 +454,7 @@ func (k *keySteps) read(
 	}
 	if v.Name != wantName || !slices.Equal(v.Teams, strings.Split(teams, ",")) ||
 		v.Description != desc {
-		return fmt.Errorf("%w: read %+v", errStep, v)
+		return fmt.Errorf("%w: read %+v", harness.ErrStep, v)
 	}
 	return nil
 }
@@ -452,7 +470,7 @@ func (k *keySteps) reset(ctx context.Context, tok, name, replica string) error {
 		return err
 	}
 	if v.Secret == nil || *v.Secret == c.secret {
-		return fmt.Errorf("%w: reset answered %+v", errStep, v)
+		return fmt.Errorf("%w: reset answered %+v", harness.ErrStep, v)
 	}
 	c.secret = *v.Secret
 	return nil
@@ -469,7 +487,7 @@ func (k *keySteps) delete(ctx context.Context, tok, name, replica string) error 
 		return err
 	}
 	if !v.Deleted || v.ID != c.id {
-		return fmt.Errorf("%w: delete answered %+v", errStep, v)
+		return fmt.Errorf("%w: delete answered %+v", harness.ErrStep, v)
 	}
 	return nil
 }
@@ -481,13 +499,13 @@ func (k *keySteps) disable(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	db, err := k.a.s.w.querier(ctx)
+	db, err := k.w.Querier(ctx)
 	if err != nil {
 		return err
 	}
 	_, err = db.Query(ctx, fmt.Sprintf(
 		`UPDATE api_keys SET disabled_at = now(), disabled_reason = 'ADMIN' WHERE id = '%s'`,
-		uuidOf(c.id),
+		harness.UUIDOf(c.id),
 	))
 	return err
 }
@@ -505,7 +523,7 @@ func (k *keySteps) refused(ctx context.Context, name string, first bool) error {
 	if err != nil {
 		return err
 	}
-	return isProblem(r, "exchanging the key "+name, "401", "unauthenticated")
+	return harness.IsProblem(r, "exchanging the key "+name, "401", "unauthenticated")
 }
 
 func (k *keySteps) readRefused(ctx context.Context, name, replica, tok, code, slug string) error {
@@ -517,7 +535,7 @@ func (k *keySteps) readRefused(ctx context.Context, name, replica, tok, code, sl
 	if err != nil {
 		return err
 	}
-	return isProblem(r, "reading the key "+name, code, slug)
+	return harness.IsProblem(r, "reading the key "+name, code, slug)
 }
 
 func (k *keySteps) createRefused(ctx context.Context, replica, tok, body, code, slug string) error {
@@ -526,7 +544,7 @@ func (k *keySteps) createRefused(ctx context.Context, replica, tok, body, code, 
 	if err != nil {
 		return err
 	}
-	return isProblem(r, "creating "+body, code, slug)
+	return harness.IsProblem(r, "creating "+body, code, slug)
 }
 
 // foreign checks that the named token's account reaches the key by none of
@@ -550,7 +568,7 @@ func (k *keySteps) foreign(ctx context.Context, tok, name, replica string) error
 		if err != nil {
 			return err
 		}
-		if err := isProblem(r, op.method+" "+op.path, "404", "not-found"); err != nil {
+		if err := harness.IsProblem(r, op.method+" "+op.path, "404", "not-found"); err != nil {
 			return err
 		}
 	}
@@ -561,7 +579,7 @@ func (k *keySteps) createOIDC(
 	ctx context.Context,
 	tok, name, client, subject, claim, replica string,
 ) error {
-	iss, err := k.a.s.w.s.deps.OIDC()
+	iss, err := k.w.Suite.Deps.OIDC()
 	if err != nil {
 		return err
 	}
@@ -579,7 +597,7 @@ func (k *keySteps) createOIDC(
 		return err
 	}
 	if v.Type != "OIDC" {
-		return fmt.Errorf("%w: created %+v", errStep, v)
+		return fmt.Errorf("%w: created %+v", harness.ErrStep, v)
 	}
 	k.keys[name] = &createdKey{id: v.ID, answer: v, subject: subject, client: client}
 	return nil
@@ -588,7 +606,7 @@ func (k *keySteps) createOIDC(
 // issuerToken mints a token of the shared issuer for the key: its subject
 // and client as sub and aud, with claims over them.
 func (k *keySteps) issuerToken(c *createdKey, claims map[string]any) (string, error) {
-	iss, err := k.a.s.w.s.deps.OIDC()
+	iss, err := k.w.Suite.Deps.OIDC()
 	if err != nil {
 		return "", err
 	}
@@ -634,7 +652,7 @@ func (k *keySteps) refusedOIDC(ctx context.Context, name string, claims map[stri
 	if err != nil {
 		return err
 	}
-	return isProblem(
+	return harness.IsProblem(
 		r,
 		fmt.Sprintf("exchanging the key %s with %v", name, claims),
 		"401",
@@ -651,7 +669,7 @@ func (k *keySteps) oidcRefused(ctx context.Context, replica, tok, issuer string)
 	if err != nil {
 		return err
 	}
-	return isProblem(r, "creating an OIDC key for "+issuer, "422", "validation-failed")
+	return harness.IsProblem(r, "creating an OIDC key for "+issuer, "422", "validation-failed")
 }
 
 func (k *keySteps) sendRefused(
@@ -662,7 +680,7 @@ func (k *keySteps) sendRefused(
 	if err != nil {
 		return err
 	}
-	return isProblem(r, method+" "+path, code, slug)
+	return harness.IsProblem(r, method+" "+path, code, slug)
 }
 
 func (k *keySteps) managers(ctx context.Context, replica, tok, enable, want string) error {
@@ -680,7 +698,7 @@ func (k *keySteps) managers(ctx context.Context, replica, tok, enable, want stri
 		return err
 	}
 	if fmt.Sprint(got) != want {
-		return fmt.Errorf("%w: answered %v, want %s", errStep, got, want)
+		return fmt.Errorf("%w: answered %v, want %s", harness.ErrStep, got, want)
 	}
 	return nil
 }

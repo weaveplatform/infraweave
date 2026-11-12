@@ -15,7 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, schema.Stream(), Stream())) }
@@ -79,7 +79,7 @@ func TestAccWatchSessions(t *testing.T) {
 	if err := notify.Notify(ctx, db.Primary(), notify.Invalidate, session.Key(id)); err != nil {
 		t.Fatal(err)
 	}
-	if err := acceptance.Eventually(ctx, "the message to drop the session",
+	if err := deps.Eventually(ctx, "the message to drop the session",
 		func(ctx context.Context) (bool, error) {
 			s, err := cache.Get(ctx, id)
 			return err == nil && !s.Live(time.Now()), err

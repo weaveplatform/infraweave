@@ -4,7 +4,7 @@ name: go | VCS provider labs
 # Terraform root in test/terraform/vcs/<root> makes two private repositories
 # for the run and pushes seed.sh's history to each, then the provider's
 # TestAcc<Provider>Cloud runs the source contract and checks a run
-# credential's reach, and vcs_sources.feature's @vcs-lab scenario
+# credential's reach, and vcs/sources.feature's @vcs-lab scenario
 # drives a stack on the lab through infraweave. Destroy always runs, and a
 # sweep first deletes any lab repository a day old that an earlier run
 # left. Bitbucket Data Center is the one provider with no hosted service:
@@ -176,7 +176,7 @@ jobs:
         if: ${{ steps.config.outputs.configured == 'true' && matrix.provider == 'gitlab' }}
         run: |
           set -euo pipefail
-          image=$(sed -nE 's/^[[:space:]]*ImageGitLabCE = "([^"]+)"/\1/p' test/acceptance/images.go)
+          image=$(sed -nE 's/^[[:space:]]*ImageGitLabCE = "([^"]+)"/\1/p' test/deps/images.go)
           lab="$RUNNER_TEMP/gitlab"
           test/terraform/vcs/start-gitlab.sh "$image" "$lab"
           echo "::add-mask::$(sed -n 's/^GITLAB_TOKEN=//p' "$lab/env")"
@@ -191,7 +191,7 @@ jobs:
         if: ${{ steps.config.outputs.configured == 'true' && matrix.provider == 'bitbucket-dc' }}
         run: |
           set -euo pipefail
-          image=$(sed -nE 's/^[[:space:]]*ImageBitbucketDC = "([^"]+)"/\1/p' test/acceptance/images.go)
+          image=$(sed -nE 's/^[[:space:]]*ImageBitbucketDC = "([^"]+)"/\1/p' test/deps/images.go)
           lab="$RUNNER_TEMP/bitbucket"
           mkdir -p "$lab"
           password=$(openssl rand -hex 24)

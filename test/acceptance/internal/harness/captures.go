@@ -1,4 +1,4 @@
-package acceptance
+package harness
 
 import (
 	"bytes"
@@ -31,10 +31,10 @@ const ExampleCapture = "C0"
 //
 // ref: decision 0016
 const (
-	captureMeta     = "meta.yaml"
-	captureRequest  = "request.graphql"
-	captureResponse = "response.json"
-	captureExpect   = "expect.yaml"
+	MetaFile     = "meta.yaml"
+	RequestFile  = "request.graphql"
+	ResponseFile = "response.json"
+	ExpectFile   = "expect.yaml"
 )
 
 // CaptureMeta is a capture's meta.yaml: where and when it was taken, and
@@ -132,28 +132,28 @@ func loadCapture(dir string, entries map[string]bool) (Capture, error) {
 		return fail("the directory is not named C<n>")
 	}
 	c := Capture{ID: id}
-	if err := decodeStrict(filepath.Join(dir, captureMeta), &c.Meta); err != nil {
+	if err := decodeStrict(filepath.Join(dir, MetaFile), &c.Meta); err != nil {
 		return fail("%v", err)
 	}
 	var expect struct {
 		Calls []CaptureCall `yaml:"calls"`
 	}
-	if err := decodeStrict(filepath.Join(dir, captureExpect), &expect); err != nil {
+	if err := decodeStrict(filepath.Join(dir, ExpectFile), &expect); err != nil {
 		return fail("%v", err)
 	}
 	c.Calls = expect.Calls
 	if reason := c.invalid(entries); reason != "" {
 		return fail("%s", reason)
 	}
-	if _, err := os.Stat(filepath.Join(dir, captureRequest)); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, RequestFile)); err != nil {
 		return fail("%v", err)
 	}
-	resp, err := os.ReadFile(filepath.Join(dir, captureResponse))
+	resp, err := os.ReadFile(filepath.Join(dir, ResponseFile))
 	if err != nil {
 		return fail("%v", err)
 	}
 	if !json.Valid(resp) {
-		return fail("%s is not JSON", captureResponse)
+		return fail("%s is not JSON", ResponseFile)
 	}
 	return c, nil
 }

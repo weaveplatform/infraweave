@@ -1,4 +1,4 @@
-package acceptance
+package auth
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // oauthSteps are an MCP client of infraweave's OAuth authorization server:
@@ -22,7 +24,7 @@ import (
 //
 // ref: decision 0006
 type oauthSteps struct {
-	o *orgSteps
+	w *harness.World
 	// client is the registered client's ID, and verifier the PKCE
 	// verifier of its latest authorization request.
 	client   string
@@ -96,7 +98,7 @@ func (s *oauthSteps) register(sc *godog.ScenarioContext) {
 }
 
 // base is the named replica's URL.
-func (s *oauthSteps) base(replica string) string { return s.o.b.base(replica) }
+func (s *oauthSteps) base(replica string) string { return s.w.Base(replica) }
 
 // send sends a protocol request and records its answer.
 func (s *oauthSteps) send(ctx context.Context, req *http.Request) error {
@@ -112,12 +114,12 @@ func (s *oauthSteps) send(ctx context.Context, req *http.Request) error {
 	s.status, s.body, s.location = resp.StatusCode, nil, nil
 	if loc := resp.Header.Get("Location"); loc != "" {
 		if s.location, err = url.Parse(loc); err != nil {
-			return fmt.Errorf("%w: Location %q: %w", errStep, loc, err)
+			return fmt.Errorf("%w: Location %q: %w", harness.ErrStep, loc, err)
 		}
 	}
 	if len(raw) > 0 && strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
 		if err := json.Unmarshal(raw, &s.body); err != nil {
-			return fmt.Errorf("%w: %d %s: %w", errStep, resp.StatusCode, raw, err)
+			return fmt.Errorf("%w: %d %s: %w", harness.ErrStep, resp.StatusCode, raw, err)
 		}
 	}
 	return nil
@@ -134,10 +136,10 @@ func (s *oauthSteps) metadata(ctx context.Context, replica string) error {
 
 func (s *oauthSteps) metadataIs(scopes string) error {
 	want := map[string]any{
-		"issuer":                                publicURL,
-		"authorization_endpoint":                publicURL + "/oauth/authorize",
-		"token_endpoint":                        publicURL + "/oauth/token",
-		"registration_endpoint":                 publicURL + "/oauth/register",
+		"issuer":                                harness.PublicURL,
+		"authorization_endpoint":                harness.PublicURL + "/oauth/authorize",
+		"token_endpoint":                        harness.PublicURL + "/oauth/token",
+		"registration_endpoint":                 harness.PublicURL + "/oauth/register",
 		"response_types_supported":              []any{"code"},
 		"grant_types_supported":                 []any{"authorization_code", "refresh_token"},
 		"code_challenge_methods_supported":      []any{"S256"},
@@ -147,7 +149,7 @@ func (s *oauthSteps) metadataIs(scopes string) error {
 	got, _ := json.Marshal(s.body)
 	exp, _ := json.Marshal(want)
 	if s.status != http.StatusOK || string(got) != string(exp) {
-		return fmt.Errorf("%w: metadata %d %s, want %s", errStep, s.status, got, exp)
+		return fmt.Errorf("%w: metadata %d %s, want %s", harness.ErrStep, s.status, got, exp)
 	}
 	return nil
 }
@@ -186,7 +188,7 @@ func (s *oauthSteps) registrationRefused(uri string) error {
 	desc, _ := s.body["error_description"].(string)
 	if s.status != http.StatusBadRequest || s.body["error"] != "invalid_redirect_uri" ||
 		!strings.Contains(desc, uri) {
-		return fmt.Errorf("%w: registration answered %d %v", errStep, s.status, s.body)
+		return fmt.Errorf("%w: registration answered %d %v", harness.ErrStep, s.status, s.body)
 	}
 	return nil
 }
@@ -203,7 +205,7 @@ func (s *oauthSteps) authorize(
 	replica, scope, resource, method, redirect string,
 ) error {
 	if s.client == "" {
-		return fmt.Errorf("%w: no client registered", errStep)
+		return fmt.Errorf("%w: no client registered", harness.ErrStep)
 	}
 	s.verifier, s.state = secret(), secret()
 	challenge, m := s.verifier, "plain"
@@ -214,7 +216,7 @@ func (s *oauthSteps) authorize(
 	q := url.Values{
 		"response_type": {"code"}, "client_id": {s.client}, "redirect_uri": {redirect},
 		"scope": {scope}, "state": {s.state}, "code_challenge": {challenge},
-		"code_challenge_method": {m}, "resource": {publicURL + resource},
+		"code_challenge_method": {m}, "resource": {harness.PublicURL + resource},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		s.base(replica)+"/oauth/authorize?"+q.Encode(), nil)
@@ -228,7 +230,7 @@ func (s *oauthSteps) authorize(
 	if s.location == nil {
 		return nil
 	}
-	if id, ok := strings.CutPrefix(s.location.String(), publicURL+"/consent/"); ok {
+	if id, ok := strings.CutPrefix(s.location.String(), harness.PublicURL+"/consent/"); ok {
 		s.request = id
 	}
 	return nil
@@ -236,8 +238,8 @@ func (s *oauthSteps) authorize(
 
 func (s *oauthSteps) toConsent() error {
 	if s.status != http.StatusFound || s.location == nil ||
-		s.location.String() != publicURL+"/consent/"+s.request {
-		return fmt.Errorf("%w: authorize answered %d %v, sending to %v", errStep, s.status,
+		s.location.String() != harness.PublicURL+"/consent/"+s.request {
+		return fmt.Errorf("%w: authorize answered %d %v, sending to %v", harness.ErrStep, s.status,
 			s.body, s.location)
 	}
 	return nil
@@ -245,21 +247,21 @@ func (s *oauthSteps) toConsent() error {
 
 func (s *oauthSteps) toError(uri, code string) error {
 	if s.status != http.StatusFound || s.location == nil {
-		return fmt.Errorf("%w: answered %d %v, last %d %s", errStep, s.status, s.body,
-			s.o.a.s.last().status, s.o.a.s.last().body)
+		return fmt.Errorf("%w: answered %d %v, last %d %s", harness.ErrStep, s.status, s.body,
+			s.w.Last().Status, s.w.Last().Body)
 	}
 	q := s.location.Query()
 	at := *s.location
 	at.RawQuery = ""
 	if at.String() != uri || q.Get("error") != code || q.Get("state") != s.state {
 		return fmt.Errorf("%w: sent to %s, want %s with error %s and the state",
-			errStep, s.location, uri, code)
+			harness.ErrStep, s.location, uri, code)
 	}
 	return nil
 }
 
 func (s *oauthSteps) readRequest(ctx context.Context, replica string) error {
-	_, err := s.o.b.do(ctx, replica, http.MethodGet, "/api/v1/auth/oauth/requests/"+s.request,
+	_, err := s.w.BrowserDo(ctx, replica, http.MethodGet, "/api/v1/auth/oauth/requests/"+s.request,
 		"", nil)
 	return err
 }
@@ -272,11 +274,11 @@ func (s *oauthSteps) requestIs(host, scopes string) error {
 		RedirectHost string   `json:"redirectHost"`
 		Scopes       []string `json:"scopes"`
 	}
-	last := s.o.a.s.last()
-	if last.status != http.StatusOK || json.Unmarshal(last.body, &r) != nil ||
+	last := s.w.Last()
+	if last.Status != http.StatusOK || json.Unmarshal(last.Body, &r) != nil ||
 		r.ID != s.request || r.ClientID != s.client || r.ClientName != "Editor" ||
 		r.RedirectHost != host || !slices.Equal(r.Scopes, strings.Split(scopes, ", ")) {
-		return fmt.Errorf("%w: the request is %d %s", errStep, last.status, last.body)
+		return fmt.Errorf("%w: the request is %d %s", harness.ErrStep, last.Status, last.Body)
 	}
 	return nil
 }
@@ -287,25 +289,25 @@ func (s *oauthSteps) decide(ctx context.Context, verb, acct, replica string) err
 	path := "/api/v1/auth/oauth/requests/" + s.request + "/deny"
 	var body any
 	if verb == "approves" {
-		id := home.account
+		id := harness.Home.Account
 		if acct == "sibling" {
-			id = sibling.account
+			id = harness.Sibling.Account
 		}
 		path = strings.TrimSuffix(path, "/deny") + "/approve"
 		body = map[string]string{"account": id}
 	}
-	r, err := s.o.b.do(ctx, replica, http.MethodPost, path, publicURL, body)
-	if err != nil && r.status == 0 {
+	r, err := s.w.BrowserDo(ctx, replica, http.MethodPost, path, harness.PublicURL, body)
+	if err != nil && r.Status == 0 {
 		return err
 	}
 	s.location = nil
 	var d struct {
 		RedirectTo string `json:"redirectTo"`
 	}
-	if r.status == http.StatusOK && json.Unmarshal(r.body, &d) == nil {
+	if r.Status == http.StatusOK && json.Unmarshal(r.Body, &d) == nil {
 		s.status = http.StatusFound
 		if s.location, err = url.Parse(d.RedirectTo); err != nil {
-			return fmt.Errorf("%w: redirectTo %q: %w", errStep, d.RedirectTo, err)
+			return fmt.Errorf("%w: redirectTo %q: %w", harness.ErrStep, d.RedirectTo, err)
 		}
 		if c := s.location.Query().Get("code"); c != "" {
 			s.code = c
@@ -316,14 +318,14 @@ func (s *oauthSteps) decide(ctx context.Context, verb, acct, replica string) err
 
 func (s *oauthSteps) withCode(uri string) error {
 	if s.location == nil {
-		return fmt.Errorf("%w: the decision sent the browser nowhere: %s", errStep,
-			s.o.a.s.last().body)
+		return fmt.Errorf("%w: the decision sent the browser nowhere: %s", harness.ErrStep,
+			s.w.Last().Body)
 	}
 	q := s.location.Query()
 	at := *s.location
 	at.RawQuery = ""
 	if at.String() != uri || q.Get("code") == "" || q.Get("state") != s.state {
-		return fmt.Errorf("%w: sent to %s, want %s with a code and the state", errStep,
+		return fmt.Errorf("%w: sent to %s, want %s with a code and the state", harness.ErrStep,
 			s.location, uri)
 	}
 	return nil
@@ -352,8 +354,8 @@ func (s *oauthSteps) token(ctx context.Context, replica string, form url.Values)
 
 func (s *oauthSteps) redeem(ctx context.Context, replica string) error {
 	if s.code == "" {
-		return fmt.Errorf("%w: no approval sent a code: %d %s", errStep, s.o.a.s.last().status,
-			s.o.a.s.last().body)
+		return fmt.Errorf("%w: no approval sent a code: %d %s", harness.ErrStep, s.w.Last().Status,
+			s.w.Last().Body)
 	}
 	return s.token(ctx, replica, url.Values{
 		"grant_type": {"authorization_code"}, "client_id": {s.client},
@@ -376,12 +378,12 @@ func (s *oauthSteps) refreshWith(
 func (s *oauthSteps) claims() (map[string]any, error) {
 	parts := strings.Split(s.access, ".")
 	if len(parts) != 3 {
-		return nil, fmt.Errorf("%w: the access token %q is not a JWT", errStep, s.access)
+		return nil, fmt.Errorf("%w: the access token %q is not a JWT", harness.ErrStep, s.access)
 	}
 	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
 	var c map[string]any
 	if err != nil || json.Unmarshal(raw, &c) != nil {
-		return nil, fmt.Errorf("%w: the access token's payload: %w", errStep, err)
+		return nil, fmt.Errorf("%w: the access token's payload: %w", harness.ErrStep, err)
 	}
 	return c, nil
 }
@@ -389,30 +391,40 @@ func (s *oauthSteps) claims() (map[string]any, error) {
 func (s *oauthSteps) holds(resource, scope string) error {
 	if s.status != http.StatusOK || s.refresh == "" || s.body["token_type"] != "Bearer" ||
 		s.expires != 3600 || s.scope != scope {
-		return fmt.Errorf("%w: the token endpoint answered %d %v", errStep, s.status, s.body)
+		return fmt.Errorf(
+			"%w: the token endpoint answered %d %v",
+			harness.ErrStep,
+			s.status,
+			s.body,
+		)
 	}
 	c, err := s.claims()
 	if err != nil {
 		return err
 	}
-	if c["aud"] != publicURL+resource || c["iw_kind"] != "oauth" || c["scope"] != scope ||
+	if c["aud"] != harness.PublicURL+resource || c["iw_kind"] != "oauth" || c["scope"] != scope ||
 		c["sub"] != "alice" || c["exp"].(float64)-c["iat"].(float64) != 3600 {
-		return fmt.Errorf("%w: the access token's claims are %v", errStep, c)
+		return fmt.Errorf("%w: the access token's claims are %v", harness.ErrStep, c)
 	}
 	return nil
 }
 
 func (s *oauthSteps) rotated() error {
 	if s.status != http.StatusOK || s.refresh == "" || s.refresh == s.spent || s.access == "" {
-		return fmt.Errorf("%w: the refresh answered %d %v", errStep, s.status, s.body)
+		return fmt.Errorf("%w: the refresh answered %d %v", harness.ErrStep, s.status, s.body)
 	}
 	return nil
 }
 
 func (s *oauthSteps) tokenRefused(code string) error {
 	if s.status != http.StatusBadRequest || s.body["error"] != code {
-		return fmt.Errorf("%w: the token endpoint answered %d %v, want %s", errStep, s.status,
-			s.body, code)
+		return fmt.Errorf(
+			"%w: the token endpoint answered %d %v, want %s",
+			harness.ErrStep,
+			s.status,
+			s.body,
+			code,
+		)
 	}
 	return nil
 }
@@ -424,13 +436,13 @@ func (s *oauthSteps) sessionsList(ctx context.Context, replica, name, verb strin
 	if err != nil {
 		return err
 	}
-	listed, err := s.o.a.list(ctx, replica, name)
+	listed, err := listSessions(ctx, s.w, replica, name)
 	if err != nil {
 		return err
 	}
 	found := slices.ContainsFunc(listed, func(l listedSession) bool { return l.ID == c["jti"] })
 	if found != (verb == "list") {
-		return fmt.Errorf("%w: the sessions %s the grant %v: %v", errStep,
+		return fmt.Errorf("%w: the sessions %s the grant %v: %v", harness.ErrStep,
 			map[bool]string{true: "list", false: "leave out"}[found], c["jti"], listed)
 	}
 	return nil

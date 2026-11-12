@@ -1,19 +1,19 @@
-package acceptance
+package auth
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // revocationWithin is how soon a revocation through one replica reaches
@@ -26,11 +26,9 @@ const revocationWithin = time.Second
 //
 // ref: decision 0006
 type authSteps struct {
-	s *servedSteps
-	// tokens are the scenario's named API tokens.
-	tokens map[string]string
+	w *harness.World
 	// refusals are the answers of the refused exchanges.
-	refusals []response
+	refusals []harness.Response
 }
 
 func (a *authSteps) register(sc *godog.ScenarioContext) {
@@ -85,112 +83,31 @@ func (a *authSteps) register(sc *godog.ScenarioContext) {
 	)
 }
 
-// client is a client of the replica's API listener holding token, or no
-// token when token is empty.
-func (a *authSteps) client(replica, token string) (*sdk.Client, error) {
-	i := 0
-	if replica == "B" {
-		i = 1
-	}
-	opts := []sdk.Option{sdk.WithRetry(sdk.NoRetry)}
-	if token != "" {
-		opts = append(opts, sdk.WithToken(token))
-	}
-	c, err := sdk.New("http://"+a.s.w.servers[i].API, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("sdk: %w", err)
-	}
-	return c, nil
-}
-
-// do sends a request through replica with the named token.
-func (a *authSteps) do(
-	ctx context.Context,
-	replica, name, method, path string,
-	body any,
-	headers ...sdk.Header,
-) (response, error) {
-	tok, ok := a.tokens[name]
-	if !ok && name != "" {
-		return response{}, fmt.Errorf("%w: no token %q", errStep, name)
-	}
-	c, err := a.client(replica, tok)
-	if err != nil {
-		return response{}, err
-	}
-	resp, err := c.Do(ctx, method, path, body, headers...)
-	if resp == nil {
-		return response{}, err
-	}
-	r := response{status: resp.Status, header: resp.Header, body: resp.Body, err: err}
-	a.s.sent = append(a.s.sent, r)
-	return r, nil
-}
-
 func (a *authSteps) exchange(ctx context.Context, who, replica, name string) error {
-	t := tenants[who]
-	db, err := a.s.w.querier(ctx)
+	t := harness.Tenants[who]
+	db, err := a.w.Querier(ctx)
 	if err != nil {
 		return err
 	}
-	if err := t.seed(ctx, db); err != nil {
+	if err := t.Seed(ctx, db); err != nil {
 		return err
 	}
-	c, err := a.client(replica, "")
+	c, err := a.w.Client(replica, "")
 	if err != nil {
 		return err
 	}
-	tok, err := t.exchange(ctx, c)
+	tok, err := t.Exchange(ctx, c)
 	if err != nil {
 		return err
 	}
-	a.tokens[name] = tok
+	a.w.Tokens[name] = tok
 	return nil
-}
-
-// jwtPart decodes part i of a compact JWT: 0 the header, 1 the claims.
-func jwtPart(token string, i int, v any) error {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return fmt.Errorf("%w: %d parts in the token", errStep, len(parts))
-	}
-	b, err := base64.RawURLEncoding.DecodeString(parts[i])
-	if err != nil {
-		return fmt.Errorf("%w: token part %d: %w", errStep, i, err)
-	}
-	if err := json.Unmarshal(b, v); err != nil {
-		return fmt.Errorf("%w: token part %d: %w", errStep, i, err)
-	}
-	return nil
-}
-
-// audience is aud, which RFC 7519 lets a token carry as one string or an
-// array.
-type audience []string
-
-func (a *audience) UnmarshalJSON(b []byte) error {
-	var one string
-	if json.Unmarshal(b, &one) == nil {
-		*a = audience{one}
-		return nil
-	}
-	return json.Unmarshal(b, (*[]string)(a)) //nolint:wrapcheck // the claims' decode names it
-}
-
-type apiClaims struct {
-	Issuer   string   `json:"iss"`
-	Subject  string   `json:"sub"`
-	Audience audience `json:"aud"`
-	ID       string   `json:"jti"`
-	Kind     string   `json:"iw_kind"` //nolint:tagliatelle // the claim is named iw_kind on the wire
-	IssuedAt int64    `json:"iat"`
-	Expiry   int64    `json:"exp"`
 }
 
 // session is the session a named token stands for, its jti.
 func (a *authSteps) session(name string) (string, error) {
-	var c apiClaims
-	if err := jwtPart(a.tokens[name], 1, &c); err != nil {
+	var c harness.APIClaims
+	if err := harness.JWTPart(a.w.Tokens[name], 1, &c); err != nil {
 		return "", err
 	}
 	return c.ID, nil
@@ -204,36 +121,37 @@ func (a *authSteps) claims(name, who string) error {
 		Alg string `json:"alg"`
 		Kid string `json:"kid"`
 	}
-	if err := jwtPart(a.tokens[name], 0, &h); err != nil {
+	if err := harness.JWTPart(a.w.Tokens[name], 0, &h); err != nil {
 		return err
 	}
-	var c apiClaims
-	if err := jwtPart(a.tokens[name], 1, &c); err != nil {
+	var c harness.APIClaims
+	if err := harness.JWTPart(a.w.Tokens[name], 1, &c); err != nil {
 		return err
 	}
 	_, jtiErr := kernel.ParseULID(c.ID)
-	want := apiClaims{
-		Issuer:   publicURL,
-		Subject:  "api::" + tenants[who].key,
-		Audience: audience{publicURL + "/api/v1"},
+	want := harness.APIClaims{
+		Issuer:   harness.PublicURL,
+		Subject:  "api::" + harness.Tenants[who].Key,
+		Audience: harness.Audience{harness.PublicURL + "/api/v1"},
 		ID:       c.ID,
 		Kind:     "api_key",
 		IssuedAt: c.IssuedAt,
 		Expiry:   c.IssuedAt + int64((10*time.Hour)/time.Second),
 	}
-	if h.Alg != "ES256" || h.Kid == "" || jtiErr != nil || !equalClaims(c, want) {
-		return fmt.Errorf("%w: header %+v and claims %+v, want ES256 and %+v", errStep, h, c, want)
+	if h.Alg != "ES256" || h.Kid == "" || jtiErr != nil || !harness.EqualClaims(c, want) {
+		return fmt.Errorf(
+			"%w: header %+v and claims %+v, want ES256 and %+v",
+			harness.ErrStep,
+			h,
+			c,
+			want,
+		)
 	}
 	return nil
 }
 
-func equalClaims(a, b apiClaims) bool {
-	return a.Issuer == b.Issuer && a.Subject == b.Subject && slices.Equal(a.Audience, b.Audience) &&
-		a.ID == b.ID && a.Kind == b.Kind && a.IssuedAt == b.IssuedAt && a.Expiry == b.Expiry
-}
-
 func (a *authSteps) viewer(ctx context.Context, replica, name, who string) error {
-	r, err := a.do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
+	r, err := a.w.Do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
 	if err != nil {
 		return err
 	}
@@ -244,29 +162,31 @@ func (a *authSteps) viewer(ctx context.Context, replica, name, who string) error
 		Teams      []string `json:"teams"`
 		ValidUntil int64    `json:"validUntil"`
 	}
-	if err := json.Unmarshal(r.body, &u); err != nil || r.status != http.StatusOK {
-		return fmt.Errorf("%w: viewer answered %d %s", errStep, r.status, r.body)
+	if err := json.Unmarshal(r.Body, &u); err != nil || r.Status != http.StatusOK {
+		return fmt.Errorf("%w: viewer answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
-	var c apiClaims
-	if err := jwtPart(a.tokens[name], 1, &c); err != nil {
+	var c harness.APIClaims
+	if err := harness.JWTPart(a.w.Tokens[name], 1, &c); err != nil {
 		return err
 	}
-	if u.ID != "api::"+tenants[who].key || u.JWT != a.tokens[name] || u.Name != "acceptance" ||
-		!slices.Equal(u.Teams, []string{"acceptance"}) || u.ValidUntil != c.Expiry {
-		return fmt.Errorf("%w: viewer %s", errStep, r.body)
+	if u.ID != "api::"+harness.Tenants[who].Key || u.JWT != a.w.Tokens[name] ||
+		u.Name != "acceptance" ||
+		!slices.Equal(u.Teams, []string{"acceptance"}) ||
+		u.ValidUntil != c.Expiry {
+		return fmt.Errorf("%w: viewer %s", harness.ErrStep, r.Body)
 	}
 	return nil
 }
 
 func (a *authSteps) refused(ctx context.Context, how string) error {
-	db, err := a.s.w.querier(ctx)
+	db, err := a.w.Querier(ctx)
 	if err != nil {
 		return err
 	}
-	if err := home.seed(ctx, db); err != nil {
+	if err := harness.Home.Seed(ctx, db); err != nil {
 		return err
 	}
-	body := map[string]string{"id": home.key, "secret": home.secret()}
+	body := map[string]string{"id": harness.Home.Key, "secret": harness.Home.Secret()}
 	change := map[string]string{
 		"the home key once it is disabled": "disabled_at = now(), disabled_reason = 'ADMIN'",
 		"the home key once it has expired": "expires_at = now()",
@@ -274,21 +194,21 @@ func (a *authSteps) refused(ctx context.Context, how string) error {
 	}[how]
 	switch how {
 	case "the home key with a wrong secret":
-		body["secret"] = sibling.secret()
+		body["secret"] = harness.Sibling.Secret()
 	case "an unknown key":
 		body["id"] = kernel.NewULID().String()
 	default:
 		if _, err := db.Query(ctx, fmt.Sprintf(`UPDATE api_keys SET %s WHERE id = '%s'`,
-			change, uuidOf(home.key))); err != nil {
+			change, harness.UUIDOf(harness.Home.Key))); err != nil {
 			return err
 		}
 		defer func() {
 			_, _ = db.Query(context.WithoutCancel(ctx), fmt.Sprintf(`UPDATE api_keys
 				SET disabled_at = NULL, disabled_reason = NULL, expires_at = NULL, deleted_at = NULL
-				WHERE id = '%s'`, uuidOf(home.key)))
+				WHERE id = '%s'`, harness.UUIDOf(harness.Home.Key)))
 		}()
 	}
-	c, err := a.client("A", "")
+	c, err := a.w.Client("A", "")
 	if err != nil {
 		return err
 	}
@@ -296,10 +216,10 @@ func (a *authSteps) refused(ctx context.Context, how string) error {
 	if resp == nil {
 		return err
 	}
-	r := response{status: resp.Status, header: resp.Header, body: resp.Body, err: err}
-	a.s.sent = append(a.s.sent, r)
+	r := harness.Response{Status: resp.Status, Header: resp.Header, Body: resp.Body, Err: err}
+	a.w.Sent = append(a.w.Sent, r)
 	a.refusals = append(a.refusals, r)
-	return isProblem(r, "exchanging "+how, "401", "unauthenticated")
+	return harness.IsProblem(r, "exchanging "+how, "401", "unauthenticated")
 }
 
 // sameProblem checks that the refusals cannot be told apart: one status,
@@ -307,7 +227,7 @@ func (a *authSteps) refused(ctx context.Context, how string) error {
 func (a *authSteps) sameProblem() error {
 	var first sdk.Problem
 	for i, r := range a.refusals {
-		p, _ := sdk.AsProblem(r.err)
+		p, _ := sdk.AsProblem(r.Err)
 		p.Instance = ""
 		if i == 0 {
 			first = p
@@ -316,28 +236,22 @@ func (a *authSteps) sameProblem() error {
 		if p.Type != first.Type || p.Title != first.Title || p.Detail != first.Detail ||
 			p.Status != first.Status {
 			return fmt.Errorf("%w: refusal %d is %s %q, the first %s %q",
-				errStep, i+1, p.Type, p.Detail, first.Type, first.Detail)
+				harness.ErrStep, i+1, p.Type, p.Detail, first.Type, first.Detail)
 		}
 	}
 	return nil
 }
 
-// memberID and memberSession are the home account's member and their
-// browser session, seeded as #171's sign-in will create them.
-const (
-	memberID      = "01KACME0000000000000000006"
-	memberSession = "01KACME0000000000000000007"
-)
-
 func (a *authSteps) memberSession(ctx context.Context) error {
-	db, err := a.s.w.querier(ctx)
+	db, err := a.w.Querier(ctx)
 	if err != nil {
 		return err
 	}
-	if err := home.seed(ctx, db); err != nil {
+	if err := harness.Home.Seed(ctx, db); err != nil {
 		return err
 	}
-	_, err = db.Query(ctx, fmt.Sprintf(`
+	_, err = db.Query(ctx, fmt.Sprintf(
+		`
 		INSERT INTO members (organization_id, id, login, name, email, status)
 			VALUES ('%[1]s', '%[2]s', 'alice', 'Alice', 'alice@example.com', 'active');
 		INSERT INTO account_users (account_id, organization_id, member_id)
@@ -346,7 +260,13 @@ func (a *authSteps) memberSession(ctx context.Context) error {
 				member_id, login, name, email, ip_address, expires_at, idle_expires_at)
 			VALUES ('%[1]s', '%[3]s', '%[4]s', 'WEB', 'user', '%[2]s', '%[2]s', 'alice', 'Alice',
 				'alice@example.com', '192.0.2.44', now() + interval '1 day', now() + interval '1 hour');`,
-		uuidOf(home.org), uuidOf(memberID), uuidOf(home.account), uuidOf(memberSession)))
+		harness.UUIDOf(
+			harness.Home.Org,
+		),
+		harness.UUIDOf(harness.MemberID),
+		harness.UUIDOf(harness.Home.Account),
+		harness.UUIDOf(harness.MemberSession),
+	))
 	return err
 }
 
@@ -361,11 +281,15 @@ type listedSession struct {
 }
 
 // list is every session the named token lists, following the cursor.
-func (a *authSteps) list(ctx context.Context, replica, name string) ([]listedSession, error) {
+func listSessions(
+	ctx context.Context,
+	w *harness.World,
+	replica, name string,
+) ([]listedSession, error) {
 	var out []listedSession
 	path := "/api/v1/sessions?limit=2"
 	for {
-		r, err := a.do(ctx, replica, name, http.MethodGet, path, nil)
+		r, err := w.Do(ctx, replica, name, http.MethodGet, path, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -373,8 +297,8 @@ func (a *authSteps) list(ctx context.Context, replica, name string) ([]listedSes
 			Items      []listedSession `json:"items"`
 			NextCursor *string         `json:"nextCursor"`
 		}
-		if err := json.Unmarshal(r.body, &page); err != nil || r.status != http.StatusOK {
-			return nil, fmt.Errorf("%w: sessions answered %d %s", errStep, r.status, r.body)
+		if err := json.Unmarshal(r.Body, &page); err != nil || r.Status != http.StatusOK {
+			return nil, fmt.Errorf("%w: sessions answered %d %s", harness.ErrStep, r.Status, r.Body)
 		}
 		out = append(out, page.Items...)
 		if page.NextCursor == nil {
@@ -385,7 +309,7 @@ func (a *authSteps) list(ctx context.Context, replica, name string) ([]listedSes
 }
 
 func (a *authSteps) listedWithMember(ctx context.Context, replica, name string, n int) error {
-	got, err := a.list(ctx, replica, name)
+	got, err := listSessions(ctx, a.w, replica, name)
 	if err != nil {
 		return err
 	}
@@ -398,20 +322,20 @@ func (a *authSteps) listedWithMember(ctx context.Context, replica, name string, 
 		switch s.ID {
 		case own:
 			current = s.Current && s.Type == "API_KEY" && s.IsMachineUser && s.Channel == "UNKNOWN"
-		case memberSession:
+		case harness.MemberSession:
 			member = !s.Current && s.Type == "USER" && s.Channel == "WEB" && s.Login == "alice" &&
 				s.IPAddress == "192.0.2.44"
 		}
 	}
 	if len(got) != n || !current || !member {
 		return fmt.Errorf("%w: %d sessions %+v, want %d with %s current and %s the member's",
-			errStep, len(got), got, n, own, memberSession)
+			harness.ErrStep, len(got), got, n, own, harness.MemberSession)
 	}
 	return nil
 }
 
 func (a *authSteps) listedAlone(ctx context.Context, replica, name string) error {
-	got, err := a.list(ctx, replica, name)
+	got, err := listSessions(ctx, a.w, replica, name)
 	if err != nil {
 		return err
 	}
@@ -420,7 +344,7 @@ func (a *authSteps) listedAlone(ctx context.Context, replica, name string) error
 		return err
 	}
 	if len(got) != 1 || got[0].ID != own || !got[0].Current {
-		return fmt.Errorf("%w: sessions %+v, want %s alone", errStep, got, own)
+		return fmt.Errorf("%w: sessions %+v, want %s alone", harness.ErrStep, got, own)
 	}
 	return nil
 }
@@ -430,13 +354,13 @@ func (a *authSteps) deleteSession(ctx context.Context, victim, replica, name str
 	if err != nil {
 		return err
 	}
-	r, err := a.do(ctx, replica, name, http.MethodDelete, "/api/v1/sessions/"+id, nil)
+	r, err := a.w.Do(ctx, replica, name, http.MethodDelete, "/api/v1/sessions/"+id, nil)
 	if err != nil {
 		return err
 	}
 	var s listedSession
-	if err := json.Unmarshal(r.body, &s); err != nil || r.status != http.StatusOK || s.ID != id {
-		return fmt.Errorf("%w: sessionDelete answered %d %s", errStep, r.status, r.body)
+	if err := json.Unmarshal(r.Body, &s); err != nil || r.Status != http.StatusOK || s.ID != id {
+		return fmt.Errorf("%w: sessionDelete answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	return nil
 }
@@ -449,45 +373,51 @@ func (a *authSteps) deleteRefused(
 	if err != nil {
 		return err
 	}
-	r, err := a.do(ctx, replica, name, http.MethodDelete, "/api/v1/sessions/"+id, nil)
+	r, err := a.w.Do(ctx, replica, name, http.MethodDelete, "/api/v1/sessions/"+id, nil)
 	if err != nil {
 		return err
 	}
-	return isProblem(r, "deleting token "+victim+"'s session", code, slug)
+	return harness.IsProblem(r, "deleting token "+victim+"'s session", code, slug)
 }
 
 func (a *authSteps) deleteOthers(ctx context.Context, name, replica string) error {
-	r, err := a.do(ctx, replica, name, http.MethodDelete, "/api/v1/sessions", nil)
+	r, err := a.w.Do(ctx, replica, name, http.MethodDelete, "/api/v1/sessions", nil)
 	if err != nil {
 		return err
 	}
 	var revoked []listedSession
-	if err := json.Unmarshal(r.body, &revoked); err != nil || r.status != http.StatusOK ||
+	if err := json.Unmarshal(r.Body, &revoked); err != nil || r.Status != http.StatusOK ||
 		len(revoked) == 0 {
-		return fmt.Errorf("%w: sessionDeleteAll answered %d %s", errStep, r.status, r.body)
+		return fmt.Errorf("%w: sessionDeleteAll answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	return nil
 }
 
 func (a *authSteps) logout(ctx context.Context, name, replica string) error {
-	r, err := a.do(ctx, replica, name, http.MethodPost, "/api/v1/auth/logout", nil)
+	r, err := a.w.Do(ctx, replica, name, http.MethodPost, "/api/v1/auth/logout", nil)
 	if err != nil {
 		return err
 	}
 	var s listedSession
-	if err := json.Unmarshal(r.body, &s); err != nil || r.status != http.StatusOK || !s.Current {
-		return fmt.Errorf("%w: logout answered %d %s", errStep, r.status, r.body)
+	if err := json.Unmarshal(r.Body, &s); err != nil || r.Status != http.StatusOK || !s.Current {
+		return fmt.Errorf("%w: logout answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	return nil
 }
 
 func (a *authSteps) viewerAnswers(ctx context.Context, replica, name string, code int) error {
-	r, err := a.do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
+	r, err := a.w.Do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
 	if err != nil {
 		return err
 	}
-	if r.status != code {
-		return fmt.Errorf("%w: viewer answered %d %s, want %d", errStep, r.status, r.body, code)
+	if r.Status != code {
+		return fmt.Errorf(
+			"%w: viewer answered %d %s, want %d",
+			harness.ErrStep,
+			r.Status,
+			r.Body,
+			code,
+		)
 	}
 	return nil
 }
@@ -496,26 +426,26 @@ func (a *authSteps) answersProblem(
 	ctx context.Context,
 	method, path, replica, name, code, slug string,
 ) error {
-	r, err := a.do(ctx, replica, name, method, path, nil)
+	r, err := a.w.Do(ctx, replica, name, method, path, nil)
 	if err != nil {
 		return err
 	}
-	return isProblem(r, method+" "+path, code, slug)
+	return harness.IsProblem(r, method+" "+path, code, slug)
 }
 
 func (a *authSteps) exchangeProblem(ctx context.Context, replica, code, slug string) error {
-	c, err := a.client(replica, "")
+	c, err := a.w.Client(replica, "")
 	if err != nil {
 		return err
 	}
 	resp, err := c.Do(ctx, http.MethodPost, "/api/v1/auth/token",
-		map[string]string{"id": home.key, "secret": home.secret()})
+		map[string]string{"id": harness.Home.Key, "secret": harness.Home.Secret()})
 	if resp == nil {
 		return err
 	}
-	r := response{status: resp.Status, header: resp.Header, body: resp.Body, err: err}
-	a.s.sent = append(a.s.sent, r)
-	return isProblem(r, "exchanging the home key", code, slug)
+	r := harness.Response{Status: resp.Status, Header: resp.Header, Body: resp.Body, Err: err}
+	a.w.Sent = append(a.w.Sent, r)
+	return harness.IsProblem(r, "exchanging the home key", code, slug)
 }
 
 // viewerRevoked waits at most revocationWithin for the replica to refuse
@@ -523,12 +453,12 @@ func (a *authSteps) exchangeProblem(ctx context.Context, replica, code, slug str
 func (a *authSteps) viewerRevoked(ctx context.Context, replica, name string) error {
 	ctx, cancel := context.WithTimeout(ctx, revocationWithin)
 	defer cancel()
-	return Eventually(ctx, "the revocation to reach "+replica,
+	return deps.Eventually(ctx, "the revocation to reach "+replica,
 		func(ctx context.Context) (bool, error) {
-			r, err := a.do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
+			r, err := a.w.Do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
 			if err != nil {
 				return false, err
 			}
-			return isProblem(r, "viewer", "401", "unauthenticated") == nil, nil
+			return harness.IsProblem(r, "viewer", "401", "unauthenticated") == nil, nil
 		})
 }

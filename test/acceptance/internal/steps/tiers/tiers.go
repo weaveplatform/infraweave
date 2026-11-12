@@ -1,4 +1,4 @@
-package acceptance
+package tiers
 
 import (
 	"context"
@@ -10,13 +10,15 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // platformSteps are the steps of the operator API's tiers, grants, billing
 // and dead jobs, on authSteps' servers and named tokens.
 type platformSteps struct {
-	a *authSteps
-	q *queueSteps
+	w *harness.World
 	// dead is the dead job the scenario listed.
 	dead int64
 }
@@ -71,14 +73,21 @@ func (p *platformSteps) ok(
 	replica, tok, method, path string,
 	body any,
 	want int,
-) (response, error) {
-	r, err := p.a.do(ctx, replica, tok, method, path, body)
+) (harness.Response, error) {
+	r, err := p.w.Do(ctx, replica, tok, method, path, body)
 	if err != nil {
 		return r, err
 	}
-	if r.status != want {
-		return r, fmt.Errorf("%w: %s %s answered %d, want %d: %s", errStep, method, path, r.status,
-			want, r.body)
+	if r.Status != want {
+		return r, fmt.Errorf(
+			"%w: %s %s answered %d, want %d: %s",
+			harness.ErrStep,
+			method,
+			path,
+			r.Status,
+			want,
+			r.Body,
+		)
 	}
 	return r, nil
 }
@@ -93,7 +102,7 @@ func (p *platformSteps) createTier(
 	if seats != "" {
 		n, err := strconv.ParseInt(seats, 10, 64)
 		if err != nil {
-			return fmt.Errorf("%w: seats %q: %w", errStep, seats, err)
+			return fmt.Errorf("%w: seats %q: %w", harness.ErrStep, seats, err)
 		}
 		limits["seats"] = n
 	}
@@ -109,13 +118,13 @@ func (p *platformSteps) eventuallyJSON(
 	ctx context.Context,
 	method, path, replica, tok, want string,
 ) error {
-	return Eventually(ctx, method+" "+path+" to answer "+want,
+	return deps.Eventually(ctx, method+" "+path+" to answer "+want,
 		func(ctx context.Context) (bool, error) {
-			r, err := p.a.do(ctx, replica, tok, method, path, nil)
+			r, err := p.w.Do(ctx, replica, tok, method, path, nil)
 			if err != nil {
 				return false, err
 			}
-			return answered(r, method+" "+path, want) == nil, nil
+			return harness.Answered(r, method+" "+path, want) == nil, nil
 		})
 }
 
@@ -142,19 +151,19 @@ func (p *platformSteps) tierAsOperator(
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal(r.body, read.into); err != nil {
-			return fmt.Errorf("%w: %s answered %s: %w", errStep, read.path, r.body, err)
+		if err := json.Unmarshal(r.Body, read.into); err != nil {
+			return fmt.Errorf("%w: %s answered %s: %w", harness.ErrStep, read.path, r.Body, err)
 		}
 	}
 	if want.Name != name || !reflect.DeepEqual(got, want) {
-		return fmt.Errorf("%w: the tier read is %+v, want %+v", errStep, got, want)
+		return fmt.Errorf("%w: the tier read is %+v, want %+v", harness.ErrStep, got, want)
 	}
 	return nil
 }
 
 func (p *platformSteps) setTier(ctx context.Context, tok, tier, replica string) error {
 	_, err := p.ok(ctx, replica, tok, http.MethodPut,
-		"/operator/v1/organizations/"+home.orgSlug+"/tier", map[string]string{"tier": tier},
+		"/operator/v1/organizations/"+harness.Home.OrgSlug+"/tier", map[string]string{"tier": tier},
 		http.StatusOK)
 	return err
 }
@@ -166,8 +175,15 @@ func (p *platformSteps) billingOn(ctx context.Context, tok, replica string) erro
 }
 
 func (p *platformSteps) grant(ctx context.Context, tok, feature, replica string) error {
-	_, err := p.ok(ctx, replica, tok, http.MethodPut,
-		"/operator/v1/organizations/"+home.orgSlug+"/grants/features/"+feature, nil, http.StatusOK)
+	_, err := p.ok(
+		ctx,
+		replica,
+		tok,
+		http.MethodPut,
+		"/operator/v1/organizations/"+harness.Home.OrgSlug+"/grants/features/"+feature,
+		nil,
+		http.StatusOK,
+	)
 	return err
 }
 
@@ -178,15 +194,15 @@ func (p *platformSteps) eventuallyProblem(
 	ctx context.Context,
 	method, path, replica, tok, code, slug string,
 ) error {
-	return Eventually(
+	return deps.Eventually(
 		ctx,
 		method+" "+path+" to answer "+code,
 		func(ctx context.Context) (bool, error) {
-			r, err := p.a.do(ctx, replica, tok, method, path, nil)
+			r, err := p.w.Do(ctx, replica, tok, method, path, nil)
 			if err != nil {
 				return false, err
 			}
-			return isProblem(r, method+" "+path, code, slug) == nil, nil
+			return harness.IsProblem(r, method+" "+path, code, slug) == nil, nil
 		},
 	)
 }
@@ -196,18 +212,18 @@ func (p *platformSteps) eventuallyAnswers(
 	method, path, replica, tok string,
 	code int,
 ) error {
-	return Eventually(ctx, method+" "+path+" to answer "+strconv.Itoa(code),
+	return deps.Eventually(ctx, method+" "+path+" to answer "+strconv.Itoa(code),
 		func(ctx context.Context) (bool, error) {
-			r, err := p.a.do(ctx, replica, tok, method, path, nil)
-			return err == nil && r.status == code, err
+			r, err := p.w.Do(ctx, replica, tok, method, path, nil)
+			return err == nil && r.Status == code, err
 		})
 }
 
 // instances starts the queue scenario's two all instances with the
 // operator key in auth.operator.keys.
 func (p *platformSteps) instances(ctx context.Context, lease int) error {
-	p.a.s.w.auth = operatorAuth()
-	return p.q.twoInstances(ctx, lease)
+	p.w.Settings["auth"] = harness.OperatorAuth()
+	return p.w.TwoInstances(ctx, lease)
 }
 
 // deadJobs lists the dead jobs through replica.
@@ -219,8 +235,8 @@ func (p *platformSteps) deadJobs(ctx context.Context, replica, tok string) ([]de
 	var page struct {
 		Items []deadJob `json:"items"`
 	}
-	if err := json.Unmarshal(r.body, &page); err != nil {
-		return nil, fmt.Errorf("%w: the dead jobs answered %s: %w", errStep, r.body, err)
+	if err := json.Unmarshal(r.Body, &page); err != nil {
+		return nil, fmt.Errorf("%w: the dead jobs answered %s: %w", harness.ErrStep, r.Body, err)
 	}
 	return page.Items, nil
 }
@@ -237,15 +253,21 @@ func (p *platformSteps) listedDead(ctx context.Context, replica, tok, kind, nami
 	if err != nil {
 		return err
 	}
-	newest, err := p.q.number(ctx, fmt.Sprintf(
-		`SELECT max(id) FROM jobs WHERE kind = %s`, literal(kind)))
+	newest, err := p.w.Number(ctx, fmt.Sprintf(
+		`SELECT max(id) FROM jobs WHERE kind = %s`, harness.Literal(kind)))
 	if err != nil {
 		return err
 	}
 	if len(jobs) != 1 || jobs[0].ID != int64(newest) || jobs[0].Kind != kind ||
 		!strings.Contains(jobs[0].LastError, naming) {
-		return fmt.Errorf("%w: the dead jobs are %+v, want job %d of %s naming %q", errStep, jobs,
-			newest, kind, naming)
+		return fmt.Errorf(
+			"%w: the dead jobs are %+v, want job %d of %s naming %q",
+			harness.ErrStep,
+			jobs,
+			newest,
+			kind,
+			naming,
+		)
 	}
 	p.dead = jobs[0].ID
 	return nil
@@ -254,13 +276,13 @@ func (p *platformSteps) listedDead(ctx context.Context, replica, tok, kind, nami
 func (p *platformSteps) noneDead(ctx context.Context, replica, tok string) error {
 	jobs, err := p.deadJobs(ctx, replica, tok)
 	if err == nil && len(jobs) != 0 {
-		err = fmt.Errorf("%w: the dead jobs are %+v, want none", errStep, jobs)
+		err = fmt.Errorf("%w: the dead jobs are %+v, want none", harness.ErrStep, jobs)
 	}
 	return err
 }
 
 func (p *platformSteps) renameBack(ctx context.Context) error {
-	_, err := p.a.s.query(ctx, `ALTER TABLE idempotency_keys_away RENAME TO idempotency_keys`)
+	_, err := p.w.Query(ctx, `ALTER TABLE idempotency_keys_away RENAME TO idempotency_keys`)
 	return err
 }
 
@@ -277,24 +299,34 @@ func (p *platformSteps) actOnDead(ctx context.Context, tok, act, replica string)
 		return err
 	}
 	var j deadJob
-	if err := json.Unmarshal(r.body, &j); err != nil || j.ID != p.dead {
-		return fmt.Errorf("%w: %s answered %s, want dead job %d", errStep, path, r.body, p.dead)
+	if err := json.Unmarshal(r.Body, &j); err != nil || j.ID != p.dead {
+		return fmt.Errorf(
+			"%w: %s answered %s, want dead job %d",
+			harness.ErrStep,
+			path,
+			r.Body,
+			p.dead,
+		)
 	}
 	return nil
 }
 
 func (p *platformSteps) retriedSucceeds(ctx context.Context) error {
-	return Eventually(ctx, "the retried job to succeed", func(ctx context.Context) (bool, error) {
-		out, err := p.a.s.query(ctx, fmt.Sprintf(`SELECT state FROM jobs WHERE id = %d`, p.dead))
-		return strings.TrimSpace(out) == "succeeded", err
-	})
+	return deps.Eventually(
+		ctx,
+		"the retried job to succeed",
+		func(ctx context.Context) (bool, error) {
+			out, err := p.w.Query(ctx, fmt.Sprintf(`SELECT state FROM jobs WHERE id = %d`, p.dead))
+			return strings.TrimSpace(out) == "succeeded", err
+		},
+	)
 }
 
 func (p *platformSteps) readDead(ctx context.Context, replica, tok, code, slug string) error {
 	path := "/operator/v1/queue/jobs/" + strconv.FormatInt(p.dead, 10)
-	r, err := p.a.do(ctx, replica, tok, http.MethodGet, path, nil)
+	r, err := p.w.Do(ctx, replica, tok, http.MethodGet, path, nil)
 	if err != nil {
 		return err
 	}
-	return isProblem(r, "GET "+path, code, slug)
+	return harness.IsProblem(r, "GET "+path, code, slug)
 }

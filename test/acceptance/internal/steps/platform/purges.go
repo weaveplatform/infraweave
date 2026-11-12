@@ -1,4 +1,4 @@
-package acceptance
+package platform
 
 import (
 	"context"
@@ -7,13 +7,16 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // purgeSteps give an account rows in the domains above access, and wait
 // for the purges an account's or organization's deletion starts to remove
 // them.
 type purgeSteps struct {
-	s *servedSteps
+	w *harness.World
 	// held is each account's organization and account UUIDs, by its
 	// slug, read while the account exists.
 	held map[string][2]string
@@ -40,17 +43,17 @@ func (p *purgeSteps) register(sc *godog.ScenarioContext) {
 // of the account slug names, as the stacks, runs, configuration and
 // features domains would, and records its IDs.
 func (p *purgeSteps) holds(ctx context.Context, slug string) error {
-	out, err := p.s.query(ctx, `SELECT organization_id || ' ' || id FROM accounts WHERE slug = `+
-		literal(slug))
+	out, err := p.w.Query(ctx, `SELECT organization_id || ' ' || id FROM accounts WHERE slug = `+
+		harness.Literal(slug))
 	if err != nil {
 		return err
 	}
 	ids := strings.Fields(out)
 	if len(ids) != 2 {
-		return fmt.Errorf("%w: no account %q", errStep, slug)
+		return fmt.Errorf("%w: no account %q", harness.ErrStep, slug)
 	}
 	p.held[slug] = [2]string{ids[0], ids[1]}
-	_, err = p.s.query(ctx, fmt.Sprintf(`
+	_, err = p.w.Query(ctx, fmt.Sprintf(`
 		INSERT INTO stacks (account_id, id, slug, space_id, name, repository, branch, provider,
 			vendor)
 		VALUES ('%[2]s', gen_random_uuid(), 'infra', gen_random_uuid(), 'Infra', 'infra', 'main',
@@ -115,7 +118,7 @@ func (p *purgeSteps) accountPurged(ctx context.Context, slug string) error {
 	n, err := p.count(ctx, fmt.Sprintf(
 		`SELECT count(*) FROM organization_entitlements WHERE organization_id = '%s'`, ids[0]))
 	if err == nil && n != 1 {
-		err = fmt.Errorf("%w: the organization of %q has %d entitlements", errStep, slug, n)
+		err = fmt.Errorf("%w: the organization of %q has %d entitlements", harness.ErrStep, slug, n)
 	}
 	return err
 }
@@ -135,7 +138,7 @@ func (p *purgeSteps) organizationPurged(ctx context.Context, slug string) error 
 func (p *purgeSteps) ids(slug string) ([2]string, error) {
 	ids, ok := p.held[slug]
 	if !ok {
-		return ids, fmt.Errorf("%w: the account %q holds nothing yet", errStep, slug)
+		return ids, fmt.Errorf("%w: the account %q holds nothing yet", harness.ErrStep, slug)
 	}
 	return ids, nil
 }
@@ -143,20 +146,20 @@ func (p *purgeSteps) ids(slug string) ([2]string, error) {
 // until waits for query, a count of what remains, to answer 0.
 func (p *purgeSteps) until(ctx context.Context, slug, query string) error {
 	//nolint:wrapcheck // names what it waited for
-	return Eventually(ctx, "the purges of "+slug, func(ctx context.Context) (bool, error) {
+	return deps.Eventually(ctx, "the purges of "+slug, func(ctx context.Context) (bool, error) {
 		n, err := p.count(ctx, query)
 		return err == nil && n == 0, err
 	})
 }
 
 func (p *purgeSteps) count(ctx context.Context, query string) (int, error) {
-	out, err := p.s.query(ctx, query)
+	out, err := p.w.Query(ctx, query)
 	if err != nil {
 		return 0, err
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(out))
 	if err != nil {
-		return 0, fmt.Errorf("%w: %q from %s", errStep, out, query)
+		return 0, fmt.Errorf("%w: %q from %s", harness.ErrStep, out, query)
 	}
 	return n, nil
 }

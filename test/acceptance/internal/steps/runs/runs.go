@@ -1,4 +1,4 @@
-package acceptance
+package runs
 
 import (
 	"context"
@@ -8,11 +8,16 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // runSteps read runs, against the run IDs the scenario kept with "the
 // answer's id names", which its requests name as {key}.
-type runSteps struct{ o *orgSteps }
+type runSteps struct {
+	w *harness.World
+}
 
 func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
@@ -30,16 +35,18 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 // queue, so the run.schedule jobs a burst of triggers enqueues wait until
 // a server that runs them starts.
 func (r *runSteps) idle(ctx context.Context) error {
-	w := r.o.a.s.w
-	w.queue = map[string]any{"queues": map[string]any{"default": map[string]any{"workers": 0}}}
-	defer func() { w.queue = nil }()
-	return r.o.a.s.twoReplicas(ctx)
+	w := r.w
+	w.Settings["queue"] = map[string]any{
+		"queues": map[string]any{"default": map[string]any{"workers": 0}},
+	}
+	defer delete(w.Settings, "queue")
+	return r.w.TwoReplicas(ctx)
 }
 
 // third starts a server with the default queue's workers on the
 // scenario's database.
 func (r *runSteps) third(ctx context.Context) error {
-	_, err := r.o.a.s.w.startServer(ctx, nil)
+	_, err := r.w.StartServer(ctx, nil)
 	return err
 }
 
@@ -48,10 +55,10 @@ func (r *runSteps) third(ctx context.Context) error {
 // shows as one, and one that did not as more.
 func (r *runSteps) scheduled(ctx context.Context, want int, state string) error {
 	var got string
-	err := Eventually(ctx, "run.schedule jobs to be "+state,
+	err := deps.Eventually(ctx, "run.schedule jobs to be "+state,
 		func(ctx context.Context) (bool, error) {
-			out, err := r.o.a.s.query(ctx, `SELECT count(*) FILTER (WHERE state = `+
-				literal(state)+`) || ' ' || count(*) FROM jobs WHERE kind = 'run.schedule'`)
+			out, err := r.w.Query(ctx, `SELECT count(*) FILTER (WHERE state = `+
+				harness.Literal(state)+`) || ' ' || count(*) FROM jobs WHERE kind = 'run.schedule'`)
 			got = strings.TrimSpace(out)
 			n := strings.Fields(got)
 			return err == nil && len(n) == 2 && n[0] == n[1], err
@@ -60,7 +67,13 @@ func (r *runSteps) scheduled(ctx context.Context, want int, state string) error 
 		return err //nolint:wrapcheck // names what it waited for
 	}
 	if want := fmt.Sprintf("%d %d", want, want); got != want {
-		return fmt.Errorf("%w: run.schedule jobs %s are %q, want %q", errStep, state, got, want)
+		return fmt.Errorf(
+			"%w: run.schedule jobs %s are %q, want %q",
+			harness.ErrStep,
+			state,
+			got,
+			want,
+		)
 	}
 	return nil
 }
@@ -69,20 +82,29 @@ func (r *runSteps) scheduled(ctx context.Context, want int, state string) error 
 // scheduler's job moves it to after the write that queued it commits.
 func (r *runSteps) eventually(ctx context.Context, token, key, state, replica string) error {
 	//nolint:wrapcheck // names what it waited for
-	return Eventually(ctx, "run "+key+" to be "+state, func(ctx context.Context) (bool, error) {
-		if err := r.o.send(ctx, `token "`+token+`"`, "GET", "/api/v1/runs/"+r.o.ids[key], "",
-			replica); err != nil {
-			return false, err
-		}
-		var run struct {
-			State string `json:"state"`
-		}
-		last := r.o.a.s.last()
-		if err := json.Unmarshal(last.body, &run); err != nil || last.status != 200 {
-			return false, fmt.Errorf("%w: no run in %d %s", errStep, last.status, last.body)
-		}
-		return run.State == state, nil
-	})
+	return deps.Eventually(
+		ctx,
+		"run "+key+" to be "+state,
+		func(ctx context.Context) (bool, error) {
+			if err := r.w.SendAs(ctx, `token "`+token+`"`, "GET", "/api/v1/runs/"+r.w.IDs[key], "",
+				replica); err != nil {
+				return false, err
+			}
+			var run struct {
+				State string `json:"state"`
+			}
+			last := r.w.Last()
+			if err := json.Unmarshal(last.Body, &run); err != nil || last.Status != 200 {
+				return false, fmt.Errorf(
+					"%w: no run in %d %s",
+					harness.ErrStep,
+					last.Status,
+					last.Body,
+				)
+			}
+			return run.State == state, nil
+		},
+	)
 }
 
 // lists checks the last answer, a page of runs or a run search, against
@@ -100,9 +122,9 @@ func (r *runSteps) lists(field, want string) error {
 			} `json:"node"`
 		} `json:"edges"`
 	}
-	last := r.o.a.s.last()
-	if err := json.Unmarshal(last.body, &page); err != nil {
-		return fmt.Errorf("%w: no runs in %d %s", errStep, last.status, last.body)
+	last := r.w.Last()
+	if err := json.Unmarshal(last.Body, &page); err != nil {
+		return fmt.Errorf("%w: no runs in %d %s", harness.ErrStep, last.Status, last.Body)
 	}
 	var ids []string
 	for _, it := range page.Items {
@@ -116,7 +138,7 @@ func (r *runSteps) lists(field, want string) error {
 	got := make([]string, len(ids))
 	for i, id := range ids {
 		got[i] = id
-		for key, kept := range r.o.ids {
+		for key, kept := range r.w.IDs {
 			if kept == id {
 				got[i] = key
 			}
@@ -127,7 +149,7 @@ func (r *runSteps) lists(field, want string) error {
 		wanted = strings.Split(want, ", ")
 	}
 	if !slices.Equal(got, wanted) {
-		return fmt.Errorf("%w: the runs are %q, not %q", errStep, got, wanted)
+		return fmt.Errorf("%w: the runs are %q, not %q", harness.ErrStep, got, wanted)
 	}
 	return nil
 }

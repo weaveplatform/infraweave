@@ -1,4 +1,4 @@
-package acceptance
+package api
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/pkg/sdk"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // updateSteps drive conditional writes: they keep the ETags answers carry,
 // by name, and send a write whose If-Match names one.
 type updateSteps struct {
-	o *orgSteps
+	w *harness.World
 	// etags are the kept entity tags by name.
 	etags map[string]string
 }
@@ -27,10 +28,10 @@ func (u *updateSteps) register(sc *godog.ScenarioContext) {
 
 // keep names the last answer's ETag.
 func (u *updateSteps) keep(name string) error {
-	r := u.o.a.s.last()
-	tag := r.header.Get("ETag")
+	r := u.w.Last()
+	tag := r.Header.Get("ETag")
 	if tag == "" {
-		return fmt.Errorf("%w: no ETag in %d %s", errStep, r.status, r.body)
+		return fmt.Errorf("%w: no ETag in %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	u.etags[name] = tag
 	return nil
@@ -44,11 +45,11 @@ func (u *updateSteps) send(
 ) error {
 	etag, ok := u.etags[tag]
 	if !ok {
-		return fmt.Errorf("%w: no ETag kept as %q", errStep, tag)
+		return fmt.Errorf("%w: no ETag kept as %q", harness.ErrStep, tag)
 	}
-	r, err := u.o.a.do(ctx, replica, token, method, u.o.resolve(path), body(u.o.resolve(raw)),
+	r, err := u.w.Do(ctx, replica, token, method, u.w.Resolve(path), harness.Body(u.w.Resolve(raw)),
 		sdk.Header{Name: "If-Match", Value: etag})
-	if err != nil && r.status == 0 {
+	if err != nil && r.Status == 0 {
 		return err
 	}
 	return nil

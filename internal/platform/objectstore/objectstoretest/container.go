@@ -8,7 +8,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // Emulator starts image for t with opts and returns the HTTP endpoint of
@@ -17,7 +17,7 @@ import (
 // passes there by skipping.
 func Emulator(t *testing.T, image, port string, opts ...testcontainers.ContainerCustomizer) string {
 	t.Helper()
-	if err := acceptance.DockerReachable(t.Context()); err != nil {
+	if err := deps.DockerReachable(t.Context()); err != nil {
 		if os.Getenv(sqltest.RequireDocker) != "1" {
 			t.Skipf("%s: %v (set %s=1 to fail instead)", image, err, sqltest.RequireDocker)
 		}

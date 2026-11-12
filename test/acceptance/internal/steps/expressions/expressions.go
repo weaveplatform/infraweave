@@ -1,4 +1,4 @@
-package acceptance
+package expressions
 
 import (
 	"encoding/json"
@@ -7,10 +7,14 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // expressionSteps read what the editor endpoints answer.
-type expressionSteps struct{ o *orgSteps }
+type expressionSteps struct {
+	w *harness.World
+}
 
 func (e *expressionSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer flags an error from (\d+):(\d+) to (\d+):(\d+)$`, e.flags)
@@ -35,8 +39,8 @@ func (e *expressionSteps) flags(l1, c1, l2, c2 int) error {
 			} `json:"range"`
 		} `json:"diagnostics"`
 	}
-	r := e.o.a.s.last()
-	if json.Unmarshal(r.body, &chk) == nil {
+	r := e.w.Last()
+	if json.Unmarshal(r.Body, &chk) == nil {
 		for _, d := range chk.Diagnostics {
 			if d.Severity == "error" && d.Range.Start == (position{l1, c1}) &&
 				d.Range.End == (position{l2, c2}) {
@@ -45,7 +49,7 @@ func (e *expressionSteps) flags(l1, c1, l2, c2 int) error {
 		}
 	}
 	return fmt.Errorf("%w: no error from %d:%d to %d:%d: %d %s",
-		errStep, l1, c1, l2, c2, r.status, r.body)
+		harness.ErrStep, l1, c1, l2, c2, r.Status, r.Body)
 }
 
 // completes checks that the last answer, a completion, holds exactly the
@@ -56,9 +60,9 @@ func (e *expressionSteps) completes(want string) error {
 			Label string `json:"label"`
 		} `json:"items"`
 	}
-	r := e.o.a.s.last()
+	r := e.w.Last()
 	labels := []string{}
-	if json.Unmarshal(r.body, &res) == nil {
+	if json.Unmarshal(r.Body, &res) == nil {
 		for _, i := range res.Items {
 			labels = append(labels, i.Label)
 		}
@@ -66,11 +70,11 @@ func (e *expressionSteps) completes(want string) error {
 	if !slices.Equal(labels, strings.Split(want, ", ")) {
 		return fmt.Errorf(
 			"%w: completes %q, want %q: %d %s",
-			errStep,
+			harness.ErrStep,
 			labels,
 			want,
-			r.status,
-			r.body,
+			r.Status,
+			r.Body,
 		)
 	}
 	return nil

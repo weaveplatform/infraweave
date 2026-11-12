@@ -16,7 +16,7 @@ import (
 	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // claimWorld is two replicas of the server over one database, each waking
@@ -358,7 +358,7 @@ func TestAccRunClaim(t *testing.T) {
 		held := make(chan polled, 1)
 		start := time.Now()
 		go func() { held <- w.poll(ctx, 1, worker, false, 60) }()
-		if err := acceptance.Eventually(
+		if err := deps.Eventually(
 			ctx,
 			"the poll is seen",
 			func(ctx context.Context) (bool, error) {

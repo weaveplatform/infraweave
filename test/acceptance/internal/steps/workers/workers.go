@@ -1,4 +1,4 @@
-package acceptance
+package workers
 
 import (
 	"context"
@@ -25,6 +25,8 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // workerSteps make a pool key's certificate signing request, check the
@@ -36,7 +38,7 @@ import (
 // ref: decision 0008 § "The worker API", § "The run specification and its
 // secrets"
 type workerSteps struct {
-	o *orgSteps
+	w *harness.World
 	// keys are the pool keys by the name of their request.
 	keys map[string]crypto.Signer
 	// certs are the pool certificates by the name their serial is kept
@@ -45,7 +47,7 @@ type workerSteps struct {
 	// registrations are each launcher's last signed registration.
 	registrations map[string]string
 	// held are each launcher's poll in flight.
-	held map[string]chan response
+	held map[string]chan harness.Response
 }
 
 type poolCert struct {
@@ -54,8 +56,8 @@ type poolCert struct {
 }
 
 func (w *workerSteps) register(sc *godog.ScenarioContext) {
-	w.keys, w.certs = map[string]crypto.Signer{}, map[string]poolCert{}
-	w.registrations, w.held = map[string]string{}, map[string]chan response{}
+	w.certs = map[string]poolCert{}
+	w.registrations, w.held = map[string]string{}, map[string]chan harness.Response{}
 	sc.Step(`^a certificate signing request for an? (P-256|P-384|RSA) key is kept as "(\w+)"$`,
 		w.request)
 	sc.Step(
@@ -103,7 +105,7 @@ func (w *workerSteps) request(kind, name string) error {
 	if err != nil {
 		return fmt.Errorf("a %s key's request: %w", kind, err)
 	}
-	w.o.ids[name] = base64.StdEncoding.EncodeToString(
+	w.w.IDs[name] = base64.StdEncoding.EncodeToString(
 		pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: der}))
 	return nil
 }
@@ -113,16 +115,16 @@ func (w *workerSteps) request(kind, name string) error {
 // the database keeps and carries the pool's serial, and keeps the serial
 // as name.
 func (w *workerSteps) token(ctx context.Context, pool, name string) error {
-	r := w.o.a.s.last()
+	r := w.w.Last()
 	var v struct {
 		Config string `json:"config"`
 	}
-	if json.Unmarshal(r.body, &v) != nil || v.Config == "" {
-		return fmt.Errorf("%w: no pool token in %d %s", errStep, r.status, r.body)
+	if json.Unmarshal(r.Body, &v) != nil || v.Config == "" {
+		return fmt.Errorf("%w: no pool token in %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	raw, err := base64.StdEncoding.DecodeString(v.Config)
 	if err != nil {
-		return fmt.Errorf("%w: the pool token is not base64: %w", errStep, err)
+		return fmt.Errorf("%w: the pool token is not base64: %w", harness.ErrStep, err)
 	}
 	var t struct {
 		Version     int    `json:"version"`
@@ -131,28 +133,28 @@ func (w *workerSteps) token(ctx context.Context, pool, name string) error {
 		Certificate string `json:"certificate"`
 	}
 	if err := json.Unmarshal(raw, &t); err != nil {
-		return fmt.Errorf("%w: the pool token is not JSON: %w", errStep, err)
+		return fmt.Errorf("%w: the pool token is not JSON: %w", harness.ErrStep, err)
 	}
-	if t.Version != 1 || t.Endpoint == "" || t.Pool != w.o.ids[pool] {
-		return fmt.Errorf("%w: the pool token is %s", errStep, raw)
+	if t.Version != 1 || t.Endpoint == "" || t.Pool != w.w.IDs[pool] {
+		return fmt.Errorf("%w: the pool token is %s", harness.ErrStep, raw)
 	}
 	block, _ := pem.Decode([]byte(t.Certificate))
 	if block == nil {
-		return fmt.Errorf("%w: the pool token carries no certificate", errStep)
+		return fmt.Errorf("%w: the pool token carries no certificate", harness.ErrStep)
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return fmt.Errorf("%w: the pool certificate: %w", errStep, err)
+		return fmt.Errorf("%w: the pool certificate: %w", harness.ErrStep, err)
 	}
 	var ca []byte
 	var serial int64
 	if err := w.row(ctx, `SELECT c.certificate, p.serial FROM worker_pool_ca c, worker_pools p
-		WHERE p.id = $1`, []any{uuidOf(t.Pool)}, &ca, &serial); err != nil {
+		WHERE p.id = $1`, []any{harness.UUIDOf(t.Pool)}, &ca, &serial); err != nil {
 		return err
 	}
 	root, err := x509.ParseCertificate(ca)
 	if err != nil {
-		return fmt.Errorf("%w: the pool CA: %w", errStep, err)
+		return fmt.Errorf("%w: the pool CA: %w", harness.ErrStep, err)
 	}
 	roots := x509.NewCertPool()
 	roots.AddCert(root)
@@ -161,15 +163,15 @@ func (w *workerSteps) token(ctx context.Context, pool, name string) error {
 	}); err != nil {
 		return fmt.Errorf(
 			"%w: the pool certificate does not chain to the pool CA: %w",
-			errStep,
+			harness.ErrStep,
 			err,
 		)
 	}
 	if !cert.SerialNumber.IsInt64() || cert.SerialNumber.Int64() != serial {
-		return fmt.Errorf("%w: the certificate's serial is %s, the pool's %d", errStep,
+		return fmt.Errorf("%w: the certificate's serial is %s, the pool's %d", harness.ErrStep,
 			cert.SerialNumber, serial)
 	}
-	w.o.ids[name] = strconv.FormatInt(serial, 10)
+	w.w.IDs[name] = strconv.FormatInt(serial, 10)
 	w.certs[name] = poolCert{cert: cert, pool: t.Pool}
 	return nil
 }
@@ -180,18 +182,18 @@ func (w *workerSteps) token(ctx context.Context, pool, name string) error {
 func (w *workerSteps) replaced(ctx context.Context, pool, name string) error {
 	var serial int64
 	if err := w.row(ctx, `SELECT serial FROM worker_pools WHERE id = $1`,
-		[]any{uuidOf(w.o.ids[pool])}, &serial); err != nil {
+		[]any{harness.UUIDOf(w.w.IDs[pool])}, &serial); err != nil {
 		return err
 	}
-	if strconv.FormatInt(serial, 10) == w.o.ids[name] {
-		return fmt.Errorf("%w: the pool still has the serial %d", errStep, serial)
+	if strconv.FormatInt(serial, 10) == w.w.IDs[name] {
+		return fmt.Errorf("%w: the pool still has the serial %d", harness.ErrStep, serial)
 	}
 	return nil
 }
 
 // row scans the one row query answers into dest.
 func (w *workerSteps) row(ctx context.Context, query string, args []any, dest ...any) error {
-	db, err := w.o.a.s.w.database(ctx)
+	db, err := w.w.Database(ctx)
 	if err != nil {
 		return err
 	}
@@ -201,7 +203,7 @@ func (w *workerSteps) row(ctx context.Context, query string, args []any, dest ..
 	}
 	defer conn.Close(context.WithoutCancel(ctx))
 	if err := conn.QueryRow(ctx, query, args...).Scan(dest...); err != nil {
-		return fmt.Errorf("%w: %s: %w", errStep, query, err)
+		return fmt.Errorf("%w: %s: %w", harness.ErrStep, query, err)
 	}
 	return nil
 }
@@ -212,7 +214,7 @@ func (w *workerSteps) wire(replica string) (*wire.ClientWithResponses, error) {
 	if replica == "B" {
 		i = 1
 	}
-	c, err := wire.NewClientWithResponses("http://" + w.o.a.s.w.servers[i].API + "/worker/v1")
+	c, err := wire.NewClientWithResponses("http://" + w.w.Servers[i].API + "/worker/v1")
 	if err != nil {
 		return nil, fmt.Errorf("worker client: %w", err)
 	}
@@ -229,7 +231,7 @@ func (w *workerSteps) registerLauncher(
 ) error {
 	pc, ok := w.certs[cert]
 	if !ok || w.keys[key] == nil {
-		return fmt.Errorf("%w: no certificate %q or key %q", errStep, cert, key)
+		return fmt.Errorf("%w: no certificate %q or key %q", harness.ErrStep, cert, key)
 	}
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: w.keys[key]},
 		(&jose.SignerOptions{}).WithHeader("x5c",
@@ -243,7 +245,7 @@ func (w *workerSteps) registerLauncher(
 		"metadata": map[string]string{"host": launcher},
 	}
 	if named != "" {
-		payload["worker"] = w.o.ids[named]
+		payload["worker"] = w.w.IDs[named]
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
@@ -264,18 +266,18 @@ func (w *workerSteps) registerLauncher(
 // replay sends launcher's last registration through replica, with no
 // token.
 func (w *workerSteps) replay(ctx context.Context, launcher, replica string) error {
-	r, err := w.o.a.do(ctx, replica, "", http.MethodPost, "/worker/v1/register",
+	r, err := w.w.Do(ctx, replica, "", http.MethodPost, "/worker/v1/register",
 		wire.WorkerRegisterJSONRequestBody{Registration: w.registrations[launcher]})
-	if err != nil && r.status == 0 {
+	if err != nil && r.Status == 0 {
 		return err
 	}
 	var reg wire.Registration
-	if r.status == http.StatusOK {
-		if err := json.Unmarshal(r.body, &reg); err != nil {
-			return fmt.Errorf("%w: the registration answered %s", errStep, r.body)
+	if r.Status == http.StatusOK {
+		if err := json.Unmarshal(r.Body, &reg); err != nil {
+			return fmt.Errorf("%w: the registration answered %s", harness.ErrStep, r.Body)
 		}
-		w.o.ids[launcher] = reg.Worker
-		w.o.a.tokens[launcher] = reg.SessionToken
+		w.w.IDs[launcher] = reg.Worker
+		w.w.Tokens[launcher] = reg.SessionToken
 	}
 	return nil
 }
@@ -290,10 +292,10 @@ func (w *workerSteps) hold(ctx context.Context, launcher, raw, replica string) e
 	}
 	var in wire.WorkerPollJSONRequestBody
 	if err := json.Unmarshal([]byte(raw), &in); err != nil || !in.Busy {
-		return fmt.Errorf("%w: a held poll reports busy: %s", errStep, raw)
+		return fmt.Errorf("%w: a held poll reports busy: %s", harness.ErrStep, raw)
 	}
-	token := w.o.a.tokens[launcher]
-	done := make(chan response, 1)
+	token := w.w.Tokens[launcher]
+	done := make(chan harness.Response, 1)
 	w.held[launcher] = done
 	go func() {
 		resp, err := c.WorkerPollWithResponse(context.WithoutCancel(ctx), in,
@@ -302,17 +304,21 @@ func (w *workerSteps) hold(ctx context.Context, launcher, raw, replica string) e
 				return nil
 			})
 		if err != nil {
-			done <- response{err: err}
+			done <- harness.Response{Err: err}
 			return
 		}
-		done <- response{status: resp.StatusCode(), header: resp.HTTPResponse.Header, body: resp.Body}
+		done <- harness.Response{Status: resp.StatusCode(), Header: resp.HTTPResponse.Header, Body: resp.Body}
 	}()
-	return Eventually(ctx, "the held poll's worker busy", func(ctx context.Context) (bool, error) {
-		var busy bool
-		err := w.row(ctx, `SELECT busy FROM workers WHERE id = $1`,
-			[]any{uuidOf(w.o.ids[launcher])}, &busy)
-		return busy, err
-	})
+	return deps.Eventually(
+		ctx,
+		"the held poll's worker busy",
+		func(ctx context.Context) (bool, error) {
+			var busy bool
+			err := w.row(ctx, `SELECT busy FROM workers WHERE id = $1`,
+				[]any{harness.UUIDOf(w.w.IDs[launcher])}, &busy)
+			return busy, err
+		},
+	)
 }
 
 // answered waits up to secs for launcher's held poll to answer, and
@@ -320,15 +326,15 @@ func (w *workerSteps) hold(ctx context.Context, launcher, raw, replica string) e
 func (w *workerSteps) answered(launcher string, secs int) error {
 	select {
 	case r := <-w.held[launcher]:
-		if r.status == 0 {
-			return fmt.Errorf("%w: the held poll failed: %w", errStep, r.err)
+		if r.Status == 0 {
+			return fmt.Errorf("%w: the held poll failed: %w", harness.ErrStep, r.Err)
 		}
-		w.o.a.s.sent = append(w.o.a.s.sent, r)
+		w.w.Sent = append(w.w.Sent, r)
 		return nil
 	case <-time.After(time.Duration(secs) * time.Second):
 		return fmt.Errorf(
 			"%w: the held poll of %q did not answer within %ds",
-			errStep,
+			harness.ErrStep,
 			launcher,
 			secs,
 		)
@@ -345,9 +351,9 @@ func (w *workerSteps) lists(want string) error {
 			} `json:"node"`
 		} `json:"edges"`
 	}
-	r := w.o.a.s.last()
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &page) != nil {
-		return fmt.Errorf("%w: answered %d %s", errStep, r.status, r.body)
+	r := w.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &page) != nil {
+		return fmt.Errorf("%w: answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	var got, wanted []string
 	for _, e := range page.Edges {
@@ -355,11 +361,11 @@ func (w *workerSteps) lists(want string) error {
 	}
 	for name := range strings.SplitSeq(want, ",") {
 		if name = strings.TrimSpace(name); name != "" {
-			wanted = append(wanted, w.o.ids[name])
+			wanted = append(wanted, w.w.IDs[name])
 		}
 	}
 	if !slices.Equal(got, wanted) {
-		return fmt.Errorf("%w: the workers are %v, want %v", errStep, got, wanted)
+		return fmt.Errorf("%w: the workers are %v, want %v", harness.ErrStep, got, wanted)
 	}
 	return nil
 }

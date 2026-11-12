@@ -1,4 +1,4 @@
-package acceptance
+package suite
 
 import (
 	"context"
@@ -18,17 +18,20 @@ import (
 	"testing"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // harnessSteps prove the harness itself: each dependency tag starts its
 // dependency, and nested runs of the suite over fixture features show the
 // Docker rules and the evidence of a failure.
 type harnessSteps struct {
-	w *world
+	w *harness.World
 
-	db     *Database
-	store  *ObjectStore
-	issuer *Issuer
+	db     *deps.Database
+	store  *deps.ObjectStore
+	issuer *deps.Issuer
 
 	fixtures string
 	nested   struct {
@@ -55,7 +58,7 @@ func (h *harnessSteps) register(sc *godog.ScenarioContext) {
 }
 
 func (h *harnessSteps) postgres(ctx context.Context) (err error) {
-	h.db, err = h.w.database(ctx)
+	h.db, err = h.w.Database(ctx)
 	return err
 }
 
@@ -65,22 +68,22 @@ func (h *harnessSteps) query(ctx context.Context, sql, want string) error {
 		return err
 	}
 	if strings.TrimSpace(got) != want {
-		return fmt.Errorf("%w: %s answered %q, want %q", errStep, sql, got, want)
+		return fmt.Errorf("%w: %s answered %q, want %q", harness.ErrStep, sql, got, want)
 	}
 	return nil
 }
 
 func (h *harnessSteps) objectStore(ctx context.Context) (err error) {
-	h.store, err = h.w.s.deps.ObjectStore(ctx)
+	h.store, err = h.w.Suite.Deps.ObjectStore(ctx)
 	return err
 }
 
 func (h *harnessSteps) storeHealthy(ctx context.Context) error {
-	return Eventually(ctx, "the object store's health endpoint", h.store.Healthy)
+	return deps.Eventually(ctx, "the object store's health endpoint", h.store.Healthy)
 }
 
 func (h *harnessSteps) oidc() (err error) {
-	h.issuer, err = h.w.s.deps.OIDC()
+	h.issuer, err = h.w.Suite.Deps.OIDC()
 	return err
 }
 
@@ -114,7 +117,7 @@ func (h *harnessSteps) verifies(ctx context.Context, subject string) error {
 	if len(parts) != 3 || len(jwks.Keys) != 1 || disc.Issuer != h.issuer.URL() {
 		return fmt.Errorf(
 			"%w: token %d parts, %d keys, issuer %q",
-			errStep,
+			harness.ErrStep,
 			len(parts),
 			len(jwks.Keys),
 			disc.Issuer,
@@ -122,28 +125,28 @@ func (h *harnessSteps) verifies(ctx context.Context, subject string) error {
 	}
 	n, err := base64.RawURLEncoding.DecodeString(jwks.Keys[0].N)
 	if err != nil {
-		return fmt.Errorf("%w: jwks n: %w", errStep, err)
+		return fmt.Errorf("%w: jwks n: %w", harness.ErrStep, err)
 	}
 	e, err := base64.RawURLEncoding.DecodeString(jwks.Keys[0].E)
 	if err != nil {
-		return fmt.Errorf("%w: jwks e: %w", errStep, err)
+		return fmt.Errorf("%w: jwks e: %w", harness.ErrStep, err)
 	}
 	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
-		return fmt.Errorf("%w: signature: %w", errStep, err)
+		return fmt.Errorf("%w: signature: %w", harness.ErrStep, err)
 	}
 	pub := &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(new(big.Int).SetBytes(e).Int64())}
 	sum := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
 	if err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, sum[:], sig); err != nil {
-		return fmt.Errorf("%w: the JWKS key does not verify the token: %w", errStep, err)
+		return fmt.Errorf("%w: the JWKS key does not verify the token: %w", harness.ErrStep, err)
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return fmt.Errorf("%w: payload: %w", errStep, err)
+		return fmt.Errorf("%w: payload: %w", harness.ErrStep, err)
 	}
 	var claims map[string]any
 	if err := json.Unmarshal(payload, &claims); err != nil || claims["sub"] != subject {
-		return fmt.Errorf("%w: claims %s", errStep, payload)
+		return fmt.Errorf("%w: claims %s", harness.ErrStep, payload)
 	}
 	return nil
 }
@@ -178,16 +181,16 @@ func (h *harnessSteps) fixtureFeatures(dir string) error {
 // built binary and writes its evidence and coverage into the scenario's own
 // directory; with Docker it starts dependencies of its own.
 func (h *harnessSteps) runNested(ctx context.Context, without, requiring string) error {
-	bin, err := binary(ctx)
+	bin, err := harness.Binary(ctx)
 	if err != nil {
 		return err
 	}
-	h.nested.dir = h.w.dir
-	h.nested.out = filepath.Join(h.w.dir, "out")
+	h.nested.dir = h.w.Dir
+	h.nested.out = filepath.Join(h.w.Dir, "out")
 	args := []string{"-test.run", "^TestAccFeatures$"}
 	// A test binary built without -cover rejects -test.gocoverdir.
 	if testing.CoverMode() != "" {
-		cover := filepath.Join(h.w.dir, "cover")
+		cover := filepath.Join(h.w.Dir, "cover")
 		if err := os.MkdirAll(cover, 0o750); err != nil {
 			return fmt.Errorf("nested cover dir: %w", err)
 		}
@@ -195,22 +198,22 @@ func (h *harnessSteps) runNested(ctx context.Context, without, requiring string)
 	}
 	cmd := exec.CommandContext(ctx, os.Args[0], args...)
 	cmd.Env = append(os.Environ(),
-		envFeatures+"="+h.fixtures,
-		envOut+"="+h.nested.out,
-		envBinary+"="+bin,
-		envCucumber+"=",
-		envPartition+"=",
-		envTags+"=",
+		harness.EnvFeatures+"="+h.fixtures,
+		harness.EnvOut+"="+h.nested.out,
+		harness.EnvBinary+"="+bin,
+		harness.EnvCucumber+"=",
+		harness.EnvPartition+"=",
+		harness.EnvTags+"=",
 	)
 	if without != "" {
-		cmd.Env = append(cmd.Env, envNoDocker+"=1")
+		cmd.Env = append(cmd.Env, harness.EnvNoDocker+"=1")
 	} else {
-		cmd.Env = append(cmd.Env, envNoDocker+"=")
+		cmd.Env = append(cmd.Env, harness.EnvNoDocker+"=")
 	}
 	if requiring != "" {
-		cmd.Env = append(cmd.Env, envRequireDocker+"=1")
+		cmd.Env = append(cmd.Env, harness.EnvRequireDocker+"=1")
 	} else {
-		cmd.Env = append(cmd.Env, envRequireDocker+"=")
+		cmd.Env = append(cmd.Env, harness.EnvRequireDocker+"=")
 	}
 	out, err := cmd.CombinedOutput()
 	h.nested.output, h.nested.err = string(out), err
@@ -223,14 +226,14 @@ func (h *harnessSteps) nestedResult(want string) error {
 	case want == "passes" && h.nested.err != nil:
 		return fmt.Errorf(
 			"%w: the nested run failed: %w\n%s",
-			errStep,
+			harness.ErrStep,
 			h.nested.err,
 			h.nested.output,
 		)
 	case want == "fails" && !errors.As(h.nested.err, &exit):
 		return fmt.Errorf(
 			"%w: the nested run did not fail (%w)\n%s",
-			errStep,
+			harness.ErrStep,
 			h.nested.err,
 			h.nested.output,
 		)
@@ -240,19 +243,24 @@ func (h *harnessSteps) nestedResult(want string) error {
 
 func (h *harnessSteps) outputSays(text string) error {
 	if !strings.Contains(h.nested.output, text) {
-		return fmt.Errorf("%w: the nested output lacks %q:\n%s", errStep, text, h.nested.output)
+		return fmt.Errorf(
+			"%w: the nested output lacks %q:\n%s",
+			harness.ErrStep,
+			text,
+			h.nested.output,
+		)
 	}
 	return nil
 }
 
 func (h *harnessSteps) leftEvidence(file, scenario string) error {
-	p := filepath.Join(h.nested.out, slug(scenario), file)
+	p := filepath.Join(h.nested.out, harness.Slug(scenario), file)
 	if info, err := os.Stat(p); err != nil || info.Size() == 0 {
-		return fmt.Errorf("%w: no evidence %s (%w):\n%s", errStep, p, err, h.nested.output)
+		return fmt.Errorf("%w: no evidence %s (%w):\n%s", harness.ErrStep, p, err, h.nested.output)
 	}
 	return nil
 }
 
 func (h *harnessSteps) failOnPurpose() error {
-	return fmt.Errorf("%w: this fixture scenario fails on purpose", errStep)
+	return fmt.Errorf("%w: this fixture scenario fails on purpose", harness.ErrStep)
 }

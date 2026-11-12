@@ -1,4 +1,4 @@
-package acceptance
+package stacks
 
 import (
 	"cmp"
@@ -12,11 +12,15 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // stackSearchSteps drive the stack search, which pages through
 // searchStacks both ways and reads searchStacksSuggestions' values.
-type stackSearchSteps struct{ s *spaceSteps }
+type stackSearchSteps struct {
+	w *harness.World
+}
 
 func (st *stackSearchSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
@@ -62,7 +66,7 @@ func (st *stackSearchSteps) searches(
 ) error {
 	base := map[string]any{"first": n}
 	if where != "" {
-		base["predicates"] = json.RawMessage(st.s.o.resolve(where))
+		base["predicates"] = json.RawMessage(st.w.Resolve(where))
 	}
 	if by != "" {
 		order := map[string]any{"field": by}
@@ -79,17 +83,17 @@ func (st *stackSearchSteps) searches(
 		for k, v := range extra {
 			in[k] = v
 		}
-		r, err := st.s.o.a.do(ctx, replica, name, http.MethodPost, "/api/v1/stacks/search", in)
+		r, err := st.w.Do(ctx, replica, name, http.MethodPost, "/api/v1/stacks/search", in)
 		if err != nil {
 			return stackPage{}, err
 		}
 		var p stackPage
-		if json.Unmarshal(r.body, &p) != nil || r.status != http.StatusOK {
+		if json.Unmarshal(r.Body, &p) != nil || r.Status != http.StatusOK {
 			return stackPage{}, fmt.Errorf(
 				"%w: not a page of stacks: %d %s",
-				errStep,
-				r.status,
-				r.body,
+				harness.ErrStep,
+				r.Status,
+				r.Body,
 			)
 		}
 		return p, nil
@@ -101,7 +105,7 @@ func (st *stackSearchSteps) searches(
 		}
 		return out
 	}
-	w := st.s.slugList(want)
+	w := st.w.SlugList(want)
 
 	got, extra := []string{}, map[string]any{}
 	for i := 0; ; i++ {
@@ -114,12 +118,17 @@ func (st *stackSearchSteps) searches(
 			break
 		}
 		if len(p.Edges) != n || i == 20 {
-			return fmt.Errorf("%w: page %d forwards holds %d stacks", errStep, i, len(p.Edges))
+			return fmt.Errorf(
+				"%w: page %d forwards holds %d stacks",
+				harness.ErrStep,
+				i,
+				len(p.Edges),
+			)
 		}
 		extra = map[string]any{"after": p.PageInfo.EndCursor, "requestedPage": "NEXT"}
 	}
 	if !reflect.DeepEqual(got, w) {
-		return fmt.Errorf("%w: forwards the search found %v, want %v", errStep, got, w)
+		return fmt.Errorf("%w: forwards the search found %v, want %v", harness.ErrStep, got, w)
 	}
 
 	got, extra = []string{}, map[string]any{"requestedPage": "LAST"}
@@ -133,12 +142,17 @@ func (st *stackSearchSteps) searches(
 			break
 		}
 		if len(p.Edges) != n || i == 20 {
-			return fmt.Errorf("%w: page %d backwards holds %d stacks", errStep, i, len(p.Edges))
+			return fmt.Errorf(
+				"%w: page %d backwards holds %d stacks",
+				harness.ErrStep,
+				i,
+				len(p.Edges),
+			)
 		}
 		extra = map[string]any{"after": p.PageInfo.StartCursor, "requestedPage": "PREVIOUS"}
 	}
 	if !reflect.DeepEqual(got, w) {
-		return fmt.Errorf("%w: backwards the search found %v, want %v", errStep, got, w)
+		return fmt.Errorf("%w: backwards the search found %v, want %v", harness.ErrStep, got, w)
 	}
 	return nil
 }
@@ -163,18 +177,18 @@ func (st *stackSearchSteps) suggests(field, want string, count int) error {
 		Fields        []suggested `json:"fields"`
 		FilteredCount int         `json:"filteredCount"`
 	}
-	r := st.s.o.a.s.last()
-	if json.Unmarshal(r.body, &out) != nil || r.status != http.StatusOK {
-		return fmt.Errorf("%w: not suggestions: %d %s", errStep, r.status, r.body)
+	r := st.w.Last()
+	if json.Unmarshal(r.Body, &out) != nil || r.Status != http.StatusOK {
+		return fmt.Errorf("%w: not suggestions: %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	i := slices.IndexFunc(out.Fields, func(f suggested) bool { return f.Name == field })
 	if i < 0 {
-		return fmt.Errorf("%w: no field %s: %s", errStep, field, r.body)
+		return fmt.Errorf("%w: no field %s: %s", harness.ErrStep, field, r.Body)
 	}
 	f := out.Fields[i]
 	v := cmp.Or(f.String, f.Enum, f.Boolean, f.Hierarchy)
 	if v == nil {
-		return fmt.Errorf("%w: %s lists no values: %s", errStep, field, r.body)
+		return fmt.Errorf("%w: %s lists no values: %s", harness.ErrStep, field, r.Body)
 	}
 	got := []string{}
 	for j, raw := range v.Values {
@@ -187,8 +201,8 @@ func (st *stackSearchSteps) suggests(field, want string, count int) error {
 		}
 		got = append(got, value+":"+strconv.Itoa(v.Counts[j]))
 	}
-	if w := st.s.slugList(want); !reflect.DeepEqual(got, w) || out.FilteredCount != count {
-		return fmt.Errorf("%w: %s suggests %v of %d, want %v of %d", errStep, field, got,
+	if w := st.w.SlugList(want); !reflect.DeepEqual(got, w) || out.FilteredCount != count {
+		return fmt.Errorf("%w: %s suggests %v of %d, want %v of %d", harness.ErrStep, field, got,
 			out.FilteredCount, w, count)
 	}
 	return nil
@@ -202,20 +216,20 @@ func (st *stackSearchSteps) resumes(
 	name, by, replica, from, short string,
 ) error {
 	first := map[string]any{"first": 1, "orderBy": []any{map[string]any{"field": from}}}
-	r, err := st.s.o.a.do(ctx, replica, name, http.MethodPost, "/api/v1/stacks/search", first)
+	r, err := st.w.Do(ctx, replica, name, http.MethodPost, "/api/v1/stacks/search", first)
 	if err != nil {
 		return err
 	}
 	var p stackPage
-	if json.Unmarshal(r.body, &p) != nil || r.status != http.StatusOK ||
+	if json.Unmarshal(r.Body, &p) != nil || r.Status != http.StatusOK ||
 		p.PageInfo.EndCursor == "" {
-		return fmt.Errorf("%w: no cursor in %d %s", errStep, r.status, r.body)
+		return fmt.Errorf("%w: no cursor in %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	after := p.PageInfo.EndCursor
 	if short != "" {
 		after = after[:len(after)/2]
 	}
-	_, err = st.s.o.a.do(
+	_, err = st.w.Do(
 		ctx,
 		replica,
 		name,

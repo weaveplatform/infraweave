@@ -18,7 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek/awskms"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek/kektest"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/objectstoretest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func endpoint(url string) func(*kms.Options) {
@@ -40,7 +40,7 @@ func environment(t *testing.T) {
 // by its ARN and by an alias.
 func TestAccAWSKMS(t *testing.T) {
 	environment(t)
-	url := objectstoretest.Emulator(t, acceptance.ImageMoto, "5000/tcp",
+	url := objectstoretest.Emulator(t, deps.ImageMoto, "5000/tcp",
 		testcontainers.WithWaitStrategy(wait.ForHTTP("/moto-api/").WithPort("5000/tcp")))
 	c := kek.AWSKMSConfig{Region: "us-east-1"}
 	admin := kms.New(kms.Options{

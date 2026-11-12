@@ -1,4 +1,4 @@
-package acceptance
+package authz
 
 import (
 	"context"
@@ -9,10 +9,14 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // roleSteps drive the Roles tag.
-type roleSteps struct{ o *orgSteps }
+type roleSteps struct {
+	w *harness.World
+}
 
 func (s *roleSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
@@ -26,7 +30,7 @@ func (s *roleSteps) register(sc *godog.ScenarioContext) {
 // action of the catalogue that is neither disabled nor deprecated, in
 // the catalogue's order.
 func (s *roleSteps) holdsAll(ctx context.Context, name, slug, replica string) error {
-	c, err := s.o.a.do(ctx, replica, name, http.MethodGet, "/api/v1/actions", nil)
+	c, err := s.w.Do(ctx, replica, name, http.MethodGet, "/api/v1/actions", nil)
 	if err != nil {
 		return err
 	}
@@ -35,8 +39,8 @@ func (s *roleSteps) holdsAll(ctx context.Context, name, slug, replica string) er
 		Deprecated bool   `json:"deprecated"`
 		Disabled   bool   `json:"disabled"`
 	}
-	if json.Unmarshal(c.body, &catalogue) != nil || c.status != http.StatusOK {
-		return fmt.Errorf("%w: no catalogue: %d %.200s", errStep, c.status, c.body)
+	if json.Unmarshal(c.Body, &catalogue) != nil || c.Status != http.StatusOK {
+		return fmt.Errorf("%w: no catalogue: %d %.200s", harness.ErrStep, c.Status, c.Body)
 	}
 	want := []string{}
 	for _, a := range catalogue {
@@ -44,18 +48,18 @@ func (s *roleSteps) holdsAll(ctx context.Context, name, slug, replica string) er
 			want = append(want, a.Action)
 		}
 	}
-	r, err := s.o.a.do(ctx, replica, name, http.MethodGet, "/api/v1/roles/"+slug, nil)
+	r, err := s.w.Do(ctx, replica, name, http.MethodGet, "/api/v1/roles/"+slug, nil)
 	if err != nil {
 		return err
 	}
 	var role struct {
 		Actions []string `json:"actions"`
 	}
-	if json.Unmarshal(r.body, &role) != nil || r.status != http.StatusOK {
-		return fmt.Errorf("%w: no role %s: %d %s", errStep, slug, r.status, r.body)
+	if json.Unmarshal(r.Body, &role) != nil || r.Status != http.StatusOK {
+		return fmt.Errorf("%w: no role %s: %d %s", harness.ErrStep, slug, r.Status, r.Body)
 	}
 	if !reflect.DeepEqual(role.Actions, want) {
-		return fmt.Errorf("%w: %s holds %d actions, want the %d assignable", errStep, slug,
+		return fmt.Errorf("%w: %s holds %d actions, want the %d assignable", harness.ErrStep, slug,
 			len(role.Actions), len(want))
 	}
 	return nil
@@ -70,14 +74,20 @@ func (s *roleSteps) names(pointer, action string) error {
 			Message string `json:"message"`
 		} `json:"errors"`
 	}
-	r := s.o.a.s.last()
-	if json.Unmarshal(r.body, &p) == nil {
+	r := s.w.Last()
+	if json.Unmarshal(r.Body, &p) == nil {
 		for _, e := range p.Errors {
 			if e.Pointer == pointer && strings.Contains(e.Message, action) {
 				return nil
 			}
 		}
 	}
-	return fmt.Errorf("%w: no error at %s naming %s: %d %s", errStep, pointer, action, r.status,
-		r.body)
+	return fmt.Errorf(
+		"%w: no error at %s naming %s: %d %s",
+		harness.ErrStep,
+		pointer,
+		action,
+		r.Status,
+		r.Body,
+	)
 }

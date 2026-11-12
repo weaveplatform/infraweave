@@ -9,7 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port/sourcetest"
-	"github.com/weaveplatform/infraweave/test/acceptance"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // TestAccSourceGitea checks that Source keeps the contract over a Gitea
@@ -17,16 +17,16 @@ import (
 // one deep, and a want no ref reaches refused. Without a Docker daemon it
 // skips, unless sqltest.RequireDocker is 1, as CI sets it.
 func TestAccSourceGitea(t *testing.T) {
-	if err := acceptance.DockerReachable(t.Context()); err != nil {
+	if err := deps.DockerReachable(t.Context()); err != nil {
 		if os.Getenv(sqltest.RequireDocker) != "1" {
 			t.Skipf("Gitea: %v (set %s=1 to fail instead)", err, sqltest.RequireDocker)
 		}
 		t.Fatalf("Gitea: %v", err)
 	}
-	var deps acceptance.Dependencies
+	var d deps.Dependencies
 	// t.Context has ended by the time cleanups run.
-	t.Cleanup(func() { _ = deps.Close(context.Background()) })
-	g, err := deps.Gitea(t.Context())
+	t.Cleanup(func() { _ = d.Close(context.Background()) })
+	g, err := d.Gitea(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

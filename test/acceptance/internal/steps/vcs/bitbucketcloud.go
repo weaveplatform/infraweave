@@ -1,12 +1,15 @@
-package acceptance
+package vcs
 
 import (
+	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/bitbucketcloudfake"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // bitbucketCloudSteps run the Bitbucket Cloud a @bitbucket-cloud
@@ -14,11 +17,9 @@ import (
 // whose certificate they trust through vcs.ca_file and whose API they
 // reach through vcs.bitbucket_cloud.api_host.
 type bitbucketCloudSteps struct {
+	w    *harness.World
 	fake *bitbucketcloudfake.Fake
 	srv  *bitbucketcloudfake.Server
-	// ids are the scenario's kept values, which the requests name as
-	// {key}, shared with the organization steps.
-	ids map[string]string
 }
 
 func (b *bitbucketCloudSteps) register(sc *godog.ScenarioContext) {
@@ -44,8 +45,27 @@ func (b *bitbucketCloudSteps) start() []byte {
 // apiHost is the fake's API, which vcs.bitbucket_cloud.api_host names.
 func (b *bitbucketCloudSteps) apiHost() string { return b.srv.APIHost }
 
-// stop stops the fake, if the scenario started it.
-func (b *bitbucketCloudSteps) stop() {
+// VCS starts the fake for a @bitbucket-cloud scenario on first use, and returns the
+// vcs settings and certificate every server of the scenario needs while
+// it runs.
+func (b *bitbucketCloudSteps) VCS(
+	_ context.Context,
+	w *harness.World,
+) (map[string]any, []byte, error) {
+	var ca []byte
+	if slices.Contains(w.Tags, "@bitbucket-cloud") && b.srv == nil {
+		ca = b.start()
+	} else if b.srv != nil {
+		ca = b.srv.CA
+	}
+	if b.srv == nil {
+		return nil, nil, nil
+	}
+	return map[string]any{"bitbucket_cloud": map[string]any{"api_host": b.apiHost()}}, ca, nil
+}
+
+// Stop stops the fake, if the scenario started it.
+func (b *bitbucketCloudSteps) Stop() {
 	if b.srv != nil {
 		b.srv.Close()
 	}
@@ -56,10 +76,10 @@ func (b *bitbucketCloudSteps) account(email, key string) error {
 	if b.fake == nil {
 		return fmt.Errorf(
 			"%w: a Bitbucket Cloud account needs a @bitbucket-cloud scenario",
-			errStep,
+			harness.ErrStep,
 		)
 	}
-	b.ids[key] = b.fake.AddToken(email)
+	b.w.IDs[key] = b.fake.AddToken(email)
 	return nil
 }
 
@@ -71,7 +91,7 @@ func (b *bitbucketCloudSteps) repository(path, email, key string) error {
 		return err
 	}
 	b.fake.Grant(workspace, slug, email, bitbucketcloudfake.Admin)
-	b.ids[key] = b.fake.Repo(workspace, slug).Commit("main", "first", map[string]string{
+	b.w.IDs[key] = b.fake.Repo(workspace, slug).Commit("main", "first", map[string]string{
 		"main.tf": "# first\n",
 	})
 	return nil
@@ -84,7 +104,7 @@ func (b *bitbucketCloudSteps) commit(branch, path, key string) error {
 	if err != nil {
 		return err
 	}
-	b.ids[key] = b.fake.Repo(workspace, slug).Commit(branch, key, map[string]string{
+	b.w.IDs[key] = b.fake.Repo(workspace, slug).Commit(branch, key, map[string]string{
 		"main.tf": "# " + key + "\n",
 	})
 	return nil
@@ -96,7 +116,7 @@ func (b *bitbucketCloudSteps) split(path string) (workspace, slug string, err er
 	if b.fake == nil || !ok || workspace == "" || slug == "" {
 		return "", "", fmt.Errorf(
 			"%w: no Bitbucket Cloud repository %q in this scenario",
-			errStep,
+			harness.ErrStep,
 			path,
 		)
 	}

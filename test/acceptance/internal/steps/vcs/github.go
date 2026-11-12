@@ -1,17 +1,20 @@
-package acceptance
+package vcs
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/githubfake"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // githubSteps run the GitHub host a @github scenario's servers reach: an
@@ -20,15 +23,12 @@ import (
 // acme, which the servers' vcs.github_app names. Its URL is {githubHost}
 // to the scenario's requests.
 type githubSteps struct {
-	o    *orgSteps
+	w    *harness.World
 	fake *githubfake.Fake
 	srv  *githubfake.Server
 	// app0 is the vcs.github_app settings every server of the scenario
 	// reads.
 	app0 map[string]any
-	// ids are the scenario's kept values, which the requests name as
-	// {key}, shared with the organization steps.
-	ids map[string]string
 }
 
 func (g *githubSteps) register(sc *godog.ScenarioContext) {
@@ -58,7 +58,7 @@ func (g *githubSteps) start(dir string) (map[string]any, []byte, error) {
 	if err := os.WriteFile(secret, []byte(op.WebhookSecret), 0o600); err != nil {
 		return nil, nil, fmt.Errorf("operator App secret: %w", err)
 	}
-	g.ids["githubHost"] = g.srv.URL
+	g.w.IDs["githubHost"] = g.srv.URL
 	g.app0 = map[string]any{
 		"app_id": strconv.FormatInt(op.ID, 10), "private_key_file": key,
 		"webhook_secret_file": secret, "api_host": g.srv.URL,
@@ -66,8 +66,25 @@ func (g *githubSteps) start(dir string) (map[string]any, []byte, error) {
 	return g.app0, g.srv.CA, nil
 }
 
-// stop stops the fake, if the scenario started it.
-func (g *githubSteps) stop() {
+// VCS starts the fake for a @github scenario on first use, and returns the
+// vcs settings and certificate every server of the scenario needs while
+// it runs.
+func (g *githubSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
+	if slices.Contains(w.Tags, "@github") && g.srv == nil {
+		app, ca, err := g.start(w.Dir)
+		if err != nil {
+			return nil, nil, err
+		}
+		return map[string]any{"github_app": app}, ca, nil
+	}
+	if g.srv != nil {
+		return map[string]any{"github_app": g.app0}, g.srv.CA, nil
+	}
+	return nil, nil, nil
+}
+
+// Stop stops the fake, if the scenario started it.
+func (g *githubSteps) Stop() {
 	if g.srv != nil {
 		g.srv.Close()
 	}
@@ -78,7 +95,7 @@ func (g *githubSteps) stop() {
 // {keyKey}.
 func (g *githubSteps) app(key, org string) error {
 	if g.fake == nil {
-		return fmt.Errorf("%w: a GitHub App needs a @github scenario", errStep)
+		return fmt.Errorf("%w: a GitHub App needs a @github scenario", harness.ErrStep)
 	}
 	app := g.fake.AddApp(key, org)
 	g.fake.Install(app.ID, org, "Organization", "infra")
@@ -86,8 +103,8 @@ func (g *githubSteps) app(key, org string) error {
 	if err != nil {
 		return fmt.Errorf("escape the key of %s: %w", key, err)
 	}
-	g.ids[key+"ID"] = strconv.FormatInt(app.ID, 10)
-	g.ids[key+"Key"] = strings.Trim(string(pem), `"`)
+	g.w.IDs[key+"ID"] = strconv.FormatInt(app.ID, 10)
+	g.w.IDs[key+"Key"] = strings.Trim(string(pem), `"`)
 	return nil
 }
 
@@ -96,9 +113,9 @@ func (g *githubSteps) app(key, org string) error {
 func (g *githubSteps) commit(branch, path, key string) error {
 	owner, name, ok := strings.Cut(path, "/")
 	if g.fake == nil || !ok {
-		return fmt.Errorf("%w: no GitHub repository %q in this scenario", errStep, path)
+		return fmt.Errorf("%w: no GitHub repository %q in this scenario", harness.ErrStep, path)
 	}
-	g.ids[key] = g.fake.Repo(owner, name).Commit(branch, key, map[string]string{
+	g.w.IDs[key] = g.fake.Repo(owner, name).Commit(branch, key, map[string]string{
 		"main.tf": "# " + key + "\n",
 	})
 	return nil
@@ -107,9 +124,9 @@ func (g *githubSteps) commit(branch, path, key string) error {
 // deaf unsubscribes the App kept as key from every event, so its
 // connection test fails.
 func (g *githubSteps) deaf(key string) error {
-	id, err := strconv.ParseInt(g.ids[key+"ID"], 10, 64)
+	id, err := strconv.ParseInt(g.w.IDs[key+"ID"], 10, 64)
 	if err != nil {
-		return fmt.Errorf("%w: no GitHub App %s", errStep, key)
+		return fmt.Errorf("%w: no GitHub App %s", harness.ErrStep, key)
 	}
 	g.fake.SetApp(id, githubfake.Permissions, []string{})
 	return nil
@@ -119,9 +136,9 @@ func (g *githubSteps) deaf(key string) error {
 // acme, as GitHub redirects back with after its manifest form.
 func (g *githubSteps) code(key string) error {
 	if g.fake == nil {
-		return fmt.Errorf("%w: a manifest code needs a @github scenario", errStep)
+		return fmt.Errorf("%w: a manifest code needs a @github scenario", harness.ErrStep)
 	}
-	g.ids[key] = g.fake.ManifestCode("acme")
+	g.w.IDs[key] = g.fake.ManifestCode("acme")
 	return nil
 }
 
@@ -130,14 +147,14 @@ func (g *githubSteps) state(key string) error {
 	var m struct {
 		Endpoint string `json:"endpoint"`
 	}
-	r := g.o.a.s.last()
-	if err := json.Unmarshal(r.body, &m); err != nil {
-		return fmt.Errorf("%w: no manifest form in %d %s", errStep, r.status, r.body)
+	r := g.w.Last()
+	if err := json.Unmarshal(r.Body, &m); err != nil {
+		return fmt.Errorf("%w: no manifest form in %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	u, err := url.Parse(m.Endpoint)
 	if err != nil || u.Query().Get("state") == "" {
-		return fmt.Errorf("%w: no state in the endpoint %q", errStep, m.Endpoint)
+		return fmt.Errorf("%w: no state in the endpoint %q", harness.ErrStep, m.Endpoint)
 	}
-	g.ids[key] = u.Query().Get("state")
+	g.w.IDs[key] = u.Query().Get("state")
 	return nil
 }

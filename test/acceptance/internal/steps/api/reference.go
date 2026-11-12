@@ -1,4 +1,4 @@
-package acceptance
+package api
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/api"
 	"github.com/weaveplatform/infraweave/internal/devtools/specref"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // referenceDir is the committed reference, relative to this package.
@@ -88,7 +89,7 @@ func (s *referenceSteps) upToDate(ctx context.Context) error {
 
 func (s *referenceSteps) validates(ctx context.Context) error {
 	if s.doc.OpenAPI != "3.0.3" {
-		return fmt.Errorf("%w: openapi = %s", errStep, s.doc.OpenAPI)
+		return fmt.Errorf("%w: openapi = %s", harness.ErrStep, s.doc.OpenAPI)
 	}
 	return s.doc.Validate(ctx, openapi3.DisableExamplesValidation())
 }
@@ -105,7 +106,7 @@ func (s *referenceSteps) everyFieldAccounted() error {
 	}
 	for _, e := range s.gen.Report.Excluded {
 		if strings.TrimSpace(e.Reason) == "" {
-			return fmt.Errorf("%w: %s excluded without a reason", errStep, e.Field)
+			return fmt.Errorf("%w: %s excluded without a reason", harness.ErrStep, e.Field)
 		}
 		accounted[e.Field] = true
 	}
@@ -116,14 +117,18 @@ func (s *referenceSteps) everyFieldAccounted() error {
 		}
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("%w: not in the reference: %s", errStep, strings.Join(missing, ", "))
+		return fmt.Errorf(
+			"%w: not in the reference: %s",
+			harness.ErrStep,
+			strings.Join(missing, ", "),
+		)
 	}
 	return nil
 }
 
 func (s *referenceSteps) noRPC() error {
 	if rpc := s.gen.Report.RPC; len(rpc) > 0 {
-		return fmt.Errorf("%w: RPC-shaped: %v", errStep, rpc)
+		return fmt.Errorf("%w: RPC-shaped: %v", harness.ErrStep, rpc)
 	}
 	return nil
 }
@@ -135,10 +140,16 @@ func (s *referenceSteps) pathArgument(param, method, path, argument string) erro
 	}
 	p := op.Parameters.GetByInAndName(openapi3.ParameterInPath, param)
 	if p == nil {
-		return fmt.Errorf("%w: %s %s has no path parameter %s", errStep, method, path, param)
+		return fmt.Errorf(
+			"%w: %s %s has no path parameter %s",
+			harness.ErrStep,
+			method,
+			path,
+			param,
+		)
 	}
 	if got := p.Extensions["x-graphql-arg"]; got != argument {
-		return fmt.Errorf("%w: {%s} carries %v, want %s", errStep, param, got, argument)
+		return fmt.Errorf("%w: {%s} carries %v, want %s", harness.ErrStep, param, got, argument)
 	}
 	return nil
 }
@@ -151,7 +162,7 @@ func (s *referenceSteps) bodyLacks(method, path, dotted string) error {
 		return err
 	}
 	if op.RequestBody == nil {
-		return fmt.Errorf("%w: %s %s has no request body", errStep, method, path)
+		return fmt.Errorf("%w: %s %s has no request body", harness.ErrStep, method, path)
 	}
 	schema := op.RequestBody.Value.Content.Get("application/json").Schema
 	parts := strings.Split(dotted, ".")
@@ -162,12 +173,18 @@ func (s *referenceSteps) bodyLacks(method, path, dotted string) error {
 		next, ok := schema.Value.Properties[name]
 		if i == len(parts)-1 {
 			if ok {
-				return fmt.Errorf("%w: %s %s body carries %s", errStep, method, path, dotted)
+				return fmt.Errorf(
+					"%w: %s %s body carries %s",
+					harness.ErrStep,
+					method,
+					path,
+					dotted,
+				)
 			}
 			return nil
 		}
 		if !ok {
-			return fmt.Errorf("%w: %s %s body has no %s", errStep, method, path, name)
+			return fmt.Errorf("%w: %s %s body has no %s", harness.ErrStep, method, path, name)
 		}
 		schema = next
 	}
@@ -177,11 +194,11 @@ func (s *referenceSteps) bodyLacks(method, path, dotted string) error {
 func (s *referenceSteps) operation(method, path string) (*openapi3.Operation, error) {
 	item := s.doc.Paths.Value(path)
 	if item == nil {
-		return nil, fmt.Errorf("%w: no path %s", errStep, path)
+		return nil, fmt.Errorf("%w: no path %s", harness.ErrStep, path)
 	}
 	op := item.GetOperation(method)
 	if op == nil {
-		return nil, fmt.Errorf("%w: no %s on %s", errStep, method, path)
+		return nil, fmt.Errorf("%w: no %s on %s", harness.ErrStep, method, path)
 	}
 	return op, nil
 }
@@ -195,7 +212,7 @@ func (s *referenceSteps) standsFor(method, path, kind, field string) error {
 	if g["operation"] != kind || g["field"] != field {
 		return fmt.Errorf(
 			"%w: %s %s stands for %v, want %s %s",
-			errStep,
+			harness.ErrStep,
 			method,
 			path,
 			g,
@@ -212,7 +229,7 @@ func (s *referenceSteps) public(method, path string) error {
 		return err
 	}
 	if op.Security == nil || len(*op.Security) != 0 {
-		return fmt.Errorf("%w: %s %s requires authentication", errStep, method, path)
+		return fmt.Errorf("%w: %s %s requires authentication", harness.ErrStep, method, path)
 	}
 	return nil
 }
@@ -223,7 +240,12 @@ func (s *referenceSteps) secured(method, path string) error {
 		return err
 	}
 	if op.Security != nil || len(s.doc.Security) == 0 {
-		return fmt.Errorf("%w: %s %s does not inherit bearer authentication", errStep, method, path)
+		return fmt.Errorf(
+			"%w: %s %s does not inherit bearer authentication",
+			harness.ErrStep,
+			method,
+			path,
+		)
 	}
 	return nil
 }
@@ -231,11 +253,11 @@ func (s *referenceSteps) secured(method, path string) error {
 func (s *referenceSteps) property(schema, prop string) (*openapi3.SchemaRef, error) {
 	sc := s.doc.Components.Schemas[schema]
 	if sc == nil {
-		return nil, fmt.Errorf("%w: no schema %s", errStep, schema)
+		return nil, fmt.Errorf("%w: no schema %s", harness.ErrStep, schema)
 	}
 	p := sc.Value.Properties[prop]
 	if p == nil {
-		return nil, fmt.Errorf("%w: %s has no property %s", errStep, schema, prop)
+		return nil, fmt.Errorf("%w: %s has no property %s", harness.ErrStep, schema, prop)
 	}
 	return p, nil
 }
@@ -247,7 +269,14 @@ func (s *referenceSteps) setByTerraform(schema, prop, attr string) error {
 	}
 	names, _ := p.Value.Extensions["x-terraform"].([]any)
 	if !slices.Contains(names, any(attr)) {
-		return fmt.Errorf("%w: %s.%s x-terraform = %v, want %s", errStep, schema, prop, names, attr)
+		return fmt.Errorf(
+			"%w: %s.%s x-terraform = %v, want %s",
+			harness.ErrStep,
+			schema,
+			prop,
+			names,
+			attr,
+		)
 	}
 	return nil
 }
@@ -258,7 +287,7 @@ func (s *referenceSteps) hasDescription(schema, prop string) error {
 		return err
 	}
 	if strings.TrimSpace(p.Value.Description) == "" {
-		return fmt.Errorf("%w: %s.%s has no description", errStep, schema, prop)
+		return fmt.Errorf("%w: %s.%s has no description", harness.ErrStep, schema, prop)
 	}
 	return nil
 }
@@ -269,7 +298,14 @@ func (s *referenceSteps) refersTo(schema, prop, target string) error {
 		return err
 	}
 	if p.Ref != "#/components/schemas/"+target {
-		return fmt.Errorf("%w: %s.%s refers to %q, want %s", errStep, schema, prop, p.Ref, target)
+		return fmt.Errorf(
+			"%w: %s.%s refers to %q, want %s",
+			harness.ErrStep,
+			schema,
+			prop,
+			p.Ref,
+			target,
+		)
 	}
 	return nil
 }

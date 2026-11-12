@@ -1,4 +1,4 @@
-package acceptance
+package harness
 
 import (
 	"bufio"
@@ -16,6 +16,8 @@ import (
 	"syscall"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // BuildBinary builds cmd/<name>, infraweave or infraweavectl, from the
@@ -103,10 +105,6 @@ func (l *lockedBuffer) Bytes() []byte {
 	return bytes.Clone(l.b.Bytes())
 }
 
-// KEK is the local KEK every server the harness starts runs with, in
-// INFRAWEAVE_SECRETS_KEK: a test key, which seals only test databases.
-const KEK = "hP6o+wuSeiPv+itTPyT9Ej7ptu/ap7Ll9sm5e6qab3k="
-
 // ErrExited is returned when the server exits before it is ready.
 var ErrExited = errors.New("infraweave exited")
 
@@ -147,7 +145,7 @@ func start(
 	s := &Server{Config: config, done: make(chan struct{})}
 	// The process outlives the step that starts it; Stop ends it.
 	s.cmd = exec.Command(bin, mode, "--config", path) //nolint:noctx // see above
-	s.cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir, "INFRAWEAVE_SECRETS_KEK="+KEK)
+	s.cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir, "INFRAWEAVE_SECRETS_KEK="+deps.KEK)
 	s.cmd.Env = append(s.cmd.Env, env...)
 	s.cmd.Stdout, s.cmd.Stderr = &s.stdout, &s.stderr
 	if err := s.cmd.Start(); err != nil {
@@ -157,20 +155,24 @@ func start(
 		s.waitErr = s.cmd.Wait()
 		close(s.done)
 	}()
-	err := Eventually(ctx, "infraweave to log its listeners", func(context.Context) (bool, error) {
-		if s.exited() {
-			return false, fmt.Errorf(
-				"%w %w: %w: %s",
-				errPermanent,
-				ErrExited,
-				s.waitErr,
-				s.stderr.Bytes(),
-			)
-		}
-		return s.listening(), nil
-	})
+	err := deps.Eventually(
+		ctx,
+		"infraweave to log its listeners",
+		func(context.Context) (bool, error) {
+			if s.exited() {
+				return false, fmt.Errorf(
+					"%w %w: %w: %s",
+					deps.ErrPermanent,
+					ErrExited,
+					s.waitErr,
+					s.stderr.Bytes(),
+				)
+			}
+			return s.listening(), nil
+		},
+	)
 	if err == nil {
-		err = Eventually(
+		err = deps.Eventually(
 			ctx,
 			"GET /livez on the admin listener",
 			func(ctx context.Context) (bool, error) {
@@ -237,9 +239,13 @@ func (s *Server) Stop(ctx context.Context) error {
 		!errors.Is(err, os.ErrProcessDone) {
 		return fmt.Errorf("stop infraweave: %w", err)
 	}
-	err := Eventually(ctx, "infraweave to exit after SIGTERM", func(context.Context) (bool, error) {
-		return s.exited(), nil
-	})
+	err := deps.Eventually(
+		ctx,
+		"infraweave to exit after SIGTERM",
+		func(context.Context) (bool, error) {
+			return s.exited(), nil
+		},
+	)
 	if err != nil {
 		_ = s.cmd.Process.Kill()
 		<-s.done
@@ -271,7 +277,7 @@ func (s *Server) Signal(sig os.Signal) error {
 
 // ExitCode waits for the process to exit and returns its exit code.
 func (s *Server) ExitCode(ctx context.Context) (int, error) {
-	err := Eventually(ctx, "infraweave to exit", func(context.Context) (bool, error) {
+	err := deps.Eventually(ctx, "infraweave to exit", func(context.Context) (bool, error) {
 		return s.exited(), nil
 	})
 	if err != nil {

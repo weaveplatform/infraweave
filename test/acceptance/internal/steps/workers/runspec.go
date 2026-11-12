@@ -1,4 +1,4 @@
-package acceptance
+package workers
 
 import (
 	"bytes"
@@ -9,31 +9,32 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // assigned checks that the last answer, a poll's, assigns the run kept as
 // run, and keeps its run token as token, for a step to send with.
 func (w *workerSteps) assigned(run, token string) error {
 	var poll wire.PollResult
-	r := w.o.a.s.last()
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &poll) != nil ||
+	r := w.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &poll) != nil ||
 		poll.Assignment == nil {
-		return fmt.Errorf("%w: answered %d %s", errStep, r.status, r.body)
+		return fmt.Errorf("%w: answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
-	if poll.Assignment.Run != w.o.ids[run] || poll.Assignment.RunToken == "" {
-		return fmt.Errorf("%w: assigned %+v, want the run %s", errStep, *poll.Assignment,
-			w.o.ids[run])
+	if poll.Assignment.Run != w.w.IDs[run] || poll.Assignment.RunToken == "" {
+		return fmt.Errorf("%w: assigned %+v, want the run %s", harness.ErrStep, *poll.Assignment,
+			w.w.IDs[run])
 	}
-	w.o.a.tokens[token] = poll.Assignment.RunToken
+	w.w.Tokens[token] = poll.Assignment.RunToken
 	return nil
 }
 
 // spec is the last answer, a run's specification.
 func (w *workerSteps) spec() (wire.RunSpec, error) {
 	var s wire.RunSpec
-	r := w.o.a.s.last()
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &s) != nil {
-		return s, fmt.Errorf("%w: answered %d %s", errStep, r.status, r.body)
+	r := w.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &s) != nil {
+		return s, fmt.Errorf("%w: answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	return s, nil
 }
@@ -56,9 +57,9 @@ func (w *workerSteps) variable(name, want string) error {
 		case want != "" && !v.WriteOnly && v.Value != nil && *v.Value == want:
 			return nil
 		}
-		return fmt.Errorf("%w: the variable %s is %+v", errStep, name, v)
+		return fmt.Errorf("%w: the variable %s is %+v", harness.ErrStep, name, v)
 	}
-	return fmt.Errorf("%w: the specification has no variable %s", errStep, name)
+	return fmt.Errorf("%w: the specification has no variable %s", harness.ErrStep, name)
 }
 
 // sealed opens the last answer's sealed part, a run's specification's,
@@ -73,7 +74,7 @@ func (w *workerSteps) sealed(csr, name, want string) error {
 	}
 	key, ok := w.keys[csr].(*ecdsa.PrivateKey)
 	if !ok {
-		return fmt.Errorf("%w: no P-256 key of %q", errStep, csr)
+		return fmt.Errorf("%w: no P-256 key of %q", harness.ErrStep, csr)
 	}
 	priv, err := key.ECDH()
 	if err != nil {
@@ -81,17 +82,17 @@ func (w *workerSteps) sealed(csr, name, want string) error {
 	}
 	plain, err := seal.OpenEnvelope(priv, s.Run.Id, s.Run.StateVersion, s.Sealed)
 	if err != nil {
-		return fmt.Errorf("%w: the sealed part does not open: %w", errStep, err)
+		return fmt.Errorf("%w: the sealed part does not open: %w", harness.ErrStep, err)
 	}
 	dec := json.NewDecoder(bytes.NewReader(plain))
 	dec.DisallowUnknownFields()
 	var secrets wire.RunSpecSecrets
 	if err := dec.Decode(&secrets); err != nil {
-		return fmt.Errorf("%w: the secrets: %w", errStep, err)
+		return fmt.Errorf("%w: the secrets: %w", harness.ErrStep, err)
 	}
 	if secrets.Environment[name] != want || secrets.ApiToken == "" ||
 		len(secrets.ArtifactKey) != 32 {
-		return fmt.Errorf("%w: %s is %q, with %d bytes of artifact key", errStep, name,
+		return fmt.Errorf("%w: %s is %q, with %d bytes of artifact key", harness.ErrStep, name,
 			secrets.Environment[name], len(secrets.ArtifactKey))
 	}
 	return nil

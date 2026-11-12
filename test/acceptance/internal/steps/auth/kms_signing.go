@@ -1,4 +1,4 @@
-package acceptance
+package auth
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // kmsSteps drive the kms token-signing backend on the @vault container's
@@ -17,7 +19,7 @@ import (
 //
 // ref: decision 0006
 type kmsSteps struct {
-	s *servedSteps
+	w *harness.World
 	// ref is the scenario's kms_keys reference, <mount>/<key>/<version>.
 	ref string
 	// err is why the last start failed.
@@ -41,25 +43,25 @@ func (k *kmsSteps) register(sc *godog.ScenarioContext) {
 // server it starts to sign with its version 1, reaching Vault through
 // secrets.kek.vault with a token file while the KEK stays local.
 func (k *kmsSteps) onTransit(ctx context.Context, typ string) error {
-	w := k.s.w
-	v, err := w.s.deps.Vault(ctx)
+	w := k.w
+	v, err := w.Suite.Deps.Vault(ctx)
 	if err != nil {
 		return err
 	}
-	name := fmt.Sprintf("signing-%d", w.s.deps.keys.Add(1))
-	if err := v.post(ctx, "transit/keys/"+name, `{"type":"`+typ+`"}`); err != nil {
+	name := fmt.Sprintf("signing-%d", w.Suite.Deps.Serial())
+	if err := v.Post(ctx, "transit/keys/"+name, `{"type":"`+typ+`"}`); err != nil {
 		return fmt.Errorf("@vault: %w", err)
 	}
-	token := filepath.Join(w.dir, "vault-token")
+	token := filepath.Join(w.Dir, "vault-token")
 	if err := os.WriteFile(token, []byte(v.Token), 0o600); err != nil {
 		return fmt.Errorf("vault token: %w", err)
 	}
 	k.ref = "transit/" + name + "/1"
-	w.kek = map[string]any{"provider": "local", "vault": map[string]any{
+	w.SetKEK(map[string]any{"provider": "local", "vault": map[string]any{
 		"address": v.Addr,
 		"auth":    map[string]any{"method": "token", "token_file": token},
-	}}
-	w.auth = map[string]any{"signing": map[string]any{
+	}})
+	w.Settings["auth"] = map[string]any{"signing": map[string]any{
 		"backend":  "kms",
 		"kms_keys": []map[string]any{{"provider": "vault", "ref": k.ref}},
 	}}
@@ -70,13 +72,13 @@ func (k *kmsSteps) twoOnTransit(ctx context.Context) error {
 	if err := k.onTransit(ctx, "ecdsa-p256"); err != nil {
 		return err
 	}
-	return k.s.twoReplicas(ctx)
+	return k.w.TwoReplicas(ctx)
 }
 
 // row checks that the one signing key is the Transit key's: kms_key_ref
 // names it and private_key_sealed is empty.
 func (k *kmsSteps) row(ctx context.Context) error {
-	db, err := k.s.w.querier(ctx)
+	db, err := k.w.Querier(ctx)
 	if err != nil {
 		return err
 	}
@@ -88,7 +90,7 @@ FROM signing_keys`)
 	}
 	if want := "1|vault:" + k.ref + "|f"; strings.TrimSpace(got) != want {
 		return fmt.Errorf("%w: signing_keys holds %q (count, kms_key_ref, sealed), want %q",
-			errStep, strings.TrimSpace(got), want)
+			harness.ErrStep, strings.TrimSpace(got), want)
 	}
 	return nil
 }
@@ -97,7 +99,7 @@ func (k *kmsSteps) wrongType(ctx context.Context) error {
 	if err := k.onTransit(ctx, "aes256-gcm96"); err != nil {
 		return err
 	}
-	_, k.err = k.s.w.startServer(ctx, nil)
+	_, k.err = k.w.StartServer(ctx, nil)
 	return nil
 }
 
@@ -105,12 +107,16 @@ func (k *kmsSteps) wrongType(ctx context.Context) error {
 // line, saying the key is not a P-256 key and naming its reference.
 func (k *kmsSteps) refusedNaming() error {
 	exit, ok := errors.AsType[*exec.ExitError](k.err)
-	if !errors.Is(k.err, ErrExited) || !ok || exit.ExitCode() != 1 {
-		return fmt.Errorf("%w: infraweave did not exit 1 before listening: %w", errStep, k.err)
+	if !errors.Is(k.err, harness.ErrExited) || !ok || exit.ExitCode() != 1 {
+		return fmt.Errorf(
+			"%w: infraweave did not exit 1 before listening: %w",
+			harness.ErrStep,
+			k.err,
+		)
 	}
 	for _, want := range []string{"vault:" + k.ref, "not ECDSA P-256"} {
 		if !strings.Contains(k.err.Error(), want) {
-			return fmt.Errorf("%w: it exited without saying %q: %w", errStep, want, k.err)
+			return fmt.Errorf("%w: it exited without saying %q: %w", harness.ErrStep, want, k.err)
 		}
 	}
 	return nil

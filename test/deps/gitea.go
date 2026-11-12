@@ -1,4 +1,4 @@
-package acceptance
+package deps
 
 import (
 	"bytes"
@@ -66,7 +66,7 @@ func (d *Dependencies) startGitea(ctx context.Context) (*Gitea, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pki dir: %w", err)
 	}
-	d.onClose(func(context.Context) error { return os.RemoveAll(dir) })
+	d.OnClose(func(context.Context) error { return os.RemoveAll(dir) })
 	pki, err := newGiteaPKI(dir)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (d *Dependencies) startGitea(ctx context.Context) (*Gitea, error) {
 			WithPort(giteaPort).WithTLS(true, tlsConfig)),
 	)
 	if c != nil {
-		d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })
+		d.OnClose(func(ctx context.Context) error { return c.Terminate(ctx) })
 	}
 	if err != nil {
 		return nil, err //nolint:wrapcheck // Gitea names the failure

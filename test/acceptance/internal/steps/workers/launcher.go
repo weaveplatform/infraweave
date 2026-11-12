@@ -1,13 +1,15 @@
-package acceptance
+package workers
 
 import (
 	"context"
+	"crypto"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +22,8 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/executor/docker"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // launcherSteps run real launchers of a @docker scenario's pools: each an
@@ -33,11 +37,14 @@ import (
 // ref: decision 0008 § "The launcher and the runner"
 // ref: decision 0016
 type launcherSteps struct {
-	ws *workerSteps
+	w *harness.World
 	// label names the scenario's forwarder and run containers, which its
 	// end removes.
-	label     string
-	relay     *Relay
+	label string
+	// keys are the pool keys by the name of their request, which the
+	// worker steps make.
+	keys      map[string]crypto.Signer
+	relay     *harness.Relay
 	network   string
 	launchers map[string]*launcher
 }
@@ -46,7 +53,7 @@ type launcherSteps struct {
 // that holds its configuration and cache, and the configuration a restart
 // starts it with again.
 type launcher struct {
-	srv    *Server
+	srv    *harness.Server
 	dir    string
 	config []byte
 }
@@ -74,17 +81,15 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's last state transition's note is "([^"]*)"$`, l.note)
 }
 
-func (l *launcherSteps) world() *world { return l.ws.o.a.s.w }
-
 // servers starts the scenario's two servers with the top-level sections
 // raw names, a JSON object of sections by their key.
 func (l *launcherSteps) servers(ctx context.Context, raw string) error {
 	var sections map[string]map[string]any
 	if err := json.Unmarshal([]byte(raw), &sections); err != nil {
-		return fmt.Errorf("%w: the settings %s: %w", errStep, raw, err)
+		return fmt.Errorf("%w: the settings %s: %w", harness.ErrStep, raw, err)
 	}
-	l.world().sections = sections
-	return l.ws.o.a.s.twoReplicas(ctx)
+	maps.Copy(l.w.Settings, sections)
+	return l.w.TwoReplicas(ctx)
 }
 
 // start starts a launcher of the pool kept as pool, with the private key
@@ -93,18 +98,14 @@ func (l *launcherSteps) servers(ctx context.Context, raw string) error {
 // endpoint, as a pool token names the server a launcher reaches. The
 // launcher's worker is kept as name once it registers.
 func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, replica string) error {
-	w := l.world()
-	root, err := filepath.Abs(repoRoot)
-	if err != nil {
-		return fmt.Errorf("repository root: %w", err)
-	}
-	host, err := w.s.deps.Launchers(ctx, root, buildDir)
+	w := l.w
+	host, err := w.Suite.Launchers(ctx)
 	if err != nil {
 		return err
 	}
 	if l.relay == nil {
-		srv := w.servers[slices.Index([]string{"A", "B"}, replica)]
-		if l.relay, err = StartRelay(ctx, srv.API); err != nil {
+		srv := w.Servers[slices.Index([]string{"A", "B"}, replica)]
+		if l.relay, err = harness.StartRelay(ctx, srv.API); err != nil {
 			return err
 		}
 		l.label = kernel.NewULID().String()
@@ -116,13 +117,13 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 	if err != nil {
 		return err
 	}
-	dir := filepath.Join(w.dir, "launcher-"+name)
+	dir := filepath.Join(w.Dir, "launcher-"+name)
 	if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o750); err != nil {
 		return fmt.Errorf("launcher dir: %w", err)
 	}
-	key, err := x509.MarshalPKCS8PrivateKey(l.ws.keys[csr])
+	key, err := x509.MarshalPKCS8PrivateKey(l.keys[csr])
 	if err != nil {
-		return fmt.Errorf("%w: the key of %q: %w", errStep, csr, err)
+		return fmt.Errorf("%w: the key of %q: %w", harness.ErrStep, csr, err)
 	}
 	keyFile := filepath.Join(dir, "pool.key")
 	if err := os.WriteFile(keyFile, pem.EncodeToMemory(&pem.Block{
@@ -136,7 +137,7 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 		"poll_timeout":         "5s",
 		"cache_dir":            filepath.Join(dir, "cache"),
 		"admin_listen":         "127.0.0.1:0",
-		"default_runner_image": RunnerImage,
+		"default_runner_image": harness.RunnerImage,
 		"docker": map[string]any{
 			"network": l.network, "runner_binary": host.Runner,
 		},
@@ -154,25 +155,24 @@ func (l *launcherSteps) poolToken(
 	ctx context.Context,
 	token, pool, replica string,
 ) (string, error) {
-	o := l.ws.o
-	if err := o.send(ctx, `token "`+token+`"`, http.MethodGet,
-		"/api/v1/worker-pools/"+o.ids[pool], "", replica); err != nil {
+	if err := l.w.SendAs(ctx, `token "`+token+`"`, http.MethodGet,
+		"/api/v1/worker-pools/"+l.w.IDs[pool], "", replica); err != nil {
 		return "", err
 	}
-	r := o.a.s.last()
+	r := l.w.Last()
 	var p struct {
 		Config string `json:"config"`
 	}
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &p) != nil {
-		return "", fmt.Errorf("%w: the pool answered %d %s", errStep, r.status, r.body)
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &p) != nil {
+		return "", fmt.Errorf("%w: the pool answered %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	raw, err := base64.StdEncoding.DecodeString(p.Config)
 	if err != nil {
-		return "", fmt.Errorf("%w: the pool token: %w", errStep, err)
+		return "", fmt.Errorf("%w: the pool token: %w", harness.ErrStep, err)
 	}
 	var t map[string]any
 	if err := json.Unmarshal(raw, &t); err != nil {
-		return "", fmt.Errorf("%w: the pool token: %w", errStep, err)
+		return "", fmt.Errorf("%w: the pool token: %w", harness.ErrStep, err)
 	}
 	t["endpoint"] = l.relay.URL
 	raw, err = json.Marshal(t)
@@ -185,21 +185,21 @@ func (l *launcherSteps) poolToken(
 // run starts the launcher name's process and waits until its worker
 // registers, which keeps the worker its cache names as name.
 func (l *launcherSteps) run(ctx context.Context, name string) error {
-	w, ln := l.world(), l.launchers[name]
-	host, err := w.s.deps.Launchers(ctx, "", "")
+	w, ln := l.w, l.launchers[name]
+	host, err := w.Suite.Launchers(ctx)
 	if err != nil {
 		return err
 	}
-	bin, err := binary(ctx)
+	bin, err := harness.Binary(ctx)
 	if err != nil {
 		return err
 	}
-	if ln.srv, err = StartLauncher(ctx, bin, ln.dir, w.s.coverDir, ln.config,
+	if ln.srv, err = harness.StartLauncher(ctx, bin, ln.dir, w.Suite.CoverDir, ln.config,
 		host.Host); err != nil {
 		return err
 	}
 	//nolint:wrapcheck // names what it waited for
-	return Eventually(
+	return deps.Eventually(
 		ctx,
 		"the launcher "+name+" to register",
 		func(ctx context.Context) (bool, error) {
@@ -210,7 +210,7 @@ func (l *launcherSteps) run(ctx context.Context, name string) error {
 			if err != nil {
 				return false, err
 			}
-			l.ws.o.ids[name] = worker
+			l.w.IDs[name] = worker
 			return true, nil
 		},
 	)
@@ -226,7 +226,7 @@ func (l *launcherSteps) cached(name string) (string, error) {
 		Worker string `json:"worker"`
 	}
 	if err := json.Unmarshal(b, &st); err != nil || st.Worker == "" {
-		return "", fmt.Errorf("%w: the launcher's cache holds %s", errStep, b)
+		return "", fmt.Errorf("%w: the launcher's cache holds %s", harness.ErrStep, b)
 	}
 	return st.Worker, nil
 }
@@ -259,21 +259,21 @@ func (l *launcherSteps) kill(ctx context.Context, name string) error {
 // restart starts the launcher name again on its configuration and cache,
 // and checks that it resumed the worker it had.
 func (l *launcherSteps) restart(ctx context.Context, name string) error {
-	before := l.ws.o.ids[name]
+	before := l.w.IDs[name]
 	if err := l.run(ctx, name); err != nil {
 		return err
 	}
-	if got := l.ws.o.ids[name]; got != before {
-		return fmt.Errorf("%w: the launcher registered the worker %s, not %s", errStep, got,
+	if got := l.w.IDs[name]; got != before {
+		return fmt.Errorf("%w: the launcher registered the worker %s, not %s", harness.ErrStep, got,
 			before)
 	}
 	return nil
 }
 
 func (l *launcherSteps) holds(ctx context.Context, run string) error {
-	id := l.ws.o.ids[run]
+	id := l.w.IDs[run]
 	//nolint:wrapcheck // names what it waited for
-	return Eventually(
+	return deps.Eventually(
 		ctx,
 		"the relay to hold a report of "+run,
 		func(context.Context) (bool, error) {
@@ -285,13 +285,19 @@ func (l *launcherSteps) holds(ctx context.Context, run string) error {
 // passed checks that the relay passed a call of method to path, with the
 // scenario's keys resolved, that answered status.
 func (l *launcherSteps) passed(method, path string, status int) error {
-	path = l.ws.o.resolve(path)
+	path = l.w.Resolve(path)
 	calls := l.relay.Calls()
-	if slices.Contains(calls, Call{Method: method, Path: path, Status: status}) {
+	if slices.Contains(calls, harness.Call{Method: method, Path: path, Status: status}) {
 		return nil
 	}
-	return fmt.Errorf("%w: the relay passed no %s %s answered %d: %+v", errStep, method, path,
-		status, calls)
+	return fmt.Errorf(
+		"%w: the relay passed no %s %s answered %d: %+v",
+		harness.ErrStep,
+		method,
+		path,
+		status,
+		calls,
+	)
 }
 
 // worker reads the workers of the pool kept as pool through replica with
@@ -301,18 +307,17 @@ func (l *launcherSteps) worker(
 	ctx context.Context,
 	token, name, pool, status, replica string,
 ) error {
-	o := l.ws.o
 	//nolint:wrapcheck // names what it waited for
-	return Eventually(
+	return deps.Eventually(
 		ctx,
 		"the worker "+name+" to be "+status,
 		func(ctx context.Context) (bool, error) {
-			if err := o.send(ctx, `token "`+token+`"`, http.MethodGet,
-				"/api/v1/worker-pools/"+o.ids[pool]+"/search-workers?input=%7B%7D", "",
+			if err := l.w.SendAs(ctx, `token "`+token+`"`, http.MethodGet,
+				"/api/v1/worker-pools/"+l.w.IDs[pool]+"/search-workers?input=%7B%7D", "",
 				replica); err != nil {
 				return false, err
 			}
-			r := o.a.s.last()
+			r := l.w.Last()
 			var page struct {
 				Edges []struct {
 					Node struct {
@@ -321,11 +326,11 @@ func (l *launcherSteps) worker(
 					} `json:"node"`
 				} `json:"edges"`
 			}
-			if r.status != http.StatusOK || json.Unmarshal(r.body, &page) != nil {
-				return false, fmt.Errorf("%w: answered %d %s", errStep, r.status, r.body)
+			if r.Status != http.StatusOK || json.Unmarshal(r.Body, &page) != nil {
+				return false, fmt.Errorf("%w: answered %d %s", harness.ErrStep, r.Status, r.Body)
 			}
 			for _, e := range page.Edges {
-				if e.Node.ID == o.ids[name] {
+				if e.Node.ID == l.w.IDs[name] {
 					return e.Node.Status == status, nil
 				}
 			}
@@ -346,9 +351,9 @@ func (l *launcherSteps) transitions() ([]struct {
 			Note  *string `json:"note"`
 		} `json:"history"`
 	}
-	r := l.ws.o.a.s.last()
-	if r.status != http.StatusOK || json.Unmarshal(r.body, &run) != nil || len(run.History) == 0 {
-		return nil, fmt.Errorf("%w: no run's history in %d %s", errStep, r.status, r.body)
+	r := l.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &run) != nil || len(run.History) == 0 {
+		return nil, fmt.Errorf("%w: no run's history in %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	return run.History, nil
 }
@@ -365,7 +370,7 @@ func (l *launcherSteps) history(want string) error {
 		states[i] = t.State
 	}
 	if got := strings.Join(states, ", "); got != want {
-		return fmt.Errorf("%w: the history is %s, want %s", errStep, got, want)
+		return fmt.Errorf("%w: the history is %s, want %s", harness.ErrStep, got, want)
 	}
 	return nil
 }
@@ -376,7 +381,7 @@ func (l *launcherSteps) note(want string) error {
 		return err
 	}
 	if last := h[len(h)-1]; last.Note == nil || *last.Note != want {
-		return fmt.Errorf("%w: the last transition is %+v", errStep, last)
+		return fmt.Errorf("%w: the last transition is %+v", harness.ErrStep, last)
 	}
 	return nil
 }
@@ -391,31 +396,31 @@ func (l *launcherSteps) end(ctx context.Context, _ *godog.Scenario, failed error
 	if l.relay == nil {
 		return ctx, nil
 	}
-	w := l.world()
-	host, err := w.s.deps.Launchers(ctx, "", "")
+	w := l.w
+	host, err := w.Suite.Launchers(ctx)
 	for name, ln := range l.launchers {
 		if ln.srv == nil {
 			continue
 		}
-		if stopErr := ln.srv.Stop(ctx); stopErr != nil && !errors.Is(stopErr, ErrExited) {
+		if stopErr := ln.srv.Stop(ctx); stopErr != nil && !errors.Is(stopErr, harness.ErrExited) {
 			err = errors.Join(err, stopErr)
 		}
 		if failed != nil {
-			dir := filepath.Join(w.s.out, slug(w.name), "launcher-"+name)
+			dir := filepath.Join(w.Suite.Out, harness.Slug(w.Name), "launcher-"+name)
 			err = errors.Join(err, os.MkdirAll(dir, 0o750), ln.srv.Evidence(dir))
 		}
-		if worker := l.ws.o.ids[name]; worker != "" && err == nil {
+		if worker := l.w.IDs[name]; worker != "" && err == nil {
 			err = host.Remove(ctx, docker.LabelWorker, worker)
 		}
 	}
 	if failed != nil {
 		calls, _ := json.MarshalIndent(l.relay.Calls(), "", "  ")
-		dir := filepath.Join(w.s.out, slug(w.name))
+		dir := filepath.Join(w.Suite.Out, harness.Slug(w.Name))
 		err = errors.Join(err, os.MkdirAll(dir, 0o750),
 			os.WriteFile(filepath.Join(dir, "relay.json"), calls, 0o600))
 	}
 	if err == nil {
-		err = host.Remove(ctx, LabelScenario, l.label)
+		err = host.Remove(ctx, harness.LabelScenario, l.label)
 	}
 	return ctx, errors.Join(err, l.relay.Close(ctx))
 }

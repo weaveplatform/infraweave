@@ -1,4 +1,4 @@
-package acceptance
+package deps
 
 import (
 	"bytes"
@@ -136,7 +136,7 @@ type Dependencies struct {
 	// starts migrated. Nil leaves the template empty.
 	Migrate func(ctx context.Context, dsn string) error
 
-	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce, launchOnce sync.Once
+	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce sync.Once
 
 	pg       *Database
 	pgErr    error
@@ -149,11 +149,7 @@ type Dependencies struct {
 	vaultErr error
 	gitea    *Gitea
 	giteaErr error
-	repos    atomic.Int64
-	keys     atomic.Int64
-
-	launchers Launchers
-	launchErr error
+	serial   atomic.Int64
 
 	mu      sync.Mutex
 	cleanup []func(context.Context) error
@@ -192,7 +188,7 @@ func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
 	c, dsn, err := runPostgres(ctx,
 		testcontainers.WithCmdArgs("-c", "max_connections="+pgMaxConnections()))
 	if c != nil {
-		d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })
+		d.OnClose(func(ctx context.Context) error { return c.Terminate(ctx) })
 	}
 	if err != nil {
 		return nil, err
@@ -387,7 +383,7 @@ func (d *Dependencies) ObjectStore(ctx context.Context) (*ObjectStore, error) {
 			testcontainers.WithWaitStrategy(wait.ForHTTP(ObjectStoreReady).WithPort("9000/tcp")),
 		)
 		if c != nil {
-			d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })
+			d.OnClose(func(ctx context.Context) error { return c.Terminate(ctx) })
 		}
 		if err != nil {
 			d.storeErr = fmt.Errorf("@objectstore: %w", err)
@@ -426,7 +422,7 @@ func (d *Dependencies) Vault(ctx context.Context) (*Vault, error) {
 			testcontainers.WithWaitStrategy(wait.ForHTTP("/v1/sys/health").WithPort("8200/tcp")),
 		)
 		if c != nil {
-			d.onClose(func(ctx context.Context) error { return c.Terminate(ctx) })
+			d.OnClose(func(ctx context.Context) error { return c.Terminate(ctx) })
 		}
 		if err != nil {
 			d.vaultErr = fmt.Errorf("@vault: %w", err)
@@ -438,7 +434,7 @@ func (d *Dependencies) Vault(ctx context.Context) (*Vault, error) {
 			return
 		}
 		v := &Vault{Addr: addr, Token: vaultToken}
-		if err := v.post(ctx, "sys/mounts/transit", `{"type":"transit"}`); err != nil {
+		if err := v.Post(ctx, "sys/mounts/transit", `{"type":"transit"}`); err != nil {
 			d.vaultErr = fmt.Errorf("@vault: %w", err)
 			return
 		}
@@ -455,8 +451,8 @@ func (d *Dependencies) VaultKey(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := fmt.Sprintf("kek-%d", d.keys.Add(1))
-	if err := v.post(ctx, "transit/keys/"+name, `{}`); err != nil {
+	name := fmt.Sprintf("kek-%d", d.Serial())
+	if err := v.Post(ctx, "transit/keys/"+name, `{}`); err != nil {
 		return "", fmt.Errorf("@vault: %w", err)
 	}
 	return name, nil
@@ -465,7 +461,8 @@ func (d *Dependencies) VaultKey(ctx context.Context) (string, error) {
 // ErrVault is returned when Vault refuses a call the harness makes.
 var ErrVault = errors.New("vault refused the call")
 
-func (v *Vault) post(ctx context.Context, path, body string) error {
+// Post sends body to Vault's API at path with the root token.
+func (v *Vault) Post(ctx context.Context, path, body string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, v.Addr+"/v1/"+path,
 		strings.NewReader(body))
 	if err != nil {
@@ -489,27 +486,28 @@ func (d *Dependencies) OIDC() (*Issuer, error) {
 	d.oidcOnce.Do(func() {
 		d.issuer, d.oidcErr = StartIssuer()
 		if d.issuer != nil {
-			d.onClose(func(context.Context) error { d.issuer.Close(); return nil })
+			d.OnClose(func(context.Context) error { d.issuer.Close(); return nil })
 		}
 	})
 	return d.issuer, d.oidcErr
 }
 
-func (d *Dependencies) onClose(f func(context.Context) error) {
+// OnClose adds f to what Close runs, for a dependency its caller starts
+// once beside these.
+func (d *Dependencies) OnClose(f func(context.Context) error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.cleanup = append(d.cleanup, f)
 }
 
-// Launchers returns what a @docker scenario's launchers need, building it
-// into dir from the module at root on first use; Close removes the image.
-func (d *Dependencies) Launchers(ctx context.Context, root, dir string) (*Launchers, error) {
-	d.launchOnce.Do(func() {
-		d.launchErr = d.launchers.prepare(ctx, root, dir)
-		d.onClose(d.launchers.Close)
-	})
-	return &d.launchers, d.launchErr
-}
+// Serial is a number no earlier call returned, for the names of what
+// scenarios running in parallel must not share, such as repositories and
+// Transit keys.
+func (d *Dependencies) Serial() int64 { return d.serial.Add(1) }
+
+// KEK is the local KEK every server the harness starts runs with, in
+// INFRAWEAVE_SECRETS_KEK: a test key, which seals only test databases.
+const KEK = "hP6o+wuSeiPv+itTPyT9Ej7ptu/ap7Ll9sm5e6qab3k="
 
 // Close stops every dependency that started.
 func (d *Dependencies) Close(ctx context.Context) error {

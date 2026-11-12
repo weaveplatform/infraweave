@@ -1,4 +1,4 @@
-package acceptance
+package api
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/api"
 	"github.com/weaveplatform/infraweave/internal/devtools/openapibundle"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // servedSrc is the API's fragment directory, relative to this package.
@@ -59,14 +60,14 @@ func (s *deploySteps) upToDate() error {
 		return err
 	}
 	if !bytes.Equal(api.Served, want) {
-		return fmt.Errorf("%w: api/api.openapi.yaml is stale; run make bundle", errStep)
+		return fmt.Errorf("%w: api/api.openapi.yaml is stale; run make bundle", harness.ErrStep)
 	}
 	return nil
 }
 
 func (s *deploySteps) validates() error {
 	if s.doc.OpenAPI != openapibundle.Version {
-		return fmt.Errorf("%w: openapi %s", errStep, s.doc.OpenAPI)
+		return fmt.Errorf("%w: openapi %s", harness.ErrStep, s.doc.OpenAPI)
 	}
 	return s.doc.Validate(context.Background())
 }
@@ -87,12 +88,18 @@ func (s *deploySteps) familyServed(tag string) error {
 		}
 	}
 	if n == 0 {
-		return fmt.Errorf("%w: the reference has no %s operations", errStep, tag)
+		return fmt.Errorf("%w: the reference has no %s operations", harness.ErrStep, tag)
 	}
 	if len(missing) > 0 {
 		slices.Sort(missing)
-		return fmt.Errorf("%w: %d of %d %s operations missing:\n%s", errStep, len(missing), n, tag,
-			strings.Join(missing, "\n"))
+		return fmt.Errorf(
+			"%w: %d of %d %s operations missing:\n%s",
+			harness.ErrStep,
+			len(missing),
+			n,
+			tag,
+			strings.Join(missing, "\n"),
+		)
 	}
 	return nil
 }
@@ -109,7 +116,7 @@ func (s *deploySteps) mustOperation(method, path string) (*openapi3.Operation, e
 	if op := s.operation(method, path); op != nil {
 		return op, nil
 	}
-	return nil, fmt.Errorf("%w: no %s %s in the API", errStep, method, path)
+	return nil, fmt.Errorf("%w: no %s %s in the API", harness.ErrStep, method, path)
 }
 
 func paramRefs(op *openapi3.Operation) []string {
@@ -128,22 +135,22 @@ func (s *deploySteps) paginated(path, page string) error {
 	refs := paramRefs(op)
 	for _, want := range []string{"#/components/parameters/Cursor", "#/components/parameters/Limit"} {
 		if !slices.Contains(refs, want) {
-			return fmt.Errorf("%w: GET %s lacks %s", errStep, path, want)
+			return fmt.Errorf("%w: GET %s lacks %s", harness.ErrStep, path, want)
 		}
 	}
 	ok := op.Responses.Status(200)
 	if ok == nil || ok.Value.Content.Get("application/json") == nil {
-		return fmt.Errorf("%w: GET %s has no JSON 200", errStep, path)
+		return fmt.Errorf("%w: GET %s has no JSON 200", harness.ErrStep, path)
 	}
 	if got := ok.Value.Content.Get(
 		"application/json",
 	).Schema.Ref; got != "#/components/schemas/"+page {
-		return fmt.Errorf("%w: GET %s returns %q", errStep, path, got)
+		return fmt.Errorf("%w: GET %s returns %q", harness.ErrStep, path, got)
 	}
 	schema := s.doc.Components.Schemas[page]
 	if schema == nil || schema.Value.Properties["items"] == nil ||
 		schema.Value.Properties["nextCursor"] == nil {
-		return fmt.Errorf("%w: %s is not an {items, nextCursor} envelope", errStep, page)
+		return fmt.Errorf("%w: %s is not an {items, nextCursor} envelope", harness.ErrStep, page)
 	}
 	return nil
 }
@@ -154,11 +161,11 @@ func (s *deploySteps) idempotent(method, path string) error {
 		return err
 	}
 	if !slices.Contains(paramRefs(op), "#/components/parameters/IdempotencyKey") {
-		return fmt.Errorf("%w: %s %s takes no Idempotency-Key", errStep, method, path)
+		return fmt.Errorf("%w: %s %s takes no Idempotency-Key", harness.ErrStep, method, path)
 	}
 	for _, code := range []int{409, 422} {
 		if op.Responses.Status(code) == nil {
-			return fmt.Errorf("%w: %s %s documents no %d", errStep, method, path, code)
+			return fmt.Errorf("%w: %s %s documents no %d", harness.ErrStep, method, path, code)
 		}
 	}
 	return nil
@@ -170,10 +177,10 @@ func (s *deploySteps) costsWithoutKey(method, path, cost string) error {
 		return err
 	}
 	if got := op.Extensions["x-infraweave-cost"]; got != cost {
-		return fmt.Errorf("%w: %s %s costs %v", errStep, method, path, got)
+		return fmt.Errorf("%w: %s %s costs %v", harness.ErrStep, method, path, got)
 	}
 	if slices.Contains(paramRefs(op), "#/components/parameters/IdempotencyKey") {
-		return fmt.Errorf("%w: %s %s takes an Idempotency-Key", errStep, method, path)
+		return fmt.Errorf("%w: %s %s takes an Idempotency-Key", harness.ErrStep, method, path)
 	}
 	return nil
 }
@@ -195,7 +202,7 @@ func (s *deploySteps) rateLimited(tag string) error {
 		slices.Sort(bad)
 		return fmt.Errorf(
 			"%w: no 429 or no recorded conventions:\n%s",
-			errStep,
+			harness.ErrStep,
 			strings.Join(bad, "\n"),
 		)
 	}

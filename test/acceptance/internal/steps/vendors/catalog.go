@@ -1,4 +1,4 @@
-package acceptance
+package vendors
 
 import (
 	"context"
@@ -19,6 +19,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/weaveplatform/infraweave/internal/iac/version"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // fixtures is where make vendors-fixtures records the vendors' indexes.
@@ -28,7 +30,7 @@ const fixtures = "../../internal/vendors/internal/index/testdata/"
 // the recorded indexes as the vendors serve them: HashiCorp's a page at a
 // time, OpenTofu's whole.
 type catalogSteps struct {
-	o *orgSteps
+	w *harness.World
 
 	mu sync.Mutex
 	// terraform and opentofu are the recorded indexes' bodies.
@@ -81,7 +83,7 @@ func (c *catalogSteps) switchOff(names string) error {
 	for i := range off {
 		off[i] = strings.TrimSpace(off[i])
 	}
-	c.o.a.s.w.features = map[string]any{"disabled": off}
+	c.w.Settings["features"] = map[string]any{"disabled": off}
 	return nil
 }
 
@@ -93,14 +95,14 @@ func (c *catalogSteps) serve() error {
 	for name, into := range map[string]any{"terraform": &tf, "opentofu": &tofu} {
 		raw, err := os.ReadFile(fixtures + name + ".json")
 		if err != nil {
-			return fmt.Errorf("%w: %w", errStep, err)
+			return fmt.Errorf("%w: %w", harness.ErrStep, err)
 		}
 		if err := json.Unmarshal(raw, into); err != nil {
-			return fmt.Errorf("%w: fixture %s: %w", errStep, name, err)
+			return fmt.Errorf("%w: fixture %s: %w", harness.ErrStep, name, err)
 		}
 	}
 	if err := json.Unmarshal(tf.Body, &c.terraform); err != nil {
-		return fmt.Errorf("%w: terraform fixture: %w", errStep, err)
+		return fmt.Errorf("%w: terraform fixture: %w", harness.ErrStep, err)
 	}
 	c.opentofu, c.reads = tofu.Body, map[string]int{}
 	newest, err := stableReleases("terraform", tf.Body)
@@ -116,7 +118,7 @@ func (c *catalogSteps) serve() error {
 		_, _ = w.Write(c.opentofu) // a client gone has no answer
 	})
 	c.srv = httptest.NewServer(r)
-	c.o.a.s.w.vendors = map[string]any{
+	c.w.Settings["vendors"] = map[string]any{
 		"terraform_index": c.srv.URL + "/terraform", "opentofu_index": c.srv.URL + "/opentofu",
 	}
 	return nil
@@ -195,7 +197,7 @@ func stableReleases(name string, body json.RawMessage) ([]string, error) {
 			} `json:"status"`
 		}
 		if err := json.Unmarshal(body, &rels); err != nil {
-			return nil, fmt.Errorf("%w: %w", errStep, err)
+			return nil, fmt.Errorf("%w: %w", harness.ErrStep, err)
 		}
 		for _, r := range rels {
 			if !r.Prerelease && r.Status.State != "withdrawn" {
@@ -209,7 +211,7 @@ func stableReleases(name string, body json.RawMessage) ([]string, error) {
 			} `json:"versions"`
 		}
 		if err := json.Unmarshal(body, &idx); err != nil {
-			return nil, fmt.Errorf("%w: %w", errStep, err)
+			return nil, fmt.Errorf("%w: %w", harness.ErrStep, err)
 		}
 		for _, v := range idx.Versions {
 			raw = append(raw, v.ID)
@@ -268,7 +270,7 @@ func (c *catalogSteps) read(
 		if cursor != "" {
 			q.Set("cursor", cursor)
 		}
-		r, err := c.o.a.do(
+		r, err := c.w.Do(
 			ctx,
 			replica,
 			name,
@@ -283,13 +285,18 @@ func (c *catalogSteps) read(
 			Items      []string `json:"items"`
 			NextCursor string   `json:"nextCursor"`
 		}
-		if json.Unmarshal(r.body, &page) != nil || r.status != http.StatusOK {
-			return nil, fmt.Errorf("%w: not a page of versions: %d %s", errStep, r.status, r.body)
+		if json.Unmarshal(r.Body, &page) != nil || r.Status != http.StatusOK {
+			return nil, fmt.Errorf(
+				"%w: not a page of versions: %d %s",
+				harness.ErrStep,
+				r.Status,
+				r.Body,
+			)
 		}
 		if page.NextCursor != "" && len(page.Items) != n {
 			return nil, fmt.Errorf(
 				"%w: a page before the last holds %d versions",
-				errStep,
+				harness.ErrStep,
 				len(page.Items),
 			)
 		}
@@ -298,7 +305,7 @@ func (c *catalogSteps) read(
 			return got, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: the versions did not end after 100 pages", errStep)
+	return nil, fmt.Errorf("%w: the versions did not end after 100 pages", harness.ErrStep)
 }
 
 // lists checks tool's versions, read n at a time, against the fixture's.
@@ -314,7 +321,7 @@ func (c *catalogSteps) lists(
 	}
 	got, err := c.read(ctx, name, tool, replica, n)
 	if err == nil && !reflect.DeepEqual(got, want) {
-		err = fmt.Errorf("%w: %s lists %v, want %v", errStep, tool, got, want)
+		err = fmt.Errorf("%w: %s lists %v, want %v", harness.ErrStep, tool, got, want)
 	}
 	return err
 }
@@ -324,10 +331,14 @@ func (c *catalogSteps) eventuallyLists(
 	ctx context.Context,
 	name, tool, replica, without string,
 ) error {
-	return Eventually(ctx, tool+" versions to be listed", func(ctx context.Context) (bool, error) {
-		err := c.lists(ctx, name, tool, replica, 10, without)
-		return err == nil, err
-	})
+	return deps.Eventually(
+		ctx,
+		tool+" versions to be listed",
+		func(ctx context.Context) (bool, error) {
+			err := c.lists(ctx, name, tool, replica, 10, without)
+			return err == nil, err
+		},
+	)
 }
 
 // readOnce checks that both servers' startups read each index once
@@ -336,7 +347,11 @@ func (c *catalogSteps) readOnce() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.reads["terraform"] != 1 || c.reads["opentofu"] != 1 {
-		return fmt.Errorf("%w: the indexes were read %v times, want once each", errStep, c.reads)
+		return fmt.Errorf(
+			"%w: the indexes were read %v times, want once each",
+			harness.ErrStep,
+			c.reads,
+		)
 	}
 	return nil
 }
@@ -344,7 +359,7 @@ func (c *catalogSteps) readOnce() error {
 // resolve asks for tool's effective version under constraints.
 func (c *catalogSteps) resolve(ctx context.Context, name, tool, constraints, replica string) error {
 	q := url.Values{"constraints": {constraints}}
-	_, err := c.o.a.do(
+	_, err := c.w.Do(
 		ctx,
 		replica,
 		name,
@@ -357,10 +372,10 @@ func (c *catalogSteps) resolve(ctx context.Context, name, tool, constraints, rep
 
 // isVersion checks the last answer, a JSON string, is v.
 func (c *catalogSteps) isVersion(v string) error {
-	r := c.o.a.s.last()
+	r := c.w.Last()
 	var got string
-	if json.Unmarshal(r.body, &got) != nil || r.status != http.StatusOK || got != v {
-		return fmt.Errorf("%w: answered %d %s, want %q", errStep, r.status, r.body, v)
+	if json.Unmarshal(r.Body, &got) != nil || r.Status != http.StatusOK || got != v {
+		return fmt.Errorf("%w: answered %d %s, want %q", harness.ErrStep, r.Status, r.Body, v)
 	}
 	return nil
 }

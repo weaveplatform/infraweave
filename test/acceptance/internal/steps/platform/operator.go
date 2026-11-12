@@ -1,4 +1,4 @@
-package acceptance
+package platform
 
 import (
 	"bytes"
@@ -21,24 +21,16 @@ import (
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/pkg/sdk"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // jsonType is the media type of every request body.
 const jsonType = "application/json"
 
-// operatorKey is the scenario's operator key; its secret derives from it
-// as a tenant's does, so no secret is written down.
-const operatorKey = "01KA2V0P3RAT0RKEY000000000"
-
-func operatorSecret() string {
-	h := sha256.Sum256([]byte("acceptance:" + operatorKey))
-	return "iwk_" + base64.RawURLEncoding.EncodeToString(h[:])
-}
-
 // operatorSteps are the steps of the operator API, on authSteps' servers
 // and named tokens.
 type operatorSteps struct {
-	a *authSteps
+	w *harness.World
 	// hash is the password hash infraweave auth hash-password printed.
 	hash string
 }
@@ -82,30 +74,21 @@ func (o *operatorSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^token "(\w+)" carries the claims of an operator token$`, o.claims)
 }
 
-// operatorAuth is the auth settings that hold the operator key in
-// auth.operator.keys.
-func operatorAuth() map[string]any {
-	sum := sha256.Sum256([]byte(operatorSecret()))
-	return map[string]any{"operator": map[string]any{"keys": []map[string]any{{
-		"id": operatorKey, "secret_sha256": fmt.Sprintf("%x", sum),
-	}}}}
-}
-
 // servers starts the scenario's two servers with the operator key.
 func (o *operatorSteps) servers(ctx context.Context) error {
-	o.a.s.w.auth = operatorAuth()
-	return o.a.s.twoReplicas(ctx)
+	o.w.Settings["auth"] = harness.OperatorAuth()
+	return o.w.TwoReplicas(ctx)
 }
 
 // hashPassword runs infraweave auth hash-password with password on stdin,
 // in FIPS 140-3 only mode, so the hash is one a FIPS build can make.
 func (o *operatorSteps) hashPassword(ctx context.Context, password string) error {
-	bin, err := binary(ctx)
+	bin, err := harness.Binary(ctx)
 	if err != nil {
 		return err
 	}
 	cmd := exec.CommandContext(ctx, bin, "auth", "hash-password")
-	cmd.Env = append(os.Environ(), "GOCOVERDIR="+o.a.s.w.s.coverDir, "GODEBUG=fips140=only")
+	cmd.Env = append(os.Environ(), "GOCOVERDIR="+o.w.Suite.CoverDir, "GODEBUG=fips140=only")
 	cmd.Stdin = strings.NewReader(password + "\n")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -126,7 +109,11 @@ func (o *operatorSteps) verifies(good, bad string) error {
 	rest, ok := strings.CutPrefix(o.hash, "$pbkdf2-sha256$i=")
 	parts := strings.Split(rest, "$")
 	if !ok || len(parts) != 3 {
-		return fmt.Errorf("%w: hash %q is not $pbkdf2-sha256$i=<n>$<salt>$<hash>", errStep, o.hash)
+		return fmt.Errorf(
+			"%w: hash %q is not $pbkdf2-sha256$i=<n>$<salt>$<hash>",
+			harness.ErrStep,
+			o.hash,
+		)
 	}
 	n, err := strconv.Atoi(parts[0])
 	salt, serr := base64.RawStdEncoding.DecodeString(parts[1])
@@ -134,44 +121,44 @@ func (o *operatorSteps) verifies(good, bad string) error {
 	if err != nil || serr != nil || kerr != nil || n != 600_000 || len(salt) != 16 ||
 		len(key) != 32 {
 		return fmt.Errorf("%w: hash %q is not 600000 iterations, a 16-byte salt and a 32-byte key",
-			errStep, o.hash)
+			harness.ErrStep, o.hash)
 	}
 	matches := func(password string) bool {
 		k, err := pbkdf2.Key(sha256.New, password, salt, n, len(key))
 		return err == nil && subtle.ConstantTimeCompare(k, key) == 1
 	}
 	if !matches(good) || matches(bad) {
-		return fmt.Errorf("%w: hash %q verifies %q %t and %q %t", errStep, o.hash,
+		return fmt.Errorf("%w: hash %q verifies %q %t and %q %t", harness.ErrStep, o.hash,
 			good, matches(good), bad, matches(bad))
 	}
 	return nil
 }
 
 func (o *operatorSteps) exchange(ctx context.Context, replica, name string) error {
-	r, err := o.a.do(ctx, replica, "", http.MethodPost, "/api/v1/auth/token",
-		map[string]string{"id": operatorKey, "secret": operatorSecret()})
+	r, err := o.w.Do(ctx, replica, "", http.MethodPost, "/api/v1/auth/token",
+		map[string]string{"id": harness.OperatorKey, "secret": harness.OperatorSecret()})
 	if err != nil {
 		return err
 	}
 	var u struct {
 		JWT string `json:"jwt"`
 	}
-	if err := json.Unmarshal(r.body, &u); err != nil || r.status != http.StatusOK || u.JWT == "" {
+	if err := json.Unmarshal(r.Body, &u); err != nil || r.Status != http.StatusOK || u.JWT == "" {
 		return fmt.Errorf(
 			"%w: exchanging the operator key answered %d %s",
-			errStep,
-			r.status,
-			r.body,
+			harness.ErrStep,
+			r.Status,
+			r.Body,
 		)
 	}
-	o.a.tokens[name] = u.JWT
+	o.w.Tokens[name] = u.JWT
 	return nil
 }
 
 // client is the operator API's client of pkg/sdk on the replica's API
 // listener, holding the named token.
 func (o *operatorSteps) client(replica, name string) (*sdk.Client, error) {
-	return o.a.client(replica, o.a.tokens[name])
+	return o.w.Client(replica, o.w.Tokens[name])
 }
 
 // jsonOf is v as a request body.
@@ -219,7 +206,7 @@ func (o *operatorSteps) create(
 	if resp.StatusCode() != http.StatusCreated {
 		return fmt.Errorf(
 			"%w: create %s answered %d %s",
-			errStep,
+			harness.ErrStep,
 			slug,
 			resp.StatusCode(),
 			resp.Body,
@@ -243,7 +230,7 @@ func organization(body []byte, slug, account, login string) error {
 	if !ok {
 		return fmt.Errorf(
 			"%w: organization %s, want %s with %s unclaimed and break-glass login %q",
-			errStep,
+			harness.ErrStep,
 			body,
 			slug,
 			account,
@@ -265,14 +252,20 @@ func (o *operatorSteps) listed(ctx context.Context, replica, name, how, slug str
 		return fmt.Errorf("list organizations: %w", err)
 	}
 	if resp.JSON200 == nil {
-		return fmt.Errorf("%w: list answered %d %s", errStep, resp.StatusCode(), resp.Body)
+		return fmt.Errorf("%w: list answered %d %s", harness.ErrStep, resp.StatusCode(), resp.Body)
 	}
 	var got []string
 	for _, org := range resp.JSON200.Items {
 		got = append(got, org.Slug)
 	}
 	if slices.Contains(got, slug) != (how == "include") {
-		return fmt.Errorf("%w: organizations %v, want them to %s %s", errStep, got, how, slug)
+		return fmt.Errorf(
+			"%w: organizations %v, want them to %s %s",
+			harness.ErrStep,
+			got,
+			how,
+			slug,
+		)
 	}
 	return nil
 }
@@ -290,7 +283,13 @@ func (o *operatorSteps) read(
 		return fmt.Errorf("read %s: %w", slug, err)
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("%w: read %s answered %d %s", errStep, slug, resp.StatusCode(), resp.Body)
+		return fmt.Errorf(
+			"%w: read %s answered %d %s",
+			harness.ErrStep,
+			slug,
+			resp.StatusCode(),
+			resp.Body,
+		)
 	}
 	return organization(resp.Body, slug, account, login)
 }
@@ -312,7 +311,7 @@ func (o *operatorSteps) setBreakGlass(
 		resp.JSON200.BreakGlass.Login != login {
 		return fmt.Errorf(
 			"%w: set break glass answered %d %s",
-			errStep,
+			harness.ErrStep,
 			resp.StatusCode(),
 			resp.Body,
 		)
@@ -332,7 +331,7 @@ func (o *operatorSteps) deleteBreakGlass(ctx context.Context, name, slug, replic
 	if resp.JSON200 == nil || resp.JSON200.BreakGlass != nil {
 		return fmt.Errorf(
 			"%w: delete break glass answered %d %s",
-			errStep,
+			harness.ErrStep,
 			resp.StatusCode(),
 			resp.Body,
 		)
@@ -352,7 +351,7 @@ func (o *operatorSteps) delete(ctx context.Context, name, slug, replica string) 
 	if resp.JSON200 == nil || resp.JSON200.Slug != slug {
 		return fmt.Errorf(
 			"%w: delete %s answered %d %s",
-			errStep,
+			harness.ErrStep,
 			slug,
 			resp.StatusCode(),
 			resp.Body,
@@ -364,20 +363,20 @@ func (o *operatorSteps) delete(ctx context.Context, name, slug, replica string) 
 // trail checks the organization trail's entries for slug: the actions,
 // each by the operator key, outliving the organization.
 func (o *operatorSteps) trail(ctx context.Context, slug string, actions ...string) error {
-	db, err := o.a.s.w.querier(ctx)
+	db, err := o.w.Querier(ctx)
 	if err != nil {
 		return err
 	}
 	got, err := db.Query(ctx, fmt.Sprintf(
 		`SELECT string_agg(action, ',' ORDER BY action) FROM organization_audit_trail_entries
 		 WHERE affected_type = 'ORGANIZATION' AND affected_id = '%s'
-		   AND actor_kind = 'operator' AND actor_id = '%s'`, slug, operatorKey))
+		   AND actor_kind = 'operator' AND actor_id = '%s'`, slug, harness.OperatorKey))
 	if err != nil {
 		return err //nolint:wrapcheck // the querier names the query
 	}
 	slices.Sort(actions)
 	if want := strings.Join(actions, ","); strings.TrimSpace(got) != want {
-		return fmt.Errorf("%w: trail of %s holds %q, want %q", errStep, slug, got, want)
+		return fmt.Errorf("%w: trail of %s holds %q, want %q", harness.ErrStep, slug, got, want)
 	}
 	return nil
 }
@@ -435,7 +434,7 @@ func operatorProblem(r *http.Response, body []byte, what, code, slug, field stri
 		json.Unmarshal(body, &p) != nil || !strings.HasSuffix(p.Type, ":"+slug) ||
 		!strings.Contains(p.Detail, field) {
 		return fmt.Errorf("%w: %s answered %d %s, want a %s problem %q naming %q",
-			errStep, what, r.StatusCode, body, code, slug, field)
+			harness.ErrStep, what, r.StatusCode, body, code, slug, field)
 	}
 	return nil
 }
@@ -444,21 +443,21 @@ func operatorProblem(r *http.Response, body []byte, what, code, slug, field stri
 // API's base URL, sub operator::<key>, iw_kind operator, and a life of
 // auth.tokens.api.ttl.
 func (o *operatorSteps) claims(name string) error {
-	var c apiClaims
-	if err := jwtPart(o.a.tokens[name], 1, &c); err != nil {
+	var c harness.APIClaims
+	if err := harness.JWTPart(o.w.Tokens[name], 1, &c); err != nil {
 		return err
 	}
-	want := apiClaims{
-		Issuer:   publicURL,
-		Subject:  "operator::" + operatorKey,
-		Audience: audience{publicURL + "/operator/v1"},
+	want := harness.APIClaims{
+		Issuer:   harness.PublicURL,
+		Subject:  "operator::" + harness.OperatorKey,
+		Audience: harness.Audience{harness.PublicURL + "/operator/v1"},
 		ID:       c.ID,
 		Kind:     "operator",
 		IssuedAt: c.IssuedAt,
 		Expiry:   c.IssuedAt + int64((10*time.Hour)/time.Second),
 	}
-	if !equalClaims(c, want) {
-		return fmt.Errorf("%w: claims %+v, want %+v", errStep, c, want)
+	if !harness.EqualClaims(c, want) {
+		return fmt.Errorf("%w: claims %+v, want %+v", harness.ErrStep, c, want)
 	}
 	return nil
 }

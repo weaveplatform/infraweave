@@ -1,4 +1,4 @@
-package acceptance
+package authz
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // spaceSteps drive the Spaces tag. A created space's slug ends in a new
@@ -17,7 +19,9 @@ import (
 // orgSteps resolves members.
 //
 // ref: decision 0007
-type spaceSteps struct{ o *orgSteps }
+type spaceSteps struct {
+	w *harness.World
+}
 
 func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's id is the space "(\w+)"$`, s.remember)
@@ -55,11 +59,11 @@ func (s *spaceSteps) remember(name string) error {
 	var sp struct {
 		ID string `json:"id"`
 	}
-	r := s.o.a.s.last()
-	if json.Unmarshal(r.body, &sp) != nil || sp.ID == "" {
-		return fmt.Errorf("%w: no space in %d %s", errStep, r.status, r.body)
+	r := s.w.Last()
+	if json.Unmarshal(r.Body, &sp) != nil || sp.ID == "" {
+		return fmt.Errorf("%w: no space in %d %s", harness.ErrStep, r.Status, r.Body)
 	}
-	s.o.ids[name] = sp.ID
+	s.w.IDs[name] = sp.ID
 	return nil
 }
 
@@ -75,9 +79,9 @@ func (s *spaceSteps) lists(want string) error {
 			Node ref `json:"node"`
 		} `json:"edges"`
 	}
-	r := s.o.a.s.last()
-	if err := json.Unmarshal(r.body, &page); err != nil || r.status != http.StatusOK {
-		return fmt.Errorf("%w: not a page: %d %s", errStep, r.status, r.body)
+	r := s.w.Last()
+	if err := json.Unmarshal(r.Body, &page); err != nil || r.Status != http.StatusOK {
+		return fmt.Errorf("%w: not a page: %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	got := []string{}
 	for _, it := range page.Items {
@@ -86,8 +90,8 @@ func (s *spaceSteps) lists(want string) error {
 	for _, e := range page.Edges {
 		got = append(got, e.Node.ID)
 	}
-	if w := s.slugList(want); !reflect.DeepEqual(got, w) {
-		return fmt.Errorf("%w: the page lists %v, want %v", errStep, got, w)
+	if w := s.w.SlugList(want); !reflect.DeepEqual(got, w) {
+		return fmt.Errorf("%w: the page lists %v, want %v", harness.ErrStep, got, w)
 	}
 	return nil
 }
@@ -95,34 +99,39 @@ func (s *spaceSteps) lists(want string) error {
 // bind binds the member key to role on the space slug, as a binding
 // operation will, and marks the account's authorization changed.
 func (s *spaceSteps) bind(ctx context.Context, role, slug string) error {
-	acct := uuidOf(member.account)
-	_, err := s.o.a.s.query(ctx, fmt.Sprintf(`
+	acct := harness.UUIDOf(harness.Member.Account)
+	_, err := s.w.Query(ctx, fmt.Sprintf(
+		`
 		INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin,
 				created_by)
 			SELECT '%[1]s', gen_random_uuid(), 'api_key', '%[2]s', r.id, sp.id, 'binding', 'acceptance'
 			FROM roles r, spaces sp
 			WHERE r.account_id = '%[1]s' AND r.slug = %[3]s
 				AND sp.account_id = '%[1]s' AND sp.slug = %[4]s;%[5]s`,
-		acct, uuidOf(member.key), literal(role), literal(s.o.resolve(slug)),
-		authzChanged(member.account)))
+		acct,
+		harness.UUIDOf(harness.Member.Key),
+		harness.Literal(role),
+		harness.Literal(s.w.Resolve(slug)),
+		harness.AuthzChanged(harness.Member.Account),
+	))
 	return err
 }
 
 // matchesViewer checks that the space's allowedActions, read with token
 // name, are the actions the viewer lists for the space.
 func (s *spaceSteps) matchesViewer(ctx context.Context, name, slug, replica string) error {
-	slug = s.o.resolve(slug)
-	r, err := s.o.a.do(ctx, replica, name, http.MethodGet, "/api/v1/spaces/"+slug, nil)
+	slug = s.w.Resolve(slug)
+	r, err := s.w.Do(ctx, replica, name, http.MethodGet, "/api/v1/spaces/"+slug, nil)
 	if err != nil {
 		return err
 	}
 	var sp struct {
 		AllowedActions []string `json:"allowedActions"`
 	}
-	if json.Unmarshal(r.body, &sp) != nil || r.status != http.StatusOK {
-		return fmt.Errorf("%w: no space %s: %d %s", errStep, slug, r.status, r.body)
+	if json.Unmarshal(r.Body, &sp) != nil || r.Status != http.StatusOK {
+		return fmt.Errorf("%w: no space %s: %d %s", harness.ErrStep, slug, r.Status, r.Body)
 	}
-	v, err := s.o.a.do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
+	v, err := s.w.Do(ctx, replica, name, http.MethodGet, "/api/v1/viewer", nil)
 	if err != nil {
 		return err
 	}
@@ -132,30 +141,19 @@ func (s *spaceSteps) matchesViewer(ctx context.Context, name, slug, replica stri
 			Actions []string `json:"actions"`
 		} `json:"actions"`
 	}
-	if json.Unmarshal(v.body, &u) != nil || v.status != http.StatusOK {
-		return fmt.Errorf("%w: no viewer: %d %s", errStep, v.status, v.body)
+	if json.Unmarshal(v.Body, &u) != nil || v.Status != http.StatusOK {
+		return fmt.Errorf("%w: no viewer: %d %s", harness.ErrStep, v.Status, v.Body)
 	}
 	for _, a := range u.Actions {
 		if a.SpaceID == slug {
 			if !reflect.DeepEqual(a.Actions, sp.AllowedActions) || len(a.Actions) == 0 {
 				return fmt.Errorf("%w: the space allows %v, the viewer lists %v",
-					errStep, sp.AllowedActions, a.Actions)
+					harness.ErrStep, sp.AllowedActions, a.Actions)
 			}
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: the viewer lists no actions on %s: %s", errStep, slug, v.body)
-}
-
-// slugList is want's slugs, comma-separated, with each {name} resolved.
-func (s *spaceSteps) slugList(want string) []string {
-	w := []string{}
-	if want = s.o.resolve(want); want != "" {
-		for slug := range strings.SplitSeq(want, ",") {
-			w = append(w, strings.TrimSpace(slug))
-		}
-	}
-	return w
+	return fmt.Errorf("%w: the viewer lists no actions on %s: %s", harness.ErrStep, slug, v.Body)
 }
 
 // searches pages through searchSpaces with token name, n at a time,
@@ -169,7 +167,7 @@ func (s *spaceSteps) searches(ctx context.Context, name, replica string, n int, 
 		if after != "" {
 			in["after"] = after
 		}
-		r, err := s.o.a.do(ctx, replica, name, http.MethodPost, "/api/v1/spaces/search", in)
+		r, err := s.w.Do(ctx, replica, name, http.MethodPost, "/api/v1/spaces/search", in)
 		if err != nil {
 			return err
 		}
@@ -184,25 +182,25 @@ func (s *spaceSteps) searches(ctx context.Context, name, replica string, n int, 
 				HasNextPage bool   `json:"hasNextPage"`
 			} `json:"pageInfo"`
 		}
-		if json.Unmarshal(r.body, &page) != nil || r.status != http.StatusOK {
-			return fmt.Errorf("%w: not a page of spaces: %d %s", errStep, r.status, r.body)
+		if json.Unmarshal(r.Body, &page) != nil || r.Status != http.StatusOK {
+			return fmt.Errorf("%w: not a page of spaces: %d %s", harness.ErrStep, r.Status, r.Body)
 		}
 		for _, e := range page.Edges {
 			got = append(got, e.Node.ID)
 		}
 		if !page.PageInfo.HasNextPage {
-			if w := s.slugList(want); !reflect.DeepEqual(got, w) {
-				return fmt.Errorf("%w: the search found %v, want %v", errStep, got, w)
+			if w := s.w.SlugList(want); !reflect.DeepEqual(got, w) {
+				return fmt.Errorf("%w: the search found %v, want %v", harness.ErrStep, got, w)
 			}
 			return nil
 		}
 		if len(page.Edges) != n {
-			return fmt.Errorf("%w: a page before the last holds %d spaces: %s", errStep,
-				len(page.Edges), r.body)
+			return fmt.Errorf("%w: a page before the last holds %d spaces: %s", harness.ErrStep,
+				len(page.Edges), r.Body)
 		}
 		after = page.PageInfo.EndCursor
 	}
-	return fmt.Errorf("%w: the search did not end after 20 pages", errStep)
+	return fmt.Errorf("%w: the search did not end after 20 pages", harness.ErrStep)
 }
 
 // suggests checks the last answer, the suggestions of the id field, for
@@ -217,9 +215,9 @@ func (s *spaceSteps) suggests(want string, count int) error {
 		} `json:"fields"`
 		FilteredCount int `json:"filteredCount"`
 	}
-	r := s.o.a.s.last()
-	if json.Unmarshal(r.body, &out) != nil || r.status != http.StatusOK {
-		return fmt.Errorf("%w: not suggestions: %d %s", errStep, r.status, r.body)
+	r := s.w.Last()
+	if json.Unmarshal(r.Body, &out) != nil || r.Status != http.StatusOK {
+		return fmt.Errorf("%w: not suggestions: %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	for _, f := range out.Fields {
 		if f.Name != "id" || f.PossibleValuesString == nil {
@@ -227,15 +225,15 @@ func (s *spaceSteps) suggests(want string, count int) error {
 		}
 		got := slices.Clone(f.PossibleValuesString.Values)
 		slices.Sort(got)
-		w := s.slugList(want)
+		w := s.w.SlugList(want)
 		slices.Sort(w)
 		if !reflect.DeepEqual(got, w) || out.FilteredCount != count {
-			return fmt.Errorf("%w: suggested %v of %d, want %v of %d", errStep, got,
+			return fmt.Errorf("%w: suggested %v of %d, want %v of %d", harness.ErrStep, got,
 				out.FilteredCount, w, count)
 		}
 		return nil
 	}
-	return fmt.Errorf("%w: no values of id: %s", errStep, r.body)
+	return fmt.Errorf("%w: no values of id: %s", harness.ErrStep, r.Body)
 }
 
 // refuses checks that the last answer, a problem, names the field at
@@ -247,20 +245,27 @@ func (s *spaceSteps) refuses(pointer, reason string) error {
 			Reason  string `json:"reason"`
 		} `json:"errors"`
 	}
-	r := s.o.a.s.last()
-	if json.Unmarshal(r.body, &p) == nil {
+	r := s.w.Last()
+	if json.Unmarshal(r.Body, &p) == nil {
 		for _, e := range p.Errors {
 			if e.Pointer == pointer && e.Reason == reason {
 				return nil
 			}
 		}
 	}
-	return fmt.Errorf("%w: no %s error at %s: %d %s", errStep, reason, pointer, r.status, r.body)
+	return fmt.Errorf(
+		"%w: no %s error at %s: %d %s",
+		harness.ErrStep,
+		reason,
+		pointer,
+		r.Status,
+		r.Body,
+	)
 }
 
 // anonymous sends a request with no credential.
 func (s *spaceSteps) anonymous(ctx context.Context, method, path, replica string) error {
-	_, err := s.o.a.do(ctx, replica, "", method, path, nil)
+	_, err := s.w.Do(ctx, replica, "", method, path, nil)
 	return err
 }
 
@@ -272,14 +277,14 @@ func (s *spaceSteps) catalogue(n int, deprecated, disabled string) error {
 		Deprecated bool   `json:"deprecated"`
 		Disabled   bool   `json:"disabled"`
 	}
-	r := s.o.a.s.last()
-	if json.Unmarshal(r.body, &out) != nil || r.status != http.StatusOK || len(out) != n {
+	r := s.w.Last()
+	if json.Unmarshal(r.Body, &out) != nil || r.Status != http.StatusOK || len(out) != n {
 		return fmt.Errorf(
 			"%w: not a catalogue of %d actions: %d %.200s",
-			errStep,
+			harness.ErrStep,
 			n,
-			r.status,
-			r.body,
+			r.Status,
+			r.Body,
 		)
 	}
 	flags := map[string][2]bool{}
@@ -287,7 +292,7 @@ func (s *spaceSteps) catalogue(n int, deprecated, disabled string) error {
 		flags[a.Action] = [2]bool{a.Deprecated, a.Disabled}
 	}
 	if flags[deprecated] != [2]bool{true, false} || flags[disabled] != [2]bool{false, true} {
-		return fmt.Errorf("%w: %s is %v and %s %v", errStep, deprecated, flags[deprecated],
+		return fmt.Errorf("%w: %s is %v and %s %v", harness.ErrStep, deprecated, flags[deprecated],
 			disabled, flags[disabled])
 	}
 	return nil
@@ -296,7 +301,7 @@ func (s *spaceSteps) catalogue(n int, deprecated, disabled string) error {
 // seeded checks the tree, roles and first binding creating the account
 // slug gave it, with admin the member it names.
 func (s *spaceSteps) seeded(ctx context.Context, slug, admin string) error {
-	out, err := s.o.a.s.query(ctx, fmt.Sprintf(`
+	out, err := s.w.Query(ctx, fmt.Sprintf(`
 		WITH a AS (SELECT id FROM accounts WHERE slug = %[1]s)
 		SELECT
 			(SELECT string_agg(sp.slug || ':' || coalesce(p.slug, '-'), ',' ORDER BY sp.slug)
@@ -310,14 +315,14 @@ func (s *spaceSteps) seeded(ctx context.Context, slug, admin string) error {
 				WHERE b.account_id = (SELECT id FROM a) AND b.space_id = (SELECT id FROM a)
 					AND r.slug = 'space-admin' AND b.actor_kind = 'user'
 					AND b.actor_id = '%[2]s')`,
-		literal(slug), uuidOf(s.o.ids[admin])))
+		harness.Literal(slug), harness.UUIDOf(s.w.IDs[admin])))
 	if err != nil {
 		return err
 	}
 	want := fmt.Sprintf("%[1]s:-,legacy:%[1]s "+
 		"drift-detection-manager,space-admin,space-reader,space-writer,worker-pool-controller 1", slug)
 	if got := strings.TrimSpace(out); got != want {
-		return fmt.Errorf("%w: account %s holds %q, want %q", errStep, slug, got, want)
+		return fmt.Errorf("%w: account %s holds %q, want %q", harness.ErrStep, slug, got, want)
 	}
 	return nil
 }

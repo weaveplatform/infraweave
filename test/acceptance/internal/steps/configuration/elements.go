@@ -1,4 +1,4 @@
-package acceptance
+package configuration
 
 import (
 	"bytes"
@@ -11,10 +11,15 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // configSteps read the config elements an answer carries.
-type configSteps struct{ o *orgSteps }
+type configSteps struct {
+	w *harness.World
+}
 
 func (c *configSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's config lists the elements "([^"]*)"$`, c.lists)
@@ -37,18 +42,17 @@ func (c *configSteps) register(sc *godog.ScenarioContext) {
 // secret is found whichever field of them would carry it. The value is
 // letters, digits and dashes, so it needs no quoting inside the SQL.
 func (c *configSteps) nowhere(ctx context.Context, value string) error {
-	s := c.o.a.s
-	for i, r := range s.sent {
-		if bytes.Contains(r.body, []byte(value)) {
-			return fmt.Errorf("%w: answer %d holds %q: %s", errStep, i+1, value, r.body)
+	for i, r := range c.w.Sent {
+		if bytes.Contains(r.Body, []byte(value)) {
+			return fmt.Errorf("%w: answer %d holds %q: %s", harness.ErrStep, i+1, value, r.Body)
 		}
 	}
-	for i, srv := range s.w.servers {
+	for i, srv := range c.w.Servers {
 		if bytes.Contains(srv.Stdout(), []byte(value)) {
-			return fmt.Errorf("%w: server %d logged %q", errStep, i+1, value)
+			return fmt.Errorf("%w: server %d logged %q", harness.ErrStep, i+1, value)
 		}
 	}
-	out, err := s.query(ctx, fmt.Sprintf(`SELECT
+	out, err := c.w.Query(ctx, fmt.Sprintf(`SELECT
 		(SELECT count(*) FROM audit_trail_entries e WHERE strpos(e::text, '%[1]s') > 0)
 		+ (SELECT count(*) FROM organization_audit_trail_entries e WHERE strpos(e::text, '%[1]s') > 0)
 		+ (SELECT count(*) FROM events e WHERE strpos(e::text, '%[1]s') > 0)`, value))
@@ -58,7 +62,7 @@ func (c *configSteps) nowhere(ctx context.Context, value string) error {
 	if n, err := strconv.Atoi(strings.TrimSpace(out)); err != nil || n != 0 {
 		return fmt.Errorf(
 			"%w: %s audit entries and events hold %q",
-			errStep,
+			harness.ErrStep,
 			strings.TrimSpace(out),
 			value,
 		)
@@ -82,8 +86,8 @@ func (c *configSteps) refusesRange(pointer string, l1, c1, l2, c2 int) error {
 			} `json:"range"`
 		} `json:"errors"`
 	}
-	r := c.o.a.s.last()
-	if json.Unmarshal(r.body, &p) == nil {
+	r := c.w.Last()
+	if json.Unmarshal(r.Body, &p) == nil {
 		for _, e := range p.Errors {
 			if e.Pointer == pointer && e.Range != nil && e.Range.Start == (position{l1, c1}) &&
 				e.Range.End == (position{l2, c2}) {
@@ -92,7 +96,7 @@ func (c *configSteps) refusesRange(pointer string, l1, c1, l2, c2 int) error {
 		}
 	}
 	return fmt.Errorf("%w: no error at %s from %d:%d to %d:%d: %d %s",
-		errStep, pointer, l1, c1, l2, c2, r.status, r.body)
+		harness.ErrStep, pointer, l1, c1, l2, c2, r.Status, r.Body)
 }
 
 // attaches waits for the stack slug, read through replica, to attach the
@@ -104,11 +108,11 @@ func (c *configSteps) attaches(ctx context.Context, slug, replica, tok, want str
 		w = strings.Split(want, ", ")
 	}
 	var got []string
-	err := Eventually(
+	err := deps.Eventually(
 		ctx,
 		"stack "+slug+" to attach "+want,
 		func(ctx context.Context) (bool, error) {
-			r, err := c.o.a.do(ctx, replica, tok, http.MethodGet, "/api/v1/stacks/"+slug, nil)
+			r, err := c.w.Do(ctx, replica, tok, http.MethodGet, "/api/v1/stacks/"+slug, nil)
 			if err != nil {
 				return false, err
 			}
@@ -118,8 +122,13 @@ func (c *configSteps) attaches(ctx context.Context, slug, replica, tok, want str
 					IsAutoattached bool   `json:"isAutoattached"`
 				} `json:"attachedContexts"`
 			}
-			if err := json.Unmarshal(r.body, &v); err != nil || r.status != http.StatusOK {
-				return false, fmt.Errorf("%w: not a stack: %d %s", errStep, r.status, r.body)
+			if err := json.Unmarshal(r.Body, &v); err != nil || r.Status != http.StatusOK {
+				return false, fmt.Errorf(
+					"%w: not a stack: %d %s",
+					harness.ErrStep,
+					r.Status,
+					r.Body,
+				)
 			}
 			got = []string{}
 			for _, a := range v.AttachedContexts {
@@ -146,13 +155,13 @@ func (c *configSteps) lists(want string) error {
 			ID string `json:"id"`
 		} `json:"config"`
 	}
-	r := c.o.a.s.last()
+	r := c.w.Last()
 	if err := json.Unmarshal(
-		r.body,
+		r.Body,
 		&v,
 	); err != nil ||
-		r.status != http.StatusOK && r.status != http.StatusCreated {
-		return fmt.Errorf("%w: not a stack: %d %s", errStep, r.status, r.body)
+		r.Status != http.StatusOK && r.Status != http.StatusCreated {
+		return fmt.Errorf("%w: not a stack: %d %s", harness.ErrStep, r.Status, r.Body)
 	}
 	got := []string{}
 	for _, e := range v.Config {
@@ -163,7 +172,7 @@ func (c *configSteps) lists(want string) error {
 		w = strings.Split(want, ", ")
 	}
 	if !reflect.DeepEqual(got, w) {
-		return fmt.Errorf("%w: the config lists %v, want %v", errStep, got, w)
+		return fmt.Errorf("%w: the config lists %v, want %v", harness.ErrStep, got, w)
 	}
 	return nil
 }

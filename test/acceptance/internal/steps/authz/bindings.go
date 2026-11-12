@@ -1,4 +1,4 @@
-package acceptance
+package authz
 
 import (
 	"context"
@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // grantsWithin bounds how long a binding written through one replica takes
@@ -21,7 +24,9 @@ import (
 const grantsWithin = time.Second
 
 // bindingSteps drive the role binding operations.
-type bindingSteps struct{ o *orgSteps }
+type bindingSteps struct {
+	w *harness.World
+}
 
 func (s *bindingSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
@@ -41,7 +46,7 @@ func (s *bindingSteps) register(sc *godog.ScenarioContext) {
 // listed are the bindings of the last answer: a list, or a page's items.
 func (s *bindingSteps) listed() ([]json.RawMessage, bool) {
 	var items []json.RawMessage
-	body := s.o.a.s.last().body
+	body := s.w.Last().Body
 	if json.Unmarshal(body, &items) == nil {
 		return items, true
 	}
@@ -57,13 +62,13 @@ func (s *bindingSteps) listed() ([]json.RawMessage, bool) {
 // stackRows checks that the home account's role_bindings hold n rows of
 // stacks, whichever stack each names.
 func (s *bindingSteps) stackRows(ctx context.Context, n int) error {
-	out, err := s.o.a.s.query(ctx, fmt.Sprintf(`SELECT count(*) FROM role_bindings
-		WHERE account_id = '%s' AND actor_kind = 'stack'`, uuidOf(tenants["home"].account)))
+	out, err := s.w.Query(ctx, fmt.Sprintf(`SELECT count(*) FROM role_bindings
+		WHERE account_id = '%s' AND actor_kind = 'stack'`, harness.UUIDOf(harness.Tenants["home"].Account)))
 	if err != nil {
 		return err
 	}
 	if got, err := strconv.Atoi(strings.TrimSpace(out)); err != nil || got != n {
-		return fmt.Errorf("%w: %q stack role bindings, want %d", errStep, out, n)
+		return fmt.Errorf("%w: %q stack role bindings, want %d", harness.ErrStep, out, n)
 	}
 	return nil
 }
@@ -71,18 +76,18 @@ func (s *bindingSteps) stackRows(ctx context.Context, n int) error {
 // allowsExactly waits at most grantsWithin for the space's allowedActions,
 // read by who, to be the role slug's actions in the catalogue's order.
 func (s *bindingSteps) allowsExactly(ctx context.Context, who, slug, replica, role string) error {
-	if err := s.o.send(ctx, who, http.MethodGet, "/api/v1/roles/"+role, "", replica); err != nil {
+	if err := s.w.SendAs(ctx, who, http.MethodGet, "/api/v1/roles/"+role, "", replica); err != nil {
 		return err
 	}
 	var r struct {
 		Actions []string `json:"actions"`
 	}
-	if last := s.o.a.s.last(); json.Unmarshal(last.body, &r) != nil ||
-		last.status != http.StatusOK {
-		return fmt.Errorf("%w: no role %s: %d %s", errStep, role, last.status, last.body)
+	if last := s.w.Last(); json.Unmarshal(last.Body, &r) != nil ||
+		last.Status != http.StatusOK {
+		return fmt.Errorf("%w: no role %s: %d %s", harness.ErrStep, role, last.Status, last.Body)
 	}
 	return s.converge(ctx, "the role "+role+" to reach "+replica, func() error {
-		if err := s.o.send(
+		if err := s.w.SendAs(
 			ctx,
 			who,
 			http.MethodGet,
@@ -95,12 +100,18 @@ func (s *bindingSteps) allowsExactly(ctx context.Context, who, slug, replica, ro
 		var sp struct {
 			AllowedActions []string `json:"allowedActions"`
 		}
-		last := s.o.a.s.last()
-		if json.Unmarshal(last.body, &sp) != nil || last.status != http.StatusOK {
-			return fmt.Errorf("%w: no space %s: %d %s", errStep, slug, last.status, last.body)
+		last := s.w.Last()
+		if json.Unmarshal(last.Body, &sp) != nil || last.Status != http.StatusOK {
+			return fmt.Errorf(
+				"%w: no space %s: %d %s",
+				harness.ErrStep,
+				slug,
+				last.Status,
+				last.Body,
+			)
 		}
 		if !slices.Equal(sp.AllowedActions, r.Actions) {
-			return fmt.Errorf("%w: the space allows %v, the role holds %v", errStep,
+			return fmt.Errorf("%w: the space allows %v, the role holds %v", harness.ErrStep,
 				sp.AllowedActions, r.Actions)
 		}
 		return nil
@@ -111,7 +122,7 @@ func (s *bindingSteps) allowsExactly(ctx context.Context, who, slug, replica, ro
 // a not-found problem.
 func (s *bindingSteps) hidden(ctx context.Context, who, slug, replica string) error {
 	return s.converge(ctx, "the space "+slug+" to leave "+replica, func() error {
-		if err := s.o.send(
+		if err := s.w.SendAs(
 			ctx,
 			who,
 			http.MethodGet,
@@ -121,7 +132,7 @@ func (s *bindingSteps) hidden(ctx context.Context, who, slug, replica string) er
 		); err != nil {
 			return err
 		}
-		return isProblem(s.o.a.s.last(), "the space", "404", "not-found")
+		return harness.IsProblem(s.w.Last(), "the space", "404", "not-found")
 	})
 }
 
@@ -130,7 +141,7 @@ func (s *bindingSteps) hidden(ctx context.Context, who, slug, replica string) er
 func (s *bindingSteps) converge(ctx context.Context, what string, check func() error) error {
 	ctx, cancel := context.WithTimeout(ctx, grantsWithin)
 	defer cancel()
-	return Eventually(ctx, what, func(context.Context) (bool, error) {
+	return deps.Eventually(ctx, what, func(context.Context) (bool, error) {
 		err := check()
 		return err == nil, err
 	})
@@ -139,8 +150,8 @@ func (s *bindingSteps) converge(ctx context.Context, what string, check func() e
 // count checks that the last answer is an array of n.
 func (s *bindingSteps) count(n int) error {
 	items, ok := s.listed()
-	if last := s.o.a.s.last(); !ok || len(items) != n {
-		return fmt.Errorf("%w: want %d bindings: %d %s", errStep, n, last.status, last.body)
+	if last := s.w.Last(); !ok || len(items) != n {
+		return fmt.Errorf("%w: want %d bindings: %d %s", harness.ErrStep, n, last.Status, last.Body)
 	}
 	return nil
 }
@@ -152,15 +163,21 @@ func (s *bindingSteps) refuses(pointer string) error {
 			Pointer string `json:"pointer"`
 		} `json:"errors"`
 	}
-	last := s.o.a.s.last()
-	if json.Unmarshal(last.body, &p) == nil {
+	last := s.w.Last()
+	if json.Unmarshal(last.Body, &p) == nil {
 		for _, e := range p.Errors {
 			if e.Pointer == pointer {
 				return nil
 			}
 		}
 	}
-	return fmt.Errorf("%w: no refusal of %s: %d %s", errStep, pointer, last.status, last.body)
+	return fmt.Errorf(
+		"%w: no refusal of %s: %d %s",
+		harness.ErrStep,
+		pointer,
+		last.Status,
+		last.Body,
+	)
 }
 
 // keep names the binding of the role slug in the last answer, a list or
@@ -177,10 +194,10 @@ func (s *bindingSteps) keep(slug, name string) error {
 			} `json:"role"`
 		}
 		if json.Unmarshal(raw, &b) == nil && (b.RoleID == slug || b.Role.ID == slug) {
-			s.o.ids[name] = b.ID
+			s.w.IDs[name] = b.ID
 			return nil
 		}
 	}
-	last := s.o.a.s.last()
-	return fmt.Errorf("%w: no binding of %s: %d %s", errStep, slug, last.status, last.body)
+	last := s.w.Last()
+	return fmt.Errorf("%w: no binding of %s: %d %s", harness.ErrStep, slug, last.Status, last.Body)
 }

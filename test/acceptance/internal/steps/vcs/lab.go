@@ -1,6 +1,7 @@
-package acceptance
+package vcs
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,15 +10,14 @@ import (
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/vcslab"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
 // labSteps reach the lab a @vcs-lab scenario's @lab: tag names: the
 // real provider and repository the vcs-lab job provisioned for the run
 // and names through vcslab's variables. They run only in that job.
 type labSteps struct {
-	// ids are the scenario's kept values, which the requests name as
-	// {key}, shared with the organization steps.
-	ids map[string]string
+	w *harness.World
 }
 
 func (l *labSteps) register(sc *godog.ScenarioContext) {
@@ -31,17 +31,28 @@ func (l *labSteps) register(sc *godog.ScenarioContext) {
 func (l *labSteps) repository() error {
 	lab, err := vcslab.FromEnv(vcslab.EnvNamespace, vcslab.EnvRepository)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errStep, err)
+		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
 	for k, v := range map[string]string{
 		"labHost": lab.Host, "labUser": lab.User, "labToken": lab.Token,
 		"labNamespace": lab.Namespace, "labRepository": lab.Repository,
 		"labBase": vcslab.Base, "labHead": vcslab.Head,
 	} {
-		l.ids[k] = v
+		l.w.IDs[k] = v
 	}
 	return nil
 }
+
+// VCS returns the settings and certificates a @vcs-lab scenario's
+// servers need to reach its lab.
+func (*labSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
+	vcs := map[string]any{}
+	ca, err := labVCS(w.Dir, w.Tags, vcs)
+	return vcs, ca, err
+}
+
+// Stop has nothing to stop: the lab outlives the run.
+func (*labSteps) Stop() {}
 
 // labVCS adds to vcs the settings a @vcs-lab scenario's servers need to
 // reach its lab, and returns the certificates they must trust beyond the
@@ -55,7 +66,7 @@ func labVCS(dir string, tags []string, vcs map[string]any) ([]byte, error) {
 	if slices.Contains(tags, "@lab:github") {
 		lab, err := vcslab.FromEnv(vcslab.EnvUser, vcslab.EnvToken)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", errStep, err)
+			return nil, fmt.Errorf("%w: %w", harness.ErrStep, err)
 		}
 		key := filepath.Join(dir, "lab-app.pem")
 		if err := os.WriteFile(key, []byte(lab.Token), 0o600); err != nil {

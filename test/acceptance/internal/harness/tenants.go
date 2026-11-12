@@ -1,4 +1,4 @@
-package acceptance
+package harness
 
 import (
 	"context"
@@ -13,14 +13,14 @@ import (
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 )
 
-// tenant is an account seeded through SQL with one secret API key, its
+// Tenant is an account seeded through SQL with one secret API key, its
 // first: no credential exists before it to create one through the API
 // with. The key is space-admin on the account's top space, as an
 // account's first admin is, unless member. The IDs are fixed so feature
 // files can name the key's caller, api_key:<key>.
-type tenant struct {
-	org, account, key string
-	orgSlug, slug     string
+type Tenant struct {
+	Org, Account, Key string
+	OrgSlug, Slug     string
 	member            bool
 }
 
@@ -29,7 +29,7 @@ type tenant struct {
 // account of home's organization; and stranger, an account of another
 // organization.
 var (
-	home = tenant{
+	Home = Tenant{
 		"01KACME0000000000000000001",
 		"01KACME0000000000000000002",
 		"01KACME0000000000000000003",
@@ -37,7 +37,7 @@ var (
 		"acme",
 		false,
 	}
-	member = tenant{
+	Member = Tenant{
 		"01KACME0000000000000000001",
 		"01KACME0000000000000000002",
 		"01KACME000000000000000000A",
@@ -45,7 +45,7 @@ var (
 		"acme",
 		true,
 	}
-	sibling = tenant{
+	Sibling = Tenant{
 		"01KACME0000000000000000001",
 		"01KACME0000000000000000004",
 		"01KACME0000000000000000005",
@@ -53,7 +53,7 @@ var (
 		"acme-dev",
 		false,
 	}
-	stranger = tenant{
+	stranger = Tenant{
 		"01KG10BEX00000000000000001",
 		"01KG10BEX00000000000000002",
 		"01KG10BEX00000000000000003",
@@ -61,18 +61,18 @@ var (
 		"globex",
 		false,
 	}
-	tenants = map[string]tenant{
-		"home": home, "member": member, "sibling": sibling, "stranger": stranger,
+	Tenants = map[string]Tenant{
+		"home": Home, "member": Member, "sibling": Sibling, "stranger": stranger,
 	}
 )
 
-// secret is the key's secret, derived from its ID so no secret is
+// Secret is the key's secret, derived from its ID so no secret is
 // written down: iwk_ and 32 bytes in base64url, the format of every API
 // key secret.
 //
 // ref: decision 0006
-func (t tenant) secret() string {
-	h := sha256.Sum256([]byte("acceptance:" + t.key))
+func (t Tenant) Secret() string {
+	h := sha256.Sum256([]byte("acceptance:" + t.Key))
 	return "iwk_" + base64.RawURLEncoding.EncodeToString(h[:])
 }
 
@@ -80,9 +80,9 @@ func (t tenant) secret() string {
 // limits, idempotency keys and API disable switch.
 //
 // ref: decision 0003
-func (t tenant) caller() string { return string(kernel.PrincipalAPIKey) + ":" + t.key }
+func (t Tenant) caller() string { return string(kernel.PrincipalAPIKey) + ":" + t.Key }
 
-func uuidOf(ulid string) string {
+func UUIDOf(ulid string) string {
 	id, err := kernel.ParseULID(ulid)
 	if err != nil {
 		panic(fmt.Sprintf("tenant ID %q: %v", ulid, err))
@@ -90,25 +90,25 @@ func uuidOf(ulid string) string {
 	return id.UUID()
 }
 
-// querier runs SQL in a scenario's database; *Database and *OwnPostgres
+// Querier runs SQL in a scenario's database; *Database and *OwnPostgres
 // are each one.
-type querier interface {
+type Querier interface {
 	Query(ctx context.Context, sql string) (string, error)
 }
 
-// seed inserts t's organization, with the Enterprise entitlement creating
+// Seed inserts t's organization, with the Enterprise entitlement creating
 // an organization gives it while billing is off, its account with the top
 // space, legacy and system roles that creating an account gives it, and
 // its key with its binding, or leaves them as they are, so every
 // replica's launch may seed.
-func (t tenant) seed(ctx context.Context, db querier) error {
-	digest := sha256.Sum256([]byte(t.secret()))
+func (t Tenant) Seed(ctx context.Context, db Querier) error {
+	digest := sha256.Sum256([]byte(t.Secret()))
 	binding := fmt.Sprintf(`
 		INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin,
 				created_by)
 			SELECT '%[1]s', gen_random_uuid(), 'api_key', '%[2]s', id, '%[1]s', 'binding', 'acceptance'
 			FROM roles WHERE account_id = '%[1]s' AND slug = 'space-admin'
-			ON CONFLICT DO NOTHING;%[3]s`, uuidOf(t.account), uuidOf(t.key), authzChanged(t.account))
+			ON CONFLICT DO NOTHING;%[3]s`, UUIDOf(t.Account), UUIDOf(t.Key), AuthzChanged(t.Account))
 	if t.member {
 		binding = ""
 	}
@@ -137,52 +137,52 @@ func (t tenant) seed(ctx context.Context, db querier) error {
 		INSERT INTO api_keys (account_id, id, name, type, secret_hash, teams, creator)
 			VALUES ('%[3]s', '%[5]s', 'acceptance', 'SECRET', '\x%[6]s', '{acceptance}', 'acceptance')
 			ON CONFLICT DO NOTHING;%[7]s`,
-		uuidOf(t.org), t.orgSlug, uuidOf(t.account), t.slug, uuidOf(t.key),
+		UUIDOf(t.Org), t.OrgSlug, UUIDOf(t.Account), t.Slug, UUIDOf(t.Key),
 		hex.EncodeToString(digest[:]), binding))
 	return err
 }
 
-// authzChanged is the SQL that marks the account's authorization changed,
+// AuthzChanged is the SQL that marks the account's authorization changed,
 // as the access domain's writes do: its version moves and authz:<account>
 // goes out, so every replica drops the snapshot it holds at once.
-func authzChanged(account string) string {
+func AuthzChanged(account string) string {
 	return fmt.Sprintf(`
 		UPDATE accounts SET authz_version = authz_version + 1 WHERE id = '%s';
-		SELECT pg_notify('infraweave_invalidate', 'authz:%s');`, uuidOf(account), account)
+		SELECT pg_notify('infraweave_invalidate', 'authz:%s');`, UUIDOf(account), account)
 }
 
-// exchange trades t's key for an API token at POST /auth/token.
-func (t tenant) exchange(ctx context.Context, c *sdk.Client) (string, error) {
+// Exchange trades t's key for an API token at POST /auth/token.
+func (t Tenant) Exchange(ctx context.Context, c *sdk.Client) (string, error) {
 	resp, err := c.Do(ctx, http.MethodPost, "/api/v1/auth/token",
-		map[string]string{"id": t.key, "secret": t.secret()})
+		map[string]string{"id": t.Key, "secret": t.Secret()})
 	if err != nil {
-		return "", fmt.Errorf("exchange the %s key: %w", t.slug, err)
+		return "", fmt.Errorf("exchange the %s key: %w", t.Slug, err)
 	}
 	var u struct {
 		JWT string `json:"jwt"`
 	}
 	if err := json.Unmarshal(resp.Body, &u); err != nil || u.JWT == "" {
-		return "", fmt.Errorf("exchange the %s key: no jwt in %s: %w", t.slug, resp.Body, err)
+		return "", fmt.Errorf("exchange the %s key: no jwt in %s: %w", t.Slug, resp.Body, err)
 	}
 	return u.JWT, nil
 }
 
-// authenticated is a client of the API at base holding a token of t's
+// Authenticated is a client of the API at base holding a token of t's
 // key, which it seeds in db first, and the token.
-func authenticated(
+func Authenticated(
 	ctx context.Context,
-	db querier,
+	db Querier,
 	base string,
-	t tenant,
+	t Tenant,
 ) (*sdk.Client, string, error) {
-	if err := t.seed(ctx, db); err != nil {
-		return nil, "", fmt.Errorf("seed the %s tenant: %w", t.slug, err)
+	if err := t.Seed(ctx, db); err != nil {
+		return nil, "", fmt.Errorf("seed the %s tenant: %w", t.Slug, err)
 	}
 	anon, err := sdk.New(base, sdk.WithRetry(sdk.NoRetry))
 	if err != nil {
 		return nil, "", fmt.Errorf("sdk: %w", err)
 	}
-	tok, err := t.exchange(ctx, anon)
+	tok, err := t.Exchange(ctx, anon)
 	if err != nil {
 		return nil, "", err
 	}
@@ -191,4 +191,29 @@ func authenticated(
 		return nil, "", fmt.Errorf("sdk: %w", err)
 	}
 	return c, tok, nil
+}
+
+// MemberID and MemberSession are the home account's member and their
+// browser session, seeded as #171's sign-in will create them.
+const (
+	MemberID      = "01KACME0000000000000000006"
+	MemberSession = "01KACME0000000000000000007"
+)
+
+// OperatorKey is the scenario's operator key; its secret derives from it
+// as a tenant's does, so no secret is written down.
+const OperatorKey = "01KA2V0P3RAT0RKEY000000000"
+
+func OperatorSecret() string {
+	h := sha256.Sum256([]byte("acceptance:" + OperatorKey))
+	return "iwk_" + base64.RawURLEncoding.EncodeToString(h[:])
+}
+
+// OperatorAuth is the auth settings that hold the operator key in
+// auth.operator.keys.
+func OperatorAuth() map[string]any {
+	sum := sha256.Sum256([]byte(OperatorSecret()))
+	return map[string]any{"operator": map[string]any{"keys": []map[string]any{{
+		"id": OperatorKey, "secret_sha256": fmt.Sprintf("%x", sum),
+	}}}}
 }
