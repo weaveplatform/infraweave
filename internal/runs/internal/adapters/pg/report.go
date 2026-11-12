@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -92,6 +93,28 @@ func (s *Store) Record(ctx context.Context, run lifecycle.Run, a report.Artifact
 			sql.Unavailable(err))
 	}
 	return nil
+}
+
+// SetDelta keeps d, run's plan's delta, on the run.
+func (s *Store) SetDelta(ctx context.Context, run lifecycle.Run, d workersapi.Delta) error {
+	// Integers and a boolean, so never an error.
+	doc, _ := json.Marshal(delta{
+		Add: d.Add, Change: d.Change, Delete: d.Delete, Import: d.Import, Outputs: d.Outputs,
+	})
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs SET delta = $3
+		WHERE account_id = $1 AND id = $2`, run.Account, run.ID, doc); err != nil {
+		return fmt.Errorf("runs: keep run %s's delta: %w", run.ID, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// delta is runs.delta's document.
+type delta struct {
+	Add     int  `json:"add"`
+	Change  int  `json:"change"`
+	Delete  int  `json:"delete"`
+	Import  int  `json:"import"`
+	Outputs bool `json:"outputs"`
 }
 
 // Workspace reads the key of the workspace run recorded last, and false
