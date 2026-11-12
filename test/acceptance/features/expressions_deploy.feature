@@ -18,6 +18,7 @@ Feature: Environment templates rendered into a run's specification
     And a certificate signing request for a P-256 key is kept as "csr"
     And a Gitea repository "infra" with the files:
       | main.tf | terraform {} |
+    And the head of "main" of "infra" is kept as "seed"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "pool"
     And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "first"
@@ -30,7 +31,7 @@ Feature: Environment templates rendered into a run's specification
 
   @case:success
   Scenario: A worker's run specification arrives rendered, and a value that reads a secret arrives sealed and write-only
-    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "READY" through A
     And token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
@@ -48,7 +49,7 @@ Feature: Environment templates rendered into a run's specification
 
   @case:denial
   Scenario: A run token reads only its run's specification, and a worker's session token reads none
-    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{}' through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "READY" through B
     And token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through A
