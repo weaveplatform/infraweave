@@ -15,7 +15,10 @@
 // the back edge the stack view reads each stack's blocker through;
 // Scheduler is the workersapi.Scheduler internal/app binds in the workers
 // domain, the back edge a worker's poll claims its pool's next run
-// through; StackGuard is the
+// through and a run token's bearer reads its run's handover through;
+// BindExpressions binds the registry the handover renders a stack's
+// environment with; SealedColumns names the run's sealed artifact key, for
+// internal/app's reseal; StackGuard is the
 // stacksapi.StackGuard internal/app registers there, so a stack's delete
 // deletes its runs in the same transaction; API is its partial of the
 // API's strict server, aliased RunsAPI; Held declares the columns that
@@ -25,15 +28,16 @@
 //
 // # Input and output
 //
-// None of its own: the domain reaches PostgreSQL, the stacks domain, the
-// outbox and the queue through Deps.
+// None of its own: the domain reaches PostgreSQL, the keyring, the stacks,
+// spaces, environment and in-run tokens of other domains, the outbox and
+// the queue through Deps.
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, configapi, workersapi, internal/kernel, the domain's
-// core, lifecycle,
-// schedule, surface, trigger, http and pg packages, platform/expr,
-// platform/outbox, platform/queue,
-// platform/sql/integrity and platform/sql/migrate. Only
+// It imports runsapi, stacksapi, configapi, workersapi, accessapi,
+// internal/kernel, the domain's core, handover, lifecycle, schedule,
+// surface, trigger, http and pg packages, platform/crypt, platform/expr,
+// platform/outbox, platform/queue, platform/sql/integrity and
+// platform/sql/migrate. Only
 // internal/app and cmd/ import it, as the constructors rule enforces.
 package assembly

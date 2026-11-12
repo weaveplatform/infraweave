@@ -93,7 +93,7 @@ breaking change to retrofit once clients exist:
 
   | Routes | Control | Deviation | Why |
   |---|---|---|---|
-  | The worker API | Authorization | No account action decides a route | The worker is its own subject: its session token names one worker of one pool, and the service reads that worker's rows alone |
+  | The worker API | Authorization | No account action decides a route | The worker or the run is its own subject: a session token names one worker of one pool, a run token one run, and the service reads that worker's or run's rows alone |
   | The worker API | Feature gates | No capability gates a route | `private-workers` bounds registration; gating the protocol would strand a running run when an organization's tier drops |
   | The worker API | Idempotency keys | `Idempotency-Key` is ignored | Answers carry session tokens, which a replay from the key store would hand out again; a registration's `jti` refuses a replay, and a poll or an exit is safe to repeat |
   | The operator API | Authorization | No account action decides a route | Operator tokens alone reach it, and an operator holds no role in any account |

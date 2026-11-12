@@ -2,9 +2,6 @@ package crypt
 
 import "context"
 
-// ValueOf wraps b as an opened value.
-func ValueOf(b []byte) Value { return Value{b} }
-
 // SetResealBatch makes each reseal transaction rewrite n rows, until the
 // test ends.
 func SetResealBatch(t interface{ Cleanup(func()) }, n int) {

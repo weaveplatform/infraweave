@@ -15,7 +15,7 @@ import (
 func TestAccPurge(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
-	s := pg.New(db)
+	s := pg.New(db, nil)
 	acct, other := kernel.NewAccountID(), kernel.NewAccountID()
 	first, second := kernel.NewULID(), kernel.NewULID()
 	insertRun(t, db, acct, first, true)

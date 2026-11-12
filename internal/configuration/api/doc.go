@@ -5,7 +5,7 @@
 // stack's ordered environment and hooks for a run as Resolved, with each
 // Element's opened value a Secret; and Surface, the name of the
 // expression surface its values' templates are checked and rendered
-// against.
+// against, with EnvVariable and StackVariable, the surface's variables.
 //
 // # Input and output
 //

@@ -86,7 +86,7 @@ var tables = []string{
 func TestAccStore(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
-	s := pg.New(db)
+	s := pg.New(db, nil)
 	acct, other := kernel.NewAccountID(), kernel.NewAccountID()
 	locked, idle, kept := kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
 	run := insertRun(t, db, acct, locked, true)
@@ -124,7 +124,7 @@ func TestAccStore(t *testing.T) {
 // TestAccStoreUnavailable fails each method on a closed pool.
 func TestAccStoreUnavailable(t *testing.T) {
 	db := pool(t)
-	s := pg.New(db)
+	s := pg.New(db, nil)
 	db.Close()
 	ctx := context.Background()
 	acct, stack := kernel.NewAccountID(), kernel.NewULID()

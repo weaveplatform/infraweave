@@ -234,7 +234,13 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   - **Run token.** Issued at claim (`aud` `infraweave-runner`), scoped to one run,
     accepted only while the run is in a worker state and its `state_version`
     matches the run's current execution, and valid at most until the run ends
-    plus one hour.
+    plus one hour. It names the run by its ULID alone, which `runs` keeps
+    unique across accounts. Its bearer is a `runner` principal
+    ([0006](0006-authentication-and-tokens.md)), admitted only on the
+    operations whose security names `runToken`, as a worker session token is
+    admitted only on the others. A run token for another run's path answers
+    `401`; a run no longer in a worker state answers `409` `invalid-state`, as
+    a report for an execution that moved on does.
 - **Operations.**
 
   | Operation | Caller and token | Purpose |
@@ -264,7 +270,7 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
 
   | Field | Meaning |
   |---|---|
-  | `assignment` | A claimed run: ID, state (`PREPARING`, `PREPARING_APPLY` or `PREPARING_REPLAN`) and run token. Only for an idle, undrained worker |
+  | `assignment` | A claimed run: ID, state (`PREPARING`, `PREPARING_APPLY` or `PREPARING_REPLAN`), its state version after the claim, and the run token with its expiry. Only for an idle, undrained worker |
   | `signals` | `stop` or `kill` for the worker's current run; `cycle` |
   | `drained` | The worker's drain flag |
   | `sessionToken` | A renewed session token, sent when less than 15 minutes remain |
@@ -287,20 +293,43 @@ timeouts; environment variables and mounted files; the managed state backend's
 address and credentials ([0010](0010-state-backend.md)); and the in-run API token
 and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
+- **The clear part and the sealed part.** The specification answers the run
+  token's own run alone. Its clear part carries everything but secrets. A
+  write-only variable or file appears by name alone, with `writeOnly: true`,
+  and so does a variable whose `${{ … }}` template reads a write-only one
+  ([0024](0024-expression-language.md)). `sealed` holds
+  `{environment, files, apiToken, apiTokenExpiresAt, artifactKey}`: those
+  values by name and path, the in-run API token and the artifact key. The
+  server renders templates in the request's transaction, against the
+  variables the stack resolves to, the stack and the run, with `now` fixed at
+  the run's last transition. A template that does not render answers `422`
+  `validation-failed` naming the variable, and leaves out the evaluator's
+  message when the template reads a secret, so a failure cannot echo one.
+- **The runner image** is the run's runtime configuration's, else the
+  stack's, else the account's default for private pools.
 - **infraweave's own variables.** The variables infraweave sets in a run are
   named `INFRAWEAVE_*`, and the Terraform metadata variables
   `TF_VAR_infraweave_*`, where Spacelift's are `SPACELIFT_*` and
   `TF_VAR_spacelift_*` (0001's rename table), with the same suffixes and
   values. Configuration reads list them under the `ConfigElementCategory`
-  value `INFRAWEAVE_ENVIRONMENT`.
+  value `INFRAWEAVE_ENVIRONMENT`. The server puts the `TF_VAR_infraweave_*`
+  variables it knows at handover in the clear part, unless the stack sets a
+  variable of the same name: `account_name`, `commit_branch`, `commit_sha`,
+  `local_preview`, `project_root`, `repository`, `run_id`, `run_trigger`,
+  `run_type`, `space_id`, `stack_branch`, `stack_id`, `stack_labels`,
+  `stack_labels_list` (the labels as an HCL list) and `workspace_root`
+  (`/mnt/workspace`). The runner sets `run_state`, which changes with each
+  phase, and the launcher sets `INFRAWEAVE_API_TOKEN` from the sealed part.
 
 - **Secrets are sealed to the pool.** The server opens the sealed values
   ([0013](0013-secrets-at-rest.md)) and seals the secret part of the
-  specification to the pool's P-256 public key in 0013's pool envelope (ECDH
-  P-256, HKDF-SHA256, AES-256-GCM). Only a holder of the pool private key can
-  read it.
+  specification to the P-256 public key of the pool's current certificate in
+  0013's pool envelope (ECDH P-256, HKDF-SHA256, AES-256-GCM), bound to the
+  run's ID and the state version the claim answered. Only a holder of the
+  pool private key can read it, and only for that run in that state.
 - **The run's artifact key.** The sealed part also carries a fresh 256-bit
-  artifact key generated for the run. The server keeps it as
+  artifact key generated for the run on its first fetch and the same key on
+  every later one, since the fetch locks the run's row. The server keeps it as
   `runs.artifact_key_sealed`, sealed by the keyring
   ([0013](0013-secrets-at-rest.md)), so it can open what the runner seals with
   it.

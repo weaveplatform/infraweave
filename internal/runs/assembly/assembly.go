@@ -7,6 +7,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -17,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
@@ -33,22 +35,30 @@ func Stream() migrate.Stream { return pg.Stream() }
 // nightly orphan count.
 func Held() []integrity.Held { return pg.Held() }
 
+// SealedColumns are the runs domain's sealed columns.
+func SealedColumns() []crypt.Column { return pg.SealedColumns() }
+
 // Entity is the name the access domain resolves a run's space by, for
 // the operations whose subject is a run.
 const Entity = "run"
 
 // Deps are what the runs domain takes from the platform and the domains
-// before it: the database, the access domain's spaces and authorizer, the
-// stacks domain, the outbox its runs' events go to, the queue its jobs go
-// to, and a clock, time.Now when nil.
+// before it: the database, the keys a run's artifact key is sealed under,
+// the access domain's spaces, authorizer and the tokens a handover mints,
+// the stacks domain, the configuration domain's environment, which a
+// handover opens, the outbox its runs' events go to, the queue its jobs
+// go to, and a clock, time.Now when nil.
 type Deps struct {
-	DB     queue.DB
-	Spaces accessapi.Spaces
-	Authz  accessapi.Authorizer
-	Stacks stacksapi.Stacks
-	Events lifecycle.Events
-	Jobs   schedule.Queue
-	Now    func() time.Time
+	DB          queue.DB
+	Keys        pg.Sealer
+	Spaces      accessapi.Spaces
+	Authz       accessapi.Authorizer
+	Tokens      handover.Tokens
+	Stacks      stacksapi.Stacks
+	Environment configapi.Environment
+	Events      lifecycle.Events
+	Jobs        schedule.Queue
+	Now         func() time.Time
 }
 
 // Domain is the runs domain, constructed once per process.
@@ -58,6 +68,7 @@ type Domain struct {
 	lifecycle *lifecycle.Lifecycle
 	scheduler *schedule.Scheduler
 	claims    *schedule.Claims
+	handover  *handover.Service
 	trigger   *trigger.Service
 	read      *read.Service
 	control   *control.Service
@@ -65,7 +76,7 @@ type Domain struct {
 
 // New constructs the domain on d.
 func New(d Deps) *Domain {
-	store := pg.New(d.DB)
+	store := pg.New(d.DB, d.Keys)
 	lc := lifecycle.New(lifecycle.Deps{
 		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now,
 	})
@@ -78,6 +89,10 @@ func New(d Deps) *Domain {
 			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs,
 		}),
 		claims: schedule.NewClaims(store, lc),
+		handover: handover.New(handover.Deps{
+			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Environment: d.Environment,
+			Tokens: d.Tokens,
+		}),
 		trigger: trigger.New(trigger.Deps{
 			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,
 		}),
@@ -154,8 +169,20 @@ func (d *Domain) StackStatus() stacksapi.StackStatus { return d.runs }
 
 // Scheduler is the domain's side of the worker protocol, a back edge
 // internal/app binds in the workers domain, whose polls claim runs
-// through it.
-func (d *Domain) Scheduler() workersapi.Scheduler { return d.claims }
+// through it and whose specifications it builds.
+func (d *Domain) Scheduler() workersapi.Scheduler { return scheduler{d.claims, d.handover} }
+
+// scheduler is the domain's workersapi.Scheduler: its claims and its
+// handovers.
+type scheduler struct {
+	*schedule.Claims
+	*handover.Service
+}
+
+// BindExpressions binds the expression registry, which internal/app
+// builds from the domains' Surfaces after constructing them, and which a
+// handover renders the environment's templates with.
+func (d *Domain) BindExpressions(r *expr.Registry) { d.handover.BindExpressions(r) }
 
 // StackGuard is the domain's say in the stacks domain's moves and
 // deletes, which internal/app registers there, so a deleted stack's runs

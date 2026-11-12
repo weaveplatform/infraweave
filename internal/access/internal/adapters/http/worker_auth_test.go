@@ -33,17 +33,24 @@ func (subjects) Verify(_ context.Context, raw, aud string) (token.Claims, error)
 }
 
 // TestUnitWorkerAuthenticator checks that the worker API's authenticator
-// admits a worker session token on a worker route, putting the worker's
-// principal and bearer on the context, and refuses an API token there; and
-// that neither authenticator admits a credential on the other's routes.
+// admits a worker session token on a worker route and a run token on a
+// runner route, putting the worker's or the run's principal and bearer on
+// the context, and refuses each on the other's routes and an API token on
+// both; and that neither authenticator admits a credential on the other's
+// routes.
 func TestUnitWorkerAuthenticator(t *testing.T) {
 	base := newWorld(t)
 	auth := authn.New(authn.Deps{
 		Keys: base.st, Sessions: base.st, Tokens: subjects{base.st}, Audience: audience,
-		TTL: 10 * time.Hour, WorkerTTL: time.Hour, Now: func() time.Time { return t0 },
+		TTL: 10 * time.Hour, WorkerTTL: time.Hour, RunTTL: time.Hour,
+		Now: func() time.Time { return t0 },
 	})
-	worker := kernel.NewULID()
+	worker, run := kernel.NewULID(), kernel.NewULID()
 	tok, err := auth.WorkerToken(t.Context(), worker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runTok, err := auth.RunToken(t.Context(), run)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,6 +79,11 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 		got.b.ID != worker || !got.b.Expires.Equal(tok.Expires) {
 		t.Errorf("worker token = %d, %+v, %+v", code, got.p, got.b)
 	}
+	if code := send(workers, accessapi.Runner, runTok.Raw); code != http.StatusNoContent ||
+		got.p.Kind != kernel.PrincipalRunner || got.p.ActorID != run ||
+		got.b.ID != run || !got.b.Expires.Equal(runTok.Expires) {
+		t.Errorf("run token = %d, %+v, %+v", code, got.p, got.b)
+	}
 	if code := send(workers, accessapi.Public, ""); code != http.StatusNoContent {
 		t.Errorf("public route = %d", code)
 	}
@@ -86,6 +98,11 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 		"a worker token on the API":      {NewAuthenticator(auth, publicURL), accessapi.Account, tok.Raw},
 		"the API's on a worker route":    {NewAuthenticator(auth, publicURL), accessapi.Worker, tok.Raw},
 		"the operator's on a worker one": {NewOperatorAuthenticator(auth), accessapi.Worker, tok.Raw},
+		"a run token on a worker route":  {workers, accessapi.Worker, runTok.Raw},
+		"a worker token on a run's":      {workers, accessapi.Runner, tok.Raw},
+		"no token on a run's":            {workers, accessapi.Runner, ""},
+		"a run token on the API":         {NewAuthenticator(auth, publicURL), accessapi.Account, runTok.Raw},
+		"the API's on a run's route":     {NewAuthenticator(auth, publicURL), accessapi.Runner, runTok.Raw},
 	} {
 		if code := send(tc.a, tc.acc, tc.bearer); code != http.StatusUnauthorized {
 			t.Errorf("%s = %d", name, code)

@@ -43,8 +43,8 @@ func (s *Service) BindExpressions(c Checker) { s.exprs = c }
 // only the variables the stack resolves to, and one saved on a context,
 // which many stacks attach, any.
 const (
-	envVariable   = "env"
-	stackVariable = "stack"
+	envVariable   = configapi.EnvVariable
+	stackVariable = configapi.StackVariable
 )
 
 var (

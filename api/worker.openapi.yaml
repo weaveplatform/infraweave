@@ -4,7 +4,7 @@ info:
   title: infraweave worker API
   version: 0.1.0
   description: >-
-    The protocol a launcher speaks to the server. A launcher holding a private worker pool's key registers a worker by signing with it, holds long polls that carry the worker's signals and renew its session, and deregisters when it exits. Every call but the registration carries the worker session token the registration answered; any other credential answers 401. Spacelift has no counterpart, so it is outside the parity surface.
+    The protocol a launcher speaks to the server. A launcher holding a private worker pool's key registers a worker by signing with it, holds long polls that carry the worker's signals and renew its session, and deregisters when it exits. Every worker call but the registration carries the worker session token the registration answered, and a claimed run's calls carry the run token its assignment answered; any other credential answers 401. Spacelift has no counterpart, so it is outside the parity surface.
 servers:
   - url: /worker/v1
     description: The worker API's prefix on the server's single listener.
@@ -12,6 +12,9 @@ tags:
   - name: Workers
     description: >-
       A worker's registration, its polls and its exit.
+  - name: Runs
+    description: >-
+      A claimed run's calls, which its run token authenticates.
 security:
   - bearerAuth: []
 paths:
@@ -114,6 +117,48 @@ paths:
           $ref: '#/components/responses/ApiDisabled'
         default:
           $ref: '#/components/responses/Problem'
+  /runs/{run}/spec:
+    get:
+      summary: Read a run's specification
+      description: >-
+        Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
+      operationId: workerRunSpec
+      security:
+        - runToken: []
+      tags:
+        - Runs
+      parameters:
+        - name: run
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 26
+          description: The run's ID.
+      responses:
+        '200':
+          description: The run's specification.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunSpec'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
 components:
   headers:
     RateLimitLimit:
@@ -147,6 +192,18 @@ components:
             title: API disabled for this caller
             status: 503
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    InvalidState:
+      description: The run is not on a worker, so its run token is refused.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:invalid-state
+            title: invalid state
+            status: 409
+            detail: The run is not on a worker.
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     Problem:
       description: The request failed; the body says why.
       content:
@@ -175,7 +232,7 @@ components:
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     Unauthenticated:
       description: >-
-        The request carries no valid credential: no worker session token, an expired one, or one whose worker is gone or registered under a pool certificate a reset replaced.
+        The request carries no valid credential: no worker session token, an expired one, or one whose worker is gone or registered under a pool certificate a reset replaced; on a run's calls, no run token, an expired one, or one for another run.
       content:
         application/problem+json:
           schema:
@@ -190,11 +247,16 @@ components:
       description: >-
         A run the poll claimed for the worker, which the launcher prepares and executes.
       type: object
-      required: [run, state, runToken, runTokenExpiresAt]
+      required: [run, state, stateVersion, runToken, runTokenExpiresAt]
       properties:
         run:
           type: string
           description: The run's ID.
+        stateVersion:
+          type: integer
+          format: int64
+          description: >-
+            The run's state version after the claim, which the run's specification is sealed for until the run reports it started.
         state:
           type: string
           enum: [PREPARING, PREPARING_APPLY, PREPARING_REPLAN]
@@ -358,6 +420,216 @@ components:
           type: integer
           format: int64
           description: When the session token expires, in Unix seconds.
+    RunSpec:
+      description: >-
+        What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token and the run's artifact key are in sealed, which only the pool's private key opens.
+      type: object
+      required: [run, stack, commit, hooks, environment, files, sealed]
+      properties:
+        run:
+          $ref: '#/components/schemas/RunSpecRun'
+        stack:
+          $ref: '#/components/schemas/RunSpecStack'
+        commit:
+          $ref: '#/components/schemas/RunSpecCommit'
+        runtimeConfig:
+          type: object
+          additionalProperties: true
+          description: >-
+            The runtime configuration the run's trigger gave, which overrides the stack's hooks, environment and checkout for this run. Absent when the trigger gave none.
+        runnerImage:
+          type: string
+          description: >-
+            The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's own default.
+        hooks:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: >-
+            Each phase's commands, by phase such as beforeInit or afterPlan, in the order they run. Before a phase, the hooks of the contexts attached by hand run first, by priority, then those of the contexts attached automatically, then the stack's; after a phase they run in the reverse order.
+        environment:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunSpecVariable'
+          description: >-
+            The run's environment variables, by name: the stack's, its contexts', and the INFRAWEAVE_ and TF_VAR_infraweave_ variables the server sets, which a variable of the same name overrides.
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunSpecFile'
+          description: The files mounted into the run's workspace, by path.
+        sealed:
+          type: string
+          format: byte
+          description: >-
+            RunSpecSecrets as JSON, sealed to the pool's P-256 public key: the byte 0x01, an ephemeral P-256 public key (65 bytes, uncompressed), a 12-byte nonce, and the AES-256-GCM ciphertext and tag. The AES-256 key is HKDF-SHA256 of the ECDH shared secret, with an empty salt and the info infraweave/pool-envelope/v1 followed by the ephemeral and the pool public keys. The associated data is 0x01, the run ID's length (uint16, big-endian), the run ID, and run.stateVersion (uint64, big-endian), so the launcher refuses a specification issued for another run or another of its states.
+    RunSpecCommit:
+      description: The commit the run works on.
+      type: object
+      required: [hash, message, authorName, timestamp]
+      properties:
+        hash:
+          type: string
+          description: The commit's hash.
+        tag:
+          type: string
+          description: The tag the commit was named by, if any.
+        url:
+          type: string
+          description: The commit's page on its provider, if known.
+        message:
+          type: string
+          description: The first line of the commit's message.
+        authorName:
+          type: string
+          description: The commit author's name.
+        authorLogin:
+          type: string
+          description: The commit author's login, when the provider knows one.
+        timestamp:
+          type: integer
+          format: int64
+          description: When the commit was made, in Unix seconds.
+    RunSpecFile:
+      description: >-
+        A file mounted into the run's workspace. A write-only file's content is in sealed.
+      type: object
+      required: [path, writeOnly, checksum]
+      properties:
+        path:
+          type: string
+          description: The file's path, relative to the workspace.
+        writeOnly:
+          type: boolean
+          description: Whether the content is a secret, which sealed carries.
+        fileMode:
+          type: string
+          description: The file's mode in octal, such as 600; absent for the default.
+        checksum:
+          type: string
+          description: The SHA-256 of the content, in hex.
+        content:
+          type: string
+          format: byte
+          description: The file's content. Absent when the file is write-only.
+    RunSpecRun:
+      description: The run.
+      type: object
+      required: [id, type, state, stateVersion, triggeredBy, priority, driftDetection, createdAt]
+      properties:
+        id:
+          type: string
+          description: The run's ID.
+        type:
+          type: string
+          enum: [PROPOSED, TRACKED, TASK, TESTING, DESTROY, PARSE]
+          description: The run's type.
+        state:
+          type: string
+          description: The run's state when the specification was issued.
+        stateVersion:
+          type: integer
+          format: int64
+          description: >-
+            The run's state version when the specification was issued, which sealed is bound to.
+        triggeredBy:
+          type: string
+          description: The login or the trigger that created the run.
+        priority:
+          type: string
+          enum: [low, normal, high]
+          description: The run's priority.
+        driftDetection:
+          type: boolean
+          description: Whether the run detects drift.
+        createdAt:
+          type: integer
+          format: int64
+          description: When the run was created, in Unix seconds.
+    RunSpecSecrets:
+      description: >-
+        The plaintext of RunSpec's sealed: the secrets of the run, which no other call returns.
+      type: object
+      required: [environment, files, apiToken, apiTokenExpiresAt, artifactKey]
+      properties:
+        environment:
+          type: object
+          additionalProperties:
+            type: string
+          description: Each write-only variable's value, rendered, by name.
+        files:
+          type: object
+          additionalProperties:
+            type: string
+            format: byte
+          description: Each write-only file's content, by path.
+        apiToken:
+          type: string
+          description: >-
+            The in-run API token, which the run's container receives as INFRAWEAVE_API_TOKEN. It authenticates to the API while the run plans, applies or performs.
+        apiTokenExpiresAt:
+          type: integer
+          format: int64
+          description: When the in-run API token expires, in Unix seconds.
+        artifactKey:
+          type: string
+          format: byte
+          description: >-
+            The run's 256-bit artifact key, the same on every fetch of the run's specification, which the runner seals the run's artifacts with.
+    RunSpecStack:
+      description: The run's stack.
+      type: object
+      required: [id, name, space, labels, repository, branch, vendor, vendorConfig]
+      properties:
+        id:
+          type: string
+          description: The stack's slug.
+        name:
+          type: string
+          description: The stack's name.
+        space:
+          type: string
+          description: The slug of the stack's space.
+        labels:
+          type: array
+          items:
+            type: string
+          description: The stack's labels, sorted.
+        repository:
+          type: string
+          description: The stack's repository.
+        branch:
+          type: string
+          description: The branch the stack tracks.
+        projectRoot:
+          type: string
+          description: >-
+            The directory of the repository the run works in: the runtime configuration's, else the stack's. Absent for the root.
+        vendor:
+          type: string
+          description: The stack's infrastructure tool, such as TERRAFORM.
+        vendorConfig:
+          type: object
+          additionalProperties: true
+          description: The tool's settings.
+    RunSpecVariable:
+      description: >-
+        An environment variable. A write-only variable's value is in sealed, as is that of a variable whose ${{ }} template reads one.
+      type: object
+      required: [name, writeOnly]
+      properties:
+        name:
+          type: string
+          description: The variable's name.
+        value:
+          type: string
+          description: >-
+            The value, its ${{ }} templates rendered and ${NAME} left to the shell. Absent when the variable is write-only.
+        writeOnly:
+          type: boolean
+          description: Whether the value is a secret, which sealed carries.
     Signal:
       description: >-
         stop or kill asks the launcher to stop or kill its current run; cycle asks it to exit, at once when idle, after its run when busy.
@@ -370,3 +642,9 @@ components:
       bearerFormat: JWT
       description: >-
         A worker session token, which a registration answers and a poll renews.
+    runToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        A run token, which the poll that claimed the run answers in its assignment. It authenticates only that run's calls, and only while the run is on a worker.

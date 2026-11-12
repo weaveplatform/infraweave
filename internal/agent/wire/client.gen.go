@@ -106,6 +106,57 @@ func (e ProblemFieldErrorReason) Valid() bool {
 	}
 }
 
+// Defines values for RunSpecRunPriority.
+const (
+	High   RunSpecRunPriority = "high"
+	Low    RunSpecRunPriority = "low"
+	Normal RunSpecRunPriority = "normal"
+)
+
+// Valid indicates whether the value is a known member of the RunSpecRunPriority enum.
+func (e RunSpecRunPriority) Valid() bool {
+	switch e {
+	case High:
+		return true
+	case Low:
+		return true
+	case Normal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunSpecRunType.
+const (
+	DESTROY  RunSpecRunType = "DESTROY"
+	PARSE    RunSpecRunType = "PARSE"
+	PROPOSED RunSpecRunType = "PROPOSED"
+	TASK     RunSpecRunType = "TASK"
+	TESTING  RunSpecRunType = "TESTING"
+	TRACKED  RunSpecRunType = "TRACKED"
+)
+
+// Valid indicates whether the value is a known member of the RunSpecRunType enum.
+func (e RunSpecRunType) Valid() bool {
+	switch e {
+	case DESTROY:
+		return true
+	case PARSE:
+		return true
+	case PROPOSED:
+		return true
+	case TASK:
+		return true
+	case TESTING:
+		return true
+	case TRACKED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Signal.
 const (
 	Cycle Signal = "cycle"
@@ -140,6 +191,9 @@ type Assignment struct {
 
 	// State The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
 	State AssignmentState `json:"state"`
+
+	// StateVersion The run's state version after the claim, which the run's specification is sealed for until the run reports it started.
+	StateVersion int64 `json:"stateVersion"`
 }
 
 // AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
@@ -247,11 +301,179 @@ type Registration struct {
 	Worker string `json:"worker"`
 }
 
+// RunSpec What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token and the run's artifact key are in sealed, which only the pool's private key opens.
+type RunSpec struct {
+	// Commit The commit the run works on.
+	Commit RunSpecCommit `json:"commit"`
+
+	// Environment The run's environment variables, by name: the stack's, its contexts', and the INFRAWEAVE_ and TF_VAR_infraweave_ variables the server sets, which a variable of the same name overrides.
+	Environment []RunSpecVariable `json:"environment"`
+
+	// Files The files mounted into the run's workspace, by path.
+	Files []RunSpecFile `json:"files"`
+
+	// Hooks Each phase's commands, by phase such as beforeInit or afterPlan, in the order they run. Before a phase, the hooks of the contexts attached by hand run first, by priority, then those of the contexts attached automatically, then the stack's; after a phase they run in the reverse order.
+	Hooks map[string][]string `json:"hooks"`
+
+	// Run The run.
+	Run RunSpecRun `json:"run"`
+
+	// RunnerImage The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's own default.
+	RunnerImage *string `json:"runnerImage,omitempty"`
+
+	// RuntimeConfig The runtime configuration the run's trigger gave, which overrides the stack's hooks, environment and checkout for this run. Absent when the trigger gave none.
+	RuntimeConfig *map[string]interface{} `json:"runtimeConfig,omitempty"`
+
+	// Sealed RunSpecSecrets as JSON, sealed to the pool's P-256 public key: the byte 0x01, an ephemeral P-256 public key (65 bytes, uncompressed), a 12-byte nonce, and the AES-256-GCM ciphertext and tag. The AES-256 key is HKDF-SHA256 of the ECDH shared secret, with an empty salt and the info infraweave/pool-envelope/v1 followed by the ephemeral and the pool public keys. The associated data is 0x01, the run ID's length (uint16, big-endian), the run ID, and run.stateVersion (uint64, big-endian), so the launcher refuses a specification issued for another run or another of its states.
+	Sealed []byte `json:"sealed"`
+
+	// Stack The run's stack.
+	Stack RunSpecStack `json:"stack"`
+}
+
+// RunSpecCommit The commit the run works on.
+type RunSpecCommit struct {
+	// AuthorLogin The commit author's login, when the provider knows one.
+	AuthorLogin *string `json:"authorLogin,omitempty"`
+
+	// AuthorName The commit author's name.
+	AuthorName string `json:"authorName"`
+
+	// Hash The commit's hash.
+	Hash string `json:"hash"`
+
+	// Message The first line of the commit's message.
+	Message string `json:"message"`
+
+	// Tag The tag the commit was named by, if any.
+	Tag *string `json:"tag,omitempty"`
+
+	// Timestamp When the commit was made, in Unix seconds.
+	Timestamp int64 `json:"timestamp"`
+
+	// Url The commit's page on its provider, if known.
+	Url *string `json:"url,omitempty"`
+}
+
+// RunSpecFile A file mounted into the run's workspace. A write-only file's content is in sealed.
+type RunSpecFile struct {
+	// Checksum The SHA-256 of the content, in hex.
+	Checksum string `json:"checksum"`
+
+	// Content The file's content. Absent when the file is write-only.
+	Content *[]byte `json:"content,omitempty"`
+
+	// FileMode The file's mode in octal, such as 600; absent for the default.
+	FileMode *string `json:"fileMode,omitempty"`
+
+	// Path The file's path, relative to the workspace.
+	Path string `json:"path"`
+
+	// WriteOnly Whether the content is a secret, which sealed carries.
+	WriteOnly bool `json:"writeOnly"`
+}
+
+// RunSpecRun The run.
+type RunSpecRun struct {
+	// CreatedAt When the run was created, in Unix seconds.
+	CreatedAt int64 `json:"createdAt"`
+
+	// DriftDetection Whether the run detects drift.
+	DriftDetection bool `json:"driftDetection"`
+
+	// Id The run's ID.
+	Id string `json:"id"`
+
+	// Priority The run's priority.
+	Priority RunSpecRunPriority `json:"priority"`
+
+	// State The run's state when the specification was issued.
+	State string `json:"state"`
+
+	// StateVersion The run's state version when the specification was issued, which sealed is bound to.
+	StateVersion int64 `json:"stateVersion"`
+
+	// TriggeredBy The login or the trigger that created the run.
+	TriggeredBy string `json:"triggeredBy"`
+
+	// Type The run's type.
+	Type RunSpecRunType `json:"type"`
+}
+
+// RunSpecRunPriority The run's priority.
+type RunSpecRunPriority string
+
+// RunSpecRunType The run's type.
+type RunSpecRunType string
+
+// RunSpecSecrets The plaintext of RunSpec's sealed: the secrets of the run, which no other call returns.
+type RunSpecSecrets struct {
+	// ApiToken The in-run API token, which the run's container receives as INFRAWEAVE_API_TOKEN. It authenticates to the API while the run plans, applies or performs.
+	ApiToken string `json:"apiToken"`
+
+	// ApiTokenExpiresAt When the in-run API token expires, in Unix seconds.
+	ApiTokenExpiresAt int64 `json:"apiTokenExpiresAt"`
+
+	// ArtifactKey The run's 256-bit artifact key, the same on every fetch of the run's specification, which the runner seals the run's artifacts with.
+	ArtifactKey []byte `json:"artifactKey"`
+
+	// Environment Each write-only variable's value, rendered, by name.
+	Environment map[string]string `json:"environment"`
+
+	// Files Each write-only file's content, by path.
+	Files map[string][]byte `json:"files"`
+}
+
+// RunSpecStack The run's stack.
+type RunSpecStack struct {
+	// Branch The branch the stack tracks.
+	Branch string `json:"branch"`
+
+	// Id The stack's slug.
+	Id string `json:"id"`
+
+	// Labels The stack's labels, sorted.
+	Labels []string `json:"labels"`
+
+	// Name The stack's name.
+	Name string `json:"name"`
+
+	// ProjectRoot The directory of the repository the run works in: the runtime configuration's, else the stack's. Absent for the root.
+	ProjectRoot *string `json:"projectRoot,omitempty"`
+
+	// Repository The stack's repository.
+	Repository string `json:"repository"`
+
+	// Space The slug of the stack's space.
+	Space string `json:"space"`
+
+	// Vendor The stack's infrastructure tool, such as TERRAFORM.
+	Vendor string `json:"vendor"`
+
+	// VendorConfig The tool's settings.
+	VendorConfig map[string]interface{} `json:"vendorConfig"`
+}
+
+// RunSpecVariable An environment variable. A write-only variable's value is in sealed, as is that of a variable whose ${{ }} template reads one.
+type RunSpecVariable struct {
+	// Name The variable's name.
+	Name string `json:"name"`
+
+	// Value The value, its ${{ }} templates rendered and ${NAME} left to the shell. Absent when the variable is write-only.
+	Value *string `json:"value,omitempty"`
+
+	// WriteOnly Whether the value is a secret, which sealed carries.
+	WriteOnly bool `json:"writeOnly"`
+}
+
 // Signal stop or kill asks the launcher to stop or kill its current run; cycle asks it to exit, at once when idle, after its run when busy.
 type Signal string
 
 // ApiDisabled An RFC 9457 problem detail. Every error response uses the status code and this body.
 type ApiDisabled = Problem
+
+// InvalidState An RFC 9457 problem detail. Every error response uses the status code and this body.
+type InvalidState = Problem
 
 // TooManyRequests An RFC 9457 problem detail. Every error response uses the status code and this body.
 type TooManyRequests = Problem
@@ -381,6 +603,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /register (the `WorkerRegister` operationId).
 	WorkerRegister(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunSpec Read a run's specification
+	//
+	// Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
+	//
+	// Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
+	WorkerRunSpec(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // WorkerDeregister Deregister a worker
@@ -466,6 +695,23 @@ func (c *Client) WorkerRegisterWithBody(ctx context.Context, contentType string,
 // Corresponds with POST /register (the `WorkerRegister` operationId).
 func (c *Client) WorkerRegister(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewWorkerRegisterRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunSpec Read a run's specification
+//
+// Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
+//
+// Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
+func (c *Client) WorkerRunSpec(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunSpecRequest(c.Server, run)
 	if err != nil {
 		return nil, err
 	}
@@ -583,6 +829,40 @@ func NewWorkerRegisterRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
+// NewWorkerRunSpecRequest constructs an http.Request for the WorkerRunSpec method
+func NewWorkerRunSpecRequest(server string, run string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "run", run, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/spec", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -671,6 +951,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /register (the `WorkerRegister` operationId).
 	WorkerRegisterWithResponse(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRegisterResponse, error)
+
+	// WorkerRunSpecWithResponse Read a run's specification
+	//
+	// Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
+	WorkerRunSpecWithResponse(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*WorkerRunSpecResponse, error)
 }
 
 // WorkerDeregisterResponse204Headers the declared response headers of an HTTP 204 response for WorkerDeregister
@@ -951,6 +1240,108 @@ func (r WorkerRegisterResponse) ContentType() string {
 	return ""
 }
 
+// WorkerRunSpecResponse200Headers the declared response headers of an HTTP 200 response for WorkerRunSpec
+type WorkerRunSpecResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunSpecResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunSpec
+type WorkerRunSpecResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunSpecResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunSpec
+type WorkerRunSpecResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunSpecResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RunSpec
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerRunSpecResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunSpecResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunSpecResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerRunSpecResponse) GetJSON200() *RunSpec {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunSpecResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRunSpecResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunSpecResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunSpecResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunSpecResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunSpecResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunSpecResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunSpecResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunSpecResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // WorkerDeregisterWithResponse Deregister a worker
 //
 // Removes the worker, which a launcher calls as it exits. Its session token authenticates nothing afterwards.
@@ -1024,6 +1415,21 @@ func (c *ClientWithResponses) WorkerRegisterWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParseWorkerRegisterResponse(rsp)
+}
+
+// WorkerRunSpecWithResponse Read a run's specification
+//
+// Answers the specification of the run the run token names, with its secrets sealed to the pool's key. A run token for another run answers 401, and a run that is no longer on a worker 409 invalid-state. A ${{ }} template that fails to render answers 422 validation-failed, naming the variable.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{run}/spec (the `WorkerRunSpec` operationId).
+func (c *ClientWithResponses) WorkerRunSpecWithResponse(ctx context.Context, run string, reqEditors ...RequestEditorFn) (*WorkerRunSpecResponse, error) {
+	rsp, err := c.WorkerRunSpec(ctx, run, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunSpecResponse(rsp)
 }
 
 // ParseWorkerDeregisterResponse parses an HTTP response from a WorkerDeregisterWithResponse call
@@ -1375,6 +1781,135 @@ func ParseWorkerRegisterResponse(rsp *http.Response) (*WorkerRegisterResponse, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers WorkerRegisterResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerRunSpecResponse parses an HTTP response from a WorkerRunSpecWithResponse call
+func ParseWorkerRunSpecResponse(rsp *http.Response) (*WorkerRunSpecResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunSpecResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RunSpec
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerRunSpecResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunSpecResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunSpecResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

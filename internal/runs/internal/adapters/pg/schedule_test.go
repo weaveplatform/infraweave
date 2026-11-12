@@ -313,7 +313,7 @@ func TestAccScheduleFailures(t *testing.T) {
 // closed pool.
 func TestAccScheduleStoreUnavailable(t *testing.T) {
 	db := pool(t)
-	closed := pg.New(db)
+	closed := pg.New(db, nil)
 	db.Close()
 	ctx := context.Background()
 	acct, id := kernel.NewAccountID(), kernel.NewULID()

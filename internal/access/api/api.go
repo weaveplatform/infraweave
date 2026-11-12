@@ -32,6 +32,9 @@ const (
 	// Worker routes, the worker API's, admit worker session tokens alone,
 	// which every other route refuses.
 	Worker
+	// Runner routes, the worker API's calls of a claimed run, admit run
+	// tokens alone, which every other route refuses.
+	Runner
 )
 
 // Authenticator authenticates the API's requests.

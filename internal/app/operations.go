@@ -46,6 +46,12 @@ type Operation struct {
 	//
 	// ref: decision 0003 § "API surfaces"
 	Worker bool
+	// Runner marks an operation of the worker API whose security is
+	// runToken, a claimed run's call, which a run token authenticates in
+	// place of a worker session token.
+	//
+	// ref: decision 0006 § "The principal"
+	Runner bool
 	// Public marks an operation that takes no credential, whose security
 	// is the empty list, such as POST /auth/token. Every other operation
 	// requires the API's global bearerAuth.
@@ -174,11 +180,23 @@ func workerOperationsOf(doc *openapi3.T, base string) (Operations, error) {
 				Cost:   cost,
 				Public: op.Security != nil && len(*op.Security) == 0,
 				Worker: true,
+				Runner: runToken(op.Security),
 				Body:   strictBody(mediaOf(op)),
 			}
 		}
 	}
 	return ops, nil
+}
+
+// runToken reports whether security is the worker API's runToken alone,
+// which the authenticator decides between a worker session token and a
+// run token by.
+func runToken(security *openapi3.SecurityRequirements) bool {
+	if security == nil || len(*security) != 1 {
+		return false
+	}
+	_, ok := (*security)[0]["runToken"]
+	return ok && len((*security)[0]) == 1
 }
 
 var errAction = errors.New("names no action of the catalogue")
@@ -555,6 +573,8 @@ func (o Operation) access() accessapi.Access {
 	switch {
 	case o.Public:
 		return accessapi.Public
+	case o.Runner:
+		return accessapi.Runner
 	case o.Worker:
 		return accessapi.Worker
 	case o.Organization:

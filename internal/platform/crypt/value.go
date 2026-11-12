@@ -15,6 +15,10 @@ const redacted = "[redacted]"
 // needs the bytes calls Reveal, and review looks at every call.
 type Value struct{ b []byte }
 
+// NewValue is b as a Value, for a secret made rather than opened, such
+// as a fresh key, so it renders as one that was opened does.
+func NewValue(b []byte) Value { return Value{b} }
+
 // Reveal returns the secret's bytes.
 func (v Value) Reveal() []byte { return v.b }
 

@@ -362,7 +362,7 @@ func TestAccSealedValues(t *testing.T) {
 }
 
 func TestUnitValueRedacted(t *testing.T) {
-	v := crypt.ValueOf([]byte("hunter2"))
+	v := crypt.NewValue([]byte("hunter2"))
 	var log bytes.Buffer
 	slog.New(slog.NewJSONHandler(&log, nil)).Info("opened", "secret", v)
 	doc, err := json.Marshal(map[string]any{"secret": v})

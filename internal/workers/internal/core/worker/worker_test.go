@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
@@ -43,6 +44,7 @@ type store struct {
 	fail         string
 	removeOnLock kernel.ULID
 	wake         func(kernel.ULID)
+	images       images.Images
 }
 
 func (s *store) down(method string) error {
@@ -260,6 +262,10 @@ func (s *store) SuggestWorkers(
 	search.SuggestionsInput,
 ) (search.Suggestions, error) {
 	return search.Suggestions{}, s.down("SuggestWorkers")
+}
+
+func (s *store) RunnerImages(context.Context, kernel.AccountID) (images.Images, error) {
+	return s.images, s.down("RunnerImages")
 }
 
 func (s *store) OfPools(

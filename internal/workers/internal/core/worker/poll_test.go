@@ -369,12 +369,23 @@ func TestUnitWorkerManage(t *testing.T) {
 }
 
 // scheduler hands out runs in order, recording each claim; err fails
-// every claim.
+// every claim. Its handover is the one Handover answers for any run, with
+// handErr, recording each run it is asked for.
 type scheduler struct {
-	mu     sync.Mutex
-	runs   []workersapi.Assignment
-	claims []workersapi.Claim
-	err    error
+	mu       sync.Mutex
+	runs     []workersapi.Assignment
+	claims   []workersapi.Claim
+	err      error
+	handover workersapi.Handover
+	handErr  error
+	handed   []kernel.ULID
+}
+
+func (s *scheduler) Handover(_ context.Context, run kernel.ULID) (workersapi.Handover, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.handed = append(s.handed, run)
+	return s.handover, s.handErr
 }
 
 func (s *scheduler) Claim(

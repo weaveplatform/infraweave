@@ -1623,6 +1623,13 @@ context in the assignment with P18b.
    AES-256-GCM); the per-run artifact key. `runsassembly.Deps` gains
    `configapi.Environment`, the edge P7 task 6 leaves to P8, and the
    environment's templates are rendered here (P7 task 7).
+   `GET /worker/v1/runs/{run}/spec` takes the run token as a `runner`
+   principal; `workers` asks `runs` for the handover through
+   `workersapi.Scheduler` and seals it to the key of the pool's current
+   certificate for the state version the claim answered.
+   Tests: `TestUnitHandover`, `TestUnitWorkerRunSpec`, `TestAccRunSpec`
+   (the envelope opened with the pool key; another run's token `401`, a run
+   off its worker `409`), `expressions_deploy.feature`.
 4. `internal/agent`: `config`, `launcher` (register, poll, signals, drain,
    cycle), `executor/docker` (the launcher's own binary bind-mounted
    read-only as the container's root process, UID 1983) and `agenttest`.

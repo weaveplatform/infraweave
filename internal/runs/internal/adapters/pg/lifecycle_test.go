@@ -285,7 +285,7 @@ func newWorld(t *testing.T) *world {
 	db := pool(t)
 	w := &world{
 		db: db, acct: kernel.NewAccountID(), stack: kernel.NewULID(),
-		sources: &fakeSources{}, store: pg.New(db), jobs: queue.New(db),
+		sources: &fakeSources{}, store: pg.New(db, nil), jobs: queue.New(db),
 		now: time.Date(2026, 11, 11, 9, 30, 0, 123456789, time.UTC),
 	}
 	kinds := outbox.NewKinds()
@@ -888,7 +888,7 @@ func TestAccLifecycleFailures(t *testing.T) {
 // closed pool.
 func TestAccLifecycleStoreUnavailable(t *testing.T) {
 	db := pool(t)
-	s := pg.New(db)
+	s := pg.New(db, nil)
 	db.Close()
 	ctx := context.Background()
 	acct, id := kernel.NewAccountID(), kernel.NewULID()

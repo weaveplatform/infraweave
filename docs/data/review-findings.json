@@ -10416,7 +10416,7 @@
         {
           "file": "docs/research/decisions/0006-authentication-and-tokens.md",
           "present": [
-            "`break_glass`, `operator`, `worker`, `anonymous`",
+            "`break_glass`, `operator`, `worker`, `runner`, `anonymous`",
             "in the installation's configuration, `auth.operator.keys`",
             "it is exchanged at `POST /auth/token` for an API token whose audience is the operator API"
           ]

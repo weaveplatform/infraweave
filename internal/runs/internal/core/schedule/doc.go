@@ -8,8 +8,8 @@
 // stack's scheduling when the stack is unlocked or enabled. Store is its
 // storage port, and Queue the queue it completes its jobs on.
 //
-// Claims is the domain's workersapi.Scheduler, through which a worker's
-// poll claims its pool's next run: the first by priority tier, then
+// Claims is the claim of the domain's workersapi.Scheduler, through which
+// a worker's poll claims its pool's next run: the first by priority tier, then
 // creation, of the runs waiting for a worker, skipping rows other claims
 // lock, and the drift detection runs of tiers 6 and 7 while the pool's
 // drift runs on workers reach its limit. It moves the run to its

@@ -20,9 +20,13 @@ import (
 // Authenticator is accessapi.Authenticator over the authn service: the
 // API's, which accepts a bearer token or a browser session's cookie, the
 // operator API's, which accepts operator tokens alone, or the worker
-// API's, which accepts worker session tokens alone.
+// API's, which accepts worker session tokens on its worker routes and run
+// tokens on its runner routes, and nothing else.
 type Authenticator struct {
-	token   func(ctx context.Context, raw string, reach authn.Reach) (kernel.Principal, token.Claims, error)
+	token func(ctx context.Context, raw string, reach authn.Reach) (kernel.Principal, token.Claims, error)
+	// runner authenticates a runner route's run token, on the worker API's
+	// authenticator alone.
+	runner  func(ctx context.Context, raw string) (kernel.Principal, token.Claims, error)
 	browser func(
 		ctx context.Context,
 		secret string,
@@ -32,9 +36,9 @@ type Authenticator struct {
 	// write must name in its Origin header.
 	origin string
 	// worker is set on the worker API's authenticator, which alone admits
-	// a route of accessapi.Worker, so a request routed to the wrong
-	// authenticator is refused rather than authenticated as another
-	// surface's caller.
+	// a route of accessapi.Worker or accessapi.Runner, so a request routed
+	// to the wrong authenticator is refused rather than authenticated as
+	// another surface's caller.
 	worker bool
 }
 
@@ -64,8 +68,8 @@ func NewOperatorAuthenticator(auth *authn.Service) Authenticator {
 }
 
 // NewWorkerAuthenticator returns the worker API's middleware source over
-// auth. It puts the worker session token's accessapi.Bearer on the
-// request's context beside the principal.
+// auth. It puts the worker session token's or the run token's
+// accessapi.Bearer on the request's context beside the principal.
 func NewWorkerAuthenticator(auth *authn.Service) Authenticator {
 	return Authenticator{
 		token: func(
@@ -75,6 +79,7 @@ func NewWorkerAuthenticator(auth *authn.Service) Authenticator {
 		) (kernel.Principal, token.Claims, error) {
 			return auth.AuthenticateWorker(ctx, raw)
 		},
+		runner: auth.AuthenticateRunner,
 		worker: true,
 	}
 }
@@ -125,7 +130,7 @@ func (a Authenticator) Middleware(
 				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestKey{}, rec)))
 				return
 			}
-			if (acc == accessapi.Worker) != a.worker {
+			if (acc == accessapi.Worker || acc == accessapi.Runner) != a.worker {
 				unauthenticated(w)
 				return
 			}
@@ -136,7 +141,11 @@ func (a Authenticator) Middleware(
 			)
 			if raw, ok := bearer(r); ok {
 				var c token.Claims
-				p, c, err = a.token(r.Context(), raw, reach)
+				if acc == accessapi.Runner {
+					p, c, err = a.runner(r.Context(), raw)
+				} else {
+					p, c, err = a.token(r.Context(), raw, reach)
+				}
 				rec.token, rec.expiry = raw, c.Expiry
 			} else if secret, ok := a.cookie(r); ok {
 				var ss session.Session

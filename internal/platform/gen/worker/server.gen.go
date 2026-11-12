@@ -110,6 +110,57 @@ func (e ProblemFieldErrorReason) Valid() bool {
 	}
 }
 
+// Defines values for RunSpecRunPriority.
+const (
+	High   RunSpecRunPriority = "high"
+	Low    RunSpecRunPriority = "low"
+	Normal RunSpecRunPriority = "normal"
+)
+
+// Valid indicates whether the value is a known member of the RunSpecRunPriority enum.
+func (e RunSpecRunPriority) Valid() bool {
+	switch e {
+	case High:
+		return true
+	case Low:
+		return true
+	case Normal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunSpecRunType.
+const (
+	DESTROY  RunSpecRunType = "DESTROY"
+	PARSE    RunSpecRunType = "PARSE"
+	PROPOSED RunSpecRunType = "PROPOSED"
+	TASK     RunSpecRunType = "TASK"
+	TESTING  RunSpecRunType = "TESTING"
+	TRACKED  RunSpecRunType = "TRACKED"
+)
+
+// Valid indicates whether the value is a known member of the RunSpecRunType enum.
+func (e RunSpecRunType) Valid() bool {
+	switch e {
+	case DESTROY:
+		return true
+	case PARSE:
+		return true
+	case PROPOSED:
+		return true
+	case TASK:
+		return true
+	case TESTING:
+		return true
+	case TRACKED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Signal.
 const (
 	Cycle Signal = "cycle"
@@ -144,6 +195,9 @@ type Assignment struct {
 
 	// State The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
 	State AssignmentState `json:"state"`
+
+	// StateVersion The run's state version after the claim, which the run's specification is sealed for until the run reports it started.
+	StateVersion int64 `json:"stateVersion"`
 }
 
 // AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
@@ -251,11 +305,179 @@ type Registration struct {
 	Worker string `json:"worker"`
 }
 
+// RunSpec What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token and the run's artifact key are in sealed, which only the pool's private key opens.
+type RunSpec struct {
+	// Commit The commit the run works on.
+	Commit RunSpecCommit `json:"commit"`
+
+	// Environment The run's environment variables, by name: the stack's, its contexts', and the INFRAWEAVE_ and TF_VAR_infraweave_ variables the server sets, which a variable of the same name overrides.
+	Environment []RunSpecVariable `json:"environment"`
+
+	// Files The files mounted into the run's workspace, by path.
+	Files []RunSpecFile `json:"files"`
+
+	// Hooks Each phase's commands, by phase such as beforeInit or afterPlan, in the order they run. Before a phase, the hooks of the contexts attached by hand run first, by priority, then those of the contexts attached automatically, then the stack's; after a phase they run in the reverse order.
+	Hooks map[string][]string `json:"hooks"`
+
+	// Run The run.
+	Run RunSpecRun `json:"run"`
+
+	// RunnerImage The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's own default.
+	RunnerImage *string `json:"runnerImage,omitempty"`
+
+	// RuntimeConfig The runtime configuration the run's trigger gave, which overrides the stack's hooks, environment and checkout for this run. Absent when the trigger gave none.
+	RuntimeConfig *map[string]interface{} `json:"runtimeConfig,omitempty"`
+
+	// Sealed RunSpecSecrets as JSON, sealed to the pool's P-256 public key: the byte 0x01, an ephemeral P-256 public key (65 bytes, uncompressed), a 12-byte nonce, and the AES-256-GCM ciphertext and tag. The AES-256 key is HKDF-SHA256 of the ECDH shared secret, with an empty salt and the info infraweave/pool-envelope/v1 followed by the ephemeral and the pool public keys. The associated data is 0x01, the run ID's length (uint16, big-endian), the run ID, and run.stateVersion (uint64, big-endian), so the launcher refuses a specification issued for another run or another of its states.
+	Sealed []byte `json:"sealed"`
+
+	// Stack The run's stack.
+	Stack RunSpecStack `json:"stack"`
+}
+
+// RunSpecCommit The commit the run works on.
+type RunSpecCommit struct {
+	// AuthorLogin The commit author's login, when the provider knows one.
+	AuthorLogin *string `json:"authorLogin,omitempty"`
+
+	// AuthorName The commit author's name.
+	AuthorName string `json:"authorName"`
+
+	// Hash The commit's hash.
+	Hash string `json:"hash"`
+
+	// Message The first line of the commit's message.
+	Message string `json:"message"`
+
+	// Tag The tag the commit was named by, if any.
+	Tag *string `json:"tag,omitempty"`
+
+	// Timestamp When the commit was made, in Unix seconds.
+	Timestamp int64 `json:"timestamp"`
+
+	// Url The commit's page on its provider, if known.
+	Url *string `json:"url,omitempty"`
+}
+
+// RunSpecFile A file mounted into the run's workspace. A write-only file's content is in sealed.
+type RunSpecFile struct {
+	// Checksum The SHA-256 of the content, in hex.
+	Checksum string `json:"checksum"`
+
+	// Content The file's content. Absent when the file is write-only.
+	Content *[]byte `json:"content,omitempty"`
+
+	// FileMode The file's mode in octal, such as 600; absent for the default.
+	FileMode *string `json:"fileMode,omitempty"`
+
+	// Path The file's path, relative to the workspace.
+	Path string `json:"path"`
+
+	// WriteOnly Whether the content is a secret, which sealed carries.
+	WriteOnly bool `json:"writeOnly"`
+}
+
+// RunSpecRun The run.
+type RunSpecRun struct {
+	// CreatedAt When the run was created, in Unix seconds.
+	CreatedAt int64 `json:"createdAt"`
+
+	// DriftDetection Whether the run detects drift.
+	DriftDetection bool `json:"driftDetection"`
+
+	// Id The run's ID.
+	Id string `json:"id"`
+
+	// Priority The run's priority.
+	Priority RunSpecRunPriority `json:"priority"`
+
+	// State The run's state when the specification was issued.
+	State string `json:"state"`
+
+	// StateVersion The run's state version when the specification was issued, which sealed is bound to.
+	StateVersion int64 `json:"stateVersion"`
+
+	// TriggeredBy The login or the trigger that created the run.
+	TriggeredBy string `json:"triggeredBy"`
+
+	// Type The run's type.
+	Type RunSpecRunType `json:"type"`
+}
+
+// RunSpecRunPriority The run's priority.
+type RunSpecRunPriority string
+
+// RunSpecRunType The run's type.
+type RunSpecRunType string
+
+// RunSpecSecrets The plaintext of RunSpec's sealed: the secrets of the run, which no other call returns.
+type RunSpecSecrets struct {
+	// ApiToken The in-run API token, which the run's container receives as INFRAWEAVE_API_TOKEN. It authenticates to the API while the run plans, applies or performs.
+	ApiToken string `json:"apiToken"`
+
+	// ApiTokenExpiresAt When the in-run API token expires, in Unix seconds.
+	ApiTokenExpiresAt int64 `json:"apiTokenExpiresAt"`
+
+	// ArtifactKey The run's 256-bit artifact key, the same on every fetch of the run's specification, which the runner seals the run's artifacts with.
+	ArtifactKey []byte `json:"artifactKey"`
+
+	// Environment Each write-only variable's value, rendered, by name.
+	Environment map[string]string `json:"environment"`
+
+	// Files Each write-only file's content, by path.
+	Files map[string][]byte `json:"files"`
+}
+
+// RunSpecStack The run's stack.
+type RunSpecStack struct {
+	// Branch The branch the stack tracks.
+	Branch string `json:"branch"`
+
+	// Id The stack's slug.
+	Id string `json:"id"`
+
+	// Labels The stack's labels, sorted.
+	Labels []string `json:"labels"`
+
+	// Name The stack's name.
+	Name string `json:"name"`
+
+	// ProjectRoot The directory of the repository the run works in: the runtime configuration's, else the stack's. Absent for the root.
+	ProjectRoot *string `json:"projectRoot,omitempty"`
+
+	// Repository The stack's repository.
+	Repository string `json:"repository"`
+
+	// Space The slug of the stack's space.
+	Space string `json:"space"`
+
+	// Vendor The stack's infrastructure tool, such as TERRAFORM.
+	Vendor string `json:"vendor"`
+
+	// VendorConfig The tool's settings.
+	VendorConfig map[string]interface{} `json:"vendorConfig"`
+}
+
+// RunSpecVariable An environment variable. A write-only variable's value is in sealed, as is that of a variable whose ${{ }} template reads one.
+type RunSpecVariable struct {
+	// Name The variable's name.
+	Name string `json:"name"`
+
+	// Value The value, its ${{ }} templates rendered and ${NAME} left to the shell. Absent when the variable is write-only.
+	Value *string `json:"value,omitempty"`
+
+	// WriteOnly Whether the value is a secret, which sealed carries.
+	WriteOnly bool `json:"writeOnly"`
+}
+
 // Signal stop or kill asks the launcher to stop or kill its current run; cycle asks it to exit, at once when idle, after its run when busy.
 type Signal string
 
 // ApiDisabled An RFC 9457 problem detail. Every error response uses the status code and this body.
 type ApiDisabled = Problem
+
+// InvalidState An RFC 9457 problem detail. Every error response uses the status code and this body.
+type InvalidState = Problem
 
 // TooManyRequests An RFC 9457 problem detail. Every error response uses the status code and this body.
 type TooManyRequests = Problem
@@ -280,6 +502,9 @@ type ServerInterface interface {
 	// WorkerRegister Register a worker
 	// (POST /register)
 	WorkerRegister(w http.ResponseWriter, r *http.Request)
+	// WorkerRunSpec Read a run's specification
+	// (GET /runs/{run}/spec)
+	WorkerRunSpec(w http.ResponseWriter, r *http.Request, run string)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -301,6 +526,12 @@ func (_ Unimplemented) WorkerPoll(w http.ResponseWriter, r *http.Request) {
 // WorkerRegister Register a worker
 // (POST /register)
 func (_ Unimplemented) WorkerRegister(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// WorkerRunSpec Read a run's specification
+// (GET /runs/{run}/spec)
+func (_ Unimplemented) WorkerRunSpec(w http.ResponseWriter, r *http.Request, run string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -346,6 +577,32 @@ func (siw *ServerInterfaceWrapper) WorkerRegister(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.WorkerRegister(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// WorkerRunSpec operation middleware
+func (siw *ServerInterfaceWrapper) WorkerRunSpec(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "run" -------------
+	var run string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "run", chi.URLParam(r, "run"), &run, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "run", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.WorkerRunSpec(w, r, run)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -477,6 +734,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/register", wrapper.WorkerRegister)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/runs/{run}/spec", wrapper.WorkerRunSpec)
+	})
 
 	return r
 }
@@ -489,6 +749,8 @@ type ApiDisabledApplicationProblemPlusJSONResponse struct {
 
 	Headers ApiDisabledResponseHeaders
 }
+
+type InvalidStateApplicationProblemPlusJSONResponse Problem
 
 type ProblemApplicationProblemPlusJSONResponse Problem
 
@@ -857,6 +1119,142 @@ func (response WorkerRegisterdefaultApplicationProblemPlusJSONResponse) VisitWor
 	return err
 }
 
+type WorkerRunSpecRequestObject struct {
+	Run string `json:"run"`
+}
+
+type WorkerRunSpecResponseObject interface {
+	VisitWorkerRunSpecResponse(w http.ResponseWriter) error
+}
+
+type WorkerRunSpec200ResponseHeaders struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+type WorkerRunSpec200JSONResponse struct {
+	Body    RunSpec
+	Headers WorkerRunSpec200ResponseHeaders
+}
+
+func (response WorkerRunSpec200JSONResponse) VisitWorkerRunSpecResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunSpec401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunSpec401ApplicationProblemPlusJSONResponse) VisitWorkerRunSpecResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunSpec409ApplicationProblemPlusJSONResponse struct {
+	InvalidStateApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunSpec409ApplicationProblemPlusJSONResponse) VisitWorkerRunSpecResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunSpec429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunSpec429ApplicationProblemPlusJSONResponse) VisitWorkerRunSpecResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunSpec503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response WorkerRunSpec503ApplicationProblemPlusJSONResponse) VisitWorkerRunSpecResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type WorkerRunSpecdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response WorkerRunSpecdefaultApplicationProblemPlusJSONResponse) VisitWorkerRunSpecResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// WorkerDeregister Deregister a worker
@@ -868,6 +1266,9 @@ type StrictServerInterface interface {
 	// WorkerRegister Register a worker
 	// (POST /register)
 	WorkerRegister(ctx context.Context, request WorkerRegisterRequestObject) (WorkerRegisterResponseObject, error)
+	// WorkerRunSpec Read a run's specification
+	// (GET /runs/{run}/spec)
+	WorkerRunSpec(ctx context.Context, request WorkerRunSpecRequestObject) (WorkerRunSpecResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -995,67 +1396,131 @@ func (sh *strictHandler) WorkerRegister(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// WorkerRunSpec operation middleware
+func (sh *strictHandler) WorkerRunSpec(w http.ResponseWriter, r *http.Request, run string) {
+	var request WorkerRunSpecRequestObject
+
+	request.Run = run
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.WorkerRunSpec(ctx, request.(WorkerRunSpecRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "WorkerRunSpec")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(WorkerRunSpecResponseObject); ok {
+		if err := validResponse.VisitWorkerRunSpecResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"64W9ilcEnCj49PHpfwYA",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

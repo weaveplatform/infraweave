@@ -185,8 +185,8 @@ func TestUnitClaimOrder(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if ok && a.State != kernel.RunStatePreparing {
-			t.Errorf("run %s claimed into %s", a.Run, a.State)
+		if ok && (a.State != kernel.RunStatePreparing || a.StateVersion != 2) {
+			t.Errorf("run %s claimed into %s at %d", a.Run, a.State, a.StateVersion)
 		}
 		return a.Run, ok
 	}

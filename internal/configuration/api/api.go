@@ -58,6 +58,15 @@ var ChangedSchema = []byte(`{
 // ref: decision 0024 "Surfaces and their variables"
 const Surface = "environment"
 
+// The environment surface's variables, which a handover renders a
+// template against: EnvVariable maps each variable the run resolves to by
+// name to its value, and StackVariable holds the stack's id (its slug),
+// name, space (its slug), labels, repository, branch and projectRoot.
+const (
+	EnvVariable   = "env"
+	StackVariable = "stack"
+)
+
 // The sources an element or a hook of a stack's environment comes from.
 const (
 	SourceStack        = "stack"

@@ -25,7 +25,9 @@
 // AuthenticateOperator does so for the operator API, admitting operator
 // sessions alone, so neither API accepts the other's tokens, and
 // AuthenticateWorker for the worker API, admitting worker session tokens
-// alone as a principal of kind worker.
+// alone as a principal of kind worker, and AuthenticateRunner for the
+// worker API's calls of a claimed run, admitting run tokens alone as a
+// principal of kind runner.
 // AuthenticateGrant does so for an MCP surface: it admits an OAuth access
 // token only when its session is an OAuth grant for that resource whose
 // scopes include the token's, and the principal holds the token's scopes.

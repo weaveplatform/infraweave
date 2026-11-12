@@ -11,7 +11,8 @@
 // OpenColumn, which build the associated data <table>.<column>:<primary
 // key> from a Column, so a sealed value copied to another row or column
 // fails to open. Open returns a Value, which renders as [redacted] in fmt,
-// log/slog, encoding/json and encoding/text; Reveal returns the bytes.
+// log/slog, encoding/json and encoding/text; Reveal returns the bytes,
+// and NewValue makes one of a secret made in memory, such as a fresh key.
 // DeriveKey returns HKDF-SHA256 of the active key with info
 // infraweave/<purpose>, and the key's ID, which DerivedKey takes to verify
 // what a retiring key made. SealObject and OpenObject stream an object in

@@ -6,10 +6,11 @@ info:
     The protocol a launcher speaks to the server. A launcher holding a
     private worker pool's key registers a worker by signing with it, holds
     long polls that carry the worker's signals and renew its session, and
-    deregisters when it exits. Every call but the registration carries the
-    worker session token the registration answered; any other credential
-    answers 401. Spacelift has no counterpart, so it is outside the parity
-    surface.
+    deregisters when it exits. Every worker call but the registration
+    carries the worker session token the registration answered, and a
+    claimed run's calls carry the run token its assignment answered; any
+    other credential answers 401. Spacelift has no counterpart, so it is
+    outside the parity surface.
 servers:
   - url: /worker/v1
     description: The worker API's prefix on the server's single listener.
@@ -19,3 +20,6 @@ tags:
   - name: Workers
     description: >-
       A worker's registration, its polls and its exit.
+  - name: Runs
+    description: >-
+      A claimed run's calls, which its run token authenticates.

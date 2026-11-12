@@ -125,9 +125,10 @@
 // authenticates a write only with an Origin of the public URL.
 // NewAuthenticator's admits API tokens and cookies, each route's access
 // mapping to an authn.Reach, NewOperatorAuthenticator's operator tokens
-// alone, and NewWorkerAuthenticator's worker session tokens alone, on
-// accessapi.Worker routes alone, putting the token's accessapi.Bearer on
-// the request's context. Login serves the
+// alone, and NewWorkerAuthenticator's worker session tokens on
+// accessapi.Worker routes and run tokens on accessapi.Runner routes, and
+// those routes alone, putting the token's accessapi.Bearer on the
+// request's context. Login serves the
 // break-glass login's form and sign-in at accessapi.LoginPattern, which
 // sets the session's __Host- cookie and answers 303 to the console.
 // Require is accessapi.Requirer: it decides an operation's action on the
