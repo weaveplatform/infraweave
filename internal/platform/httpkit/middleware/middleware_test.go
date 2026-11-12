@@ -155,3 +155,20 @@ func TestUnitLimitBodies(t *testing.T) {
 		t.Errorf("no body: %d, read %d", rec.Code, read)
 	}
 }
+
+// TestUnitUncacheable checks that an answer behind Uncacheable carries
+// both marks, a panic's 500 from a router whose guards it leads included.
+func TestUnitUncacheable(t *testing.T) {
+	r := NewRouter(discard(), Uncacheable)
+	r.Get("/ok", func(http.ResponseWriter, *http.Request) {})
+	r.Get("/boom", func(http.ResponseWriter, *http.Request) { panic("boom") })
+	for path, status := range map[string]int{
+		"/ok": http.StatusOK, "/boom": http.StatusInternalServerError, "/nope": http.StatusNotFound,
+	} {
+		rec := serve(t, r, http.MethodGet, path)
+		if rec.Code != status || rec.Header().Get("Cache-Control") != "no-store" ||
+			rec.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Errorf("%s: %d %v", path, rec.Code, rec.Header())
+		}
+	}
+}
