@@ -24,8 +24,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
-// Status is a worker's status: DRAINED when drained, else BUSY when busy,
-// else IDLE.
+// Status is a worker's status: OFFLINE when offline, else DRAINED when
+// drained, else BUSY when busy, else IDLE.
 //
 // ref: decision 0008 § "Worker status, drain, cycle and reset"
 type Status string
@@ -35,6 +35,7 @@ const (
 	StatusIdle    Status = "IDLE"
 	StatusBusy    Status = "BUSY"
 	StatusDrained Status = "DRAINED"
+	StatusOffline Status = "OFFLINE"
 )
 
 // Worker is a registered worker of a private pool.
@@ -52,7 +53,10 @@ type Worker struct {
 	Drained           bool
 	// Cycle is set by a cycle of the pool, and answered on each poll
 	// until the worker deregisters.
-	Cycle      bool
+	Cycle bool
+	// Offline is set by the reap once the worker is unseen for
+	// worker.offline_after, and cleared by its next call.
+	Offline    bool
 	LastSeenAt time.Time
 	// AvailableAt is when the worker last became idle; nil while busy.
 	AvailableAt *time.Time
@@ -62,6 +66,8 @@ type Worker struct {
 // Status is w's status.
 func (w Worker) Status() Status {
 	switch {
+	case w.Offline:
+		return StatusOffline
 	case w.Drained:
 		return StatusDrained
 	case w.Busy:
@@ -76,7 +82,9 @@ var Fields = []search.Field{
 	{Name: "id", Type: search.String},
 	{
 		Name: "status", Type: search.Enum,
-		Values: []string{string(StatusBusy), string(StatusDrained), string(StatusIdle)},
+		Values: []string{
+			string(StatusBusy), string(StatusDrained), string(StatusIdle), string(StatusOffline),
+		},
 	},
 	{Name: "busy", Type: search.Boolean},
 	{Name: "drained", Type: search.Boolean},
@@ -154,17 +162,27 @@ type Store interface {
 	// CreateWorker writes a new worker.
 	CreateWorker(ctx context.Context, w Worker) error
 	// Resume rewrites w's serial, version, os, arch and metadata, and
-	// marks it seen at w.LastSeenAt.
+	// marks it seen at w.LastSeenAt, and no longer offline.
 	Resume(ctx context.Context, w Worker) error
-	// Seen marks the worker id seen at now with busy, setting its
-	// available_at when it becomes idle, and answers it with its pool's
-	// current serial; ErrNotFound when none.
+	// Seen marks the worker id seen at now with busy, and no longer
+	// offline, setting its available_at when it becomes idle, and answers
+	// it with its pool's current serial; ErrNotFound when none.
 	Seen(ctx context.Context, id kernel.ULID, busy bool, now time.Time) (Worker, int64, error)
 	// Claimed marks the worker id busy, as a claim leaves it until its
 	// launcher's next poll reports.
 	Claimed(ctx context.Context, id kernel.ULID) error
 	// Remove deletes the worker id; ErrNotFound when none.
 	Remove(ctx context.Context, id kernel.ULID) error
+	// MarkOffline marks the workers last seen before before offline, of
+	// every account, and answers how many it marked.
+	MarkOffline(ctx context.Context, before time.Time) (int, error)
+	// Lost deletes the worker longest unseen of those last seen before
+	// before, of every account, skipping workers another transaction
+	// locks, and answers its ID; false when none is left.
+	Lost(ctx context.Context, before time.Time) (kernel.ULID, bool, error)
+	// PoolTimeouts reads the pools that set their own preparing timeout,
+	// of every account.
+	PoolTimeouts(ctx context.Context) ([]workersapi.PoolTimeout, error)
 	// Drain sets the drain flag of acct's worker id of pool and wakes the
 	// pool's held polls; ErrNotFound when the pool has no such worker.
 	Drain(
@@ -226,15 +244,22 @@ type Limits interface {
 // registrations begin transactions on, the tokens it mints, the limits a
 // new worker is checked against (none when nil), Version, the server's
 // version, which a launcher's must match to its minor version or the
-// one before, and PollMax, the longest a poll is held, MaxWait when zero.
+// one before, PollMax, the longest a poll is held, MaxWait when zero,
+// and the reap's clocks: OfflineAfter, worker.offline_after,
+// DefaultOfflineAfter when zero; LostAfter, run.lost_after,
+// DefaultLostAfter when zero; and PreparingTimeout, the preparing timeout
+// of a pool that sets none, pool.DefaultPreparingTimeout when zero.
 type Deps struct {
-	Store   Store
-	DB      tx.Beginner
-	Tokens  Tokens
-	Limits  Limits
-	Version string
-	PollMax time.Duration
-	Now     func() time.Time
+	Store            Store
+	DB               tx.Beginner
+	Tokens           Tokens
+	Limits           Limits
+	Version          string
+	PollMax          time.Duration
+	OfflineAfter     time.Duration
+	LostAfter        time.Duration
+	PreparingTimeout time.Duration
+	Now              func() time.Time
 }
 
 // Service is the workers' logic: the worker API's registration, polls and
@@ -246,8 +271,10 @@ type Service struct {
 	limits    Limits
 	scheduler workersapi.Scheduler
 	reports   workersapi.Reports
+	liveness  workersapi.Liveness
 	version   string
 	pollMax   time.Duration
+	clocks    clocks
 	now       func() time.Time
 	hub       *hub
 }
@@ -264,7 +291,7 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		store: d.Store, db: d.DB, tokens: d.Tokens, limits: d.Limits, version: d.Version,
-		pollMax: pollMax, now: now, hub: newHub(),
+		pollMax: pollMax, clocks: newClocks(d), now: now, hub: newHub(),
 	}
 }
 
@@ -275,6 +302,11 @@ func (s *Service) BindScheduler(sch workersapi.Scheduler) { s.scheduler = sch }
 // BindReports binds the runs domain's reports, which a claimed run's
 // reports and uploads go to; until then each answers ErrNotOnWorker.
 func (s *Service) BindReports(r workersapi.Reports) { s.reports = r }
+
+// BindLiveness binds the runs domain's liveness, which the reap and a
+// poll that reports an ended container fail runs through; until then
+// neither fails a run.
+func (s *Service) BindLiveness(l workersapi.Liveness) { s.liveness = l }
 
 // Registration is a registered worker and its session token.
 type Registration struct {

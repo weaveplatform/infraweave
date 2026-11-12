@@ -124,6 +124,15 @@ func (s Server) WorkerPoll(
 	if req.Body.Wait != nil {
 		in.Wait = time.Duration(*req.Body.Wait) * time.Second
 	}
+	if req.Body.Run != nil {
+		// A malformed ID parses as the zero ULID, which no worker holds, so
+		// the poll fails no run for it.
+		run, _ := kernel.ParseULID(*req.Body.Run)
+		in.Run = &run
+	}
+	if e := req.Body.Exit; e != nil {
+		in.Exit = &workersapi.Exit{Code: int(e.Code), Reason: workersapi.ExitReason(e.Reason)}
+	}
 	got, err := s.svc.Poll(ctx, b, in)
 	if err != nil {
 		return nil, s.answer(ctx, err)

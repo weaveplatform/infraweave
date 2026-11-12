@@ -1527,7 +1527,7 @@ queued; nothing executes them until P8.
    `StackState` and `RunPriority`.
 2. `internal/runs/internal/core/machine`: the edges of the
    [run-transitions register](../data/run-transitions.json), report 08's
-   T1 to T43 and decision 0008's T44, as data, with guards. Tests:
+   T1 to T43 and decision 0008's T44 and T45, as data, with guards. Tests:
    `TestUnitTransitionTable` over every edge and every illegal pair;
    `TestUnitTransitionRegister` reads the register and fails on an edge the
    machine is missing or has beyond it.
@@ -1651,13 +1651,24 @@ context in the assignment with P18b.
    `infraweave launcher` serves `/livez`, `/startupz` and `/readyz` on an
    admin listener, as `serve` does. Tests: the launcher over `agenttest` in
    virtual time, `TestAccDockerExecutor`.
-5. Liveness: a worker unseen for `worker.offline_after` (3 minutes) is
-   `OFFLINE` and receives no new work; `worker.reap` fails a run whose
-   worker stays offline past `run.lost_after` (60 minutes) as a lost run
-   with the note `worker lost`; a claimed run with no `started` report
-   inside its pool's preparing timeout (`run.preparing_timeout_default`,
-   15 minutes) fails through T11, T36 or T44; drain, cycle and reset as
-   decision 0008's table. Records DV-025 and DV-092.
+5. Liveness: `worker.reap` runs every 30 seconds on the `scheduler`
+   queue. Through it a worker unseen for `worker.offline_after`
+   (3 minutes) is `OFFLINE` and receives no new work; it fails each run
+   whose worker stays offline past `run.lost_after` (60 minutes) as a lost
+   run with the note `worker lost`, deleting the worker in the same
+   transaction; and it fails a claimed run with no `started` report inside
+   its pool's preparing timeout (`run.preparing_timeout_default`,
+   15 minutes) through T11, T36 or T44 with the note `preparing timeout`. A poll that
+   is not busy and names a run fails it, when no report ended it, with a
+   note of how its container ended. `runs` fails each through the
+   liveness edge, T45 for a test case in `APPLYING`. A poll or a resumed
+   registration clears the offline mark; `run.lost_after` not above
+   `worker.offline_after`, or `worker.offline_after` not above
+   `worker.poll_timeout_max`, fails the start. Drain, cycle and reset as
+   decision 0008's table. Records DV-025 and DV-092. Tests:
+   `TestUnitWorkerReap` and `TestUnitWorkerPollEnded` in virtual time,
+   `TestAccWorkerReap` and `TestAccLiveness*` (two reaps at once fail
+   each run once), `TestUnitTransitionLiveness`.
 6. `worker.sample`, a periodic task in the `scheduler` process mode that
    runs every minute and writes each pool's busy workers, registered
    workers and queued runs to `worker_pool_samples`, kept for
@@ -1672,10 +1683,11 @@ context in the assignment with P18b.
    to `workers` (a stack's worker pool references `worker_pools`) and
    `runs` to `workers` (`runs.worker_id` and `runs.worker_pool_id` hold
    `workers`' IDs).
-   The protocol claims and reports through `workersapi.Scheduler` and
-   `workersapi.Reports`, which `runs` implements: back edges that
+   The protocol claims, reports and fails lost runs through
+   `workersapi.Scheduler`, `workersapi.Reports` and
+   `workersapi.Liveness`, which `runs` implements: back edges that
    `internal/app` sets after construction (`BindScheduler`,
-   `BindReports`), adding no import
+   `BindReports`, `BindLiveness`), adding no import
    ([declared graph](repo-layout.md#declared-graph)).
 
 **Exit criteria**

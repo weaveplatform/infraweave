@@ -18,12 +18,15 @@ import (
 const SignalCycle = "cycle"
 
 // PollInput is what a poll reports: whether the launcher is busy, the
-// drain flag it last learned, and the hold it asks for, DefaultWait when
-// zero.
+// drain flag it last learned, the hold it asks for, DefaultWait when
+// zero, and, when not busy, the run whose container ended since its last
+// poll and how it ended.
 type PollInput struct {
 	Busy    bool
 	Drained bool
 	Wait    time.Duration
+	Run     *kernel.ULID
+	Exit    *workersapi.Exit
 }
 
 // PollResult is a poll's answer: the run it claimed for the worker, the
@@ -55,7 +58,9 @@ func result(w Worker) PollResult {
 }
 
 // Poll marks the session's worker seen with in's state and answers what
-// the server has to say to it. An idle, undrained worker's poll first
+// the server has to say to it. A poll that is not busy and names a run
+// fails the run, when the worker still holds it, as one whose container
+// ended without a report ending it. An idle, undrained worker's poll first
 // claims its pool's next run, and answers at once with it. A poll also
 // answers at once with a renewed token when the session's has less than
 // RenewWithin left, with a cycle signal, or when the worker's drain flag
@@ -76,6 +81,11 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 	}
 	if w.Serial != serial {
 		return PollResult{}, refuse("worker %s registered under a replaced certificate", w.ID)
+	}
+	if !in.Busy && in.Run != nil {
+		if err := s.ended(ctx, w.ID, *in.Run, in.Exit); err != nil {
+			return PollResult{}, err
+		}
 	}
 	var renewed *accessapi.Token
 	if b.Expires.Sub(now) < RenewWithin {

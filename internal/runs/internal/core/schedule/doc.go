@@ -16,9 +16,19 @@
 // preparing state through the lifecycle and records the worker. A worker
 // that holds a run claims none. ClaimStore is its storage port.
 //
+// Liveness is the domain's workersapi.Liveness, which fails runs on a
+// worker through the liveness edge out of the state each is in: each run
+// a lost worker held, with the note "worker lost"; a run whose container
+// ended while its worker still held it, with a note of how it ended; and
+// the runs a claim moved to a preparing state that no started report
+// moved on within their pool's preparing timeout, with the note
+// "preparing timeout", oldest first, skipping rows another transaction
+// locks. LivenessStore is its storage port.
+//
 // # Input and output
 //
-// None of its own: it reaches storage through Store and ClaimStore, the
+// None of its own: it reaches storage through Store, ClaimStore and
+// LivenessStore, the
 // stacks domain through stacksapi.Stacks, runs through the lifecycle and
 // the queue through Queue.
 //

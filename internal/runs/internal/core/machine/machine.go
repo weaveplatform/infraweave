@@ -31,8 +31,10 @@ const (
 	DriverDecision Driver = "decision"
 	// DriverTimers is the run.timers periodic task.
 	DriverTimers Driver = "timers"
-	// DriverLiveness is the worker.reap periodic task, which fails a run
-	// its worker lost.
+	// DriverLiveness fails a run on a worker that cannot end it with a
+	// report: the worker.reap periodic task, for a run its worker lost or
+	// one no started report moved on within its pool's preparing timeout,
+	// and a poll that reports the run's container ended.
 	DriverLiveness Driver = "liveness"
 )
 
@@ -352,4 +354,7 @@ var edges = []Edge{
 		ID: "T44", From: preparingReplan, To: failed, Types: types(tracked),
 		Drivers: by(DriverWorkerReport, DriverLiveness),
 	},
+	// A test case's own failed apply moves on to its destroy (T39); only
+	// liveness fails it in APPLYING, when no worker is left to destroy.
+	{ID: "T45", From: applying, To: failed, Types: types(test), Drivers: by(DriverLiveness)},
 }

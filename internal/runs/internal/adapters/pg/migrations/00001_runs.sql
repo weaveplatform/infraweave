@@ -70,6 +70,12 @@ CREATE INDEX runs_claimable ON runs (worker_pool_id, priority_tier, created_at, 
 CREATE INDEX runs_worker ON runs (worker_id, state) WHERE worker_id IS NOT NULL;
 CREATE INDEX runs_drift ON runs (worker_pool_id, state) WHERE drift_detection;
 
+-- The reap reads the runs a claim moved to a preparing state, oldest
+-- first, to fail those no started report moved on within their pool's
+-- preparing timeout.
+CREATE INDEX runs_preparing ON runs (state_changed_at, id)
+    WHERE state IN ('PREPARING', 'PREPARING_APPLY', 'PREPARING_REPLAN');
+
 -- Each transition a run went through, sequence being the state_version it
 -- moved the run to. until is when a timed state ends; username is who
 -- moved it, absent for the server; terminal is whether the state ends the

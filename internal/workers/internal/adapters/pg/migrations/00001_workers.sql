@@ -54,8 +54,9 @@ CREATE UNIQUE INDEX worker_pools_id ON worker_pools (id);
 
 -- A registered worker of a pool, until it deregisters or its pool is
 -- deleted. serial is the pool certificate's serial it registered under,
--- which a reset leaves behind. last_seen_at is its last call, which marks
--- it offline when old; available_at is when it last became idle.
+-- which a reset leaves behind. last_seen_at is its last call; offline is
+-- set by the reap once that is worker.offline_after old, and cleared by
+-- the worker's next call. available_at is when it last became idle.
 -- cycle is set by workerPoolCycle and answered on each poll until the
 -- worker deregisters. organization_id is its pool's, which the
 -- private-workers limit counts by.
@@ -72,6 +73,7 @@ CREATE TABLE workers (
     busy            boolean     NOT NULL DEFAULT false,
     drained         boolean     NOT NULL DEFAULT false,
     cycle           boolean     NOT NULL DEFAULT false,
+    offline         boolean     NOT NULL DEFAULT false,
     last_seen_at    timestamptz NOT NULL DEFAULT now(),
     available_at    timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
@@ -84,6 +86,9 @@ CREATE INDEX workers_pool ON workers (account_id, pool_id);
 CREATE UNIQUE INDEX workers_id ON workers (id);
 
 CREATE INDEX workers_organization ON workers (organization_id);
+
+-- The reap reads the workers unseen since a time, of every account.
+CREATE INDEX workers_seen ON workers (last_seen_at);
 
 -- A registration's jti, kept until expires_at, so a replayed
 -- registration is refused.

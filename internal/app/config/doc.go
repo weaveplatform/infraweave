@@ -19,7 +19,10 @@
 // objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS;
 // Vendors holds the vendors.* release indexes the version catalogue
 // refreshes from, the vendors domain's assembly Settings; Worker holds
-// worker.poll_timeout_max, the workers domain's assembly Settings.
+// worker.poll_timeout_max and worker.offline_after, the workers domain's
+// assembly Settings; Run holds run.lost_after and
+// run.preparing_timeout_default, the runs domain's assembly Settings, and
+// Load rejects a run.lost_after no greater than worker.offline_after.
 // Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags
@@ -51,6 +54,7 @@
 // types of platform/httpkit/serve, middleware/ratelimit,
 // middleware/idempotency, platform/sql, platform/observe, platform/queue,
 // platform/outbox, platform/crypt, crypt/kek, platform/expr and
-// platform/objectstore, and the access domain's assembly for its
-// Settings. internal/app and cmd/ import it.
+// platform/objectstore, and the access, features, vendors, vcs, workers
+// and runs domains' assemblies for their Settings. internal/app and cmd/
+// import it.
 package config

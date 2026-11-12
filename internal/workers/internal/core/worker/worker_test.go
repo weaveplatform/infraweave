@@ -23,6 +23,7 @@ import (
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
@@ -160,7 +161,7 @@ func (s *store) Resume(_ context.Context, w worker.Worker) error {
 	old := s.workers[w.ID]
 	old.Serial, old.Version, old.OS, old.Arch, old.Metadata = w.Serial, w.Version, w.OS, w.Arch,
 		w.Metadata
-	old.LastSeenAt = w.LastSeenAt
+	old.LastSeenAt, old.Offline = w.LastSeenAt, false
 	s.workers[w.ID] = old
 	return nil
 }
@@ -180,7 +181,7 @@ func (s *store) Seen(
 	if !ok {
 		return w, 0, worker.ErrNotFound
 	}
-	w.LastSeenAt, w.Busy = now, busy
+	w.LastSeenAt, w.Busy, w.Offline = now, busy, false
 	s.workers[id] = w
 	return w, s.pools[w.Pool].Serial, nil
 }
@@ -205,6 +206,63 @@ func (s *store) Remove(_ context.Context, id kernel.ULID) error {
 	}
 	delete(s.workers, id)
 	return nil
+}
+
+// MarkOffline fails on "MarkOffline".
+func (s *store) MarkOffline(_ context.Context, before time.Time) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.down("MarkOffline"); err != nil {
+		return 0, err
+	}
+	n := 0
+	for id, w := range s.workers {
+		if w.LastSeenAt.Before(before) && !w.Offline {
+			w.Offline = true
+			s.workers[id] = w
+			n++
+		}
+	}
+	return n, nil
+}
+
+// Lost deletes the longest unseen worker last seen before before; it
+// fails on "Lost".
+func (s *store) Lost(_ context.Context, before time.Time) (kernel.ULID, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.down("Lost"); err != nil {
+		return kernel.ULID{}, false, err
+	}
+	var (
+		oldest worker.Worker
+		found  bool
+	)
+	for _, w := range s.workers {
+		if w.LastSeenAt.Before(before) && (!found || w.LastSeenAt.Before(oldest.LastSeenAt)) {
+			oldest, found = w, true
+		}
+	}
+	if found {
+		delete(s.workers, oldest.ID)
+	}
+	return oldest.ID, found, nil
+}
+
+// PoolTimeouts fails on "PoolTimeouts".
+func (s *store) PoolTimeouts(context.Context) ([]workersapi.PoolTimeout, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.down("PoolTimeouts"); err != nil {
+		return nil, err
+	}
+	var out []workersapi.PoolTimeout
+	for _, p := range s.pools {
+		if p.PreparingTimeout > 0 {
+			out = append(out, workersapi.PoolTimeout{Pool: p.ID, Timeout: p.PreparingTimeout})
+		}
+	}
+	return out, nil
 }
 
 func (s *store) Drain(

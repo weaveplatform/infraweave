@@ -16,6 +16,11 @@
 // Scheduler is the workersapi.Scheduler internal/app binds in the workers
 // domain, the back edge a worker's poll claims its pool's next run
 // through and a run token's bearer reads its run's handover through;
+// Liveness is the workersapi.Liveness internal/app binds there, the back
+// edge the reap fails lost runs and overdue preparations through and a
+// poll fails a run whose container ended; Settings are run.lost_after and
+// run.preparing_timeout_default, which internal/app hands the workers
+// domain;
 // BindExpressions binds the registry the handover renders a stack's
 // environment with; SealedColumns names the run's sealed artifact key, for
 // internal/app's reseal; StackGuard is the

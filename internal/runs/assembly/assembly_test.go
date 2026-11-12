@@ -27,8 +27,8 @@ func TestUnitDomain(t *testing.T) {
 		!reflect.DeepEqual(SealedColumns(), pg.SealedColumns()) {
 		t.Errorf("stream %q, held %v, sealed %v", Stream().Name, Held(), SealedColumns())
 	}
-	if d.Scheduler() == nil {
-		t.Error("the domain has no scheduler")
+	if d.Scheduler() == nil || d.Liveness() == nil {
+		t.Error("the domain has no scheduler or liveness")
 	}
 	d.BindExpressions(nil)
 	var none *Domain
