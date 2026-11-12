@@ -26,7 +26,8 @@
 // makes the run's artifact key once, sealed to its row in
 // artifact_key_sealed, which SealedColumns names, and opens it on every
 // later read. Held names the columns that hold the access domain's
-// accounts and the stacks domain's stacks. Every method joins the
+// accounts and the stacks domain's stacks, and Keys declares the runs'
+// key, which other domains' held columns name. Every method joins the
 // transaction its context carries.
 //
 // # Input and output

@@ -14,9 +14,10 @@ import (
 )
 
 // TestUnitDomain checks that the domain answers the stack view's status,
-// the stacks guard and the state access from one service, declares its stream, held and
-// sealed columns, binds the expression registry its handover renders
-// with, and that a nil domain's partial is the zero one.
+// the stacks guard and the state access from one service, declares its
+// stream, held columns, key and sealed columns, binds the expression
+// registry its handover renders with, and that a nil domain's partial is
+// the zero one.
 func TestUnitDomain(t *testing.T) {
 	d := New(Deps{})
 	if d.StackStatus() == nil || d.StackGuard() == nil ||
@@ -24,8 +25,10 @@ func TestUnitDomain(t *testing.T) {
 		t.Error("the status and the guard are not the domain's service")
 	}
 	if Stream().Name != pg.StreamName || !reflect.DeepEqual(Held(), pg.Held()) ||
+		!reflect.DeepEqual(Keys(), pg.Keys()) ||
 		!reflect.DeepEqual(SealedColumns(), pg.SealedColumns()) {
-		t.Errorf("stream %q, held %v, sealed %v", Stream().Name, Held(), SealedColumns())
+		t.Errorf("stream %q, held %v, keys %v, sealed %v", Stream().Name, Held(), Keys(),
+			SealedColumns())
 	}
 	if d.Scheduler() == nil || d.Liveness() == nil {
 		t.Error("the domain has no scheduler or liveness")

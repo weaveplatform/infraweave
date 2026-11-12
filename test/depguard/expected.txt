@@ -20,6 +20,7 @@ internal/stacks/leak/leak.go compiler github.com/weaveplatform/infraweave/intern
 internal/stacks/stacks_test.go forbidigo time.Sleep
 internal/stacks/wire/wire.go constructors github.com/weaveplatform/infraweave/internal/runs/assembly
 internal/stacks/wire/wire.go graph-stacks github.com/weaveplatform/infraweave/internal/runs/assembly
+internal/state/up/up.go graph-state github.com/weaveplatform/infraweave/internal/vcs/api
 internal/vcs/down/down.go graph-vcs github.com/weaveplatform/infraweave/internal/configuration/api
 internal/vendors/down/down.go graph-vendors github.com/weaveplatform/infraweave/internal/stacks/api
 internal/workers/up/up.go graph-workers github.com/weaveplatform/infraweave/internal/stacks/api

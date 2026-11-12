@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
@@ -41,6 +42,7 @@ type Domains struct {
 	Stacks        *stacksassembly.Domain
 	Configuration *configurationassembly.Domain
 	Runs          *runsassembly.Domain
+	State         *stateassembly.Domain
 	VCS           *vcsassembly.Domain
 	Expressions   *expressionsassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
@@ -164,6 +166,7 @@ func newDomains(
 	}
 	configuration.BindExpressions(registry)
 	runs.BindExpressions(registry)
+	state := stateassembly.New(stateassembly.Deps{DB: db.Primary(), Stacks: stacks.Stacks()})
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:       db.Primary(),
 		Keys:     keys,
@@ -190,6 +193,7 @@ func newDomains(
 		Stacks:        stacks,
 		Configuration: configuration,
 		Runs:          runs,
+		State:         state,
 		VCS:           vcs,
 		Expressions:   expressionsassembly.New(registry),
 		Auth:          access.Authenticator(),

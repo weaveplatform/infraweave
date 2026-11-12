@@ -71,6 +71,10 @@ func (s Settings) Validate() error {
 // nightly orphan count.
 func Held() []integrity.Held { return pg.Held() }
 
+// Keys are the runs domain's rows other domains hold, for the nightly
+// orphan count.
+func Keys() []integrity.Key { return pg.Keys() }
+
 // SealedColumns are the runs domain's sealed columns.
 func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
@@ -43,6 +44,7 @@ func Streams() []migrate.Stream {
 		stacksassembly.Stream(),
 		configurationassembly.Stream(),
 		runsassembly.Stream(),
+		stateassembly.Stream(),
 		vcsassembly.Stream(),
 	}
 }

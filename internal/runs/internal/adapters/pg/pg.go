@@ -47,6 +47,11 @@ func Held() []integrity.Held {
 	}
 }
 
+// Keys declares the runs' key, which other domains' held columns name.
+func Keys() []integrity.Key {
+	return []integrity.Key{{Entity: "run", Table: "runs", Columns: []string{"account_id", "id"}}}
+}
+
 // Store is the runs domain's storage over a database, sealing its sealed
 // column through seal.
 type Store struct {

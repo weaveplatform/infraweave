@@ -30,8 +30,9 @@
 // that decides a run token's access to its stack's state from the run's
 // current state; API is its partial of the
 // API's strict server, aliased RunsAPI; Held declares the columns that
-// hold the access domain's accounts and the stacks domain's stacks, for
-// the nightly orphan count; Stream is its migration stream, which
+// hold the access domain's accounts and the stacks domain's stacks, and
+// Keys the runs' key, which other domains' held columns name, for the
+// nightly orphan count; Stream is its migration stream, which
 // internal/app registers after configuration's.
 //
 // # Input and output
