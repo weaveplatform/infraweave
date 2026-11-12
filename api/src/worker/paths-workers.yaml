@@ -1,0 +1,214 @@
+# A worker's registration, polls and exit.
+components:
+  schemas:
+    RegisterRequest:
+      description: A registration, signed with the pool's private key.
+      type: object
+      additionalProperties: false
+      required: [registration]
+      properties:
+        registration:
+          type: string
+          maxLength: 32768
+          description: >-
+            A compact JWS, ES256, whose protected header's x5c carries the
+            pool's certificate from its pool token. Its payload is a JSON
+            object: pool, the pool's ID; iat, when it was signed, in Unix
+            seconds, within five minutes of the server's clock; jti, a value
+            the pool has not used in the last ten minutes; version, the
+            launcher's version; os and arch, the host's, each at most 64
+            characters; metadata, an object of at most 32 strings describing
+            the worker, keys at most 64 characters and values at most 255;
+            and worker, the ID of a worker of the pool to resume, which keeps
+            its run, or absent for a new worker.
+    Registration:
+      description: The registered worker and its session token.
+      type: object
+      required: [worker, sessionToken, sessionExpiresAt]
+      properties:
+        worker:
+          type: string
+          description: The worker's ID, which a later registration names to resume it.
+        sessionToken:
+          type: string
+          description: >-
+            The worker session token every other call of the worker API
+            carries as its bearer token.
+        sessionExpiresAt:
+          type: integer
+          format: int64
+          description: When the session token expires, in Unix seconds.
+    PollRequest:
+      description: The worker's state, which each poll reports.
+      type: object
+      additionalProperties: false
+      required: [busy]
+      properties:
+        busy:
+          type: boolean
+          description: Whether the launcher is executing a run.
+        drained:
+          type: boolean
+          default: false
+          description: >-
+            The drain flag the launcher last learned. A poll whose worker's
+            flag differs answers at once.
+        run:
+          type: string
+          maxLength: 26
+          description: The ID of the run the launcher is executing, when busy.
+        version:
+          type: string
+          maxLength: 64
+          description: The launcher's version.
+        wait:
+          type: integer
+          format: int32
+          minimum: 5
+          maximum: 120
+          default: 60
+          description: >-
+            How many seconds the server may hold the poll when it has nothing
+            to answer. The server holds it no longer than its own maximum.
+    Signal:
+      description: >-
+        stop or kill asks the launcher to stop or kill its current run; cycle
+        asks it to exit, at once when idle, after its run when busy.
+      type: string
+      enum: [stop, kill, cycle]
+    PollResult:
+      description: >-
+        What the server has to say to the worker. Every member is absent when
+        it has nothing.
+      type: object
+      properties:
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Signal'
+          description: The signals the worker is to act on.
+        drained:
+          type: boolean
+          description: >-
+            Whether the worker is drained: it takes no new run and finishes
+            its current one.
+        sessionToken:
+          type: string
+          description: >-
+            A renewed worker session token, answered when the one the poll
+            carried has less than 15 minutes left.
+        sessionExpiresAt:
+          type: integer
+          format: int64
+          description: When the renewed session token expires, in Unix seconds.
+paths:
+  /register:
+    post:
+      summary: Register a worker
+      description: >-
+        Registers a worker of the pool the registration names, or resumes the
+        worker it names. The certificate must chain to the installation's pool
+        CA and carry the pool's current serial. A new worker beyond the
+        organization's private-workers limit answers 403 limit-reached; a
+        resumed one is not counted again. A launcher older than the server's
+        previous minor version answers 422 validation-failed, whose detail
+        names the oldest version accepted.
+      operationId: workerRegister
+      security: []
+      tags:
+        - Workers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: The worker and its session token.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Registration'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /poll:
+    post:
+      summary: Poll for signals
+      description: >-
+        Reports the worker's state and waits for something to answer: a
+        signal, a change of its drain flag, or the end of its wait, whichever
+        comes first. A poll whose session token has less than 15 minutes left
+        answers at once with a renewed one, and a worker's next poll answers
+        its held one at once. The answer is always 200.
+      operationId: workerPoll
+      tags:
+        - Workers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PollRequest'
+      responses:
+        '200':
+          description: What the server has to say, empty when nothing.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PollResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /deregister:
+    post:
+      summary: Deregister a worker
+      description: >-
+        Removes the worker, which a launcher calls as it exits. Its session
+        token authenticates nothing afterwards.
+      operationId: workerDeregister
+      tags:
+        - Workers
+      responses:
+        '204':
+          description: The worker is gone.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'

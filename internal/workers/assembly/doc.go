@@ -7,9 +7,13 @@
 // and moves; SpaceOf finds the space the access domain decides a pool's
 // operations on; Pools is the workersapi.Pools internal/app hands the
 // stacks domain, GuardPools registers the stacks domain's
-// workersapi.PoolGuard and BindStacks its SpaceOf; Purge deletes a
-// deleted account's runner images, pools, workers and nonces PurgeBatch
-// rows at a time, which internal/app runs for each accessapi.Deleted.
+// workersapi.PoolGuard and BindStacks its SpaceOf; Protocol is the worker
+// API's strict server, which internal/app mounts behind the controls of
+// every API surface, WatchPolls wakes its held polls
+// from infraweave_runs and StopPolls answers them as the replica shuts
+// down; Settings are worker.poll_timeout_max; Purge deletes a deleted
+// account's runner images, pools, workers and nonces PurgeBatch rows at a
+// time, which internal/app runs for each accessapi.Deleted.
 //
 // # Input and output
 //
@@ -17,8 +21,9 @@
 //
 // # Dependencies
 //
-// It imports the domain's http, pg, images and pool packages, the access
-// and workers api packages, internal/kernel, platform/crypt,
-// platform/sql/integrity and migrate, and platform/tx. Only internal/app
+// It imports the domain's http, pg, protocol, images, pool and worker
+// packages, the access and workers api packages, internal/kernel,
+// platform/crypt, the generated worker server, platform/sql's integrity,
+// migrate and notify packages, and platform/tx. Only internal/app
 // and cmd/ import it, as the constructors rule enforces.
 package assembly

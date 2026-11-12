@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  title: infraweave worker API
+  version: 0.1.0
+  description: >-
+    The protocol a launcher speaks to the server. A launcher holding a
+    private worker pool's key registers a worker by signing with it, holds
+    long polls that carry the worker's signals and renew its session, and
+    deregisters when it exits. Every call but the registration carries the
+    worker session token the registration answered; any other credential
+    answers 401. Spacelift has no counterpart, so it is outside the parity
+    surface.
+servers:
+  - url: /worker/v1
+    description: The worker API's prefix on the server's single listener.
+security:
+  - bearerAuth: []
+tags:
+  - name: Workers
+    description: >-
+      A worker's registration, its polls and its exit.

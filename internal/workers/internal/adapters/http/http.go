@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
 // Server is the workers domain's partial of the API's strict server. The
@@ -22,22 +23,24 @@ import (
 // or on the space a create names, before its handler runs, and answered
 // 404 for a pool the caller cannot read.
 type Server struct {
-	svc    *pool.Service
-	images *images.Service
-	authz  accessapi.Authorizer
-	spaces accessapi.Spaces
+	svc     *pool.Service
+	images  *images.Service
+	workers *worker.Service
+	authz   accessapi.Authorizer
+	spaces  accessapi.Spaces
 }
 
-// New returns the partial over the pools' and the runner images'
-// services, deciding allowedActions with authz and naming spaces through
-// spaces.
+// New returns the partial over the pools', the runner images' and the
+// workers' services, deciding allowedActions with authz and naming
+// spaces through spaces.
 func New(
 	svc *pool.Service,
 	img *images.Service,
+	wk *worker.Service,
 	authz accessapi.Authorizer,
 	spaces accessapi.Spaces,
 ) Server {
-	return Server{svc: svc, images: img, authz: authz, spaces: spaces}
+	return Server{svc: svc, images: img, workers: wk, authz: authz, spaces: spaces}
 }
 
 // WorkerPools lists the pools of the caller's account in the spaces it
@@ -429,9 +432,8 @@ func (s Server) view(
 	return vs[0], nil
 }
 
-// views are all as p sees them: the actions p holds in each one's space
-// and its space by slug. Workers register over the worker API, so a pool
-// that has none answers empty lists and zero counts.
+// views are all as p sees them: the actions p holds in each one's space,
+// its space by slug and its workers.
 func (s Server) views(
 	ctx context.Context,
 	p kernel.Principal,
@@ -444,6 +446,14 @@ func (s Server) views(
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the access domain names the read
+	}
+	ids := make([]kernel.ULID, len(all))
+	for i, wp := range all {
+		ids[i] = wp.ID
+	}
+	workers, err := s.workers.OfPools(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read
 	}
 	held := map[kernel.ULID][]api.Action{}
 	for _, wp := range all {
@@ -479,7 +489,14 @@ func (s Server) views(
 			IntentProjects: []api.IntentProjectReference{},
 			Scans:          []api.WorkerPoolScanReference{},
 			Users:          []api.WorkerPoolUser{},
-			Workers:        []api.Worker{},
+			Workers:        make([]api.Worker, 0, len(workers[wp.ID])),
+			WorkersCount:   int32(len(workers[wp.ID])), //nolint:gosec // limited by private-workers
+		}
+		for _, w := range workers[wp.ID] {
+			v.Workers = append(v.Workers, workerView(w))
+			if w.Busy {
+				v.BusyWorkers++
+			}
 		}
 		if wp.Description != "" {
 			v.Description = &wp.Description

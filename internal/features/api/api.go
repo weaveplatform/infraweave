@@ -29,6 +29,12 @@ type Entitlement struct {
 // ref: decision 0021
 const Seats = "seats"
 
+// PrivateWorkers is the limit on registered private workers, which the
+// workers domain counts.
+//
+// ref: decision 0021
+const PrivateWorkers = "private-workers"
+
 // Usage is a counted thing's use at the moment of a creation: across the
 // organization's accounts, and in the account the creation is for.
 type Usage struct {

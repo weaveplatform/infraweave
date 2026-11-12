@@ -2,19 +2,26 @@ package assembly
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"log/slog"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/pg"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/adapters/protocol"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
 // Stream is the domain's migration stream, which internal/app registers
@@ -37,6 +44,31 @@ func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 // own space.
 const Entity = "worker_pool"
 
+// Settings are the workers domain's: PollTimeoutMax, the longest a
+// worker's poll is held, worker.poll_timeout_max.
+//
+// ref: decision 0008 § "Configuration"
+type Settings struct {
+	PollTimeoutMax time.Duration `mapstructure:"poll_timeout_max"`
+}
+
+// DefaultSettings hold a poll for at most two minutes, the longest a
+// launcher asks for.
+func DefaultSettings() Settings { return Settings{PollTimeoutMax: worker.MaxWait} }
+
+// ErrConfig reports a workers setting the server could not start with.
+var ErrConfig = errors.New("invalid worker configuration")
+
+// Validate rejects a poll timeout shorter than the shortest hold a
+// launcher may ask for.
+func (s Settings) Validate() error {
+	if s.PollTimeoutMax < worker.MinWait {
+		return fmt.Errorf("%w: worker.poll_timeout_max %s is under %s", ErrConfig,
+			s.PollTimeoutMax, worker.MinWait)
+	}
+	return nil
+}
+
 // DB is the pool the domain queries and begins its transactions on.
 type DB interface {
 	tx.Querier
@@ -47,20 +79,32 @@ type DB interface {
 // domains below it: the database, the keys the pool CA's key is sealed
 // under, the spaces a pool lives in and holds, the authorizer that
 // decides the checks beyond each route's and a pool's allowedActions,
-// and Public, the server's public URL, which a pool token names.
+// Public, the server's public URL, which a pool token names, the tokens
+// the worker API mints, the entitlements a new worker is
+// counted against, Version, the server's version, which a launcher's
+// must match to its minor version or the one before, PollMax, the
+// longest a worker's poll is held, and the log a refused worker
+// credential is recorded in.
 type Deps struct {
-	DB     DB
-	Keys   pg.Sealer
-	Spaces accessapi.Spaces
-	Authz  accessapi.Authorizer
-	Public string
-	Now    func() time.Time
+	DB       DB
+	Keys     pg.Sealer
+	Spaces   accessapi.Spaces
+	Authz    accessapi.Authorizer
+	Public   string
+	Tokens   accessapi.Tokens
+	Features worker.Limits
+	Version  string
+	PollMax  time.Duration
+	Log      *slog.Logger
+	Now      func() time.Time
 }
 
 // Domain is the workers domain, constructed once per process.
 type Domain struct {
-	svc *pool.Service
-	api http.Server
+	svc     *pool.Service
+	workers *worker.Service
+	api     http.Server
+	log     *slog.Logger
 }
 
 // New constructs the domain on d.
@@ -70,7 +114,58 @@ func New(d Deps) *Domain {
 		Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Public: d.Public, Now: d.Now,
 	})
-	return &Domain{svc: svc, api: http.New(svc, images.New(store), d.Authz, d.Spaces)}
+	wk := worker.New(worker.Deps{
+		Store: store, DB: d.DB, Tokens: d.Tokens, Limits: d.Features, Version: d.Version,
+		PollMax: d.PollMax, Now: d.Now,
+	})
+	log := d.Log
+	if log == nil {
+		log = slog.New(slog.DiscardHandler)
+	}
+	return &Domain{
+		svc: svc, workers: wk, log: log,
+		api: http.New(svc, images.New(store), wk, d.Authz, d.Spaces),
+	}
+}
+
+// Protocol is the worker API's strict server, which internal/app mounts
+// behind the controls of every API surface: a launcher's registration,
+// polls and exit. A nil domain's answers 501 to each, for tests that
+// construct none.
+//
+// ref: decision 0008 § "The worker API"
+func (d *Domain) Protocol() workerapi.StrictServerInterface {
+	if d == nil {
+		return workerapi.UnimplementedStrict{}
+	}
+	return protocol.New(d.workers, d.log)
+}
+
+// WatchPolls ends the holds of this replica's held polls until ctx ends:
+// a pool's ID on sub, a subscription to infraweave_runs, wakes the pool's
+// polls, and a Resync, after which messages may have been lost, wakes
+// them all. Each woken poll rereads its worker.
+func (d *Domain) WatchPolls(ctx context.Context, sub *notify.Subscription) {
+	watchPolls(ctx, d.workers, sub.C)
+}
+
+// StopPolls answers this replica's held polls at once, and later ones
+// without a hold, which internal/app calls as the shutdown begins.
+func (d *Domain) StopPolls() { d.workers.Stop() }
+
+func watchPolls(ctx context.Context, svc *worker.Service, msgs <-chan notify.Message) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-msgs:
+			if m.Resync {
+				svc.WakeAll()
+			} else if pool, err := kernel.ParseULID(m.Payload); err == nil {
+				svc.Wake(pool)
+			}
+		}
+	}
 }
 
 // PurgeBatch is how many rows one statement of Purge deletes, so no

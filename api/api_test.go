@@ -56,6 +56,27 @@ func loadServed(t *testing.T) *openapi3.T {
 	return doc
 }
 
+// servedDocuments loads every document the server serves, by file: the
+// API's and the operator and worker APIs', so a check of the controls
+// every surface shares runs on each.
+//
+// ref: decision 0003 § "API surfaces"
+func servedDocuments(t *testing.T) map[string]*openapi3.T {
+	t.Helper()
+	docs := map[string]*openapi3.T{"api.openapi.yaml": loadServed(t)}
+	for _, file := range []string{"operator.openapi.yaml", "worker.openapi.yaml"} {
+		doc, err := openapi3.NewLoader().LoadFromFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := doc.Validate(context.Background()); err != nil {
+			t.Fatalf("%s: %v", file, err)
+		}
+		docs[file] = doc
+	}
+	return docs
+}
+
 // TestUnitAPIConventionComponents checks that every component decision
 // 0003 names exists and says what it is for.
 func TestUnitAPIConventionComponents(t *testing.T) {
@@ -143,7 +164,28 @@ var exampleInstance = regexp.MustCompile(`^urn:infraweave:request:[A-Za-z0-9._-]
 func TestUnitAPIProblemTypes(t *testing.T) {
 	listed := problemTypes(t)
 	used := map[string]bool{}
-	for name, r := range loadServed(t).Components.Responses {
+	for file, doc := range servedDocuments(t) {
+		checkProblemExamples(t, file, doc, listed, used)
+	}
+	for slug, p := range listed {
+		if p.Decision == "0003" && !used[slug] {
+			t.Errorf("%s gives %s to decision 0003, but no response uses it", problems, slug)
+		}
+	}
+}
+
+// checkProblemExamples checks each problem example of doc's responses
+// against the register listed, and records each slug it uses in used.
+func checkProblemExamples(
+	t *testing.T,
+	file string,
+	doc *openapi3.T,
+	listed map[string]problem,
+	used map[string]bool,
+) {
+	t.Helper()
+	for name, r := range doc.Components.Responses {
+		name = file + " " + name
 		mt := r.Value.Content.Get("application/problem+json")
 		ex, ok := mt.Example.(map[string]any)
 		if !ok {
@@ -167,11 +209,6 @@ func TestUnitAPIProblemTypes(t *testing.T) {
 			)
 		}
 		used[slug] = true
-	}
-	for slug, p := range listed {
-		if p.Decision == "0003" && !used[slug] {
-			t.Errorf("%s gives %s to decision 0003, but no response uses it", problems, slug)
-		}
 	}
 }
 
@@ -499,15 +536,26 @@ func TestUnitServedNames(t *testing.T) {
 //
 // ref: decision 0022
 func TestUnitAPIStrictInputs(t *testing.T) {
-	doc := loadServed(t)
-	merge := doc.Components.Schemas["MergePatch"]
-	if merge == nil {
+	docs := servedDocuments(t)
+	if docs["api.openapi.yaml"].Components.Schemas["MergePatch"] == nil {
 		t.Fatal("no MergePatch schema")
+	}
+	for file, doc := range docs {
+		checkStrictInputs(t, file, doc)
+	}
+}
+
+// checkStrictInputs checks every object schema doc's request bodies reach.
+func checkStrictInputs(t *testing.T, file string, doc *openapi3.T) {
+	t.Helper()
+	var merge *openapi3.Schema
+	if m := doc.Components.Schemas["MergePatch"]; m != nil {
+		merge = m.Value
 	}
 	seen := map[*openapi3.Schema]bool{}
 	var walk func(at string, r *openapi3.SchemaRef)
 	walk = func(at string, r *openapi3.SchemaRef) {
-		if r == nil || r.Value == nil || seen[r.Value] || r.Value == merge.Value {
+		if r == nil || r.Value == nil || seen[r.Value] || r.Value == merge {
 			return
 		}
 		s := r.Value
@@ -536,7 +584,7 @@ func TestUnitAPIStrictInputs(t *testing.T) {
 				continue
 			}
 			for typ, mt := range op.RequestBody.Value.Content {
-				walk(method+" "+path+" "+typ, mt.Schema)
+				walk(file+" "+method+" "+path+" "+typ, mt.Schema)
 			}
 		}
 	}

@@ -1,0 +1,11 @@
+# oapi-codegen configuration for the worker API's strict chi server (make
+# generate).
+package: worker
+output: internal/platform/gen/worker/server.gen.go
+generate:
+  models: true
+  chi-server: true
+  strict-server: true
+  embedded-spec: true
+output-options:
+  skip-prune: true

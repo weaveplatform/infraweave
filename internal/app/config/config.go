@@ -26,6 +26,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
+	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
 )
 
 // Config is every setting, keyed as in the YAML file.
@@ -66,6 +67,11 @@ type Config struct {
 	//
 	// ref: decision 0012
 	VCS vcsassembly.Settings `mapstructure:"vcs"`
+	// Worker is the workers domain's: the longest a worker's poll is
+	// held.
+	//
+	// ref: decision 0008
+	Worker workersassembly.Settings `mapstructure:"worker"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -107,6 +113,7 @@ func Defaults() Config {
 		ObjectStore: objectstore.Defaults(),
 		Auth:        accessassembly.DefaultSettings(),
 		Vendors:     vendorsassembly.DefaultSettings(),
+		Worker:      workersassembly.DefaultSettings(),
 	}
 }
 
@@ -246,6 +253,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Auth.Validate(),
 		c.Features.Validate(),
 		c.Vendors.Validate(),
+		c.Worker.Validate(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}

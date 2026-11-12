@@ -29,6 +29,9 @@ const (
 	// every other route refuses. An API key's or a run's token works in an
 	// account, and is refused.
 	OrganizationAdmin
+	// Worker routes, the worker API's, admit worker session tokens alone,
+	// which every other route refuses.
+	Worker
 )
 
 // Authenticator authenticates the API's requests.

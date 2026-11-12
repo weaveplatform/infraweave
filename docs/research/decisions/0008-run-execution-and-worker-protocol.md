@@ -189,6 +189,11 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   `serve` process as the public API, and is described by its own OpenAPI document,
   `api/worker.openapi.yaml`. It is not part of the Spacelift-mirrored surface.
   Errors are problem details ([0022](0022-api-errors-and-update-semantics.md)).
+  It stands behind the controls every API surface shares, with the
+  deviations [0003](0003-api-conventions.md) lists: no account action, no
+  feature gate and no idempotency keys. A registration is bounded: the JWS
+  at 32 KiB, the version, OS and architecture at 64 characters each, and at
+  most 32 metadata entries with keys of 64 characters and values of 255.
 - **Credentials** (formats are [0006](0006-authentication-and-tokens.md)'s):
   - **Pool token.** `workerPoolCreate` takes a base64 CSR, as in Spacelift
     ([10 section 2.3](../reference/10-workers-and-execution.md#23-credentials)).
@@ -236,12 +241,16 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   | `POST /worker/v1/runs/{run}/artifacts` | runner, run token | Records uploaded run artifacts (kind, object key, size, SHA-256) |
   | `GET /worker/v1/runs/{run}/workspace` | launcher, run token | `307` to a pre-signed `GET` of the saved workspace |
 
-- **The poll.** The request carries `{busy, run, version}`. The server updates
-  `workers.last_seen_at`, then answers at once when it has anything to say, or
-  holds the request until a wake-up or `poll_timeout`. The launcher asks for a hold
+- **The poll.** The request carries `{busy, drained, run, version}`, where
+  `drained` is the drain flag the launcher last learned. The server updates
+  `workers.last_seen_at`, then answers at once when it has anything to say,
+  including a drain flag other than the one reported, or holds the request until
+  a wake-up or `poll_timeout`. The launcher asks for a hold
   between 5 and 120 seconds (default 60, Spacelift's default); the server caps it
   at `worker.poll_timeout_max`. A held poll holds no transaction or pooled
-  connection ([0005](0005-persistence-postgresql.md)). The answer is always `200`
+  connection ([0005](0005-persistence-postgresql.md)), and a worker's next
+  poll answers its held one at once, so a worker holds one poll per replica.
+  The answer is always `200`
   with a JSON body, empty when nothing happened, so a session renewal can ride on
   it. It may carry:
 

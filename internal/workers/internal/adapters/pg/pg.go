@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
 // StreamName is the workers stream's name in schema_migrations.
@@ -39,11 +40,14 @@ func Stream() migrate.Stream {
 }
 
 // Held are the workers columns that hold other domains' rows: each
-// table's account, and a pool's space.
+// table's account, a pool's and a worker's organization, and a pool's
+// space.
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "worker_pools", Columns: []string{"account_id"}},
+		{Entity: "organization", Table: "worker_pools", Columns: []string{"organization_id"}},
 		{Entity: "account", Table: "workers", Columns: []string{"account_id"}},
+		{Entity: "organization", Table: "workers", Columns: []string{"organization_id"}},
 		{Entity: "account", Table: "worker_nonces", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "worker_runner_images", Columns: []string{"account_id"}},
 		{Entity: "space", Table: "worker_pools", Columns: []string{"account_id", "space_id"}},
@@ -90,6 +94,7 @@ func New(db tx.Querier, seal Sealer) *Store { return &Store{db: db, seal: seal} 
 var (
 	_ pool.Store   = (*Store)(nil)
 	_ images.Store = (*Store)(nil)
+	_ worker.Store = (*Store)(nil)
 )
 
 // Authority reads the pool CA, creating it with mint when there is none,
@@ -146,7 +151,7 @@ func (s *Store) mint(ctx context.Context, mint func() (pool.Authority, error)) e
 }
 
 // columns are a pool's columns as scan reads them, over worker_pools p.
-const columns = `p.account_id, p.id, p.name, p.space_id, p.description, p.labels,
+const columns = `p.account_id, p.organization_id, p.id, p.name, p.space_id, p.description, p.labels,
 	p.preparing_timeout_seconds, p.drift_detection_run_limit, p.certificate, p.serial,
 	p.created_at, p.updated_at, p.version`
 
@@ -155,8 +160,19 @@ func scan(row pgx.Row, extra ...any) (pool.Pool, error) {
 	var p pool.Pool
 	var preparing *int32
 	err := row.Scan(append([]any{
-		&p.Account, &p.ID, &p.Name, &p.Space, &p.Description, &p.Labels, &preparing,
-		&p.DriftDetectionRunLimit, &p.Certificate, &p.Serial, &p.CreatedAt, &p.UpdatedAt,
+		&p.Account,
+		&p.Organization,
+		&p.ID,
+		&p.Name,
+		&p.Space,
+		&p.Description,
+		&p.Labels,
+		&preparing,
+		&p.DriftDetectionRunLimit,
+		&p.Certificate,
+		&p.Serial,
+		&p.CreatedAt,
+		&p.UpdatedAt,
 		&p.Version,
 	}, extra...)...)
 	if preparing != nil {
@@ -176,11 +192,11 @@ func seconds(d time.Duration) *int32 {
 
 // Create writes a new pool.
 func (s *Store) Create(ctx context.Context, p pool.Pool) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO worker_pools (account_id, id, name,
-			space_id, description, labels, preparing_timeout_seconds, drift_detection_run_limit,
-			certificate, serial, created_at, updated_at, version)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-		p.Account, p.ID, p.Name, p.Space, p.Description, p.Labels, seconds(p.PreparingTimeout),
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO worker_pools (account_id, organization_id, id,
+			name, space_id, description, labels, preparing_timeout_seconds,
+			drift_detection_run_limit, certificate, serial, created_at, updated_at, version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+		p.Account, p.Organization, p.ID, p.Name, p.Space, p.Description, p.Labels, seconds(p.PreparingTimeout),
 		p.DriftDetectionRunLimit, p.Certificate, p.Serial, p.CreatedAt, p.UpdatedAt, p.Version)
 	return writeError(p, err)
 }

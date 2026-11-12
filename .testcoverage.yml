@@ -33,4 +33,5 @@ exclude:
     - ^internal/platform/crypt/signer/signertest/
     # oapi-codegen and stubgen output; the generators are tested instead.
     - ^internal/platform/gen/
+    - ^internal/agent/wire/
     - ^pkg/client/

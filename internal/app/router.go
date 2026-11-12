@@ -15,6 +15,7 @@ import (
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
+	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
@@ -30,6 +31,10 @@ const BaseURL = "/api/v1"
 // OperatorBaseURL is the operator API's prefix, the server URL of
 // api/operator.openapi.yaml.
 const OperatorBaseURL = "/operator/v1"
+
+// WorkerBaseURL is the worker API's prefix, the server URL of
+// api/worker.openapi.yaml.
+const WorkerBaseURL = "/worker/v1"
 
 // apiServer is the API's strict server. Each domain's partial embeds here
 // at depth one under its domain's name, and UnimplementedStrict at depth
@@ -86,12 +91,13 @@ type Blobs struct {
 
 var _ api.StrictServerInterface = apiServer{}
 
-// API is the API listener's handler: the API under BaseURL and the
-// operator API under OperatorBaseURL behind c's rate limits and
-// idempotency keys, whose state g holds, with each domain's operations
-// from d, the installation's own from p and objects in b, and the fs
-// driver's signed-URL routes beside them. Each API authenticates with its
-// own authenticator from d, so neither accepts the other's tokens. It
+// API is the API listener's handler: the API under BaseURL, the
+// operator API under OperatorBaseURL and the worker API under
+// WorkerBaseURL behind c's rate limits and idempotency keys, whose state
+// g holds, with each domain's operations from d, the installation's own
+// from p and objects in b, and the fs driver's signed-URL routes beside
+// them. Each API authenticates with its own authenticator, so none
+// accepts another's tokens. It
 // serves no probe; those are the admin listener's alone, and are never
 // rate-limited.
 func API(
@@ -110,8 +116,8 @@ func API(
 	if d.Access != nil {
 		require = d.Access.Requirer()
 	}
-	r := Guarded(log, c, apiOperations(), g, byPrefix{api: d.Auth, operator: d.OperatorAuth},
-		require, gated)
+	r := Guarded(log, c, apiOperations(), g,
+		byPrefix{api: d.Auth, operator: d.OperatorAuth, worker: d.WorkerAuth}, require, gated)
 	if b.Routes != nil {
 		b.Routes(r)
 	}
@@ -158,12 +164,26 @@ func API(
 		BaseRouter:       r,
 		ErrorHandlerFunc: problem.RequestError,
 	})
+	worker := workerapi.NewStrictHandlerWithOptions(
+		d.Workers.Protocol(),
+		nil,
+		workerapi.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  problem.RequestError,
+			ResponseErrorHandlerFunc: problem.ResponseError,
+		},
+	)
+	workerapi.HandlerWithOptions(worker, workerapi.ChiServerOptions{
+		BaseURL:          WorkerBaseURL,
+		BaseRouter:       r,
+		ErrorHandlerFunc: problem.RequestError,
+	})
 	return r
 }
 
-// byPrefix authenticates a request under OperatorBaseURL with operator
-// and every other with api; a nil one refuses every credential.
-type byPrefix struct{ api, operator accessapi.Authenticator }
+// byPrefix authenticates a request under OperatorBaseURL with operator,
+// one under WorkerBaseURL with worker and every other with api; a nil one
+// refuses every credential.
+type byPrefix struct{ api, operator, worker accessapi.Authenticator }
 
 func (b byPrefix) Middleware(
 	access func(*http.Request) accessapi.Access,
@@ -171,17 +191,24 @@ func (b byPrefix) Middleware(
 	return func(next http.Handler) http.Handler {
 		api := orRefuse(b.api).Middleware(access)(next)
 		operator := orRefuse(b.operator).Middleware(access)(next)
+		worker := orRefuse(b.worker).Middleware(access)(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if p := routePath(
-				r,
-			); p == OperatorBaseURL ||
-				strings.HasPrefix(p, OperatorBaseURL+"/") {
+			switch p := routePath(r); {
+			case under(p, OperatorBaseURL):
 				operator.ServeHTTP(w, r)
-				return
+			case under(p, WorkerBaseURL):
+				worker.ServeHTTP(w, r)
+			default:
+				api.ServeHTTP(w, r)
 			}
-			api.ServeHTTP(w, r)
 		})
 	}
+}
+
+// under reports whether path is base or below it, so /worker/v10 is not
+// under /worker/v1.
+func under(path, base string) bool {
+	return path == base || strings.HasPrefix(path, base+"/")
 }
 
 func orRefuse(a accessapi.Authenticator) accessapi.Authenticator {

@@ -18,7 +18,8 @@
 // whose per-store keys are the stores' hyphenated names, as in
 // objectstore.retention.run-logs and INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS;
 // Vendors holds the vendors.* release indexes the version catalogue
-// refreshes from, the vendors domain's assembly Settings.
+// refreshes from, the vendors domain's assembly Settings; Worker holds
+// worker.poll_timeout_max, the workers domain's assembly Settings.
 // Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags
@@ -35,7 +36,7 @@
 // INFRAWEAVE_SECRETS_KEK itself: bound as the key secrets.kek, the
 // variable would hide every other key below it.
 //
-// ref: decisions 0003, 0005, 0006, 0011, 0013, 0015, 0017, 0020 and 0024
+// ref: decisions 0003, 0005, 0006, 0008, 0011, 0013, 0015, 0017, 0020 and 0024
 //
 // # Input and output
 //

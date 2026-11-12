@@ -26,6 +26,29 @@ type Token struct {
 	Expires time.Time
 }
 
+// Bearer is what a verified worker session token or run token names:
+// the worker or the run, and when the token expires.
+type Bearer struct {
+	ID      kernel.ULID
+	Expires time.Time
+}
+
+type bearerKey struct{}
+
+// WithBearer is ctx carrying b, the worker session token the worker API's
+// authenticator verified, which the worker API's handlers read with
+// BearerFrom.
+func WithBearer(ctx context.Context, b Bearer) context.Context {
+	return context.WithValue(ctx, bearerKey{}, b)
+}
+
+// BearerFrom is the bearer WithBearer put on ctx, and whether there is
+// one.
+func BearerFrom(ctx context.Context) (Bearer, bool) {
+	b, ok := ctx.Value(bearerKey{}).(Bearer)
+	return b, ok
+}
+
 // InRunRequest names the run an in-run API token acts for: its account,
 // the run, and the slug of its stack or module, which with the run's ULID
 // makes the token's sub.
@@ -48,11 +71,11 @@ type Tokens interface {
 	WorkerToken(ctx context.Context, worker kernel.ULID) (Token, error)
 	// VerifyWorker is the worker a worker session token names; any other
 	// token is ErrInvalidToken.
-	VerifyWorker(ctx context.Context, raw string) (kernel.ULID, error)
+	VerifyWorker(ctx context.Context, raw string) (Bearer, error)
 	RunToken(ctx context.Context, run kernel.ULID) (Token, error)
 	// VerifyRun is the run a run token names; any other token is
 	// ErrInvalidToken.
-	VerifyRun(ctx context.Context, raw string) (kernel.ULID, error)
+	VerifyRun(ctx context.Context, raw string) (Bearer, error)
 	InRunToken(ctx context.Context, r InRunRequest) (Token, error)
 }
 

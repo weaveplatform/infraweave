@@ -95,7 +95,8 @@ func TestUnitAPIOperations(t *testing.T) {
 		switch {
 		case strings.HasSuffix(key, " "+accessapi.LoginPattern),
 			strings.HasSuffix(key, " "+fs.Pattern),
-			strings.HasPrefix(key, "GET /.well-known/"), strings.Contains(key, " /oauth/"):
+			strings.HasPrefix(key, "GET /.well-known/"), strings.Contains(key, " /oauth/"),
+			op.Worker:
 			if op.Gate.Feature != "" {
 				t.Errorf("%s names %s; a route outside the API documents names none",
 					key, op.Gate.Feature)

@@ -107,10 +107,13 @@ func TestAccPurges(t *testing.T) {
 			},
 			{`INSERT INTO context_attachments (account_id, id, context_id, stack_id)
 				VALUES ($1, $2, $3, $4)`, []any{kernel.NewULID(), shared, stack}},
-			{`INSERT INTO worker_pools (account_id, id, name, space_id, certificate, serial)
-				VALUES ($1, $2, 'Builders', $3, '\x00', 2)`, []any{pool, kernel.NewULID()}},
-			{`INSERT INTO workers (account_id, id, pool_id, serial)
-				VALUES ($1, $2, $3, 2)`, []any{kernel.NewULID(), pool}},
+			{
+				`INSERT INTO worker_pools (account_id, id, name, space_id, certificate, serial,
+				organization_id) VALUES ($1, $2, 'Builders', $3, '\x00', 2, $4)`,
+				[]any{pool, kernel.NewULID(), x.org},
+			},
+			{`INSERT INTO workers (account_id, id, pool_id, serial, organization_id)
+				VALUES ($1, $2, $3, 2, $4)`, []any{kernel.NewULID(), pool, x.org}},
 			{`INSERT INTO worker_nonces (account_id, pool_id, jti, expires_at)
 				VALUES ($1, $2, 'j', now())`, []any{pool}},
 			{`INSERT INTO worker_runner_images (account_id, private_image)

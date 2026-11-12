@@ -22,12 +22,15 @@ import (
 // of the certificate the pool CA last signed for the pool's key, and
 // Serial its serial: a registration under any other is refused.
 type Pool struct {
-	Account     kernel.AccountID
-	ID          kernel.ULID
-	Name        string
-	Space       kernel.ULID
-	Description string
-	Labels      []string
+	Account kernel.AccountID
+	// Organization is Account's organization, which a registration counts
+	// the organization's workers in.
+	Organization kernel.OrganizationID
+	ID           kernel.ULID
+	Name         string
+	Space        kernel.ULID
+	Description  string
+	Labels       []string
 	// PreparingTimeout is the pool's own preparing timeout; zero takes
 	// the installation's default.
 	PreparingTimeout time.Duration
@@ -472,7 +475,10 @@ func (s *Service) Create(
 			return err
 		}
 		now := s.now()
-		out = Pool{Account: p.AccountID, ID: kernel.NewULID(), CreatedAt: now, Version: 1}
+		out = Pool{
+			Account: p.AccountID, Organization: p.OrganizationID, ID: kernel.NewULID(),
+			CreatedAt: now, Version: 1,
+		}
 		apply(&out, space, in, now)
 		if err := s.sign(ctx, &out, key); err != nil {
 			return err
