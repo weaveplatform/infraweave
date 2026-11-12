@@ -570,11 +570,14 @@ has failed":
   bind-mounts its own executable read-only at `/opt/infraweave/bin/infraweave`
   and runs it as the container's root process with the argument `runner`,
   replacing the image's `ENTRYPOINT` and `CMD`. The runner is statically linked,
-  so it runs on any image's libc. The container runs as UID and GID 1983, with the
-  workspace at `/mnt/workspace`, the tool binaries mounted read-only, and the
-  launcher's network, runtime and extra mount settings. Each container is
-  labelled `io.infraweave.worker` and `io.infraweave.run` with the worker's
-  and the run's IDs.
+  so it runs on any image's libc. `launcher.docker.runner_binary` names another
+  build to mount instead: a launcher whose own build cannot run in a Linux
+  container, such as one on macOS with Docker Desktop, names a statically
+  linked Linux build of the same version. The container runs as UID and GID
+  1983, with the workspace at `/mnt/workspace`, the tool binaries mounted
+  read-only, and the launcher's network, runtime and extra mount settings.
+  Each container is labelled `io.infraweave.worker` and `io.infraweave.run`
+  with the worker's and the run's IDs.
 - **The handoff.** The launcher writes the run's endpoint, run token,
   assigned state and state version, the specification without its sealed
   part, and the opened secrets as one JSON document to the runner's standard
@@ -683,8 +686,8 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `launcher.log.*`, `launcher.default_runner_image`,
   `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
   `launcher.mask_envs`, `launcher.whitelist_envs`, `launcher.tool_mirror`,
-  `launcher.docker.config_dir`, `.network`, `.runtime`, `.extra_mounts`,
-  `.ro_extra_mounts` and `.wo_extra_mounts`. Environment variables are
+  `launcher.docker.config_dir`, `.network`, `.runtime`, `.runner_binary`,
+  `.extra_mounts`, `.ro_extra_mounts` and `.wo_extra_mounts`. Environment variables are
   `INFRAWEAVE_LAUNCHER_*`. Every Spacelift launcher variable of
   [10 section 5.1](../reference/10-workers-and-execution.md#51-launcher-environment-variables)
   has an equivalent here except the transport selectors and four this record

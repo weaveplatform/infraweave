@@ -61,6 +61,11 @@ type Docker struct {
 	// Runtime is the OCI runtime of each run container, such as runsc for
 	// gVisor; Docker's default when empty.
 	Runtime string `mapstructure:"runtime"`
+	// RunnerBinary is the infraweave executable mounted into each run
+	// container as its runner: the launcher's own when empty. A launcher
+	// whose own build cannot run in a Linux container, such as one on
+	// macOS, names a statically linked Linux build of the same version.
+	RunnerBinary string `mapstructure:"runner_binary"`
 }
 
 // The poll's hold is between MinPoll and MaxPoll, the bounds the worker

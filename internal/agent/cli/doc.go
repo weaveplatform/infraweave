@@ -4,9 +4,9 @@
 // Launcher loads the launcher's configuration, strictly, from its flags,
 // the INFRAWEAVE_LAUNCHER_* environment and the file --config names; a key
 // the configuration does not have fails the start. It builds the Docker
-// executor with launcher.docker's network and runtime, binds the admin
-// listener, and then runs the launcher until its context ends or a cycle
-// ends it. The admin listener answers /livez, /startupz once the worker
+// executor with launcher.docker's network, runtime and runner binary,
+// binds the admin listener, and then runs the launcher until its context
+// ends or a cycle ends it. The admin listener answers /livez, /startupz once the worker
 // registered and Docker answered, and /readyz while the worker has a
 // session the server answered within three poll timeouts and Docker
 // answers. SIGHUP re-reads launcher.log.level. Runner reads the

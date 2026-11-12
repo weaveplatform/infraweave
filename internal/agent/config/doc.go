@@ -4,9 +4,10 @@
 // private key, the poll's hold, the default runner image, the cache
 // directory, the worker's metadata, the admin listener's address, the
 // launcher.log.* settings of platform/observe, and the run containers'
-// launcher.docker.* network and runtime. Defaults are what an empty
-// configuration means, Validate rejects a setting the launcher could not
-// start with, Flags declares the launcher's flags, and Load decodes them.
+// launcher.docker.* network, runtime and runner binary. Defaults are what
+// an empty configuration means, Validate rejects a setting the launcher
+// could not start with, Flags declares the launcher's flags, and Load
+// decodes them.
 // Key reads the private key, given as a path, as PEM or as base64 of PEM.
 //
 // Settings come from flags, INFRAWEAVE_LAUNCHER_* environment variables
