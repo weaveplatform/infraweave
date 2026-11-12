@@ -106,8 +106,10 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // state_version; TriggeredBy is the login or trigger that created it;
 // RuntimeConfig is the runtime configuration its trigger gave, nil for
 // none, and ForceApply SINGLE or CASCADE when it applies with no changes.
-// WorkerPool is the stack's private pool when the run was created, nil
-// for the public pool, and Worker the worker that last claimed it.
+// LocalPreview marks a run proposed from an uploaded local workspace
+// rather than a commit of the repository. WorkerPool is the stack's
+// private pool when the run was created, nil for the public pool, and
+// Worker the worker that last claimed it.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -122,6 +124,7 @@ type Run struct {
 	DriftDetection bool
 	RuntimeConfig  json.RawMessage
 	ForceApply     string
+	LocalPreview   bool
 	WorkerPool     *kernel.ULID
 	Worker         *kernel.ULID
 	CreatedAt      time.Time
@@ -282,7 +285,8 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 // NewRun is a run to create: acct's stack, its type, the commit it works
 // on, who creates it, its priority, normal when empty, whether drift
 // detection starts it, its runtime configuration and force-apply mode,
-// and a note for its first transition.
+// whether it previews a local workspace, and a note for its first
+// transition.
 type NewRun struct {
 	Account        kernel.AccountID
 	Stack          kernel.ULID
@@ -293,6 +297,7 @@ type NewRun struct {
 	DriftDetection bool
 	RuntimeConfig  json.RawMessage
 	ForceApply     string
+	LocalPreview   bool
 	Note           string
 }
 
@@ -338,8 +343,8 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 		Account: n.Account, ID: kernel.NewULID(), Stack: n.Stack, Type: n.Type,
 		State: kernel.RunStateQueued, Version: 1, StateChangedAt: now, Commit: n.Commit,
 		TriggeredBy: n.Actor.Login, Priority: priority, DriftDetection: n.DriftDetection,
-		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, WorkerPool: st.WorkerPool,
-		CreatedAt: now, UpdatedAt: now,
+		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, LocalPreview: n.LocalPreview,
+		WorkerPool: st.WorkerPool, CreatedAt: now, UpdatedAt: now,
 	}
 	step := Step{
 		Sequence: 1, State: kernel.RunStateQueued, At: now,

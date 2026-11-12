@@ -57,7 +57,9 @@ type Lock struct {
 
 // Commit is a commit of a stack's repository as the stack keeps it:
 // Message is its first line, and AuthorLogin is nil when the provider
-// knows no login for its author.
+// knows no login for its author. Branch is the branch a run was created
+// for, which the run's commit records; the commits a stack tracks are on
+// its branch and leave it empty.
 type Commit struct {
 	Hash        string    `json:"hash"`
 	Tag         string    `json:"tag,omitempty"`
@@ -66,6 +68,7 @@ type Commit struct {
 	AuthorName  string    `json:"authorName"`
 	AuthorLogin *string   `json:"authorLogin,omitempty"`
 	Timestamp   time.Time `json:"timestamp"`
+	Branch      string    `json:"branch,omitempty"`
 }
 
 // Settings are what a run of the stack reads. Vendor is the iac vendor's

@@ -86,12 +86,13 @@ func TestUnitTriggerRun(t *testing.T) {
 	v := read.View{
 		Run: lifecycle.Run{
 			ID: kernel.NewULID(), Type: kernel.RunTypeTracked, State: kernel.RunStateFinished,
-			Commit:      stacksapi.Commit{Hash: "abc", Message: "Add a subnet", Timestamp: at},
+			Commit: stacksapi.Commit{
+				Hash: "abc", Message: "Add a subnet", Timestamp: at, Branch: "main",
+			},
 			TriggeredBy: "alice", Priority: kernel.RunPriorityNormal, ForceApply: "SINGLE",
 			RuntimeConfig: json.RawMessage(`{}`), CreatedAt: at, UpdatedAt: at.Add(time.Minute),
 		},
-		Stack:  stacksapi.Stack{Slug: "infra"},
-		Branch: "main",
+		Stack: stacksapi.Stack{Slug: "infra"},
 		History: []lifecycle.Step{
 			{Sequence: 1, State: kernel.RunStateQueued, At: at, Username: &alice},
 			{Sequence: 2, State: kernel.RunStateFinished, At: at, Until: &at, Note: &note},

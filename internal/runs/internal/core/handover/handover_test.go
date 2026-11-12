@@ -92,6 +92,16 @@ func (s *spaces) Slugs(context.Context, kernel.AccountID) (map[kernel.ULID]strin
 	return s.slugs, s.err
 }
 
+// accounts names every account slug, or fails with err.
+type accounts struct {
+	slug string
+	err  error
+}
+
+func (a *accounts) Slug(context.Context, kernel.AccountID) (string, error) {
+	return a.slug, a.err
+}
+
 // environment resolves every stack to resolved, or fails with err.
 type environment struct {
 	resolved configapi.Resolved
@@ -163,14 +173,15 @@ func registry(t *testing.T) *expr.Registry {
 // world is a service over one run of stack infra, on a worker of a pool,
 // whose environment the test sets.
 type world struct {
-	svc    *handover.Service
-	store  *store
-	stacks *stacks
-	spaces *spaces
-	env    *environment
-	tokens *tokens
-	run    lifecycle.Run
-	space  kernel.ULID
+	svc      *handover.Service
+	store    *store
+	stacks   *stacks
+	spaces   *spaces
+	accounts *accounts
+	env      *environment
+	tokens   *tokens
+	run      lifecycle.Run
+	space    kernel.ULID
 }
 
 func newWorld(t *testing.T) *world {
@@ -181,8 +192,10 @@ func newWorld(t *testing.T) *world {
 		Account: kernel.NewAccountID(), ID: kernel.NewULID(), Stack: kernel.NewULID(),
 		Type: kernel.RunTypeTracked, State: kernel.RunStatePreparing, Version: 2,
 		StateChangedAt: time.Unix(1_800_000_000, 0).UTC(),
-		Commit:         stacksapi.Commit{Hash: "abc", Message: "Fix", AuthorName: "Alice"},
-		TriggeredBy:    "alice", Priority: kernel.RunPriorityNormal, WorkerPool: &pool,
+		Commit: stacksapi.Commit{
+			Hash: "abc", Message: "Fix", AuthorName: "Alice", Branch: "main",
+		},
+		TriggeredBy: "alice", Priority: kernel.RunPriorityNormal, WorkerPool: &pool,
 		CreatedAt: time.Unix(1_700_000_000, 0).UTC(),
 	}
 	w := &world{
@@ -204,14 +217,16 @@ func newWorld(t *testing.T) *world {
 			},
 			labels: []string{"a", "b"},
 		},
-		spaces: &spaces{slugs: map[kernel.ULID]string{space: "legacy"}},
-		env:    &environment{},
-		tokens: &tokens{},
-		run:    run,
-		space:  space,
+		spaces:   &spaces{slugs: map[kernel.ULID]string{space: "legacy"}},
+		accounts: &accounts{slug: "acme"},
+		env:      &environment{},
+		tokens:   &tokens{},
+		run:      run,
+		space:    space,
 	}
 	w.svc = handover.New(handover.Deps{
-		Store: w.store, Stacks: w.stacks, Spaces: w.spaces, Environment: w.env, Tokens: w.tokens,
+		Store: w.store, Stacks: w.stacks, Spaces: w.spaces, Accounts: w.accounts,
+		Environment: w.env, Tokens: w.tokens,
 	})
 	w.svc.BindExpressions(registry(t))
 	return w
@@ -324,6 +339,8 @@ func TestUnitHandover(t *testing.T) {
 		"TF_VAR_infraweave_space_id": "legacy", "TF_VAR_infraweave_stack_branch": "main",
 		"TF_VAR_infraweave_stack_labels": "a,b", "TF_VAR_infraweave_stack_labels_list": `["a","b"]`,
 		"TF_VAR_infraweave_workspace_root": handover.WorkspaceRoot,
+		"TF_VAR_infraweave_account_name":   "acme", "TF_VAR_infraweave_commit_branch": "main",
+		"TF_VAR_infraweave_local_preview": "false",
 	} {
 		if plain[name] != want {
 			t.Errorf("%s = %q, want %q", name, plain[name], want)
@@ -359,6 +376,86 @@ func TestUnitHandover(t *testing.T) {
 		*h.Spec.Stack.ProjectRoot != "stack-root" || h.Spec.RuntimeConfig != nil ||
 		h.Spec.Stack.Labels == nil || len(h.Spec.Stack.Labels) != 0 {
 		t.Errorf("with no runtime configuration = %+v, %v", h.Spec, err)
+	}
+}
+
+// TestUnitHandoverMetadata checks the account, commit branch and local
+// preview variables of a tracked run, a run proposed on a pull request's
+// head branch and a run that previews a local workspace, and that a stack
+// variable of the same name overrides each.
+func TestUnitHandoverMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		typ          kernel.RunType
+		branch       string
+		localPreview bool
+		set          []configapi.Element
+		want         map[string]string
+	}{
+		{
+			name: "a tracked run", typ: kernel.RunTypeTracked, branch: "main",
+			want: map[string]string{
+				"account_name": "acme", "commit_branch": "main",
+				"local_preview": "false",
+			},
+		},
+		{
+			name: "a run proposed on a pull request", typ: kernel.RunTypeProposed,
+			branch: "feature/vpc",
+			want: map[string]string{
+				"account_name": "acme", "commit_branch": "feature/vpc",
+				"local_preview": "false",
+			},
+		},
+		{
+			name: "a local preview", typ: kernel.RunTypeProposed, branch: "main",
+			localPreview: true,
+			want: map[string]string{
+				"account_name": "acme", "commit_branch": "main",
+				"local_preview": "true",
+			},
+		},
+		{
+			name: "stack variables", typ: kernel.RunTypeTracked, branch: "main",
+			set: []configapi.Element{
+				variable("TF_VAR_infraweave_account_name", "other", false),
+				variable("TF_VAR_infraweave_commit_branch", "release", false),
+				variable("TF_VAR_infraweave_local_preview", "true", true),
+			},
+			want: map[string]string{"account_name": "other", "commit_branch": "release"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := newWorld(t)
+			w.store.run.Type, w.store.run.Commit.Branch = tc.typ, tc.branch
+			w.store.run.LocalPreview = tc.localPreview
+			w.env.resolved.Elements = tc.set
+			h, err := w.handover(t, w.run.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := map[string]string{}
+			count := map[string]int{}
+			for _, v := range h.Spec.Environment {
+				name, ok := strings.CutPrefix(v.Name, "TF_VAR_infraweave_")
+				if !ok {
+					continue
+				}
+				count[name]++
+				if v.Value != nil {
+					got[name] = *v.Value
+				}
+			}
+			for name, want := range tc.want {
+				if got[name] != want || count[name] != 1 {
+					t.Errorf("%s = %q (%d set), want %q", name, got[name], count[name], want)
+				}
+			}
+			if tc.set != nil && (got["local_preview"] != "" || count["local_preview"] != 1) {
+				t.Errorf("a write-only local_preview = %q (%d set)", got["local_preview"],
+					count["local_preview"])
+			}
+		})
 	}
 }
 
@@ -441,6 +538,7 @@ func TestUnitHandoverRefused(t *testing.T) {
 		"the settings":    func(on bool) { w.stacks.fail = map[bool]string{true: "Settings"}[on] },
 		"the labels":      func(on bool) { w.stacks.fail = map[bool]string{true: "Labels"}[on] },
 		"the spaces":      func(on bool) { w.spaces.err = cond(on) },
+		"the account":     func(on bool) { w.accounts.err = cond(on) },
 		"the environment": func(on bool) { w.env.err = cond(on) },
 		"the token":       func(on bool) { w.tokens.err = cond(on) },
 		"the key":         func(on bool) { w.store.keyErr = cond(on) },

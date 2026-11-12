@@ -458,6 +458,21 @@ func (d *Domain) GuardSpaces(g accessapi.SpaceGuard) { d.spaces.Guard(g) }
 // space in its own transaction.
 func (d *Domain) Spaces() accessapi.Spaces { return d.spaces }
 
+// Accounts names each account by its slug to a domain that keeps only its
+// ID.
+func (d *Domain) Accounts() accessapi.Accounts { return accountSlugs{d.store} }
+
+// accountSlugs is Accounts over the store.
+type accountSlugs struct{ store *pg.Store }
+
+func (a accountSlugs) Slug(ctx context.Context, acct kernel.AccountID) (string, error) {
+	acc, err := a.store.Account(ctx, acct)
+	if errors.Is(err, port.ErrNotFound) {
+		return "", fmt.Errorf("%w: %s", accessapi.ErrNoAccount, acct)
+	}
+	return acc.Slug.String(), err //nolint:wrapcheck // the store names the read
+}
+
 // AccountOrganization is the organization that holds acct, for work
 // outside a request that knows only its account, as a queued job does;
 // the zero ID when no account acct exists.

@@ -84,15 +84,17 @@ type Objects = report.Objects
 
 // Deps are what the runs domain takes from the platform and the domains
 // before it: the database, the keys a run's artifact key is sealed under,
-// the objects its workers upload, the access domain's spaces, authorizer
-// and the tokens a handover mints, the stacks domain, the configuration
-// domain's environment, which a handover opens, the outbox its runs'
-// events go to, the queue its jobs go to, and a clock, time.Now when nil.
+// the objects its workers upload, the access domain's spaces, accounts,
+// authorizer and the tokens a handover mints, the stacks domain, the
+// configuration domain's environment, which a handover opens, the outbox
+// its runs' events go to, the queue its jobs go to, and a clock, time.Now
+// when nil.
 type Deps struct {
 	DB          queue.DB
 	Keys        pg.Sealer
 	Objects     Objects
 	Spaces      accessapi.Spaces
+	Accounts    accessapi.Accounts
 	Authz       accessapi.Authorizer
 	Tokens      handover.Tokens
 	Stacks      stacksapi.Stacks
@@ -134,8 +136,8 @@ func New(d Deps) *Domain {
 		claims:   schedule.NewClaims(store, lc),
 		liveness: schedule.NewLiveness(store, lc),
 		handover: handover.New(handover.Deps{
-			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Environment: d.Environment,
-			Tokens: d.Tokens,
+			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
+			Environment: d.Environment, Tokens: d.Tokens,
 		}),
 		reports: report.New(report.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc,

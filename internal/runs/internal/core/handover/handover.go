@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -50,31 +51,34 @@ type Renderer interface {
 	Evaluate(ctx context.Context, req expr.Request, in expr.Input) (expr.Result, error)
 }
 
-// Deps are what a handover reads: the runs' storage, the run's stack and
-// the slugs of its account's spaces, the stack's resolved environment, and
-// the tokens it mints.
+// Deps are what a handover reads: the runs' storage, the run's stack, the
+// slugs of its account and the account's spaces, the stack's resolved
+// environment, and the tokens it mints.
 type Deps struct {
 	Store       Store
 	Stacks      stacksapi.Stacks
 	Spaces      accessapi.Spaces
+	Accounts    accessapi.Accounts
 	Environment configapi.Environment
 	Tokens      Tokens
 }
 
 // Service builds the specifications of claimed runs.
 type Service struct {
-	store  Store
-	stacks stacksapi.Stacks
-	spaces accessapi.Spaces
-	env    configapi.Environment
-	tokens Tokens
-	exprs  Renderer
+	store    Store
+	stacks   stacksapi.Stacks
+	spaces   accessapi.Spaces
+	accounts accessapi.Accounts
+	env      configapi.Environment
+	tokens   Tokens
+	exprs    Renderer
 }
 
 // New returns the service over d.
 func New(d Deps) *Service {
 	return &Service{
-		store: d.Store, stacks: d.Stacks, spaces: d.Spaces, env: d.Environment, tokens: d.Tokens,
+		store: d.Store, stacks: d.Stacks, spaces: d.Spaces, accounts: d.Accounts,
+		env: d.Environment, tokens: d.Tokens,
 	}
 }
 
@@ -140,6 +144,10 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the access domain names the read
 	}
+	account, err := s.accounts.Slug(ctx, r.Account)
+	if err != nil {
+		return workersapi.Handover{}, err //nolint:wrapcheck // the access domain names the read
+	}
 	resolved, err := s.env.Resolve(ctx, r.Account, r.Stack)
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the configuration domain names it
@@ -177,7 +185,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		Hooks:         resolved.Hooks,
 	}
 	sec := secrets{Environment: map[string]string{}, Files: map[string][]byte{}}
-	if err := s.environment(ctx, r, stack, resolved.Elements, &spec, &sec); err != nil {
+	if err := s.environment(ctx, r, stack, account, resolved.Elements, &spec, &sec); err != nil {
 		return workersapi.Handover{}, err
 	}
 	tok, err := s.tokens.InRunToken(ctx, accessapi.InRunRequest{
@@ -200,12 +208,13 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 }
 
 // environment fills spec's variables and files from elements and
-// infraweave's own variables, by name and by path, and sec with the
-// write-only values.
+// infraweave's own variables of r on stack in account, by name and by
+// path, and sec with the write-only values.
 func (s *Service) environment(
 	ctx context.Context,
 	r lifecycle.Run,
 	stack workersapi.SpecStack,
+	account string,
 	elements []configapi.Element,
 	spec *workersapi.Spec,
 	sec *secrets,
@@ -249,7 +258,7 @@ func (s *Service) environment(
 		}
 		spec.Environment = append(spec.Environment, workersapi.Variable{Name: e.Name, Value: &v})
 	}
-	for _, v := range own(r, stack) {
+	for _, v := range own(r, stack, account) {
 		if _, ok := writeOnly[v.Name]; !ok {
 			spec.Environment = append(spec.Environment, v)
 		}
@@ -324,12 +333,13 @@ func text(v any) (string, error) {
 	return string(b), nil
 }
 
-// own are infraweave's own variables of run r on stack, which the
-// server knows at handover. TF_VAR_infraweave_run_state changes with each
-// phase, so the runner sets it.
+// own are infraweave's own variables of run r on stack in the account
+// whose slug is account, which the server knows at handover.
+// TF_VAR_infraweave_run_state changes with each phase, so the runner sets
+// it.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func own(r lifecycle.Run, stack workersapi.SpecStack) []workersapi.Variable {
+func own(r lifecycle.Run, stack workersapi.SpecStack, account string) []workersapi.Variable {
 	root := ""
 	if stack.ProjectRoot != nil {
 		root = *stack.ProjectRoot
@@ -338,7 +348,10 @@ func own(r lifecycle.Run, stack workersapi.SpecStack) []workersapi.Variable {
 	// literal.
 	list, _ := json.Marshal(stack.Labels)
 	vars := map[string]string{
+		"account_name":      account,
+		"commit_branch":     r.Commit.Branch,
 		"commit_sha":        r.Commit.Hash,
+		"local_preview":     strconv.FormatBool(r.LocalPreview),
 		"project_root":      root,
 		"repository":        stack.Repository,
 		"run_id":            r.ID.String(),

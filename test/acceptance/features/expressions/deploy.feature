@@ -9,6 +9,8 @@ Feature: Environment templates rendered into a run's specification
   and the run's artifact key. The home key is space-admin on the account's
   top space. Stack infra lives in legacy and runs on the pool, with the
   variables REGION, URL, the write-only TOKEN and AUTH, which reads it.
+  infraweave's own metadata variables arrive beside them: a run triggered
+  on the stack is for its tracked branch and previews no local workspace.
   ref: decision 0024
   ref: decision 0008
 
@@ -40,6 +42,9 @@ Feature: Environment templates rendered into a run's specification
     Then it answers 200
     And the specification's variable "REGION" is "eu"
     And the specification's variable "URL" is "https://eu.example.com/infra/TRACKED"
+    And the specification's variable "TF_VAR_infraweave_account_name" is "acme"
+    And the specification's variable "TF_VAR_infraweave_commit_branch" is "main"
+    And the specification's variable "TF_VAR_infraweave_local_preview" is "false"
     And the specification's variable "TOKEN" is write-only
     And the specification's variable "AUTH" is write-only
     And the answer leaves out "s3cret"

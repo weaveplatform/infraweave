@@ -162,6 +162,15 @@ type Spaces interface {
 	Tree(ctx context.Context, acct kernel.AccountID) ([]SpaceNode, error)
 }
 
+// ErrNoAccount is an account ID no account has.
+var ErrNoAccount = errors.New("no such account")
+
+// Accounts names an account to a domain that keeps only its ID: Slug is
+// acct's slug, ErrNoAccount when no account has the ID.
+type Accounts interface {
+	Slug(ctx context.Context, acct kernel.AccountID) (string, error)
+}
+
 // SpaceNode is a space of an account's tree: its ID, slug and name, its
 // parent's ID, zero for the top space, and whether it inherits its
 // parent's entities, which decides what a stack in it reaches.

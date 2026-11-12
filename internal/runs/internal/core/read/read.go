@@ -145,13 +145,11 @@ type Service struct{ d Deps }
 // New returns the service over d.
 func New(d Deps) *Service { return &Service{d: d} }
 
-// View is a run as the API answers it: the run, its stack and the
-// stack's branch, its transitions, oldest first, and the actions the
-// caller may take on it.
+// View is a run as the API answers it: the run, its stack, its
+// transitions, oldest first, and the actions the caller may take on it.
 type View struct {
 	Run     lifecycle.Run
 	Stack   stacksapi.Stack
-	Branch  string
 	History []lifecycle.Step
 	Actions []accessapi.Action
 }
@@ -390,7 +388,7 @@ func (s *Service) Views(
 		st := settings[r.Stack]
 		blocker, ok := blockers[r.Stack]
 		out[i] = View{
-			Run: r, Stack: st.Stack, Branch: st.Branch, History: histories[r.ID],
+			Run: r, Stack: st.Stack, History: histories[r.ID],
 			Actions: Allowed(r, ok && blocker == r.ID, held[st.Space]),
 		}
 	}

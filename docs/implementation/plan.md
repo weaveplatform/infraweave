@@ -1789,7 +1789,8 @@ through the backend.
    `platform/secrets_run_delivery.feature`.
 4. Local workspaces: `uploadLocalWorkspace` and `runProposeLocalWorkspace`
    for local preview, beside the tracked commit P6b's `rawgit` source
-   resolves.
+   resolves. A run proposed this way sets `runs.local_preview`, so its
+   specification's `TF_VAR_infraweave_local_preview` is `true`.
 5. Run operations: `runConfirm`, `runDiscard`, `runLogs`,
    `runLogsDownloadURL`, `runChangesV2`, `runChangesV3`, plus
    `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns` with

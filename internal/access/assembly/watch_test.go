@@ -2,6 +2,7 @@ package assembly
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -93,10 +95,11 @@ func TestAccWatchSessions(t *testing.T) {
 	}
 }
 
-// TestAccAccountOrganization checks the lookup a queued job's entitlement
-// check makes: an account's organization, the zero ID for an account that
-// does not exist, and the store's error.
-func TestAccAccountOrganization(t *testing.T) {
+// TestAccAccounts checks the reads of an account by its ID alone: the
+// organization a queued job's entitlement check looks up, the zero ID for
+// an account that does not exist, the slug another domain names it by,
+// ErrNoAccount for one that does not exist, and the store's error.
+func TestAccAccounts(t *testing.T) {
 	ctx := t.Context()
 	db := sqltest.Open(t)
 	d := mustNew(
@@ -110,8 +113,15 @@ func TestAccAccountOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := db.Primary().Exec(ctx,
-		`INSERT INTO accounts (organization_id, id, slug, name) VALUES ($1, $2, 'o', 'o')`, org, acct); err != nil {
+		`INSERT INTO accounts (organization_id, id, slug, name) VALUES ($1, $2, 'acme', 'o')`, org, acct); err != nil {
 		t.Fatal(err)
+	}
+	if got, err := d.Accounts().Slug(ctx, acct); err != nil || got != "acme" {
+		t.Errorf("an account's slug = %q, %v", got, err)
+	}
+	if _, err := d.Accounts().Slug(ctx, kernel.NewAccountID()); !errors.Is(err,
+		accessapi.ErrNoAccount) {
+		t.Errorf("no account's slug = %v, want ErrNoAccount", err)
 	}
 	if got, err := d.AccountOrganization(ctx, acct); err != nil || got != org {
 		t.Errorf("an account's organization = %v, %v", got, err)
@@ -122,5 +132,9 @@ func TestAccAccountOrganization(t *testing.T) {
 	db.Primary().Close()
 	if _, err := d.AccountOrganization(context.Background(), acct); err == nil {
 		t.Error("a closed pool answered")
+	}
+	if _, err := d.Accounts().Slug(context.Background(), acct); err == nil ||
+		errors.Is(err, accessapi.ErrNoAccount) {
+		t.Errorf("a closed pool's slug = %v, want the store's error", err)
 	}
 }

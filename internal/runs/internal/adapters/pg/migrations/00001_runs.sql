@@ -9,10 +9,12 @@
 -- deletes its runs through the domain's StackGuard. state_version counts
 -- the run's transitions, and a transition that read another fails, so two
 -- never both move a run; commit is the commit the run works on, as the
--- API's Commit; triggered_by is the login or the trigger that created it;
--- priority is low, normal or high; runtime_config is the runtime
--- configuration its trigger gave, which overrides the stack's, and
--- force_apply_mode SINGLE or CASCADE when it applies with no changes.
+-- API's Commit, with the branch the run was created for; triggered_by is
+-- the login or the trigger that created it; priority is low, normal or
+-- high; runtime_config is the runtime configuration its trigger gave,
+-- which overrides the stack's, and force_apply_mode SINGLE or CASCADE when
+-- it applies with no changes. local_preview marks a run proposed from an
+-- uploaded local workspace rather than a commit of the repository.
 -- priority_tier is kernel.RunTier of priority, type and drift_detection,
 -- 1 first, the order a pool's workers claim waiting runs in.
 -- worker_pool_id is the stack's private pool when the run was created,
@@ -37,6 +39,7 @@ CREATE TABLE runs (
     drift_detection  boolean     NOT NULL DEFAULT false,
     runtime_config   jsonb,
     force_apply_mode text,
+    local_preview    boolean     NOT NULL DEFAULT false,
     priority_tier    smallint    NOT NULL DEFAULT 3,
     worker_pool_id   uuid,
     worker_id        uuid,
