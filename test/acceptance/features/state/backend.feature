@@ -17,14 +17,17 @@ Feature: Terraform and OpenTofu keep their state in infraweave
   RustFS bucket, each state version sealed. Stack infra keeps its state
   in infraweave, deploys automatically and runs on the pool; its
   configuration has a terraform_data resource and outputs, one of them
-  sensitive, so no provider is downloaded. The home key is space-admin
-  on the account's top space.
+  sensitive, so no provider is downloaded. The release indexes serve the
+  recorded fixtures, so the run's specification names a Terraform
+  release. The home key is space-admin on the account's top space.
   ref: decision 0010
   ref: decision 0016
 
   Background:
-    Given two infraweave servers, A and B, on one database
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
     And a certificate signing request for a P-256 key is kept as "csr"
     And a Gitea repository "infra" with the files:
       | main.tf | resource "terraform_data" "this" {\n  input = "one"\n}\n\noutput "input" {\n  value = terraform_data.this.output\n}\n\noutput "token" {\n  value     = "plain-s3cret-0451"\n  sensitive = true\n}\n |

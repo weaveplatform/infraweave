@@ -13,10 +13,11 @@ components:
     RunSpec:
       description: >-
         What a claimed run needs. Every value that is not a secret is here in
-        clear; the write-only values, the in-run API token and the run's
-        artifact key are in sealed, which only the pool's private key opens.
+        clear; the write-only values, the in-run API token, the run's
+        artifact key and the credential that reads the source are in
+        sealed, which only the pool's private key opens.
       type: object
-      required: [run, stack, commit, hooks, environment, files, sealed]
+      required: [run, stack, commit, source, hooks, environment, files, sealed]
       properties:
         run:
           $ref: '#/components/schemas/RunSpecRun'
@@ -40,6 +41,10 @@ components:
             own default.
         stateBackend:
           $ref: '#/components/schemas/RunSpecStateBackend'
+        source:
+          $ref: '#/components/schemas/RunSpecSource'
+        tool:
+          $ref: '#/components/schemas/RunSpecTool'
         hooks:
           type: object
           additionalProperties:
@@ -116,7 +121,16 @@ components:
     RunSpecStack:
       description: The run's stack.
       type: object
-      required: [id, name, space, labels, repository, branch, vendor, vendorConfig]
+      required:
+        - id
+        - name
+        - space
+        - labels
+        - repository
+        - branch
+        - vendor
+        - vendorConfig
+        - enableWellKnownSecretMasking
       properties:
         id:
           type: string
@@ -145,11 +159,61 @@ components:
             configuration's, else the stack's. Absent for the root.
         vendor:
           type: string
-          description: The stack's infrastructure tool, such as TERRAFORM.
+          description: The stack's infrastructure tool, such as terraform.
         vendorConfig:
           type: object
           additionalProperties: true
           description: The tool's settings.
+        enableWellKnownSecretMasking:
+          type: boolean
+          description: >-
+            Whether the runner also masks values that match well-known
+            secret patterns, such as cloud access keys and private keys.
+    RunSpecSource:
+      description: >-
+        Where the worker fetches the run's source, directly from the
+        provider. A credential the URL needs is in sealed as
+        sourceCredential; a repository that needs none has no credential.
+      type: object
+      required: [kind, url, narrowed]
+      properties:
+        kind:
+          type: string
+          enum: [git]
+          description: >-
+            git: url is an HTTPS Git URL of the stack's repository, from
+            which the worker fetches commit.hash.
+        url:
+          type: string
+          description: The URL the worker fetches from.
+        narrowed:
+          type: boolean
+          description: >-
+            Whether the credential reads the stack's repository alone and
+            expires when the run ends, rather than being the integration's
+            own token.
+    RunSpecTool:
+      description: >-
+        The infrastructure tool the launcher mounts into the run. Absent for
+        a vendor that mounts none.
+      type: object
+      required: [name, version, download]
+      properties:
+        name:
+          type: string
+          enum: [terraform, tofu]
+          description: The binary the runner calls.
+        version:
+          type: string
+          description: >-
+            The release: the newest the version catalogue lists that meets
+            the stack's version constraint, or the newest it lists when the
+            stack sets none.
+        download:
+          type: boolean
+          description: >-
+            Whether the launcher mounts the release; false when the stack
+            runs the runner image's own binary instead.
     RunSpecStateBackend:
       description: >-
         The stack's managed state backend, present only when infraweave keeps
@@ -268,6 +332,21 @@ components:
             The run's 256-bit artifact key, the same on every fetch of the
             run's specification, which the runner seals the run's artifacts
             with.
+        sourceCredential:
+          $ref: '#/components/schemas/RunSpecSourceCredential'
+    RunSpecSourceCredential:
+      description: >-
+        The HTTPS credential that reads the run's source, which the worker
+        presents to source.url. Absent when the repository needs none.
+      type: object
+      required: [username, token]
+      properties:
+        username:
+          type: string
+          description: The HTTP Basic user name.
+        token:
+          type: string
+          description: The HTTP Basic password, a token.
     WorkerState:
       description: A state in which a worker holds the run.
       type: string
@@ -318,7 +397,9 @@ components:
       description: >-
         What the run's plan changes, which a succeeded report of PLANNING
         carries and no other report does: the resources it adds, changes,
-        deletes and imports, and whether any output changes.
+        deletes, imports, moves and forgets, whether any output changes,
+        and how many resources the state held before the plan. An absent
+        move, forget or resources is zero.
       type: object
       additionalProperties: false
       required: [add, change, delete, import, outputs]
@@ -347,6 +428,24 @@ components:
           minimum: 0
           maximum: 2147483647
           description: Resources the plan imports.
+        move:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          description: Resources the plan moves to another address.
+        forget:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          description: Resources the plan removes from the state and leaves in place.
+        resources:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          description: Resources the state held before the plan.
         outputs:
           type: boolean
           description: Whether any of the root module's outputs changes.

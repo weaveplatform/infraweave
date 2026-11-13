@@ -159,6 +159,7 @@ func newDomains(
 		Tokens:      access.Tokens(),
 		Stacks:      stacks.Stacks(),
 		Environment: configuration.Environment(),
+		Catalog:     vendors.Catalog(),
 		Events:      events,
 		Jobs:        queue.New(db.Primary()),
 	})
@@ -202,7 +203,7 @@ func newDomains(
 	access.GuardSpaces(vcs.SpaceGuard())
 	access.ResolveSubjects(vcsassembly.Entity, vcs.SpaceOf())
 	stacks.BindSources(vcs.StackSources())
-	runs.BindSources(vcs.Sources(), vcs.StackSources())
+	runs.BindSources(vcs.RunSources(), vcs.StackSources())
 	stacks.BindIntegrations(vcs.StackIntegrations())
 	d := Domains{
 		Features:      features,

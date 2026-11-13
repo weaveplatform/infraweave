@@ -11,12 +11,16 @@ Feature: Environment templates rendered into a run's specification
   variables REGION, URL, the write-only TOKEN and AUTH, which reads it.
   infraweave's own metadata variables arrive beside them: a run triggered
   on the stack is for its tracked branch and previews no local workspace.
+  The release indexes serve the recorded fixtures, so the run's
+  specification names a Terraform release.
   ref: decision 0024
   ref: decision 0008
 
   Background:
-    Given two infraweave servers, A and B, on one database
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
     And a certificate signing request for a P-256 key is kept as "csr"
     And a Gitea repository "infra" with the files:
       | main.tf | terraform {} |

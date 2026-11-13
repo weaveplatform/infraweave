@@ -252,9 +252,14 @@ model is decision 0015's), never inline in a transition.
 
 ### Source access for runs
 
-Workers fetch source directly; the server never proxies archives. The run
-spec ([0008](0008-run-execution-and-worker-protocol.md)) carries a source
-credential that is part of the run's sealed secret material:
+Workers fetch source directly; the server never proxies archives. Every
+provider's source is the repository's HTTPS Git clone URL on its
+user-facing host, from which the worker fetches the run's commit with Git,
+so one fetch serves every provider, Bitbucket's included, which serves no
+archive to an API token. The run spec
+([0008](0008-run-execution-and-worker-protocol.md)) carries a source
+credential, which Git presents as HTTP Basic auth and which is part of the
+run's sealed secret material:
 
 | Provider | Credential |
 |---|---|

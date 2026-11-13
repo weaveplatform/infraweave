@@ -10,11 +10,24 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
+// TestUnitHandoffRoundTrip checks that Read reads what Write wrote,
+// with the specification's source, tool and masking flag and the source's
+// credential.
 func TestUnitHandoffRoundTrip(t *testing.T) {
 	h := handoff.Handoff{
 		Endpoint: "https://iw.example.com/worker/v1", Run: "run-1", RunToken: "token",
 		Assigned: wire.AssignmentStatePREPARINGREPLAN, StateVersion: 9,
-		Secrets: wire.RunSpecSecrets{ApiToken: "api", Files: map[string][]byte{"a": []byte("b")}},
+		Spec: wire.RunSpec{
+			Stack: wire.RunSpecStack{EnableWellKnownSecretMasking: true},
+			Source: wire.RunSpecSource{
+				Kind: wire.Git, Url: "https://git.example.com/a.git", Narrowed: true,
+			},
+			Tool: &wire.RunSpecTool{Name: wire.Tofu, Version: "1.9.8"},
+		},
+		Secrets: wire.RunSpecSecrets{
+			ApiToken: "api", Files: map[string][]byte{"a": []byte("b")},
+			SourceCredential: &wire.RunSpecSourceCredential{Username: "u", Token: "t"},
+		},
 	}
 	var b bytes.Buffer
 	if err := handoff.Write(&b, h); err != nil {
@@ -27,6 +40,11 @@ func TestUnitHandoffRoundTrip(t *testing.T) {
 	if got.Run != h.Run || got.StateVersion != 9 || got.Secrets.ApiToken != "api" ||
 		string(got.Secrets.Files["a"]) != "b" || got.First() != wire.WorkerStatePLANNING {
 		t.Fatalf("Read: %+v", got)
+	}
+	if got.Spec.Source != h.Spec.Source || got.Spec.Tool == nil || *got.Spec.Tool != *h.Spec.Tool ||
+		!got.Spec.Stack.EnableWellKnownSecretMasking || got.Secrets.SourceCredential == nil ||
+		*got.Secrets.SourceCredential != *h.Secrets.SourceCredential {
+		t.Errorf("Read: spec %+v, secrets %+v", got.Spec, got.Secrets)
 	}
 }
 

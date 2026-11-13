@@ -54,7 +54,7 @@ func (c *catalogSteps) register(sc *godog.ScenarioContext) {
 		return ctx, err
 	})
 	sc.Step(
-		`^the release indexes serve the recorded fixtures, Terraform's without its newest release$`,
+		`^the release indexes serve the recorded fixtures(, Terraform's without its newest release)?$`,
 		c.serve,
 	)
 	sc.Step(`^the Terraform index publishes its newest release$`, c.publish)
@@ -87,8 +87,10 @@ func (c *catalogSteps) switchOff(names string) error {
 	return nil
 }
 
-// serve starts the index server for the scenario's servers to read.
-func (c *catalogSteps) serve() error {
+// serve starts the index server for the scenario's servers to read,
+// Terraform's without its newest release when without is set, and keeps
+// the newest Terraform release it lists as {terraform.newest}.
+func (c *catalogSteps) serve(without string) error {
 	var tf, tofu struct {
 		Body json.RawMessage `json:"body"`
 	}
@@ -109,7 +111,11 @@ func (c *catalogSteps) serve() error {
 	if err != nil {
 		return err
 	}
-	c.withheld = newest[0]
+	c.withheld = ""
+	if without != "" {
+		c.withheld, newest = newest[0], newest[1:]
+	}
+	c.w.IDs["terraform.newest"] = newest[0]
 
 	r := chi.NewRouter()
 	r.Get("/terraform", c.hashicorp)

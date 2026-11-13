@@ -79,34 +79,39 @@ type Commit struct {
 // TrackedCommit are nil until the vcs domain resolves the branch, and
 // TrackedCommitSetBy names who set TrackedCommit. ManagesState is
 // whether infraweave keeps the stack's state, which its creation decides
-// once. Version counts the stack's writes, which SetTracked is not.
+// once. EnableWellKnownSecretMasking turns on the runner's well-known
+// secret patterns, and SkipVendorBinaryDownload runs the image's own
+// tool rather than the one the launcher mounts. Version counts the
+// stack's writes, which SetTracked is not.
 type Settings struct {
 	Stack
-	Repository             string
-	RepositoryURL          *string
-	Branch                 string
-	Provider               string
-	Namespace              string
-	ProjectRoot            *string
-	AdditionalProjectGlobs []string
-	GitSparseCheckoutPaths []string
-	RunnerImage            *string
-	WorkerPool             *kernel.ULID
-	VCSIntegration         *kernel.ULID
-	VCSDetached            bool
-	Vendor                 string
-	VendorConfig           json.RawMessage
-	TerraformVersion       *string
-	Hooks                  map[string][]string
-	Autodeploy             bool
-	Autoretry              bool
-	Disabled               bool
-	Lock                   *Lock
-	TrackedBranchHead      *Commit
-	TrackedCommit          *Commit
-	TrackedCommitSetBy     string
-	ManagesState           bool
-	Version                int64
+	Repository                   string
+	RepositoryURL                *string
+	Branch                       string
+	Provider                     string
+	Namespace                    string
+	ProjectRoot                  *string
+	AdditionalProjectGlobs       []string
+	GitSparseCheckoutPaths       []string
+	RunnerImage                  *string
+	WorkerPool                   *kernel.ULID
+	VCSIntegration               *kernel.ULID
+	VCSDetached                  bool
+	Vendor                       string
+	VendorConfig                 json.RawMessage
+	TerraformVersion             *string
+	Hooks                        map[string][]string
+	EnableWellKnownSecretMasking bool
+	SkipVendorBinaryDownload     bool
+	Autodeploy                   bool
+	Autoretry                    bool
+	Disabled                     bool
+	Lock                         *Lock
+	TrackedBranchHead            *Commit
+	TrackedCommit                *Commit
+	TrackedCommitSetBy           string
+	ManagesState                 bool
+	Version                      int64
 }
 
 // Stacks is what other domains call of the stacks domain. Each method

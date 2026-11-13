@@ -267,9 +267,11 @@ func (p *Provider) AffectedFiles(
 	return slices.Compact(out), nil
 }
 
-// SourceURL is the API's tarball of commit of repo, which a worker
-// fetches with the run's token.
-func (p *Provider) SourceURL(repo port.Repository, commit string) string {
+// SourceURL is repo's clone URL on its integration's user-facing host,
+// from which a worker fetches the commit over Git's HTTPS with the run's
+// token, as every provider's source is fetched; empty on a host that does
+// not parse.
+func (p *Provider) SourceURL(repo port.Repository, _ string) string {
 	var s port.Settings
 	if repo.Integration != nil {
 		s = repo.Integration.Settings
@@ -278,8 +280,7 @@ func (p *Provider) SourceURL(repo port.Repository, commit string) string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf("%sprojects/%s/repository/archive.tar.gz?sha=%s", h.api,
-		url.PathEscape(repo.Namespace+"/"+repo.Name), url.QueryEscape(commit))
+	return fmt.Sprintf("%s/%s/%s.git", h.web, repo.Namespace, repo.Name)
 }
 
 // Repositories lists, sorted, the projects in's token's user is a member
