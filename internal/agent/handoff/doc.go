@@ -1,10 +1,10 @@
 // Package handoff is what the launcher hands the runner through the run
 // container's standard input: the worker API's endpoint, the run, its run
-// token and the state its preparation leads to, and the run's
-// specification with the secrets the launcher opened with the pool's
-// private key. Passing it on standard input keeps the opened secrets out
-// of the container's configuration, which Docker writes to the host's
-// disk.
+// token and the state its preparation leads to, the run's specification
+// with the secrets the launcher opened with the pool's private key, and
+// the pool's public key, to which the runner seals a saved workspace.
+// Passing it on standard input keeps the opened secrets out of the
+// container's configuration, which Docker writes to the host's disk.
 //
 // Write encodes a Handoff; Read decodes one, refusing unknown members, a
 // document over MaxSize and one without its endpoint, run, run token or

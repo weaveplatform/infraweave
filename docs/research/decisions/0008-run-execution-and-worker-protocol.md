@@ -398,13 +398,31 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   container or the server.
 - **Workspaces are end to end.** When a tracked run with changes finishes
   planning, the runner archives the workspace (`tar` with `zstd`) and encrypts it
-  in 0013's segmented AES-256-GCM format, with a fresh data key wrapped by the
-  pool's public key, which the handoff carries, instead of the keyring. No
-  file of the archive holds the run token or the source credential. It
-  uploads it to `workspaces` before it reports the plan, since the plan's
-  answer is not known yet. For `PREPARING_APPLY` and `PREPARING_REPLAN` the
-  launcher downloads and decrypts it before starting the container. The server stores but
-  cannot read it, which is Spacelift's guarantee for private pools
+  in 0013's segmented AES-256-GCM format under a fresh data key. The data
+  key is sealed in an envelope to the pool's public key, which the handoff
+  carries, bound to the run and the state version that saved it, instead of
+  the keyring:
+
+  ```text
+  "IWWS" | 0x01 | state version (uint64) | envelope length (uint16) | envelope | object stream
+  ```
+
+  The archive leaves out each `.terraform/providers`, which `init`
+  installs again from the lock file, and leaves out and logs a link that
+  leaves the workspace, a device, a pipe or a socket. A file, link or name
+  that holds the run token or the source credential fails the planning,
+  naming the path but never the value, as does a sealed workspace over
+  2 GiB. The runner uploads it to `workspaces` before it reports the plan,
+  since the plan's answer is not known yet. For `PREPARING_APPLY` and
+  `PREPARING_REPLAN` the launcher asks `GET .../workspace` with the run
+  token and does not follow the redirect, so the token never reaches the
+  store; it downloads the pre-signed URL, opens the data key with the
+  pool's private key and extracts it as it extracts an archive source,
+  reading the stream to its end so a truncated or altered workspace fails.
+  A run with none saved, or one that does not open, fails its preparation.
+  The runner in the new container runs the `init` hooks and command
+  before the phase, since the providers were left out. The server stores
+  but cannot read it, which is Spacelift's guarantee for private pools
   ([10 section 1.1](../reference/10-workers-and-execution.md#11-public-and-private-pools-compared)).
 
 ### Phases, reports and the plan decision

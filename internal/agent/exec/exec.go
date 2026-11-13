@@ -27,13 +27,14 @@ type Reporter interface {
 	Report(ctx context.Context, token, run string, r wire.RunReport) (wire.NextStep, error)
 }
 
-// Deps are what Run needs beyond the handoff: the worker API's reports and
-// log uploads, the runner's log, where the session's masked output goes,
-// the workspace the source is checked out in, and the environment the
-// session starts from.
+// Deps are what Run needs beyond the handoff: the worker API's reports,
+// log uploads and artifact uploads, the runner's log, where the session's
+// masked output goes, the workspace the source is checked out in, and the
+// environment the session starts from.
 type Deps struct {
 	Reports   Reporter
 	Logs      runlog.API
+	Uploads   Uploads
 	Log       *slog.Logger
 	Out       io.Writer
 	Workspace string
@@ -55,6 +56,18 @@ var ErrAction = errors.New("the server answered an unknown action")
 // errMovedOn marks a report the server refused because the run is no
 // longer in the reported state on this worker.
 var errMovedOn = errors.New("the run moved on")
+
+// transient reports whether err is a failure a later attempt may not
+// meet: no answer, or the server's or the store's being unavailable for
+// now.
+func transient(ctx context.Context, err error) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	s := client.Status(err)
+	return s == 0 && !errors.Is(err, errUpload) || s == http.StatusTooManyRequests ||
+		s >= http.StatusInternalServerError
+}
 
 // Run executes the run h hands over. It reports that the state the run's
 // preparation leads to started, which ends the handover, and then
@@ -117,19 +130,21 @@ func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
 }
 
 // run is one run's execution: its handoff, its log, its prepared
-// environment and session, and the plan's JSON file.
+// environment and session, the plan's JSON file, and whether the session
+// has initialized the workspace.
 type run struct {
-	h       handoff.Handoff
-	d       Deps
-	log     *runlog.Log
-	ready   bool
-	failure string
-	dir     string
-	env     []string
-	vendor  vendors.Vendor
-	options vendors.Options
-	temp    string
-	shell   *session
+	h           handoff.Handoff
+	d           Deps
+	log         *runlog.Log
+	ready       bool
+	initialized bool
+	failure     string
+	dir         string
+	env         []string
+	vendor      vendors.Vendor
+	options     vendors.Options
+	temp        string
+	shell       *session
 }
 
 // report sends rep, sending it again with the same body while its answer
@@ -166,8 +181,11 @@ func (r *run) report(ctx context.Context, rep wire.RunReport) (wire.NextStep, er
 
 // phase executes state's phase in the session: the state's before-hooks,
 // its vendor's commands and its after-hooks, each in a group of its own,
-// stopping at the first that fails. It answers the report of how the
-// phase ended at version; planning's success carries the plan's delta.
+// stopping at the first that fails. A session that did not initialize the
+// workspace, as when a run resumes in a new container to apply or replan
+// its saved workspace, runs initialization's hooks and commands first.
+// It answers the report of how the phase ended at version; planning's
+// success carries the plan's delta, once its results are saved.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) wire.RunReport {
@@ -189,22 +207,38 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	if err != nil {
 		return fail("This runner executes no " + string(state) + " phase.")
 	}
+	init, err := r.vendor.Commands(wire.WorkerStateINITIALIZING, r.options)
+	if err != nil {
+		return fail("This runner executes no INITIALIZING phase.")
+	}
+	lists := [][]step{{{
+		text: "export TF_VAR_infraweave_run_state=" + quote(string(state)),
+		what: "Setting TF_VAR_infraweave_run_state",
+	}}}
+	if !r.initialized && state != wire.WorkerStateINITIALIZING {
+		lists = append(lists, r.hooks("before_init"), commandSteps(init), r.hooks("after_init"))
+	}
 	name := hookPhases[state]
-	if d := r.steps(ctx, []step{
-		{text: "export TF_VAR_infraweave_run_state=" + quote(string(state)), what: "Setting " +
-			"TF_VAR_infraweave_run_state"},
-	}, r.hooks("before_"+name), commandSteps(commands)); d != "" {
+	lists = append(lists, r.hooks("before_"+name), commandSteps(commands))
+	if d := r.steps(ctx, lists...); d != "" {
 		return fail(d)
 	}
+	r.initialized = true
+	var p plan.Plan
 	if state == wire.WorkerStatePLANNING {
-		delta, err := r.delta()
-		if err != nil {
+		if p, err = r.plan(); err != nil {
 			return fail("The plan's JSON could not be read: " + err.Error())
 		}
+		delta := deltaOf(p.Delta)
 		rep.Delta = &delta
 	}
 	if d := r.steps(ctx, r.hooks("after_"+name)); d != "" {
 		return fail(d)
+	}
+	if state == wire.WorkerStatePLANNING {
+		if d := r.save(ctx, version, p); d != "" {
+			return fail(d)
+		}
 	}
 	return rep
 }
@@ -264,24 +298,24 @@ func (r *run) steps(ctx context.Context, lists ...[]step) string {
 	return ""
 }
 
-// delta reads the plan's JSON, which planning's commands wrote.
-func (r *run) delta() (wire.PlanDelta, error) {
+// plan reads the plan's JSON, which planning's commands wrote.
+func (r *run) plan() (plan.Plan, error) {
 	f, err := os.Open(r.options.PlanJSON)
 	if err != nil {
-		return wire.PlanDelta{}, fmt.Errorf("open it: %w", err)
+		return plan.Plan{}, fmt.Errorf("open it: %w", err)
 	}
 	defer f.Close()
-	p, err := plan.Parse(f)
-	if err != nil {
-		return wire.PlanDelta{}, err //nolint:wrapcheck // plan names the document
-	}
-	d := p.Delta
+	return plan.Parse(f) //nolint:wrapcheck // plan names the document
+}
+
+// deltaOf is d as the worker API reports it.
+func deltaOf(d plan.Delta) wire.PlanDelta {
 	move, forget, resources := count(d.Move), count(d.Forget), count(d.Resources)
 	return wire.PlanDelta{
 		Add: count(d.Add), Change: count(d.Change), Delete: count(d.Delete),
 		Import: count(d.Import), Move: &move, Forget: &forget, Resources: &resources,
 		Outputs: d.Outputs,
-	}, nil
+	}
 }
 
 // count is n as the worker API counts.

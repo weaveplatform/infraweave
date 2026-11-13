@@ -2,8 +2,10 @@ package source
 
 import (
 	"context"
+	"crypto/ecdh"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
+	"github.com/weaveplatform/infraweave/internal/agent/workspace"
 )
 
 // The run's user in its container, which owns the workspace.
@@ -104,6 +107,40 @@ func (f *Fetcher) fetch(
 	default:
 		return fmt.Errorf("%w %q", ErrKind, s.Kind)
 	}
+	return ready(dir, spec)
+}
+
+// Restore writes into dir, which must not exist, the run's saved
+// workspace that src, its pre-signed URL, answers: at most 2 GiB, opened
+// with pool's private key for run and extracted, at most 8 GiB, as
+// workspace.Read does. It then checks spec's project root and hands dir to
+// the run's user, as Fetch does. No error names src.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+func (f *Fetcher) Restore(
+	ctx context.Context,
+	dir, src string,
+	pool *ecdh.PrivateKey,
+	run string,
+	spec wire.RunSpec,
+) error {
+	u, err := url.Parse(src)
+	if err != nil || u.Scheme != "https" && u.Scheme != "http" || u.Host == "" {
+		return ErrURL
+	}
+	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
+	defer cancel()
+	if err := f.download(ctx, src, func(body io.Reader) error {
+		return workspace.Read(body, dir, pool, run, f.maxExtracted)
+	}); err != nil {
+		return fmt.Errorf("restore the saved workspace from %s: %w", u.Host, err)
+	}
+	return ready(dir, spec)
+}
+
+// ready checks that spec's project root is a directory of dir and hands
+// dir to the run's user.
+func ready(dir string, spec wire.RunSpec) error {
 	if root := spec.Stack.ProjectRoot; root != nil && *root != "" && !isDir(dir, *root) {
 		return fmt.Errorf("%w: %s", ErrProjectRoot, *root)
 	}

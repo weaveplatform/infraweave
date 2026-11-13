@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -27,6 +29,9 @@ func TestUnitClientBase(t *testing.T) {
 	c := client.New("http://[::1", http.DefaultClient)
 	if err := c.Deregister(t.Context(), "s"); err == nil || client.Status(err) != 0 {
 		t.Fatalf("a call to a base that is no URL: %v", err)
+	}
+	if _, err := c.Workspace(t.Context(), "t", "r"); err == nil || client.Status(err) != 0 {
+		t.Fatalf("a workspace from a base that is no URL: %v", err)
 	}
 }
 
@@ -80,6 +85,63 @@ func TestUnitClientCalls(t *testing.T) {
 	if got := srv.Chunks(); len(got) != 1 || string(got[0].Body) != "a line\n" {
 		t.Fatalf("indexed %+v", got)
 	}
+	if _, err := c.Workspace(ctx, "token", "run-1"); client.Status(err) != http.StatusNotFound {
+		t.Fatalf("Workspace of a run that saved none: %v", err)
+	}
+	saved := filepath.Join(t.TempDir(), "workspace")
+	if err := os.WriteFile(saved, []byte("sealed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sum = sha256.Sum256([]byte("sealed"))
+	ups, err = c.UploadURLs(ctx, "token", "run-1", wire.UploadURLsRequest{
+		StateVersion: 3, Uploads: []wire.Upload{{
+			Kind: wire.UploadKindWorkspace, Name: "workspace", Size: 6,
+			Sha256: hex.EncodeToString(sum[:]),
+		}},
+	})
+	if err != nil || len(ups) != 1 {
+		t.Fatalf("UploadURLs of a workspace: %+v, %v", ups, err)
+	}
+	rec := wire.ArtifactsRequest{StateVersion: 3, Artifacts: []wire.ArtifactRecord{{
+		Kind: wire.ArtifactRecordKindWorkspace, Name: "workspace",
+	}}}
+	if err := c.Artifacts(ctx, "token", "run-1", rec); client.Status(err) !=
+		http.StatusUnprocessableEntity {
+		t.Fatalf("Artifacts before the upload: %v", err)
+	}
+	if err := c.PutFile(ctx, ups[0], saved); err != nil {
+		t.Fatalf("PutFile: %v", err)
+	}
+	if err := c.Artifacts(ctx, "token", "run-1", rec); err != nil {
+		t.Fatalf("Artifacts: %v", err)
+	}
+	if got := srv.Artifacts(); len(got) != 1 || string(got[0].Body) != "sealed" ||
+		got[0].Kind != wire.ArtifactRecordKindWorkspace || got[0].StateVersion != 3 {
+		t.Fatalf("recorded %+v", got)
+	}
+	loc, err := c.Workspace(ctx, "token", "run-1")
+	if err != nil || loc != ups[0].Url {
+		t.Fatalf("Workspace = %q, %v; want %q", loc, err, ups[0].Url)
+	}
+	for auth, want := range map[string]int{
+		"": http.StatusOK, "Bearer token": http.StatusForbidden,
+	} {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, loc, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if auth != "" {
+			req.Header.Set("Authorization", auth)
+		}
+		res, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = res.Body.Close()
+		if res.StatusCode != want {
+			t.Errorf("the store's GET with %q: %d", auth, res.StatusCode)
+		}
+	}
 
 	for op, call := range map[string]func() error{
 		"register":   func() error { _, err := c.Register(ctx, "not a JWS"); return err },
@@ -101,6 +163,13 @@ func TestUnitClientCalls(t *testing.T) {
 		},
 		"commit log chunks": func() error {
 			return c.LogChunks(ctx, "wrong", "run-1", wire.LogChunksRequest{})
+		},
+		"record artifacts": func() error {
+			return c.Artifacts(ctx, "wrong", "run-1", wire.ArtifactsRequest{})
+		},
+		"find the saved workspace": func() error {
+			_, err := c.Workspace(ctx, "wrong", "run-1")
+			return err
 		},
 	} {
 		err := call()
@@ -144,9 +213,14 @@ func TestUnitClientFailures(t *testing.T) {
 				_, err := c.UploadURLs(ctx, "t", "r", wire.UploadURLsRequest{})
 				return err
 			}(),
-			"put":     c.Put(ctx, wire.SignedUpload{Url: "http://store.invalid/k"}, nil),
-			"bad url": c.Put(ctx, wire.SignedUpload{Url: "http://[::1"}, nil),
-			"chunks":  c.LogChunks(ctx, "t", "r", wire.LogChunksRequest{}),
+			"put":       c.Put(ctx, wire.SignedUpload{Url: "http://store.invalid/k"}, nil),
+			"bad url":   c.Put(ctx, wire.SignedUpload{Url: "http://[::1"}, nil),
+			"chunks":    c.LogChunks(ctx, "t", "r", wire.LogChunksRequest{}),
+			"artifacts": c.Artifacts(ctx, "t", "r", wire.ArtifactsRequest{}),
+			"workspace": func() error { _, err := c.Workspace(ctx, "t", "r"); return err }(),
+			"no file":   c.PutFile(ctx, wire.SignedUpload{Url: "http://store.invalid/k"}, "/gone"),
+			"a file": c.PutFile(ctx, wire.SignedUpload{Url: "http://store.invalid/k"},
+				"client_test.go"),
 		} {
 			if err == nil {
 				t.Errorf("%s succeeded", name)

@@ -5,6 +5,8 @@ package exec_test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -30,8 +32,15 @@ import (
 const fakeTool = `#!/bin/sh
 printf '%s\n' "$*" >> "$TRACE"
 [ "$1" = show ] && cat "$PLAN"
+[ "$1" = plan ] && echo binary-plan > infraweave.plan
 eval "exit \${EXIT_$1:-0}"
 `
+
+// The run and its account, as a specification names them.
+const (
+	runID  = "01HZX4Y9Q2W8E5R7T3V6K1M0PA"
+	acctID = "01HZX4Y9Q2W8E5R7T3V6K1M0PB"
+)
 
 // planJSON is show -json of a plan that adds one resource.
 const planJSON = `{"format_version":"1.2","resource_changes":[` +
@@ -40,28 +49,39 @@ const planJSON = `{"format_version":"1.2","resource_changes":[` +
 // worker is a fake worker API that holds one run: it applies a report
 // that names the run's state version, answers a repeated report the step
 // it answered before, refuses any other with 409, and can lose answers.
-// It takes the run's log chunks, and keeps the order in which it took
-// them and the reports.
+// It takes the run's log chunks and artifacts, and keeps the order in
+// which it took them and the reports; it refuses every declaration with
+// uploads, and signs other names than declared with rename.
 type worker struct {
 	mu         sync.Mutex
 	version    int64
 	autodeploy bool
 	lose       int
 	refuse     int
+	uploads    error
+	rename     bool
 	reports    []wire.RunReport
 	last       wire.RunReport
 	step       wire.NextStep
 	objects    map[string][]byte
+	recorded   map[string][]byte
 	taken      []string
 }
 
 func (w *worker) UploadURLs(
 	_ context.Context, _, _ string, in wire.UploadURLsRequest,
 ) ([]wire.SignedUpload, error) {
+	if w.uploads != nil {
+		return nil, w.uploads
+	}
 	out := make([]wire.SignedUpload, 0, len(in.Uploads))
 	for _, u := range in.Uploads {
+		name := u.Name
+		if w.rename {
+			name += ".renamed"
+		}
 		out = append(out, wire.SignedUpload{
-			Kind: u.Kind, Name: u.Name, Key: strconv.FormatInt(in.StateVersion, 10) + "/" + u.Name,
+			Kind: u.Kind, Name: name, Key: strconv.FormatInt(in.StateVersion, 10) + "/" + u.Name,
 		})
 	}
 	return out, nil
@@ -74,6 +94,31 @@ func (w *worker) Put(_ context.Context, u wire.SignedUpload, body []byte) error 
 		w.objects = map[string][]byte{}
 	}
 	w.objects[u.Key] = bytes.Clone(body)
+	return nil
+}
+
+func (w *worker) PutFile(ctx context.Context, u wire.SignedUpload, path string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err //nolint:wrapcheck // a test double
+	}
+	return w.Put(ctx, u, b)
+}
+
+func (w *worker) Artifacts(_ context.Context, _, _ string, in wire.ArtifactsRequest) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.recorded == nil {
+		w.recorded = map[string][]byte{}
+	}
+	names := make([]string, 0, len(in.Artifacts))
+	for _, a := range in.Artifacts {
+		key := strconv.FormatInt(in.StateVersion, 10) + "/" + a.Name
+		w.recorded[a.Name] = w.objects[key]
+		names = append(names, string(a.Kind)+" "+a.Name)
+	}
+	w.taken = append(w.taken, "artifacts "+strconv.FormatInt(in.StateVersion, 10)+": "+
+		strings.Join(names, ", "))
 	return nil
 }
 
@@ -98,7 +143,7 @@ func (w *worker) Report(
 	defer w.mu.Unlock()
 	w.reports = append(w.reports, r)
 	w.taken = append(w.taken, "report "+string(r.State)+" "+string(r.Event))
-	if token != "run-token" || run != "run-1" {
+	if token != "run-token" || run != runID {
 		return wire.NextStep{}, &client.Error{Op: "report", Status: 401}
 	}
 	if w.refuse != 0 {
@@ -140,11 +185,12 @@ func (w *worker) decide(r wire.RunReport) wire.NextStep {
 	return next(wire.Exit, "FINISHED")
 }
 
-// world is one run's workspace, tool and worker.
+// world is one run's workspace, tool and worker, and its pool's key.
 type world struct {
 	t         *testing.T
 	h         handoff.Handoff
 	w         *worker
+	pool      *ecdh.PrivateKey
 	workspace string
 	trace     string
 	plan      string
@@ -189,22 +235,29 @@ func newWorld(t *testing.T) *world {
 		t.Fatal(err)
 	}
 	trace := filepath.Join(dir, "trace")
+	pool, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return &world{
-		t: t, workspace: ws, trace: trace, plan: plan,
+		t: t, workspace: ws, trace: trace, plan: plan, pool: pool,
 		w: &worker{version: 3},
 		environ: []string{
 			"PATH=" + bin + ":/usr/bin:/bin", "TRACE=" + trace, "PLAN=" + plan,
 		},
 		h: handoff.Handoff{
-			Endpoint: "http://server.test/worker/v1", Run: "run-1", RunToken: "run-token",
+			Endpoint: "http://server.test/worker/v1", Run: runID, RunToken: "run-token",
 			Assigned: wire.AssignmentStatePREPARING, StateVersion: 3,
-			StateLockTimeout: 5 * time.Minute,
+			StateLockTimeout: 5 * time.Minute, PoolKey: pool.PublicKey().Bytes(),
 			Spec: wire.RunSpec{
+				Run:    wire.RunSpecRun{Account: acctID, Id: runID, Type: wire.TRACKED},
 				Commit: wire.RunSpecCommit{Hash: "abc123"},
 				Tool:   &wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2"},
 				Hooks:  map[string][]string{},
 			},
-			Secrets: wire.RunSpecSecrets{ApiToken: "api-token"},
+			Secrets: wire.RunSpecSecrets{
+				ApiToken: "api-token", ArtifactKey: bytes.Repeat([]byte{7}, 32),
+			},
 		},
 	}
 }
@@ -213,7 +266,7 @@ func newWorld(t *testing.T) *world {
 func (w *world) run() error {
 	w.t.Helper()
 	return exec.Run(w.t.Context(), w.h, exec.Deps{
-		Reports: w.w, Logs: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
+		Reports: w.w, Logs: w.w, Uploads: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
 		Workspace: w.workspace, Environ: w.environ,
 	})
 }
@@ -351,7 +404,9 @@ func TestUnitExecPausesAndResumes(t *testing.T) {
 	w.h.Secrets.Environment = map[string]string{exec.DisableStateLock: "true"}
 	w.h.StateLockTimeout = 90 * time.Second
 	w.h.Spec.Source.Narrowed = true
-	w.h.Secrets.SourceCredential = &wire.RunSpecSourceCredential{Username: "x", Token: "y"}
+	w.h.Secrets.SourceCredential = &wire.RunSpecSourceCredential{
+		Username: "x", Token: "ghs_" + strings.Repeat("s", 36),
+	}
 	if err := w.run(); err != nil {
 		t.Fatal(err)
 	}
@@ -381,6 +436,7 @@ func TestUnitExecPausesAndResumes(t *testing.T) {
 		"APPLYING started 8", "APPLYING succeeded 9",
 	})
 	equal(t, "resumed trace", a.traced(), []string{
+		"init -input=false -lock-timeout=5m0s",
 		"apply -input=false -lock-timeout=5m0s infraweave.plan", "after_run FINISHED",
 	})
 	if strings.Contains(a.out.String(), "working on commit") {
@@ -596,8 +652,8 @@ func TestUnitExecReports(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := w.events(); len(got) != 2 || !strings.HasPrefix(got[1],
-		"PLANNING failed 4: The command tofu plan failed with exit status 127.") {
-		t.Errorf("tofu, which the image lacks: %q", got)
+		"PLANNING failed 4: The command tofu init failed with exit status 127.") {
+		t.Errorf("tofu, which the image lacks, on a replan: %q", got)
 	}
 }
 
@@ -611,8 +667,13 @@ func (actionless) Report(context.Context, string, string, wire.RunReport) (wire.
 func TestUnitExecUnknownAction(t *testing.T) {
 	w := newWorld(t)
 	err := exec.Run(t.Context(), w.h, exec.Deps{
-		Reports: actionless{}, Logs: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
-		Workspace: w.workspace, Environ: w.environ,
+		Reports:   actionless{},
+		Logs:      w.w,
+		Uploads:   w.w,
+		Log:       slog.New(slog.DiscardHandler),
+		Out:       &w.out,
+		Workspace: w.workspace,
+		Environ:   w.environ,
 	})
 	if !errors.Is(err, exec.ErrAction) {
 		t.Fatalf("Run: %v", err)
@@ -637,7 +698,7 @@ func TestUnitExecNoCommands(t *testing.T) {
 	w := newWorld(t)
 	p := &performing{}
 	if err := exec.Run(t.Context(), w.h, exec.Deps{
-		Reports: p, Logs: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
+		Reports: p, Logs: w.w, Uploads: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
 		Workspace: w.workspace, Environ: w.environ,
 	}); err != nil {
 		t.Fatal(err)
@@ -645,6 +706,41 @@ func TestUnitExecNoCommands(t *testing.T) {
 	if len(p.reports) != 2 || *p.reports[1].Details != "This runner executes no PERFORMING phase." {
 		t.Fatalf("reports: %+v", p.reports)
 	}
+}
+
+// merged is taken with each state version's log chunks joined, in order,
+// at the place of its last chunk: on a loaded host the log may cut a
+// chunk on its timer before a phase's last line, which changes no line's
+// state or order.
+func merged(taken []string) []string {
+	last, bodies := map[string]int{}, map[string]string{}
+	for i, e := range taken {
+		if v, body, ok := logChunk(e); ok {
+			last[v], bodies[v] = i, bodies[v]+body
+		}
+	}
+	out := make([]string, 0, len(taken))
+	for i, e := range taken {
+		switch v, _, ok := logChunk(e); {
+		case !ok:
+			out = append(out, e)
+		case last[v] == i:
+			out = append(out, "log "+v+": "+bodies[v])
+		}
+	}
+	return out
+}
+
+// logChunk splits a taken "log version/seq: body" into its version and
+// body.
+func logChunk(e string) (string, string, bool) {
+	rest, ok := strings.CutPrefix(e, "log ")
+	if !ok {
+		return "", "", false
+	}
+	key, body, ok := strings.Cut(rest, ": ")
+	version, _, _ := strings.Cut(key, "/")
+	return version, body, ok
 }
 
 // TestUnitExecLog masks a write-only variable, a line of a write-only
@@ -689,13 +785,16 @@ func TestUnitExecLog(t *testing.T) {
 	init := "infraweave: working on commit abc123, read from its repository with no credential\n" +
 		"secret ***** short ab plain *****\n*****\n*****\nsplit *****\ntokens ***** *****\n"
 	plan := "::add-mask *****\nfish *****\n*****\n"
-	equal(t, "taken", w.w.taken, []string{
+	saved := "infraweave: saved the workspace for the plan's confirmation, " +
+		strconv.Itoa(len(w.w.recorded[exec.WorkspaceName])) + " bytes sealed to the pool's key\n"
+	equal(t, "taken", merged(w.w.taken), []string{
 		"report INITIALIZING started",
-		"log 4/0: " + init, "report INITIALIZING succeeded",
-		"log 5/0: " + plan, "report PLANNING succeeded",
-		"log 6/0: no newline\n", "report APPLYING succeeded",
+		"log 4: " + init, "report INITIALIZING succeeded",
+		"artifacts 5: artifact plan.json, artifact changes.json, workspace workspace",
+		"log 5: " + plan + saved, "report PLANNING succeeded",
+		"log 6: no newline\n", "report APPLYING succeeded",
 	})
-	if got, want := w.out.String(), init+plan+"no newline\nafter *****\n"; got != want {
+	if got, want := w.out.String(), init+plan+saved+"no newline\nafter *****\n"; got != want {
 		t.Errorf("standard output:\n got %q\nwant %q", got, want)
 	}
 }

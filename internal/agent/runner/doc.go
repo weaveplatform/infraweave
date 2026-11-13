@@ -10,8 +10,8 @@
 //
 // It reads the handoff from an io.Reader, the container's standard input,
 // and the process's working directory and environment. The run's phases
-// write to standard output, and its reports reach the worker API with the
-// run token.
+// write to standard output, and its reports, log and artifacts reach the
+// worker API with the run token.
 //
 // # Dependencies
 //

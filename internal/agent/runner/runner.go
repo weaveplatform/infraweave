@@ -25,6 +25,12 @@ func Run(ctx context.Context, in io.Reader, doer wire.HttpRequestDoer, log *slog
 	}
 	c := client.New(h.Endpoint, doer)
 	return exec.Run(ctx, h, exec.Deps{ //nolint:wrapcheck // exec names the step
-		Reports: c, Logs: c, Log: log, Out: os.Stdout, Workspace: ".", Environ: os.Environ(),
+		Reports:   c,
+		Logs:      c,
+		Uploads:   c,
+		Log:       log,
+		Out:       os.Stdout,
+		Workspace: ".",
+		Environ:   os.Environ(),
 	})
 }

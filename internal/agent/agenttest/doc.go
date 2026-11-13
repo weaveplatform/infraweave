@@ -10,10 +10,15 @@
 // names, holds polls until Answer or Assign queues a result or the poll's
 // wait passes, seals each assigned run's secrets for the pool, answers a
 // started report with execute and any other with exit, signs uploads to
-// an in-memory store that checks each PUT against its declaration,
-// indexes uploaded log chunks once, and records every call. Refuse makes calls fail with a status, Renew hands a worker a new
-// session token, and Lose forgets every worker. Executor is a fake executor.Executor whose containers run until
-// the test ends them, or fails their wait, and which a restarted launcher
+// an in-memory store that checks each PUT against its declaration and
+// serves a GET with no bearer token, indexes uploaded log chunks once,
+// records artifacts and workspaces, redirects a run's workspace request
+// to the last one it recorded, and records every call. SaveWorkspace
+// records a workspace as if a runner had, and Pool.PublicKey is the key
+// a runner seals one to. Refuse makes calls fail with a status, Renew
+// hands a worker a new session token, and Lose forgets every worker.
+// Executor is a fake executor.Executor whose containers run until the
+// test ends them, or fails their wait, and which a restarted launcher
 // finds again.
 //
 // # Input and output

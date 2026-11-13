@@ -3,6 +3,7 @@ package launcher
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -48,14 +49,22 @@ type Deps struct {
 	Arch     string
 }
 
-// Sources fetches a run's source into its workspace directory, which
-// must not exist.
+// Sources writes a run's workspace directory, which must not exist: its
+// source, or the workspace it saved for its plan's confirmation, which
+// src, a pre-signed URL, answers sealed to the pool's key.
 type Sources interface {
 	Fetch(
 		ctx context.Context,
 		dir string,
 		spec wire.RunSpec,
 		cred *wire.RunSpecSourceCredential,
+	) error
+	Restore(
+		ctx context.Context,
+		dir, src string,
+		pool *ecdh.PrivateKey,
+		run string,
+		spec wire.RunSpec,
 	) error
 }
 
@@ -522,9 +531,14 @@ func (l *Launcher) workspaceDir(run string) (string, error) {
 	return dir, nil
 }
 
-// workspace fetches a's source into a fresh workspace directory and
-// answers it. A run that applies or replans after its plan was confirmed
-// starts from its saved workspace instead, and answers none here.
+// errNoWorkspace marks a run that applies or replans with no workspace
+// saved by its planning.
+var errNoWorkspace = errors.New("the run saved no workspace to apply or replan from")
+
+// workspace writes a fresh workspace directory and answers it: a's
+// source, or, for a run that applies or replans after its plan was
+// confirmed, the workspace its planning saved, which the worker API
+// answers as a pre-signed URL and the pool's private key opens.
 //
 // ref: decision 0008 § "The launcher and the runner"
 func (l *Launcher) workspace(
@@ -533,9 +547,6 @@ func (l *Launcher) workspace(
 	spec wire.RunSpec,
 	cred *wire.RunSpecSourceCredential,
 ) (string, error) {
-	if a.State != wire.AssignmentStatePREPARING {
-		return "", nil
-	}
 	dir, err := l.workspaceDir(a.Run)
 	if err != nil {
 		return "", err
@@ -546,11 +557,36 @@ func (l *Launcher) workspace(
 	if err := os.RemoveAll(dir); err != nil {
 		return "", fmt.Errorf("the workspace: %w", err)
 	}
-	if err := l.d.Sources.Fetch(ctx, dir, spec, cred); err != nil {
+	if a.State == wire.AssignmentStatePREPARING {
+		err = l.d.Sources.Fetch(ctx, dir, spec, cred)
+	} else {
+		err = l.restore(ctx, a, dir, spec)
+	}
+	if err != nil {
 		l.dropWorkspace(ctx, a.Run)
 		return "", err //nolint:wrapcheck // source names the step and the host
 	}
 	return dir, nil
+}
+
+// restore writes into dir the workspace a's planning saved.
+func (l *Launcher) restore(
+	ctx context.Context,
+	a wire.Assignment,
+	dir string,
+	spec wire.RunSpec,
+) error {
+	cctx, cancel := context.WithTimeout(ctx, callTimeout)
+	src, err := l.api.Workspace(cctx, a.RunToken, a.Run)
+	cancel()
+	if client.Status(err) == http.StatusNotFound {
+		return errNoWorkspace
+	}
+	if err != nil {
+		return err //nolint:wrapcheck // client names the call
+	}
+	err = l.d.Sources.Restore(ctx, dir, src, l.id.open, a.Run, spec)
+	return err //nolint:wrapcheck // source names the step and the host
 }
 
 // dropWorkspace removes run's workspace directory. A launcher that could
@@ -602,6 +638,7 @@ func (l *Launcher) container(
 		Endpoint: client.Base(l.id.endpoint), Run: a.Run, RunToken: a.RunToken,
 		Assigned: a.State, StateVersion: a.StateVersion, Spec: spec, Secrets: secrets,
 		StateLockTimeout: l.d.Config.StateLockTimeout, MaskEnvs: l.d.Config.MaskEnvs,
+		PoolKey: l.id.open.PublicKey().Bytes(),
 	}); err != nil {
 		return nil, err //nolint:wrapcheck // handoff names the write
 	}
