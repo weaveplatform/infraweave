@@ -10,8 +10,8 @@
 // scenario that needs a server its own infraweave all subprocess (or
 // scheduler, for a scenario about that mode), reading its listeners from
 // the JSON logs on its stdout, and starts the dependencies a selected
-// scenario's tags name (@postgres, @objectstore, @oidc, @vault, @vcs) once,
-// on first use, from test/deps. Without a Docker daemon it skips the
+// scenario's tags name (@postgres, @objectstore, @oidc, @vault, @vcs,
+// @docker, @terraform, @tofu) once, on first use, from test/deps. Without a Docker daemon it skips the
 // scenarios that need one, unless INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, which
 // fails the run instead. A failed scenario leaves its evidence in
 // out/<scenario>/. make accept PARTITION=core|runs|integrations selects one
@@ -24,7 +24,8 @@
 // TestAccCaptures replays the capture fixtures in test/fixtures/captures
 // (LoadCaptures, Replay) against the same binary; a failed expectation is a
 // parity bug named by its capture. TestUnitCaptureRedaction fails on a
-// fixture that Leaks a credential or a real e-mail address.
+// fixture that Leaks a credential or a real e-mail address. A capture a
+// feature stands in for until it is recorded runs as a skipped subtest.
 //
 // ref: decision 0016, report 30
 //

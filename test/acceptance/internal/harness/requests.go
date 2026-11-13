@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gopkg.in/yaml.v3"
 
@@ -280,6 +281,24 @@ func IsProblem(resp Response, what, code, slug string) error {
 
 // Literal quotes s for SQL.
 func Literal(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
+
+// Row scans the one row query answers on the scenario's database, with
+// args, into dest.
+func (w *World) Row(ctx context.Context, query string, args []any, dest ...any) error {
+	db, err := w.Database(ctx)
+	if err != nil {
+		return err
+	}
+	conn, err := pgx.Connect(ctx, db.DSN)
+	if err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+	defer conn.Close(context.WithoutCancel(ctx))
+	if err := conn.QueryRow(ctx, query, args...).Scan(dest...); err != nil {
+		return fmt.Errorf("%w: %s: %w", ErrStep, query, err)
+	}
+	return nil
+}
 
 // Query runs sql on the scenario's database and returns psql's output.
 func (w *World) Query(ctx context.Context, sql string) (string, error) {

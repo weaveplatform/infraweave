@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"fmt"
 	"maps"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
@@ -43,6 +45,10 @@ type World struct {
 	// Tokens are the scenario's named API tokens, and IDs the names a
 	// request's {name} resolves to: IDs, clone URLs and kept commits.
 	Tokens, IDs map[string]string
+	// Keys are the private keys of the scenario's certificate signing
+	// requests, by the name each request is kept as: the pool keys its
+	// workers register and open run specifications with.
+	Keys map[string]crypto.Signer
 	// Answers are the bodies of the answers to SendAs, by the request's
 	// method and path.
 	Answers map[string][][]byte
@@ -59,6 +65,12 @@ type World struct {
 	// reach, which the scenario's tags start, in the order their
 	// certificates join vcs.ca_file.
 	Fakes []Fake
+	// Bucket is an @objectstore scenario's bucket in the shared RustFS,
+	// which every server of the scenario keeps its objects in.
+	Bucket string
+	// env is what every process mode of the scenario runs with beyond
+	// the test binary's environment: the object store's keys.
+	env []string
 }
 
 var nonWord = regexp.MustCompile(`[^a-z0-9]+`)
@@ -152,7 +164,46 @@ func (w *World) StartServer(ctx context.Context, settings map[string]any) (*Serv
 	if config, err = w.vcs(ctx, config); err != nil {
 		return nil, err
 	}
+	if config, err = w.objectStore(ctx, config); err != nil {
+		return nil, err
+	}
 	return w.Launch(ctx, "all", config)
+}
+
+// objectStore is config with, for an @objectstore scenario, the s3 driver
+// on the scenario's Bucket, which it creates on first use, and the
+// store's keys in the environment its servers start with, where the
+// driver reads them. Every other scenario keeps the fs driver under
+// Objects.
+//
+// ref: decision 0016
+func (w *World) objectStore(ctx context.Context, config []byte) ([]byte, error) {
+	if !slices.Contains(w.Tags, "@objectstore") {
+		return config, nil
+	}
+	store, err := w.Suite.Deps.ObjectStore(ctx)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // names @objectstore
+	}
+	if w.Bucket == "" {
+		name := "scenario-" + strconv.FormatInt(w.Suite.Deps.Serial(), 10)
+		if err := store.Bucket(ctx, name); err != nil {
+			return nil, err //nolint:wrapcheck // names @objectstore
+		}
+		w.Bucket = name
+	}
+	w.env = []string{
+		"AWS_ACCESS_KEY_ID=" + store.AccessKey,
+		"AWS_SECRET_ACCESS_KEY=" + store.SecretKey,
+		"AWS_EC2_METADATA_DISABLED=true",
+	}
+	return withSection(config, "objectstore", map[string]any{
+		"driver": "s3",
+		"s3": map[string]any{
+			"bucket": w.Bucket, "endpoint": store.Endpoint, "region": deps.ObjectStoreRegion,
+			"path_style": true,
+		},
+	})
 }
 
 // Fake is a stand-in for a service the scenario's servers reach, which
@@ -215,7 +266,7 @@ func (w *World) Launch(ctx context.Context, mode string, config []byte) (*Server
 			return nil, fmt.Errorf("server dir: %w", err)
 		}
 	}
-	srv, err := StartServer(ctx, bin, dir, w.Suite.CoverDir, mode, config)
+	srv, err := start(ctx, bin, dir, w.Suite.CoverDir, mode, config, w.env)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package workers
 
 import (
 	"context"
-	"crypto"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -40,10 +39,7 @@ type launcherSteps struct {
 	w *harness.World
 	// label names the scenario's forwarder and run containers, which its
 	// end removes.
-	label string
-	// keys are the pool keys by the name of their request, which the
-	// worker steps make.
-	keys      map[string]crypto.Signer
+	label     string
 	relay     *harness.Relay
 	network   string
 	launchers map[string]*launcher
@@ -121,7 +117,7 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 	if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o750); err != nil {
 		return fmt.Errorf("launcher dir: %w", err)
 	}
-	key, err := x509.MarshalPKCS8PrivateKey(l.keys[csr])
+	key, err := x509.MarshalPKCS8PrivateKey(l.w.Keys[csr])
 	if err != nil {
 		return fmt.Errorf("%w: the key of %q: %w", harness.ErrStep, csr, err)
 	}

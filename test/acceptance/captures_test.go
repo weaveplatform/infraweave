@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -48,6 +50,15 @@ func captureEntries(t *testing.T) map[string]bool {
 		t.Fatal("the register has no capture records")
 	}
 	return out
+}
+
+// awaited are the captures a feature stands in for until each is
+// recorded, by the feature that asserts the choices made meanwhile.
+// TestAccCaptures runs each one missing from the fixtures as a skipped
+// subtest, so a run names what it still waits for.
+var awaited = map[string]string{
+	"C105": "state/backend.feature",
+	"C111": "state/backend.feature",
 }
 
 // TestAccCaptures replays every capture's calls against infraweave serve on
@@ -99,7 +110,9 @@ func TestAccCaptures(t *testing.T) {
 		t.Fatal(err)
 	}
 	real := 0
+	recorded := map[string]bool{}
 	for _, c := range captures {
+		recorded[c.ID] = true
 		if !c.Meta.Example {
 			real++
 		}
@@ -111,7 +124,28 @@ func TestAccCaptures(t *testing.T) {
 			}
 		})
 	}
+	for _, id := range slices.Sorted(maps.Keys(awaited)) {
+		if !recorded[id] {
+			t.Run(id, func(t *testing.T) {
+				t.Skipf("not recorded; %s asserts the choices made until it is", awaited[id])
+			})
+		}
+	}
 	t.Logf("replayed %d captures and the example", real)
+}
+
+// TestUnitAwaitedCaptures holds each awaited capture to a capture record
+// of the register and a feature that exists.
+func TestUnitAwaitedCaptures(t *testing.T) {
+	entries := captureEntries(t)
+	for id, feature := range awaited {
+		if !entries[id] {
+			t.Errorf("%s is no capture record of the register", id)
+		}
+		if _, err := os.Stat(filepath.Join("features", feature)); err != nil {
+			t.Errorf("%s awaits with %s: %v", id, feature, err)
+		}
+	}
 }
 
 // TestUnitCaptureRedaction holds the checked-in fixtures, and planted leaks

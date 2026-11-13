@@ -72,7 +72,7 @@ func (w *workerSteps) sealed(csr, name, want string) error {
 	if err != nil {
 		return err
 	}
-	key, ok := w.keys[csr].(*ecdsa.PrivateKey)
+	key, ok := w.w.Keys[csr].(*ecdsa.PrivateKey)
 	if !ok {
 		return fmt.Errorf("%w: no P-256 key of %q", harness.ErrStep, csr)
 	}
