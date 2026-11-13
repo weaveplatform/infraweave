@@ -7,10 +7,11 @@ import (
 )
 
 // pinned is an image reference deps-refresh.yml can move: a release tag,
-// GitLab's carrying its edition, or a beta or release candidate of a
-// major, and the digest of the image's multi-platform index.
+// GitLab's carrying its edition and Spacelift's a v and its rebuild's date,
+// or a beta or release candidate of a major, and the digest of the image's
+// multi-platform index.
 var pinned = regexp.MustCompile(
-	`^[a-z0-9./-]+:(\d+)(?:[0-9.]*(?:-ce\.0)?|(?:beta|rc)\d+)@sha256:[0-9a-f]{64}$`,
+	`^[a-z0-9./-]+:v?(\d+)(?:[0-9.]*(?:-ce\.0|_\d{8})?|(?:beta|rc)\d+)@sha256:[0-9a-f]{64}$`,
 )
 
 // TestUnitImagesPinned checks every image is pinned by digest, and that each
@@ -30,6 +31,7 @@ func TestUnitImagesPinned(t *testing.T) {
 		{"ImageMoto", ImageMoto, ""},
 		{"ImageBitbucketDC", ImageBitbucketDC, ""},
 		{"ImageGitLabCE", ImageGitLabCE, ""},
+		{"ImageSpaceliftRunnerTerraform", ImageSpaceliftRunnerTerraform, ""},
 	} {
 		m := pinned.FindStringSubmatch(tc.image)
 		switch {

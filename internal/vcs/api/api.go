@@ -42,8 +42,9 @@ type Sources interface {
 		stack kernel.ULID,
 		ref string,
 	) (Commit, error)
-	// SourceURL is the URL a worker fetches commit of acct's stack id
-	// from; the server never proxies a source.
+	// SourceURL is the HTTPS Git URL a worker fetches commit of acct's
+	// stack id from, with Credential's answer as Basic auth; the server
+	// never proxies a source.
 	SourceURL(
 		ctx context.Context,
 		acct kernel.AccountID,

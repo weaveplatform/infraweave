@@ -56,8 +56,9 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			},
 			Stack: workersapi.SpecStack{
 				Slug: "infra", Name: "Infra", Space: "legacy", Repository: "infra",
-				Branch: "main", ProjectRoot: &root, Vendor: "TERRAFORM",
-				VendorConfig: json.RawMessage(`{"version":"1.9"}`),
+				Branch: "main", ProjectRoot: &root, Vendor: "terraform",
+				VendorConfig:                 json.RawMessage(`{"version":"1.9"}`),
+				EnableWellKnownSecretMasking: true,
 			},
 			Commit: workersapi.SpecCommit{
 				Hash: "abc", URL: "https://example.com/abc", Message: "Fix", AuthorName: "Alice",
@@ -66,7 +67,11 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			RuntimeConfig: json.RawMessage(`{"projectRoot":"infra"}`),
 			RunnerImage:   &image,
 			StateBackend:  &workersapi.StateBackend{Path: "/state/v1/stacks/" + run.String()},
-			Hooks:         map[string][]string{"beforeInit": {"echo hi"}},
+			Source: workersapi.SpecSource{
+				Kind: workersapi.SourceGit, URL: "https://git.example.com/a.git", Narrowed: true,
+			},
+			Tool:  &workersapi.SpecTool{Name: "terraform", Version: "1.14.2", Download: true},
+			Hooks: map[string][]string{"beforeInit": {"echo hi"}},
 			Environment: []workersapi.Variable{
 				{Name: "REGION", Value: &value}, {Name: "TOKEN", WriteOnly: true},
 			},
@@ -103,7 +108,8 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		"stack": map[string]any{
 			"id": "infra", "name": "Infra", "space": "legacy", "labels": []any{},
 			"repository": "infra", "branch": "main", "projectRoot": "infra",
-			"vendor": "TERRAFORM", "vendorConfig": map[string]any{"version": "1.9"},
+			"vendor": "terraform", "vendorConfig": map[string]any{"version": "1.9"},
+			"enableWellKnownSecretMasking": true,
 		},
 		"commit": map[string]any{
 			"hash": "abc", "url": "https://example.com/abc", "message": "Fix",
@@ -112,7 +118,11 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		"runtimeConfig": map[string]any{"projectRoot": "infra"},
 		"runnerImage":   "ghcr.io/acme/runner",
 		"stateBackend":  map[string]any{"path": "/state/v1/stacks/" + run.String()},
-		"hooks":         map[string]any{"beforeInit": []any{"echo hi"}},
+		"source": map[string]any{
+			"kind": "git", "url": "https://git.example.com/a.git", "narrowed": true,
+		},
+		"tool":  map[string]any{"name": "terraform", "version": "1.14.2", "download": true},
+		"hooks": map[string]any{"beforeInit": []any{"echo hi"}},
 		"environment": []any{
 			map[string]any{"name": "REGION", "value": "eu", "writeOnly": false},
 			map[string]any{"name": "TOKEN", "writeOnly": true},

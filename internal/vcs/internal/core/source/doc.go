@@ -22,7 +22,9 @@
 // the token. Release enqueues a Revoke job keyed by the run, and Revoked,
 // its handler, revokes each kept token through its integration and
 // forgets it; a token whose integration was deleted is forgotten and
-// expires alone.
+// expires alone. Runs is the Service as the runs domain's
+// runsapi.RunSources: a run's source URL with its credential, and the
+// credential's release.
 //
 // ref: decision 0012 § "Source access for runs"
 //
@@ -36,5 +38,5 @@
 // # Dependencies
 //
 // It imports the standard library, internal/kernel, platform/queue, the
-// stacks api package and the domain's api and port packages. The domain's assembly constructs it.
+// runs and stacks api packages and the domain's api and port packages. The domain's assembly constructs it.
 package source

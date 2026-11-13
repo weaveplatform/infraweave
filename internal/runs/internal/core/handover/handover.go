@@ -17,9 +17,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -60,7 +62,8 @@ type Renderer interface {
 
 // Deps are what a handover reads: the runs' storage, the run's stack, the
 // slugs of its account and the account's spaces, the stack's resolved
-// environment, and the tokens it mints.
+// environment, the tokens it mints, and the version catalogue its tool's
+// release resolves in.
 type Deps struct {
 	Store       Store
 	Stacks      stacksapi.Stacks
@@ -68,6 +71,7 @@ type Deps struct {
 	Accounts    accessapi.Accounts
 	Environment configapi.Environment
 	Tokens      Tokens
+	Catalog     vendorsapi.Catalog
 }
 
 // Service builds the specifications of claimed runs.
@@ -78,14 +82,16 @@ type Service struct {
 	accounts accessapi.Accounts
 	env      configapi.Environment
 	tokens   Tokens
+	catalog  vendorsapi.Catalog
 	exprs    Renderer
+	sources  runsapi.RunSources
 }
 
 // New returns the service over d.
 func New(d Deps) *Service {
 	return &Service{
 		store: d.Store, stacks: d.Stacks, spaces: d.Spaces, accounts: d.Accounts,
-		env: d.Environment, tokens: d.Tokens,
+		env: d.Environment, tokens: d.Tokens, catalog: d.Catalog,
 	}
 }
 
@@ -94,8 +100,16 @@ func New(d Deps) *Service {
 // is bound, a value with a template fails its handover.
 func (s *Service) BindExpressions(r Renderer) { s.exprs = r }
 
+// BindSources binds the vcs domain's run sources, which internal/app
+// constructs after the runs domain. Until they are bound, every handover
+// fails, since no run's worker could fetch its source.
+func (s *Service) BindSources(r runsapi.RunSources) { s.sources = r }
+
 // errNoRenderer is a template to render before BindExpressions.
 var errNoRenderer = errors.New("runs: no expression registry is bound")
+
+// errNoSources is a handover before BindSources.
+var errNoSources = errors.New("runs: no run sources are bound")
 
 // secrets is the document a Handover's Secrets holds, the worker API's
 // RunSpecSecrets.
@@ -105,6 +119,14 @@ type secrets struct {
 	APIToken          string            `json:"apiToken"`
 	APITokenExpiresAt int64             `json:"apiTokenExpiresAt"`
 	ArtifactKey       []byte            `json:"artifactKey"`
+	SourceCredential  *sourceCredential `json:"sourceCredential,omitempty"`
+}
+
+// sourceCredential is RunSpecSecrets' sourceCredential: the source's
+// credential, over git's HTTPS basic auth.
+type sourceCredential struct {
+	Username string `json:"username"`
+	Token    string `json:"token"`
 }
 
 // runtimeConfig is what a handover reads of a trigger's runtime
@@ -170,10 +192,20 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		}
 	}
 	stack := workersapi.SpecStack{
-		Slug: st.Slug, Name: st.Name, Space: slugs[st.Space],
-		Labels: nonNil(labels[r.Stack]), Repository: st.Repository, Branch: st.Branch,
-		ProjectRoot: cmp.Or(rc.ProjectRoot, st.ProjectRoot), Vendor: st.Vendor,
-		VendorConfig: st.VendorConfig,
+		Slug:                         st.Slug,
+		Name:                         st.Name,
+		Space:                        slugs[st.Space],
+		Labels:                       nonNil(labels[r.Stack]),
+		Repository:                   st.Repository,
+		Branch:                       st.Branch,
+		ProjectRoot:                  cmp.Or(rc.ProjectRoot, st.ProjectRoot),
+		Vendor:                       st.Vendor,
+		VendorConfig:                 st.VendorConfig,
+		EnableWellKnownSecretMasking: st.EnableWellKnownSecretMasking,
+	}
+	tool, err := s.tool(ctx, st)
+	if err != nil {
+		return workersapi.Handover{}, err
 	}
 	spec := workersapi.Spec{
 		Run: workersapi.SpecRun{
@@ -189,6 +221,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		},
 		RuntimeConfig: r.RuntimeConfig,
 		RunnerImage:   cmp.Or(rc.RunnerImage, st.RunnerImage),
+		Tool:          tool,
 		Hooks:         resolved.Hooks,
 	}
 	if st.ManagesState {
@@ -196,6 +229,11 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	}
 	sec := secrets{Environment: map[string]string{}, Files: map[string][]byte{}}
 	if err := s.environment(ctx, r, stack, account, resolved.Elements, &spec, &sec); err != nil {
+		return workersapi.Handover{}, err
+	}
+	// The source's token is minted after every check that can refuse the
+	// handover, so one refused for its tool or its environment mints none.
+	if err := s.source(ctx, r, &spec, &sec); err != nil {
 		return workersapi.Handover{}, err
 	}
 	tok, err := s.tokens.InRunToken(ctx, accessapi.InRunRequest{
@@ -210,11 +248,133 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	}
 	sec.APIToken, sec.APITokenExpiresAt = tok.Raw, tok.Expires.Unix()
 	sec.ArtifactKey = key.Reveal()
-	// A document of strings, byte slices and an integer always encodes.
+	// A document of strings, byte slices, an integer and a struct of
+	// strings always encodes.
 	doc, _ := json.Marshal(sec) //nolint:gosec // the secrets, held only sealed to the pool
 	return workersapi.Handover{
 		Account: r.Account, Pool: *r.WorkerPool, Spec: spec, Secrets: crypt.NewValue(doc),
 	}, nil
+}
+
+// source names r's source in spec and seals its credential in sec.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+func (s *Service) source(
+	ctx context.Context,
+	r lifecycle.Run,
+	spec *workersapi.Spec,
+	sec *secrets,
+) error {
+	if s.sources == nil {
+		return errNoSources
+	}
+	src, err := s.sources.Source(ctx, r.Account, r.Stack, r.ID, r.Commit.Hash)
+	if err != nil {
+		return err //nolint:wrapcheck // the vcs domain names the source
+	}
+	spec.Source = workersapi.SpecSource{Kind: workersapi.SourceGit, URL: src.URL}
+	if c := src.Credential; c != nil {
+		spec.Source.Narrowed = c.Narrowed
+		sec.SourceCredential = &sourceCredential{Username: c.Username, Token: string(c.Token)}
+	}
+	return nil
+}
+
+// tools are the infrastructure tool each stack vendor's runs mount: the
+// vendor the catalogue lists its releases under, and the binary the
+// runner calls. A vendor absent here mounts none.
+var tools = map[string]struct {
+	vendor vendorsapi.Vendor
+	binary string
+}{
+	string(vendorsapi.Terraform): {vendorsapi.Terraform, "terraform"},
+	string(vendorsapi.OpenTofu):  {vendorsapi.OpenTofu, "tofu"},
+}
+
+// versionPointer is the stack's top-level version constraint, for both
+// vendors.
+const versionPointer = "/terraformVersion"
+
+// tool is the infrastructure tool st's runs mount, nil for a vendor with
+// none: the catalogue's newest release that st's constraint allows, or
+// its newest when st sets none. A release that does not resolve is a
+// *kernel.Invalid naming the setting the constraint comes from, which
+// the launcher fails the run in preparation with.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+func (s *Service) tool(ctx context.Context, st stacksapi.Settings) (*workersapi.SpecTool, error) {
+	t, ok := tools[st.Vendor]
+	if !ok {
+		return nil, nil //nolint:nilnil // a vendor that mounts no tool
+	}
+	constraints, pointer := constraint(st)
+	version, err := s.version(ctx, t.vendor, constraints)
+	if inv, ok := errors.AsType[*kernel.Invalid](err); ok {
+		return nil, at(inv, pointer)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &workersapi.SpecTool{
+		Name: t.binary, Version: version, Download: !st.SkipVendorBinaryDownload,
+	}, nil
+}
+
+// constraint is st's version constraint and the pointer of the setting
+// it comes from: terraformVersion, which takes precedence as the stack
+// input has it, else the vendor settings' version; nil, at
+// versionPointer, when neither sets one.
+func constraint(st stacksapi.Settings) (*string, string) {
+	if st.TerraformVersion != nil && strings.TrimSpace(*st.TerraformVersion) != "" {
+		return st.TerraformVersion, versionPointer
+	}
+	var c struct {
+		Version *string `json:"version"`
+	}
+	// The stack's write checked its settings, so a document that does not
+	// decode sets no version.
+	if json.Unmarshal(st.VendorConfig, &c) != nil || c.Version == nil ||
+		strings.TrimSpace(*c.Version) == "" {
+		return nil, versionPointer
+	}
+	return c.Version, "/vendorConfig/" + st.Vendor + "/version"
+}
+
+// version is the catalogue's newest release of vendor that constraints
+// allow, or its newest when constraints are nil; a *kernel.Invalid when
+// none is listed.
+func (s *Service) version(
+	ctx context.Context,
+	vendor vendorsapi.Vendor,
+	constraints *string,
+) (string, error) {
+	if constraints != nil {
+		//nolint:wrapcheck // the vendors domain names the read
+		return s.catalog.Effective(ctx, vendor, *constraints)
+	}
+	listed, err := s.catalog.Versions(ctx, vendor)
+	if err != nil {
+		return "", err //nolint:wrapcheck // as above
+	}
+	if len(listed) == 0 {
+		return "", &kernel.Invalid{
+			Detail: fmt.Sprintf("The catalogue lists no %s version.", vendor),
+			Errors: []kernel.FieldError{{
+				Reason:  kernel.ReasonRule,
+				Message: fmt.Sprintf("No %s version is listed to run.", vendor),
+			}},
+		}
+	}
+	return listed[0], nil
+}
+
+// at is inv with each of its errors pointing at pointer.
+func at(inv *kernel.Invalid, pointer string) *kernel.Invalid {
+	out := &kernel.Invalid{Detail: inv.Detail, Errors: slices.Clone(inv.Errors)}
+	for i := range out.Errors {
+		out.Errors[i].Pointer = pointer
+	}
+	return out
 }
 
 // environment fills spec's variables and files from elements and

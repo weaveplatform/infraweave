@@ -11,15 +11,19 @@ Feature: The worker protocol end to end
   launcher. The reap, every 30 seconds, marks a worker unseen for
   worker.offline_after OFFLINE, and deletes one unseen for run.lost_after
   and fails the run it held with the note "worker lost"; a launcher that
-  starts again before then resumes its worker and its run. The home key
-  is space-admin on the account's top space. Stack infra lives in legacy
-  and runs on the pool, in the runner image.
+  starts again before then resumes its worker and its run. The release
+  indexes serve the recorded fixtures, so a run's specification names a
+  Terraform release. The home key is space-admin on the account's top
+  space. Stack infra lives in legacy and runs on the pool, in the runner
+  image.
   ref: decision 0008
   ref: decision 0016
 
   Background:
-    Given two infraweave servers, A and B, on one database, with the settings '{"worker":{"poll_timeout_max":"5s","offline_after":"8s"},"run":{"lost_after":"45s"}}'
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database, with the settings '{"worker":{"poll_timeout_max":"5s","offline_after":"8s"},"run":{"lost_after":"45s"}}'
     And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
     And a certificate signing request for a P-256 key is kept as "csr"
     And a Gitea repository "infra" with the files:
       | main.tf | terraform {} |

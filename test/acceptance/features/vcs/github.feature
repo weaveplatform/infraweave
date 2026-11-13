@@ -5,12 +5,17 @@ Feature: GitHub integrations
   GitHub Enterprise Server, which it registers by their keys or creates
   through a manifest form. The scenarios' GitHub host is an in-process
   fake at {githubHost}, a GitHub Enterprise Server to the servers, with the
-  operator's App installed on acme. The home key is space-admin on the
-  account's top space; the member key holds only the bindings a scenario
-  gives it. Space team inherits from the top space.
+  operator's App installed on acme. A run of a stack on a private
+  repository fetches its source by Git with an installation token minted
+  for that repository alone, which only the specification's sealed part
+  carries; the release indexes serve the recorded fixtures, so the run's
+  specification names a Terraform release. The home key is space-admin on
+  the account's top space; the member key holds only the bindings a
+  scenario gives it. Space team inherits from the top space.
 
   Background:
-    Given two infraweave servers, A and B, on one database
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
     And token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":true,"parentSpace":"acme"}' through A
@@ -158,3 +163,23 @@ Feature: GitHub integrations
     When token "h" sends "POST /api/v1/stacks/infra/set-current-commit" with '{"sha":"{seed}"}' through A
     Then it answers 200
     And the answer tracks the commit kept as "seed" at the branch head kept as "pushed"
+
+  @op:stackCreate @op:runTrigger @case:success
+  Scenario: A run of a stack on a private repository fetches its source by Git with a token sealed for that repository alone
+    Given token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
+    And a commit to "main" of the GitHub repository "acme/infra" is kept as "seed"
+    And a certificate signing request for a P-256 key is kept as "csr"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"{team}","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "pool"
+    And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "cert"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"acme","repository":"infra","branch":"main","provider":"GITHUB","space":"{team}","workerPool":"{pool}"},"manageState":false}' through B
+    And the launcher "l" registers with the key of "csr" and the certificate "cert" through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "READY" through A
+    And token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    Then the answer assigns the run "run", its run token kept as "rt"
+    When token "rt" sends "GET /worker/v1/runs/{run}/spec" through A
+    Then it answers 200
+    And the specification fetches its source by Git from "{githubHost}/acme/infra.git", narrowed
+    And the specification's sealed part opens with the key of "csr" to the source credential of "x-access-token", whose token neither the answer nor a server's log names

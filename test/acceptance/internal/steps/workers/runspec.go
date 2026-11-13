@@ -62,6 +62,79 @@ func (w *workerSteps) variable(name, want string) error {
 	return fmt.Errorf("%w: the specification has no variable %s", harness.ErrStep, name)
 }
 
+// source checks that the last answer, a run's specification, fetches the
+// run's source by Git from url, its {name}s resolved, with a credential
+// narrowed to the repository or not as narrowed says.
+func (w *workerSteps) source(url, narrowed string) error {
+	s, err := w.spec()
+	if err != nil {
+		return err
+	}
+	want := wire.RunSpecSource{Kind: wire.Git, Url: w.w.Resolve(url), Narrowed: narrowed == ""}
+	if s.Source != want {
+		return fmt.Errorf("%w: the source is %+v, want %+v", harness.ErrStep, s.Source, want)
+	}
+	return nil
+}
+
+// tool checks that the last answer, a run's specification, mounts the
+// tool name at version, its {name}s resolved, downloaded unless
+// notDownloaded is set, and masks well-known secrets as masking says.
+func (w *workerSteps) tool(name, version, notDownloaded, masking string) error {
+	s, err := w.spec()
+	if err != nil {
+		return err
+	}
+	want := wire.RunSpecTool{
+		Name: wire.RunSpecToolName(name), Version: w.w.Resolve(version),
+		Download: notDownloaded == "",
+	}
+	if s.Tool == nil || *s.Tool != want ||
+		s.Stack.EnableWellKnownSecretMasking != (masking == "masks") {
+		return fmt.Errorf("%w: the tool is %+v and masking %t, want %+v and %s", harness.ErrStep,
+			s.Tool, s.Stack.EnableWellKnownSecretMasking, want, masking)
+	}
+	return nil
+}
+
+// noCredential checks that the sealed part, opened with the key of csr,
+// holds no source credential.
+func (w *workerSteps) noCredential(csr string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	if c := secrets.SourceCredential; c != nil {
+		return fmt.Errorf("%w: the secrets hold the source credential of %s", harness.ErrStep,
+			c.Username)
+	}
+	return nil
+}
+
+// credential checks that the sealed part, opened with the key of csr,
+// holds a source credential of username whose token neither the clear
+// part nor any server's log names.
+func (w *workerSteps) credential(csr, username string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	c := secrets.SourceCredential
+	if c == nil || c.Username != username || c.Token == "" {
+		return fmt.Errorf("%w: the source credential is %v, want one of %s", harness.ErrStep,
+			c != nil, username)
+	}
+	if bytes.Contains(w.w.Last().Body, []byte(c.Token)) {
+		return fmt.Errorf("%w: the clear part names the source token", harness.ErrStep)
+	}
+	for i, srv := range w.w.Servers {
+		if bytes.Contains(srv.Stdout(), []byte(c.Token)) {
+			return fmt.Errorf("%w: server %d logged the source token", harness.ErrStep, i+1)
+		}
+	}
+	return nil
+}
+
 // sealed opens the last answer's sealed part, a run's specification's,
 // with the private key of the request kept as csr, and checks that it
 // holds the secret name's value want, an in-run API token and a 256-bit

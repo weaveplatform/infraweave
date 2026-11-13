@@ -36,6 +36,7 @@ func (s Server) WorkerRunReport(
 	if d := req.Body.Delta; d != nil {
 		r.Delta = &workersapi.Delta{
 			Add: int(d.Add), Change: int(d.Change), Delete: int(d.Delete), Import: int(d.Import),
+			Move: count(d.Move), Forget: count(d.Forget), Resources: count(d.Resources),
 			Outputs: d.Outputs,
 		}
 	}
@@ -47,6 +48,14 @@ func (s Server) WorkerRunReport(
 		Action: gen.NextStepAction(next.Action), State: string(next.State),
 		StateVersion: next.StateVersion,
 	}}, nil
+}
+
+// count is an optional count, zero when absent.
+func count(n *int32) int {
+	if n == nil {
+		return 0
+	}
+	return int(*n)
 }
 
 // WorkerRunUploadURLs signs an upload URL for each object the worker

@@ -6,11 +6,13 @@ import (
 	"os"
 )
 
-// Every container image the suite starts, pinned by the digest of its
+// Every container image the suite pulls, pinned by the digest of its
 // multi-platform index so a run is repeatable on any host. deps-refresh.yml
 // moves each pin to its image's newest release, a PostgreSQL pin within its
 // major; the tag names the release for a reader, and the digest is what
-// Docker pulls. internal/platform/sql/sqltest runs on the same pins.
+// Docker pulls. internal/platform/sql/sqltest runs on the same pins. The
+// runner images the suite builds pin their base in their Dockerfiles under
+// deploy/images, which Dependabot moves.
 const (
 	// ImagePostgres serves @postgres: PostgreSQL 18, the version floor.
 	//
@@ -66,6 +68,13 @@ const (
 	//
 	// ref: decision 0016
 	ImageGitLabCE = "gitlab/gitlab-ce:19.5.4-ce.0@sha256:fde2dacdec6307a142c3f28bc07c62e534bccf47bc7ffb3a4e81a90e1cf0c5b7"
+	// ImageSpaceliftRunnerTerraform is Spacelift's public Terraform runner
+	// image, a weekly rebuild of a release, which a stack names as its
+	// runner image to show that an image meeting the runner image contract
+	// runs unchanged.
+	//
+	// ref: decision 0008 § "Runner images"
+	ImageSpaceliftRunnerTerraform = "public.ecr.aws/spacelift/runner-terraform:v2.5.1_20261109@sha256:a66ede89510abef9006667af10dce1a9825315490091bba16696c14eafba2c04"
 )
 
 // ErrPostgresEnv marks a PostgresEnv value that names no image.

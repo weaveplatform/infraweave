@@ -39,13 +39,16 @@ func TestAccReportStore(t *testing.T) {
 	if _, err := s.StateAt(ctx, acct, id, 2); !errors.Is(err, lifecycle.ErrNotFound) {
 		t.Errorf("StateAt(2) = %v", err)
 	}
-	if err := s.SetDelta(ctx, run, workersapi.Delta{Add: 1, Import: 4, Outputs: true}); err != nil {
+	if err := s.SetDelta(ctx, run, workersapi.Delta{
+		Add: 1, Import: 4, Move: 2, Forget: 3, Resources: 9, Outputs: true,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	var delta string
 	if err := db.QueryRow(ctx, `SELECT delta::text FROM runs WHERE id = $1`, id).
 		Scan(&delta); err != nil ||
-		delta != `{"add": 1, "change": 0, "delete": 0, "import": 4, "outputs": true}` {
+		delta != `{"add": 1, "move": 2, "change": 0, "delete": 0, "forget": 3, "import": 4, `+
+			`"outputs": true, "resources": 9}` {
 		t.Errorf("the kept delta is %s, %v", delta, err)
 	}
 

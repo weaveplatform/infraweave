@@ -3,8 +3,11 @@
 // the contract's cases and to the vendor's own: it is registered under its
 // Kind; each Case refuses exactly the fields it names, each refusal with a
 // reason clients branch on, a message and a pointer into the settings;
-// and ValidateSettings changes no input and answers the same from many
-// goroutines at once as it does alone.
+// ValidateSettings changes no input and answers the same from many
+// goroutines at once as it does alone; and ParsePlan answers each
+// PlanCase, the contract's and the vendor's recorded plans, with its plan
+// or its error, refuses a plan past plan.MaxSize, and answers the same
+// from many goroutines at once.
 //
 // ref: decision 0016
 //
@@ -14,6 +17,6 @@
 //
 // # Dependencies
 //
-// It imports the standard library, internal/iac and internal/kernel. Each
-// vendor's tests import it.
+// It imports the standard library, internal/iac, its plan package and
+// internal/kernel. Each vendor's tests import it.
 package iactest

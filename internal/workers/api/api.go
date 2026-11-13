@@ -88,9 +88,15 @@ type Spec struct {
 	// StateBackend is the stack's managed state backend, nil when
 	// infraweave does not keep the stack's state.
 	StateBackend *StateBackend
-	Hooks        map[string][]string
-	Environment  []Variable
-	Files        []File
+	// Source is where the run's worker fetches its source, whose
+	// credential is in the secrets.
+	Source SpecSource
+	// Tool is the infrastructure tool the run's launcher mounts, nil for a
+	// vendor with none.
+	Tool        *SpecTool
+	Hooks       map[string][]string
+	Environment []Variable
+	Files       []File
 }
 
 // SpecRun is the run a Spec is for, at the state version its secrets are
@@ -108,16 +114,43 @@ type SpecRun struct {
 
 // SpecStack is a Spec's stack: Slug, and Space as its slug, as the API
 // names them; ProjectRoot is nil for the repository's root.
+// EnableWellKnownSecretMasking turns on the runner's well-known secret
+// patterns.
 type SpecStack struct {
-	Slug         string
-	Name         string
-	Space        string
-	Labels       []string
-	Repository   string
-	Branch       string
-	ProjectRoot  *string
-	Vendor       string
-	VendorConfig json.RawMessage
+	Slug                         string
+	Name                         string
+	Space                        string
+	Labels                       []string
+	Repository                   string
+	Branch                       string
+	ProjectRoot                  *string
+	Vendor                       string
+	VendorConfig                 json.RawMessage
+	EnableWellKnownSecretMasking bool
+}
+
+// SourceGit is a SpecSource's kind for an HTTPS Git URL of the stack's
+// repository, from which the launcher fetches the run's commit.
+const SourceGit = "git"
+
+// SpecSource is where a Spec's worker fetches the run's source: Kind, and
+// URL, which needs the credential in the secrets where one is sealed.
+// Narrowed is whether that credential reads the stack's repository alone.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+type SpecSource struct {
+	Kind     string
+	URL      string
+	Narrowed bool
+}
+
+// SpecTool is the infrastructure tool a Spec's launcher mounts: Name, the
+// binary the runner calls, terraform or tofu; Version, the release; and
+// Download, false when the runner image's own binary runs instead.
+type SpecTool struct {
+	Name     string
+	Version  string
+	Download bool
 }
 
 // StateBackend is a Spec's managed state backend: Path is where the
@@ -220,20 +253,29 @@ type Report struct {
 }
 
 // Delta is what a run's plan changes: the resources it adds, changes in
-// place, deletes and imports, and whether any root module output changes.
+// place, deletes, imports, moves and forgets, whether any root module
+// output changes, and Resources, the state's resource count before the
+// plan. A worker that does not count moves, forgets or resources reports
+// zero.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 type Delta struct {
-	Add     int
-	Change  int
-	Delete  int
-	Import  int
-	Outputs bool
+	Add       int
+	Change    int
+	Delete    int
+	Import    int
+	Move      int
+	Forget    int
+	Resources int
+	Outputs   bool
 }
 
-// Changes reports whether the plan changes any resource or output.
+// Changes reports whether the plan changes any resource or output. A
+// move or a forget changes the state only when applied, so either is a
+// change; Resources counts what the state holds, not what the plan does.
 func (d Delta) Changes() bool {
-	return d.Add > 0 || d.Change > 0 || d.Delete > 0 || d.Import > 0 || d.Outputs
+	return d.Add > 0 || d.Change > 0 || d.Delete > 0 || d.Import > 0 || d.Move > 0 ||
+		d.Forget > 0 || d.Outputs
 }
 
 // Action is what a report's answer tells the worker to do.

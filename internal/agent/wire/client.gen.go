@@ -247,6 +247,39 @@ func (e RunSpecRunType) Valid() bool {
 	}
 }
 
+// Defines values for RunSpecSourceKind.
+const (
+	Git RunSpecSourceKind = "git"
+)
+
+// Valid indicates whether the value is a known member of the RunSpecSourceKind enum.
+func (e RunSpecSourceKind) Valid() bool {
+	switch e {
+	case Git:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunSpecToolName.
+const (
+	Terraform RunSpecToolName = "terraform"
+	Tofu      RunSpecToolName = "tofu"
+)
+
+// Valid indicates whether the value is a known member of the RunSpecToolName enum.
+func (e RunSpecToolName) Valid() bool {
+	switch e {
+	case Terraform:
+		return true
+	case Tofu:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Signal.
 const (
 	Cycle Signal = "cycle"
@@ -416,7 +449,7 @@ type NextStep struct {
 // NextStepAction What the worker does next.
 type NextStepAction string
 
-// PlanDelta What the run's plan changes, which a succeeded report of PLANNING carries and no other report does: the resources it adds, changes, deletes and imports, and whether any output changes.
+// PlanDelta What the run's plan changes, which a succeeded report of PLANNING carries and no other report does: the resources it adds, changes, deletes, imports, moves and forgets, whether any output changes, and how many resources the state held before the plan. An absent move, forget or resources is zero.
 type PlanDelta struct {
 	// Add Resources the plan adds.
 	Add int32 `json:"add"`
@@ -427,11 +460,20 @@ type PlanDelta struct {
 	// Delete Resources the plan deletes.
 	Delete int32 `json:"delete"`
 
+	// Forget Resources the plan removes from the state and leaves in place.
+	Forget *int32 `json:"forget,omitempty"`
+
 	// Import Resources the plan imports.
 	Import int32 `json:"import"`
 
+	// Move Resources the plan moves to another address.
+	Move *int32 `json:"move,omitempty"`
+
 	// Outputs Whether any of the root module's outputs changes.
 	Outputs bool `json:"outputs"`
+
+	// Resources Resources the state held before the plan.
+	Resources *int32 `json:"resources,omitempty"`
 }
 
 // PollRequest The worker's state, which each poll reports.
@@ -541,7 +583,7 @@ type Registration struct {
 
 // RunReport What happened to a phase of the run: it started, succeeded, failed or stopped.
 type RunReport struct {
-	// Delta What the run's plan changes, which a succeeded report of PLANNING carries and no other report does: the resources it adds, changes, deletes and imports, and whether any output changes.
+	// Delta What the run's plan changes, which a succeeded report of PLANNING carries and no other report does: the resources it adds, changes, deletes, imports, moves and forgets, whether any output changes, and how many resources the state held before the plan. An absent move, forget or resources is zero.
 	Delta *PlanDelta `json:"delta,omitempty"`
 
 	// Details What the worker says about the event, such as why a phase failed, which the transition records as its note.
@@ -560,7 +602,7 @@ type RunReport struct {
 // RunReportEvent started names the phase the worker begins; the first, which names the state its preparation leads to, ends the handover. succeeded, failed and stopped name the state the run is in. A launcher whose preparation fails reports failed for the preparing state.
 type RunReportEvent string
 
-// RunSpec What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token and the run's artifact key are in sealed, which only the pool's private key opens.
+// RunSpec What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token, the run's artifact key and the credential that reads the source are in sealed, which only the pool's private key opens.
 type RunSpec struct {
 	// Commit The commit the run works on.
 	Commit RunSpecCommit `json:"commit"`
@@ -586,11 +628,17 @@ type RunSpec struct {
 	// Sealed RunSpecSecrets as JSON, sealed to the pool's P-256 public key: the byte 0x01, an ephemeral P-256 public key (65 bytes, uncompressed), a 12-byte nonce, and the AES-256-GCM ciphertext and tag. The AES-256 key is HKDF-SHA256 of the ECDH shared secret, with an empty salt and the info infraweave/pool-envelope/v1 followed by the ephemeral and the pool public keys. The associated data is 0x01, the run ID's length (uint16, big-endian), the run ID, and run.stateVersion (uint64, big-endian), so the launcher refuses a specification issued for another run or another of its states.
 	Sealed []byte `json:"sealed"`
 
+	// Source Where the worker fetches the run's source, directly from the provider. A credential the URL needs is in sealed as sourceCredential; a repository that needs none has no credential.
+	Source RunSpecSource `json:"source"`
+
 	// Stack The run's stack.
 	Stack RunSpecStack `json:"stack"`
 
 	// StateBackend The stack's managed state backend, present only when infraweave keeps the stack's state. The runner points the infrastructure tool's HTTP backend at it, authenticating with the user name run and the run token as the password.
 	StateBackend *RunSpecStateBackend `json:"stateBackend,omitempty"`
+
+	// Tool The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none.
+	Tool *RunSpecTool `json:"tool,omitempty"`
 }
 
 // RunSpecCommit The commit the run works on.
@@ -684,12 +732,42 @@ type RunSpecSecrets struct {
 
 	// Files Each write-only file's content, by path.
 	Files map[string][]byte `json:"files"`
+
+	// SourceCredential The HTTPS credential that reads the run's source, which the worker presents to source.url. Absent when the repository needs none.
+	SourceCredential *RunSpecSourceCredential `json:"sourceCredential,omitempty"`
+}
+
+// RunSpecSource Where the worker fetches the run's source, directly from the provider. A credential the URL needs is in sealed as sourceCredential; a repository that needs none has no credential.
+type RunSpecSource struct {
+	// Kind git: url is an HTTPS Git URL of the stack's repository, from which the worker fetches commit.hash.
+	Kind RunSpecSourceKind `json:"kind"`
+
+	// Narrowed Whether the credential reads the stack's repository alone and expires when the run ends, rather than being the integration's own token.
+	Narrowed bool `json:"narrowed"`
+
+	// Url The URL the worker fetches from.
+	Url string `json:"url"`
+}
+
+// RunSpecSourceKind git: url is an HTTPS Git URL of the stack's repository, from which the worker fetches commit.hash.
+type RunSpecSourceKind string
+
+// RunSpecSourceCredential The HTTPS credential that reads the run's source, which the worker presents to source.url. Absent when the repository needs none.
+type RunSpecSourceCredential struct {
+	// Token The HTTP Basic password, a token.
+	Token string `json:"token"`
+
+	// Username The HTTP Basic user name.
+	Username string `json:"username"`
 }
 
 // RunSpecStack The run's stack.
 type RunSpecStack struct {
 	// Branch The branch the stack tracks.
 	Branch string `json:"branch"`
+
+	// EnableWellKnownSecretMasking Whether the runner also masks values that match well-known secret patterns, such as cloud access keys and private keys.
+	EnableWellKnownSecretMasking bool `json:"enableWellKnownSecretMasking"`
 
 	// Id The stack's slug.
 	Id string `json:"id"`
@@ -709,7 +787,7 @@ type RunSpecStack struct {
 	// Space The slug of the stack's space.
 	Space string `json:"space"`
 
-	// Vendor The stack's infrastructure tool, such as TERRAFORM.
+	// Vendor The stack's infrastructure tool, such as terraform.
 	Vendor string `json:"vendor"`
 
 	// VendorConfig The tool's settings.
@@ -721,6 +799,21 @@ type RunSpecStateBackend struct {
 	// Path The backend's path, /state/v1/stacks/ followed by the stack's ID, under the server URL the launcher reaches, so the backend answers behind the same relay or private address as this API.
 	Path string `json:"path"`
 }
+
+// RunSpecTool The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none.
+type RunSpecTool struct {
+	// Download Whether the launcher mounts the release; false when the stack runs the runner image's own binary instead.
+	Download bool `json:"download"`
+
+	// Name The binary the runner calls.
+	Name RunSpecToolName `json:"name"`
+
+	// Version The release: the newest the version catalogue lists that meets the stack's version constraint, or the newest it lists when the stack sets none.
+	Version string `json:"version"`
+}
+
+// RunSpecToolName The binary the runner calls.
+type RunSpecToolName string
 
 // RunSpecVariable An environment variable. A write-only variable's value is in sealed, as is that of a variable whose ${{ }} template reads one.
 type RunSpecVariable struct {

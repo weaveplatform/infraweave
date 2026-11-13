@@ -133,8 +133,9 @@ func (f *fakeStacks) last(stack kernel.ULID) (projection, bool) {
 	return w[len(w)-1], true
 }
 
-// fakeSources resolves the commits by SHA and records the runs whose
-// credentials are released; err fails a release.
+// fakeSources resolves the commits by SHA, answers every run's source with
+// none, and records the runs whose credentials are released; err fails a
+// release.
 type fakeSources struct {
 	mu       sync.Mutex
 	commits  map[string]stacksapi.Commit
@@ -154,6 +155,16 @@ func (f *fakeSources) Resolve(
 		return c, nil
 	}
 	return stacksapi.Commit{}, stacksapi.ErrRefNotFound
+}
+
+func (*fakeSources) Source(
+	context.Context,
+	kernel.AccountID,
+	kernel.ULID,
+	kernel.ULID,
+	string,
+) (runsapi.Source, error) {
+	return runsapi.Source{}, nil
 }
 
 func (f *fakeSources) Release(_ context.Context, _ kernel.AccountID, run kernel.ULID) error {

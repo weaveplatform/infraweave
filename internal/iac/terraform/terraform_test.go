@@ -12,6 +12,10 @@ func TestUnitContract(t *testing.T) {
 	if !ok {
 		t.Fatal("terraform is not registered")
 	}
+	plans, err := iactest.Recorded("../plan/testdata/terraform")
+	if err != nil {
+		t.Fatal(err)
+	}
 	iactest.Run(t, v, []iactest.Case{
 		{Name: "every setting", Settings: `{"version": "~> 1.5.0", "workflowTool": "TERRAFORM_FOSS",
 			"workspace": "prod-eu", "externalStateAccessEnabled": true, "useSmartSanitization": false}`},
@@ -51,5 +55,5 @@ func TestUnitContract(t *testing.T) {
 			Settings: `{"externalStateAccessEnabled": "true", "useSmartSanitization": 1}`,
 			Refused:  []string{"/externalStateAccessEnabled", "/useSmartSanitization"},
 		},
-	})
+	}, plans...)
 }

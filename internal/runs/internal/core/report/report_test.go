@@ -477,6 +477,24 @@ func TestUnitPlanDecision(t *testing.T) {
 			stacksapi.Settings{},
 			kernel.RunStateUnconfirmed, workersapi.ActionPause,
 		},
+		"tracked, moves alone": {
+			kernel.RunTypeTracked,
+			workersapi.Delta{Move: 1, Resources: 4},
+			stacksapi.Settings{},
+			kernel.RunStateUnconfirmed, workersapi.ActionPause,
+		},
+		"tracked, forgets alone": {
+			kernel.RunTypeTracked,
+			workersapi.Delta{Forget: 1},
+			auto,
+			kernel.RunStateApplying, workersapi.ActionExecute,
+		},
+		"tracked, resources alone": {
+			kernel.RunTypeTracked,
+			workersapi.Delta{Resources: 9},
+			auto,
+			kernel.RunStateFinished, workersapi.ActionExit,
+		},
 		"tracked, changes, locked": {
 			kernel.RunTypeTracked,
 			workersapi.Delta{Change: 1},

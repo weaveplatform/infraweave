@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/azuredevops"
@@ -243,6 +244,11 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 
 // Sources resolves the commits of a stack's repository for other domains.
 func (d *Domain) Sources() vcsapi.Sources { return d.sources }
+
+// RunSources answers a run's source at its handover and releases its
+// credentials at its end, the runsapi.RunSources internal/app binds in
+// the runs domain.
+func (d *Domain) RunSources() runsapi.RunSources { return source.Runs{Service: d.sources} }
 
 // StackSources resolves a stack's refs for the stacks domain's commit
 // operations, which internal/app binds there.
