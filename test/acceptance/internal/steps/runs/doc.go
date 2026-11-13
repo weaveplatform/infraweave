@@ -1,6 +1,9 @@
 // Package runs holds the acceptance steps of features/runs: the run
-// queue, the scheduling of runs, and a run's logs, which it writes as a
-// worker does and reads back.
+// queue, the scheduling of runs, a run's logs, which it writes as a
+// worker does and reads back, local previews, whose workspace archives
+// it builds, uploads and reads back from a run's specification, and a
+// run's changes, whose document it writes from internal/iac's recorded
+// plans and seals and commits as a worker does.
 //
 // # Input and output
 //
@@ -10,6 +13,6 @@
 //
 // # Dependencies
 //
-// It builds on harness.World, and test/deps's Eventually for what settles
-// after an answer.
+// It builds on harness.World, test/deps's Eventually for what settles
+// after an answer, internal/iac/plan and platform/seal.
 package runs

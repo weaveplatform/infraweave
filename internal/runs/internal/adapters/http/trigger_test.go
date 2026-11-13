@@ -60,6 +60,7 @@ func TestUnitTriggerErrors(t *testing.T) {
 		{&lifecycle.Locked{By: "bob"}, http.StatusForbidden, "forbidden"},
 		{lifecycle.ErrDisabled, http.StatusConflict, "invalid-state"},
 		{trigger.ErrNoCommit, http.StatusConflict, "invalid-state"},
+		{trigger.ErrLocalPreview, http.StatusForbidden, "forbidden"},
 		{stacksapi.ErrNotFound, http.StatusNotFound, "not-found"},
 		{read.ErrNotFound, http.StatusNotFound, "not-found"},
 		{control.ErrBlocking, http.StatusForbidden, "forbidden"},
@@ -120,9 +121,17 @@ func TestUnitTriggerRun(t *testing.T) {
 // TestUnitTriggerRefusals answers a request with no principal 401, and a
 // body the trigger refuses before it runs with its problem.
 func TestUnitTriggerRefusals(t *testing.T) {
-	s := New(nil, nil, nil, nil)
+	s := New(nil, nil, nil, nil, nil)
 	if _, err := s.RunTrigger(context.Background(), api.RunTriggerRequestObject{}); err == nil {
 		t.Error("a request with no principal passed")
+	}
+	if _, err := s.UploadLocalWorkspace(context.Background(),
+		api.UploadLocalWorkspaceRequestObject{}); err == nil {
+		t.Error("an upload with no principal passed")
+	}
+	if _, err := s.RunProposeLocalWorkspace(context.Background(),
+		api.RunProposeLocalWorkspaceRequestObject{}); err == nil {
+		t.Error("a proposal with no principal passed")
 	}
 	yaml, image := "version: 1", "custom"
 	ctx := kernel.WithPrincipal(context.Background(), kernel.Principal{})

@@ -16,7 +16,7 @@ import (
 // and an end before start or more than eight days after it, naming the
 // parameter.
 func TestUnitRunsInRange(t *testing.T) {
-	s := New(nil, nil, nil, nil)
+	s := New(nil, nil, nil, nil, nil)
 	for _, c := range []struct {
 		start, end, pointer, reason string
 	}{
@@ -41,7 +41,7 @@ func TestUnitRunsInRange(t *testing.T) {
 // below zero or beside a cursor, and a log's token that does not decode
 // or belongs to another run, state or state version, before any read.
 func TestUnitRunsRefusals(t *testing.T) {
-	s := New(nil, nil, nil, nil)
+	s := New(nil, nil, nil, nil, nil)
 	bg := context.Background()
 	for name, err := range map[string]error{
 		"Run":       second(s.Run(bg, api.RunRequestObject{})),
@@ -60,6 +60,8 @@ func TestUnitRunsRefusals(t *testing.T) {
 		"RunDiscard":     second(s.RunDiscard(bg, api.RunDiscardRequestObject{})),
 		"RunPrioritySet": second(s.RunPrioritySet(bg, api.RunPrioritySetRequestObject{})),
 		"RunLogs":        second(s.RunLogs(bg, api.RunLogsRequestObject{})),
+		"RunChangesV2":   second(s.RunChangesV2(bg, api.RunChangesV2RequestObject{})),
+		"RunChangesV3":   second(s.RunChangesV3(bg, api.RunChangesV3RequestObject{})),
 		"RunLogsDownloadURL": second(s.RunLogsDownloadURL(bg,
 			api.RunLogsDownloadURLRequestObject{})),
 	} {

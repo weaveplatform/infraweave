@@ -3,6 +3,7 @@ package workers
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -164,6 +165,22 @@ func (w *workerSteps) inRun(csr, name string) error {
 		return fmt.Errorf("%w: the sealed part holds no in-run API token", harness.ErrStep)
 	}
 	w.w.Tokens[name] = secrets.ApiToken
+	return nil
+}
+
+// artifactKey keeps, in hex, the run's artifact key from the last
+// answer's sealed part, opened with the private key of the request kept
+// as csr, as name, for a step that seals the run's artifacts to name.
+func (w *workerSteps) artifactKey(csr, name string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	if len(secrets.ArtifactKey) != 32 {
+		return fmt.Errorf("%w: the sealed part's artifact key is %d bytes", harness.ErrStep,
+			len(secrets.ArtifactKey))
+	}
+	w.w.IDs[name] = hex.EncodeToString(secrets.ArtifactKey)
 	return nil
 }
 

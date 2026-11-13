@@ -762,6 +762,14 @@ func (UnimplementedStrict) Run(context.Context, RunRequestObject) (RunResponseOb
 	return nil, &problem.NotImplementedError{OperationID: "run", Route: "GET /runs/{runId}"}
 }
 
+func (UnimplementedStrict) RunChangesV2(context.Context, RunChangesV2RequestObject) (RunChangesV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runChangesV2", Route: "GET /runs/{runId}/changes-v2"}
+}
+
+func (UnimplementedStrict) RunChangesV3(context.Context, RunChangesV3RequestObject) (RunChangesV3ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runChangesV3", Route: "GET /runs/{runId}/changes-v3"}
+}
+
 func (UnimplementedStrict) RunLogs(context.Context, RunLogsRequestObject) (RunLogsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runLogs", Route: "GET /runs/{runId}/logs"}
 }
@@ -1006,6 +1014,10 @@ func (UnimplementedStrict) StackEntity(context.Context, StackEntityRequestObject
 	return nil, &problem.NotImplementedError{OperationID: "stackEntity", Route: "GET /stacks/{stackId}/entity"}
 }
 
+func (UnimplementedStrict) UploadLocalWorkspace(context.Context, UploadLocalWorkspaceRequestObject) (UploadLocalWorkspaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "uploadLocalWorkspace", Route: "POST /stacks/{stackId}/local-workspace-uploads"}
+}
+
 func (UnimplementedStrict) StackLock(context.Context, StackLockRequestObject) (StackLockResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackLock", Route: "POST /stacks/{stackId}/lock"}
 }
@@ -1068,6 +1080,10 @@ func (UnimplementedStrict) RunConfirm(context.Context, RunConfirmRequestObject) 
 
 func (UnimplementedStrict) RunDiscard(context.Context, RunDiscardRequestObject) (RunDiscardResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runDiscard", Route: "POST /stacks/{stackId}/runs/discard"}
+}
+
+func (UnimplementedStrict) RunProposeLocalWorkspace(context.Context, RunProposeLocalWorkspaceRequestObject) (RunProposeLocalWorkspaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runProposeLocalWorkspace", Route: "POST /stacks/{stackId}/runs/propose-local-workspace"}
 }
 
 func (UnimplementedStrict) RunCancel(context.Context, RunCancelRequestObject) (RunCancelResponseObject, error) {

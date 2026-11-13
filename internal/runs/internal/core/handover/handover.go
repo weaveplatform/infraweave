@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -60,10 +61,16 @@ type Renderer interface {
 	Evaluate(ctx context.Context, req expr.Request, in expr.Input) (expr.Result, error)
 }
 
+// Objects signs the GET of a live object; blobs.Objects is one.
+type Objects interface {
+	SignGet(ctx context.Context, store objectstore.Name, key string) (objectstore.Signed, error)
+}
+
 // Deps are what a handover reads: the runs' storage, the run's stack, the
 // slugs of its account and the account's spaces, the stack's resolved
-// environment, the tokens it mints, and the version catalogue its tool's
-// release resolves in.
+// environment, the tokens it mints, the version catalogue its tool's
+// release resolves in, and the objects a local preview's workspace is
+// signed from.
 type Deps struct {
 	Store       Store
 	Stacks      stacksapi.Stacks
@@ -72,6 +79,7 @@ type Deps struct {
 	Environment configapi.Environment
 	Tokens      Tokens
 	Catalog     vendorsapi.Catalog
+	Objects     Objects
 }
 
 // Service builds the specifications of claimed runs.
@@ -83,6 +91,7 @@ type Service struct {
 	env      configapi.Environment
 	tokens   Tokens
 	catalog  vendorsapi.Catalog
+	objects  Objects
 	exprs    Renderer
 	sources  runsapi.RunSources
 }
@@ -91,7 +100,7 @@ type Service struct {
 func New(d Deps) *Service {
 	return &Service{
 		store: d.Store, stacks: d.Stacks, spaces: d.Spaces, accounts: d.Accounts,
-		env: d.Environment, tokens: d.Tokens, catalog: d.Catalog,
+		env: d.Environment, tokens: d.Tokens, catalog: d.Catalog, objects: d.Objects,
 	}
 }
 
@@ -256,7 +265,9 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	}, nil
 }
 
-// source names r's source in spec and seals its credential in sec.
+// source names r's source in spec and seals its credential in sec: a
+// local preview's uploaded archive, which a signed GET reads with no
+// credential, or the commit of the stack's repository.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 func (s *Service) source(
@@ -265,6 +276,17 @@ func (s *Service) source(
 	spec *workersapi.Spec,
 	sec *secrets,
 ) error {
+	if r.LocalPreview() {
+		signed, err := s.objects.SignGet(ctx, objectstore.Uploads, r.LocalWorkspace)
+		if errors.Is(err, objectstore.ErrNotFound) {
+			return &kernel.Invalid{Detail: "The run's local workspace has expired."}
+		}
+		if err != nil {
+			return err //nolint:wrapcheck // blobs names the object
+		}
+		spec.Source = workersapi.SpecSource{Kind: workersapi.SourceArchive, URL: signed.URL}
+		return nil
+	}
 	if s.sources == nil {
 		return errNoSources
 	}
@@ -521,7 +543,7 @@ func own(r lifecycle.Run, stack workersapi.SpecStack, account string) []workersa
 		"account_name":      account,
 		"commit_branch":     r.Commit.Branch,
 		"commit_sha":        r.Commit.Hash,
-		"local_preview":     strconv.FormatBool(r.LocalPreview),
+		"local_preview":     strconv.FormatBool(r.LocalPreview()),
 		"project_root":      root,
 		"repository":        stack.Repository,
 		"run_id":            r.ID.String(),

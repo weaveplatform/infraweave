@@ -313,8 +313,6 @@
       "searchManagedEntitiesGroupByTypes"
     ],
     "Runs": [
-      "runChangesV2",
-      "runChangesV3",
       "runComment",
       "runCpuProfileDownloadURL",
       "runDiscardAll",
@@ -325,7 +323,6 @@
       "runPluginLogsDownloadURL",
       "runPolicyReceiptSample",
       "runPromote",
-      "runProposeLocalWorkspace",
       "runResourceCreate",
       "runRetry",
       "runReview",
@@ -335,8 +332,7 @@
       "runTargetedReplan",
       "runTraceSpans",
       "runTriggerBatch",
-      "runWorkerMetrics",
-      "uploadLocalWorkspace"
+      "runWorkerMetrics"
     ],
     "SSO": [
       "createOauthClientForSCIM",

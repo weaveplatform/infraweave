@@ -25,7 +25,8 @@
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, the machine, internal/kernel,
-// platform/outbox, platform/queue and platform/tx. The runs domain's
+// It imports runsapi, stacksapi, workersapi for a run's delta, the
+// machine, internal/kernel, platform/outbox, platform/queue and
+// platform/tx. The runs domain's
 // assembly constructs it over the domain's pg adapter.
 package lifecycle

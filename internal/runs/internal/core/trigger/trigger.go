@@ -18,12 +18,14 @@ import (
 // tracks none and whose branch head is not known yet.
 var ErrNoCommit = errors.New("runs: the stack tracks no commit")
 
-// Deps are what the trigger reads and writes through.
+// Deps are what the trigger reads and writes through, with the objects
+// local workspaces are uploaded to.
 type Deps struct {
 	DB        tx.Beginner
 	Stacks    stacksapi.Stacks
 	Lifecycle *lifecycle.Lifecycle
 	Views     *read.Service
+	Objects   Objects
 }
 
 // Service triggers runs on a stack.

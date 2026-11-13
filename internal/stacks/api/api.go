@@ -81,7 +81,8 @@ type Commit struct {
 // whether infraweave keeps the stack's state, which its creation decides
 // once. EnableWellKnownSecretMasking turns on the runner's well-known
 // secret patterns, and SkipVendorBinaryDownload runs the image's own
-// tool rather than the one the launcher mounts. Version counts the
+// tool rather than the one the launcher mounts. LocalPreviewEnabled lets
+// runs be proposed on uploaded local workspaces. Version counts the
 // stack's writes, which SetTracked is not.
 type Settings struct {
 	Stack
@@ -106,6 +107,7 @@ type Settings struct {
 	Autodeploy                   bool
 	Autoretry                    bool
 	Disabled                     bool
+	LocalPreviewEnabled          bool
 	Lock                         *Lock
 	TrackedBranchHead            *Commit
 	TrackedCommit                *Commit

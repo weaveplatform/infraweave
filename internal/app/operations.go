@@ -96,6 +96,11 @@ type Operation struct {
 	// handler decodes leniently. A PATCH beside an update PUT checks its
 	// merge patch against patchSchema of the PUT's input.
 	Body *openapi3.RequestBody
+	// Query is the operation's query parameters that carry a JSON object
+	// whose schema sets additionalProperties: false, such as a search's
+	// input, which strictQueries checks before the handler as
+	// strictBodies checks a body; empty for every other operation.
+	Query openapi3.Parameters
 	// Gate is the operation's x-infraweave-feature, a capability of the
 	// catalogue, and the options its request body's properties name.
 	Gate featuresapi.Gate
@@ -170,6 +175,7 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				Organization:      org,
 				OrganizationAdmin: admin,
 				Body:              strictBody(body),
+				Query:             strictQuery(op),
 				Gate:              gate,
 				Required:          required,
 			}
@@ -202,6 +208,7 @@ func workerOperationsOf(doc *openapi3.T, base string) (Operations, error) {
 				Worker: true,
 				Runner: runToken(op.Security),
 				Body:   strictBody(mediaOf(op)),
+				Query:  strictQuery(op),
 			}
 		}
 	}
@@ -324,6 +331,25 @@ func strictBody(mt *bodyMedia) *openapi3.RequestBody {
 		Required: mt.required,
 		Content:  openapi3.Content{mt.typ: &mt.MediaType},
 	}
+}
+
+// strictQuery is op's query parameters that carry a JSON object whose
+// schema forbids properties it does not name.
+func strictQuery(op *openapi3.Operation) openapi3.Parameters {
+	var out openapi3.Parameters
+	for _, p := range op.Parameters {
+		if p.Value == nil || p.Value.In != openapi3.ParameterInQuery {
+			continue
+		}
+		mt := p.Value.Content.Get(jsonType)
+		if mt == nil || mt.Schema == nil || mt.Schema.Value == nil {
+			continue
+		}
+		if ap := mt.Schema.Value.AdditionalProperties.Has; ap != nil && !*ap {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // The media types of the API's request bodies: JSON, and a JSON Merge
@@ -630,6 +656,10 @@ func Guarded(
 				op, ok := resolve(req)
 				return ok && !op.Search && !op.Worker && !op.State
 			}, log),
+		strictQueries(func(req *http.Request) openapi3.Parameters {
+			op, _ := resolve(req)
+			return op.Query
+		}),
 		strictBodies(func(req *http.Request) *openapi3.RequestBody {
 			op, _ := resolve(req)
 			return op.Body
@@ -710,7 +740,7 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 			}
 			in := &openapi3filter.RequestValidationInput{Request: r, Options: opts}
 			if err := openapi3filter.ValidateRequestBody(r.Context(), in, rb); err != nil {
-				bodyError(w, r, err)
+				strictError(w, r, err, "", "The body sets a field its schema does not name.")
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -718,13 +748,41 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 	}
 }
 
-// bodyError answers a body its schema refuses as invalid-request. A
-// member the schema does not list is named by its pointer, reason
-// unknown-field, so a client finds the misspelt field without parsing
-// the detail. kin-openapi names that member only in its reason's text,
-// which TestUnitStrictBodies pins, so a change to the text fails there
-// rather than silently dropping the pointer.
-func bodyError(w http.ResponseWriter, r *http.Request, err error) {
+// strictQueries checks the JSON object each of a request's strict query
+// parameters carries against its schema, as strictBodies checks a body:
+// 400 invalid-request for an unknown member, a value its enum lacks or a
+// wrong type, before the handler decodes it. An unknown member is named
+// by its pointer under #/query/ and the parameter's name.
+//
+// ref: decision 0022
+func strictQueries(
+	query func(*http.Request) openapi3.Parameters,
+) func(http.Handler) http.Handler {
+	opts := &openapi3filter.Options{SkipSettingDefaults: true}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			in := &openapi3filter.RequestValidationInput{Request: r, Options: opts}
+			for _, p := range query(r) {
+				err := openapi3filter.ValidateParameter(r.Context(), in, p.Value)
+				if err != nil {
+					strictError(w, r, err, "#/query/"+p.Value.Name, fmt.Sprintf(
+						"The query parameter %s sets a field its schema does not name.",
+						p.Value.Name))
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// strictError answers an input its schema refuses as invalid-request. A
+// member the schema does not list is named by its pointer under root,
+// reason unknown-field, with detail, so a client finds the misspelt field
+// without parsing the detail. kin-openapi names that member only in its
+// reason's text, which TestUnitStrictBodies pins, so a change to the text
+// fails there rather than silently dropping the pointer.
+func strictError(w http.ResponseWriter, r *http.Request, err error, root, detail string) {
 	se, ok := errors.AsType[*openapi3.SchemaError](err)
 	if !ok || se.SchemaField != "properties" {
 		problem.RequestError(w, r, err)
@@ -741,11 +799,11 @@ func bodyError(w http.ResponseWriter, r *http.Request, err error) {
 		problem.RequestError(w, r, err)
 		return
 	}
-	at := ""
+	at := root
 	for _, token := range append(se.JSONPointer(), name) {
 		at += "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(token)
 	}
-	p := problem.InvalidRequest.New("The body sets a field its schema does not name.")
+	p := problem.InvalidRequest.New(detail)
 	p.Errors = []problem.FieldError{{
 		Pointer: at, Reason: kernel.ReasonUnknownField,
 		Message: fmt.Sprintf("No field %q here.", name),

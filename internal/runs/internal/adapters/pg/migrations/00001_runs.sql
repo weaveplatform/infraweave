@@ -13,8 +13,9 @@
 -- the login or the trigger that created it; priority is low, normal or
 -- high; runtime_config is the runtime configuration its trigger gave,
 -- which overrides the stack's, and force_apply_mode SINGLE or CASCADE when
--- it applies with no changes. local_preview marks a run proposed from an
--- uploaded local workspace rather than a commit of the repository. delta
+-- it applies with no changes. local_workspace is the key, in the uploads
+-- store, of the local workspace a run proposed from one previews instead
+-- of a commit of the repository, NULL for a run on a commit. delta
 -- is its plan's delta, {add, change, delete, import, move, forget,
 -- resources, outputs}, which the plan decision read, absent until the run
 -- planned.
@@ -42,7 +43,7 @@ CREATE TABLE runs (
     drift_detection  boolean     NOT NULL DEFAULT false,
     runtime_config   jsonb,
     force_apply_mode text,
-    local_preview    boolean     NOT NULL DEFAULT false,
+    local_workspace  text,
     delta            jsonb,
     priority_tier    smallint    NOT NULL DEFAULT 3,
     worker_pool_id   uuid,

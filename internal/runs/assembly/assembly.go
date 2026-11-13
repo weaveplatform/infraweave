@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -89,6 +90,8 @@ const Entity = "run"
 type Objects interface {
 	report.Objects
 	logs.Objects
+	trigger.Objects
+	changes.Objects
 }
 
 // Deps are what the runs domain takes from the platform and the domains
@@ -125,6 +128,7 @@ type Domain struct {
 	handover  *handover.Service
 	reports   *report.Service
 	logs      *logs.Service
+	changes   *changes.Service
 	trigger   *trigger.Service
 	read      *read.Service
 	control   *control.Service
@@ -148,14 +152,15 @@ func New(d Deps) *Domain {
 		liveness: schedule.NewLiveness(store, lc),
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
-			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog,
+			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog, Objects: d.Objects,
 		}),
 		reports: report.New(report.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
 		}),
-		logs: logs.New(logs.Deps{DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs}),
+		logs:    logs.New(logs.Deps{DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs}),
+		changes: changes.New(changes.Deps{Store: store, Objects: d.Objects, Stacks: d.Stacks}),
 		trigger: trigger.New(trigger.Deps{
-			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,
+			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views, Objects: d.Objects,
 		}),
 		read: views,
 		control: control.New(control.Deps{
@@ -298,5 +303,5 @@ func (d *Domain) API() RunsAPI {
 	if d == nil {
 		return RunsAPI{}
 	}
-	return http.New(d.trigger, d.read, d.control, d.logs)
+	return http.New(d.trigger, d.read, d.control, d.logs, d.changes)
 }

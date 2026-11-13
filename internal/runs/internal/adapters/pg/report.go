@@ -13,12 +13,16 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
-var _ report.Store = (*Store)(nil)
+var (
+	_ report.Store  = (*Store)(nil)
+	_ changes.Store = (*Store)(nil)
+)
 
 // StateAt reads the state acct's run entered at state version version;
 // lifecycle.ErrNotFound when it has no such transition.
@@ -144,6 +148,28 @@ func (s *Store) Workspace(ctx context.Context, run lifecycle.Run) (string, bool,
 		return "", false, nil
 	case err != nil:
 		return "", false, fmt.Errorf("runs: read run %s's workspace: %w", run.ID,
+			sql.Unavailable(err))
+	}
+	return key, true, nil
+}
+
+// Changes reads the key of the changes document run recorded last while
+// planning, and false when it recorded none. The state a state version
+// is in is the transition that entered it.
+func (s *Store) Changes(ctx context.Context, run lifecycle.Run) (string, bool, error) {
+	var key string
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT a.object_key FROM run_artifacts a
+		JOIN run_state_transitions t ON t.account_id = a.account_id AND t.run_id = a.run_id
+			AND t.sequence = a.state_version
+		WHERE a.account_id = $1 AND a.run_id = $2 AND a.kind = 'artifact'
+			AND a.name = $3 AND t.state = $4
+		ORDER BY a.state_version DESC LIMIT 1`,
+		run.Account, run.ID, changes.Document, kernel.RunStatePlanning).Scan(&key)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return "", false, nil
+	case err != nil:
+		return "", false, fmt.Errorf("runs: read run %s's changes: %w", run.ID,
 			sql.Unavailable(err))
 	}
 	return key, true, nil

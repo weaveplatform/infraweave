@@ -1186,6 +1186,15 @@
       "why": "A runner writes plain masked lines in chunks and indexes each chunk's first and last write times, so no time is kept per line; which lines Spacelift counts as noise is unpublished",
       "impact": "Lines within two seconds of each other can share a timestamp; a client that expects sanitized lines without leading timestamps or noise reads them as the tool wrote them",
       "source": "[0008 Logs and artifacts](../research/decisions/0008-run-execution-and-worker-protocol.md#logs-and-artifacts)"
+    },
+    {
+      "id": "DV-118",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "`uploadLocalWorkspace` takes only the stack, and its upload URL accepts an archive of any size",
+      "infraweave": "`uploadLocalWorkspace` takes the archive's `size`, at most 2 GiB, and `sha256`, and its upload URL accepts those bytes alone; a proposal on an upload whose object differs is refused",
+      "why": "Every URL infraweave signs for an upload binds a declared size and SHA-256, as the worker API's uploads do, so a client cannot fill the store and a run fetches exactly the archive that was declared; a pre-signed PUT cannot bound a size it is not given",
+      "impact": "A client hashes the archive before it asks for the upload URL",
+      "source": "[0008 The run specification and its secrets](../research/decisions/0008-run-execution-and-worker-protocol.md#the-run-specification-and-its-secrets)"
     }
   ]
 }

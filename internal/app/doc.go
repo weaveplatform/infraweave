@@ -24,11 +24,12 @@
 // answers 403 forbidden to a route the router serves and no operation
 // names and runs the access domain's Requirer on each API operation's
 // x-infraweave-action and x-infraweave-subject, then the operator switch, the rate limits
-// and idempotency keys in front of each route, and last strictBodies, which
-// answers 400 invalid-request to a body its operation's schema refuses,
-// naming a member no strict schema lists by its pointer with reason
-// unknown-field, and checks a PATCH's merge patch against its PUT's input
-// with every member optional and nullable, with each operation's cost
+// and idempotency keys in front of each route, and last strictQueries and
+// strictBodies, which answer 400 invalid-request to a JSON query input or
+// a body its operation's schema refuses, naming a member no strict schema
+// lists by its pointer with reason unknown-field, and check a PATCH's
+// merge patch against its PUT's input with every member optional and
+// nullable, with each operation's cost
 // class read from the embedded spec's x-infraweave-cost, whether it is
 // public from its empty security, and whether it admits a credential of
 // no account from its x-infraweave-access: organization, with the

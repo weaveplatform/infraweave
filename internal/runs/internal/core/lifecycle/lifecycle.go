@@ -15,6 +15,7 @@ import (
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // Errors of Transition and Create. Each refusal is also a typed error
@@ -121,10 +122,12 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // state_version; TriggeredBy is the login or trigger that created it;
 // RuntimeConfig is the runtime configuration its trigger gave, nil for
 // none, and ForceApply SINGLE or CASCADE when it applies with no changes.
-// LocalPreview marks a run proposed from an uploaded local workspace
-// rather than a commit of the repository. WorkerPool is the stack's
+// LocalWorkspace is the uploads store's key of the local workspace a run
+// proposed from one previews instead of a commit of the repository, empty
+// for a run on a commit. WorkerPool is the stack's
 // private pool when the run was created, nil for the public pool, and
-// Worker the worker that last claimed it.
+// Worker the worker that last claimed it. Delta is what its latest plan
+// changes, nil until it plans; the report service keeps it.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -139,12 +142,16 @@ type Run struct {
 	DriftDetection bool
 	RuntimeConfig  json.RawMessage
 	ForceApply     string
-	LocalPreview   bool
+	LocalWorkspace string
 	WorkerPool     *kernel.ULID
 	Worker         *kernel.ULID
+	Delta          *workersapi.Delta
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
+
+// LocalPreview reports whether r previews a local workspace.
+func (r Run) LocalPreview() bool { return r.LocalWorkspace != "" }
 
 // Step is one run_state_transitions row: the state a transition enters,
 // its sequence, the run's new state_version, and who took it. HasLogs is
@@ -171,14 +178,15 @@ type Store interface {
 	Move(ctx context.Context, run Run, step Step) error
 	// Insert writes run with step, its first transition.
 	Insert(ctx context.Context, run Run, step Step) error
-	// Active reads acct's run of stack of type typ on commit hash that has
-	// not ended, the oldest when several have not.
+	// Active reads acct's run of stack of type typ on commit hash and
+	// local workspace workspace, none when empty, that has not ended, the
+	// oldest when several have not.
 	Active(
 		ctx context.Context,
 		acct kernel.AccountID,
 		stack kernel.ULID,
 		typ kernel.RunType,
-		hash string,
+		hash, workspace string,
 	) (Run, bool, error)
 	// Track makes run the tracked run of its stack.
 	Track(ctx context.Context, run Run) error
@@ -313,7 +321,7 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 // NewRun is a run to create: acct's stack, its type, the commit it works
 // on, who creates it, its priority, normal when empty, whether drift
 // detection starts it, its runtime configuration and force-apply mode,
-// whether it previews a local workspace, and a note for its first
+// the local workspace it previews, and a note for its first
 // transition.
 type NewRun struct {
 	Account        kernel.AccountID
@@ -325,13 +333,13 @@ type NewRun struct {
 	DriftDetection bool
 	RuntimeConfig  json.RawMessage
 	ForceApply     string
-	LocalPreview   bool
+	LocalWorkspace string
 	Note           string
 }
 
 // Create creates n's run in QUEUED, T1, in the transaction ctx carries,
-// and reports whether it created one: a run of the stack, type and commit
-// that has not ended is returned instead. It locks the stack's row first,
+// and reports whether it created one: a run of the stack, type, commit
+// and local workspace that has not ended is returned instead. It locks the stack's row first,
 // so two creations of one run wait on each other and a delete of the
 // stack waits for the creation to commit. A disabled stack refuses with
 // ErrDisabled, and a stack locked by another caller with a *Locked.
@@ -358,7 +366,8 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	if st.Lock != nil && st.Lock.Holder != n.Actor.Caller {
 		return Run{}, false, &Locked{By: st.Lock.By}
 	}
-	existing, found, err := l.d.Store.Active(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash)
+	existing, found, err := l.d.Store.Active(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash,
+		n.LocalWorkspace)
 	if err != nil || found {
 		return existing, false, err //nolint:wrapcheck // the store names the read
 	}
@@ -371,7 +380,7 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 		Account: n.Account, ID: kernel.NewULID(), Stack: n.Stack, Type: n.Type,
 		State: kernel.RunStateQueued, Version: 1, StateChangedAt: now, Commit: n.Commit,
 		TriggeredBy: n.Actor.Login, Priority: priority, DriftDetection: n.DriftDetection,
-		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, LocalPreview: n.LocalPreview,
+		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, LocalWorkspace: n.LocalWorkspace,
 		WorkerPool: st.WorkerPool, CreatedAt: now, UpdatedAt: now,
 	}
 	step := Step{
