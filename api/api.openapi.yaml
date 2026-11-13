@@ -13777,6 +13777,132 @@ paths:
         - cursor-pagination
         - rate-limit
       x-rest-style: field
+  /stacks/{stackId}/runs/confirm:
+    post:
+      description: >-
+        Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+      operationId: runConfirm
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              note: Approved
+              run: 01HZX4Y9Q2W8E5R7T3V6K1M0PA
+            schema:
+              $ref: '#/components/schemas/RunConfirmRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runConfirm result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Confirm Run
+      tags:
+        - Runs
+      x-bruno: Runs/Confirm Run.bru
+      x-graphql:
+        field: runConfirm
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_CONFIRM
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:stackId:stack
+      x-rest-style: action
+  /stacks/{stackId}/runs/discard:
+    post:
+      description: >-
+        Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+      operationId: runDiscard
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              note: Discarding run
+              run: 01HZX4Y9Q2W8E5R7T3V6K1M0PA
+            schema:
+              $ref: '#/components/schemas/RunDiscardRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runDiscard result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Discard Run
+      tags:
+        - Runs
+      x-bruno: Runs/Discard Run.bru
+      x-graphql:
+        field: runDiscard
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_DISCARD
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:stackId:stack
+      x-rest-style: action
   /stacks/{stackId}/runs/{runId}/cancel:
     post:
       description: >-
@@ -25281,6 +25407,20 @@ components:
         - username
       type: object
       x-graphql-type: RunComment
+    RunConfirmRequest:
+      additionalProperties: false
+      description: The arguments of runConfirm not carried in the path.
+      properties:
+        note:
+          nullable: true
+          type: string
+        run:
+          description: >-
+            The run to confirm. When absent, the run that holds the stack's lock is confirmed.
+          nullable: true
+          type: string
+      type: object
+      x-graphql-args-of: runConfirm
     RunConnection:
       description: RunConnection represents a single run in a page of searchRuns results.
       properties:
@@ -25322,6 +25462,20 @@ components:
         - state
       type: object
       x-graphql-type: RunDependency
+    RunDiscardRequest:
+      additionalProperties: false
+      description: The arguments of runDiscard not carried in the path.
+      properties:
+        note:
+          nullable: true
+          type: string
+        run:
+          description: >-
+            The run to discard. When absent, the run that holds the stack's lock is discarded.
+          nullable: true
+          type: string
+      type: object
+      x-graphql-args-of: runDiscard
     RunExternalDependency:
       properties:
         completedAt:

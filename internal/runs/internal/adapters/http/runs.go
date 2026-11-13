@@ -303,6 +303,50 @@ func (s Server) RunCancel(
 	return api.RunCancel200JSONResponse{Body: runOf(v)}, nil
 }
 
+// RunConfirm confirms the stack's run waiting for confirmation, the one
+// the body names or else the one that holds the stack's run lock. The
+// route has decided RUN_CONFIRM on the stack's space.
+func (s Server) RunConfirm(
+	ctx context.Context,
+	req api.RunConfirmRequestObject,
+) (api.RunConfirmResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var note, run string
+	if req.Body != nil {
+		note, run = deref(req.Body.Note), deref(req.Body.Run)
+	}
+	v, err := s.control.Confirm(ctx, p, req.StackId, run, note)
+	if err != nil {
+		return nil, runError(err, req.StackId, run)
+	}
+	return api.RunConfirm200JSONResponse{Body: runOf(v)}, nil
+}
+
+// RunDiscard discards the stack's run waiting for confirmation, chosen as
+// RunConfirm chooses it. The route has decided RUN_DISCARD on the stack's
+// space.
+func (s Server) RunDiscard(
+	ctx context.Context,
+	req api.RunDiscardRequestObject,
+) (api.RunDiscardResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var note, run string
+	if req.Body != nil {
+		note, run = deref(req.Body.Note), deref(req.Body.Run)
+	}
+	v, err := s.control.Discard(ctx, p, req.StackId, run, note)
+	if err != nil {
+		return nil, runError(err, req.StackId, run)
+	}
+	return api.RunDiscard200JSONResponse{Body: runOf(v)}, nil
+}
+
 // RunPrioritySet sets the priority of a run of the stack that has not
 // ended. The route has decided RUN_PRIORITIZE_SET on the stack's space.
 func (s Server) RunPrioritySet(

@@ -6272,6 +6272,14 @@ type RunComment struct {
 	Username string `json:"username"`
 }
 
+// RunConfirmRequest The arguments of runConfirm not carried in the path.
+type RunConfirmRequest struct {
+	Note *string `json:"note,omitempty"`
+
+	// Run The run to confirm. When absent, the run that holds the stack's lock is confirmed.
+	Run *string `json:"run,omitempty"`
+}
+
 // RunConnection RunConnection represents a single run in a page of searchRuns results.
 type RunConnection struct {
 	Cursor string `json:"cursor"`
@@ -6301,6 +6309,14 @@ type RunDependency struct {
 
 	// State RunState represents a discrete state of a Run.
 	State RunState `json:"state"`
+}
+
+// RunDiscardRequest The arguments of runDiscard not carried in the path.
+type RunDiscardRequest struct {
+	Note *string `json:"note,omitempty"`
+
+	// Run The run to discard. When absent, the run that holds the stack's lock is discarded.
+	Run *string `json:"run,omitempty"`
 }
 
 // RunExternalDependency defines model for RunExternalDependency.
@@ -11142,6 +11158,18 @@ type StackRunsInRangeParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// RunConfirmParams defines parameters for RunConfirm.
+type RunConfirmParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// RunDiscardParams defines parameters for RunDiscard.
+type RunDiscardParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // RunCancelParams defines parameters for RunCancel.
 type RunCancelParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -11917,6 +11945,12 @@ type ProposeWithOverridesJSONRequestBody = ProposeWithOverridesRequest
 
 // RunTriggerJSONRequestBody defines body for RunTrigger for application/json ContentType.
 type RunTriggerJSONRequestBody = RunTriggerRequest
+
+// RunConfirmJSONRequestBody defines body for RunConfirm for application/json ContentType.
+type RunConfirmJSONRequestBody = RunConfirmRequest
+
+// RunDiscardJSONRequestBody defines body for RunDiscard for application/json ContentType.
+type RunDiscardJSONRequestBody = RunDiscardRequest
 
 // RunCancelJSONRequestBody defines body for RunCancel for application/json ContentType.
 type RunCancelJSONRequestBody = RunCancelRequest
@@ -16824,6 +16858,42 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/runs-in-range (the `StackRunsInRange` operationId).
 	StackRunsInRange(ctx context.Context, stackId string, params *StackRunsInRangeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunConfirmWithBody Confirm Run
+	//
+	// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+	RunConfirmWithBody(ctx context.Context, stackId string, params *RunConfirmParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunConfirm Confirm Run
+	//
+	// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+	RunConfirm(ctx context.Context, stackId string, params *RunConfirmParams, body RunConfirmJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunDiscardWithBody Discard Run
+	//
+	// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+	RunDiscardWithBody(ctx context.Context, stackId string, params *RunDiscardParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunDiscard Discard Run
+	//
+	// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+	RunDiscard(ctx context.Context, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunCancelWithBody Cancel Run
 	//
@@ -24468,6 +24538,82 @@ func (c *Client) RunTrigger(ctx context.Context, stackId string, params *RunTrig
 // Corresponds with GET /stacks/{stackId}/runs-in-range (the `StackRunsInRange` operationId).
 func (c *Client) StackRunsInRange(ctx context.Context, stackId string, params *StackRunsInRangeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackRunsInRangeRequest(c.Server, stackId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunConfirmWithBody Confirm Run
+//
+// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+func (c *Client) RunConfirmWithBody(ctx context.Context, stackId string, params *RunConfirmParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunConfirmRequestWithBody(c.Server, stackId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunConfirm Confirm Run
+//
+// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+func (c *Client) RunConfirm(ctx context.Context, stackId string, params *RunConfirmParams, body RunConfirmJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunConfirmRequest(c.Server, stackId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunDiscardWithBody Discard Run
+//
+// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+func (c *Client) RunDiscardWithBody(ctx context.Context, stackId string, params *RunDiscardParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunDiscardRequestWithBody(c.Server, stackId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunDiscard Discard Run
+//
+// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+func (c *Client) RunDiscard(ctx context.Context, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunDiscardRequest(c.Server, stackId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -40213,6 +40359,130 @@ func NewStackRunsInRangeRequest(server string, stackId string, params *StackRuns
 	return req, nil
 }
 
+// NewRunConfirmRequest calls the generic RunConfirm builder with application/json body
+func NewRunConfirmRequest(server string, stackId string, params *RunConfirmParams, body RunConfirmJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunConfirmRequestWithBody(server, stackId, params, "application/json", bodyReader)
+}
+
+// NewRunConfirmRequestWithBody constructs an http.Request for the RunConfirm method, with any body, and a specified content type
+func NewRunConfirmRequestWithBody(server string, stackId string, params *RunConfirmParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/confirm", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRunDiscardRequest calls the generic RunDiscard builder with application/json body
+func NewRunDiscardRequest(server string, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunDiscardRequestWithBody(server, stackId, params, "application/json", bodyReader)
+}
+
+// NewRunDiscardRequestWithBody constructs an http.Request for the RunDiscard method, with any body, and a specified content type
+func NewRunDiscardRequestWithBody(server string, stackId string, params *RunDiscardParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/discard", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewRunCancelRequest calls the generic RunCancel builder with application/json body
 func NewRunCancelRequest(server string, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -48530,6 +48800,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/runs-in-range (the `StackRunsInRange` operationId).
 	StackRunsInRangeWithResponse(ctx context.Context, stackId string, params *StackRunsInRangeParams, reqEditors ...RequestEditorFn) (*StackRunsInRangeResponse, error)
+
+	// RunConfirmWithBodyWithResponse Confirm Run
+	//
+	// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+	RunConfirmWithBodyWithResponse(ctx context.Context, stackId string, params *RunConfirmParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunConfirmResponse, error)
+
+	// RunConfirmWithResponse Confirm Run
+	//
+	// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+	RunConfirmWithResponse(ctx context.Context, stackId string, params *RunConfirmParams, body RunConfirmJSONRequestBody, reqEditors ...RequestEditorFn) (*RunConfirmResponse, error)
+
+	// RunDiscardWithBodyWithResponse Discard Run
+	//
+	// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+	RunDiscardWithBodyWithResponse(ctx context.Context, stackId string, params *RunDiscardParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunDiscardResponse, error)
+
+	// RunDiscardWithResponse Discard Run
+	//
+	// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+	RunDiscardWithResponse(ctx context.Context, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody, reqEditors ...RequestEditorFn) (*RunDiscardResponse, error)
 
 	// RunCancelWithBodyWithResponse Cancel Run
 	//
@@ -75670,6 +75976,224 @@ func (r StackRunsInRangeResponse) ContentType() string {
 	return ""
 }
 
+// RunConfirmResponse200Headers the declared response headers of an HTTP 200 response for RunConfirm
+type RunConfirmResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunConfirmResponse429Headers the declared response headers of an HTTP 429 response for RunConfirm
+type RunConfirmResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunConfirmResponse503Headers the declared response headers of an HTTP 503 response for RunConfirm
+type RunConfirmResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunConfirmResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunConfirmResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunConfirmResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunConfirmResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunConfirmResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunConfirmResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunConfirmResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunConfirmResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunConfirmResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunConfirmResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunConfirmResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunConfirmResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunConfirmResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunConfirmResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunConfirmResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunDiscardResponse200Headers the declared response headers of an HTTP 200 response for RunDiscard
+type RunDiscardResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunDiscardResponse429Headers the declared response headers of an HTTP 429 response for RunDiscard
+type RunDiscardResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunDiscardResponse503Headers the declared response headers of an HTTP 503 response for RunDiscard
+type RunDiscardResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunDiscardResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunDiscardResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunDiscardResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunDiscardResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunDiscardResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunDiscardResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunDiscardResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunDiscardResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunDiscardResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunDiscardResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunDiscardResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunDiscardResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunDiscardResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunDiscardResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunDiscardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RunCancelResponse200Headers the declared response headers of an HTTP 200 response for RunCancel
 type RunCancelResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -89858,6 +90382,66 @@ func (c *ClientWithResponses) StackRunsInRangeWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseStackRunsInRangeResponse(rsp)
+}
+
+// RunConfirmWithBodyWithResponse Confirm Run
+//
+// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+func (c *ClientWithResponses) RunConfirmWithBodyWithResponse(ctx context.Context, stackId string, params *RunConfirmParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunConfirmResponse, error) {
+	rsp, err := c.RunConfirmWithBody(ctx, stackId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunConfirmResponse(rsp)
+}
+
+// RunConfirmWithResponse Confirm Run
+//
+// Confirm a Run that's waiting for confirmation, so that a worker applies its plan. If the Run ID is not passed, the Run that holds the stack's lock, which blocks the stack's other runs, is confirmed.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/confirm (the `RunConfirm` operationId).
+func (c *ClientWithResponses) RunConfirmWithResponse(ctx context.Context, stackId string, params *RunConfirmParams, body RunConfirmJSONRequestBody, reqEditors ...RequestEditorFn) (*RunConfirmResponse, error) {
+	rsp, err := c.RunConfirm(ctx, stackId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunConfirmResponse(rsp)
+}
+
+// RunDiscardWithBodyWithResponse Discard Run
+//
+// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+func (c *ClientWithResponses) RunDiscardWithBodyWithResponse(ctx context.Context, stackId string, params *RunDiscardParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunDiscardResponse, error) {
+	rsp, err := c.RunDiscardWithBody(ctx, stackId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunDiscardResponse(rsp)
+}
+
+// RunDiscardWithResponse Discard Run
+//
+// Discard a Run that's waiting for confirmation, which ends it without applying its plan and releases the stack's lock. If the Run ID is not passed, the Run that holds the stack's lock is discarded.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
+func (c *ClientWithResponses) RunDiscardWithResponse(ctx context.Context, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody, reqEditors ...RequestEditorFn) (*RunDiscardResponse, error) {
+	rsp, err := c.RunDiscard(ctx, stackId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunDiscardResponse(rsp)
 }
 
 // RunCancelWithBodyWithResponse Cancel Run
@@ -125073,6 +125657,278 @@ func ParseStackRunsInRangeResponse(rsp *http.Response) (*StackRunsInRangeRespons
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackRunsInRangeResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunConfirmResponse parses an HTTP response from a RunConfirmWithResponse call
+func ParseRunConfirmResponse(rsp *http.Response) (*RunConfirmResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunConfirmResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunConfirmResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunConfirmResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunConfirmResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunDiscardResponse parses an HTTP response from a RunDiscardWithResponse call
+func ParseRunDiscardResponse(rsp *http.Response) (*RunDiscardResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunDiscardResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunDiscardResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunDiscardResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunDiscardResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

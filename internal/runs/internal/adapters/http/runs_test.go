@@ -55,6 +55,8 @@ func TestUnitRunsRefusals(t *testing.T) {
 		"SearchRunsSuggestions": second(s.SearchRunsSuggestions(bg,
 			api.SearchRunsSuggestionsRequestObject{Body: &api.SearchSuggestionsInput{}})),
 		"RunCancel":      second(s.RunCancel(bg, api.RunCancelRequestObject{})),
+		"RunConfirm":     second(s.RunConfirm(bg, api.RunConfirmRequestObject{})),
+		"RunDiscard":     second(s.RunDiscard(bg, api.RunDiscardRequestObject{})),
 		"RunPrioritySet": second(s.RunPrioritySet(bg, api.RunPrioritySetRequestObject{})),
 	} {
 		if p, ok := errors.AsType[*problem.Error](err); !ok || p.Problem.Status != 401 {

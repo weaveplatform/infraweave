@@ -111,7 +111,12 @@ func runError(err error, slug, run string) error {
 	case errors.Is(err, control.ErrState):
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.InvalidState.Error("The run's state does not allow this; " +
-			"a cancel needs a run that has not started, a priority one that has not ended.")
+			"a cancel needs a run that has not started, a priority one that has not ended, " +
+			"a confirm or discard one that waits for confirmation.")
+	case errors.Is(err, control.ErrNoHolder):
+		//nolint:wrapcheck // as above
+		return problem.NotFound.Error(fmt.Sprintf(
+			"No run holds stack %q's lock; name the run to act on.", slug))
 	case errors.Is(err, read.ErrNotFound):
 		//nolint:wrapcheck // as above
 		return problem.NotFound.Error(fmt.Sprintf("No run %q in this account.", run))
@@ -127,6 +132,15 @@ func runError(err error, slug, run string) error {
 		return problem.NotFound.Error(fmt.Sprintf("No stack %q in this account.", slug))
 	}
 	return err
+}
+
+// deref is *p, or T's zero value when p is nil.
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
 }
 
 // forbidden is a 403 that names the action the caller lacks.
