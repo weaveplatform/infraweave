@@ -10,4 +10,5 @@ import (
 // World w.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&runSteps{w: w}).register(sc)
+	(&logSteps{w: w}).register(sc)
 }

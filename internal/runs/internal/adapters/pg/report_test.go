@@ -3,6 +3,8 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +21,8 @@ import (
 // sequence number, its other
 // uploads recorded once by kind and name with the last workspace read
 // back, and a deleted account's chunks and records purged a batch at a
-// time with their objects' stores and keys, another account's kept.
+// time with their objects' stores and keys and each state's compacted
+// log, another account's kept.
 func TestAccReportStore(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -117,8 +120,8 @@ func TestAccReportStore(t *testing.T) {
 		if len(objs) == 0 {
 			break
 		}
-		if len(objs) > 3 {
-			t.Errorf("a batch of %d", len(objs))
+		if n := len(objs) - strings.Count(fmt.Sprint(objs), ".log"); n > 3 {
+			t.Errorf("a batch of %d rows", n)
 		}
 		got = append(got, objs...)
 	}
@@ -127,7 +130,9 @@ func TestAccReportStore(t *testing.T) {
 		stores[o.Key] = o.Store
 	}
 	want := map[string]objectstore.Name{
-		"k/0": objectstore.RunLogs, "k/1": objectstore.RunLogs, "ws-3": objectstore.Workspaces,
+		"k/0": objectstore.RunLogs, "k/1": objectstore.RunLogs,
+		report.LogKey(acct, id, kernel.RunStatePlanning, 3): objectstore.RunLogs,
+		"ws-3": objectstore.Workspaces,
 		"ws-5": objectstore.Workspaces, "plan": objectstore.RunArtifacts,
 		"trace": objectstore.RunObservability,
 	}

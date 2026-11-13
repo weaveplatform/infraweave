@@ -83,8 +83,8 @@ type Store interface {
 	// false when it recorded none.
 	Workspace(ctx context.Context, run lifecycle.Run) (string, bool, error)
 	// PurgeObjects deletes up to batch of acct's log chunks or other
-	// recorded objects and answers their objects; none once both are
-	// empty.
+	// recorded objects and answers their objects, with the compacted log
+	// of each state whose chunks it deleted; none once both are empty.
 	PurgeObjects(ctx context.Context, acct kernel.AccountID, batch int) ([]Object, error)
 }
 
@@ -384,6 +384,15 @@ func step(run lifecycle.Run) workersapi.Step {
 // ref: decision 0005 § "Keys"
 func key(run lifecycle.Run, name string) string {
 	return fmt.Sprintf("%s/%s/%s-%d/%s", run.Account, run.ID, run.State, run.Version, name)
+}
+
+// LogKey is the key, in the run-logs store, of the object acct's run's
+// log of state at state version version is compacted into: its chunks'
+// prefix ending in .log.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func LogKey(acct kernel.AccountID, run kernel.ULID, state kernel.RunState, version int64) string {
+	return fmt.Sprintf("%s/%s/%s-%d.log", acct, run, state, version)
 }
 
 // Uploads records and signs each of ups, as workersapi.Reports says,

@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -52,13 +54,21 @@ func (s *Store) Indexed(ctx context.Context, run lifecycle.Run, version, seq int
 	return ok, nil
 }
 
-// IndexChunk indexes c, a log chunk of run.
+// IndexChunk indexes c, a log chunk of run, and marks the transition
+// into c's state version as having logs.
 func (s *Store) IndexChunk(ctx context.Context, run lifecycle.Run, c report.Chunk) error {
-	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO run_log_chunks (account_id, run_id,
+	q := tx.Q(ctx, s.db)
+	if _, err := q.Exec(ctx, `INSERT INTO run_log_chunks (account_id, run_id,
 		state_version, seq, state, object_key, bytes, first_at, last_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, run.Account, run.ID, c.Version, c.Seq,
 		c.State, c.Key, c.Bytes, c.FirstAt, c.LastAt); err != nil {
 		return fmt.Errorf("runs: index run %s's log chunk %d: %w", run.ID, c.Seq,
+			sql.Unavailable(err))
+	}
+	if _, err := q.Exec(ctx, `UPDATE run_state_transitions SET has_logs = true
+		WHERE account_id = $1 AND run_id = $2 AND sequence = $3 AND NOT has_logs`,
+		run.Account, run.ID, c.Version); err != nil {
+		return fmt.Errorf("runs: mark run %s's state %d as having logs: %w", run.ID, c.Version,
 			sql.Unavailable(err))
 	}
 	return nil
@@ -141,40 +151,59 @@ const stores = `CASE kind WHEN 'artifact' THEN 'run-artifacts'
 
 // PurgeObjects deletes up to batch of the deleted account acct's log
 // chunks, or, once it has none, of its other recorded objects, and
-// answers the objects they recorded, which the caller deletes in the same
-// transaction; none once both are empty.
+// answers the objects they recorded, with the compacted log of each state
+// whose chunks it deleted, which the caller deletes in the same
+// transaction; none once both are empty. A state whose chunks span
+// batches names its compacted log in each, whose second delete is none.
 func (s *Store) PurgeObjects(
 	ctx context.Context,
 	acct kernel.AccountID,
 	batch int,
 ) ([]report.Object, error) {
-	for _, q := range []string{
-		`DELETE FROM run_log_chunks WHERE account_id = $1
-			AND (run_id, state_version, seq) IN (SELECT run_id, state_version, seq
-			FROM run_log_chunks WHERE account_id = $1 LIMIT $2)
-			RETURNING 'run-logs', object_key`,
-		`DELETE FROM run_artifacts WHERE account_id = $1
-			AND (run_id, state_version, kind, name) IN (SELECT run_id, state_version, kind, name
-			FROM run_artifacts WHERE account_id = $1 LIMIT $2)
-			RETURNING ` + stores + `, object_key`,
-	} {
-		rows, err := tx.Q(ctx, s.db).Query(ctx, q, acct, batch)
-		if err != nil {
-			return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct,
-				sql.Unavailable(err))
-		}
-		objs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Object, error) {
-			var o report.Object
-			err := r.Scan(&o.Store, &o.Key)
-			return o, err //nolint:wrapcheck // the purge names the read
-		})
-		if err != nil {
-			return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct,
-				sql.Unavailable(err))
-		}
-		if len(objs) > 0 {
-			return objs, nil
-		}
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `DELETE FROM run_log_chunks WHERE account_id = $1
+		AND (run_id, state_version, seq) IN (SELECT run_id, state_version, seq
+		FROM run_log_chunks WHERE account_id = $1 LIMIT $2)
+		RETURNING run_id, state, state_version, object_key`, acct, batch)
+	if err != nil {
+		return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct, sql.Unavailable(err))
 	}
-	return nil, nil
+	var compacted []report.Object
+	objs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Object, error) {
+		var (
+			run     kernel.ULID
+			state   kernel.RunState
+			version int64
+		)
+		o := report.Object{Store: objectstore.RunLogs}
+		err := r.Scan(&run, &state, &version, &o.Key)
+		k := report.Object{
+			Store: objectstore.RunLogs, Key: report.LogKey(acct, run, state, version),
+		}
+		if err == nil && !slices.Contains(compacted, k) {
+			compacted = append(compacted, k)
+		}
+		return o, err //nolint:wrapcheck // the purge names the read
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct, sql.Unavailable(err))
+	}
+	if len(objs) > 0 {
+		return append(objs, compacted...), nil
+	}
+	rows, err = tx.Q(ctx, s.db).Query(ctx, `DELETE FROM run_artifacts WHERE account_id = $1
+		AND (run_id, state_version, kind, name) IN (SELECT run_id, state_version, kind, name
+		FROM run_artifacts WHERE account_id = $1 LIMIT $2)
+		RETURNING `+stores+`, object_key`, acct, batch)
+	if err != nil {
+		return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct, sql.Unavailable(err))
+	}
+	objs, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Object, error) {
+		var o report.Object
+		err := r.Scan(&o.Store, &o.Key)
+		return o, err //nolint:wrapcheck // the purge names the read
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct, sql.Unavailable(err))
+	}
+	return objs, nil
 }

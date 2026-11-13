@@ -91,6 +91,21 @@ type Schedule struct {
 	Stack kernel.ULID `json:"stack"`
 }
 
+// CompactKind is the job that writes a state's log chunks to one object
+// once the run has left the state, keyed by the run and state version so
+// it runs once for each.
+//
+// ref: decision 0008 § "Logs and artifacts"
+var CompactKind = queue.Kind{Name: "run.logs.compact", Queue: queue.Default, Policy: queue.Ignore}
+
+// Compact is a CompactKind job's payload: the run, and the state it left
+// with that state's version.
+type Compact struct {
+	Run          kernel.ULID     `json:"run"`
+	State        kernel.RunState `json:"state"`
+	StateVersion int64           `json:"stateVersion"`
+}
+
 // Actor is who moves or creates a run. Caller is the principal's caller
 // key, which a stack lock's holder is matched against, and Login the name
 // a transition records; the zero Actor is the server.
@@ -133,7 +148,8 @@ type Run struct {
 
 // Step is one run_state_transitions row: the state a transition enters,
 // its sequence, the run's new state_version, and who took it. HasLogs is
-// whether the state wrote logs, which a transition never sets.
+// whether the state wrote logs, which the index of its first log chunk
+// sets.
 type Step struct {
 	Sequence int64
 	State    kernel.RunState
@@ -275,9 +291,21 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 	if err := l.d.Store.Move(ctx, run, step); err != nil {
 		return Run{}, err //nolint:wrapcheck // the store names the write
 	}
+	from := run.State
 	run.State, run.Version, run.StateChangedAt, run.UpdatedAt = req.To, step.Sequence, now, now
 	if err := l.consequences(ctx, run, step); err != nil {
 		return Run{}, err
+	}
+	if from.OnWorker() {
+		// Only a worker writes a state's log, and no chunk of the state
+		// is indexed once the run has left it, so the job finds them all.
+		_, err := l.d.Jobs.EnqueueTx(ctx, CompactKind,
+			Compact{Run: run.ID, State: from, StateVersion: req.Version},
+			queue.Account(run.Account.ULID),
+			queue.UniqueKey(fmt.Sprintf("%s:%d", run.ID, req.Version)))
+		if err != nil {
+			return Run{}, err //nolint:wrapcheck // the queue names the kind
+		}
 	}
 	return run, nil
 }

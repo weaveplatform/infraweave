@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
@@ -82,9 +83,12 @@ func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 // the operations whose subject is a run.
 const Entity = "run"
 
-// Objects are the objects a run's worker uploads, as blob_objects
-// records them; blobs.Objects is one.
-type Objects = report.Objects
+// Objects are the objects a run's worker uploads and its logs are
+// compacted into, as blob_objects records them; blobs.Objects is one.
+type Objects interface {
+	report.Objects
+	logs.Objects
+}
 
 // Deps are what the runs domain takes from the platform and the domains
 // before it: the database, the keys a run's artifact key is sealed under,
@@ -118,6 +122,7 @@ type Domain struct {
 	liveness  *schedule.Liveness
 	handover  *handover.Service
 	reports   *report.Service
+	logs      *logs.Service
 	trigger   *trigger.Service
 	read      *read.Service
 	control   *control.Service
@@ -146,6 +151,7 @@ func New(d Deps) *Domain {
 		reports: report.New(report.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
 		}),
+		logs: logs.New(logs.Deps{DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs}),
 		trigger: trigger.New(trigger.Deps{
 			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,
 		}),
@@ -170,7 +176,7 @@ func (d *Domain) RunAccess() accessapi.Runs { return d.read }
 const PurgeBatch = 500
 
 // Purge deletes the deleted account acct's runs' log chunks and other
-// uploads with their objects, then its runs, with their transitions, and
+// uploads with their objects and compacted logs, then its runs, with their transitions, and
 // its stacks' run locks, tracked runs and outputs, PurgeBatch rows at a
 // time. internal/app runs it for each accessapi.Deleted; a purge stopped
 // part way keeps what it deleted, and running it again finishes.
@@ -201,9 +207,17 @@ func (d *Domain) Surfaces() []expr.Surface {
 }
 
 // Jobs are the domain's job handlers, which the scheduler registers:
-// lifecycle.ScheduleKind's, which moves a stack's queued runs to READY.
+// lifecycle.ScheduleKind's, which moves a stack's queued runs to READY,
+// and lifecycle.CompactKind's, which writes a state's log to one object
+// and may stream as long as the longest handler may run.
 func (d *Domain) Jobs() []queue.Registration {
-	return []queue.Registration{{Kind: lifecycle.ScheduleKind, Handler: d.scheduler.Handle}}
+	return []queue.Registration{
+		{Kind: lifecycle.ScheduleKind, Handler: d.scheduler.Handle},
+		{
+			Kind: lifecycle.CompactKind, Handler: d.logs.Compact,
+			Options: queue.HandlerOptions{Timeout: queue.MaxTimeout},
+		},
+	}
 }
 
 // Subscribe subscribes the domain's consumers on events: the scheduling
@@ -280,5 +294,5 @@ func (d *Domain) API() RunsAPI {
 	if d == nil {
 		return RunsAPI{}
 	}
-	return http.New(d.trigger, d.read, d.control)
+	return http.New(d.trigger, d.read, d.control, d.logs)
 }

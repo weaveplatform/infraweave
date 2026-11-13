@@ -85,8 +85,9 @@ func TestUnitEvents(t *testing.T) {
 	}
 	d := New(Deps{})
 	d.BindSources(sources{}, sources{})
-	if jobs := d.Jobs(); len(jobs) != 1 || jobs[0].Kind.Name != "run.schedule" ||
-		jobs[0].Handler == nil {
+	if jobs := d.Jobs(); len(jobs) != 2 || jobs[0].Kind.Name != "run.schedule" ||
+		jobs[1].Kind.Name != "run.logs.compact" || jobs[0].Handler == nil ||
+		jobs[1].Handler == nil {
 		t.Errorf("Jobs = %+v", jobs)
 	}
 	events := outbox.New(nil, nil, kinds)

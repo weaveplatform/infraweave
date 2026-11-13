@@ -469,6 +469,13 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `run_log_chunks(run, state_version, seq, state, object key, bytes, first_at, last_at)`;
   a chunk already indexed is skipped, so a repeated `seq` is not duplicated.
   Readers tail the index; logs therefore exist per state and state version.
+- **Reading.** `runLogs` answers a page of whole chunks of one state and
+  state version, in sequence order, at most 1 MiB and 64 chunks. While the
+  run is in the state a page ends before a chunk not yet indexed; once it
+  has left, a missing sequence number is skipped. Each line's timestamp is
+  its chunk's `first_at`, and `sanitize` strips ANSI escape sequences only
+  (DV-117). A chunk whose object retention removed is left out and the page
+  is `expired`.
 - **Compaction.** The transaction of a transition out of a worker state
   enqueues `run.logs.compact` for that state and state version, keyed so
   it runs once. The job writes the indexed chunks in sequence order to one

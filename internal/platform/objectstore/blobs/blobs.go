@@ -504,6 +504,20 @@ func (o *Objects) Open(
 	return nil, fmt.Errorf("blobs: open %s/%s: %w", store, key, err)
 }
 
+// Live reports whether key's object is live: committed, and neither
+// expired nor deleted.
+func (o *Objects) Live(ctx context.Context, store objectstore.Name, key string) (bool, error) {
+	var sealed []byte
+	err := tx.Q(ctx, o.db).QueryRow(ctx, live, store, key).Scan(&sealed)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("blobs: read %s/%s: %w", store, key, sql.Unavailable(err))
+	}
+	return true, nil
+}
+
 // target is blob.delete's payload.
 type target struct {
 	Store objectstore.Name `json:"store"`

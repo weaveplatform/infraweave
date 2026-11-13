@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -259,7 +261,7 @@ func (f failing) EnqueueTx(
 	payload any,
 	opts ...queue.Option,
 ) (int64, error) {
-	if f.fail == "EnqueueTx" {
+	if f.fail == "EnqueueTx" || f.fail == "EnqueueTx "+k.Name {
 		return 0, errInjected
 	}
 	return f.jobs.EnqueueTx(ctx, k, payload, opts...)
@@ -593,9 +595,10 @@ func TestAccLifecycleCreate(t *testing.T) {
 // each move writes the run's state, version and transition, and appends
 // its event; the run becomes the stack's tracked run on READY and writes
 // the stack's projection from then on; a confirmation needs its guard;
-// UNCONFIRMED and FINISHED schedule the stack; and FINISHED releases the
-// run's lock and credentials. A stale version, a move no edge allows, a
-// missing run and a call outside a transaction are refused.
+// UNCONFIRMED and FINISHED schedule the stack; FINISHED releases the
+// run's lock and credentials; and each move out of a state a worker holds
+// enqueues that state's log compaction. A stale version, a move no edge
+// allows, a missing run and a call outside a transaction are refused.
 func TestAccLifecycleTransition(t *testing.T) {
 	w := newWorld(t)
 	run, _, err := w.create(t, kernel.RunTypeTracked, "abc123")
@@ -712,6 +715,30 @@ func TestAccLifecycleTransition(t *testing.T) {
 	}
 	if len(w.sources.released) != 1 || w.sources.released[0] != run.ID {
 		t.Errorf("released %v, want %s", w.sources.released, run.ID)
+	}
+	var compactions []string
+	rows, err := w.db.Query(t.Context(), `SELECT payload::text FROM jobs
+		WHERE kind = $1 AND account_id = $2 ORDER BY unique_key`,
+		lifecycle.CompactKind.Name, w.acct)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var payload string
+		if err := rows.Scan(&payload); err != nil {
+			t.Fatal(err)
+		}
+		compactions = append(
+			compactions,
+			strings.TrimPrefix(payload, `{"run": "`+run.ID.String()+`", `),
+		)
+	}
+	if want := []string{
+		`"state": "PREPARING", "stateVersion": 3}`, `"state": "INITIALIZING", "stateVersion": 4}`,
+		`"state": "PLANNING", "stateVersion": 5}`, `"state": "PREPARING_APPLY", "stateVersion": 8}`,
+		`"state": "APPLYING", "stateVersion": 9}`,
+	}; !slices.Equal(compactions, want) {
+		t.Errorf("compactions %q, want %q", compactions, want)
 	}
 
 	if _, err := w.move(t, lifecycle.Run{ID: kernel.NewULID(), Version: 1},
@@ -899,6 +926,33 @@ func TestAccLifecycleFailures(t *testing.T) {
 				t.Errorf("%d runs after a failed creation, want 1", n)
 			}
 		})
+	}
+}
+
+// TestAccLifecycleCompactionFails checks that a move out of a state a
+// worker holds fails, writing nothing, when its compaction cannot be
+// enqueued.
+func TestAccLifecycleCompactionFails(t *testing.T) {
+	w := newWorld(t)
+	run, _, err := w.create(t, kernel.RunTypeTracked, "abc123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run = w.mustMove(t, run, kernel.RunStateReady, machine.DriverScheduler,
+		machine.GuardStackLockFree, machine.GuardApproved, machine.GuardUpstreamFinished,
+		machine.GuardExternalSettled, machine.GuardStackEnabled)
+	run = w.mustMove(t, run, kernel.RunStatePreparing, machine.DriverWorkerClaim)
+	f := failing{
+		Store: w.store, events: w.events, jobs: w.jobs,
+		fail: "EnqueueTx " + lifecycle.CompactKind.Name,
+	}
+	w.lc = w.lifecycle(f, f, f)
+	if _, err := w.move(t, run, kernel.RunStateInitializing,
+		machine.DriverWorkerReport); !errors.Is(err, errInjected) {
+		t.Errorf("Transition = %v, want the injected failure", err)
+	}
+	if steps := w.steps(t, run.ID); len(steps) != 3 || steps[2].State != "PREPARING" {
+		t.Errorf("transitions %+v after a failed move", steps)
 	}
 }
 

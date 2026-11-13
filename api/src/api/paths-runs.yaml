@@ -2,6 +2,54 @@
 # This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
 components:
   schemas:
+    LogsResponse:
+      description: A page of the lines one state of a run logged.
+      properties:
+        deleted:
+          description: Whether the logs were deleted on demand. Implies expired.
+          type: boolean
+        exists:
+          description: Whether the run ever entered the state at that version.
+          type: boolean
+        expired:
+          description: >-
+            Whether retention removed some of the lines the page would hold,
+            which the page leaves out.
+          type: boolean
+        finished:
+          description: >-
+            Whether the page holds the state's last lines: the run has left the
+            state and no lines follow.
+          type: boolean
+        hasMore:
+          description: Whether more lines can be read now with nextToken.
+          type: boolean
+        messages:
+          description: The lines, in the order they were written.
+          items:
+            $ref: '#/components/schemas/LogMessage'
+          type: array
+        nextToken:
+          description: >-
+            The token that reads the lines after this page, absent once the page
+            is finished.
+          nullable: true
+          type: string
+        ongoing:
+          description: >-
+            Whether the run is still in the requested state, so more lines may
+            come.
+          type: boolean
+      required:
+        - deleted
+        - exists
+        - expired
+        - finished
+        - hasMore
+        - messages
+        - ongoing
+      type: object
+      x-graphql-type: LogsResponse
     RunCancelRequest:
       additionalProperties: false
       description: The arguments of runCancel not carried in the path.
@@ -168,6 +216,160 @@ paths:
         - rate-limit
       x-infraweave-subject: path:runId:run
       x-rest-style: item
+  /runs/{runId}/logs:
+    get:
+      description: |-
+        A page of the lines one of the run's states logged, past or present,
+        in the order they were written. Each line's timestamp is when the
+        worker began the chunk that holds it.
+
+        Pass the answer's nextToken as token to read on. While the run is
+        in the state, a page may be empty and nextToken stays set; once
+        finished is true the state has no more lines. A state the run never
+        entered answers an empty, finished page with exists false. Set
+        sanitize to strip ANSI escape sequences from each line.
+      operationId: runLogs
+      x-infraweave-feature: runs
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - description: The state whose lines to read.
+          in: query
+          name: state
+          required: true
+          schema:
+            $ref: '#/components/schemas/RunState'
+          x-graphql-arg: state
+        - description: >-
+            The state's execution, counted by the run's state version. Absent,
+            the latest execution of the state.
+          in: query
+          name: stateVersion
+          schema:
+            format: int32
+            type: integer
+          x-graphql-arg: stateVersion
+        - description: The nextToken of the previous page.
+          in: query
+          name: token
+          schema:
+            type: string
+          x-graphql-arg: token
+        - description: Strip ANSI escape sequences from each line.
+          in: query
+          name: sanitize
+          schema:
+            type: boolean
+          x-graphql-arg: sanitize
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsResponse'
+          description: The logs result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run logs
+      tags:
+        - Runs
+      x-graphql:
+        field: logs
+        operation: query
+        type: Run
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+        - DV-117
+      x-infraweave-subject: path:runId:run
+      x-rest-style: field
+  /runs/{runId}/logs-download-url:
+    get:
+      description: |-
+        A pre-signed URL that downloads the whole log of one of the run's
+        states, once the run has left the state and its lines are written
+        to one object. Until then ongoing is true; expired is true when the
+        state wrote no lines or retention removed them.
+      operationId: runLogsDownloadURL
+      x-infraweave-feature: runs
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - description: The state whose lines to read.
+          in: query
+          name: state
+          required: true
+          schema:
+            $ref: '#/components/schemas/RunState'
+          x-graphql-arg: state
+        - description: >-
+            The state's execution, counted by the run's state version. Absent,
+            the latest execution of the state.
+          in: query
+          name: stateVersion
+          schema:
+            format: int32
+            type: integer
+          x-graphql-arg: stateVersion
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsDownloadURL'
+          description: The logsDownloadURL result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run logs download URL
+      tags:
+        - Runs
+      x-graphql:
+        field: logsDownloadURL
+        operation: query
+        type: Run
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: field
   /runs/{runId}/stack:
     get:
       description: Return the stack the run belongs to.

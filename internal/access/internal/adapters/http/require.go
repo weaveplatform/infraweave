@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 )
@@ -174,6 +175,13 @@ func (q Require) decideEntity(
 	case !read:
 		hidden(w, s.Entity, id)
 		return false, true
+	}
+	// The evaluator decides an action without its subject, so the
+	// in-run restriction on reading runs, tasks and logs, which its
+	// stack's space would allow, is applied here, once the subject is
+	// known to be visible.
+	if p.Kind == kernel.PrincipalRun && authz.RunDenied(req.Action, s.Entity) {
+		return false, false
 	}
 	return allowed, false
 }
