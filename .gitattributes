@@ -15,3 +15,4 @@ api/*.openapi.yaml text eol=lf
 api/src/** text eol=lf
 *.gen.go text eol=lf
 internal/devtools/openapibundle/testdata/golden/** text eol=lf
+internal/agent/backend/testdata/** text eol=lf
