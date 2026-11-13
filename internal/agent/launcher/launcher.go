@@ -601,7 +601,7 @@ func (l *Launcher) container(
 	if err := handoff.Write(&h, handoff.Handoff{
 		Endpoint: client.Base(l.id.endpoint), Run: a.Run, RunToken: a.RunToken,
 		Assigned: a.State, StateVersion: a.StateVersion, Spec: spec, Secrets: secrets,
-		StateLockTimeout: l.d.Config.StateLockTimeout,
+		StateLockTimeout: l.d.Config.StateLockTimeout, MaskEnvs: l.d.Config.MaskEnvs,
 	}); err != nil {
 		return nil, err //nolint:wrapcheck // handoff names the write
 	}

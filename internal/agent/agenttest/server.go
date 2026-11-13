@@ -1,15 +1,19 @@
 package agenttest
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -93,12 +97,38 @@ type Poll struct {
 	Request wire.PollRequest
 }
 
-// Report is a report the server took for a run.
+// Report is a report the server took for a run, and how many of the
+// run's log chunks it had indexed when it took it.
 type Report struct {
-	Run    string
-	Token  string
-	Report wire.RunReport
+	Run     string
+	Token   string
+	Report  wire.RunReport
+	Indexed int
 }
+
+// Chunk is a log chunk the server indexed: its run, state version and
+// sequence number, its first and last lines' times, and its bytes.
+type Chunk struct {
+	Run          string
+	StateVersion int64
+	Seq          int64
+	FirstAt      int64
+	LastAt       int64
+	Body         []byte
+}
+
+// object is an upload the server signed: its declaration, its bytes once
+// PUT, and whether a commit recorded it.
+type object struct {
+	decl     wire.Upload
+	body     []byte
+	uploaded bool
+	recorded bool
+}
+
+// ContentType is the header each signed upload names, which its PUT must
+// carry.
+const ContentType = "application/octet-stream"
 
 // Run is a run the server assigns: its assignment, and the specification
 // and secrets its spec call answers, sealed for the assignment's state
@@ -128,6 +158,8 @@ type Server struct {
 	registrations []Registration
 	polls         []Poll
 	reports       []Report
+	objects       map[string]*object
+	chunks        []Chunk
 	deregistered  []string
 	refuse        map[string]int
 	lost          bool
@@ -138,6 +170,7 @@ func NewServer(pool Pool) *Server {
 	s := &Server{
 		pool: pool, wake: make(chan struct{}), sessions: map[string]string{},
 		workers: map[string]bool{}, runs: map[string]Run{}, refuse: map[string]int{},
+		objects: map[string]*object{},
 	}
 	r := chi.NewRouter()
 	r.Route("/worker/v1", func(r chi.Router) {
@@ -146,7 +179,10 @@ func NewServer(pool Pool) *Server {
 		r.Post("/deregister", s.deregister)
 		r.Get("/runs/{run}/spec", s.spec)
 		r.Post("/runs/{run}/reports", s.report)
+		r.Post("/runs/{run}/upload-urls", s.uploadURLs)
+		r.Post("/runs/{run}/log-chunks", s.logChunks)
 	})
+	r.Put("/store/*", s.put)
 	s.h = r
 	return s
 }
@@ -167,7 +203,8 @@ func (t inProcess) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // Refuse makes the server answer the next n calls of op (register, poll,
-// deregister, spec or reports) with status; n of 0 takes op's calls again.
+// deregister, spec, reports, upload-urls, put or log-chunks) with status;
+// n of 0 takes op's calls again.
 func (s *Server) Refuse(op string, status, n int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -245,8 +282,8 @@ func (s *Server) Assign(r Run) error {
 	return nil
 }
 
-// Registrations, Polls, Reports and Deregistered are the calls the server
-// took, in order.
+// Registrations, Polls, Reports, Chunks and Deregistered are the calls
+// and log chunks the server took, in order.
 func (s *Server) Registrations() []Registration {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -263,6 +300,12 @@ func (s *Server) Reports() []Report {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]Report(nil), s.reports...)
+}
+
+func (s *Server) Chunks() []Chunk {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]Chunk(nil), s.chunks...)
 }
 
 func (s *Server) Deregistered() []string {
@@ -461,7 +504,15 @@ func (s *Server) report(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.mu.Lock()
-	s.reports = append(s.reports, Report{Run: run.Assignment.Run, Token: token, Report: rep})
+	indexed := 0
+	for _, c := range s.chunks {
+		if c.Run == run.Assignment.Run {
+			indexed++
+		}
+	}
+	s.reports = append(s.reports, Report{
+		Run: run.Assignment.Run, Token: token, Report: rep, Indexed: indexed,
+	})
 	s.mu.Unlock()
 	step := wire.NextStep{
 		Action:       wire.Execute,
@@ -472,4 +523,116 @@ func (s *Server) report(w http.ResponseWriter, r *http.Request) {
 		step.Action, step.State = wire.Exit, "FAILED"
 	}
 	answer(w, step)
+}
+
+// objectKey is where the upload named name of run's state version is
+// stored, by its kind.
+func objectKey(kind wire.UploadKind, run string, version int64, name string) string {
+	return fmt.Sprintf("%s/%s/%d/%s", kind, run, version, name)
+}
+
+// uploadURLs signs a PUT for each declared upload, as the server does: a
+// declaration repeated as it was signs the same object again, and one
+// that differs, or names an object a commit recorded, is refused with
+// 409.
+func (s *Server) uploadURLs(w http.ResponseWriter, r *http.Request) {
+	if st := s.refused("upload-urls"); st != 0 {
+		problem(w, st, "the uploads are refused")
+		return
+	}
+	run, _, ok := s.run(r)
+	if !ok {
+		problem(w, http.StatusUnauthorized, "the run token is refused")
+		return
+	}
+	var req wire.UploadURLsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		problem(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := wire.UploadURLs{Uploads: make([]wire.SignedUpload, 0, len(req.Uploads))}
+	for _, u := range req.Uploads {
+		key := objectKey(u.Kind, run.Assignment.Run, req.StateVersion, u.Name)
+		if o, ok := s.objects[key]; ok && (o.recorded || o.decl != u) {
+			problem(w, http.StatusConflict, "the upload's name is taken")
+			return
+		}
+		if _, ok := s.objects[key]; !ok {
+			s.objects[key] = &object{decl: u}
+		}
+		out.Uploads = append(out.Uploads, wire.SignedUpload{
+			Kind: u.Kind, Name: u.Name, Key: key, Url: Endpoint + "/store/" + key,
+			Headers: map[string]string{"Content-Type": ContentType},
+		})
+	}
+	answer(w, out)
+}
+
+// put takes a signed upload's bytes when they are its declaration's, as a
+// store whose signature binds the size and SHA-256 does.
+func (s *Server) put(w http.ResponseWriter, r *http.Request) {
+	if st := s.refused("put"); st != 0 {
+		w.WriteHeader(st)
+		return
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sum := sha256.Sum256(body)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	o, ok := s.objects[chi.URLParam(r, "*")]
+	switch {
+	case !ok || r.Header.Get("Content-Type") != ContentType ||
+		r.Header.Get("Authorization") != "":
+		w.WriteHeader(http.StatusForbidden)
+	case int64(len(body)) != o.decl.Size || hex.EncodeToString(sum[:]) != o.decl.Sha256:
+		w.WriteHeader(http.StatusBadRequest)
+	default:
+		o.body, o.uploaded = bytes.Clone(body), true
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// logChunks indexes each uploaded chunk once, as the server does; a chunk
+// not uploaded is refused with 422.
+func (s *Server) logChunks(w http.ResponseWriter, r *http.Request) {
+	if st := s.refused("log-chunks"); st != 0 {
+		problem(w, st, "the chunks are refused")
+		return
+	}
+	run, _, ok := s.run(r)
+	if !ok {
+		problem(w, http.StatusUnauthorized, "the run token is refused")
+		return
+	}
+	var req wire.LogChunksRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		problem(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, c := range req.Chunks {
+		key := objectKey(wire.UploadKindLogChunk, run.Assignment.Run, req.StateVersion,
+			fmt.Sprint(c.Seq))
+		o, ok := s.objects[key]
+		switch {
+		case ok && o.recorded:
+			continue
+		case !ok || !o.uploaded:
+			problem(w, http.StatusUnprocessableEntity, "a chunk is not uploaded")
+			return
+		}
+		o.recorded = true
+		s.chunks = append(s.chunks, Chunk{
+			Run: run.Assignment.Run, StateVersion: req.StateVersion, Seq: c.Seq,
+			FirstAt: c.FirstAt, LastAt: c.LastAt, Body: o.body,
+		})
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

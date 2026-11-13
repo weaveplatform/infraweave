@@ -1,8 +1,10 @@
 // Package client is the launcher's and the runner's side of the worker
-// API: Client calls register, poll, deregister, a run's specification and
-// its reports through the generated internal/agent/wire client, setting
-// each call's bearer token, and answers an *Error with the status and
-// problem detail of any response other than the one the call expects.
+// API: Client calls register, poll, deregister, a run's specification,
+// its reports, its upload declarations and its log chunks' commits
+// through the generated internal/agent/wire client, setting each call's
+// bearer token, and answers an *Error with the status and problem detail
+// of any response other than the one the call expects. Put uploads to a
+// pre-signed URL an upload declaration answered, with no bearer token.
 // Status reads an error's status. Base is the worker API's base URL under
 // the server's public URL a pool token names.
 //
@@ -11,7 +13,8 @@
 // # Input and output
 //
 // Each call sends one HTTP request through the caller's
-// wire.HttpRequestDoer and reads its response; it retries nothing.
+// wire.HttpRequestDoer and reads its response; it retries nothing. Put
+// sends its body to an object store.
 // Nothing is logged.
 //
 // # Dependencies

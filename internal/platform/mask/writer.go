@@ -14,12 +14,12 @@ const MaxLine = 64 << 10
 // ErrClosed is returned by a write to a closed Writer.
 var ErrClosed = errors.New("mask: write to a closed writer")
 
-// Writer masks what is written to it one line at a time and writes each
-// line on to the io.Writer it wraps once the line's newline arrives, so a
-// secret split across writes is still masked. It is not safe for
-// concurrent use.
+// Writer masks what is written to it one line at a time, through Lines,
+// and writes each line on to the io.Writer it wraps once the line's
+// newline arrives, so a secret split across writes is still masked. It is
+// not safe for concurrent use.
 type Writer struct {
-	m      *Masker
+	l      *Lines
 	w      io.Writer
 	line   []byte
 	closed bool
@@ -31,7 +31,7 @@ type Writer struct {
 
 // Writer returns a Writer that masks text on its way to w.
 func (m *Masker) Writer(w io.Writer) *Writer {
-	return &Writer{m: m, w: w}
+	return &Writer{l: m.Lines(), w: w}
 }
 
 // Write takes p into the pending line and writes out each line that p
@@ -76,7 +76,7 @@ func (w *Writer) Close() error {
 }
 
 func (w *Writer) flush(newline bool) error {
-	out := w.m.Bytes(w.line)
+	out := w.l.Mask(w.line)
 	if newline {
 		out = append(out, '\n')
 	}

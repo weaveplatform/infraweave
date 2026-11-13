@@ -14,8 +14,8 @@ import (
 
 // Run reads the launcher's handoff from in and executes the run it hands
 // over in the working directory, the container's workspace, reporting
-// through doer. The phases' output goes to standard output, which the
-// launcher reads.
+// and uploading its log through doer. The phases' masked output goes to
+// standard output, which the launcher reads, too.
 //
 // ref: decision 0008 § "The launcher and the runner"
 func Run(ctx context.Context, in io.Reader, doer wire.HttpRequestDoer, log *slog.Logger) error {
@@ -23,8 +23,8 @@ func Run(ctx context.Context, in io.Reader, doer wire.HttpRequestDoer, log *slog
 	if err != nil {
 		return err //nolint:wrapcheck // handoff names the read
 	}
+	c := client.New(h.Endpoint, doer)
 	return exec.Run(ctx, h, exec.Deps{ //nolint:wrapcheck // exec names the step
-		Reports: client.New(h.Endpoint, doer), Log: log, Out: os.Stdout, Workspace: ".",
-		Environ: os.Environ(),
+		Reports: c, Logs: c, Log: log, Out: os.Stdout, Workspace: ".", Environ: os.Environ(),
 	})
 }
