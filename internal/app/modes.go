@@ -167,7 +167,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 			events,
 			objs.store,
 			domains.cron(db.Primary(), log),
-			slices.Concat(domains.VCS.Jobs(), domains.Runs.Jobs()),
+			slices.Concat(domains.VCS.Jobs(), domains.Runs.Jobs(), domains.State.Jobs()),
 			domains,
 			log,
 			health,

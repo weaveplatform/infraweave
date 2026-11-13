@@ -71,7 +71,7 @@ func inTransaction(t *testing.T, f func(ctx context.Context) error) error {
 func TestUnitWorkspace(t *testing.T) {
 	acct, stack := kernel.NewAccountID(), kernel.NewULID()
 	c := &calls{held: stack}
-	s := New(db{}, c, c)
+	s := New(Deps{DB: db{}, Store: c, Stacks: c})
 	err := inTransaction(t, func(ctx context.Context) error {
 		return s.Workspace(ctx, acct, stack, "")
 	})

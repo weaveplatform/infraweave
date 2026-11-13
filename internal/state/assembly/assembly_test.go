@@ -20,7 +20,8 @@ import (
 )
 
 // TestUnitDomain checks that the domain constructs its core and backend,
-// declares its stream and held columns, subscribes its lock release once,
+// declares its stream and held columns, its stack guard and its purge
+// job, subscribes its lock release once,
 // and that its routes need a run on a domain and answer 501 on none.
 func TestUnitDomain(t *testing.T) {
 	d := New(Deps{})
@@ -29,6 +30,10 @@ func TestUnitDomain(t *testing.T) {
 	}
 	if Stream().Name != pg.StreamName || !reflect.DeepEqual(Held(), pg.Held()) {
 		t.Errorf("stream %q, held %v", Stream().Name, Held())
+	}
+	if jobs := d.Jobs(); len(jobs) != 1 || jobs[0].Kind.Name != "state.purge" ||
+		jobs[0].Handler == nil || d.StackGuard() == nil {
+		t.Errorf("Jobs = %+v, guard %v", jobs, d.StackGuard())
 	}
 	events := outbox.New(nil, nil, outbox.NewKinds())
 	if err := d.Subscribe(events); err != nil {

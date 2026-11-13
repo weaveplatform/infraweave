@@ -93,6 +93,10 @@ func (m *mem) Audit(_ context.Context, e kernel.AuditEntry) error {
 	return nil
 }
 
+func (m *mem) Purge(context.Context, kernel.AccountID, *kernel.ULID, int) ([]string, bool, error) {
+	return nil, true, m.failing("Purge")
+}
+
 // lockOf is a lock of run with id in mode, whose LockInfo names id.
 func lockOf(id string, mode Mode, run kernel.ULID) Lock {
 	return Lock{ID: id, Mode: mode, Run: run, Info: json.RawMessage(`{"ID":"` + id + `"}`)}
@@ -172,7 +176,7 @@ func TestUnitLockConflicts(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := newMem()
-			s := New(db{}, m, m)
+			s := New(Deps{DB: db{}, Store: m, Stacks: m})
 			at := Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID()}
 			m.locks[at] = slices.Clone(tc.held)
 			err := s.Lock(t.Context(), at, tc.want)
@@ -249,7 +253,7 @@ func TestUnitUnlock(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := newMem()
-			s := New(db{}, m, m)
+			s := New(Deps{DB: db{}, Store: m, Stacks: m})
 			at := Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID(), Workspace: "w"}
 			m.workspaces[at], m.locks[at] = true, slices.Clone(tc.held)
 			err := s.Unlock(t.Context(), Unlock{
@@ -299,8 +303,12 @@ func TestUnitUnlock(t *testing.T) {
 		})
 	}
 	m := newMem()
-	if err := New(db{}, m, m).Unlock(t.Context(), Unlock{Run: me, ID: "1"}); !errors.Is(err,
-		ErrNoWorkspace) {
+	if err := New(
+		Deps{DB: db{}, Store: m, Stacks: m},
+	).Unlock(t.Context(), Unlock{Run: me, ID: "1"}); !errors.Is(
+		err,
+		ErrNoWorkspace,
+	) {
 		t.Errorf("a workspace no lock was taken on = %v", err)
 	}
 }
@@ -309,7 +317,7 @@ func TestUnitUnlock(t *testing.T) {
 // in its account alone, and any other state none.
 func TestUnitRunEnded(t *testing.T) {
 	m := newMem()
-	s := New(db{}, m, m)
+	s := New(Deps{DB: db{}, Store: m, Stacks: m})
 	acct, run, other := kernel.NewAccountID(), kernel.NewULID(), kernel.NewULID()
 	mine := Target{Account: acct, Stack: kernel.NewULID()}
 	theirs := Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID()}
@@ -334,8 +342,11 @@ func TestUnitLocksDown(t *testing.T) {
 	for _, method := range []string{"Hold", "OpenWorkspace", "LockWorkspace", "Locks", "AddLock"} {
 		m := newMem()
 		m.fail = method
-		if err := New(db{}, m, m).Lock(t.Context(), at, lockOf("1", Shared, me)); !errors.Is(err,
-			errDown) || len(m.locks[at]) != 0 {
+		if err := New(
+			Deps{DB: db{}, Store: m, Stacks: m},
+		).Lock(t.Context(), at, lockOf("1", Shared, me)); !errors.Is(err,
+			errDown) ||
+			len(m.locks[at]) != 0 {
 			t.Errorf("Lock with %s failing = %v, held %v", method, err, ids(m.locks[at]))
 		}
 	}
@@ -343,7 +354,9 @@ func TestUnitLocksDown(t *testing.T) {
 		m := newMem()
 		m.fail = method
 		m.workspaces[at], m.locks[at] = true, []Lock{lockOf("1", Shared, other)}
-		err := New(db{}, m, m).Unlock(t.Context(), Unlock{Target: at, Run: me, Break: true})
+		err := New(
+			Deps{DB: db{}, Store: m, Stacks: m},
+		).Unlock(t.Context(), Unlock{Target: at, Run: me, Break: true})
 		if !errors.Is(err, errDown) || len(m.audits) != 0 {
 			t.Errorf("Unlock with %s failing = %v, audited %v", method, err, m.audits)
 		}
@@ -351,16 +364,14 @@ func TestUnitLocksDown(t *testing.T) {
 	m := newMem()
 	m.fail = "ReleaseRun"
 	if err := New(
-		db{},
-		m,
-		m,
+		Deps{DB: db{}, Store: m, Stacks: m},
 	).RunEnded(t.Context(), at.Account, me, kernel.RunStateFinished); !errors.Is(
 		err,
 		errDown,
 	) {
 		t.Errorf("RunEnded with ReleaseRun failing = %v", err)
 	}
-	if err := New(db{}, m, m).Lock(t.Context(), Target{Workspace: "\x00"},
+	if err := New(Deps{DB: db{}, Store: m, Stacks: m}).Lock(t.Context(), Target{Workspace: "\x00"},
 		lockOf("1", Shared, me)); !errors.Is(err, ErrWorkspaceName) {
 		t.Errorf("a workspace name the table refuses = %v", err)
 	}

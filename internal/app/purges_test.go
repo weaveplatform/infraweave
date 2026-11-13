@@ -19,11 +19,12 @@ import (
 
 // TestAccPurges checks the purges as the server wires them: deleting an
 // organization removes access' rows at once, and the outbox's workers then
-// run the features, stacks and configuration purges, which remove the
-// organization's entitlement, its accounts' limits, their stacks, and
-// their contexts with their elements and attachments and the stacks' own
-// elements, and leave another organization's. An account's own purge
-// removes its limits alone.
+// run each domain's purge, which remove the organization's entitlement,
+// its accounts' limits, their stacks, their contexts with their elements
+// and attachments and the stacks' own elements, their worker pools with
+// their workers, and their stacks' state workspaces and locks, and leave
+// another organization's. An account's own purge removes its limits
+// alone.
 func TestAccPurges(t *testing.T) {
 	ctx := t.Context()
 	db := sqltest.Open(t)
@@ -123,6 +124,10 @@ func TestAccPurges(t *testing.T) {
 			{`INSERT INTO worker_pool_samples (account_id, worker_pool_id, sampled_at,
 				busy_workers, registered_workers, queued_runs)
 				VALUES ($1, $2, now(), 0, 1, 0)`, []any{pool}},
+			{`INSERT INTO state_workspaces (account_id, stack_id, name)
+				VALUES ($1, $2, '')`, []any{stack}},
+			{`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id,
+				info) VALUES ($1, $2, '', 'l', 'shared', $3, '{}')`, []any{stack, kernel.NewULID()}},
 		} {
 			if _, err := q.Exec(ctx, stmt.sql, append([]any{x.acct}, stmt.args...)...); err != nil {
 				t.Fatal(err)
@@ -150,7 +155,9 @@ func TestAccPurges(t *testing.T) {
 			+ (SELECT count(*) FROM workers WHERE account_id = $2)
 			+ (SELECT count(*) FROM worker_nonces WHERE account_id = $2)
 			+ (SELECT count(*) FROM worker_runner_images WHERE account_id = $2)
-			+ (SELECT count(*) FROM worker_pool_samples WHERE account_id = $2)`,
+			+ (SELECT count(*) FROM worker_pool_samples WHERE account_id = $2)
+			+ (SELECT count(*) FROM state_workspaces WHERE account_id = $2)
+			+ (SELECT count(*) FROM state_locks WHERE account_id = $2)`,
 			x.org, x.acct)
 	}
 
@@ -161,8 +168,8 @@ func TestAccPurges(t *testing.T) {
 	if n := count(`SELECT count(*) FROM accounts WHERE id = $1`, gone.acct); n != 0 {
 		t.Errorf("the deleted organization's account is still there")
 	}
-	if n := held(gone); n != 14 {
-		t.Fatalf("before the purges: %d rows of the deleted organization, want 14", n)
+	if n := held(gone); n != 16 {
+		t.Fatalf("before the purges: %d rows of the deleted organization, want 16", n)
 	}
 
 	reg := queue.NewRegistry()
@@ -189,15 +196,15 @@ func TestAccPurges(t *testing.T) {
 		case <-tick.C:
 		}
 	}
-	if n := held(kept); n != 14 {
-		t.Errorf("another organization keeps %d rows, want 14", n)
+	if n := held(kept); n != 16 {
+		t.Errorf("another organization keeps %d rows, want 16", n)
 	}
 
 	if err := d.Features.Purge(ctx, kept.org, kept.acct, false); err != nil {
 		t.Fatal(err)
 	}
-	if n := held(kept); n != 13 {
-		t.Errorf("after an account's own features purge, %d rows, want 13", n)
+	if n := held(kept); n != 15 {
+		t.Errorf("after an account's own features purge, %d rows, want 15", n)
 	}
 }
 
