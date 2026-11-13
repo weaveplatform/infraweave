@@ -4937,6 +4937,33 @@ type LogsDownloadURL struct {
 	Url *string `json:"url,omitempty"`
 }
 
+// LogsResponse A page of the lines one state of a run logged.
+type LogsResponse struct {
+	// Deleted Whether the logs were deleted on demand. Implies expired.
+	Deleted bool `json:"deleted"`
+
+	// Exists Whether the run ever entered the state at that version.
+	Exists bool `json:"exists"`
+
+	// Expired Whether retention removed some of the lines the page would hold, which the page leaves out.
+	Expired bool `json:"expired"`
+
+	// Finished Whether the page holds the state's last lines: the run has left the state and no lines follow.
+	Finished bool `json:"finished"`
+
+	// HasMore Whether more lines can be read now with nextToken.
+	HasMore bool `json:"hasMore"`
+
+	// Messages The lines, in the order they were written.
+	Messages []LogMessage `json:"messages"`
+
+	// NextToken The token that reads the lines after this page, absent once the page is finished.
+	NextToken *string `json:"nextToken,omitempty"`
+
+	// Ongoing Whether the run is still in the requested state, so more lines may come.
+	Ongoing bool `json:"ongoing"`
+}
+
 // ManagedEntitiesConnection defines model for ManagedEntitiesConnection.
 type ManagedEntitiesConnection struct {
 	Cursor string `json:"cursor"`
@@ -10791,6 +10818,30 @@ type RoleUpdateParams struct {
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
+// RunLogsParams defines parameters for RunLogs.
+type RunLogsParams struct {
+	// State The state whose lines to read.
+	State RunState `form:"state" json:"state"`
+
+	// StateVersion The state's execution, counted by the run's state version. Absent, the latest execution of the state.
+	StateVersion *int32 `form:"stateVersion,omitempty" json:"stateVersion,omitempty"`
+
+	// Token The nextToken of the previous page.
+	Token *string `form:"token,omitempty" json:"token,omitempty"`
+
+	// Sanitize Strip ANSI escape sequences from each line.
+	Sanitize *bool `form:"sanitize,omitempty" json:"sanitize,omitempty"`
+}
+
+// RunLogsDownloadURLParams defines parameters for RunLogsDownloadURL.
+type RunLogsDownloadURLParams struct {
+	// State The state whose lines to read.
+	State RunState `form:"state" json:"state"`
+
+	// StateVersion The state's execution, counted by the run's state version. Absent, the latest execution of the state.
+	StateVersion *int32 `form:"stateVersion,omitempty" json:"stateVersion,omitempty"`
+}
+
 // SessionsParams defines parameters for Sessions.
 type SessionsParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -15946,6 +15997,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /runs/{runId} (the `Run` operationId).
 	Run(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunLogs Run logs
+	//
+	// A page of the lines one of the run's states logged, past or present,
+	// in the order they were written. Each line's timestamp is when the
+	// worker began the chunk that holds it.
+	//
+	// Pass the answer's nextToken as token to read on. While the run is
+	// in the state, a page may be empty and nextToken stays set; once
+	// finished is true the state has no more lines. A state the run never
+	// entered answers an empty, finished page with exists false. Set
+	// sanitize to strip ANSI escape sequences from each line.
+	//
+	// Corresponds with GET /runs/{runId}/logs (the `RunLogs` operationId).
+	RunLogs(ctx context.Context, runId string, params *RunLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunLogsDownloadURL Run logs download URL
+	//
+	// A pre-signed URL that downloads the whole log of one of the run's
+	// states, once the run has left the state and its lines are written
+	// to one object. Until then ongoing is true; expired is true when the
+	// state wrote no lines or retention removed them.
+	//
+	// Corresponds with GET /runs/{runId}/logs-download-url (the `RunLogsDownloadURL` operationId).
+	RunLogsDownloadURL(ctx context.Context, runId string, params *RunLogsDownloadURLParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunStack Get Run Stack
 	//
@@ -22546,6 +22622,51 @@ func (c *Client) SearchRunsSuggestions(ctx context.Context, body SearchRunsSugge
 // Corresponds with GET /runs/{runId} (the `Run` operationId).
 func (c *Client) Run(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunRequest(c.Server, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunLogs Run logs
+//
+// A page of the lines one of the run's states logged, past or present,
+// in the order they were written. Each line's timestamp is when the
+// worker began the chunk that holds it.
+//
+// Pass the answer's nextToken as token to read on. While the run is
+// in the state, a page may be empty and nextToken stays set; once
+// finished is true the state has no more lines. A state the run never
+// entered answers an empty, finished page with exists false. Set
+// sanitize to strip ANSI escape sequences from each line.
+//
+// Corresponds with GET /runs/{runId}/logs (the `RunLogs` operationId).
+func (c *Client) RunLogs(ctx context.Context, runId string, params *RunLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunLogsRequest(c.Server, runId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunLogsDownloadURL Run logs download URL
+//
+// A pre-signed URL that downloads the whole log of one of the run's
+// states, once the run has left the state and its lines are written
+// to one object. Until then ongoing is true; expired is true when the
+// state wrote no lines or retention removed them.
+//
+// Corresponds with GET /runs/{runId}/logs-download-url (the `RunLogsDownloadURL` operationId).
+func (c *Client) RunLogsDownloadURL(ctx context.Context, runId string, params *RunLogsDownloadURLParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunLogsDownloadURLRequest(c.Server, runId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -36245,6 +36366,168 @@ func NewRunRequest(server string, runId string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewRunLogsRequest constructs an http.Request for the RunLogs method
+func NewRunLogsRequest(server string, runId string, params *RunLogsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/logs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.StateVersion != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "stateVersion", *params.StateVersion, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Token != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "token", *params.Token, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Sanitize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sanitize", *params.Sanitize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRunLogsDownloadURLRequest constructs an http.Request for the RunLogsDownloadURL method
+func NewRunLogsDownloadURLRequest(server string, runId string, params *RunLogsDownloadURLParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/logs-download-url", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.StateVersion != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "stateVersion", *params.StateVersion, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRunStackRequest constructs an http.Request for the RunStack method
 func NewRunStackRequest(server string, runId string) (*http.Request, error) {
 	var err error
@@ -47812,6 +48095,35 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /runs/{runId} (the `Run` operationId).
 	RunWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RunResponse, error)
+
+	// RunLogsWithResponse Run logs
+	//
+	// A page of the lines one of the run's states logged, past or present,
+	// in the order they were written. Each line's timestamp is when the
+	// worker began the chunk that holds it.
+	//
+	// Pass the answer's nextToken as token to read on. While the run is
+	// in the state, a page may be empty and nextToken stays set; once
+	// finished is true the state has no more lines. A state the run never
+	// entered answers an empty, finished page with exists false. Set
+	// sanitize to strip ANSI escape sequences from each line.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId}/logs (the `RunLogs` operationId).
+	RunLogsWithResponse(ctx context.Context, runId string, params *RunLogsParams, reqEditors ...RequestEditorFn) (*RunLogsResponse, error)
+
+	// RunLogsDownloadURLWithResponse Run logs download URL
+	//
+	// A pre-signed URL that downloads the whole log of one of the run's
+	// states, once the run has left the state and its lines are written
+	// to one object. Until then ongoing is true; expired is true when the
+	// state wrote no lines or retention removed them.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId}/logs-download-url (the `RunLogsDownloadURL` operationId).
+	RunLogsDownloadURLWithResponse(ctx context.Context, runId string, params *RunLogsDownloadURLParams, reqEditors ...RequestEditorFn) (*RunLogsDownloadURLResponse, error)
 
 	// RunStackWithResponse Get Run Stack
 	//
@@ -68669,6 +68981,203 @@ func (r RunResponse) ContentType() string {
 	return ""
 }
 
+// RunLogsResponse200Headers the declared response headers of an HTTP 200 response for RunLogs
+type RunLogsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunLogsResponse429Headers the declared response headers of an HTTP 429 response for RunLogs
+type RunLogsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunLogsResponse503Headers the declared response headers of an HTTP 503 response for RunLogs
+type RunLogsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunLogsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LogsResponse
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunLogsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunLogsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunLogsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunLogsResponse) GetJSON200() *LogsResponse {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RunLogsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunLogsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunLogsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunLogsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunLogsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunLogsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunLogsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunLogsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunLogsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunLogsDownloadURLResponse200Headers the declared response headers of an HTTP 200 response for RunLogsDownloadURL
+type RunLogsDownloadURLResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunLogsDownloadURLResponse429Headers the declared response headers of an HTTP 429 response for RunLogsDownloadURL
+type RunLogsDownloadURLResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunLogsDownloadURLResponse503Headers the declared response headers of an HTTP 503 response for RunLogsDownloadURL
+type RunLogsDownloadURLResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunLogsDownloadURLResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LogsDownloadURL
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunLogsDownloadURLResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunLogsDownloadURLResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunLogsDownloadURLResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunLogsDownloadURLResponse) GetJSON200() *LogsDownloadURL {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunLogsDownloadURLResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunLogsDownloadURLResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunLogsDownloadURLResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunLogsDownloadURLResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunLogsDownloadURLResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunLogsDownloadURLResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunLogsDownloadURLResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunLogsDownloadURLResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RunStackResponse200Headers the declared response headers of an HTTP 200 response for RunStack
 type RunStackResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -88746,6 +89255,47 @@ func (c *ClientWithResponses) RunWithResponse(ctx context.Context, runId string,
 		return nil, err
 	}
 	return ParseRunResponse(rsp)
+}
+
+// RunLogsWithResponse Run logs
+//
+// A page of the lines one of the run's states logged, past or present,
+// in the order they were written. Each line's timestamp is when the
+// worker began the chunk that holds it.
+//
+// Pass the answer's nextToken as token to read on. While the run is
+// in the state, a page may be empty and nextToken stays set; once
+// finished is true the state has no more lines. A state the run never
+// entered answers an empty, finished page with exists false. Set
+// sanitize to strip ANSI escape sequences from each line.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId}/logs (the `RunLogs` operationId).
+func (c *ClientWithResponses) RunLogsWithResponse(ctx context.Context, runId string, params *RunLogsParams, reqEditors ...RequestEditorFn) (*RunLogsResponse, error) {
+	rsp, err := c.RunLogs(ctx, runId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunLogsResponse(rsp)
+}
+
+// RunLogsDownloadURLWithResponse Run logs download URL
+//
+// A pre-signed URL that downloads the whole log of one of the run's
+// states, once the run has left the state and its lines are written
+// to one object. Until then ongoing is true; expired is true when the
+// state wrote no lines or retention removed them.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId}/logs-download-url (the `RunLogsDownloadURL` operationId).
+func (c *ClientWithResponses) RunLogsDownloadURLWithResponse(ctx context.Context, runId string, params *RunLogsDownloadURLParams, reqEditors ...RequestEditorFn) (*RunLogsDownloadURLResponse, error) {
+	rsp, err := c.RunLogsDownloadURL(ctx, runId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunLogsDownloadURLResponse(rsp)
 }
 
 // RunStackWithResponse Get Run Stack
@@ -116283,6 +116833,257 @@ func ParseRunResponse(rsp *http.Response) (*RunResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunLogsResponse parses an HTTP response from a RunLogsWithResponse call
+func ParseRunLogsResponse(rsp *http.Response) (*RunLogsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunLogsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LogsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunLogsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunLogsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunLogsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunLogsDownloadURLResponse parses an HTTP response from a RunLogsDownloadURLWithResponse call
+func ParseRunLogsDownloadURLResponse(rsp *http.Response) (*RunLogsDownloadURLResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunLogsDownloadURLResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LogsDownloadURL
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunLogsDownloadURLResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunLogsDownloadURLResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunLogsDownloadURLResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -78,6 +78,7 @@ func TestUnitBlobsUnreachable(t *testing.T) {
 			return err
 		},
 		"Open":   func() error { _, err := o.Open(ctx, objectstore.Uploads, "acct/k"); return err },
+		"Live":   func() error { _, err := o.Live(ctx, objectstore.Uploads, "acct/k"); return err },
 		"Expire": func() error { _, err := r.Expire(ctx, 10); return err },
 		"remove": func() error {
 			return r.Remove(ctx, job(t, map[string]string{"store": "uploads", "key": "acct/k"}))

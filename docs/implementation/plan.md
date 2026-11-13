@@ -1834,7 +1834,7 @@ through the backend.
    `runLogsDownloadURL` serves each state's log compacted by
    `run.logs.compact` once the run leaves that state
    ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md#logs-and-artifacts)).
-   P7 serves the stack's run lists, `stackRun`, `stackRuns`,
+   Records DV-117. P7 serves the stack's run lists, `stackRun`, `stackRuns`,
    `stackRunsInRange` and `stackProposedRuns`.
 6. Runner images: `deploy/images/runner-terraform` and
    `deploy/images/runner-opentofu` definitions meeting decision 0008's
