@@ -40,6 +40,8 @@ const planJSON = `{"format_version":"1.2","resource_changes":[` +
 // worker is a fake worker API that holds one run: it applies a report
 // that names the run's state version, answers a repeated report the step
 // it answered before, refuses any other with 409, and can lose answers.
+// It takes the run's log chunks, and keeps the order in which it took
+// them and the reports.
 type worker struct {
 	mu         sync.Mutex
 	version    int64
@@ -49,6 +51,40 @@ type worker struct {
 	reports    []wire.RunReport
 	last       wire.RunReport
 	step       wire.NextStep
+	objects    map[string][]byte
+	taken      []string
+}
+
+func (w *worker) UploadURLs(
+	_ context.Context, _, _ string, in wire.UploadURLsRequest,
+) ([]wire.SignedUpload, error) {
+	out := make([]wire.SignedUpload, 0, len(in.Uploads))
+	for _, u := range in.Uploads {
+		out = append(out, wire.SignedUpload{
+			Kind: u.Kind, Name: u.Name, Key: strconv.FormatInt(in.StateVersion, 10) + "/" + u.Name,
+		})
+	}
+	return out, nil
+}
+
+func (w *worker) Put(_ context.Context, u wire.SignedUpload, body []byte) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.objects == nil {
+		w.objects = map[string][]byte{}
+	}
+	w.objects[u.Key] = bytes.Clone(body)
+	return nil
+}
+
+func (w *worker) LogChunks(_ context.Context, _, _ string, in wire.LogChunksRequest) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for _, c := range in.Chunks {
+		key := strconv.FormatInt(in.StateVersion, 10) + "/" + strconv.FormatInt(c.Seq, 10)
+		w.taken = append(w.taken, "log "+key+": "+string(w.objects[key]))
+	}
+	return nil
 }
 
 var errLost = errors.New("the answer was lost")
@@ -61,6 +97,7 @@ func (w *worker) Report(
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.reports = append(w.reports, r)
+	w.taken = append(w.taken, "report "+string(r.State)+" "+string(r.Event))
 	if token != "run-token" || run != "run-1" {
 		return wire.NextStep{}, &client.Error{Op: "report", Status: 401}
 	}
@@ -176,7 +213,7 @@ func newWorld(t *testing.T) *world {
 func (w *world) run() error {
 	w.t.Helper()
 	return exec.Run(w.t.Context(), w.h, exec.Deps{
-		Reports: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
+		Reports: w.w, Logs: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
 		Workspace: w.workspace, Environ: w.environ,
 	})
 }
@@ -574,7 +611,7 @@ func (actionless) Report(context.Context, string, string, wire.RunReport) (wire.
 func TestUnitExecUnknownAction(t *testing.T) {
 	w := newWorld(t)
 	err := exec.Run(t.Context(), w.h, exec.Deps{
-		Reports: actionless{}, Log: slog.New(slog.DiscardHandler), Out: &w.out,
+		Reports: actionless{}, Logs: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
 		Workspace: w.workspace, Environ: w.environ,
 	})
 	if !errors.Is(err, exec.ErrAction) {
@@ -600,12 +637,65 @@ func TestUnitExecNoCommands(t *testing.T) {
 	w := newWorld(t)
 	p := &performing{}
 	if err := exec.Run(t.Context(), w.h, exec.Deps{
-		Reports: p, Log: slog.New(slog.DiscardHandler), Out: &w.out,
+		Reports: p, Logs: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
 		Workspace: w.workspace, Environ: w.environ,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if len(p.reports) != 2 || *p.reports[1].Details != "This runner executes no PERFORMING phase." {
 		t.Fatalf("reports: %+v", p.reports)
+	}
+}
+
+// TestUnitExecLog masks a write-only variable, a line of a write-only
+// file, a variable launcher.mask_envs names, an ::add-mask word, the run's
+// tokens and a well-known token in standard output and in every chunk,
+// leaves a value under 4 bytes visible, and commits each phase's lines
+// before its report; the after_run hooks' output goes to standard output
+// alone.
+func TestUnitExecLog(t *testing.T) {
+	w := newWorld(t)
+	w.w.autodeploy = true
+	plain, short := "plainpass", "ab"
+	w.h.MaskEnvs = []string{"PLAIN_PASS", "UNSET"}
+	w.h.Spec.Stack.EnableWellKnownSecretMasking = true
+	w.h.Spec.StateBackend = &wire.RunSpecStateBackend{Path: "/state/v1/stacks/infra"}
+	w.h.Spec.Environment = []wire.RunSpecVariable{
+		{Name: "SECRET", WriteOnly: true},
+		{Name: "SHORT", WriteOnly: true},
+		{Name: "PLAIN_PASS", Value: &plain},
+		{Name: "VISIBLE", Value: &short},
+	}
+	w.h.Spec.Files = []wire.RunSpecFile{{Path: "key.txt", WriteOnly: true}}
+	w.h.Secrets.Environment = map[string]string{"SECRET": "hunter22", "SHORT": short}
+	w.h.Secrets.Files = map[string][]byte{"key.txt": []byte("first-line\nsecond-line\n")}
+	w.h.Spec.Hooks = map[string][]string{
+		"before_init": {
+			`echo "secret $SECRET short $SHORT plain $PLAIN_PASS"`,
+			`cat key.txt`,
+			`printf 'split hun'; printf 'ter22\n'`,
+			`echo "tokens $INFRAWEAVE_API_TOKEN $TF_HTTP_PASSWORD"`,
+		},
+		"before_plan": {
+			`echo "::add-mask swordfish"`, `echo "fish swordfish" >&2`,
+			`echo "gh""p_` + strings.Repeat("a", 36) + `"`,
+		},
+		"before_apply": {`printf 'no newline'`},
+		"after_run":    {`echo "after $SECRET"`},
+	}
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	init := "infraweave: working on commit abc123, read from its repository with no credential\n" +
+		"secret ***** short ab plain *****\n*****\n*****\nsplit *****\ntokens ***** *****\n"
+	plan := "::add-mask *****\nfish *****\n*****\n"
+	equal(t, "taken", w.w.taken, []string{
+		"report INITIALIZING started",
+		"log 4/0: " + init, "report INITIALIZING succeeded",
+		"log 5/0: " + plan, "report PLANNING succeeded",
+		"log 6/0: no newline\n", "report APPLYING succeeded",
+	})
+	if got, want := w.out.String(), init+plan+"no newline\nafter *****\n"; got != want {
+		t.Errorf("standard output:\n got %q\nwant %q", got, want)
 	}
 }

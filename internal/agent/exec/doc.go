@@ -19,18 +19,29 @@
 // failed report's details name. Planning's succeeded report carries the
 // delta internal/iac/plan reads from the plan's JSON.
 //
+// The session's output, and the runner's own lines, go to the run's log,
+// internal/agent/runlog, which masks the run's secrets: its write-only
+// values and files, its tokens, the values of the variables the
+// launcher's mask list names, and the well-known patterns when the stack
+// enables them. Each phase's lines are in its state's chunks, flushed
+// before the phase's report; the after_run hooks' go to standard output
+// alone.
+//
 // ref: decision 0008 § "Phases, reports and the plan decision"
+// ref: decision 0013 § "Masking"
 // ref: decision 0010 § "How a run reaches it"
 //
 // # Input and output
 //
 // It writes files under the workspace and a temporary directory, runs sh
-// and the tool, which write to the output it is given, and sends reports
-// through a Reporter. It logs each phase, the run's end and each report
-// it sends again.
+// and the tool, whose output it masks onto the output it is given and
+// uploads, and sends reports through a Reporter and log chunks through a
+// runlog.API. It logs each phase, the run's end, each report it sends
+// again and a log it could not flush.
 //
 // # Dependencies
 //
-// It imports internal/agent/backend, client, handoff, vendors and wire,
-// and internal/iac/plan. internal/agent/runner runs it.
+// It imports internal/agent/backend, client, handoff, runlog, vendors and
+// wire, internal/iac/plan and platform/mask. internal/agent/runner runs
+// it.
 package exec

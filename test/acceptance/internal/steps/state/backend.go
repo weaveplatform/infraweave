@@ -131,7 +131,7 @@ func (b *backendSteps) start(ctx context.Context, replica string) error {
 		return err
 	}
 	b.host, b.label = host, kernel.NewULID().String()
-	b.network, err = host.Network(ctx, b.label, b.relay.Port)
+	b.network, err = host.Network(ctx, b.label, b.w.Ports(b.relay.Port)...)
 	return err
 }
 

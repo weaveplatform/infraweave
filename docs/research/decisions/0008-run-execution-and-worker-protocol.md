@@ -494,7 +494,13 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   and to chunks of at most 1 MiB or two seconds. A chunk's name is its
   sequence number in decimal, and `upload-urls` refuses any other name for
   a `log-chunk`. The runner commits a state's last chunk before it reports
-  the state's end. Each chunk is uploaded by pre-signed `PUT`, then
+  the state's end. The session's output reaches the runner through a pipe,
+  so before that commit the runner writes a barrier line of its own to the
+  pipe and waits to read it back, which proves every earlier line read. A
+  chunk the worker API or the store cannot take for now is sent again for up
+  to ten minutes, as a report is; one still refused is dropped with a
+  warning. The `after_run` hooks run once the run has left its last worker
+  state, so their output goes to stdout alone. Each chunk is uploaded by pre-signed `PUT`, then
   `log-chunks` commits it and indexes it in
   `run_log_chunks(run, state_version, seq, state, object key, bytes, first_at, last_at)`;
   a chunk already indexed is skipped, so a repeated `seq` is not duplicated.
