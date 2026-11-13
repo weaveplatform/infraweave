@@ -97,6 +97,18 @@ func TestUnitProtocolRunReports(t *testing.T) {
 	}) {
 		t.Errorf("a report with a delta = %d, reported %+v", code, r.report)
 	}
+	code, _ = f.call(t, path+"/reports", token, map[string]any{
+		"stateVersion": 4, "state": "PLANNING", "event": "succeeded",
+		"delta": map[string]any{
+			"add": 0, "change": 0, "delete": 0, "import": 0, "outputs": false,
+			"move": 5, "forget": 6, "resources": 7,
+		},
+	})
+	if code != http.StatusOK || r.report.Delta == nil || *r.report.Delta != (workersapi.Delta{
+		Move: 5, Forget: 6, Resources: 7,
+	}) {
+		t.Errorf("a delta that moves and forgets = %d, reported %+v", code, r.report)
+	}
 
 	code, signed := f.call(t, path+"/upload-urls", token, map[string]any{
 		"stateVersion": 4,

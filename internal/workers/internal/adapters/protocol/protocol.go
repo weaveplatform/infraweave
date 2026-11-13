@@ -212,12 +212,17 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 			Id: st.Slug, Name: st.Name, Space: st.Space, Labels: nonNil(st.Labels),
 			Repository: st.Repository, Branch: st.Branch, ProjectRoot: st.ProjectRoot,
 			Vendor: st.Vendor, VendorConfig: object(st.VendorConfig),
+			EnableWellKnownSecretMasking: st.EnableWellKnownSecretMasking,
 		},
 		Commit: gen.RunSpecCommit{
 			Hash: c.Hash, Tag: optional(c.Tag), Url: optional(c.URL), Message: c.Message,
 			AuthorName: c.AuthorName, AuthorLogin: c.AuthorLogin, Timestamp: c.Timestamp.Unix(),
 		},
 		RunnerImage: spec.RunnerImage,
+		Source: gen.RunSpecSource{
+			Kind: gen.RunSpecSourceKind(spec.Source.Kind), Url: spec.Source.URL,
+			Narrowed: spec.Source.Narrowed,
+		},
 		Hooks:       spec.Hooks,
 		Environment: make([]gen.RunSpecVariable, 0, len(spec.Environment)),
 		Files:       make([]gen.RunSpecFile, 0, len(spec.Files)),
@@ -232,6 +237,11 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 	}
 	if spec.StateBackend != nil {
 		out.StateBackend = &gen.RunSpecStateBackend{Path: spec.StateBackend.Path}
+	}
+	if t := spec.Tool; t != nil {
+		out.Tool = &gen.RunSpecTool{
+			Name: gen.RunSpecToolName(t.Name), Version: t.Version, Download: t.Download,
+		}
 	}
 	for _, v := range spec.Environment {
 		out.Environment = append(out.Environment,

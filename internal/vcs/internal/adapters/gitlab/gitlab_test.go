@@ -96,8 +96,7 @@ func TestUnitSource(t *testing.T) {
 		got.URL != l.srv.URL+"/acme/platform/infra/-/commit/"+got.Hash {
 		t.Errorf("ResolveRef(main) = %+v", got)
 	}
-	want := l.srv.URL + "/api/v4/projects/acme%2Fplatform%2Finfra/repository/archive.tar.gz?sha=" +
-		got.Hash
+	want := l.srv.URL + "/acme/platform/infra.git"
 	if u := l.gl.SourceURL(l.repo.Repo, got.Hash); u != want {
 		t.Errorf("SourceURL = %s, want %s", u, want)
 	}
@@ -145,7 +144,7 @@ func TestUnitHosts(t *testing.T) {
 	}
 	gl := gitlab.New(gitlab.Options{})
 	if u := gl.SourceURL(port.Repository{Namespace: "o/g", Name: "r"}, "abc"); u !=
-		"https://gitlab.com/api/v4/projects/o%2Fg%2Fr/repository/archive.tar.gz?sha=abc" {
+		"https://gitlab.com/o/g/r.git" {
 		t.Errorf("SourceURL with no integration = %s", u)
 	}
 	bad := port.Integration{Settings: port.Settings{APIHost: "nope"}}

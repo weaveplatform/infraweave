@@ -79,6 +79,22 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		w.sealed,
 	)
 	sc.Step(
+		`^the specification fetches its source by Git from "([^"]+)", (not )?narrowed$`,
+		w.source,
+	)
+	sc.Step(
+		`^the specification mounts (terraform|tofu) "([^"]+)", (not )?downloaded, and (masks|does not mask) well-known secrets$`,
+		w.tool,
+	)
+	sc.Step(
+		`^the specification's sealed part opens with the key of "(\w+)" to no source credential$`,
+		w.noCredential,
+	)
+	sc.Step(
+		`^the specification's sealed part opens with the key of "(\w+)" to the source credential of "([^"]+)", whose token neither the answer nor a server's log names$`,
+		w.credential,
+	)
+	sc.Step(
 		`^the specification's sealed part opens with the key of "(\w+)" to an in-run API token, kept as "(\w+)"$`,
 		w.inRun,
 	)

@@ -44,6 +44,10 @@ func newClaimWorld(t *testing.T) *claimWorld {
 		t.Fatal(err)
 	}
 	w := &claimWorld{holdWorld: h, replicas: [2]Domains{h.d, b}, stacks: map[string]kernel.ULID{}}
+	// A run's handover resolves its tool from the catalogue, which no
+	// refresh fills here.
+	w.exec(t, `INSERT INTO vendor_releases (vendor, version)
+		VALUES ('terraform', '1.9.8'), ('terraform', '1.14.2'), ('opentofu', '1.10.0')`)
 	for _, d := range w.replicas {
 		l := notify.NewListener(h.db.ConnConfig, discard())
 		sub, _ := l.Subscribe(notify.Runs) // one of notify.Channels, so never an error

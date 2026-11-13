@@ -43,9 +43,20 @@ func TestUnitDomain(t *testing.T) {
 	}
 }
 
-// sources is a runsapi.RunSources that releases nothing and a
-// stacksapi.StackSources that resolves every ref to the zero commit.
+// sources is a runsapi.RunSources that answers every source with none and
+// releases nothing, and a stacksapi.StackSources that resolves every ref
+// to the zero commit.
 type sources struct{}
+
+func (sources) Source(
+	context.Context,
+	kernel.AccountID,
+	kernel.ULID,
+	kernel.ULID,
+	string,
+) (runsapi.Source, error) {
+	return runsapi.Source{}, nil
+}
 
 func (sources) Release(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 

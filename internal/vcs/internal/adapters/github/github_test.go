@@ -99,7 +99,7 @@ func TestUnitSource(t *testing.T) {
 		c.AuthorLogin != nil || c.Hash != got.Hash {
 		t.Errorf("ResolveRef(main) by an e-mail no account owns = %+v, %v", c, err)
 	}
-	want := l.srv.URL + "/api/v3/repos/acme/infra/tarball/" + got.Hash
+	want := l.srv.URL + "/acme/infra.git"
 	if u := l.gh.SourceURL(l.repo.Repo, got.Hash); u != want {
 		t.Errorf("SourceURL = %s, want %s", u, want)
 	}
@@ -132,7 +132,7 @@ func TestUnitHosts(t *testing.T) {
 	}
 	gh := github.New(github.Options{})
 	if u := gh.SourceURL(port.Repository{Namespace: "o", Name: "r"}, "abc"); u !=
-		"https://api.github.com/repos/o/r/tarball/abc" {
+		"https://github.com/o/r.git" {
 		t.Errorf("SourceURL with no integration = %s", u)
 	}
 	bad := port.Integration{Settings: port.Settings{APIHost: "nope"}}

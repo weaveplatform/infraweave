@@ -9,15 +9,19 @@ Feature: A tracked run waiting for confirmation is confirmed or discarded
   pool's key, claims the run, opens its specification for the in-run API
   token, and reports its phases through the worker API. The in-run API
   token authenticates only while its run plans, applies or performs, and
-  takes no RUN_ action. The home key is space-admin on the account's top space; the member
-  key holds only the bindings a scenario gives it. Stack infra lives in
-  legacy and runs on the pool.
+  takes no RUN_ action. The release indexes serve the recorded fixtures,
+  so the run's specification names a Terraform release. The home key is
+  space-admin on the account's top space; the member key holds only the
+  bindings a scenario gives it. Stack infra lives in legacy and runs on
+  the pool.
   ref: decision 0008
   ref: decision 0016
 
   Background:
-    Given two infraweave servers, A and B, on one database
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
     And the member key is exchanged through A for token "m"
     And a certificate signing request for a P-256 key is kept as "csr"
     And a Gitea repository "infra" with the files:

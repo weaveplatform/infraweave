@@ -19,10 +19,12 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -127,6 +129,55 @@ func (t *tokens) InRunToken(_ context.Context, r accessapi.InRunRequest) (access
 	return accessapi.Token{Raw: "in-run", Expires: time.Unix(2e9, 0)}, t.err
 }
 
+// catalog lists versions, newest first, for every vendor, and answers
+// Effective with effective, recording each constraint it is asked;
+// err fails both.
+type catalog struct {
+	versions  []string
+	effective string
+	asked     []string
+	invalid   bool
+	err       error
+}
+
+func (c *catalog) Versions(context.Context, vendorsapi.Vendor) ([]string, error) {
+	return c.versions, c.err
+}
+
+func (c *catalog) Effective(
+	_ context.Context,
+	_ vendorsapi.Vendor,
+	constraints string,
+) (string, error) {
+	c.asked = append(c.asked, constraints)
+	if c.invalid {
+		return "", &kernel.Invalid{Detail: "none", Errors: []kernel.FieldError{{
+			Pointer: "#/query/constraints", Reason: kernel.ReasonRule,
+		}}}
+	}
+	return c.effective, c.err
+}
+
+// sources answers every run's source with src, recording each commit it
+// is asked for, or fails with err.
+type sources struct {
+	src   runsapi.Source
+	asked []string
+	err   error
+}
+
+func (s *sources) Source(
+	_ context.Context,
+	_ kernel.AccountID,
+	_, _ kernel.ULID,
+	commit string,
+) (runsapi.Source, error) {
+	s.asked = append(s.asked, commit)
+	return s.src, s.err
+}
+
+func (*sources) Release(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
+
 // secret is an opened value.
 type secret string
 
@@ -180,6 +231,8 @@ type world struct {
 	accounts *accounts
 	env      *environment
 	tokens   *tokens
+	catalog  *catalog
+	sources  *sources
 	run      lifecycle.Run
 	space    kernel.ULID
 }
@@ -212,7 +265,7 @@ func newWorld(t *testing.T) *world {
 				Branch:       "main",
 				ProjectRoot:  &stackRoot,
 				RunnerImage:  &image,
-				Vendor:       "TERRAFORM",
+				Vendor:       "terraform",
 				VendorConfig: json.RawMessage(`{"version":"1.9"}`),
 			},
 			labels: []string{"a", "b"},
@@ -221,14 +274,22 @@ func newWorld(t *testing.T) *world {
 		accounts: &accounts{slug: "acme"},
 		env:      &environment{},
 		tokens:   &tokens{},
-		run:      run,
-		space:    space,
+		catalog:  &catalog{versions: []string{"1.14.2", "1.13.0"}, effective: "1.9.8"},
+		sources: &sources{src: runsapi.Source{
+			URL: "https://git.example.com/acme/infra.git",
+			Credential: &runsapi.SourceCredential{
+				Username: "x-access-token", Token: []byte("narrow"), Narrowed: true,
+			},
+		}},
+		run:   run,
+		space: space,
 	}
 	w.svc = handover.New(handover.Deps{
 		Store: w.store, Stacks: w.stacks, Spaces: w.spaces, Accounts: w.accounts,
-		Environment: w.env, Tokens: w.tokens,
+		Environment: w.env, Tokens: w.tokens, Catalog: w.catalog,
 	})
 	w.svc.BindExpressions(registry(t))
+	w.svc.BindSources(w.sources)
 	return w
 }
 
@@ -256,6 +317,10 @@ type sealed struct {
 	APIToken          string            `json:"apiToken"`
 	APITokenExpiresAt int64             `json:"apiTokenExpiresAt"`
 	ArtifactKey       []byte            `json:"artifactKey"`
+	SourceCredential  *struct {
+		Username string `json:"username"`
+		Token    string `json:"token"`
+	} `json:"sourceCredential"`
 }
 
 // TestUnitHandover checks that a handover renders each variable's
@@ -307,7 +372,8 @@ func TestUnitHandover(t *testing.T) {
 	}
 	if st := spec.Stack; st.Slug != "infra" || st.Space != "legacy" ||
 		!slices.Equal(st.Labels, []string{"a", "b"}) || *st.ProjectRoot != "run-root" ||
-		st.Vendor != "TERRAFORM" || string(st.VendorConfig) != `{"version":"1.9"}` {
+		st.Vendor != "terraform" || string(st.VendorConfig) != `{"version":"1.9"}` ||
+		st.EnableWellKnownSecretMasking {
 		t.Errorf("stack = %+v", st)
 	}
 	if *spec.RunnerImage != "ghcr.io/acme/run" || spec.Commit.Hash != "abc" ||
@@ -361,8 +427,20 @@ func TestUnitHandover(t *testing.T) {
 	secrets := map[string]string{"TOKEN": "s3cret", "AUTH": "Bearer s3cret"}
 	if !maps.Equal(got.Environment, secrets) || string(got.Files["key.pem"]) != "PRIVATE" ||
 		len(got.Files) != 1 || got.APIToken != "in-run" || got.APITokenExpiresAt != 2e9 ||
-		string(got.ArtifactKey) != string(w.store.key) {
+		string(got.ArtifactKey) != string(w.store.key) || got.SourceCredential == nil ||
+		got.SourceCredential.Username != "x-access-token" ||
+		got.SourceCredential.Token != "narrow" {
 		t.Errorf("secrets = %+v", got)
+	}
+	if spec.Source != (workersapi.SpecSource{
+		Kind: workersapi.SourceGit, URL: "https://git.example.com/acme/infra.git", Narrowed: true,
+	}) || !slices.Equal(w.sources.asked, []string{"abc"}) {
+		t.Errorf("source = %+v, asked for %v", spec.Source, w.sources.asked)
+	}
+	if spec.Tool == nil || *spec.Tool != (workersapi.SpecTool{
+		Name: "terraform", Version: "1.9.8", Download: true,
+	}) || !slices.Equal(w.catalog.asked, []string{"1.9"}) {
+		t.Errorf("tool = %+v, asked %v", spec.Tool, w.catalog.asked)
 	}
 	if !slices.Equal(w.tokens.got, []accessapi.InRunRequest{
 		{Account: w.run.Account, Run: w.run.ID, Slug: "infra"},
@@ -558,6 +636,8 @@ func TestUnitHandoverRefused(t *testing.T) {
 		"the account":     func(on bool) { w.accounts.err = cond(on) },
 		"the environment": func(on bool) { w.env.err = cond(on) },
 		"the token":       func(on bool) { w.tokens.err = cond(on) },
+		"the source":      func(on bool) { w.sources.err = cond(on) },
+		"the catalogue":   func(on bool) { w.catalog.err = cond(on) },
 		"the key":         func(on bool) { w.store.keyErr = cond(on) },
 	} {
 		fail(true)
@@ -574,4 +654,72 @@ func cond(on bool) error {
 		return errDown
 	}
 	return nil
+}
+
+// TestUnitHandoverSourceAndTool checks a raw Git source, with no
+// credential and not narrowed; an OpenTofu stack's tofu at the release
+// its terraformVersion resolves to, over its settings' version, run from
+// the image when the stack skips the download; masking as the stack sets
+// it; no tool for a vendor that mounts none; that a constraint no release
+// meets is a *kernel.Invalid naming the setting it comes from, and a
+// catalogue that lists none one naming /terraformVersion; and that a
+// handover refused for its tool, or with no sources bound, mints neither
+// the source's token nor the in-run API token.
+func TestUnitHandoverSourceAndTool(t *testing.T) {
+	w := newWorld(t)
+	w.sources.src = runsapi.Source{URL: "https://example.com/infra.git"}
+	constraint := " ~> 1.9 "
+	w.stacks.settings.Vendor, w.stacks.settings.TerraformVersion = "opentofu", &constraint
+	w.stacks.settings.SkipVendorBinaryDownload = true
+	w.stacks.settings.EnableWellKnownSecretMasking = true
+	h, err := w.handover(t, w.run.ID)
+	if err != nil || h.Spec.Source.Narrowed ||
+		h.Spec.Source.URL != "https://example.com/infra.git" ||
+		h.Spec.Tool == nil ||
+		*h.Spec.Tool != (workersapi.SpecTool{Name: "tofu", Version: "1.9.8"}) ||
+		!slices.Equal(w.catalog.asked, []string{" ~> 1.9 "}) ||
+		!h.Spec.Stack.EnableWellKnownSecretMasking {
+		t.Fatalf("an OpenTofu stack on raw Git = %+v, %v; asked %v", h.Spec, err, w.catalog.asked)
+	}
+	if strings.Contains(string(h.Secrets.Reveal()), "sourceCredential") {
+		t.Errorf("raw Git's secrets name a credential: %s", h.Secrets.Reveal())
+	}
+
+	w.stacks.settings.Vendor = "pulumi"
+	if h, err = w.handover(t, w.run.ID); err != nil || h.Spec.Tool != nil {
+		t.Errorf("a vendor with no tool = %+v, %v", h.Spec.Tool, err)
+	}
+
+	w.stacks.settings.Vendor = "terraform"
+	asked, minted := len(w.sources.asked), len(w.tokens.got)
+	for _, tc := range []struct {
+		name, pointer string
+		set           func()
+	}{
+		{"a constraint no release meets", "/terraformVersion", func() { w.catalog.invalid = true }},
+		{
+			"a settings' version no release meets", "/vendorConfig/terraform/version",
+			func() { w.stacks.settings.TerraformVersion = nil },
+		},
+		{"a catalogue that lists none", "/terraformVersion", func() {
+			w.catalog.invalid, w.stacks.settings.VendorConfig = false, nil
+			w.catalog.versions = nil
+		}},
+	} {
+		tc.set()
+		_, err := w.handover(t, w.run.ID)
+		inv, ok := errors.AsType[*kernel.Invalid](err)
+		if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != tc.pointer {
+			t.Errorf("%s = %v", tc.name, err)
+		}
+	}
+	if len(w.sources.asked) != asked || len(w.tokens.got) != minted {
+		t.Errorf("a refused tool minted: sources %v, tokens %v", w.sources.asked, w.tokens.got)
+	}
+
+	w.catalog.versions = []string{"1.14.2"}
+	w.svc.BindSources(nil)
+	if _, err := w.handover(t, w.run.ID); err == nil || len(w.tokens.got) != minted {
+		t.Errorf("no sources bound = %v, tokens %v", err, w.tokens.got)
+	}
 }

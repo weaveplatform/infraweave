@@ -72,7 +72,7 @@ type Source interface {
 	// AffectedFiles lists the paths that differ between the commits base
 	// and head of repo; ErrNotFound when either is missing.
 	AffectedFiles(ctx context.Context, repo Repository, base, head string) ([]string, error)
-	// SourceURL is the URL a worker fetches commit of repo from.
+	// SourceURL is the HTTPS Git URL a worker fetches commit of repo from.
 	SourceURL(repo Repository, commit string) string
 }
 

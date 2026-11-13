@@ -323,11 +323,15 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 - **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
   and `download`. The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the
-  run uses one release. `download` is false when the stack sets
+  run uses one release. The constraint is the stack's `terraformVersion`,
+  else its vendor settings' `version`; a stack with neither runs the
+  newest listed release. `download` is false when the stack sets
   `skipVendorBinaryDownload`, and the image's own binary runs. A
   constraint that resolves to no release answers `422`
-  `validation-failed` naming `/terraformVersion`, and the launcher fails
-  the run in preparation with that detail.
+  `validation-failed` naming the setting it comes from, `/terraformVersion`
+  or `/vendorConfig/<vendor>/version`, as does a catalogue that lists no
+  release, naming `/terraformVersion`; the launcher fails the run in
+  preparation with that detail.
 - **Masking.** `stack.enableWellKnownSecretMasking` is the stack's flag,
   which turns on the well-known patterns ([0013](0013-secrets-at-rest.md#masking)).
 - **The state backend.** For a stack that manages state, the clear part

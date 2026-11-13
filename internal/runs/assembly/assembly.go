@@ -28,6 +28,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -103,6 +104,7 @@ type Deps struct {
 	Tokens      handover.Tokens
 	Stacks      stacksapi.Stacks
 	Environment configapi.Environment
+	Catalog     vendorsapi.Catalog
 	Events      lifecycle.Events
 	Jobs        schedule.Queue
 	Now         func() time.Time
@@ -141,7 +143,7 @@ func New(d Deps) *Domain {
 		liveness: schedule.NewLiveness(store, lc),
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
-			Environment: d.Environment, Tokens: d.Tokens,
+			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog,
 		}),
 		reports: report.New(report.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
@@ -220,12 +222,14 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 	return kinds.Register(runsapi.UpdatedKind, runsapi.UpdatedVersion, runsapi.UpdatedSchema)
 }
 
-// BindSources binds the vcs domain's revocation of a run's source
-// credentials and its resolution of a stack's commits, back edges
-// internal/app binds after it constructs that domain; from then on every
-// run that ends releases its credentials, and a trigger may name a commit.
+// BindSources binds the vcs domain's run sources and its resolution of a
+// stack's commits, back edges internal/app binds after it constructs that
+// domain; from then on a handover names the run's source and seals its
+// credential, every run that ends releases its credentials, and a trigger
+// may name a commit.
 func (d *Domain) BindSources(s runsapi.RunSources, r stacksapi.StackSources) {
 	d.lifecycle.BindSources(s)
+	d.handover.BindSources(s)
 	d.trigger.BindSources(r)
 }
 
