@@ -179,10 +179,12 @@ components:
       properties:
         kind:
           type: string
-          enum: [git]
+          enum: [git, archive]
           description: >-
             git: url is an HTTPS Git URL of the stack's repository, from
-            which the worker fetches commit.hash.
+            which the worker fetches commit.hash. archive: url is a
+            pre-signed GET of a local preview's tar.gz, which needs no
+            credential.
         url:
           type: string
           description: The URL the worker fetches from.

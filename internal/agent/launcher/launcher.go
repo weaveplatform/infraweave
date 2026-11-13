@@ -3,11 +3,16 @@ package launcher
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
@@ -24,19 +30,33 @@ import (
 
 // Deps are what a launcher takes: its settings, the HTTP client its
 // worker API calls and downloads go through, the executor that runs its
-// runs, the tool binaries they mount, its log, a clock, time.Now when
-// nil, and what it registers as. Tools is a tools.Fetcher on the cache
-// directory and the tool mirror when nil.
+// runs, the sources and tool binaries they mount, its log, a clock,
+// time.Now when nil, and what it registers as. Doer is a client trusting
+// the system's roots and launcher.ca_file's when nil, Sources a
+// source.Fetcher trusting the same, and Tools a tools.Fetcher on the
+// cache directory and the tool mirror.
 type Deps struct {
 	Config   config.Launcher
 	Doer     wire.HttpRequestDoer
 	Executor executor.Executor
+	Sources  Sources
 	Tools    Tools
 	Log      *slog.Logger
 	Now      func() time.Time
 	Version  string
 	OS       string
 	Arch     string
+}
+
+// Sources fetches a run's source into its workspace directory, which
+// must not exist.
+type Sources interface {
+	Fetch(
+		ctx context.Context,
+		dir string,
+		spec wire.RunSpec,
+		cred *wire.RunSpecSourceCredential,
+	) error
 }
 
 // Tools answers the path of a verified binary of a tool's release.
@@ -100,6 +120,16 @@ func New(d Deps) (*Launcher, error) {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
+	ca, roots, err := d.Config.CA()
+	if err != nil {
+		return nil, err //nolint:wrapcheck // config names the setting
+	}
+	if d.Doer == nil {
+		d.Doer = newClient(roots)
+	}
+	if d.Sources == nil {
+		d.Sources = source.New(d.Doer, ca)
+	}
 	if d.Tools == nil {
 		d.Tools = tools.New(tools.Config{
 			Dir: d.Config.CacheDir, Mirror: d.Config.ToolMirror, Doer: d.Doer,
@@ -114,6 +144,15 @@ func New(d Deps) (*Launcher, error) {
 		return nil, err
 	}
 	return &Launcher{d: d, id: id, api: client.New(client.Base(id.endpoint), d.Doer)}, nil
+}
+
+// newClient is the launcher's HTTP client, trusting roots, or the
+// system's when nil. It has no timeout: each call has its context's, and
+// a poll is held for up to launcher.poll_timeout.
+func newClient(roots *x509.CertPool) *http.Client {
+	t := http.DefaultTransport.(*http.Transport).Clone() //nolint:forcetypeassert // the standard library's
+	t.TLSClientConfig = &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS12}
+	return &http.Client{Transport: t}
 }
 
 // The readiness errors of a launcher with no session, and of one the
@@ -233,6 +272,7 @@ func (l *Launcher) start(ctx context.Context) error {
 		l.ended = l.st.Exit
 	case l.st.Run != "":
 		l.ended = &wire.ContainerExit{Code: executor.MissingCode, Reason: wire.Missing}
+		l.dropWorkspace(ctx, l.st.Run)
 	}
 	return l.save()
 }
@@ -254,6 +294,7 @@ func (l *Launcher) discard(ctx context.Context, old string) {
 			)
 		}
 	}
+	l.dropWorkspace(ctx, l.st.Run)
 	l.st.Run, l.st.Exit = "", nil
 }
 
@@ -311,6 +352,7 @@ func (l *Launcher) reregister(ctx context.Context) error {
 		if err := l.cur.c.Remove(ctx); err != nil {
 			l.d.Log.WarnContext(ctx, "remove the lost run's container", "error", err)
 		}
+		l.dropWorkspace(ctx, l.cur.c.Run())
 		l.cur = nil
 	}
 	l.ended, l.st.Run, l.st.Exit = nil, "", nil
@@ -432,13 +474,11 @@ func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 }
 
 // prepare fetches a's specification, opens its sealed part with the
-// pool's private key, fetches the tool the specification names, and
-// starts the run's container with the tool's binary mounted read-only at
-// /bin/<tool> and the handoff, which holds the opened secrets in memory
-// alone. A specification whose tool download is false mounts none, so the
-// image's own binary runs.
+// pool's private key, fetches the run's source into its workspace, and
+// starts the run's container. A container that does not start takes its
+// workspace with it.
 //
-// ref: decision 0008 § "Runner images"
+// ref: decision 0008 § "The launcher and the runner"
 func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Container, error) {
 	cctx, cancel := context.WithTimeout(ctx, callTimeout)
 	spec, err := l.api.Spec(cctx, a.RunToken, a.Run)
@@ -455,6 +495,91 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Con
 	if err := json.Unmarshal(plain, &secrets); err != nil {
 		return nil, fmt.Errorf("read the run's secrets: %w", err)
 	}
+	ws, err := l.workspace(ctx, a, spec, secrets.SourceCredential)
+	if err != nil {
+		return nil, err
+	}
+	c, err := l.container(ctx, a, spec, secrets, ws)
+	if err != nil && ws != "" {
+		l.dropWorkspace(ctx, a.Run)
+	}
+	return c, err
+}
+
+// errRun marks a run ID that cannot name a directory.
+var errRun = errors.New("the run's ID names no workspace")
+
+// workspaceDir is run's workspace directory, under the cache directory's
+// workspaces, which only the launcher's user reads.
+func (l *Launcher) workspaceDir(run string) (string, error) {
+	if !filepath.IsLocal(run) || strings.ContainsAny(run, `/\.`) {
+		return "", fmt.Errorf("%w: %q", errRun, run)
+	}
+	dir, err := filepath.Abs(filepath.Join(l.d.Config.CacheDir, "workspaces", run))
+	if err != nil {
+		return "", fmt.Errorf("the workspace: %w", err)
+	}
+	return dir, nil
+}
+
+// workspace fetches a's source into a fresh workspace directory and
+// answers it. A run that applies or replans after its plan was confirmed
+// starts from its saved workspace instead, and answers none here.
+//
+// ref: decision 0008 § "The launcher and the runner"
+func (l *Launcher) workspace(
+	ctx context.Context,
+	a wire.Assignment,
+	spec wire.RunSpec,
+	cred *wire.RunSpecSourceCredential,
+) (string, error) {
+	if a.State != wire.AssignmentStatePREPARING {
+		return "", nil
+	}
+	dir, err := l.workspaceDir(a.Run)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(dir), 0o700); err != nil {
+		return "", fmt.Errorf("the workspace: %w", err)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		return "", fmt.Errorf("the workspace: %w", err)
+	}
+	if err := l.d.Sources.Fetch(ctx, dir, spec, cred); err != nil {
+		l.dropWorkspace(ctx, a.Run)
+		return "", err //nolint:wrapcheck // source names the step and the host
+	}
+	return dir, nil
+}
+
+// dropWorkspace removes run's workspace directory. A launcher that could
+// not hand the workspace to the run's user may be refused what the run
+// wrote there; that is logged, and the directory stays.
+func (l *Launcher) dropWorkspace(ctx context.Context, run string) {
+	dir, err := l.workspaceDir(run)
+	if err == nil {
+		err = os.RemoveAll(dir)
+	}
+	if err != nil {
+		l.d.Log.WarnContext(ctx, "remove the run's workspace", "run", run, "error", err)
+	}
+}
+
+// container fetches the tool a's specification names and starts the
+// run's container with ws as its workspace, the tool's binary mounted
+// read-only at /bin/<tool>, and the handoff, which holds the opened
+// secrets in memory alone. A specification whose tool download is false
+// mounts none, so the image's own binary runs.
+//
+// ref: decision 0008 § "Runner images"
+func (l *Launcher) container(
+	ctx context.Context,
+	a wire.Assignment,
+	spec wire.RunSpec,
+	secrets wire.RunSpecSecrets,
+	ws string,
+) (executor.Container, error) {
 	var mounts []executor.Mount
 	if t := spec.Tool; t != nil && t.Download {
 		bin, err := l.d.Tools.Binary(ctx, tools.Release{
@@ -483,8 +608,8 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Con
 	defer clear(h.Bytes())
 	out := &lines{log: l.d.Log, run: a.Run}
 	c, err := l.d.Executor.Start(ctx, executor.Job{
-		Worker: l.st.Worker, Run: a.Run, Image: image, Mounts: mounts, Handoff: h.Bytes(),
-		Output: out,
+		Worker: l.st.Worker, Run: a.Run, Image: image, Workspace: ws, Mounts: mounts,
+		Handoff: h.Bytes(), Output: out,
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the executor names the step
@@ -532,6 +657,7 @@ func (l *Launcher) end(ctx context.Context, w waited) {
 	if err := l.cur.c.Remove(ctx); err != nil {
 		l.d.Log.WarnContext(ctx, "remove the run's container", "run", run, "error", err)
 	}
+	l.dropWorkspace(ctx, run)
 	l.cur, l.ended, l.st.Exit = nil, &exit, &exit
 	l.saveOrLog(ctx)
 }

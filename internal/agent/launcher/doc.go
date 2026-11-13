@@ -12,11 +12,15 @@
 // short. An assignment is prepared: the launcher fetches the run's
 // specification with the run token, opens its sealed part with the pool's
 // private key, fetches the release of the tool the specification names
-// through internal/agent/tools, unless its download is false, and starts
-// the container with the tool's binary mounted read-only at /bin/<tool>
-// and the handoff, so the opened secrets reach the runner without
-// touching the host's disk; a preparation that fails reports the run
-// failed in its preparing state, with the error as its note.
+// through internal/agent/tools, unless its download is false, fetches the
+// run's source through internal/agent/source into
+// <cache_dir>/workspaces/<run>, presenting the opened source credential,
+// when the run is preparing its first phase, and starts the container with the workspace at /mnt/workspace, the
+// tool's binary mounted read-only at /bin/<tool>, and the handoff, so the
+// opened secrets reach the runner without touching the host's disk; a
+// preparation that fails reports the run failed in its preparing state,
+// with the error as its note, and removes the workspace. The workspace is
+// removed when the run ends, is discarded, or is lost.
 // stop and kill reach the run's container, cycle exits once the launcher
 // is idle, and a renewed session token replaces the old one.
 //
@@ -37,18 +41,20 @@
 //
 // # Input and output
 //
-// It calls the worker API and downloads tool releases through the
-// caller's HTTP client, starts and waits on containers through the
-// executor, and reads and writes worker.json and the tool binaries in
-// launcher.cache_dir. It logs registration, each run's
+// It calls the worker API and downloads tool releases and source archives
+// through the caller's HTTP client, or one trusting the system's roots
+// and launcher.ca_file's, fetches Git sources from their providers over
+// the same roots, reads launcher.ca_file, starts and waits on containers through the executor, and
+// reads and writes worker.json, the tool binaries and the runs'
+// workspaces in launcher.cache_dir. It logs registration, each run's
 // start, signals and end, each line of the runner's output as "runner
-// output", and each failed call with its retry.
+// output", each workspace it cannot remove, and each failed call with its
+// retry.
 //
 // # Dependencies
 //
-// It imports internal/agent/client, config, executor, handoff, tools and
-// wire,
-// platform/seal to open specifications, and go-jose to sign
+// It imports internal/agent/client, config, executor, handoff, source,
+// tools and wire, platform/seal to open specifications, and go-jose to sign
 // registrations; no server package. internal/agent/cli runs it as
 // infraweave launcher.
 package launcher

@@ -232,13 +232,27 @@ func (w *World) vcs(ctx context.Context, config []byte) ([]byte, error) {
 		return config, nil
 	}
 	if len(cas) > 0 {
-		file := filepath.Join(w.Dir, "vcs-ca.pem")
+		file := filepath.Join(w.Dir, caFile)
 		if err := os.WriteFile(file, cas, 0o600); err != nil {
 			return nil, fmt.Errorf("vcs CA: %w", err)
 		}
 		vcs["ca_file"] = file
 	}
 	return withSection(config, "vcs", vcs)
+}
+
+// caFile holds every certificate the scenario's fakes give, in w.Dir.
+const caFile = "vcs-ca.pem"
+
+// CAFile is the file vcs.ca_file names, holding every certificate the
+// scenario's fakes give, for a launcher to trust as well; empty when they
+// give none or no server has started.
+func (w *World) CAFile() string {
+	f := filepath.Join(w.Dir, caFile)
+	if _, err := os.Stat(f); err != nil {
+		return ""
+	}
+	return f
 }
 
 // KEK is the secrets.kek settings the scenario's servers and commands

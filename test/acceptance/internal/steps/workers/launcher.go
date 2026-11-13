@@ -127,7 +127,7 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 	}), 0o600); err != nil {
 		return fmt.Errorf("launcher key: %w", err)
 	}
-	config, err := yaml.Marshal(map[string]any{"launcher": map[string]any{
+	settings := map[string]any{
 		"token":                poolToken,
 		"private_key":          keyFile,
 		"poll_timeout":         "5s",
@@ -137,7 +137,11 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 		"docker": map[string]any{
 			"network": l.network, "runner_binary": host.Runner,
 		},
-	}})
+	}
+	if ca := w.CAFile(); ca != "" {
+		settings["ca_file"] = ca
+	}
+	config, err := yaml.Marshal(map[string]any{"launcher": settings})
 	if err != nil {
 		return fmt.Errorf("launcher config: %w", err)
 	}

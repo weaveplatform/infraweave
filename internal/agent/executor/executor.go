@@ -9,15 +9,17 @@ import (
 
 // Job is one run's container: the worker and the run it belongs to, which
 // label it so a restarted launcher finds it, the image it starts from, the
-// host paths it mounts, the handoff its runner reads on standard input,
-// and where its output goes.
+// host directory that is its workspace, the image's own when empty, the
+// other host paths it mounts, the handoff its runner reads on standard
+// input, and where its output goes.
 type Job struct {
-	Worker  string
-	Run     string
-	Image   string
-	Mounts  []Mount
-	Handoff []byte
-	Output  io.Writer
+	Worker    string
+	Run       string
+	Image     string
+	Workspace string
+	Mounts    []Mount
+	Handoff   []byte
+	Output    io.Writer
 }
 
 // Mount is a host path, absolute, that the container sees at Target.

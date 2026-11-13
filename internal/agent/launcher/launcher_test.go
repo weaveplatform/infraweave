@@ -48,12 +48,13 @@ func (l *logs) String() string {
 // world is a pool's fake worker API and a fake executor, which launchers
 // of the pool share across restarts through one cache directory.
 type world struct {
-	pool  agenttest.Pool
-	srv   *agenttest.Server
-	exec  *agenttest.Executor
-	tools *fakeTools
-	dir   string
-	log   *logs
+	pool    agenttest.Pool
+	srv     *agenttest.Server
+	exec    *agenttest.Executor
+	sources *fakeSources
+	tools   *fakeTools
+	dir     string
+	log     *logs
 }
 
 func newWorld(t *testing.T) *world {
@@ -64,7 +65,7 @@ func newWorld(t *testing.T) *world {
 	}
 	return &world{
 		pool: pool, srv: agenttest.NewServer(pool), exec: agenttest.NewExecutor(),
-		tools: &fakeTools{}, dir: t.TempDir(), log: &logs{},
+		sources: &fakeSources{}, tools: &fakeTools{}, dir: t.TempDir(), log: &logs{},
 	}
 }
 
@@ -78,7 +79,8 @@ func (w *world) config() config.Launcher {
 func (w *world) launcher(t *testing.T) *launcher.Launcher {
 	t.Helper()
 	l, err := launcher.New(launcher.Deps{
-		Config: w.config(), Doer: w.srv.Client(), Executor: w.exec, Tools: w.tools,
+		Config: w.config(), Doer: w.srv.Client(), Executor: w.exec, Sources: w.sources,
+		Tools:   w.tools,
 		Log:     slog.New(slog.NewTextHandler(w.log, nil)),
 		Version: "1.2.3", OS: "linux", Arch: "arm64",
 	})
@@ -86,6 +88,38 @@ func (w *world) launcher(t *testing.T) *launcher.Launcher {
 		t.Fatal(err)
 	}
 	return l
+}
+
+// fakeSources writes main.tf into each workspace, or answers err.
+type fakeSources struct {
+	mu    sync.Mutex
+	dirs  []string
+	creds []*wire.RunSpecSourceCredential
+	err   error
+}
+
+func (f *fakeSources) Fetch(
+	_ context.Context,
+	dir string,
+	_ wire.RunSpec,
+	cred *wire.RunSpecSourceCredential,
+) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.dirs, f.creds = append(f.dirs, dir), append(f.creds, cred)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "main.tf"), nil, 0o600); err != nil {
+		return err
+	}
+	return f.err
+}
+
+func (f *fakeSources) fetched() ([]string, []*wire.RunSpecSourceCredential) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.dirs), slices.Clone(f.creds)
 }
 
 // fakeTools answers each release's binary under /cache, or err.
@@ -150,7 +184,7 @@ func (w *world) runFor(t *testing.T, d time.Duration) error {
 // launcher acted on it.
 func (w *world) assign(t *testing.T, run string, state wire.AssignmentState, image string) {
 	t.Helper()
-	w.assignTool(t, run, state, image, nil)
+	w.queue(t, newRun(run, state, image))
 }
 
 // assignTool assigns as assign does, of a run whose specification names
@@ -163,6 +197,13 @@ func (w *world) assignTool(
 	tool *wire.RunSpecTool,
 ) {
 	t.Helper()
+	r := newRun(run, state, image)
+	r.Spec.Tool = tool
+	w.queue(t, r)
+}
+
+// newRun is an assignment of run in state, with image when it is set.
+func newRun(run string, state wire.AssignmentState, image string) agenttest.Run {
 	r := agenttest.Run{
 		Assignment: wire.Assignment{
 			Run:          run,
@@ -173,7 +214,6 @@ func (w *world) assignTool(
 		Spec: wire.RunSpec{
 			Run:   wire.RunSpecRun{},
 			Hooks: map[string][]string{"before_init": {"echo hi"}},
-			Tool:  tool,
 		},
 		Secrets: wire.RunSpecSecrets{
 			ApiToken:    "api-" + run,
@@ -183,6 +223,12 @@ func (w *world) assignTool(
 	if image != "" {
 		r.Spec.RunnerImage = &image
 	}
+	return r
+}
+
+// queue queues r's assignment, and waits until the launcher acted on it.
+func (w *world) queue(t *testing.T, r agenttest.Run) {
+	t.Helper()
 	if err := w.srv.Assign(r); err != nil {
 		t.Fatal(err)
 	}
@@ -420,10 +466,70 @@ func TestUnitLauncherMountsTheRunsTool(t *testing.T) {
 	})
 }
 
-// TestUnitNewFetchesToolsIntoTheCache checks that a launcher given no
-// Tools fetches through a tools.Fetcher on its cache directory and
-// mirror, which reaches the mirror for the first file of a release.
-func TestUnitNewFetchesToolsIntoTheCache(t *testing.T) {
+// TestUnitLauncherFetchesTheRunsSource checks that a run being prepared
+// gets its source fetched with its credential into a fresh workspace
+// under the cache directory, which its container mounts and which goes
+// when the container ends; that a run that applies after confirmation
+// gets none; and that a fetch that fails, or a container that does not
+// start, fails the run in preparation and leaves no workspace.
+func TestUnitLauncherFetchesTheRunsSource(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		ws := filepath.Join(w.dir, "workspaces", "run-1")
+		run := newRun("run-1", wire.AssignmentStatePREPARING, "")
+		cred := &wire.RunSpecSourceCredential{Username: "x", Token: "secret"}
+		run.Secrets.SourceCredential = cred
+		w.queue(t, run)
+		dirs, creds := w.sources.fetched()
+		if len(dirs) != 1 || dirs[0] != ws || *creds[0] != *cred {
+			t.Fatalf("fetched into %v with %v", dirs, creds)
+		}
+		if j := w.exec.Jobs()[0]; j.Workspace != ws {
+			t.Fatalf("the job's workspace: %q", j.Workspace)
+		}
+		if _, err := os.Stat(filepath.Join(ws, "main.tf")); err != nil {
+			t.Fatal(err)
+		}
+		w.exec.Container("worker-1").End(ended(0, wire.Exited))
+		synctest.Wait()
+		if _, err := os.Stat(ws); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("an ended run's workspace: %v", err)
+		}
+		w.answer(wire.PollResult{})
+
+		w.assign(t, "run-2", wire.AssignmentStatePREPARINGAPPLY, "")
+		if dirs, _ := w.sources.fetched(); len(dirs) != 1 || w.exec.Jobs()[1].Workspace != "" {
+			t.Fatalf("an apply fetched %v into %q", dirs, w.exec.Jobs()[1].Workspace)
+		}
+		w.exec.Container("worker-1").End(ended(0, wire.Exited))
+		synctest.Wait()
+		w.answer(wire.PollResult{})
+
+		w.sources.err = errFetch
+		w.assign(t, "run-3", wire.AssignmentStatePREPARING, "")
+		reps := w.srv.Reports()
+		if rep := reps[len(reps)-1]; rep.Run != "run-3" || *rep.Report.Details != errFetch.Error() {
+			t.Fatalf("a failed fetch: %+v", rep)
+		}
+		w.sources.err = nil
+		w.exec.FailStart(errors.New("no such image"))
+		w.assign(t, "run-4", wire.AssignmentStatePREPARING, "")
+		entries, err := os.ReadDir(filepath.Join(w.dir, "workspaces"))
+		if err != nil || len(entries) != 0 || len(w.exec.Jobs()) != 2 {
+			t.Fatalf("workspaces left: %v, %v", entries, err)
+		}
+		r.stop(t)
+	})
+}
+
+var errFetch = errors.New("fetch commit abc from git.example.com: authentication required")
+
+// TestUnitNewDefaults checks that a launcher given no Sources or Tools
+// fetches through a source.Fetcher and a tools.Fetcher on its cache
+// directory and mirror: an archive source is read through the launcher's
+// HTTP client, and a tool's first file from the mirror.
+func TestUnitNewDefaults(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
 		c := w.config()
@@ -440,9 +546,16 @@ func TestUnitNewFetchesToolsIntoTheCache(t *testing.T) {
 		done := make(chan error, 1)
 		go func() { done <- l.Run(ctx) }()
 		synctest.Wait()
-		w.assignTool(t, "run-1", wire.AssignmentStatePREPARING, "",
+		run := newRun("run-1", wire.AssignmentStatePREPARING, "")
+		run.Spec.Source = wire.RunSpecSource{Kind: wire.Archive, Url: "http://store.invalid/upload"}
+		w.queue(t, run)
+		if d := *w.srv.Reports()[0].Report.Details; d !=
+			"fetch the archive from store.invalid: the download failed: answered 404 Not Found" {
+			t.Fatalf("details: %s", d)
+		}
+		w.assignTool(t, "run-2", wire.AssignmentStatePREPARINGAPPLY, "",
 			&wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2", Download: true})
-		d := *w.srv.Reports()[0].Report.Details
+		d := *w.srv.Reports()[1].Report.Details
 		if !strings.HasPrefix(d, "terraform 1.17.2 for linux/arm64: download "+
 			"terraform_1.17.2_SHA256SUMS: the download failed") ||
 			!strings.Contains(d, "http://mirror.invalid/terraform/1.17.2/") {
@@ -843,6 +956,7 @@ func TestUnitNewChecksTheIdentity(t *testing.T) {
 			c.PrivateKey = observe.Secret(other.pool.Key)
 		},
 		"token not base64": func(c *config.Launcher) { c.Token = "%%" },
+		"CA file missing":  func(c *config.Launcher) { c.CAFile = "/nonexistent/ca.pem" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			cfg := w.config()
