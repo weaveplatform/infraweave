@@ -379,11 +379,10 @@ func step(run lifecycle.Run) workersapi.Step {
 	return out
 }
 
-// key is the key of run's object named name in its current state.
-//
-// ref: decision 0005 § "Keys"
+// key is the key of run's object named name in its current state, as the
+// runner builds it from the run's specification.
 func key(run lifecycle.Run, name string) string {
-	return fmt.Sprintf("%s/%s/%s-%d/%s", run.Account, run.ID, run.State, run.Version, name)
+	return kernel.RunObjectKey(run.Account, run.ID, run.State, run.Version, name)
 }
 
 // LogKey is the key, in the run-logs store, of the object acct's run's

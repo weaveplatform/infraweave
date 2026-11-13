@@ -40,6 +40,23 @@ func (w *workerSteps) spec() (wire.RunSpec, error) {
 	return s, nil
 }
 
+// account checks that the last answer, a run's specification, names the
+// run kept as run and its account, the home account, and keeps the
+// account's ID as name, for a step that builds the key of an object the
+// run stores as a runner does.
+func (w *workerSteps) account(run, name string) error {
+	s, err := w.spec()
+	if err != nil {
+		return err
+	}
+	if s.Run.Id != w.w.IDs[run] || s.Run.Account != harness.Home.Account {
+		return fmt.Errorf("%w: the specification names the run %s of the account %q, want %s of %s",
+			harness.ErrStep, s.Run.Id, s.Run.Account, w.w.IDs[run], harness.Home.Account)
+	}
+	w.w.IDs[name] = s.Run.Account
+	return nil
+}
+
 // variable checks that the last answer, a run's specification, carries
 // the variable name with value want in clear, or, when want is empty,
 // write-only with no value.

@@ -71,6 +71,8 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the held poll of "(\w+)" answers within (\d+) seconds$`, w.answered)
 	sc.Step(`^the answer lists the workers "([^"]*)"$`, w.lists)
 	sc.Step(`^the answer assigns the run "(\w+)", its run token kept as "(\w+)"$`, w.assigned)
+	sc.Step(`^the specification names the run "(\w+)" of the home account, kept as "(\w+)"$`,
+		w.account)
 	sc.Step(`^the specification's variable "(\w+)" is "([^"]+)"$`, w.variable)
 	sc.Step(`^the specification's variable "(\w+)" is write-only$`,
 		func(name string) error { return w.variable(name, "") })
