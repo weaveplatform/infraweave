@@ -39,6 +39,8 @@ func (l *logSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^token "(\w+)" eventually reads a download URL of the run "(\w+)"'s ([A-Z_]+) log `+
 		`through ([AB])$`, l.eventually)
 	sc.Step(`^the answer's url downloads `+quoted+`$`, l.downloads)
+	sc.Step(`^token "(\w+)" reads the run "(\w+)"'s ([A-Z_]+) log through ([AB]), which `+
+		`holds `+quoted+` and not `+quoted+`$`, l.holds)
 }
 
 // unquote is s, a step's quoted string, with its escapes applied.
@@ -197,4 +199,60 @@ func (l *logSteps) downloads(ctx context.Context, text string) error {
 			resp.StatusCode, got, want, err)
 	}
 	return nil
+}
+
+// maxPages bounds the pages holds reads of one state's log.
+const maxPages = 100
+
+// holds reads every line of the run kept as run's log of state, its
+// latest execution, page by page until the page that finishes it, and
+// checks that the lines, joined by newlines, hold want and not unwanted.
+func (l *logSteps) holds(ctx context.Context, token, run, state, replica, want,
+	unwanted string,
+) error {
+	want, err := unquote(want)
+	if err != nil {
+		return err
+	}
+	if unwanted, err = unquote(unwanted); err != nil {
+		return err
+	}
+	var lines []string
+	next := ""
+	for range maxPages {
+		path := "/api/v1/runs/" + l.w.IDs[run] + "/logs?sanitize=true&state=" + state
+		if next != "" {
+			path += "&token=" + next
+		}
+		if err := l.w.SendAs(ctx, `token "`+token+`"`, http.MethodGet, path, "",
+			replica); err != nil {
+			return err //nolint:wrapcheck // names the request
+		}
+		var page struct {
+			Messages []struct {
+				Message string `json:"message"`
+			} `json:"messages"`
+			NextToken string `json:"nextToken"`
+			Finished  bool   `json:"finished"`
+		}
+		last := l.w.Last()
+		if last.Status != http.StatusOK || json.Unmarshal(last.Body, &page) != nil {
+			return fmt.Errorf("%w: the log answered %d %s", harness.ErrStep, last.Status,
+				last.Body)
+		}
+		for _, m := range page.Messages {
+			lines = append(lines, m.Message)
+		}
+		if page.Finished {
+			text := strings.Join(lines, "\n")
+			if !strings.Contains(text, want) || strings.Contains(text, unwanted) {
+				return fmt.Errorf("%w: the %s log is %q, want %q and not %q", harness.ErrStep,
+					state, text, want, unwanted)
+			}
+			return nil
+		}
+		next = page.NextToken
+	}
+	return fmt.Errorf("%w: the %s log did not finish in %d pages", harness.ErrStep, state,
+		maxPages)
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -68,9 +69,23 @@ type World struct {
 	// Bucket is an @objectstore scenario's bucket in the shared RustFS,
 	// which every server of the scenario keeps its objects in.
 	Bucket string
+	// storePort is an @objectstore scenario's port of the object store on
+	// the host's loopback, which the URLs its servers sign name.
+	storePort string
 	// env is what every process mode of the scenario runs with beyond
 	// the test binary's environment: the object store's keys.
 	env []string
+}
+
+// Ports are the ports on the host's loopback that the scenario's
+// containers reach, which Launchers.Network forwards: the relay's, and an
+// @objectstore scenario's object store's, which a runner uploads its log
+// to through the URLs a server signs.
+func (w *World) Ports(relay string) []string {
+	if w.storePort == "" {
+		return []string{relay}
+	}
+	return []string{relay, w.storePort}
 }
 
 var nonWord = regexp.MustCompile(`[^a-z0-9]+`)
@@ -185,6 +200,11 @@ func (w *World) objectStore(ctx context.Context, config []byte) ([]byte, error) 
 	if err != nil {
 		return nil, err //nolint:wrapcheck // names @objectstore
 	}
+	u, err := url.Parse(store.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("the object store's endpoint: %w", err)
+	}
+	w.storePort = u.Port()
 	if w.Bucket == "" {
 		name := "scenario-" + strconv.FormatInt(w.Suite.Deps.Serial(), 10)
 		if err := store.Bucket(ctx, name); err != nil {

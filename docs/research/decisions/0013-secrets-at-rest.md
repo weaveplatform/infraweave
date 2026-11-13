@@ -324,9 +324,10 @@ share one implementation: the server masks evaluated expressions
 | Source of masked values | Rule |
 |---|---|
 | Secret configuration elements | The value of every element with `write_only` set, as delivered in the spec. A mounted file's content is masked line by line |
+| The run's own credentials | The in-run API token, the run token, which the managed state backend's credentials carry, and the source credential's token |
 | `INFRAWEAVE_LAUNCHER_MASK_ENVS` on the launcher (`launcher.mask_envs`) | The values of the run's variables it names, whose names the handoff carries to the runner |
-| `::add-mask v1 v2 ...` printed by a hook or phase | Each whitespace-separated word, from that line on |
-| Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/platform/mask` |
+| `::add-mask v1 v2 ...` printed by a hook or phase | Each whitespace-separated word, from that line on, the command's own line included |
+| Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/platform/mask`: AWS access key IDs, Entra ID client secrets, the keys and signatures of Azure connection strings, GitHub's classic and fine-grained PATs and its App, refresh and OAuth tokens, JWTs and Slack tokens. A private key's PEM or PGP armour is masked as a block, below |
 
 - **The mechanism.**
   - **Replacement.** Each run of matched bytes becomes five asterisks once,
@@ -338,9 +339,16 @@ share one implementation: the server masks evaluated expressions
 - **Short values.** A value shorter than 4 bytes is not masked, because masking
   `1` or `on` would destroy the log and protect nothing. Spacelift documents
   no minimum, so this is infraweave's rule.
-- **What masking can't catch.** A value that spans lines is not masked as a
-  whole. Each of its lines is, when it is 4 bytes or longer. That is no better
-  than Spacelift's line-at-a-time rule.
+- **Private key blocks.** With the well-known patterns, a `-----BEGIN ...
+  PRIVATE KEY-----` line, PEM's or PGP armour's, opens a block. Every line up
+  to the matching END line is masked, but for the spaces around it. A line
+  that is neither base64 nor an armour header closes a block whose END line
+  never came, so a truncated key does not mask the rest of the log. Spacelift
+  masks one line at a time, so its key bodies stay visible; masking them is
+  infraweave's addition, because a key's header line alone protects nothing.
+- **What masking can't catch.** Any other value that spans lines is not
+  masked as a whole. Each of its lines is, when it is 4 bytes or longer. That
+  is no better than Spacelift's line-at-a-time rule.
 - **Policy print output.** The `print` output of policies is masked by the same
   code on the server ([0009](0009-policy-engine-opa.md)).
 

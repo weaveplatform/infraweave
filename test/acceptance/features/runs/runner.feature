@@ -7,6 +7,10 @@ Feature: The runner executes a run's phases and their hooks in one shell session
   after-hooks, in one sh session, so a variable a hook exports is set in
   every later hook. The first hook or command that fails fails its phase,
   and the afterRun hooks run once the run ends, with its final state.
+  Each phase's output is masked, written to standard output and uploaded
+  as the state's log before the phase's report; a word a hook names with
+  ::add-mask is masked from then on, and the afterRun hooks' output goes
+  to standard output alone.
   Here the scenario is the launcher: it registers with the pool's key,
   claims a run, opens its sealed specification, checks out its commit
   from Gitea and starts this build's runner in a container of the tool's
@@ -21,6 +25,7 @@ Feature: The runner executes a run's phases and their hooks in one shell session
   the account's top space.
   ref: decision 0008
   ref: decision 0010
+  ref: decision 0013
   ref: decision 0016
 
   Background:
@@ -40,7 +45,7 @@ Feature: The runner executes a run's phases and their hooks in one shell session
 
   @case:success
   Scenario Outline: A tracked run on an autodeploy stack initializes, plans and applies in one container
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":<vendor>,"beforeInit":["export GREETING=hello"],"afterPlan":["echo \"after plan: $GREETING\""],"afterRun":["echo \"after run: $TF_VAR_infraweave_final_run_state $GREETING\""]},"manageState":true}' through B
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":<vendor>,"beforeInit":["export GREETING=hello"],"afterPlan":["echo \"after plan: $GREETING\"","echo ::add-mask sw0rdfish","echo fish sw0rdfish"],"afterRun":["echo \"after run: $TF_VAR_infraweave_final_run_state $GREETING\""]},"manageState":true}' through B
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "READY" through A
@@ -52,10 +57,14 @@ Feature: The runner executes a run's phases and their hooks in one shell session
     And the runner's output of the run "run" holds "after plan: hello"
     And the runner's output of the run "run" holds "Apply complete! Resources: 1 added, 0 changed, 0 destroyed."
     And the runner's output of the run "run" holds "after run: FINISHED hello"
+    And the runner's output of the run "run" holds "fish *****"
     And token "h" eventually reads the run "run" in the state "FINISHED" through B
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, APPLYING, FINISHED"
     And the run "run" wrote 1 state version
     And the relay passed a LOCK of the state of the run "run" answered 200
+    And token "h" reads the run "run"'s INITIALIZING log through A, which holds "infraweave: working on commit" and not "after plan"
+    And token "h" reads the run "run"'s PLANNING log through B, which holds "after plan: hello\n::add-mask *****\nfish *****" and not "sw0rdfish"
+    And token "h" reads the run "run"'s APPLYING log through A, which holds "Apply complete! Resources: 1 added" and not "after run"
 
     @terraform
     Examples: Terraform

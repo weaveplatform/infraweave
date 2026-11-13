@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -82,6 +83,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
   admin_listen: ":7000"
   poll_timeout: 30s
   state_lock_timeout: 90s
+  mask_envs: [AWS_SECRET_ACCESS_KEY, DB_PASSWORD]
   tool_mirror: https://mirror.example.com/releases
   ca_file: /etc/infraweave/ca.pem
   metadata:
@@ -98,6 +100,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
 		c.Launcher.Docker.Network != "runs" || c.Launcher.Metadata["zone"] != "a" ||
 		c.Launcher.Docker.RunnerBinary != "/opt/linux/infraweave" ||
 		c.Launcher.StateLockTimeout != 90*time.Second ||
+		!slices.Equal(c.Launcher.MaskEnvs, []string{"AWS_SECRET_ACCESS_KEY", "DB_PASSWORD"}) ||
 		c.Launcher.ToolMirror != "https://mirror.example.com/releases" ||
 		c.Launcher.CAFile != "/etc/infraweave/ca.pem" {
 		t.Fatalf("file: %+v", c.Launcher)
@@ -106,11 +109,13 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	t.Setenv("INFRAWEAVE_LAUNCHER_ADMIN_LISTEN", ":7001")
 	t.Setenv("INFRAWEAVE_LAUNCHER_DOCKER_RUNTIME", "runsc")
 	t.Setenv(config.MetadataEnv+"Rack", "7")
+	t.Setenv("INFRAWEAVE_LAUNCHER_MASK_ENVS", "TOKEN,_KEY2")
 	c, err = load(t, "--config", f)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.Launcher.AdminListen != ":7001" || c.Launcher.Docker.Runtime != "runsc" ||
+		!slices.Equal(c.Launcher.MaskEnvs, []string{"TOKEN", "_KEY2"}) ||
 		c.Launcher.Metadata["zone"] != "a" || c.Launcher.Metadata["Rack"] != "7" {
 		t.Fatalf("environment over file: %+v", c.Launcher)
 	}
@@ -144,6 +149,8 @@ func TestUnitValidate(t *testing.T) {
 		"launcher.default_runner_image":  func(l *config.Launcher) { l.DefaultRunnerImage = "" },
 		"launcher.cache_dir":             func(l *config.Launcher) { l.CacheDir = "" },
 		"launcher.state_lock_timeout":    func(l *config.Launcher) { l.StateLockTimeout = -time.Second },
+		"launcher.mask_envs \"A-B\"":     func(l *config.Launcher) { l.MaskEnvs = []string{"OK", "A-B"} },
+		"launcher.mask_envs \"9X\"":      func(l *config.Launcher) { l.MaskEnvs = []string{"9X"} },
 		"launcher.tool_mirror \"ftp:":    func(l *config.Launcher) { l.ToolMirror = "ftp://mirror" },
 		"launcher.tool_mirror \"https:/": func(l *config.Launcher) { l.ToolMirror = "https:///x" },
 		"launcher.tool_mirror \"::\"":    func(l *config.Launcher) { l.ToolMirror = "::" },
