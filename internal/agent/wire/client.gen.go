@@ -588,6 +588,9 @@ type RunSpec struct {
 
 	// Stack The run's stack.
 	Stack RunSpecStack `json:"stack"`
+
+	// StateBackend The stack's managed state backend, present only when infraweave keeps the stack's state. The runner points the infrastructure tool's HTTP backend at it, authenticating with the user name run and the run token as the password.
+	StateBackend *RunSpecStateBackend `json:"stateBackend,omitempty"`
 }
 
 // RunSpecCommit The commit the run works on.
@@ -711,6 +714,12 @@ type RunSpecStack struct {
 
 	// VendorConfig The tool's settings.
 	VendorConfig map[string]interface{} `json:"vendorConfig"`
+}
+
+// RunSpecStateBackend The stack's managed state backend, present only when infraweave keeps the stack's state. The runner points the infrastructure tool's HTTP backend at it, authenticating with the user name run and the run token as the password.
+type RunSpecStateBackend struct {
+	// Path The backend's path, /state/v1/stacks/ followed by the stack's ID, under the server URL the launcher reaches, so the backend answers behind the same relay or private address as this API.
+	Path string `json:"path"`
 }
 
 // RunSpecVariable An environment variable. A write-only variable's value is in sealed, as is that of a variable whose ${{ }} template reads one.

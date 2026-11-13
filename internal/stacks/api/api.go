@@ -77,8 +77,9 @@ type Commit struct {
 // VCSIntegration are nil when the stack names none, and VCSDetached marks
 // a stack whose integration was deleted. TrackedBranchHead and
 // TrackedCommit are nil until the vcs domain resolves the branch, and
-// TrackedCommitSetBy names who set TrackedCommit. Version counts the
-// stack's writes, which SetTracked is not.
+// TrackedCommitSetBy names who set TrackedCommit. ManagesState is
+// whether infraweave keeps the stack's state, which its creation decides
+// once. Version counts the stack's writes, which SetTracked is not.
 type Settings struct {
 	Stack
 	Repository             string
@@ -104,6 +105,7 @@ type Settings struct {
 	TrackedBranchHead      *Commit
 	TrackedCommit          *Commit
 	TrackedCommitSetBy     string
+	ManagesState           bool
 	Version                int64
 }
 

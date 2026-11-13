@@ -708,7 +708,8 @@ func (s *Service) Create(
 		if err != nil {
 			return err
 		}
-		st = Stack{CreatedAt: s.now(), ManagesState: manageState, State: kernel.StackStateNone}
+		st = Stack{CreatedAt: s.now(), State: kernel.StackStateNone}
+		st.ManagesState = manageState
 		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
 		apply(&st, space, in)
 		if err := s.bind(ctx, p.AccountID, &st, in, "/input"); err != nil {

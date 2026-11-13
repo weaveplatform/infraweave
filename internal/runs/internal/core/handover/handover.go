@@ -28,6 +28,13 @@ import (
 // ref: decision 0008 § "The launcher and the runner"
 const WorkspaceRoot = "/mnt/workspace"
 
+// StatePath is the path of a stack's managed state backend, which the
+// stack's ULID follows. It must match the state domain's routes, and a
+// reslug never moves it.
+//
+// ref: decision 0010 § "Endpoints"
+const StatePath = "/state/v1/stacks/"
+
 // Store is what a handover needs of the runs' storage. Each method joins
 // the transaction its context carries.
 type Store interface {
@@ -183,6 +190,9 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		RuntimeConfig: r.RuntimeConfig,
 		RunnerImage:   cmp.Or(rc.RunnerImage, st.RunnerImage),
 		Hooks:         resolved.Hooks,
+	}
+	if st.ManagesState {
+		spec.StateBackend = &workersapi.StateBackend{Path: StatePath + r.Stack.String()}
 	}
 	sec := secrets{Environment: map[string]string{}, Files: map[string][]byte{}}
 	if err := s.environment(ctx, r, stack, account, resolved.Elements, &spec, &sec); err != nil {

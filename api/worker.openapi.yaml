@@ -829,6 +829,8 @@ components:
           type: string
           description: >-
             The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's own default.
+        stateBackend:
+          $ref: '#/components/schemas/RunSpecStateBackend'
         hooks:
           type: object
           additionalProperties:
@@ -1002,6 +1004,16 @@ components:
           type: object
           additionalProperties: true
           description: The tool's settings.
+    RunSpecStateBackend:
+      description: >-
+        The stack's managed state backend, present only when infraweave keeps the stack's state. The runner points the infrastructure tool's HTTP backend at it, authenticating with the user name run and the run token as the password.
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: >-
+            The backend's path, /state/v1/stacks/ followed by the stack's ID, under the server URL the launcher reaches, so the backend answers behind the same relay or private address as this API.
     RunSpecVariable:
       description: >-
         An environment variable. A write-only variable's value is in sealed, as is that of a variable whose ${{ }} template reads one.

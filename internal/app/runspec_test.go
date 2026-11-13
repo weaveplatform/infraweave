@@ -28,7 +28,8 @@ import (
 // write-only variable and one whose template reads it by name alone, and
 // their values, the in-run API token and the artifact key sealed to the
 // pool's certificate's key for that state version, the same key on every
-// fetch. Another run's specification answers the token 401, and the run
+// fetch, and the state backend's path exactly when the stack manages its
+// state. Another run's specification answers the token 401, and the run
 // once it leaves its worker 409.
 func TestAccRunSpec(t *testing.T) {
 	w := newClaimWorld(t)
@@ -112,6 +113,16 @@ func TestAccRunSpec(t *testing.T) {
 	}
 	if _, again := open(); !bytes.Equal(again.ArtifactKey, secrets.ArtifactKey) {
 		t.Error("a second fetch made another artifact key")
+	}
+	stack := w.stacks["one"]
+	w.exec(t, `UPDATE stacks SET manages_state = false WHERE id = $1`, stack)
+	if spec, _ := open(); spec.StateBackend != nil {
+		t.Errorf("a stack without managed state has the backend %+v", spec.StateBackend)
+	}
+	w.exec(t, `UPDATE stacks SET manages_state = true WHERE id = $1`, stack)
+	if spec, _ := open(); spec.StateBackend == nil ||
+		spec.StateBackend.Path != "/state/v1/stacks/"+stack.String() {
+		t.Errorf("a stack with managed state has the backend %+v", spec.StateBackend)
 	}
 
 	wantProblem(t, get(kernel.NewULID()), http.StatusUnauthorized, "credential is refused")
