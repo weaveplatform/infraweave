@@ -177,12 +177,15 @@ func Problems(v iac.Vendor, cases []Case, plans ...PlanCase) []string {
 	return slices.Compact(out)
 }
 
-// padding reads as an endless run of the byte a.
+// padding reads as an endless run of the byte a. It fills p by doubling
+// copies rather than byte by byte, since the race detector instruments
+// each byte a loop writes and every Problems call reads 64 MiB of it.
 type padding struct{}
 
 func (padding) Read(p []byte) (int, error) {
-	for i := range p {
-		p[i] = 'a'
+	n := copy(p, "a")
+	for n < len(p) {
+		n += copy(p[n:], p[:n])
 	}
 	return len(p), nil
 }
