@@ -1,9 +1,10 @@
 // Package control acts on runs at a caller's request: Service cancels a
 // run that has not started through the lifecycle, needing
 // RUN_CANCEL_BLOCKING as well for the run that holds its stack's run lock,
-// and sets the priority of a run that has not ended, each in one
-// transaction that locks the run's row, answering the run as a
-// read.View. Store is its storage port.
+// confirms or discards a run waiting for confirmation, by default the one
+// that holds its stack's run lock, and sets the priority of a run that has
+// not ended, each in one transaction that locks the run's row, answering
+// the run as a read.View. Store is its storage port.
 //
 // # Input and output
 //

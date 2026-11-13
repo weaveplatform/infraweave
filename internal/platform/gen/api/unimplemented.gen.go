@@ -1054,6 +1054,14 @@ func (UnimplementedStrict) StackRunsInRange(context.Context, StackRunsInRangeReq
 	return nil, &problem.NotImplementedError{OperationID: "stackRunsInRange", Route: "GET /stacks/{stackId}/runs-in-range"}
 }
 
+func (UnimplementedStrict) RunConfirm(context.Context, RunConfirmRequestObject) (RunConfirmResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runConfirm", Route: "POST /stacks/{stackId}/runs/confirm"}
+}
+
+func (UnimplementedStrict) RunDiscard(context.Context, RunDiscardRequestObject) (RunDiscardResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runDiscard", Route: "POST /stacks/{stackId}/runs/discard"}
+}
+
 func (UnimplementedStrict) RunCancel(context.Context, RunCancelRequestObject) (RunCancelResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runCancel", Route: "POST /stacks/{stackId}/runs/{runId}/cancel"}
 }

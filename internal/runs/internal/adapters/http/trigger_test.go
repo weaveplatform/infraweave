@@ -64,6 +64,7 @@ func TestUnitTriggerErrors(t *testing.T) {
 		{read.ErrNotFound, http.StatusNotFound, "not-found"},
 		{control.ErrBlocking, http.StatusForbidden, "forbidden"},
 		{control.ErrState, http.StatusConflict, "invalid-state"},
+		{control.ErrNoHolder, http.StatusNotFound, "not-found"},
 	} {
 		var p *problem.Error
 		if !errors.As(runError(c.err, "infra", ""), &p) || p.Problem.Status != c.status ||
