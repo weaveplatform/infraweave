@@ -26,10 +26,12 @@ import (
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
 
-// RunnerImage is the image of a @docker scenario's run containers: a
-// filesystem with the user runner, UID and GID 1983, and the workspace it
-// owns, and nothing else, so no scenario pulls an image. The launcher
-// mounts the runner itself.
+// RunnerImage is the image of a @docker scenario's run containers, but
+// for the tools of @terraform and @tofu scenarios, which run in their
+// vendor's runner image: a filesystem with the user runner, UID and GID
+// 1983, and the workspace it owns, and nothing else, so no scenario pulls
+// an image. The launcher mounts the runner itself, and the relay's
+// forwarder runs in it.
 //
 // ref: decision 0008 § "The launcher and the runner"
 const RunnerImage = "infraweave-runner:acceptance"
@@ -43,8 +45,9 @@ const LabelScenario = "io.infraweave.acceptance"
 var ErrDockerArch = errors.New("no GOARCH for the Docker daemon's architecture")
 
 // Launchers are what a @docker scenario's launchers need of Docker, made
-// once per test binary: the daemon, RunnerImage, and the Linux builds of
-// infraweave and of testdata/forward for the daemon's architecture.
+// once per test binary: the daemon, RunnerImage, the Linux builds of
+// infraweave and of testdata/forward for the daemon's architecture, and
+// the runner images, each built on first use.
 type Launchers struct {
 	// Host is the daemon's address, which each launcher is given as
 	// DOCKER_HOST, so it reaches the daemon the suite found.
@@ -58,6 +61,11 @@ type Launchers struct {
 	// binary its containers run is built or fetched for.
 	Arch string
 	cli  *testcontainers.DockerClient
+	// root is the module's root; built holds each runner image Build
+	// built, and how its build ended.
+	root  string
+	mu    sync.Mutex
+	built map[string]error
 }
 
 // prepare builds what the launchers need into dir, from the module at
@@ -67,7 +75,7 @@ func (l *Launchers) prepare(ctx context.Context, root, dir string) error {
 	if err != nil {
 		return fmt.Errorf("docker: %w", err)
 	}
-	l.cli, l.Host = cli, cli.DaemonHost()
+	l.cli, l.Host, l.root = cli, cli.DaemonHost(), root
 	info, err := cli.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return fmt.Errorf("docker: %w", err)

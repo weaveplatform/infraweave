@@ -75,14 +75,15 @@ type process struct {
 // as has none there.
 var toolEnv = []string{"TF_IN_AUTOMATION=1", "TF_INPUT=0", "CHECKPOINT_DISABLE=1", "HOME=/tmp"}
 
-// tools are the pinned releases of the tools a step names, and the tag a
-// scenario that runs one carries.
+// tools are the pinned releases of the tools a step names, the tag a
+// scenario that runs one carries, and the runner image it runs in.
 var tools = map[string]struct {
-	tool deps.Tool
-	tag  string
+	tool  deps.Tool
+	tag   string
+	image string
 }{
-	"terraform": {deps.Terraform, "@terraform"},
-	"tofu":      {deps.OpenTofu, "@tofu"},
+	"terraform": {deps.Terraform, "@terraform", harness.RunnerTerraform},
+	"tofu":      {deps.OpenTofu, "@tofu", harness.RunnerOpenTofu},
 }
 
 func (b *backendSteps) register(sc *godog.ScenarioContext) {
@@ -282,9 +283,12 @@ func (b *backendSteps) tool(ctx context.Context, name, command, run string) (*pr
 	if err != nil {
 		return nil, err //nolint:wrapcheck // names the tool
 	}
+	if err := b.host.Build(ctx, pinned.image); err != nil {
+		return nil, err //nolint:wrapcheck // names the image
+	}
 	t, err := b.host.RunTool(ctx, harness.ToolRun{
-		Scenario: b.label, Network: b.network, Bin: bin, Dir: tr.dir, Env: tr.env,
-		Args: strings.Fields(command),
+		Scenario: b.label, Network: b.network, Bin: bin, Dir: tr.dir, Image: pinned.image,
+		Env: tr.env, Args: strings.Fields(command),
 	})
 	if err != nil {
 		return nil, err

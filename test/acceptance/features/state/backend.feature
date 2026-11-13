@@ -7,8 +7,10 @@ Feature: Terraform and OpenTofu keep their state in infraweave
   it writes. Here the scenario is the worker: it registers with the
   pool's key, claims a run, opens its sealed specification, checks out
   its commit from Gitea, writes the backend file, reports each phase, and
-  runs the pinned terraform or tofu in a container of
-  infraweave-runner:acceptance. The container reaches the server through
+  runs the pinned terraform or tofu in a container of its runner image,
+  infraweave-runner-terraform:acceptance or
+  infraweave-runner-opentofu:acceptance, which the suite builds from
+  deploy/images. The container reaches the server through
   the scenario's relay, which records each call and each 423's body, and
   can hold the backend's UNLOCK calls so a lock stays held while another
   process asks for one. A run that initializes or plans holds a shared

@@ -146,6 +146,12 @@ jobs:
           # Docker Hub.
           repin mcr.microsoft.com/azure-storage/azurite "$(curl -fsS https://mcr.microsoft.com/v2/azure-storage/azurite/tags/list \
             | jq -r '.tags[]' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+          # Spacelift publishes its runner images to Amazon ECR Public, and
+          # rebuilds each release weekly under the release and the date.
+          ecr=$(curl -fsS "https://public.ecr.aws/token/?scope=repository:spacelift/runner-terraform:pull" | jq -r .token)
+          repin public.ecr.aws/spacelift/runner-terraform "$(curl -fsS -H "Authorization: Bearer $ecr" \
+            "https://public.ecr.aws/v2/spacelift/runner-terraform/tags/list?n=1000" \
+            | jq -r '.tags[]' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+_[0-9]{8}$' | sort -V | tail -1)"
           git diff --stat test/deps/images.go
 
       - name: Move the acceptance tools to their newest releases

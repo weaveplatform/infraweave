@@ -173,7 +173,8 @@ everywhere, and the reason names where the contract checks it instead.
   harness acts as the worker over `/worker/v1`, claims the run, opens its
   sealed specification with the pool key, checks out the run's commit from
   Gitea and reports each phase, and runs the pinned `terraform` or `tofu`
-  binary in `infraweave-runner:acceptance` with the backend file and
+  binary in its vendor's runner image, `infraweave-runner-terraform:acceptance`
+  or `infraweave-runner-opentofu:acceptance`, with the backend file and
   credentials the agent writes ([0010](0010-state-backend.md)). The relay
   can hold the backend's `UNLOCK` calls, so a lock stays held while a
   second process asks for it.
@@ -181,10 +182,13 @@ everywhere, and the reason names where the contract checks it instead.
   `@terraform`) names Spacelift's public `runner-terraform` image, pinned
   by digest in `test/deps/images.go`, as a stack's runner image, and runs a
   tracked run on it unchanged (decision 0008's image contract).
-- **Images and tools.** Every container image is pinned by digest in
-  `test/deps/images.go`, and the Terraform and OpenTofu releases by the
-  SHA-256 of each Linux archive in `test/deps/tools.go`; `deps-refresh.yml`
-  moves the pins to the newest release. An archive is downloaded once into
+- **Images and tools.** Every container image the suite pulls is pinned by
+  digest in `test/deps/images.go`, and the Terraform and OpenTofu releases
+  by the SHA-256 of each Linux archive in `test/deps/tools.go`;
+  `deps-refresh.yml` moves the pins to the newest release. The runner
+  images the suite builds pin their Alpine base by digest in their
+  Dockerfiles under `deploy/images/`, which Dependabot moves, so CI, the
+  suite and a release build from one pin. An archive is downloaded once into
   the user's cache directory and checked against its pin each time a test
   binary uses it.
 
