@@ -15,6 +15,7 @@ import (
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // Errors of Transition and Create. Each refusal is also a typed error
@@ -125,7 +126,8 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // proposed from one previews instead of a commit of the repository, empty
 // for a run on a commit. WorkerPool is the stack's
 // private pool when the run was created, nil for the public pool, and
-// Worker the worker that last claimed it.
+// Worker the worker that last claimed it. Delta is what its latest plan
+// changes, nil until it plans; the report service keeps it.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -143,6 +145,7 @@ type Run struct {
 	LocalWorkspace string
 	WorkerPool     *kernel.ULID
 	Worker         *kernel.ULID
+	Delta          *workersapi.Delta
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

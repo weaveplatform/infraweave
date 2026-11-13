@@ -6,7 +6,8 @@
 // with a previous address; the Delta counts the managed resources' changes
 // as the tool's own summary does, the managed resources of prior_state,
 // and whether an output changes. Both vendors register Parse, since
-// OpenTofu writes Terraform's format.
+// OpenTofu writes Terraform's format. EntityOf splits a change's address
+// into its module, resource type and name.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 //

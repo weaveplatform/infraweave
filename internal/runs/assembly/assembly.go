@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -90,6 +91,7 @@ type Objects interface {
 	report.Objects
 	logs.Objects
 	trigger.Objects
+	changes.Objects
 }
 
 // Deps are what the runs domain takes from the platform and the domains
@@ -126,6 +128,7 @@ type Domain struct {
 	handover  *handover.Service
 	reports   *report.Service
 	logs      *logs.Service
+	changes   *changes.Service
 	trigger   *trigger.Service
 	read      *read.Service
 	control   *control.Service
@@ -154,7 +157,8 @@ func New(d Deps) *Domain {
 		reports: report.New(report.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
 		}),
-		logs: logs.New(logs.Deps{DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs}),
+		logs:    logs.New(logs.Deps{DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs}),
+		changes: changes.New(changes.Deps{Store: store, Objects: d.Objects, Stacks: d.Stacks}),
 		trigger: trigger.New(trigger.Deps{
 			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views, Objects: d.Objects,
 		}),
@@ -299,5 +303,5 @@ func (d *Domain) API() RunsAPI {
 	if d == nil {
 		return RunsAPI{}
 	}
-	return http.New(d.trigger, d.read, d.control, d.logs)
+	return http.New(d.trigger, d.read, d.control, d.logs, d.changes)
 }

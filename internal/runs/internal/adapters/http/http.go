@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
@@ -27,12 +28,19 @@ type Server struct {
 	read    *read.Service
 	control *control.Service
 	logs    *logs.Service
+	changes *changes.Service
 }
 
-// New returns the partial over the trigger, read, control and logs
-// services.
-func New(t *trigger.Service, r *read.Service, c *control.Service, l *logs.Service) Server {
-	return Server{trigger: t, read: r, control: c, logs: l}
+// New returns the partial over the trigger, read, control, logs and
+// changes services.
+func New(
+	t *trigger.Service,
+	r *read.Service,
+	c *control.Service,
+	l *logs.Service,
+	ch *changes.Service,
+) Server {
+	return Server{trigger: t, read: r, control: c, logs: l, changes: ch}
 }
 
 // RunTrigger creates a run on the stack, or answers the one of the same
@@ -181,6 +189,9 @@ func runError(err error, slug, run string) error {
 	case errors.Is(err, read.ErrNotFound):
 		//nolint:wrapcheck // as above
 		return problem.NotFound.Error(fmt.Sprintf("No run %q in this account.", run))
+	case errors.Is(err, changes.ErrExpired):
+		//nolint:wrapcheck // as above
+		return problem.InvalidState.Error("The run's changes have expired with its artifacts.")
 	case errors.Is(err, lifecycle.ErrDisabled):
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.InvalidState.Error("The stack is disabled; enable it to trigger runs.")
@@ -256,6 +267,7 @@ func runOf(v read.View) api.Run {
 		},
 		Commits:              []string{r.Commit.Hash},
 		CreatedAt:            unix(r.CreatedAt.Unix()),
+		Delta:                deltaOf(r.Delta),
 		DependsOn:            []api.RunDependency{},
 		DriftDetection:       r.DriftDetection,
 		ExternalDependencies: []api.RunExternalDependency{},

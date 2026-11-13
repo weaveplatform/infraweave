@@ -121,7 +121,7 @@ func TestUnitTriggerRun(t *testing.T) {
 // TestUnitTriggerRefusals answers a request with no principal 401, and a
 // body the trigger refuses before it runs with its problem.
 func TestUnitTriggerRefusals(t *testing.T) {
-	s := New(nil, nil, nil, nil)
+	s := New(nil, nil, nil, nil, nil)
 	if _, err := s.RunTrigger(context.Background(), api.RunTriggerRequestObject{}); err == nil {
 		t.Error("a request with no principal passed")
 	}
