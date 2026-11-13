@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sync/atomic"
 	"testing"
 )
@@ -110,7 +111,10 @@ func TestUnitTool(t *testing.T) {
 	if b, err := os.ReadFile(bin); err != nil || string(b) != "binary" {
 		t.Errorf("the binary holds %q, %v", b, err)
 	}
-	if fi, err := os.Stat(bin); err != nil || fi.Mode().Perm()&0o100 == 0 {
+	// Windows keeps no execute bit, so only a Unix host's mode says the
+	// binary a container mounts is executable.
+	if fi, err := os.Stat(bin); err != nil ||
+		runtime.GOOS != "windows" && fi.Mode().Perm()&0o100 == 0 {
 		t.Errorf("the binary is not executable: %v, %v", fi, err)
 	}
 	if _, err := use("amd64"); err != nil || n.Load() != 1 {
