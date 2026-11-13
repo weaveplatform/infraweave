@@ -36,8 +36,9 @@ const (
 const DisableStateLock = "INFRAWEAVE_DISABLE_STATE_LOCK"
 
 // prepare readies the run's first phase: the vendor's command set, the
-// mounted files, the backend file, the phase environment, the plan's
-// JSON file and the session. What fails is kept as the first phase's
+// mounted files, the backend file, the phase environment, whose variables
+// launcher.mask_envs names the log masks, the plan's JSON file and the
+// session. What fails is kept as the first phase's
 // failure, so the run fails with it as its note.
 func (r *run) prepare(ctx context.Context) {
 	r.ready = true
@@ -71,6 +72,11 @@ func (r *run) setUp(ctx context.Context) string {
 		return fmt.Sprintf("The state backend cannot be configured: %v.", err)
 	}
 	r.env = r.environment(creds)
+	masked := make([][]byte, 0, len(r.h.MaskEnvs))
+	for _, name := range r.h.MaskEnvs {
+		masked = append(masked, []byte(lookup(r.env, name)))
+	}
+	r.log.Add(masked...)
 	if r.temp, err = os.MkdirTemp("", "infraweave-run-"); err != nil {
 		return fmt.Sprintf("The runner cannot make its temporary directory: %v.", err)
 	}
@@ -79,7 +85,7 @@ func (r *run) setUp(ctx context.Context) string {
 		NoLock:      lookup(r.env, DisableStateLock) == "true",
 		PlanJSON:    filepath.Join(r.temp, "plan.json"),
 	}
-	if r.shell, err = start(ctx, r.dir, r.env, r.d.Out); err != nil {
+	if r.shell, err = start(ctx, r.dir, r.env, r.log.File()); err != nil {
 		if errors.Is(err, osexec.ErrNotFound) {
 			return "The run's image has no " + Shell + " to run its phases in."
 		}

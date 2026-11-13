@@ -105,7 +105,7 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 			return err
 		}
 		l.label = kernel.NewULID().String()
-		if l.network, err = host.Network(ctx, l.label, l.relay.Port); err != nil {
+		if l.network, err = host.Network(ctx, l.label, w.Ports(l.relay.Port)...); err != nil {
 			return err
 		}
 	}

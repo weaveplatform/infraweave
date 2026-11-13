@@ -17,6 +17,13 @@
 // overrides; the run's specification then names the archive as its
 // source.
 //
+// A local preview takes two calls on a stack that enables local
+// previews. UploadWorkspace records a pending tar.gz of a declared size,
+// at most MaxWorkspace, and SHA-256 in the uploads store and signs its
+// PUT. ProposeWorkspace commits that upload and creates a PROPOSED run on
+// it, with the stack's tracked commit as its commit's metadata; the
+// run's specification then names the archive as its source.
+//
 // # Input and output
 //
 // None of its own: it reaches the stacks domain through stacksapi.Stacks,
