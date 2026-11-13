@@ -325,7 +325,6 @@
       "runPluginLogsDownloadURL",
       "runPolicyReceiptSample",
       "runPromote",
-      "runProposeLocalWorkspace",
       "runResourceCreate",
       "runRetry",
       "runReview",
@@ -335,8 +334,7 @@
       "runTargetedReplan",
       "runTraceSpans",
       "runTriggerBatch",
-      "runWorkerMetrics",
-      "uploadLocalWorkspace"
+      "runWorkerMetrics"
     ],
     "SSO": [
       "createOauthClientForSCIM",

@@ -218,12 +218,12 @@ func (f failing) Active(
 	a kernel.AccountID,
 	stack kernel.ULID,
 	typ kernel.RunType,
-	hash string,
+	hash, workspace string,
 ) (lifecycle.Run, bool, error) {
 	if f.fail == "Active" {
 		return lifecycle.Run{}, false, errInjected
 	}
-	return f.Store.Active(ctx, a, stack, typ, hash)
+	return f.Store.Active(ctx, a, stack, typ, hash, workspace)
 }
 
 func (f failing) Track(ctx context.Context, run lifecycle.Run) error {
@@ -540,20 +540,33 @@ func TestAccLifecycleCreate(t *testing.T) {
 	}
 	preview := lifecycle.NewRun{
 		Account: w.acct, Stack: w.stack, Type: kernel.RunTypeProposed,
-		Commit:       stacksapi.Commit{Hash: "def456", Branch: "main"},
-		Actor:        lifecycle.Actor{Caller: "user:alice", Login: "alice"},
-		LocalPreview: true,
+		Commit:         stacksapi.Commit{Hash: "abc123", Branch: "main"},
+		Actor:          lifecycle.Actor{Caller: "user:alice", Login: "alice"},
+		LocalWorkspace: "acct/stack/upload-1",
 	}
-	for range 2 {
+	var previews []kernel.ULID
+	for _, workspace := range []string{
+		"acct/stack/upload-1", "acct/stack/upload-1",
+		"acct/stack/upload-2",
+	} {
+		preview.LocalWorkspace = workspace
 		if err := w.in(t, func(ctx context.Context) error {
 			r, _, err := w.lc.Create(ctx, preview)
-			if err == nil && (!r.LocalPreview || r.Commit.Branch != "main") {
+			if err == nil && (!r.LocalPreview() || r.LocalWorkspace != workspace ||
+				r.Commit.Branch != "main") {
 				t.Errorf("a local preview reads back as %+v", r)
 			}
+			previews = append(previews, r.ID)
 			return err
 		}); err != nil {
 			t.Errorf("Create of a local preview = %v", err)
 		}
+	}
+	// A local preview on the commit of a proposed run is a run of its own,
+	// and one of each upload.
+	if len(previews) != 3 || previews[0] == proposed.ID || previews[1] != previews[0] ||
+		previews[2] == previews[0] {
+		t.Errorf("local previews %v beside the proposed run %s", previews, proposed.ID)
 	}
 	w.mustMove(t, run, kernel.RunStateDiscarded, machine.DriverAPI)
 	if _, created, err := w.create(t, kernel.RunTypeTracked, "abc123"); err != nil || !created {
@@ -978,7 +991,7 @@ func TestAccLifecycleStoreUnavailable(t *testing.T) {
 	run := lifecycle.Run{Account: acct, ID: id, Stack: id}
 	step := lifecycle.Step{Sequence: 2, State: kernel.RunStateReady}
 	_, lockErr := s.Lock(ctx, acct, id)
-	_, _, activeErr := s.Active(ctx, acct, id, kernel.RunTypeTracked, "abc")
+	_, _, activeErr := s.Active(ctx, acct, id, kernel.RunTypeTracked, "abc", "")
 	_, unlockErr := s.Unlock(ctx, acct, id)
 	_, _, projErr := s.Projection(ctx, acct, id, kernel.StackStates())
 	_, historyErr := s.Histories(ctx, acct, []kernel.ULID{id})

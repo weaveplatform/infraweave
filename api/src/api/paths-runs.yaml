@@ -2,6 +2,46 @@
 # This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
 components:
   schemas:
+    LocalWorkspaceUpload:
+      additionalProperties: false
+      description: >-
+        A local workspace's upload: its ID, which a proposal names, and the
+        URL to upload the archive to with an HTTP PUT carrying the headers.
+      properties:
+        id:
+          description: The upload's ID.
+          type: string
+        uploadHeaders:
+          $ref: '#/components/schemas/StringMap'
+        uploadUrl:
+          description: >-
+            URL to upload the archived workspace to. It accepts the declared
+            bytes alone, for a limited time.
+          type: string
+      required:
+        - id
+        - uploadUrl
+        - uploadHeaders
+      type: object
+      x-graphql-type: LocalWorkspaceUpload
+    LocalWorkspaceUploadRequest:
+      additionalProperties: false
+      description: The archive a local workspace's upload holds.
+      properties:
+        sha256:
+          description: The SHA-256 of the archive's bytes, in hex.
+          pattern: '^[0-9a-f]{64}$'
+          type: string
+        size:
+          description: The archive's size in bytes, at most 2 GiB.
+          format: int64
+          maximum: 2147483648
+          minimum: 1
+          type: integer
+      required:
+        - size
+        - sha256
+      type: object
     LogsResponse:
       description: A page of the lines one state of a run logged.
       properties:
@@ -111,6 +151,17 @@ components:
         - preset
       type: object
       x-graphql-args-of: runPrioritySet
+    RunProposeLocalWorkspaceRequest:
+      additionalProperties: false
+      description: The arguments of runProposeLocalWorkspace not carried in the path.
+      properties:
+        workspace:
+          description: The ID of the local workspace's upload.
+          type: string
+      required:
+        - workspace
+      type: object
+      x-graphql-args-of: runProposeLocalWorkspace
     RunWithStack:
       description: |-
         RunWithStack is a run together with the stack (or module) it belongs to, so
@@ -531,6 +582,74 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: search
+  /stacks/{stackId}/local-workspace-uploads:
+    post:
+      description: >-
+        Start the upload of a local workspace, a tar.gz archive of the
+        stack's project, for a proposed run to preview. The stack must allow
+        local previews. The upload expires a day after it starts unless a
+        run is proposed on it.
+      operationId: uploadLocalWorkspace
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+              size: 20480
+            schema:
+              $ref: '#/components/schemas/LocalWorkspaceUploadRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocalWorkspaceUpload'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Upload Local Workspace
+      tags:
+        - Runs
+      x-bruno: Runs/Upload Local Workspace.bru
+      x-graphql:
+        field: uploadLocalWorkspace
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: STACK_UPLOAD_LOCAL_WORKSPACE
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-118
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:stackId:stack
+      x-rest-style: override
   /stacks/{stackId}/runs/confirm:
     post:
       description: >-
@@ -655,6 +774,72 @@ paths:
         operation: mutation
         type: Mutation
       x-infraweave-action: RUN_DISCARD
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:stackId:stack
+      x-rest-style: action
+  /stacks/{stackId}/runs/propose-local-workspace:
+    post:
+      description: >-
+        Create a proposed run that previews an uploaded local workspace
+        instead of a commit of the stack's repository, with the stack's
+        tracked commit as its commit. Proposing again on the same upload
+        answers its run while that has not ended.
+      operationId: runProposeLocalWorkspace
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              workspace: 01HZX4Y9Q2W8E5R7T3V6K1M0PA
+            schema:
+              $ref: '#/components/schemas/RunProposeLocalWorkspaceRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runProposeLocalWorkspace result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Propose Local Workspace Run
+      tags:
+        - Runs
+      x-bruno: Runs/Propose Local Workspace Run.bru
+      x-graphql:
+        field: runProposeLocalWorkspace
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_PROPOSE_LOCAL_WORKSPACE
       x-infraweave-cost: standard
       x-infraweave-divergence:
         - idempotency-key

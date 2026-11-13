@@ -89,6 +89,7 @@ const Entity = "run"
 type Objects interface {
 	report.Objects
 	logs.Objects
+	trigger.Objects
 }
 
 // Deps are what the runs domain takes from the platform and the domains
@@ -148,14 +149,14 @@ func New(d Deps) *Domain {
 		liveness: schedule.NewLiveness(store, lc),
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
-			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog,
+			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog, Objects: d.Objects,
 		}),
 		reports: report.New(report.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
 		}),
 		logs: logs.New(logs.Deps{DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs}),
 		trigger: trigger.New(trigger.Deps{
-			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views,
+			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views, Objects: d.Objects,
 		}),
 		read: views,
 		control: control.New(control.Deps{

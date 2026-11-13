@@ -23,14 +23,14 @@ var (
 // runColumns are the columns scanRun reads, in its order.
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config,
-	coalesce(force_apply_mode, ''), local_preview, worker_pool_id, worker_id, created_at,
-	updated_at`
+	coalesce(force_apply_mode, ''), coalesce(local_workspace, ''), worker_pool_id, worker_id,
+	created_at, updated_at`
 
 // insertColumns are runColumns as an INSERT names them, with the
 // priority_tier the claim orders by.
 const insertColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config, force_apply_mode,
-	local_preview, worker_pool_id, worker_id, created_at, updated_at, priority_tier`
+	local_workspace, worker_pool_id, worker_id, created_at, updated_at, priority_tier`
 
 // scanRun reads one row of runColumns.
 func scanRun(row pgx.Row) (lifecycle.Run, error) {
@@ -41,7 +41,7 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 	)
 	err := row.Scan(&r.Account, &r.ID, &r.Stack, &typ, &state, &r.Version, &r.StateChangedAt,
 		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.RuntimeConfig, &r.ForceApply,
-		&r.LocalPreview, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt)
+		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
 	}
@@ -92,11 +92,11 @@ func (s *Store) Insert(ctx context.Context, run lifecycle.Run, step lifecycle.St
 		return fmt.Errorf("runs: encode the commit of run %s: %w", run.ID, err)
 	}
 	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO runs (`+insertColumns+`)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nullif($13, ''), $14, $15,
-			$16, $17, $18, $19)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nullif($13, ''),
+			nullif($14, ''), $15, $16, $17, $18, $19)`,
 		run.Account, run.ID, run.Stack, string(run.Type), string(run.State), run.Version,
 		run.StateChangedAt, commit, run.TriggeredBy, string(run.Priority), run.DriftDetection,
-		[]byte(run.RuntimeConfig), run.ForceApply, run.LocalPreview, run.WorkerPool, run.Worker,
+		[]byte(run.RuntimeConfig), run.ForceApply, run.LocalWorkspace, run.WorkerPool, run.Worker,
 		run.CreatedAt, run.UpdatedAt, kernel.RunTier(run.Priority, run.Type, run.DriftDetection))
 	if err != nil {
 		return fmt.Errorf("runs: insert run %s: %w", run.ID, sql.Unavailable(err))
@@ -118,14 +118,14 @@ func (s *Store) step(ctx context.Context, run lifecycle.Run, step lifecycle.Step
 	return nil
 }
 
-// Active reads acct's oldest run of stack of type typ on commit hash that
-// has not ended.
+// Active reads acct's oldest run of stack of type typ on commit hash and
+// local workspace workspace, none when empty, that has not ended.
 func (s *Store) Active(
 	ctx context.Context,
 	acct kernel.AccountID,
 	stack kernel.ULID,
 	typ kernel.RunType,
-	hash string,
+	hash, workspace string,
 ) (lifecycle.Run, bool, error) {
 	var terminal []string
 	for _, st := range kernel.RunStates() {
@@ -135,8 +135,8 @@ func (s *Store) Active(
 	}
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND stack_id = $2 AND type = $3 AND commit->>'hash' = $4
-			AND state <> ALL($5)
-		ORDER BY id LIMIT 1`, acct, stack, string(typ), hash, terminal))
+			AND state <> ALL($5) AND local_workspace IS NOT DISTINCT FROM nullif($6, '')
+		ORDER BY id LIMIT 1`, acct, stack, string(typ), hash, terminal, workspace))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return lifecycle.Run{}, false, nil

@@ -129,9 +129,13 @@ type SpecStack struct {
 	EnableWellKnownSecretMasking bool
 }
 
-// SourceGit is a SpecSource's kind for an HTTPS Git URL of the stack's
-// repository, from which the launcher fetches the run's commit.
-const SourceGit = "git"
+// The kinds of a SpecSource: SourceGit is an HTTPS Git URL of the stack's
+// repository, from which the launcher fetches the run's commit, and
+// SourceArchive a signed GET of a local preview's uploaded tar.gz.
+const (
+	SourceGit     = "git"
+	SourceArchive = "archive"
+)
 
 // SpecSource is where a Spec's worker fetches the run's source: Kind, and
 // URL, which needs the credential in the secrets where one is sealed.

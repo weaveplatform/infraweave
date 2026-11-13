@@ -21,7 +21,6 @@ type Stack struct {
 	Description                 *string
 	Labels                      []string
 	ProtectFromDeletion         bool
-	LocalPreviewEnabled         bool
 	GithubActionDeploy          bool
 	EnableSensitiveOutputUpload bool
 	CreatedAt                   time.Time

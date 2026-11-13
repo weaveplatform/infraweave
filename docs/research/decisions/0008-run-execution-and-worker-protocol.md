@@ -319,7 +319,15 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
     repository alone, and the run's log says which
     ([0012](0012-vcs-integration-model.md#source-access-for-runs)).
   - **`archive`:** a pre-signed `GET` of a local preview's `tar.gz` in the
-    `uploads` store, with no credential.
+    `uploads` store, with no credential. `uploadLocalWorkspace` takes the
+    archive's size, at most 2 GiB, and SHA-256, and signs a `PUT` bound to
+    them (DV-118), on a stack with `localPreviewEnabled`.
+    `runProposeLocalWorkspace` commits the upload in the run's transaction
+    and creates a `PROPOSED` run that records it, with the stack's tracked
+    commit as its commit's metadata; proposing on the same upload again
+    answers that run while it has not ended. The upload expires with the
+    store's retention, a day after it started, and a run handed over after
+    that fails with a note saying so.
 
   The launcher writes the source to `<cache_dir>/workspaces/<run>` and removes
   it when the run ends. Every HTTPS call the launcher makes, to the server, a

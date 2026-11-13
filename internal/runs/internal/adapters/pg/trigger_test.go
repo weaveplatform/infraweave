@@ -1,12 +1,20 @@
 package pg_test
 
 import (
+	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -133,6 +141,205 @@ func TestAccTrigger(t *testing.T) {
 	if _, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{
 		CommitSHA: "named",
 	}); !errors.Is(err, lifecycle.ErrDisabled) {
+		t.Errorf("a disabled stack = %v, want ErrDisabled", err)
+	}
+}
+
+// uploads is the uploads store as the trigger sees it: each key's
+// declared size while pending, the size its PUT stored, and whether it is
+// live, with errors injected by method.
+type uploads struct {
+	declared map[string]int64
+	stored   map[string]int64
+	live     map[string]bool
+	err      map[string]error
+}
+
+func newUploads() *uploads {
+	return &uploads{
+		declared: map[string]int64{}, stored: map[string]int64{}, live: map[string]bool{},
+		err: map[string]error{},
+	}
+}
+
+func (u *uploads) Begin(
+	_ context.Context,
+	_ objectstore.Name,
+	key string,
+	size int64,
+	_ []byte,
+) error {
+	u.declared[key] = size
+	return u.err["Begin"]
+}
+
+func (u *uploads) SignPut(
+	_ context.Context,
+	_ objectstore.Name,
+	key string,
+	size int64,
+	_ []byte,
+) (objectstore.Signed, error) {
+	return objectstore.Signed{
+		URL:    "https://store.test/uploads/" + key,
+		Header: http.Header{"Content-Length": {strconv.FormatInt(size, 10)}},
+	}, u.err["SignPut"]
+}
+
+func (u *uploads) CommitUpload(
+	_ context.Context,
+	_ objectstore.Name,
+	key string,
+) (objectstore.Object, error) {
+	size, pending := u.declared[key]
+	stored, put := u.stored[key]
+	switch {
+	case !pending || !put:
+		return objectstore.Object{}, blobs.ErrNotUploaded
+	case stored != size:
+		return objectstore.Object{}, objectstore.ErrSize
+	}
+	u.live[key] = true
+	return objectstore.Object{Size: size}, u.err["CommitUpload"]
+}
+
+func (u *uploads) Live(_ context.Context, _ objectstore.Name, key string) (bool, error) {
+	return u.live[key], u.err["Live"]
+}
+
+// TestAccTriggerLocalPreview uploads a local workspace and proposes a run
+// on it, with the stack's tracked commit and the upload recorded, and
+// answers that run again for the same upload; and refuses a stack that
+// does not enable local previews, a declaration no archive makes, an
+// upload that is not the stack's, was never put or holds other bytes, a
+// stack with no commit, and each failed call.
+func TestAccTriggerLocalPreview(t *testing.T) {
+	w := newWorld(t)
+	u := newUploads()
+	s := trigger.New(trigger.Deps{
+		DB: w.db, Stacks: w.stacks, Lifecycle: w.lc, Views: w.reader(w.access()), Objects: u,
+	})
+	ctx, alice := t.Context(), w.alice()
+	sum := make([]byte, sha256.Size)
+	st := w.stacks.settings[w.stack]
+	st.Branch = "main"
+	w.stacks.settings[w.stack] = st
+
+	if _, err := s.UploadWorkspace(ctx, alice, "network", 10, sum); !errors.Is(err,
+		trigger.ErrLocalPreview) {
+		t.Errorf("an upload to a stack without local previews = %v", err)
+	}
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", kernel.NewULID().String()); !errors.Is(
+		err, trigger.ErrLocalPreview) {
+		t.Errorf("a proposal on a stack without local previews = %v", err)
+	}
+	st.LocalPreviewEnabled = true
+	w.stacks.settings[w.stack] = st
+
+	for _, c := range []struct {
+		name     string
+		size     int64
+		sum      []byte
+		pointers []string
+	}{
+		{"an empty archive", 0, sum, []string{"/size"}},
+		{"an archive over the bound", trigger.MaxWorkspace + 1, sum, []string{"/size"}},
+		{"a short SHA-256", 10, sum[:31], []string{"/sha256"}},
+		{"neither", -1, nil, []string{"/size", "/sha256"}},
+	} {
+		_, err := s.UploadWorkspace(ctx, alice, "network", c.size, c.sum)
+		inv, ok := errors.AsType[*kernel.Invalid](err)
+		if !ok || len(inv.Errors) != len(c.pointers) {
+			t.Errorf("%s = %v, want Invalid at %v", c.name, err, c.pointers)
+			continue
+		}
+		for i, p := range c.pointers {
+			if inv.Errors[i].Pointer != p {
+				t.Errorf("%s = %v, want Invalid at %v", c.name, err, c.pointers)
+			}
+		}
+	}
+
+	up, err := s.UploadWorkspace(ctx, alice, "network", trigger.MaxWorkspace, sum)
+	key := fmt.Sprintf("%s/%s/%s", w.acct, w.stack, up.ID)
+	if err != nil || up.URL != "https://store.test/uploads/"+key ||
+		up.Header["Content-Length"] != strconv.FormatInt(trigger.MaxWorkspace, 10) {
+		t.Fatalf("an upload = %+v, %v", up, err)
+	}
+	other := kernel.NewULID()
+	u.declared[fmt.Sprintf("%s/%s/%s", w.acct, kernel.NewULID(), other)] = 10
+	for name, id := range map[string]string{
+		"an upload never put": up.ID.String(), "another stack's upload": other.String(),
+		"an unknown upload": kernel.NewULID().String(), "no ULID": "workspace",
+	} {
+		_, err := s.ProposeWorkspace(ctx, alice, "network", id)
+		if inv, ok := errors.AsType[*kernel.Invalid](err); !ok ||
+			inv.Errors[0].Pointer != "/workspace" || inv.Errors[0].Reason != kernel.ReasonNotFound {
+			t.Errorf("%s = %v, want Invalid at /workspace", name, err)
+		}
+	}
+	u.stored[key] = 10
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); err == nil ||
+		!strings.Contains(err.Error(), "holds other bytes") {
+		t.Errorf("an upload of other bytes = %v", err)
+	}
+	u.stored[key] = trigger.MaxWorkspace
+
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+		trigger.ErrNoCommit) {
+		t.Errorf("a stack with no commit = %v, want ErrNoCommit", err)
+	}
+	tracked := stacksapi.Commit{Hash: "tracked", Message: "Pinned"}
+	st.TrackedCommit = &tracked
+	w.stacks.settings[w.stack] = st
+	v, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String())
+	if err != nil || v.Run.Type != kernel.RunTypeProposed || v.Run.LocalWorkspace != key ||
+		!v.Run.LocalPreview() || v.Run.Commit.Hash != "tracked" || v.Run.Commit.Branch != "main" ||
+		!u.live[key] {
+		t.Fatalf("a proposal = %+v, %v", v.Run, err)
+	}
+	again, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String())
+	if err != nil || again.Run.ID != v.Run.ID {
+		t.Errorf("a second proposal = %s, %v; want %s", again.Run.ID, err, v.Run.ID)
+	}
+	commit, err := s.Trigger(ctx, alice, "network", trigger.Input{Type: kernel.RunTypeProposed})
+	if err != nil || commit.Run.ID == v.Run.ID || commit.Run.LocalPreview() {
+		t.Errorf("a proposal on the tracked commit = %+v, %v", commit.Run, err)
+	}
+
+	if _, err := s.UploadWorkspace(ctx, alice, "gone", 10, sum); !errors.Is(err,
+		stacksapi.ErrNotFound) {
+		t.Errorf("an unknown stack = %v", err)
+	}
+	w.stacks.err["Settings"] = errInjected
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+		errInjected) {
+		t.Errorf("a failed settings read = %v", err)
+	}
+	delete(w.stacks.err, "Settings")
+	for _, method := range []string{"Begin", "SignPut"} {
+		u.err[method] = errInjected
+		if _, err := s.UploadWorkspace(ctx, alice, "network", 10, sum); !errors.Is(err,
+			errInjected) {
+			t.Errorf("a failed %s = %v", method, err)
+		}
+		delete(u.err, method)
+	}
+	u.err["Live"] = errInjected
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+		errInjected) {
+		t.Errorf("a failed Live = %v", err)
+	}
+	delete(u.err, "Live")
+	st.Disabled = true
+	w.stacks.settings[w.stack] = st
+	up, err = s.UploadWorkspace(ctx, alice, "network", 10, sum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.stored[fmt.Sprintf("%s/%s/%s", w.acct, w.stack, up.ID)] = 10
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+		lifecycle.ErrDisabled) {
 		t.Errorf("a disabled stack = %v, want ErrDisabled", err)
 	}
 }

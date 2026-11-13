@@ -2,9 +2,12 @@ package http
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -51,6 +54,61 @@ func (s Server) RunTrigger(
 		return nil, runError(err, req.StackId, "")
 	}
 	return api.RunTrigger200JSONResponse{Body: runOf(v)}, nil
+}
+
+// UploadLocalWorkspace starts the upload of a local workspace for a run
+// proposed on the stack to preview. The route has decided
+// STACK_UPLOAD_LOCAL_WORKSPACE on the stack's space.
+func (s Server) UploadLocalWorkspace(
+	ctx context.Context,
+	req api.UploadLocalWorkspaceRequestObject,
+) (api.UploadLocalWorkspaceResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		size int64
+		sum  []byte
+	)
+	if req.Body != nil {
+		size = req.Body.Size
+		// A digest that is not hex is refused as the wrong length.
+		sum, _ = hex.DecodeString(req.Body.Sha256)
+	}
+	up, err := s.trigger.UploadWorkspace(ctx, p, req.StackId, size, sum)
+	if err != nil {
+		return nil, runError(err, req.StackId, "")
+	}
+	headers := api.StringMap{Entries: make([]api.KeyValuePairType, 0, len(up.Header))}
+	for _, h := range slices.Sorted(maps.Keys(up.Header)) {
+		headers.Entries = append(headers.Entries, api.KeyValuePairType{Key: h, Value: up.Header[h]})
+	}
+	return api.UploadLocalWorkspace201JSONResponse{Body: api.LocalWorkspaceUpload{
+		Id: up.ID.String(), UploadUrl: up.URL, UploadHeaders: headers,
+	}}, nil
+}
+
+// RunProposeLocalWorkspace creates a proposed run on an uploaded local
+// workspace of the stack, or answers the one on it that has not ended.
+// The route has decided RUN_PROPOSE_LOCAL_WORKSPACE on the stack's space.
+func (s Server) RunProposeLocalWorkspace(
+	ctx context.Context,
+	req api.RunProposeLocalWorkspaceRequestObject,
+) (api.RunProposeLocalWorkspaceResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var upload string
+	if req.Body != nil {
+		upload = req.Body.Workspace
+	}
+	v, err := s.trigger.ProposeWorkspace(ctx, p, req.StackId, upload)
+	if err != nil {
+		return nil, runError(err, req.StackId, "")
+	}
+	return api.RunProposeLocalWorkspace200JSONResponse{Body: runOf(v)}, nil
 }
 
 // principal is the caller the route authenticated.
@@ -126,6 +184,10 @@ func runError(err error, slug, run string) error {
 	case errors.Is(err, lifecycle.ErrDisabled):
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.InvalidState.Error("The stack is disabled; enable it to trigger runs.")
+	case errors.Is(err, trigger.ErrLocalPreview):
+		//nolint:wrapcheck // as above
+		return problem.Forbidden.Error(fmt.Sprintf(
+			"Stack %q does not allow local previews; set its localPreviewEnabled.", slug))
 	case errors.Is(err, trigger.ErrNoCommit):
 		//nolint:wrapcheck // as above
 		return problem.InvalidState.Error(

@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
@@ -178,6 +179,27 @@ func (s *sources) Source(
 
 func (*sources) Release(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
+// objects signs a GET of each live key of the uploads store, answers
+// objectstore.ErrNotFound for any other, or fails with err.
+type objects struct {
+	live map[string]bool
+	err  error
+}
+
+func (o *objects) SignGet(
+	_ context.Context,
+	store objectstore.Name,
+	key string,
+) (objectstore.Signed, error) {
+	switch {
+	case o.err != nil:
+		return objectstore.Signed{}, o.err
+	case store != objectstore.Uploads || !o.live[key]:
+		return objectstore.Signed{}, objectstore.ErrNotFound
+	}
+	return objectstore.Signed{URL: "https://store.test/uploads/" + key}, nil
+}
+
 // secret is an opened value.
 type secret string
 
@@ -233,6 +255,7 @@ type world struct {
 	tokens   *tokens
 	catalog  *catalog
 	sources  *sources
+	objects  *objects
 	run      lifecycle.Run
 	space    kernel.ULID
 }
@@ -281,12 +304,13 @@ func newWorld(t *testing.T) *world {
 				Username: "x-access-token", Token: []byte("narrow"), Narrowed: true,
 			},
 		}},
-		run:   run,
-		space: space,
+		objects: &objects{live: map[string]bool{"acct/stack/upload": true}},
+		run:     run,
+		space:   space,
 	}
 	w.svc = handover.New(handover.Deps{
 		Store: w.store, Stacks: w.stacks, Spaces: w.spaces, Accounts: w.accounts,
-		Environment: w.env, Tokens: w.tokens, Catalog: w.catalog,
+		Environment: w.env, Tokens: w.tokens, Catalog: w.catalog, Objects: w.objects,
 	})
 	w.svc.BindExpressions(registry(t))
 	w.svc.BindSources(w.sources)
@@ -506,7 +530,9 @@ func TestUnitHandoverMetadata(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w := newWorld(t)
 			w.store.run.Type, w.store.run.Commit.Branch = tc.typ, tc.branch
-			w.store.run.LocalPreview = tc.localPreview
+			if tc.localPreview {
+				w.store.run.LocalWorkspace = "acct/stack/upload"
+			}
 			w.env.resolved.Elements = tc.set
 			h, err := w.handover(t, w.run.ID)
 			if err != nil {
@@ -654,6 +680,39 @@ func cond(on bool) error {
 		return errDown
 	}
 	return nil
+}
+
+// TestUnitHandoverLocalPreview checks that a local preview's source is a
+// signed GET of its uploaded archive, with no credential and no Git source
+// asked for, even before sources are bound; that an expired upload is a
+// *kernel.Invalid saying so; and that a failed signing fails the
+// handover.
+func TestUnitHandoverLocalPreview(t *testing.T) {
+	w := newWorld(t)
+	w.store.run.Type, w.store.run.LocalWorkspace = kernel.RunTypeProposed, "acct/stack/upload"
+	w.svc = handover.New(handover.Deps{
+		Store: w.store, Stacks: w.stacks, Spaces: w.spaces, Accounts: w.accounts,
+		Environment: w.env, Tokens: w.tokens, Catalog: w.catalog, Objects: w.objects,
+	})
+	w.svc.BindExpressions(registry(t))
+	h, err := w.handover(t, w.run.ID)
+	if err != nil || h.Spec.Source != (workersapi.SpecSource{
+		Kind: workersapi.SourceArchive, URL: "https://store.test/uploads/acct/stack/upload",
+	}) || len(w.sources.asked) != 0 {
+		t.Fatalf("a local preview = %+v, %v; asked %v", h.Spec.Source, err, w.sources.asked)
+	}
+	if strings.Contains(string(h.Secrets.Reveal()), "sourceCredential") {
+		t.Errorf("a local preview's secrets name a credential: %s", h.Secrets.Reveal())
+	}
+	w.objects.live = nil
+	if _, err := w.handover(t, w.run.ID); err == nil ||
+		!strings.Contains(err.Error(), "local workspace has expired") {
+		t.Errorf("an expired upload = %v", err)
+	}
+	w.objects.err = errDown
+	if _, err := w.handover(t, w.run.ID); !errors.Is(err, errDown) {
+		t.Errorf("a failed signing = %v", err)
+	}
 }
 
 // TestUnitHandoverSourceAndTool checks a raw Git source, with no

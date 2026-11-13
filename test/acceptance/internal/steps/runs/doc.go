@@ -1,6 +1,7 @@
 // Package runs holds the acceptance steps of features/runs: the run
-// queue, the scheduling of runs, and a run's logs, which it writes as a
-// worker does and reads back.
+// queue, the scheduling of runs, a run's logs, which it writes as a
+// worker does and reads back, and local previews, whose workspace
+// archives it builds, uploads and reads back from a run's specification.
 //
 // # Input and output
 //

@@ -4913,6 +4913,25 @@ type KubernetesRootKind string
 // KubernetesWorkflowTool defines model for KubernetesWorkflowTool.
 type KubernetesWorkflowTool string
 
+// LocalWorkspaceUpload A local workspace's upload: its ID, which a proposal names, and the URL to upload the archive to with an HTTP PUT carrying the headers.
+type LocalWorkspaceUpload struct {
+	// Id The upload's ID.
+	Id            string    `json:"id"`
+	UploadHeaders StringMap `json:"uploadHeaders"`
+
+	// UploadUrl URL to upload the archived workspace to. It accepts the declared bytes alone, for a limited time.
+	UploadUrl string `json:"uploadUrl"`
+}
+
+// LocalWorkspaceUploadRequest The archive a local workspace's upload holds.
+type LocalWorkspaceUploadRequest struct {
+	// Sha256 The SHA-256 of the archive's bytes, in hex.
+	Sha256 string `json:"sha256"`
+
+	// Size The archive's size in bytes, at most 2 GiB.
+	Size int64 `json:"size"`
+}
+
 // LogMessage LogMessage represents a single log line.
 type LogMessage struct {
 	// Message Actual message.
@@ -6454,6 +6473,12 @@ type RunPriorityPreset string
 type RunPrioritySetRequest struct {
 	// Preset RunPriorityPreset represents predefined priority levels for runs.
 	Preset RunPriorityPreset `json:"preset"`
+}
+
+// RunProposeLocalWorkspaceRequest The arguments of runProposeLocalWorkspace not carried in the path.
+type RunProposeLocalWorkspaceRequest struct {
+	// Workspace The ID of the local workspace's upload.
+	Workspace string `json:"workspace"`
 }
 
 // RunRef A reference to a Run; fetch it with GET /runs/{runId}.
@@ -11109,6 +11134,12 @@ type StackEntityParams struct {
 	Id string `form:"id" json:"id"`
 }
 
+// UploadLocalWorkspaceParams defines parameters for UploadLocalWorkspace.
+type UploadLocalWorkspaceParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // StackLockParams defines parameters for StackLock.
 type StackLockParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -11217,6 +11248,12 @@ type RunConfirmParams struct {
 
 // RunDiscardParams defines parameters for RunDiscard.
 type RunDiscardParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// RunProposeLocalWorkspaceParams defines parameters for RunProposeLocalWorkspace.
+type RunProposeLocalWorkspaceParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
@@ -11979,6 +12016,9 @@ type StackConfigSetJSONRequestBody = ConfigElementInput
 // ContextAttachJSONRequestBody defines body for ContextAttach for application/json ContentType.
 type ContextAttachJSONRequestBody = ContextAttachRequest
 
+// UploadLocalWorkspaceJSONRequestBody defines body for UploadLocalWorkspace for application/json ContentType.
+type UploadLocalWorkspaceJSONRequestBody = LocalWorkspaceUploadRequest
+
 // StackLockJSONRequestBody defines body for StackLock for application/json ContentType.
 type StackLockJSONRequestBody = StackLockRequest
 
@@ -12002,6 +12042,9 @@ type RunConfirmJSONRequestBody = RunConfirmRequest
 
 // RunDiscardJSONRequestBody defines body for RunDiscard for application/json ContentType.
 type RunDiscardJSONRequestBody = RunDiscardRequest
+
+// RunProposeLocalWorkspaceJSONRequestBody defines body for RunProposeLocalWorkspace for application/json ContentType.
+type RunProposeLocalWorkspaceJSONRequestBody = RunProposeLocalWorkspaceRequest
 
 // RunCancelJSONRequestBody defines body for RunCancel for application/json ContentType.
 type RunCancelJSONRequestBody = RunCancelRequest
@@ -16749,6 +16792,24 @@ type ClientInterface interface {
 	// Corresponds with GET /stacks/{stackId}/entity (the `StackEntity` operationId).
 	StackEntity(ctx context.Context, stackId string, params *StackEntityParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UploadLocalWorkspaceWithBody Upload Local Workspace
+	//
+	// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+	UploadLocalWorkspaceWithBody(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UploadLocalWorkspace Upload Local Workspace
+	//
+	// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+	UploadLocalWorkspace(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, body UploadLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// StackLockWithBody Lock Stack
 	//
 	// Lock the stack for exclusive use.
@@ -16970,6 +17031,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
 	RunDiscard(ctx context.Context, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunProposeLocalWorkspaceWithBody Propose Local Workspace Run
+	//
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+	RunProposeLocalWorkspaceWithBody(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunProposeLocalWorkspace Propose Local Workspace Run
+	//
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+	RunProposeLocalWorkspace(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunCancelWithBody Cancel Run
 	//
@@ -24283,6 +24362,44 @@ func (c *Client) StackEntity(ctx context.Context, stackId string, params *StackE
 	return c.Client.Do(req)
 }
 
+// UploadLocalWorkspaceWithBody Upload Local Workspace
+//
+// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+func (c *Client) UploadLocalWorkspaceWithBody(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadLocalWorkspaceRequestWithBody(c.Server, stackId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UploadLocalWorkspace Upload Local Workspace
+//
+// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+func (c *Client) UploadLocalWorkspace(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, body UploadLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUploadLocalWorkspaceRequest(c.Server, stackId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // StackLockWithBody Lock Stack
 //
 // Lock the stack for exclusive use.
@@ -24735,6 +24852,44 @@ func (c *Client) RunDiscardWithBody(ctx context.Context, stackId string, params 
 // Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
 func (c *Client) RunDiscard(ctx context.Context, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunDiscardRequest(c.Server, stackId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunProposeLocalWorkspaceWithBody Propose Local Workspace Run
+//
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+func (c *Client) RunProposeLocalWorkspaceWithBody(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunProposeLocalWorkspaceRequestWithBody(c.Server, stackId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunProposeLocalWorkspace Propose Local Workspace Run
+//
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+func (c *Client) RunProposeLocalWorkspace(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunProposeLocalWorkspaceRequest(c.Server, stackId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -39718,6 +39873,68 @@ func NewStackEntityRequest(server string, stackId string, params *StackEntityPar
 	return req, nil
 }
 
+// NewUploadLocalWorkspaceRequest calls the generic UploadLocalWorkspace builder with application/json body
+func NewUploadLocalWorkspaceRequest(server string, stackId string, params *UploadLocalWorkspaceParams, body UploadLocalWorkspaceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUploadLocalWorkspaceRequestWithBody(server, stackId, params, "application/json", bodyReader)
+}
+
+// NewUploadLocalWorkspaceRequestWithBody constructs an http.Request for the UploadLocalWorkspace method, with any body, and a specified content type
+func NewUploadLocalWorkspaceRequestWithBody(server string, stackId string, params *UploadLocalWorkspaceParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/local-workspace-uploads", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewStackLockRequest calls the generic StackLock builder with application/json body
 func NewStackLockRequest(server string, stackId string, params *StackLockParams, body StackLockJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -40732,6 +40949,68 @@ func NewRunDiscardRequestWithBody(server string, stackId string, params *RunDisc
 	}
 
 	operationPath := fmt.Sprintf("/stacks/%s/runs/discard", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRunProposeLocalWorkspaceRequest calls the generic RunProposeLocalWorkspace builder with application/json body
+func NewRunProposeLocalWorkspaceRequest(server string, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunProposeLocalWorkspaceRequestWithBody(server, stackId, params, "application/json", bodyReader)
+}
+
+// NewRunProposeLocalWorkspaceRequestWithBody constructs an http.Request for the RunProposeLocalWorkspace method, with any body, and a specified content type
+func NewRunProposeLocalWorkspaceRequestWithBody(server string, stackId string, params *RunProposeLocalWorkspaceParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/propose-local-workspace", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -48911,6 +49190,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /stacks/{stackId}/entity (the `StackEntity` operationId).
 	StackEntityWithResponse(ctx context.Context, stackId string, params *StackEntityParams, reqEditors ...RequestEditorFn) (*StackEntityResponse, error)
 
+	// UploadLocalWorkspaceWithBodyWithResponse Upload Local Workspace
+	//
+	// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+	UploadLocalWorkspaceWithBodyWithResponse(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadLocalWorkspaceResponse, error)
+
+	// UploadLocalWorkspaceWithResponse Upload Local Workspace
+	//
+	// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+	UploadLocalWorkspaceWithResponse(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, body UploadLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UploadLocalWorkspaceResponse, error)
+
 	// StackLockWithBodyWithResponse Lock Stack
 	//
 	// Lock the stack for exclusive use.
@@ -49148,6 +49445,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/discard (the `RunDiscard` operationId).
 	RunDiscardWithResponse(ctx context.Context, stackId string, params *RunDiscardParams, body RunDiscardJSONRequestBody, reqEditors ...RequestEditorFn) (*RunDiscardResponse, error)
+
+	// RunProposeLocalWorkspaceWithBodyWithResponse Propose Local Workspace Run
+	//
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+	RunProposeLocalWorkspaceWithBodyWithResponse(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunProposeLocalWorkspaceResponse, error)
+
+	// RunProposeLocalWorkspaceWithResponse Propose Local Workspace Run
+	//
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+	RunProposeLocalWorkspaceWithResponse(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*RunProposeLocalWorkspaceResponse, error)
 
 	// RunCancelWithBodyWithResponse Cancel Run
 	//
@@ -75029,6 +75344,115 @@ func (r StackEntityResponse) ContentType() string {
 	return ""
 }
 
+// UploadLocalWorkspaceResponse201Headers the declared response headers of an HTTP 201 response for UploadLocalWorkspace
+type UploadLocalWorkspaceResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UploadLocalWorkspaceResponse429Headers the declared response headers of an HTTP 429 response for UploadLocalWorkspace
+type UploadLocalWorkspaceResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// UploadLocalWorkspaceResponse503Headers the declared response headers of an HTTP 503 response for UploadLocalWorkspace
+type UploadLocalWorkspaceResponse503Headers struct {
+	RetryAfter *int
+}
+
+type UploadLocalWorkspaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *LocalWorkspaceUpload
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *UploadLocalWorkspaceResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *UploadLocalWorkspaceResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *UploadLocalWorkspaceResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r UploadLocalWorkspaceResponse) GetJSON201() *LocalWorkspaceUpload {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UploadLocalWorkspaceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UploadLocalWorkspaceResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r UploadLocalWorkspaceResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r UploadLocalWorkspaceResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r UploadLocalWorkspaceResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UploadLocalWorkspaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UploadLocalWorkspaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UploadLocalWorkspaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UploadLocalWorkspaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UploadLocalWorkspaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackLockResponse200Headers the declared response headers of an HTTP 200 response for StackLock
 type StackLockResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -76697,6 +77121,115 @@ func (r RunDiscardResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RunDiscardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunProposeLocalWorkspaceResponse200Headers the declared response headers of an HTTP 200 response for RunProposeLocalWorkspace
+type RunProposeLocalWorkspaceResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunProposeLocalWorkspaceResponse429Headers the declared response headers of an HTTP 429 response for RunProposeLocalWorkspace
+type RunProposeLocalWorkspaceResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunProposeLocalWorkspaceResponse503Headers the declared response headers of an HTTP 503 response for RunProposeLocalWorkspace
+type RunProposeLocalWorkspaceResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunProposeLocalWorkspaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunProposeLocalWorkspaceResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunProposeLocalWorkspaceResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunProposeLocalWorkspaceResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunProposeLocalWorkspaceResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunProposeLocalWorkspaceResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunProposeLocalWorkspaceResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunProposeLocalWorkspaceResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunProposeLocalWorkspaceResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunProposeLocalWorkspaceResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunProposeLocalWorkspaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunProposeLocalWorkspaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunProposeLocalWorkspaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunProposeLocalWorkspaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunProposeLocalWorkspaceResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -90612,6 +91145,36 @@ func (c *ClientWithResponses) StackEntityWithResponse(ctx context.Context, stack
 	return ParseStackEntityResponse(rsp)
 }
 
+// UploadLocalWorkspaceWithBodyWithResponse Upload Local Workspace
+//
+// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+func (c *ClientWithResponses) UploadLocalWorkspaceWithBodyWithResponse(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadLocalWorkspaceResponse, error) {
+	rsp, err := c.UploadLocalWorkspaceWithBody(ctx, stackId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUploadLocalWorkspaceResponse(rsp)
+}
+
+// UploadLocalWorkspaceWithResponse Upload Local Workspace
+//
+// Start the upload of a local workspace, a tar.gz archive of the stack's project, for a proposed run to preview. The stack must allow local previews. The upload expires a day after it starts unless a run is proposed on it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/local-workspace-uploads (the `UploadLocalWorkspace` operationId).
+func (c *ClientWithResponses) UploadLocalWorkspaceWithResponse(ctx context.Context, stackId string, params *UploadLocalWorkspaceParams, body UploadLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UploadLocalWorkspaceResponse, error) {
+	rsp, err := c.UploadLocalWorkspace(ctx, stackId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUploadLocalWorkspaceResponse(rsp)
+}
+
 // StackLockWithBodyWithResponse Lock Stack
 //
 // Lock the stack for exclusive use.
@@ -90992,6 +91555,36 @@ func (c *ClientWithResponses) RunDiscardWithResponse(ctx context.Context, stackI
 		return nil, err
 	}
 	return ParseRunDiscardResponse(rsp)
+}
+
+// RunProposeLocalWorkspaceWithBodyWithResponse Propose Local Workspace Run
+//
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+func (c *ClientWithResponses) RunProposeLocalWorkspaceWithBodyWithResponse(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunProposeLocalWorkspaceResponse, error) {
+	rsp, err := c.RunProposeLocalWorkspaceWithBody(ctx, stackId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunProposeLocalWorkspaceResponse(rsp)
+}
+
+// RunProposeLocalWorkspaceWithResponse Propose Local Workspace Run
+//
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
+func (c *ClientWithResponses) RunProposeLocalWorkspaceWithResponse(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*RunProposeLocalWorkspaceResponse, error) {
+	rsp, err := c.RunProposeLocalWorkspace(ctx, stackId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunProposeLocalWorkspaceResponse(rsp)
 }
 
 // RunCancelWithBodyWithResponse Cancel Run
@@ -124637,6 +125230,142 @@ func ParseStackEntityResponse(rsp *http.Response) (*StackEntityResponse, error) 
 	return response, nil
 }
 
+// ParseUploadLocalWorkspaceResponse parses an HTTP response from a UploadLocalWorkspaceWithResponse call
+func ParseUploadLocalWorkspaceResponse(rsp *http.Response) (*UploadLocalWorkspaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UploadLocalWorkspaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest LocalWorkspaceUpload
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers UploadLocalWorkspaceResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers UploadLocalWorkspaceResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers UploadLocalWorkspaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStackLockResponse parses an HTTP response from a StackLockWithResponse call
 func ParseStackLockResponse(rsp *http.Response) (*StackLockResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -126730,6 +127459,142 @@ func ParseRunDiscardResponse(rsp *http.Response) (*RunDiscardResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunDiscardResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunProposeLocalWorkspaceResponse parses an HTTP response from a RunProposeLocalWorkspaceWithResponse call
+func ParseRunProposeLocalWorkspaceResponse(rsp *http.Response) (*RunProposeLocalWorkspaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunProposeLocalWorkspaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunProposeLocalWorkspaceResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunProposeLocalWorkspaceResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunProposeLocalWorkspaceResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
