@@ -2,23 +2,49 @@ package iactest
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"slices"
 	"sync/atomic"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/iac"
+	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// fake is a vendor whose answers a test chooses.
+// fake is a vendor whose answers a test chooses; it reads plans with
+// plan.Parse unless parse is set.
 type fake struct {
 	kind     iac.Kind
 	validate func(json.RawMessage) []kernel.FieldError
+	parse    func(io.Reader) (plan.Plan, error)
 }
 
 func (f fake) Kind() iac.Kind { return f.kind }
 
 func (f fake) ValidateSettings(s json.RawMessage) []kernel.FieldError { return f.validate(s) }
+
+func (f fake) ParsePlan(r io.Reader) (plan.Plan, error) {
+	if f.parse == nil {
+		return plan.Parse(r)
+	}
+	return f.parse(r)
+}
+
+// recorded are Terraform's recorded plans, which the fake's plan.Parse
+// answers as Recorded says it must.
+func recorded(t *testing.T) []PlanCase {
+	t.Helper()
+	plans, err := Recorded("../plan/testdata/terraform")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return plans
+}
+
+// empty answers every plan as an empty one.
+func empty(io.Reader) (plan.Plan, error) { return plan.Plan{Changes: []plan.Change{}}, nil }
 
 // asObject refuses settings that are not an object, as every vendor must.
 func asObject(s json.RawMessage) []kernel.FieldError {
@@ -44,11 +70,107 @@ func TestUnitProblemsPasses(t *testing.T) {
 		return nil
 	}}
 	cases := []Case{{Name: "bad", Settings: `{"bad": 1}`, Refused: []string{"/bad"}}}
-	if got := Problems(v, cases); len(got) != 0 {
+	plans := recorded(t)
+	if got := Problems(v, cases, plans...); len(got) != 0 {
 		t.Errorf("Problems = %q, want none", got)
 	}
-	Run(t, v, cases)
+	Run(t, v, cases, plans...)
 }
+
+// TestUnitRecorded checks that Recorded answers its three scenarios in
+// name order, and refuses a directory without them.
+func TestUnitRecorded(t *testing.T) {
+	cases := recorded(t)
+	names := make([]string, 0, len(cases))
+	for _, c := range cases {
+		names = append(names, c.Name)
+	}
+	if want := []string{"recorded all", "recorded none", "recorded outputs"}; !slices.Equal(
+		names, want,
+	) {
+		t.Errorf("Recorded names %q, want %q", names, want)
+	}
+	if _, err := Recorded(t.TempDir()); err == nil {
+		t.Error("Recorded of an empty directory = nil error")
+	}
+}
+
+// TestUnitProblemsPlanFindings checks one vendor breaking each clause of
+// ParsePlan's contract.
+func TestUnitProblemsPlanFindings(t *testing.T) {
+	var calls atomic.Int64
+	for name, c := range map[string]struct {
+		v     fake
+		plans []PlanCase
+		want  []string
+	}{
+		"refuses nothing": {
+			v: fake{kind: iac.Terraform, validate: asObject, parse: empty},
+			want: []string{
+				"a plan of another major format: ParsePlan = <nil>, want " + plan.ErrFormat.Error(),
+				"a plan past MaxSize: ParsePlan = <nil>, want " + plan.ErrTooLarge.Error(),
+				"a plan that is not JSON: ParsePlan = <nil>, want " + plan.ErrMalformed.Error(),
+			},
+		},
+		"misreads a plan": {
+			v: fake{kind: iac.Terraform, validate: asObject},
+			plans: []PlanCase{{
+				Name: "c", Document: []byte(`{"format_version":"1.0"}`),
+				Want: plan.Plan{Delta: plan.Delta{Outputs: true}},
+			}},
+			want: []string{
+				"c: ParsePlan = {Changes:[] Delta:{Add:0 Change:0 Delete:0 Import:0 Move:0 " +
+					"Forget:0 Resources:0 Outputs:false}}, <nil>, want {Changes:[] Delta:{Add:0 " +
+					"Change:0 Delete:0 Import:0 Move:0 Forget:0 Resources:0 Outputs:true}}",
+			},
+		},
+		"keeps state between plans": {
+			v: fake{kind: iac.Terraform, validate: asObject, parse: func(
+				r io.Reader,
+			) (plan.Plan, error) {
+				if calls.Add(1) > int64(len(planContract)) {
+					return empty(r)
+				}
+				return plan.Parse(r)
+			}},
+			want: []string{
+				"a plan of another major format: a concurrent call answered otherwise than a " +
+					"call alone",
+				"a plan past MaxSize: ParsePlan = <nil>, want " + plan.ErrTooLarge.Error(),
+				"a plan that is not JSON: a concurrent call answered otherwise than a call alone",
+			},
+		},
+		"refuses with another error": {
+			v: fake{kind: iac.Terraform, validate: asObject, parse: func(io.Reader) (
+				plan.Plan, error,
+			) {
+				return plan.Plan{}, errOther
+			}},
+			plans: []PlanCase{{Name: "c", Document: []byte(`{`), Err: plan.ErrMalformed}},
+			want: []string{
+				"a plan of another major format: ParsePlan = other, want " +
+					plan.ErrFormat.Error(),
+				"a plan past MaxSize: ParsePlan = other, want " + plan.ErrTooLarge.Error(),
+				"a plan that is not JSON: ParsePlan = other, want " + plan.ErrMalformed.Error(),
+				"an empty plan: ParsePlan = {Changes:[] Delta:{Add:0 Change:0 Delete:0 " +
+					"Import:0 Move:0 Forget:0 Resources:0 Outputs:false}}, other, want " +
+					"{Changes:[] Delta:{Add:0 Change:0 Delete:0 Import:0 Move:0 Forget:0 " +
+					"Resources:0 Outputs:false}}",
+				"c: ParsePlan = other, want " + plan.ErrMalformed.Error(),
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			want := slices.Sorted(slices.Values(c.want))
+			if got := Problems(c.v, nil, c.plans...); !slices.Equal(got, want) {
+				t.Errorf("Problems =\n%q\nwant\n%q", got, want)
+			}
+		})
+	}
+}
+
+// errOther is an error no plan case names.
+var errOther = errors.New("other")
 
 // TestUnitProblemsFindings checks one vendor breaking each clause.
 func TestUnitProblemsFindings(t *testing.T) {

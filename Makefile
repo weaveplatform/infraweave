@@ -123,6 +123,10 @@ reference-fetch:
 vendors-fixtures:
 	$(GO) run ./tools/vendorsfixtures internal/vendors/internal/index/testdata
 
+## iac-fixtures: record Terraform's and OpenTofu's plans as the plan parser's test fixtures (runs Docker; reaches the releases' download sites on a cold cache)
+iac-fixtures:
+	$(GO) run ./tools/planfixtures internal/iac/plan/testdata
+
 ## scaffold: copy one reference tag into an API fragment and rebundle (make scaffold [PRODUCT=flows] TAG=Stacks FAMILY=stacks [FORCE=1])
 scaffold:
 	@test -n "$(TAG)" -a -n "$(FAMILY)" || { echo "usage: make scaffold [PRODUCT=<deploy|flows>] TAG=<reference tag> FAMILY=<fragment name>"; exit 1; }
@@ -220,4 +224,4 @@ docs-check:
 ## gate: everything CI runs, in order
 gate: docs-check vet lint lint-fixtures labs-cloud labs-vcs test accept verify-parity verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint lint-fixtures labs-cloud labs-vcs vet test accept reference-fetch scaffold vendors-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint lint-fixtures labs-cloud labs-vcs vet test accept reference-fetch scaffold vendors-fixtures iac-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
+	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/iac/version"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -22,6 +24,10 @@ type Vendor interface {
 	// Each pointer is relative to settings. It reads nothing but settings,
 	// so any number of goroutines may call it at once.
 	ValidateSettings(settings json.RawMessage) []kernel.FieldError
+	// ParsePlan reads the tool's JSON of a saved plan into the plan's
+	// changes and delta, as plan.Parse does; any number of goroutines may
+	// call it at once.
+	ParsePlan(r io.Reader) (plan.Plan, error)
 }
 
 // Input is what a stack input carries for its vendor.
