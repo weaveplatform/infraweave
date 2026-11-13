@@ -26,6 +26,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
+	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
@@ -79,6 +80,11 @@ type Config struct {
 	//
 	// ref: decision 0008
 	Run runsassembly.Settings `mapstructure:"run"`
+	// State is the state domain's: the largest state version a write may
+	// carry.
+	//
+	// ref: decision 0010
+	State stateassembly.Settings `mapstructure:"state"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -130,6 +136,7 @@ func Defaults() Config {
 		Vendors:     vendorsassembly.DefaultSettings(),
 		Worker:      workersassembly.DefaultSettings(),
 		Run:         runsassembly.DefaultSettings(),
+		State:       stateassembly.DefaultSettings(),
 	}
 }
 
@@ -275,6 +282,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Vendors.Validate(),
 		c.Worker.Validate(),
 		c.Run.Validate(),
+		c.State.Validate(),
 		c.liveness(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)

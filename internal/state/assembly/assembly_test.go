@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -20,13 +21,13 @@ import (
 )
 
 // TestUnitDomain checks that the domain constructs its core and backend,
-// declares its stream and held columns, its stack guard and its purge
-// job, subscribes its lock release once,
-// and that its routes need a run on a domain and answer 501 on none.
+// declares its stream and held columns, its stack guard, its purge job
+// and its versions, subscribes its lock release once, and that its
+// routes need a run on a domain and answer 501 on none.
 func TestUnitDomain(t *testing.T) {
 	d := New(Deps{})
-	if d == nil || d.state == nil || d.backend == nil {
-		t.Fatal("the domain has no core or backend")
+	if d == nil || d.state == nil || d.backend == nil || d.Versions() == nil {
+		t.Fatal("the domain has no core, backend or versions")
 	}
 	if Stream().Name != pg.StreamName || !reflect.DeepEqual(Held(), pg.Held()) {
 		t.Errorf("stream %q, held %v", Stream().Name, Held())
@@ -53,6 +54,20 @@ func TestUnitDomain(t *testing.T) {
 			"/state/v1/stacks/one", nil))
 		if rec.Code != tc.status {
 			t.Errorf("a domain %v answered %d, want %d", tc.d != nil, rec.Code, tc.status)
+		}
+	}
+}
+
+// TestUnitSettings checks that a state version is bounded at 512 MiB by
+// default, and that a bound that is not positive is refused.
+func TestUnitSettings(t *testing.T) {
+	if d := DefaultSettings(); d.MaxSize != 512<<20 || d.Validate() != nil {
+		t.Errorf("defaults %+v: %v", d, d.Validate())
+	}
+	for _, size := range []int64{0, -1} {
+		if err := (Settings{MaxSize: size}).Validate(); !errors.Is(err, ErrConfig) ||
+			!strings.Contains(err.Error(), "state.max_size") {
+			t.Errorf("max_size %d: %v", size, err)
 		}
 	}
 }

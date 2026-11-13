@@ -19,8 +19,10 @@
 // skipping the driver's cloud test without them. Canceled checks that a driver over the network
 // fails every call once its context ends and leaves nothing of a write
 // canceled between its parts. Emulator starts a pinned emulator image,
-// skipping without Docker unless CI requires it. NoMD5 is an HTTP client
-// that fails the test on any request carrying an MD5.
+// skipping without Docker unless CI requires it. S3, GCS and AzureBlob
+// each start their driver's emulator and answer a created bucket on it,
+// so a suite built on the object store runs on every driver. NoMD5 is an
+// HTTP client that fails the test on any request carrying an MD5.
 //
 // # Input and output
 //
@@ -31,6 +33,8 @@
 //
 // # Dependencies
 //
-// It imports objectstore, testcontainers and sqltest's Docker rule. The
-// driver packages' tests run it; no production code imports it.
+// It imports objectstore, the s3, gcs and azureblob drivers with their
+// SDKs, testcontainers and sqltest's Docker rule. The driver packages'
+// tests run it, and suites built on the object store use its emulators;
+// no production code imports it.
 package objectstoretest

@@ -233,6 +233,22 @@ run:
 	}
 }
 
+// TestUnitLoadState checks that state.max_size is 512 MiB by default and
+// decodes from the file and, over it, the environment.
+func TestUnitLoadState(t *testing.T) {
+	if got := Defaults().State.MaxSize; got != 512<<20 {
+		t.Errorf("default state.max_size %d", got)
+	}
+	t.Setenv("INFRAWEAVE_STATE_MAX_SIZE", "2048")
+	c, err := loadArgs(t, "--config", writeFile(t, "state:\n  max_size: 1024\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.State.MaxSize != 2048 {
+		t.Errorf("state.max_size %d, want the environment's 2048", c.State.MaxSize)
+	}
+}
+
 func TestUnitLoadRejects(t *testing.T) {
 	cases := []struct {
 		name string
@@ -361,6 +377,7 @@ func TestUnitLoadRejects(t *testing.T) {
 			nil,
 			"run.preparing_timeout_default",
 		},
+		{"no state bound", "state:\n  max_size: 0\n", nil, "state.max_size"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

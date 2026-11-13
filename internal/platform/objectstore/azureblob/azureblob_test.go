@@ -6,19 +6,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/azureblob"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/objectstoretest"
-	"github.com/weaveplatform/infraweave/test/deps"
-)
-
-// Azurite's well-known development account, which every Azurite holds.
-const (
-	account    = "devstoreaccount1"
-	accountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==" //nolint:gosec // public
 )
 
 // TestAccAzureBlobCloud runs the contract against Azure Blob Storage, in
@@ -48,34 +39,7 @@ func TestAccAzureBlobCloud(t *testing.T) {
 
 // TestAccAzureBlobContract runs the contract against Azurite.
 func TestAccAzureBlobContract(t *testing.T) {
-	endpoint := objectstoretest.Emulator(t, deps.ImageAzurite, "10000/tcp",
-		// The SDK speaks a newer service version than Azurite announces.
-		testcontainers.WithCmd("azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000",
-			"--inMemoryPersistence", "--skipApiVersionCheck"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("10000/tcp")),
-	)
-	key, err := service.NewSharedKeyCredential(account, accountKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := azureblob.New(
-		objectstore.AzureBlobConfig{AccountURL: endpoint + "/" + account, Container: "contract"},
-		"",
-		objectstore.MinPartSize,
-		azureblob.Options{
-			SharedKey: key,
-			Client: &service.ClientOptions{ClientOptions: azcore.ClientOptions{
-				Transport:                       objectstoretest.NoMD5(t, http.DefaultTransport),
-				InsecureAllowCredentialWithHTTP: true,
-			}},
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := b.Container().Create(t.Context(), nil); err != nil {
-		t.Fatal(err)
-	}
+	b := objectstoretest.AzureBlob(t, "contract")
 	objectstoretest.Run(t, b, objectstoretest.Options{
 		PartSize: objectstore.MinPartSize,
 		Skip:     objectstoretest.Skip(objectstore.DriverAzureBlob),

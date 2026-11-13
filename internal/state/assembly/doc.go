@@ -1,8 +1,11 @@
 // Package assembly constructs the state domain over its Deps, after the
 // runs domain: the core that opens a stack's workspace under the stack's
-// hold and takes and releases its locks, over the domain's pg adapter,
-// and the backend Routes adds to the API listener under /state/v1, which
-// decides each request through the runs domain's StateAccess. Subscribe
+// hold, takes and releases its locks and writes and reads its versions,
+// over the domain's pg adapter and Objects, and the backend Routes adds
+// to the API listener under /state/v1, which decides each request
+// through the runs domain's StateAccess and bounds a version by
+// Settings.MaxSize, state.max_size. Versions is what other domains read
+// of a stack's managed state. Subscribe
 // subscribes LockRelease, which releases a run's locks once its
 // run_updated names a terminal state. StackGuard is the guard internal/app
 // registers with the stacks domain, whose stack delete enqueues
@@ -20,7 +23,7 @@
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, the domain's backend, core and pg
+// It imports runsapi, stacksapi, stateapi, the domain's backend, core and pg
 // packages, chi, platform/outbox, platform/queue, platform/sql/integrity,
 // platform/sql/migrate and platform/tx. Only internal/app imports it.
 package assembly

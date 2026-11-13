@@ -18,12 +18,15 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 )
 
 // world is one run granted grant on stack, a sibling stack of the same
-// account the run is not of, and the locks the backend asked the core to
-// take and release. It is the backend's StateAccess, Stacks and Locks.
+// account the run is not of, the workspace's current state, empty for
+// none, and the locks and versions the backend asked the core to take,
+// release and write, each write's body as it read it. It is the
+// backend's StateAccess, Stacks and State.
 type world struct {
 	acct    kernel.AccountID
 	run     kernel.ULID
@@ -31,11 +34,14 @@ type world struct {
 	sibling kernel.ULID
 	grant   runsapi.StateGrant
 	unkept  bool
+	state   string
 
-	accessErr, settingsErr, lockErr error
+	accessErr, settingsErr, lockErr, writeErr, readErr error
 
 	locked   []locked
 	unlocked []core.Unlock
+	written  []core.Write
+	bodies   []string
 }
 
 type locked struct {
@@ -103,6 +109,27 @@ func (w *world) Unlock(_ context.Context, u core.Unlock) error {
 	return w.lockErr
 }
 
+func (w *world) Write(_ context.Context, v core.Write) (bool, error) {
+	body, err := io.ReadAll(v.Body)
+	v.Body = nil
+	w.written, w.bodies = append(w.written, v), append(w.bodies, string(body))
+	if err != nil {
+		return false, err
+	}
+	return w.writeErr == nil, w.writeErr
+}
+
+func (w *world) Read(context.Context, core.Target) (core.Version, io.ReadCloser, bool, error) {
+	if w.readErr != nil || w.state == "" {
+		return core.Version{}, nil, false, w.readErr
+	}
+	v := core.Version{Version: stateapi.Version{Size: int64(len(w.state))}}
+	return v, io.NopCloser(strings.NewReader(w.state)), true, nil
+}
+
+// maxSize is the largest version the tests' backend takes.
+const maxSize = 1 << 10
+
 // serve sends method on path with body as w's run, after set adjusts the
 // world and the request, through a router holding only the backend.
 func (w *world) serve(
@@ -112,7 +139,7 @@ func (w *world) serve(
 ) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
-	New(w, w, w).Routes(r)
+	New(w, w, w, maxSize).Routes(r)
 	req := httptest.NewRequestWithContext(t.Context(), method, path, strings.NewReader(body))
 	req = req.WithContext(kernel.WithPrincipal(req.Context(),
 		kernel.Principal{Kind: kernel.PrincipalRunner, ActorID: w.run}))
@@ -145,11 +172,25 @@ func TestUnitBackend(t *testing.T) {
 			return r
 		}
 	}
+	writeFails := func(err error) func(*world, *http.Request) *http.Request {
+		return func(w *world, r *http.Request) *http.Request {
+			w.writeErr = err
+			return exclusive(w, r)
+		}
+	}
+	readFails := func(err error) func(*world, *http.Request) *http.Request {
+		return func(w *world, r *http.Request) *http.Request {
+			w.readErr = err
+			return r
+		}
+	}
 	cases := []struct {
 		name               string
 		method, path, body string
 		set                func(*world, *http.Request) *http.Request
 		status             int
+		// reaches marks a refusal the core's own call makes.
+		reaches bool
 	}{
 		{
 			name: "no principal", method: http.MethodGet, path: "/state/v1/stacks/one",
@@ -168,15 +209,23 @@ func TestUnitBackend(t *testing.T) {
 		},
 		{
 			name: "a slug", method: http.MethodGet, path: "/state/v1/stacks/one",
-			status: http.StatusNotImplemented,
+			status: http.StatusNoContent,
 		},
 		{
 			name: "a canonical ID", method: http.MethodGet, path: "/state/v1/stacks/{stack}",
-			status: http.StatusNotImplemented,
+			status: http.StatusNoContent,
 		},
 		{
 			name: "a workspace", method: http.MethodGet,
-			path: "/state/v1/stacks/one/workspaces/blue", status: http.StatusNotImplemented,
+			path: "/state/v1/stacks/one/workspaces/blue", status: http.StatusNoContent,
+		},
+		{
+			name: "a read that fails", method: http.MethodGet, path: "/state/v1/stacks/one",
+			set: readFails(failed), status: http.StatusInternalServerError,
+		},
+		{
+			name: "a read of a stack gone", method: http.MethodGet, path: "/state/v1/stacks/one",
+			set: readFails(stacksapi.ErrNotFound), status: http.StatusNotFound,
 		},
 		{
 			name: "a lowercase ID is a slug", method: http.MethodGet,
@@ -264,7 +313,51 @@ func TestUnitBackend(t *testing.T) {
 		},
 		{
 			name: "a write", method: http.MethodPost, path: "/state/v1/stacks/one", body: "{}",
-			set: exclusive, status: http.StatusNotImplemented,
+			set: exclusive, status: http.StatusOK,
+		},
+		{
+			name: "a write of no declared length", method: http.MethodPost,
+			path: "/state/v1/stacks/one", body: "{}",
+			set: func(w *world, r *http.Request) *http.Request {
+				r.ContentLength = -1
+				return exclusive(w, r)
+			},
+			status: http.StatusBadRequest,
+		},
+		{
+			name: "a write over max_size", method: http.MethodPost, path: "/state/v1/stacks/one",
+			body: strings.Repeat(" ", maxSize+1), set: exclusive,
+			status: http.StatusRequestEntityTooLarge,
+		},
+		{
+			name: "a write without the lock", method: http.MethodPost,
+			path: "/state/v1/stacks/one", body: "{}",
+			set:    writeFails(&core.Conflict{Holder: core.Lock{Info: json.RawMessage(`{}`)}}),
+			status: http.StatusLocked,
+		},
+		{
+			name: "a write that fails its Content-MD5", method: http.MethodPost,
+			path: "/state/v1/stacks/one", body: "{}", set: writeFails(core.ErrMD5),
+			status: http.StatusBadRequest,
+		},
+		{
+			name: "a write that is no state", method: http.MethodPost,
+			path: "/state/v1/stacks/one", body: "[]", set: writeFails(core.ErrState),
+			status: http.StatusBadRequest,
+		},
+		{
+			name: "a write whose body cannot be read", method: http.MethodPost,
+			path: "/state/v1/stacks/one",
+			set: func(w *world, r *http.Request) *http.Request {
+				r.ContentLength = 10
+				r.Body = io.NopCloser(iotest.ErrReader(errors.New("cut")))
+				return exclusive(w, r)
+			},
+			status: http.StatusBadRequest, reaches: true,
+		},
+		{
+			name: "the write fails", method: http.MethodPost, path: "/state/v1/stacks/one",
+			body: "{}", set: writeFails(failed), status: http.StatusInternalServerError,
 		},
 		{
 			name: "a lock without the grant", method: "LOCK", path: "/state/v1/stacks/one",
@@ -362,9 +455,11 @@ func TestUnitBackend(t *testing.T) {
 				ct != problem.ContentType {
 				t.Errorf("Content-Type = %q, want a problem document", ct)
 			}
-			if c.status >= 400 && c.status != http.StatusLocked &&
-				len(w.locked)+len(w.unlocked) > 0 && w.lockErr == nil {
-				t.Errorf("a refused request reached the core: %v %v", w.locked, w.unlocked)
+			if c.status >= 400 && c.status != http.StatusLocked && !c.reaches &&
+				len(w.locked)+len(w.unlocked)+len(w.written) > 0 && w.lockErr == nil &&
+				w.writeErr == nil {
+				t.Errorf("a refused request reached the core: %v %v %v", w.locked, w.unlocked,
+					w.written)
 			}
 		})
 	}
@@ -431,6 +526,57 @@ func TestUnitUnlockCalls(t *testing.T) {
 	}
 	if !reflect.DeepEqual(w.unlocked, want) {
 		t.Errorf("unlocked %+v, want %+v", w.unlocked, want)
+	}
+}
+
+// TestUnitWriteCalls checks that a write names the run, the workspace its
+// path names, the lock its ID query parameter names, the declared length
+// and the Content-MD5 as sent, and streams the body as sent; and that a
+// write refused for want of the lock answers 423 with {} when none is
+// held.
+func TestUnitWriteCalls(t *testing.T) {
+	w := newWorld()
+	w.grant = runsapi.StateGrant{Read: true, Lock: runsapi.StateLockExclusive, Write: true}
+	body := `{"version":4,"serial":1,"lineage":"l"}`
+	rec := w.serve(t, http.MethodPost, "/state/v1/stacks/one/workspaces/a%2Fb?ID=l1", body,
+		func(_ *world, r *http.Request) *http.Request {
+			r.Header.Set("Content-MD5", "md5")
+			return r
+		})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a write = %d %s", rec.Code, rec.Body)
+	}
+	want := []core.Write{{
+		Target: core.Target{Account: w.acct, Stack: w.stack.ID, Workspace: "a/b"},
+		Run:    w.run, LockID: "l1", Size: int64(len(body)), ContentMD5: "md5",
+	}}
+	if !reflect.DeepEqual(w.written, want) || w.bodies[0] != body {
+		t.Errorf("written %+v %q, want %+v", w.written, w.bodies, want)
+	}
+
+	w.writeErr = &core.Conflict{Holder: core.Lock{Info: json.RawMessage(`{}`)}}
+	rec = w.serve(t, http.MethodPost, "/state/v1/stacks/one", body, nil)
+	if rec.Code != http.StatusLocked || rec.Body.String() != `{}` {
+		t.Errorf("a write without the lock = %d %s", rec.Code, rec.Body)
+	}
+}
+
+// TestUnitReadAnswers checks that a read answers the current state as
+// JSON of its size with no Content-MD5, and 204 with no body when there
+// is none.
+func TestUnitReadAnswers(t *testing.T) {
+	w := newWorld()
+	w.state = `{"version":4,"serial":1,"lineage":"l"}`
+	rec := w.serve(t, http.MethodGet, "/state/v1/stacks/one", "", nil)
+	if rec.Code != http.StatusOK || rec.Body.String() != w.state ||
+		rec.Header().Get("Content-Type") != "application/json" ||
+		rec.Header().Get("Content-Length") != "38" || rec.Header().Get("Content-MD5") != "" {
+		t.Errorf("a read = %d %v %s", rec.Code, rec.Header(), rec.Body)
+	}
+	w.state = ""
+	if rec := w.serve(t, http.MethodGet, "/state/v1/stacks/one", "", nil); rec.Code !=
+		http.StatusNoContent || rec.Body.Len() != 0 {
+		t.Errorf("no state = %d %s", rec.Code, rec.Body)
 	}
 }
 

@@ -120,8 +120,9 @@ func TestAccStateLocks(t *testing.T) {
 		http.StatusForbidden, "another run's lock")
 	wantProblem(t, planA.state.send(t, stateapi.MethodUnlock, bySlug, lockInfo("b")),
 		http.StatusForbidden, "another run's lock")
-	wantProblem(t, planA.state.send(t, http.MethodGet, bySlug, ""),
-		http.StatusNotImplemented, "state versions")
+	if rec := planA.state.send(t, http.MethodGet, bySlug, ""); rec.Code != http.StatusNoContent {
+		t.Errorf("a read of no state = %d %s", rec.Code, rec.Body)
+	}
 	wantProblem(t, planA.state.send(t, http.MethodGet, stateapi.BaseURL+"/stacks/two", ""),
 		http.StatusNotFound, "two")
 	req := httptest.NewRequestWithContext(ctx, stateapi.MethodLock, bySlug,

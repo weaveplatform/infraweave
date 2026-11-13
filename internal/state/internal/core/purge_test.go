@@ -20,6 +20,7 @@ import (
 // transaction; the objects it hands on are recorded as deleted.
 type purger struct {
 	*mem
+	*bucket
 	batches                 [][]string
 	calls                   []string
 	deleted                 []string
@@ -68,7 +69,7 @@ func (p *purger) EnqueueTx(
 }
 
 func newPurger() (*purger, *Service) {
-	p := &purger{mem: newMem()}
+	p := &purger{mem: newMem(), bucket: newBucket()}
 	return p, New(Deps{DB: db{}, Store: p, Stacks: p, Objects: p, Jobs: p})
 }
 

@@ -54,6 +54,7 @@ type stateWorld struct {
 	acct   kernel.AccountID
 	stack  kernel.ULID
 	panics kernel.ULID
+	writes kernel.ULID
 }
 
 func (s stateWorld) BySlug(
@@ -82,6 +83,11 @@ func (s stateWorld) Access(_ context.Context, run, stack kernel.ULID) (runsapi.S
 	if run == s.panics {
 		panic("the access read panicked")
 	}
+	if run == s.writes {
+		return runsapi.StateGrant{
+			Account: s.acct, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
+		}, nil
+	}
 	return runsapi.StateGrant{Account: s.acct, Read: stack == s.stack}, nil
 }
 
@@ -94,11 +100,16 @@ func (s stateWorld) Access(_ context.Context, run, stack kernel.ULID) (runsapi.S
 func TestUnitStateSurface(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: 2}
-	w := stateWorld{acct: kernel.NewAccountID(), stack: kernel.NewULID(), panics: kernel.NewULID()}
+	w := stateWorld{
+		acct: kernel.NewAccountID(), stack: kernel.NewULID(), panics: kernel.NewULID(),
+		writes: kernel.NewULID(),
+	}
 	h := API(discard(), c, memory(c), Domains{
 		Auth:      byAddress{},
 		StateAuth: basicRuns{},
-		State:     stateassembly.New(stateassembly.Deps{Stacks: w, Access: w}),
+		State: stateassembly.New(stateassembly.Deps{
+			Stacks: w, Access: w, Settings: stateassembly.Settings{MaxSize: 4},
+		}),
 	}, Platform{}, Blobs{})
 	stack := stateapi.BaseURL + "/stacks/one"
 	send := func(method, target, auth, body string, header ...string) *httptest.ResponseRecorder {
@@ -133,17 +144,19 @@ func TestUnitStateSurface(t *testing.T) {
 	}
 
 	run := basic(kernel.NewULID())
-	rec := send(http.MethodGet, stack, run, "")
-	wantProblem(t, rec, http.StatusNotImplemented, "does not serve state versions")
+	rec := send(http.MethodPost, stack, run, "{}", idempotency.Header, "k1")
+	wantProblem(t, rec, http.StatusForbidden, "may not write")
 	if rec.Header().Get("X-RateLimit-Limit") == "" {
 		t.Error("the run drew from no bucket")
 	}
-	rec = send(http.MethodPost, stack, run, "{}", idempotency.Header, "k1")
-	wantProblem(t, rec, http.StatusForbidden, "may not write")
 	if rec.Header().Get(idempotency.ReplayedHeader) != "" {
 		t.Error("a state request was kept under its idempotency key")
 	}
+	wantProblem(t, send(stateapi.MethodLock, stack, run, `{"ID":"l"}`),
+		http.StatusForbidden, "may not lock")
 	wantProblem(t, send(http.MethodGet, stack, run, ""), http.StatusTooManyRequests, "")
+	wantProblem(t, send(http.MethodPost, stack, basic(w.writes), `{"a":1}`),
+		http.StatusRequestEntityTooLarge, "at most 4 bytes")
 
 	wantProblem(t, send(http.MethodGet, stack, basic(w.panics), ""),
 		http.StatusInternalServerError, "")

@@ -14,16 +14,23 @@ import (
 var errDown = errors.New("down")
 
 // mem is an in-memory Store and Stacks: the workspaces that exist, each
-// one's locks oldest first, and the audit entries recorded. fail names
-// the one method that fails with errDown.
+// one's locks oldest first and current version, and the audit entries
+// recorded. fail names the one method that fails with errDown.
 type mem struct {
 	workspaces map[Target]bool
 	locks      map[Target][]Lock
+	current    map[Target]Version
 	audits     []kernel.AuditEntry
 	fail       string
 }
 
-func newMem() *mem { return &mem{workspaces: map[Target]bool{}, locks: map[Target][]Lock{}} }
+func newMem() *mem {
+	return &mem{
+		workspaces: map[Target]bool{},
+		locks:      map[Target][]Lock{},
+		current:    map[Target]Version{},
+	}
+}
 
 func (m *mem) failing(method string) error {
 	if m.fail == method {
@@ -90,6 +97,19 @@ func (m *mem) Audit(_ context.Context, e kernel.AuditEntry) error {
 		return err
 	}
 	m.audits = append(m.audits, e)
+	return nil
+}
+
+func (m *mem) Current(_ context.Context, t Target) (Version, bool, error) {
+	v, ok := m.current[t]
+	return v, ok, m.failing("Current")
+}
+
+func (m *mem) AddVersion(_ context.Context, acct kernel.AccountID, v Version) error {
+	if err := m.failing("AddVersion"); err != nil {
+		return err
+	}
+	m.current[Target{Account: acct, Stack: v.Stack, Workspace: v.Workspace}] = v
 	return nil
 }
 

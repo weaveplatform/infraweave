@@ -58,9 +58,17 @@ type Domains struct {
 	StateAuth accessapi.Authenticator
 }
 
+// Objects are the objects the domains record in blob_objects: those runs'
+// workers upload and state's versions; blobs.Objects is one.
+type Objects interface {
+	runsassembly.Objects
+	stateassembly.Objects
+}
+
 // newDomains constructs every domain on db, sealing under keys and signing
 // tokens through kms under the kms backend, with c's settings; runs'
-// workers upload through objects, nil for a test that uploads nothing.
+// workers upload and state writes its versions through objects, nil for a
+// test that stores nothing.
 // The domains append their events to events, whose kinds newKinds
 // registered, and subscribe their purges there, logging to log. It fails
 // on a setting a domain reads a file for, and on an outbox whose purges
@@ -69,7 +77,7 @@ func newDomains(
 	c config.Config,
 	db *sql.DB,
 	keys *crypt.Keyring,
-	objects runsassembly.Objects,
+	objects Objects,
 	kms []signer.KMS,
 	events *outbox.Outbox,
 	log *slog.Logger,
@@ -170,11 +178,12 @@ func newDomains(
 	configuration.BindExpressions(registry)
 	runs.BindExpressions(registry)
 	state := stateassembly.New(stateassembly.Deps{
-		DB:      db.Primary(),
-		Stacks:  stacks.Stacks(),
-		Access:  runs.StateAccess(),
-		Objects: objects,
-		Jobs:    queue.New(db.Primary()),
+		DB:       db.Primary(),
+		Stacks:   stacks.Stacks(),
+		Access:   runs.StateAccess(),
+		Objects:  objects,
+		Jobs:     queue.New(db.Primary()),
+		Settings: c.State,
 	})
 	stacks.GuardStacks(state.StackGuard())
 	vcs, err := vcsassembly.New(vcsassembly.Deps{

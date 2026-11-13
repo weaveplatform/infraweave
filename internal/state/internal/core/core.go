@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"unicode/utf8"
 
@@ -47,6 +48,12 @@ type Store interface {
 	ReleaseRun(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error
 	// Audit records e on its account's trail.
 	Audit(ctx context.Context, e kernel.AuditEntry) error
+	// Current reads the current version of t's workspace; false when the
+	// workspace has none or does not exist.
+	Current(ctx context.Context, t Target) (Version, bool, error)
+	// AddVersion records v in acct and makes it its workspace's current
+	// version.
+	AddVersion(ctx context.Context, acct kernel.AccountID, v Version) error
 	// Purge deletes up to batch of acct's state rows, of stack alone when
 	// it is set: versions first, then locks, then workspaces, so no
 	// workspace goes before a row that names it. It answers the object
@@ -64,8 +71,18 @@ type Stacks interface {
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 }
 
-// Objects deletes the objects of the states store; blobs.Objects is one.
+// Objects are the objects of the states store, as blob_objects records
+// them; blobs.Objects is one.
 type Objects interface {
+	// Put records key's object pending, outside any transaction, and
+	// writes size bytes of r under it, sealed, answering the plaintext's
+	// size and SHA-256.
+	Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (
+		objectstore.Object, error)
+	// Commit makes key's object live in the transaction on ctx.
+	Commit(ctx context.Context, store objectstore.Name, key string) error
+	// Open streams key's live object, unsealed.
+	Open(ctx context.Context, store objectstore.Name, key string) (io.ReadCloser, error)
 	// Delete marks key's object deleting, in the transaction on ctx, so
 	// it goes once that commits.
 	Delete(ctx context.Context, store objectstore.Name, key string) error
@@ -79,8 +96,8 @@ type Jobs interface {
 
 // Deps are what the service takes: DB, which it opens its transactions
 // on; Store; Stacks, which holds a stack while its workspace is written;
-// Objects, which deletes a purged version's object; and Jobs, which
-// enqueues a deleted stack's purge.
+// Objects, which hold each version's object; and Jobs, which enqueues a
+// deleted stack's purge.
 type Deps struct {
 	DB      tx.Beginner
 	Store   Store

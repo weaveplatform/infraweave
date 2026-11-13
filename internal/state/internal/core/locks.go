@@ -38,13 +38,17 @@ type Lock struct {
 	CreatedAt time.Time
 }
 
-// Conflict is a lock that cannot be taken or released for Holder, whose
-// LockInfo the backend answers with 423.
+// Conflict is a lock that cannot be taken or released, or a write that
+// cannot be made, for Holder, whose LockInfo the backend answers with
+// 423; a Holder with no ID is no lock, of the LockInfo {}.
 //
 // ref: decision 0010 § "Locks"
 type Conflict struct{ Holder Lock }
 
 func (c *Conflict) Error() string {
+	if c.Holder.ID == "" {
+		return "state: the workspace holds no lock"
+	}
 	return fmt.Sprintf("state: the workspace is locked by %s for run %s", c.Holder.ID,
 		c.Holder.Run)
 }
