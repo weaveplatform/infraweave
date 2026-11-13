@@ -1,8 +1,15 @@
 package config_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +56,7 @@ func TestUnitLoadDefaults(t *testing.T) {
 	if l.Token != "token" || l.PrivateKey.Reveal() != keyPEM || l.PollTimeout != time.Minute ||
 		l.AdminListen != ":9091" || l.DefaultRunnerImage != d.DefaultRunnerImage || l.CacheDir != d.CacheDir ||
 		l.Log.Level != "info" || l.Metadata != nil || l.StateLockTimeout != 5*time.Minute ||
-		l.ToolMirror != "" {
+		l.ToolMirror != "" || l.CAFile != "" {
 		t.Fatalf("defaults: %+v", l)
 	}
 }
@@ -76,6 +83,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
   poll_timeout: 30s
   state_lock_timeout: 90s
   tool_mirror: https://mirror.example.com/releases
+  ca_file: /etc/infraweave/ca.pem
   metadata:
     zone: a
   docker:
@@ -90,7 +98,8 @@ func TestUnitLoadPrecedence(t *testing.T) {
 		c.Launcher.Docker.Network != "runs" || c.Launcher.Metadata["zone"] != "a" ||
 		c.Launcher.Docker.RunnerBinary != "/opt/linux/infraweave" ||
 		c.Launcher.StateLockTimeout != 90*time.Second ||
-		c.Launcher.ToolMirror != "https://mirror.example.com/releases" {
+		c.Launcher.ToolMirror != "https://mirror.example.com/releases" ||
+		c.Launcher.CAFile != "/etc/infraweave/ca.pem" {
 		t.Fatalf("file: %+v", c.Launcher)
 	}
 
@@ -177,5 +186,55 @@ func TestUnitKey(t *testing.T) {
 	}
 	if _, err := (config.Launcher{PrivateKey: "/nonexistent/key.pem"}).Key(); err == nil {
 		t.Fatal("a key file that does not exist")
+	}
+}
+
+// TestUnitCA checks that launcher.ca_file adds its certificates to the
+// system's roots, that an empty one adds none, and that a file that cannot
+// be read or holds no certificate fails.
+func TestUnitCA(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "private CA"},
+		IsCA: true, BasicConstraintsValid: true,
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	good, junk := filepath.Join(dir, "ca.pem"), filepath.Join(dir, "junk.pem")
+	ca := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	if err := os.WriteFile(good, ca, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(junk, []byte("no certificate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	b, roots, err := config.Launcher{CAFile: good}.CA()
+	if err != nil || string(b) != string(ca) {
+		t.Fatalf("a CA file: %q, %v", b, err)
+	}
+	if _, err := cert.Verify(x509.VerifyOptions{Roots: roots}); err != nil {
+		t.Fatalf("the roots do not trust the CA: %v", err)
+	}
+	if b, roots, err := (config.Launcher{}).CA(); b != nil || roots != nil || err != nil {
+		t.Fatalf("no CA file: %q, %v, %v", b, roots, err)
+	}
+	if _, _, err := (config.Launcher{CAFile: filepath.Join(dir, "none.pem")}).CA(); err == nil ||
+		!strings.Contains(err.Error(), "read launcher.ca_file") {
+		t.Fatalf("a CA file that does not exist: %v", err)
+	}
+	if _, _, err := (config.Launcher{CAFile: junk}).CA(); !errors.Is(err, config.ErrConfig) {
+		t.Fatalf("a CA file with no certificate: %v", err)
 	}
 }

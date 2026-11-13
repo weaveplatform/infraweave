@@ -320,6 +320,24 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
     ([0012](0012-vcs-integration-model.md#source-access-for-runs)).
   - **`archive`:** a pre-signed `GET` of a local preview's `tar.gz` in the
     `uploads` store, with no credential.
+
+  The launcher writes the source to `<cache_dir>/workspaces/<run>` and removes
+  it when the run ends. Every HTTPS call the launcher makes, to the server, a
+  Git provider, the archive store or a tool mirror, trusts the system's roots
+  and those of `launcher.ca_file`, as the server's `vcs.ca_file` does for its
+  providers. It fetches Git in process with go-git, so the host needs no
+  `git`, the credential travels only in the request's `Authorization` header
+  and is written to no file, and its SHA-1 is not the `crypto/sha1` that
+  `fips140=only` refuses. It asks for the commit alone, without history; a
+  server that does not serve a commit by its hash gets a fetch of every branch
+  instead. An archive downloads up to 2 GiB, the bound of a saved workspace,
+  and extracts to at most 8 GiB through an `os.Root`: an entry or a link that
+  leaves the workspace, and a device or pipe, fail the run. No error names the
+  archive's URL, whose signature reads it, and the credential is replaced in
+  any error that echoes it. The project root must then be a directory of the
+  workspace. The workspace is owned by UID and GID 1983 when the launcher may
+  change owners; otherwise every user may read and write it, and a launcher
+  that is not root may be refused removing what the run wrote, which it logs.
 - **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
   and `download`. The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the
@@ -769,7 +787,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `launcher.log.*`, `launcher.default_runner_image`,
   `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
   `launcher.mask_envs`, `launcher.whitelist_envs`, `launcher.tool_mirror`,
-  `launcher.docker.config_dir`, `.network`, `.runtime`, `.runner_binary`,
+  `launcher.ca_file`, `launcher.docker.config_dir`, `.network`, `.runtime`, `.runner_binary`,
   `.extra_mounts`, `.ro_extra_mounts` and `.wo_extra_mounts`. Environment variables are
   `INFRAWEAVE_LAUNCHER_*`. Every Spacelift launcher variable of
   [10 section 5.1](../reference/10-workers-and-execution.md#51-launcher-environment-variables)

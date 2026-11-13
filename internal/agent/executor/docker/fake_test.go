@@ -185,13 +185,14 @@ var errDaemon = errors.New("the daemon refused")
 func TestUnitDockerExecutorFailures(t *testing.T) {
 	ctx := t.Context()
 	job := executor.Job{
-		Worker:  "w",
-		Run:     "r",
-		Image:   "img",
-		Handoff: []byte("{}"),
+		Worker:    "w",
+		Run:       "r",
+		Image:     "img",
+		Handoff:   []byte("{}"),
+		Workspace: "/cache/ws/r",
 		Mounts: []executor.Mount{
 			{Source: "/cache/terraform", Target: "/bin/terraform", ReadOnly: true},
-			{Source: "/work/run", Target: docker.Workspace},
+			{Source: "/srv/data", Target: "/data"},
 		},
 	}
 
@@ -210,7 +211,8 @@ func TestUnitDockerExecutorFailures(t *testing.T) {
 		d.created.WorkingDir != docker.Workspace || d.created.Labels[docker.LabelRun] != "r" ||
 		!slices.Equal(d.host.Binds, []string{
 			"/usr/local/bin/infraweave:" + docker.BinaryPath + ":ro",
-			"/cache/terraform:/bin/terraform:ro", "/work/run:" + docker.Workspace,
+			"/cache/ws/r:" + docker.Workspace, "/cache/terraform:/bin/terraform:ro",
+			"/srv/data:/data",
 		}) ||
 		d.host.NetworkMode != "runs" || d.host.Runtime != "runsc" {
 		t.Errorf("created %+v with %+v", d.created, d.host)

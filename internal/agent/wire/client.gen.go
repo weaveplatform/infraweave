@@ -249,12 +249,15 @@ func (e RunSpecRunType) Valid() bool {
 
 // Defines values for RunSpecSourceKind.
 const (
-	Git RunSpecSourceKind = "git"
+	Archive RunSpecSourceKind = "archive"
+	Git     RunSpecSourceKind = "git"
 )
 
 // Valid indicates whether the value is a known member of the RunSpecSourceKind enum.
 func (e RunSpecSourceKind) Valid() bool {
 	switch e {
+	case Archive:
+		return true
 	case Git:
 		return true
 	default:
@@ -739,7 +742,7 @@ type RunSpecSecrets struct {
 
 // RunSpecSource Where the worker fetches the run's source, directly from the provider. A credential the URL needs is in sealed as sourceCredential; a repository that needs none has no credential.
 type RunSpecSource struct {
-	// Kind git: url is an HTTPS Git URL of the stack's repository, from which the worker fetches commit.hash.
+	// Kind git: url is an HTTPS Git URL of the stack's repository, from which the worker fetches commit.hash. archive: url is a pre-signed GET of a local preview's tar.gz, which needs no credential.
 	Kind RunSpecSourceKind `json:"kind"`
 
 	// Narrowed Whether the credential reads the stack's repository alone and expires when the run ends, rather than being the integration's own token.
@@ -749,7 +752,7 @@ type RunSpecSource struct {
 	Url string `json:"url"`
 }
 
-// RunSpecSourceKind git: url is an HTTPS Git URL of the stack's repository, from which the worker fetches commit.hash.
+// RunSpecSourceKind git: url is an HTTPS Git URL of the stack's repository, from which the worker fetches commit.hash. archive: url is a pre-signed GET of a local preview's tar.gz, which needs no credential.
 type RunSpecSourceKind string
 
 // RunSpecSourceCredential The HTTPS credential that reads the run's source, which the worker presents to source.url. Absent when the repository needs none.

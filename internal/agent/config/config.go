@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -50,6 +51,10 @@ type Launcher struct {
 	// does, such as terraform/1.17.2/terraform_1.17.2_SHA256SUMS. Empty
 	// downloads from the vendors.
 	ToolMirror string `mapstructure:"tool_mirror"`
+	// CAFile is a PEM file of certificates the launcher trusts beside the
+	// system's roots, for a server, a Git provider, an archive store or a
+	// tool mirror whose certificate a private CA issued.
+	CAFile string `mapstructure:"ca_file"`
 	// StateLockTimeout is how long each command of a run that locks the
 	// state waits for the lock, which the handoff carries to the runner.
 	StateLockTimeout time.Duration `mapstructure:"state_lock_timeout"`
@@ -184,6 +189,27 @@ func (c Launcher) Key() ([]byte, error) {
 		return nil, fmt.Errorf("read launcher.private_key: %w", err)
 	}
 	return b, nil
+}
+
+// CA reads CAFile: its PEM, and the system's roots with its
+// certificates added; none when CAFile is empty.
+func (c Launcher) CA() ([]byte, *x509.CertPool, error) {
+	if c.CAFile == "" {
+		return nil, nil, nil
+	}
+	b, err := os.ReadFile(c.CAFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read launcher.ca_file: %w", err)
+	}
+	roots, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, nil, fmt.Errorf("launcher.ca_file: the system's roots: %w", err)
+	}
+	if !roots.AppendCertsFromPEM(b) {
+		return nil, nil, fmt.Errorf("%w: launcher.ca_file %s holds no PEM certificate",
+			ErrConfig, c.CAFile)
+	}
+	return b, roots, nil
 }
 
 // ConfigFlag names the configuration file.

@@ -34,7 +34,8 @@ type Engine interface {
 }
 
 // deps are what the commands run on: the worker API's HTTP client and the
-// executor of the launcher's settings.
+// executor of the launcher's settings. A nil doer is the client
+// launcher.New builds from them.
 type deps struct {
 	doer   wire.HttpRequestDoer
 	engine func(config.Docker) (Engine, error)
@@ -51,9 +52,6 @@ const runnerTimeout = 30 * time.Second
 // Docker containers.
 func Launcher() *cobra.Command {
 	return launcherCmd(deps{
-		// No client timeout: each call has its context's, and a poll is
-		// held for up to launcher.poll_timeout.
-		doer: &http.Client{},
 		engine: func(c config.Docker) (Engine, error) {
 			return docker.New(docker.Config{
 				Binary: c.RunnerBinary, Network: c.Network, Runtime: c.Runtime,

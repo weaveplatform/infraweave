@@ -13,6 +13,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -187,3 +188,59 @@ func TestUnitLinesSplitsALongLine(t *testing.T) {
 type down struct{}
 
 func (down) Do(*http.Request) (*http.Response, error) { return nil, errors.New("unreachable") }
+
+// TestUnitWorkspaceDir checks that a run ID that is a path, or that
+// names the workspaces directory itself, names no workspace, so no
+// workspace is made or removed outside the cache's workspaces, and that
+// the refused removal is logged.
+func TestUnitWorkspaceDir(t *testing.T) {
+	var log bytes.Buffer
+	cache := t.TempDir()
+	l := &Launcher{d: Deps{
+		Config: config.Launcher{CacheDir: cache}, Log: slog.New(slog.NewTextHandler(&log, nil)),
+	}}
+	if dir, err := l.workspaceDir("01JRUN"); err != nil ||
+		dir != filepath.Join(cache, "workspaces", "01JRUN") {
+		t.Fatalf("a run ID: %s, %v", dir, err)
+	}
+	for _, run := range []string{"", ".", "..", "../x", "a/b", `a\b`, "/abs"} {
+		if _, err := l.workspaceDir(run); !errors.Is(err, errRun) {
+			t.Errorf("%q: %v", run, err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(cache, "keep"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l.dropWorkspace(t.Context(), "..")
+	if _, err := os.Stat(filepath.Join(cache, "keep")); err != nil ||
+		!strings.Contains(log.String(), "remove the run's workspace") {
+		t.Fatalf("a run ID of ..: %v, %s", err, log.String())
+	}
+}
+
+// TestUnitNewClient checks that the launcher's client refuses a server
+// whose certificate the system's roots do not issue, and reaches it once
+// the roots hold its CA.
+func TestUnitNewClient(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	t.Cleanup(srv.Close)
+	get := func(c *http.Client) error {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := c.Do(req)
+		if err == nil {
+			resp.Body.Close()
+		}
+		return err
+	}
+	if err := get(newClient(nil)); err == nil {
+		t.Fatal("the system's roots trust the test server")
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(srv.Certificate())
+	if err := get(newClient(roots)); err != nil {
+		t.Fatal(err)
+	}
+}

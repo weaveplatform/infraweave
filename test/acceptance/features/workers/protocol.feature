@@ -2,8 +2,10 @@
 Feature: The worker protocol end to end
   A launcher of a private pool registers a worker, polls the worker API
   for runs, opens each run's sealed specification with the pool's private
-  key, and runs it in a Docker container of infraweave-runner:acceptance,
-  whose root process is this build's runner. The runner reports the run's
+  key, checks the run's commit out of the Gitea repository into its
+  workspace, and runs it in a Docker container of
+  infraweave-runner:acceptance, whose root process is this build's
+  runner. The runner reports the run's
   first phase started, and then failed with a note that the image has no
   sh to run the phase in, since the image holds nothing but the runner's
   user and workspace. The launcher reaches the server through the
