@@ -144,17 +144,22 @@ everywhere, and the reason names where the contract checks it instead.
 | `@vcs` | Gitea container, with a repository seeded per scenario, and each provider's chi fake | real webhooks, commit statuses, pull request comments; each provider's own shapes (decision 0012) |
 | `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
-| `@docker` | the host's Docker daemon; the harness imports `infraweave-runner:acceptance`, a minimal image with UID 1983 and no base, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol with the `runner` stub: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008) |
+| `@docker` | the host's Docker daemon; the harness builds the runner images of `deploy/images/` as `infraweave-runner-terraform:acceptance` and `infraweave-runner-opentofu:acceptance`, imports `infraweave-runner:acceptance`, a minimal image with UID 1983 and no base that carries the relay's forwarder, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008); real runs with `@terraform` or `@tofu` |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module | Kubernetes workers (decision 0008) |
 | `@flows-agent` | a test app built on `pkg/flows/appsdk` as a local OCI image, and an `infraweave flows-agent` subprocess that runs it in Docker | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
 
 - **A real run.** `@terraform` and `@tofu` scenarios exercise the full
   path: the server, a private worker pool, `infraweave launcher` as a host
   subprocess talking to the Docker daemon, and the runner image built by
-  the harness from the repository's image definition
-  ([0020](0020-reference-deployments-and-packaging.md)) and tagged
-  `infraweave-runner:acceptance`. The workspace arrives as a local-preview
-  upload, or from Gitea when the scenario is also `@vcs`. Configurations
+  the harness from the repository's image definitions
+  ([0020](0020-reference-deployments-and-packaging.md)), tagged
+  `infraweave-runner-terraform:acceptance` and
+  `infraweave-runner-opentofu:acceptance`, which each stack names by its
+  vendor. The launcher downloads and verifies the stack's tool release
+  itself, as in production, into a `launcher.cache_dir` the suite's
+  launchers share, so each release is fetched once per suite run. The
+  workspace arrives as a local-preview upload, or from Gitea when the
+  scenario is also `@vcs`. Configurations
   use `terraform_data` and other built-ins, so no provider is downloaded;
   a scenario that needs a provider uses a filesystem mirror of pinned
   provider archives checked by SHA-256. State goes through infraweave's
@@ -172,6 +177,10 @@ everywhere, and the reason names where the contract checks it instead.
   credentials the agent writes ([0010](0010-state-backend.md)). The relay
   can hold the backend's `UNLOCK` calls, so a lock stays held while a
   second process asks for it.
+- **A public runner image.** `runs/runner_image.feature` (`@docker`,
+  `@terraform`) names Spacelift's public `runner-terraform` image, pinned
+  by digest in `test/deps/images.go`, as a stack's runner image, and runs a
+  tracked run on it unchanged (decision 0008's image contract).
 - **Images and tools.** Every container image is pinned by digest in
   `test/deps/images.go`, and the Terraform and OpenTofu releases by the
   SHA-256 of each Linux archive in `test/deps/tools.go`; `deps-refresh.yml`
@@ -539,7 +548,8 @@ coverage it would contribute is not waived.
   `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`, per-scenario database isolation,
   and evidence written on failure.
 - `test/acceptance/features/runs/terraform.feature` and
-  `runs/tofu.feature` carry the first real-run scenarios.
+  `runs/tofu.feature` carry the first real-run scenarios, and
+  `runs/runner_image.feature` a public runner image's.
 - `make verify-parity` and the state check run in the `parity` job; the
   existing `api/reference_spec.feature` and `api/bundle.feature` keep running
   in `accept-core`.

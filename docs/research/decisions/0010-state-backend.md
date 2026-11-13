@@ -58,8 +58,9 @@ behind the controls every API surface shares, and depart from them only where de
   [0006](0006-authentication-and-tokens.md)), passed through `TF_HTTP_USERNAME` and
   `TF_HTTP_PASSWORD` in the phase environment, never written into the workspace, so the
   token is not in a saved workspace or a log.
-- **Lock timeout.** The runner passes `-lock-timeout=5m` to commands that lock (setting
-  `runner.state_lock_timeout`). The stack environment variable
+- **Lock timeout.** The runner passes `-lock-timeout=5m` to commands that lock (the
+  launcher's setting `launcher.state_lock_timeout`, which the handoff carries to the
+  runner, since the runner reads no configuration of its own). The stack environment variable
   `INFRAWEAVE_DISABLE_STATE_LOCK`, the counterpart of Spacelift's `SPACELIFT_DISABLE_STATE_LOCK`
   (report [13](../reference/13-configuration.md#22-user-tunable-spacelift_-variables)), makes the
   runner pass `-lock=false` to `plan`.
