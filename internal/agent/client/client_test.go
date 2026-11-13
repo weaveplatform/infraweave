@@ -142,6 +142,55 @@ func TestUnitClientCalls(t *testing.T) {
 			t.Errorf("the store's GET with %q: %d", auth, res.StatusCode)
 		}
 	}
+	if err := c.Artifacts(ctx, "token", "run-1", rec); err != nil {
+		t.Fatalf("Artifacts of a recorded workspace again: %v", err)
+	}
+	if _, err := c.UploadURLs(ctx, "token", "run-1", wire.UploadURLsRequest{
+		StateVersion: 3, Uploads: []wire.Upload{{
+			Kind: wire.UploadKindWorkspace, Name: "workspace", Size: 6,
+			Sha256: hex.EncodeToString(sum[:]),
+		}},
+	}); client.Status(err) != http.StatusConflict {
+		t.Fatalf("UploadURLs of a recorded workspace: %v", err)
+	}
+	if err := c.Put(ctx, wire.SignedUpload{
+		Name: "x", Url: agenttest.Endpoint + "/store/missing",
+		Headers: map[string]string{"Content-Type": agenttest.ContentType},
+	}, nil); client.Status(err) != http.StatusForbidden {
+		t.Fatalf("Put of an object never declared: %v", err)
+	}
+	srv.Refuse("artifacts", http.StatusServiceUnavailable, 1)
+	srv.Refuse("workspace", http.StatusServiceUnavailable, 1)
+	srv.Refuse("get", http.StatusServiceUnavailable, 1)
+	if err := c.Artifacts(ctx, "token", "run-1", rec); client.Status(err) !=
+		http.StatusServiceUnavailable {
+		t.Errorf("a refused record: %v", err)
+	}
+	if _, err := c.Workspace(ctx, "token", "run-1"); client.Status(err) !=
+		http.StatusServiceUnavailable {
+		t.Errorf("a refused workspace: %v", err)
+	}
+	for _, c := range []struct {
+		url  string
+		want int
+	}{
+		{loc, http.StatusServiceUnavailable},
+		{agenttest.Endpoint + "/store/workspace/gone", http.StatusNotFound},
+	} {
+		url, want := c.url, c.want
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = res.Body.Close()
+		if res.StatusCode != want {
+			t.Errorf("the store's GET of %s: %d, want %d", url, res.StatusCode, want)
+		}
+	}
 
 	for op, call := range map[string]func() error{
 		"register":   func() error { _, err := c.Register(ctx, "not a JWS"); return err },
