@@ -26,7 +26,9 @@
 // idempotency keys use. It holds the run types: RunState with its terminal
 // and passive flags, RunType and whether it blocks its stack, StackState,
 // the projection of a stack's tracked run that StackStateOf derives, and
-// RunPriority, with RunTier ordering a worker pool's waiting runs.
+// RunPriority, with RunTier ordering a worker pool's waiting runs. It
+// holds RunObjectKey, the key of an object a run stores, which the server
+// and the runner both build.
 //
 // ref: decisions 0003, 0005, 0006, 0007, 0008, 0015 and 0022
 //

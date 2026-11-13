@@ -7,6 +7,24 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
+// TestUnitRunObjectKey checks the key of a run's object: the account,
+// the run, the state and its version, and the name, slash-separated.
+func TestUnitRunObjectKey(t *testing.T) {
+	acct, err := kernel.ParseAccountID("01M7B3RJ9VT0R138QK12PFGE5E")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := kernel.ParseULID("01M7B3RJDHQTBEC9DN1KZYE70Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := kernel.RunObjectKey(acct, run, kernel.RunStatePlanning, 5, "changes.json")
+	want := "01M7B3RJ9VT0R138QK12PFGE5E/01M7B3RJDHQTBEC9DN1KZYE70Z/PLANNING-5/changes.json"
+	if got != want {
+		t.Errorf("RunObjectKey = %s, want %s", got, want)
+	}
+}
+
 // TestUnitRunStates checks the flags of each run state: the six terminal
 // states are passive too, UNKNOWN is neither, and a value outside the
 // enum is not valid.

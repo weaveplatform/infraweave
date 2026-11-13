@@ -100,8 +100,10 @@ type Spec struct {
 }
 
 // SpecRun is the run a Spec is for, at the state version its secrets are
-// sealed for.
+// sealed for. Account is the run's account, which the key of each object
+// the run stores starts with.
 type SpecRun struct {
+	Account        kernel.AccountID
 	ID             kernel.ULID
 	Type           kernel.RunType
 	State          kernel.RunState

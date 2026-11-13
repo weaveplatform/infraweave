@@ -203,10 +203,15 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 	r, st, c := spec.Run, spec.Stack, spec.Commit
 	out := gen.RunSpec{
 		Run: gen.RunSpecRun{
-			Id: r.ID.String(), Type: gen.RunSpecRunType(r.Type), State: string(r.State),
-			StateVersion: r.StateVersion, TriggeredBy: r.TriggeredBy,
-			Priority: gen.RunSpecRunPriority(r.Priority), DriftDetection: r.DriftDetection,
-			CreatedAt: r.CreatedAt.Unix(),
+			Account:        r.Account.String(),
+			Id:             r.ID.String(),
+			Type:           gen.RunSpecRunType(r.Type),
+			State:          string(r.State),
+			StateVersion:   r.StateVersion,
+			TriggeredBy:    r.TriggeredBy,
+			Priority:       gen.RunSpecRunPriority(r.Priority),
+			DriftDetection: r.DriftDetection,
+			CreatedAt:      r.CreatedAt.Unix(),
 		},
 		Stack: gen.RunSpecStack{
 			Id: st.Slug, Name: st.Name, Space: st.Space, Labels: nonNil(st.Labels),

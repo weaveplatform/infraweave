@@ -7,15 +7,17 @@ Feature: A run's changes and delta are read after it plans
   of resources and changes-v2 as entities a page at a time, in the
   plan's order, each read of a phase and change type the input selects.
   The run answers every count of its delta. Before the plan both reads
-  answer none and the run no delta. Here the scenario is the worker,
-  and the changes are those of internal/iac's recorded Terraform plan of
-  one change of every type. The run's in-run API token reads none of
-  it. The release indexes serve the recorded fixtures, so the run's
-  specification names a Terraform release. The home key is space-admin
-  on the account's top space; the member key holds no binding. Stack
-  infra lives in legacy and runs on the pool.
+  answer none and the run no delta. Here the scenario is the worker:
+  it builds the document's key, as a runner does, from the account the
+  run's specification names. The changes are those of internal/iac's
+  recorded Terraform plan of one change of every type. The run's in-run
+  API token reads none of it. The release indexes serve the recorded
+  fixtures, so the run's specification names a Terraform release. The
+  home key is space-admin on the account's top space; the member key
+  holds no binding. Stack infra lives in legacy and runs on the pool.
   ref: decision 0007
   ref: decision 0008
+  ref: decision 0013
   ref: decision 0016
 
   Background:
@@ -39,6 +41,7 @@ Feature: A run's changes and delta are read after it plans
     And token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
     And the answer assigns the run "run", its run token kept as "rt"
     And token "rt" sends "GET /worker/v1/runs/{run}/spec" through A
+    And the specification names the run "run" of the home account, kept as "acct"
     And the specification's sealed part opens with the key of "csr" to an in-run API token, kept as "it"
     And the specification's sealed part opens with the key of "csr" to the run's artifact key, kept as "ak"
     And token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"started","state":"INITIALIZING","stateVersion":3}' through B
@@ -57,7 +60,7 @@ Feature: A run's changes and delta are read after it plans
     When token "h" sends "GET /api/v1/runs/{run}" through A
     Then it answers 200
     And the answer leaves out "delta"
-    When token "rt" commits the changes of the recorded terraform plan "all", sealed with the artifact key "ak", for the run "run" in state version 5 through B
+    When token "rt" commits the changes of the recorded terraform plan "all", sealed with the artifact key "ak", for the run "run" of the account "acct" in state version 5 through B
     And token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"PLANNING","stateVersion":5,"delta":{"add":3,"change":1,"delete":3,"import":1,"move":1,"forget":1,"resources":7,"outputs":true}}' through A
     Then the answer's state is '"UNCONFIRMED"'
     When token "h" sends "GET /api/v1/runs/{run}" through B
