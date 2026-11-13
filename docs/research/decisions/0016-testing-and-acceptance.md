@@ -122,8 +122,10 @@ everywhere, and the reason names where the contract checks it instead.
   contribute coverage to the merge. In-process servers are not used for
   acceptance: they would skip flag parsing, config decoding and signal
   handling.
-- **Isolation.** Each scenario gets a fresh database (template copy), a
-  fresh bucket prefix and its own `infraweave all` process on a free
+- **Isolation.** Each scenario gets a fresh database (template copy),
+  object storage of its own (an `fs` root, or with `@objectstore` a RustFS
+  bucket its servers reach through the `s3` driver) and its own
+  `infraweave all` process on a free
   port. Containers are shared across scenarios within one test binary.
   Scenarios run concurrently (godog `Concurrency` set to `GOMAXPROCS`),
   which this isolation permits.
@@ -161,16 +163,21 @@ everywhere, and the reason names where the contract checks it instead.
   state version, the masked log, and the events emitted
   ([0015](0015-events-notifications-webhooks-audit.md)).
 - **The state backend before the runner.** `state/backend.feature`
-  (`@postgres`, `@objectstore` and `@docker`, with `@terraform` or `@tofu`)
-  proves the backend before the runner executes phases: the harness acts as
-  the worker over `/worker/v1`, claims the run, opens its sealed
-  specification with the pool key and reports each phase, and runs the
-  pinned `terraform` or `tofu` binary in `infraweave-runner:acceptance` with
-  the backend file and credentials the agent writes
-  ([0010](0010-state-backend.md)).
-- **Images.** Every container image is pinned by digest in
-  `test/deps/images.go`; `deps-refresh.yml` moves the pins to the
-  newest release.
+  (`@postgres`, `@objectstore`, `@vcs` and `@docker`, with `@terraform` or
+  `@tofu`) proves the backend before the runner executes phases: the
+  harness acts as the worker over `/worker/v1`, claims the run, opens its
+  sealed specification with the pool key, checks out the run's commit from
+  Gitea and reports each phase, and runs the pinned `terraform` or `tofu`
+  binary in `infraweave-runner:acceptance` with the backend file and
+  credentials the agent writes ([0010](0010-state-backend.md)). The relay
+  can hold the backend's `UNLOCK` calls, so a lock stays held while a
+  second process asks for it.
+- **Images and tools.** Every container image is pinned by digest in
+  `test/deps/images.go`, and the Terraform and OpenTofu releases by the
+  SHA-256 of each Linux archive in `test/deps/tools.go`; `deps-refresh.yml`
+  moves the pins to the newest release. An archive is downloaded once into
+  the user's cache directory and checked against its pin each time a test
+  binary uses it.
 
 ### Docker: skip locally, never in CI
 
