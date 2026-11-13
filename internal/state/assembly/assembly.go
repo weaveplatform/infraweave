@@ -37,12 +37,16 @@ type DB interface {
 
 // Deps are what the state domain takes from the platform and the domains
 // before it: DB; Stacks, which holds a stack while its workspace is
-// written and names a stack by its slug; and Access, the runs domain's
-// decision of what a run token may do with its stack's state.
+// written and names a stack by its slug; Access, the runs domain's
+// decision of what a run token may do with its stack's state; Objects,
+// which deletes a purged version's object; and Jobs, which enqueues a
+// deleted stack's purge.
 type Deps struct {
-	DB     DB
-	Stacks stacksapi.Stacks
-	Access runsapi.StateAccess
+	DB      DB
+	Stacks  stacksapi.Stacks
+	Access  runsapi.StateAccess
+	Objects core.Objects
+	Jobs    core.Jobs
 }
 
 // Domain is the state domain.
@@ -53,7 +57,9 @@ type Domain struct {
 
 // New constructs the domain over d.
 func New(d Deps) *Domain {
-	svc := core.New(d.DB, pg.New(d.DB), d.Stacks)
+	svc := core.New(core.Deps{
+		DB: d.DB, Store: pg.New(d.DB), Stacks: d.Stacks, Objects: d.Objects, Jobs: d.Jobs,
+	})
 	return &Domain{state: svc, backend: backend.New(d.Access, d.Stacks, svc)}
 }
 
@@ -65,6 +71,26 @@ func (d *Domain) Routes(r chi.Router) {
 		return
 	}
 	d.backend.Routes(r)
+}
+
+// StackGuard is the domain's guard of a stack's delete, which enqueues
+// the purge of its state; internal/app registers it with the stacks
+// domain.
+func (d *Domain) StackGuard() stacksapi.StackGuard { return d.state }
+
+// StackPurge is the job that purges a deleted stack's state.
+var StackPurge = core.PurgeKind
+
+// Jobs are the domain's job handlers, which the scheduler registers:
+// StackPurge's.
+func (d *Domain) Jobs() []queue.Registration {
+	return []queue.Registration{{Kind: StackPurge, Handler: d.state.Purged}}
+}
+
+// Purge deletes the deleted account acct's state, its versions' objects
+// with them, core.PurgeBatch rows a statement.
+func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	return d.state.Purge(ctx, acct, nil) //nolint:wrapcheck // the core names the purge
 }
 
 // LockRelease is the consumer that releases a run's locks once its

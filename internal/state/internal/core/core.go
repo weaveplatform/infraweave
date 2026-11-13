@@ -8,6 +8,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
@@ -45,6 +47,12 @@ type Store interface {
 	ReleaseRun(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error
 	// Audit records e on its account's trail.
 	Audit(ctx context.Context, e kernel.AuditEntry) error
+	// Purge deletes up to batch of acct's state rows, of stack alone when
+	// it is set: versions first, then locks, then workspaces, so no
+	// workspace goes before a row that names it. It answers the object
+	// keys of the versions it deleted, and true once none was left.
+	Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID, batch int) (
+		[]string, bool, error)
 }
 
 // Stacks is what the state domain asks of the stacks domain;
@@ -56,17 +64,43 @@ type Stacks interface {
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 }
 
-// Service is the state domain's core.
-type Service struct {
-	db     tx.Beginner
-	store  Store
-	stacks Stacks
+// Objects deletes the objects of the states store; blobs.Objects is one.
+type Objects interface {
+	// Delete marks key's object deleting, in the transaction on ctx, so
+	// it goes once that commits.
+	Delete(ctx context.Context, store objectstore.Name, key string) error
 }
 
-// New returns the service over store, holding stacks through stacks and
-// opening its transactions on db.
-func New(db tx.Beginner, store Store, stacks Stacks) *Service {
-	return &Service{db: db, store: store, stacks: stacks}
+// Jobs enqueues a job in the transaction its context carries; a
+// queue.Queue is one.
+type Jobs interface {
+	EnqueueTx(ctx context.Context, k queue.Kind, payload any, opts ...queue.Option) (int64, error)
+}
+
+// Deps are what the service takes: DB, which it opens its transactions
+// on; Store; Stacks, which holds a stack while its workspace is written;
+// Objects, which deletes a purged version's object; and Jobs, which
+// enqueues a deleted stack's purge.
+type Deps struct {
+	DB      tx.Beginner
+	Store   Store
+	Stacks  Stacks
+	Objects Objects
+	Jobs    Jobs
+}
+
+// Service is the state domain's core.
+type Service struct {
+	db      tx.Beginner
+	store   Store
+	stacks  Stacks
+	objects Objects
+	jobs    Jobs
+}
+
+// New returns the service over d.
+func New(d Deps) *Service {
+	return &Service{db: d.DB, store: d.Store, stacks: d.Stacks, objects: d.Objects, jobs: d.Jobs}
 }
 
 // Workspace holds acct's stack and makes its workspace name exist, both

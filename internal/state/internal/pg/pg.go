@@ -149,3 +149,47 @@ func (s *Store) Audit(ctx context.Context, e kernel.AuditEntry) error {
 	_, err := audit.Record(ctx, e)
 	return err //nolint:wrapcheck // the trail names the write
 }
+
+// purged are the state tables a purge empties, each with the key it
+// deletes a batch by within an account and what a deleted row answers:
+// the versions' object keys, the others nothing. A workspace goes last,
+// after the rows that name it.
+var purged = []struct{ table, key, returning string }{
+	{"managed_state_versions", "id", "object_key"},
+	{"state_locks", "stack_id, workspace, lock_id", "''"},
+	{"state_workspaces", "stack_id, name", "''"},
+}
+
+// Purge deletes up to batch of acct's rows, of stack alone when it is
+// set, from the first table of purged that holds any, and answers the
+// object keys of the versions it deleted; true once none holds any.
+func (s *Store) Purge(
+	ctx context.Context,
+	acct kernel.AccountID,
+	stack *kernel.ULID,
+	batch int,
+) ([]string, bool, error) {
+	for _, p := range purged {
+		rows, err := tx.Q(ctx, s.db).Query(ctx, `DELETE FROM `+p.table+
+			` WHERE account_id = $1 AND (`+p.key+`) IN (
+			SELECT `+p.key+` FROM `+p.table+`
+			WHERE account_id = $1 AND ($2::uuid IS NULL OR stack_id = $2) LIMIT $3)
+			RETURNING `+p.returning, acct, stack, batch)
+		if err != nil {
+			return nil, false, fmt.Errorf("state: purge account %s's %s: %w", acct, p.table,
+				sql.Unavailable(err))
+		}
+		keys, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			return nil, false, fmt.Errorf("state: purge account %s's %s: %w", acct, p.table,
+				sql.Unavailable(err))
+		}
+		if len(keys) > 0 {
+			if p.returning == "''" {
+				keys = nil
+			}
+			return keys, false, nil
+		}
+	}
+	return nil, true, nil
+}

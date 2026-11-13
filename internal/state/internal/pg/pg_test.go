@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -162,7 +163,7 @@ func info(id string) json.RawMessage {
 func TestAccStoreLocks(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
-	s := core.New(db, pg.New(db), anyStack{})
+	s := core.New(core.Deps{DB: db, Store: pg.New(db), Stacks: anyStack{}})
 	at := core.Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID(), Workspace: "blue"}
 
 	const racers = 8
@@ -257,6 +258,91 @@ func TestAccStoreLocks(t *testing.T) {
 	}
 }
 
+// recorder records the objects a purge hands on.
+type recorder struct{ keys []string }
+
+func (r *recorder) Delete(_ context.Context, store objectstore.Name, key string) error {
+	r.keys = append(r.keys, string(store)+"/"+key)
+	return nil
+}
+
+// TestAccStorePurge purges a stack's state through the core over the
+// store after one batch of a purge stopped part way, handing on the
+// versions' objects that batch left and leaving another stack's and
+// another account's state; then the account's, leaving the other's.
+func TestAccStorePurge(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	store := pg.New(db)
+	objects := &recorder{}
+	s := core.New(core.Deps{DB: db, Store: store, Stacks: anyStack{}, Objects: objects})
+	acct, other := kernel.NewAccountID(), kernel.NewAccountID()
+	gone, kept := kernel.NewULID(), kernel.NewULID()
+	seed := func(acct kernel.AccountID, stack kernel.ULID) {
+		t.Helper()
+		for _, stmt := range []string{
+			`INSERT INTO state_workspaces (account_id, stack_id, name)
+				VALUES ($1, $2, ''), ($1, $2, 'blue')`,
+			`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id, info)
+				SELECT $1, $2, 'blue', 'l' || i, 'shared', gen_random_uuid(), '{}'
+				FROM generate_series(1, 3) AS i`,
+			`INSERT INTO managed_state_versions (account_id, id, stack_id, workspace, object_key,
+				size, sha256, serial, lineage)
+				SELECT $1, gen_random_uuid(), $2, '', $2::uuid::text || '/' || i, 1,
+				decode(repeat('00', 32), 'hex'), i, 'l'
+				FROM generate_series(1, 5) AS i`,
+		} {
+			if _, err := db.Exec(ctx, stmt, acct, stack); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	seed(acct, gone)
+	seed(acct, kept)
+	seed(other, gone)
+	rows := func(acct kernel.AccountID, stack kernel.ULID) int {
+		t.Helper()
+		var n int
+		if err := db.QueryRow(ctx, `SELECT
+			(SELECT count(*) FROM state_workspaces WHERE account_id = $1 AND stack_id = $2)
+			+ (SELECT count(*) FROM state_locks WHERE account_id = $1 AND stack_id = $2)
+			+ (SELECT count(*) FROM managed_state_versions WHERE account_id = $1 AND stack_id = $2)`,
+			acct, stack).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	first, done, err := store.Purge(ctx, acct, &gone, 2)
+	if err != nil || done || len(first) != 2 || rows(acct, gone) != 8 {
+		t.Fatalf("one batch = %v %v %v, %d rows left", first, done, err, rows(acct, gone))
+	}
+	if err := s.Purge(ctx, acct, &gone); err != nil {
+		t.Fatal(err)
+	}
+	if rows(acct, gone) != 0 || rows(acct, kept) != 10 || rows(other, gone) != 10 ||
+		len(objects.keys) != 3 {
+		t.Errorf("after the stack's purge: %d, %d and %d rows, objects %v", rows(acct, gone),
+			rows(acct, kept), rows(other, gone), objects.keys)
+	}
+	var prefix string
+	if err := db.QueryRow(ctx, `SELECT $1::uuid::text || '/'`, gone).Scan(&prefix); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range append(objects.keys, first...) {
+		if !strings.HasPrefix(strings.TrimPrefix(k, "states/"), prefix) {
+			t.Errorf("the purge handed on %s", k)
+		}
+	}
+	if err := s.Purge(ctx, acct, nil); err != nil {
+		t.Fatal(err)
+	}
+	if rows(acct, kept) != 0 || rows(other, gone) != 10 || len(objects.keys) != 8 {
+		t.Errorf("after the account's purge: %d and %d rows, %d objects", rows(acct, kept),
+			rows(other, gone), len(objects.keys))
+	}
+}
+
 // TestAccStoreUnavailable fails each method on a closed pool.
 func TestAccStoreUnavailable(t *testing.T) {
 	db := pool(t)
@@ -288,6 +374,9 @@ func TestAccStoreUnavailable(t *testing.T) {
 	}
 	if err := s.Audit(ctx, kernel.AuditEntry{}); err == nil {
 		t.Error("Audit of no entry succeeded")
+	}
+	if _, _, err := s.Purge(ctx, at.Account, nil, 1); err == nil {
+		t.Error("Purge on a closed pool succeeded")
 	}
 }
 

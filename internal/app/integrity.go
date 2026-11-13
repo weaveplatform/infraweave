@@ -47,6 +47,17 @@ func held() []integrity.Held {
 	)
 }
 
+// keys are the key columns of every domain whose rows another domain's
+// columns hold, which held's columns name.
+func keys() []integrity.Key {
+	return slices.Concat(
+		accessassembly.Keys(),
+		stacksassembly.Keys(),
+		runsassembly.Keys(),
+		workersassembly.Keys(),
+	)
+}
+
 // orphansTask counts, through q, each held column's IDs whose row is gone,
 // and logs each column that has any at warn. A purge removes a deleted
 // account's rows soon after the deletion, so a count that stays above zero
@@ -57,13 +68,7 @@ func orphansTask(q tx.Querier, log *slog.Logger) cron.Task {
 		Kind:  CountOrphans,
 		Every: orphansEvery,
 		Handler: func(ctx context.Context, _ queue.Job) error {
-			keys := slices.Concat(
-				accessassembly.Keys(),
-				stacksassembly.Keys(),
-				runsassembly.Keys(),
-				workersassembly.Keys(),
-			)
-			counts, err := integrity.Count(ctx, q, keys, held())
+			counts, err := integrity.Count(ctx, q, keys(), held())
 			if err != nil {
 				return err //nolint:wrapcheck // names the column
 			}

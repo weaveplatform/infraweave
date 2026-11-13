@@ -170,8 +170,13 @@ func newDomains(
 	configuration.BindExpressions(registry)
 	runs.BindExpressions(registry)
 	state := stateassembly.New(stateassembly.Deps{
-		DB: db.Primary(), Stacks: stacks.Stacks(), Access: runs.StateAccess(),
+		DB:      db.Primary(),
+		Stacks:  stacks.Stacks(),
+		Access:  runs.StateAccess(),
+		Objects: objects,
+		Jobs:    queue.New(db.Primary()),
 	})
+	stacks.GuardStacks(state.StackGuard())
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:       db.Primary(),
 		Keys:     keys,
