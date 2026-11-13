@@ -299,8 +299,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   write-only variable or file appears by name alone, with `writeOnly: true`,
   and so does a variable whose `${{ … }}` template reads a write-only one
   ([0024](0024-expression-language.md)). `sealed` holds
-  `{environment, files, apiToken, apiTokenExpiresAt, artifactKey}`: those
-  values by name and path, the in-run API token and the artifact key. The
+  `{environment, files, apiToken, apiTokenExpiresAt, artifactKey,
+  sourceCredential}`: those values by name and path, the in-run API token,
+  the artifact key and the source's credential. The
   server renders templates in the request's transaction, against the
   variables the stack resolves to, the stack and the run, with `now` fixed at
   the run's last transition. A template that does not render answers `422`
@@ -308,6 +309,27 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   message when the template reads a secret, so a failure cannot echo one.
 - **The runner image** is the run's runtime configuration's, else the
   stack's, else the account's default for private pools.
+- **The source.** The clear part's `source` names `kind`, `url` and
+  `narrowed`, and the launcher fetches it before the container starts:
+  - **`git`:** an HTTPS Git URL of the stack's repository, from which the
+    launcher fetches the run's commit. The handover asks `vcs` for it
+    through the `runsapi.RunSources` back edge, with the credential the
+    sealed part carries as `sourceCredential` (`username`, `token`),
+    absent for raw Git. `narrowed` says whether the credential reads that
+    repository alone, and the run's log says which
+    ([0012](0012-vcs-integration-model.md#source-access-for-runs)).
+  - **`archive`:** a pre-signed `GET` of a local preview's `tar.gz` in the
+    `uploads` store, with no credential.
+- **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
+  and `download`. The version is the Version Catalog's effective version
+  for the stack's constraint, resolved at handover, so every phase of the
+  run uses one release. `download` is false when the stack sets
+  `skipVendorBinaryDownload`, and the image's own binary runs. A
+  constraint that resolves to no release answers `422`
+  `validation-failed` naming `/terraformVersion`, and the launcher fails
+  the run in preparation with that detail.
+- **Masking.** `stack.enableWellKnownSecretMasking` is the stack's flag,
+  which turns on the well-known patterns ([0013](0013-secrets-at-rest.md#masking)).
 - **The state backend.** For a stack that manages state, the clear part
   names `stateBackend.path`, `/state/v1/stacks/<stack ULID>`, and a stack
   without managed state has no `stateBackend`. The runner resolves the path
@@ -346,9 +368,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 - **Workspaces are end to end.** When a tracked run with changes finishes
   planning, the runner archives the workspace (`tar` with `zstd`) and encrypts it
   in 0013's segmented AES-256-GCM format, with a fresh data key wrapped by the
-  pool's public key instead of the keyring. It uploads it to `workspaces` before
-  it reports the plan. For `PREPARING_APPLY` and `PREPARING_REPLAN` the launcher
-  downloads and decrypts it before starting the container. The server stores but
+  pool's public key, which the handoff carries, instead of the keyring. No
+  file of the archive holds the run token or the source credential. It
+  uploads it to `workspaces` before it reports the plan, since the plan's
+  answer is not known yet. For `PREPARING_APPLY` and `PREPARING_REPLAN` the
+  launcher downloads and decrypts it before starting the container. The server stores but
   cannot read it, which is Spacelift's guarantee for private pools
   ([10 section 1.1](../reference/10-workers-and-execution.md#11-public-and-private-pools-compared)).
 
@@ -380,9 +404,15 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
     or for a run no longer on a worker, answers `409` `invalid-state`, for
     example when a timer ended the run, and the runner exits without further
     reports.
-- **After planning** the runner uploads plan JSON, then reports `succeeded`
-  with the plan's `delta`: the counts of resources to add, change, delete and
-  import, and whether any output changes. A `succeeded` report of `PLANNING`
+- **After planning** the runner uploads two sealed artifacts: `plan.json`,
+  the tool's `show -json` of the plan, and `changes.json`, the changes
+  `internal/iac` parses from it, which the server reads for the run's
+  changes. It then reports `succeeded` with the plan's `delta`: the counts
+  of resources to add, change, delete and import, whether any output
+  changes, and optionally the counts it moves and forgets and the
+  state's resource count before the plan (`move`, `forget` and
+  `resources`, zero when absent), so the run's delta answers every
+  Terraform count of report 08's `Delta`. A `succeeded` report of `PLANNING`
   without a `delta`, or any other report with one, answers `400`
   `invalid-request`. In that request's transaction the server evaluates the
   plan policies on the uploaded plan ([0009](0009-policy-engine-opa.md)),
@@ -432,11 +462,21 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   answers `409` `already-exists`.
 - **Chunks.** The runner writes masked lines to stdout, which the launcher reads,
   and to chunks of at most 1 MiB or two seconds. A chunk's name is its
-  sequence number. Each chunk is uploaded by pre-signed `PUT`, then
+  sequence number in decimal, and `upload-urls` refuses any other name for
+  a `log-chunk`. The runner commits a state's last chunk before it reports
+  the state's end. Each chunk is uploaded by pre-signed `PUT`, then
   `log-chunks` commits it and indexes it in
   `run_log_chunks(run, state_version, seq, state, object key, bytes, first_at, last_at)`;
   a chunk already indexed is skipped, so a repeated `seq` is not duplicated.
   Readers tail the index; logs therefore exist per state and state version.
+- **Compaction.** The transaction of a transition out of a worker state
+  enqueues `run.logs.compact` for that state and state version, keyed so
+  it runs once. The job writes the indexed chunks in sequence order to one
+  object, `<account>/<run>/<state>-<stateVersion>.log` in `run-logs`, and
+  running it again changes nothing. `runLogsDownloadURL` answers that
+  object's pre-signed `GET`, with `ongoing` while the run is in the state
+  or the compaction is pending, `expired` when no chunk was written or
+  retention removed them, and `deleted` after `runLogsDelete`.
 - **Artifacts.** Plan JSON, changes, outputs and anything else the server or a
   policy reads are sealed by the runner with the run's artifact key, in 0013's
   streaming format (64 KiB AES-256-GCM segments, the same code in the same
@@ -455,8 +495,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   downloads for `PREPARING_APPLY` and `PREPARING_REPLAN`, or `404`
   `not-found` when the run recorded none.
 - **Deletion.** An account's purge deletes its runs' chunk and artifact
-  records with their objects. A run deleted with its stack leaves its
-  objects to their stores' retention, which bounds them.
+  records with their objects, and their compacted logs. A run deleted with
+  its stack leaves its objects to their stores' retention, which bounds
+  them.
 
 ### Liveness: offline workers and lost runs
 
@@ -597,10 +638,12 @@ has failed":
   with the worker's and the run's IDs.
 - **The handoff.** The launcher writes the run's endpoint, run token,
   assigned state and state version, the specification without its sealed
-  part, and the opened secrets as one JSON document to the runner's standard
-  input, then closes it. Docker keeps a container's environment and command
-  in its configuration on the host's disk, so the opened secrets never go
-  there. The runner reads at most 64 MiB, rejects unknown fields, and reports
+  part, the opened secrets, the pool's public key from its certificate,
+  the names `launcher.mask_envs` lists and `launcher.state_lock_timeout` as
+  one JSON document to the runner's standard input, then closes it. The
+  runner takes no other configuration. Docker keeps a container's
+  environment and command in its configuration on the host's disk, so the
+  opened secrets never go there. The runner reads at most 64 MiB, rejects unknown fields, and reports
   `started` for the state the assigned one leads to (`INITIALIZING`,
   `PLANNING` or `APPLYING`), which ends the handover.
 - **Resuming.** `worker.json` in `launcher.cache_dir` keeps the pool, the
@@ -633,10 +676,14 @@ has failed":
   ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
 - **Defaults.** infraweave publishes its own multi-arch images
   (`ghcr.io/weaveplatform/infraweave-runner-terraform`, `-opentofu`, `-ansible`)
-  that meet the contract.
+  that meet the contract, defined under `deploy/images/`. They hold the
+  tools a phase's shell needs (`bash`, `ca-certificates`, `curl`, `git`,
+  `jq`, `openssh-client`, `ps` and `tzdata`) and no Terraform or OpenTofu
+  binary, which the launcher mounts, as Spacelift's images do
+  ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
 - **Tool binaries.** The launcher downloads the requested version of Terraform,
-  OpenTofu, Terragrunt or kubectl, verifies it and mounts it read-only (for
-  example at `/bin/terraform`)
+  OpenTofu, Terragrunt or kubectl, verifies it and mounts it read-only at
+  `/bin/<tool>`, such as `/bin/terraform` or `/bin/tofu`
   ([20 section 3.5](../reference/20-vendors.md#35-version-management)):
 
   | Tool | Verification |
@@ -700,6 +747,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
 - **Launcher:** `launcher.token`, `launcher.private_key`, `launcher.poll_timeout`
   (60s), `launcher.run_timeout` (70m), `launcher.log_timeout` (7m),
   `launcher.cache_dir`, `launcher.metadata`, `launcher.admin_listen` (`:9091`),
+  `launcher.state_lock_timeout` (5m),
   `launcher.log.*`, `launcher.default_runner_image`,
   `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
   `launcher.mask_envs`, `launcher.whitelist_envs`, `launcher.tool_mirror`,
@@ -837,7 +885,15 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `runs/lifecycle.feature` (proposed, tracked with confirm, autodeploy, task,
   targeted replan, stop, kill, offline worker, lost run, timers on a fake clock),
   `runs/runner_image.feature` (a Spacelift public runner image runs unchanged) and
-  `runs/signed.feature`.
+  `runs/signed.feature`. `runs/terraform.feature` and `runs/tofu.feature`
+  run a tracked run from a Gitea commit through `runConfirm` to `FINISHED`
+  on a restored workspace, and a local preview, with the real tools
+  ([0016](0016-testing-and-acceptance.md)); `runs/logs.feature` pages a
+  state's log and downloads it once compacted.
+- `TestUnitToolVerification` (`internal/agent/tools`): a release verified
+  and cached, and a tampered `SHA256SUMS`, a tampered archive, a signature
+  by another key, a missing signature and an oversized archive each
+  refused.
 - `api/worker.openapi.yaml` validates as OpenAPI 3, and a test checks that the
   served `/worker/v1` routes match it.
 

@@ -316,7 +316,7 @@ share one implementation: the server masks evaluated expressions
 | Source of masked values | Rule |
 |---|---|
 | Secret configuration elements | The value of every element with `write_only` set, as delivered in the spec. A mounted file's content is masked line by line |
-| `INFRAWEAVE_LAUNCHER_MASK_ENVS` on the launcher | The values of the named variables |
+| `INFRAWEAVE_LAUNCHER_MASK_ENVS` on the launcher (`launcher.mask_envs`) | The values of the run's variables it names, whose names the handoff carries to the runner |
 | `::add-mask v1 v2 ...` printed by a hook or phase | Each whitespace-separated word, from that line on |
 | Well-known patterns, when the stack enables `enableWellKnownSecretMasking` | The pattern list of [13 section 4.4](../reference/13-configuration.md#44-log-masking), as Go regular expressions in `internal/platform/mask` |
 
@@ -496,12 +496,15 @@ nothing about them is secret:
   the release workflow refuses to publish a binary that does not report
   `v1.0.0` or a later certified version.
 - **Delivery and masking.**
-  - `platform/secrets_run_delivery.feature` runs a real OpenTofu task that prints a secret
-    variable, an `::add-mask` word and a well-known token. It asserts the log
-    holds five asterisks for each, and that the bucket holds no plaintext copy
-    of the plan.
+  - `platform/secrets_run_delivery.feature` runs a real tracked OpenTofu run
+    whose hooks print a secret variable, an `::add-mask` word and, with the
+    stack's `enableWellKnownSecretMasking`, a well-known token. It asserts
+    the log holds five asterisks for each, and that the bucket holds no
+    plaintext copy of the plan. A task run adds the same scenario once
+    tasks exist.
   - `internal/platform/mask` has table tests for overlapping values, the
-    4-byte minimum and the 64 KiB line cap.
+    4-byte minimum, the 64 KiB line cap, each well-known pattern and words
+    added part way through a stream.
 
 ## References
 

@@ -1800,31 +1800,46 @@ through the backend.
 **Tasks**
 1. `internal/agent/exec`: the phases of `runner`, with
    `before_*` and `after_*` hooks in one shell session, reports per phase,
-   `pause` and `exit` answers. `internal/agent/vendors/{terraform,opentofu}`
+   `pause` and `exit` answers, the lock timeout and
+   `INFRAWEAVE_DISABLE_STATE_LOCK` of [0010](../research/decisions/0010-state-backend.md).
+   `internal/agent/vendors/{terraform,opentofu}`
    and `internal/iac/{terraform,opentofu}` with plan JSON parsing into
-   changes.
+   changes and the plan's delta, whose `move`, `forget` and `resources`
+   counts `PlanDelta` gains.
 2. `internal/agent/tools`: download and verification of Terraform (HashiCorp
    PGP key) and OpenTofu (OpenTofu signing key) per version, the cache and
-   `launcher.tool_mirror`. Tests: `TestUnitToolVerification` with a
-   tampered sum.
-3. Log masking through `internal/platform/mask`: secret values,
-   `::add-mask` words and the well-known patterns, which this phase adds;
+   `launcher.tool_mirror`; the specification's `tool`, the Version
+   Catalog's effective version resolved at handover. Tests:
+   `TestUnitToolVerification` with a tampered sum.
+3. Log masking through `internal/platform/mask`: secret values, the
+   variables `launcher.mask_envs` names,
+   `::add-mask` words and the well-known patterns, which this phase adds,
+   when the specification's `stack.enableWellKnownSecretMasking` is set;
    log chunks of 1 MiB or two seconds uploaded by pre-signed `PUT`
-   and indexed in `run_log_chunks`; sealed artifacts with the run's artifact
-   key; the encrypted workspace saved for confirmation. Feature:
+   and indexed in `run_log_chunks`; sealed `plan.json` and `changes.json`
+   artifacts with the run's artifact key; the encrypted workspace saved for
+   confirmation, wrapped to the pool's public key the handoff carries, and
+   restored by the launcher for `PREPARING_APPLY`. Feature:
    `platform/secrets_run_delivery.feature`.
 4. Local workspaces: `uploadLocalWorkspace` and `runProposeLocalWorkspace`
    for local preview, beside the tracked commit P6b's `rawgit` source
    resolves. A run proposed this way sets `runs.local_preview`, so its
-   specification's `TF_VAR_infraweave_local_preview` is `true`.
+   specification's `TF_VAR_infraweave_local_preview` is `true`, and its
+   `source` is the upload's archive.
 5. Run operations: `runConfirm`, `runDiscard`, `runLogs`,
-   `runLogsDownloadURL`, `runChangesV2`, `runChangesV3`, plus
-   `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns` with
-   data. `runChangesV2` and `runChangesV3` read the plan's changes beside
-   the `delta` P8b's plan decision keeps.
+   `runLogsDownloadURL`, `runChangesV2` and `runChangesV3`, and the run's
+   `delta` on every run read. `runChangesV2` and `runChangesV3` read the
+   plan's `changes.json` beside the `delta` P8b's plan decision keeps.
+   `runLogsDownloadURL` serves each state's log compacted by
+   `run.logs.compact` once the run leaves that state
+   ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md#logs-and-artifacts)).
+   P7 serves the stack's run lists, `stackRun`, `stackRuns`,
+   `stackRunsInRange` and `stackProposedRuns`.
 6. Runner images: `deploy/images/runner-terraform` and
    `deploy/images/runner-opentofu` definitions meeting decision 0008's
-   contract; the harness builds `infraweave-runner:acceptance`. In-run
+   contract, with no Terraform or OpenTofu binary; CI builds both for
+   `amd64` and `arm64`, and the harness builds them as
+   `infraweave-runner-<vendor>:acceptance`. In-run
    `INFRAWEAVE_API_TOKEN` with `sub` `<stack>/<run>`, so the provider's
    `infraweave_current_stack` and `infraweave_current_space` have their
    data.
@@ -1835,14 +1850,16 @@ through the backend.
 
 **Exit criteria**
 - `runs/terraform.feature` and `runs/tofu.feature` (`@postgres`,
-  `@objectstore`, `@terraform` or `@tofu`, `@vcs`): a tracked run passes
-  through report 08's states to `FINISHED`, the stored state version
-  matches, the log shows five asterisks for each secret, and `run_updated`
-  events are in the outbox.
+  `@objectstore`, `@vcs`, `@docker`, with `@terraform` or `@tofu`): a
+  tracked run fetches its commit from Gitea, plans, waits for
+  `runConfirm`, applies on its restored workspace and passes through report
+  08's states to `FINISHED`; the stored state version matches, the log
+  shows five asterisks for each secret, and `run_updated` events are in the
+  outbox. A local preview runs on an uploaded archive in each.
 - `runs/runner_image.feature`: a Spacelift public runner image runs
   unchanged.
-- The operations of task 5 meet decision 0016's evidence rule.
-- Captures C17, C39, C42 and C104 replay once recorded.
+- The operations of tasks 4 and 5 meet decision 0016's evidence rule.
+- Captures C17 and C104 replay once recorded.
 - Captures C98, C101, C102 and C103, which need a run, replay once
   recorded.
 - `make gate` passes at 95% in total and 90% per package.
@@ -1888,8 +1905,8 @@ that depend on them.
   and report 26 shows `spacelift_run`, `spacelift_task` and
   `spacelift_stack_outputs` with their API `implemented` (the provider
   follows in P24).
-- Captures C10, C34, C36, C37, C38 and C44 replay once recorded; until then
-  the scenarios assert decision 0008's gap table.
+- Captures C10, C34, C36, C37, C38, C39, C42 and C44 replay once recorded;
+  until then the scenarios assert decision 0008's gap table.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P11: State management

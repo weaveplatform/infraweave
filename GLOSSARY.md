@@ -164,6 +164,42 @@ _Avoid_: dead worker, lost worker
 A run that fails because its worker stayed offline past the installation's tolerance, which is the same for every pool.
 _Avoid_: orphaned run, zombie run
 
+**Phase**:
+One state of a run in which its worker does a step of the work, such as initializing, planning or applying.
+_Avoid_: stage, step
+
+**Hook**:
+A command a stack or context runs before or after a phase, in the same shell session as the phase.
+_Avoid_: script, plugin
+
+**Run workspace**:
+The directory a run works in: its commit's files, or a local preview's upload, and what its tool writes there. It is saved encrypted while the run waits for confirmation.
+_Avoid_: workspace, which is a state workspace; working directory
+
+**Local preview**:
+A proposed run on code uploaded from a developer's machine rather than a commit.
+_Avoid_: dry run, local run
+
+**Runner image**:
+The container image a run's container starts from, which brings the shell and tools hooks use but not Terraform or OpenTofu.
+_Avoid_: worker image, base image
+
+**Masking**:
+Replacing a secret's value with five asterisks in a run's log before the line leaves the run's container.
+_Avoid_: redaction, scrubbing
+
+**Log chunk**:
+A piece of a run's masked log, stored as the run writes it, so readers follow the log while the run runs.
+_Avoid_: log page, log batch
+
+**Compacted log**:
+One state's whole log, stored as a single file once the run has left that state.
+_Avoid_: log archive, full log
+
+**Plan delta**:
+The counts of resources a plan adds, changes, deletes, imports, moves and forgets, and whether any output changes.
+_Avoid_: diff, plan summary
+
 ### State
 
 **Managed state**:
