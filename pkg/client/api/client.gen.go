@@ -6277,7 +6277,9 @@ type ProblemFieldErrorReason string
 
 // ProposeWithOverridesRequest The arguments of proposeWithOverrides not carried in the path.
 type ProposeWithOverridesRequest struct {
-	CommitSha                *string                `json:"commitSha,omitempty"`
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// EnvironmentVarsOverrides Environment variables the run sets over the stack's, for this run alone. An override replaces the stack's variable of the same name and stays write-only when that variable is; any other is set in the clear. The variables infraweave sets for a run, TF_VAR_infraweave_* and INFRAWEAVE_*, cannot be overridden. The overrides are kept sealed, and no answer returns them.
 	EnvironmentVarsOverrides *[]EnvironmentVariable `json:"environmentVarsOverrides,omitempty"`
 }
 
@@ -6811,6 +6813,9 @@ type RunPrioritySetRequest struct {
 
 // RunProposeLocalWorkspaceRequest The arguments of runProposeLocalWorkspace not carried in the path.
 type RunProposeLocalWorkspaceRequest struct {
+	// EnvironmentVarsOverrides Environment variables the run sets over the stack's, for this run alone. An override replaces the stack's variable of the same name and stays write-only when that variable is; any other is set in the clear. The variables infraweave sets for a run, TF_VAR_infraweave_* and INFRAWEAVE_*, cannot be overridden. The overrides are kept sealed, and no answer returns them.
+	EnvironmentVarsOverrides *[]EnvironmentVariable `json:"environmentVarsOverrides,omitempty"`
+
 	// Workspace The ID of the local workspace's upload.
 	Workspace string `json:"workspace"`
 }
@@ -17408,12 +17413,12 @@ type ClientInterface interface {
 
 	// ProposeWithOverridesWithBody Propose With Overrides
 	//
-	// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-	// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-	// commit, against the HEAD of the Stack's tracked branch. These defaults can
-	// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-	// overriding environment variables in the proposed runs to enable more complex testing environment.
-	// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+	// Trigger a proposed run on the stack, on the commit named, else the commit
+	// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+	// it takes environment variables the run sets over the stack's, for this run
+	// alone. A trigger with overrides always creates a run, since no other run
+	// shares them; one without answers the proposed run of the same commit that
+	// has not ended, as runTrigger does.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -17422,12 +17427,12 @@ type ClientInterface interface {
 
 	// ProposeWithOverrides Propose With Overrides
 	//
-	// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-	// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-	// commit, against the HEAD of the Stack's tracked branch. These defaults can
-	// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-	// overriding environment variables in the proposed runs to enable more complex testing environment.
-	// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+	// Trigger a proposed run on the stack, on the commit named, else the commit
+	// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+	// it takes environment variables the run sets over the stack's, for this run
+	// alone. A trigger with overrides always creates a run, since no other run
+	// shares them; one without answers the proposed run of the same commit that
+	// has not ended, as runTrigger does.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -17542,7 +17547,7 @@ type ClientInterface interface {
 
 	// RunProposeLocalWorkspaceWithBody Propose Local Workspace Run
 	//
-	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -17551,7 +17556,7 @@ type ClientInterface interface {
 
 	// RunProposeLocalWorkspace Propose Local Workspace Run
 	//
-	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -25145,12 +25150,12 @@ func (c *Client) StackProposedRuns(ctx context.Context, stackId string, params *
 
 // ProposeWithOverridesWithBody Propose With Overrides
 //
-// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-// commit, against the HEAD of the Stack's tracked branch. These defaults can
-// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-// overriding environment variables in the proposed runs to enable more complex testing environment.
-// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+// Trigger a proposed run on the stack, on the commit named, else the commit
+// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+// it takes environment variables the run sets over the stack's, for this run
+// alone. A trigger with overrides always creates a run, since no other run
+// shares them; one without answers the proposed run of the same commit that
+// has not ended, as runTrigger does.
 //
 // Takes any type of body and a specified content type.
 //
@@ -25169,12 +25174,12 @@ func (c *Client) ProposeWithOverridesWithBody(ctx context.Context, stackId strin
 
 // ProposeWithOverrides Propose With Overrides
 //
-// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-// commit, against the HEAD of the Stack's tracked branch. These defaults can
-// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-// overriding environment variables in the proposed runs to enable more complex testing environment.
-// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+// Trigger a proposed run on the stack, on the commit named, else the commit
+// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+// it takes environment variables the run sets over the stack's, for this run
+// alone. A trigger with overrides always creates a run, since no other run
+// shares them; one without answers the proposed run of the same commit that
+// has not ended, as runTrigger does.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -25419,7 +25424,7 @@ func (c *Client) RunDiscard(ctx context.Context, stackId string, params *RunDisc
 
 // RunProposeLocalWorkspaceWithBody Propose Local Workspace Run
 //
-// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 //
 // Takes any type of body and a specified content type.
 //
@@ -25438,7 +25443,7 @@ func (c *Client) RunProposeLocalWorkspaceWithBody(ctx context.Context, stackId s
 
 // RunProposeLocalWorkspace Propose Local Workspace Run
 //
-// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -49998,12 +50003,12 @@ type ClientWithResponsesInterface interface {
 
 	// ProposeWithOverridesWithBodyWithResponse Propose With Overrides
 	//
-	// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-	// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-	// commit, against the HEAD of the Stack's tracked branch. These defaults can
-	// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-	// overriding environment variables in the proposed runs to enable more complex testing environment.
-	// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+	// Trigger a proposed run on the stack, on the commit named, else the commit
+	// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+	// it takes environment variables the run sets over the stack's, for this run
+	// alone. A trigger with overrides always creates a run, since no other run
+	// shares them; one without answers the proposed run of the same commit that
+	// has not ended, as runTrigger does.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -50012,12 +50017,12 @@ type ClientWithResponsesInterface interface {
 
 	// ProposeWithOverridesWithResponse Propose With Overrides
 	//
-	// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-	// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-	// commit, against the HEAD of the Stack's tracked branch. These defaults can
-	// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-	// overriding environment variables in the proposed runs to enable more complex testing environment.
-	// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+	// Trigger a proposed run on the stack, on the commit named, else the commit
+	// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+	// it takes environment variables the run sets over the stack's, for this run
+	// alone. A trigger with overrides always creates a run, since no other run
+	// shares them; one without answers the proposed run of the same commit that
+	// has not ended, as runTrigger does.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -50144,7 +50149,7 @@ type ClientWithResponsesInterface interface {
 
 	// RunProposeLocalWorkspaceWithBodyWithResponse Propose Local Workspace Run
 	//
-	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -50153,7 +50158,7 @@ type ClientWithResponsesInterface interface {
 
 	// RunProposeLocalWorkspaceWithResponse Propose Local Workspace Run
 	//
-	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+	// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -92265,12 +92270,12 @@ func (c *ClientWithResponses) StackProposedRunsWithResponse(ctx context.Context,
 
 // ProposeWithOverridesWithBodyWithResponse Propose With Overrides
 //
-// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-// commit, against the HEAD of the Stack's tracked branch. These defaults can
-// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-// overriding environment variables in the proposed runs to enable more complex testing environment.
-// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+// Trigger a proposed run on the stack, on the commit named, else the commit
+// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+// it takes environment variables the run sets over the stack's, for this run
+// alone. A trigger with overrides always creates a run, since no other run
+// shares them; one without answers the proposed run of the same commit that
+// has not ended, as runTrigger does.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -92285,12 +92290,12 @@ func (c *ClientWithResponses) ProposeWithOverridesWithBodyWithResponse(ctx conte
 
 // ProposeWithOverridesWithResponse Propose With Overrides
 //
-// Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-// commit currently tracked by a Stack or, if the Stack is not yet tracking any
-// commit, against the HEAD of the Stack's tracked branch. These defaults can
-// be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-// overriding environment variables in the proposed runs to enable more complex testing environment.
-// Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+// Trigger a proposed run on the stack, on the commit named, else the commit
+// the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+// it takes environment variables the run sets over the stack's, for this run
+// alone. A trigger with overrides always creates a run, since no other run
+// shares them; one without answers the proposed run of the same commit that
+// has not ended, as runTrigger does.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -92495,7 +92500,7 @@ func (c *ClientWithResponses) RunDiscardWithResponse(ctx context.Context, stackI
 
 // RunProposeLocalWorkspaceWithBodyWithResponse Propose Local Workspace Run
 //
-// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -92510,7 +92515,7 @@ func (c *ClientWithResponses) RunProposeLocalWorkspaceWithBodyWithResponse(ctx c
 
 // RunProposeLocalWorkspaceWithResponse Propose Local Workspace Run
 //
-// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+// Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

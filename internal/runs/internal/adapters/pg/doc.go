@@ -12,28 +12,30 @@
 // its row, for the state access its token asks, and purges a deleted
 // account's rows a batch a statement.
 // It is also the lifecycle's store: it locks a run's row, moves a run and
-// records its transition, inserts a run, finds a stack's run of a type and
-// commit that has not ended, makes a run its stack's tracked run, releases
-// the run lock a run holds, and reads a stack's state and blocked from its
-// tracked run's transitions and its run lock. For the scheduler it reads
-// a stack's queued runs, oldest first, and takes a stack's run lock for a
-// run when no run holds it. For a worker's claim it reads and locks a
-// pool's next run, skipping locked rows, records the run's worker, counts
-// a pool's drift runs on workers under a per-pool advisory lock, and
-// reports whether a worker holds a run; Announce notifies
-// infraweave_runs that a run waits in its pool. For a run's handover it
-// reads and locks a run by its ID alone, as a run token names it, and
-// makes the run's artifact key once, sealed to its row in
-// artifact_key_sealed, which SealedColumns names, and opens it on every
-// later read. Held names the columns that hold the access domain's
-// accounts and the stacks domain's stacks, and Keys declares the runs'
-// key, which other domains' held columns name. Every method joins the
-// transaction its context carries.
+// records its transition, inserts a run, seals a proposed run's environment
+// variable overrides to its row in env_overrides_sealed, finds a stack's
+// run of a type and commit that has not ended and has no overrides, makes a
+// run its stack's tracked run, releases the run lock a run holds, and reads
+// a stack's state and blocked from its tracked run's transitions and its
+// run lock. For the scheduler it reads a stack's queued runs, oldest first,
+// and takes a stack's run lock for a run when no run holds it. For a
+// worker's claim it reads and locks a pool's next run, skipping locked
+// rows, records the run's worker, counts a pool's drift runs on workers
+// under a per-pool advisory lock, and reports whether a worker holds a run;
+// Announce notifies infraweave_runs that a run waits in its pool. For a
+// run's handover it reads and locks a run by its ID alone, as a run token
+// names it, and makes the run's artifact key once, sealed to its row in
+// artifact_key_sealed, opening it on every later read, and opens the
+// run's overrides; SealedColumns names both columns. Held names the columns
+// that hold the access domain's accounts and the stacks domain's stacks,
+// and Keys declares the runs' key, which other domains' held columns name.
+// Every method joins the transaction its context carries.
 //
 // # Input and output
 //
 // It reads and writes PostgreSQL through the querier it is given, and
-// seals and opens the artifact key through the Sealer it is given.
+// seals and opens the artifact key and the overrides through the Sealer
+// it is given.
 //
 // # Dependencies
 //

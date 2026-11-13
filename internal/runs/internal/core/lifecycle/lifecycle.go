@@ -178,8 +178,8 @@ type Store interface {
 	// Insert writes run with step, its first transition.
 	Insert(ctx context.Context, run Run, step Step) error
 	// Active reads acct's run of stack of type typ on commit hash and
-	// local workspace workspace, none when empty, that has not ended, the
-	// oldest when several have not.
+	// local workspace workspace, none when empty, that has not ended and
+	// has no environment overrides, the oldest when several have not.
 	Active(
 		ctx context.Context,
 		acct kernel.AccountID,
@@ -187,6 +187,8 @@ type Store interface {
 		typ kernel.RunType,
 		hash, workspace string,
 	) (Run, bool, error)
+	// SetOverrides seals ovs, run's environment overrides, to its row.
+	SetOverrides(ctx context.Context, run Run, ovs []Override) error
 	// Track makes run the tracked run of its stack.
 	Track(ctx context.Context, run Run) error
 	// Unlock deletes the stack run lock run holds, and reports whether it
@@ -333,7 +335,15 @@ type NewRun struct {
 	RuntimeConfig  json.RawMessage
 	ForceApply     string
 	LocalWorkspace string
+	Overrides      []Override
 	Note           string
+}
+
+// Override is an environment variable a proposed run sets over its
+// stack's, for that run alone.
+type Override struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 // Create creates n's run in QUEUED, T1, in the transaction ctx carries,
@@ -365,10 +375,14 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	if st.Lock != nil && st.Lock.Holder != n.Actor.Caller {
 		return Run{}, false, &Locked{By: st.Lock.By}
 	}
-	existing, found, err := l.d.Store.Active(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash,
-		n.LocalWorkspace)
-	if err != nil || found {
-		return existing, false, err //nolint:wrapcheck // the store names the read
+	// No other run shares a run's overrides, so a creation with them
+	// always creates one.
+	if len(n.Overrides) == 0 {
+		existing, found, err := l.d.Store.Active(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash,
+			n.LocalWorkspace)
+		if err != nil || found {
+			return existing, false, err //nolint:wrapcheck // the store names the read
+		}
 	}
 	now := l.now()
 	priority := n.Priority
@@ -388,6 +402,11 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	}
 	if err := l.d.Store.Insert(ctx, run, step); err != nil {
 		return Run{}, false, err //nolint:wrapcheck // the store names the write
+	}
+	if len(n.Overrides) > 0 {
+		if err := l.d.Store.SetOverrides(ctx, run, n.Overrides); err != nil {
+			return Run{}, false, err //nolint:wrapcheck // the store names the write
+		}
 	}
 	if err := l.consequences(ctx, run, step); err != nil {
 		return Run{}, false, err
