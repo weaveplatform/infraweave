@@ -4,8 +4,9 @@ Feature: The worker protocol end to end
   for runs, opens each run's sealed specification with the pool's private
   key, and runs it in a Docker container of infraweave-runner:acceptance,
   whose root process is this build's runner. The runner reports the run's
-  first phase started and then failed with its note, since this build's
-  runner executes no phase. The launcher reaches the server through the
+  first phase started, and then failed with a note that the image has no
+  sh to run the phase in, since the image holds nothing but the runner's
+  user and workspace. The launcher reaches the server through the
   scenario's relay, which records each call and can hold the runners'
   reports, so a run stays on its worker while the scenario kills the
   launcher. The reap, every 30 seconds, marks a worker unseen for
@@ -40,7 +41,7 @@ Feature: The worker protocol end to end
     And the answer's id names "run"
     Then token "h" eventually reads the run "run" in the state "FAILED" through A
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, FAILED"
-    And the answer's last state transition's note is "This build's runner executes no phase, so the run ends here."
+    And the answer's last state transition's note is "The run's image has no sh to run its phases in."
     And the relay passed "GET /worker/v1/runs/{run}/spec" answered 200
     And the relay passed "POST /worker/v1/runs/{run}/reports" answered 200
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
@@ -69,5 +70,5 @@ Feature: The worker protocol end to end
     And the relay releases the runners' reports
     Then token "h" eventually reads the run "run" in the state "FAILED" through A
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, FAILED"
-    And the answer's last state transition's note is "This build's runner executes no phase, so the run ends here."
+    And the answer's last state transition's note is "The run's image has no sh to run its phases in."
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B

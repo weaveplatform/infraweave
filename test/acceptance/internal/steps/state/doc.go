@@ -8,8 +8,11 @@
 // of harness.RunnerImage, which reach the server through the scenario's
 // relay. The relay records each call and each 423's body, and holds the
 // backend's UNLOCK calls on demand, so a lock stays held while another
-// process asks for it.
+// process asks for it. A scenario can instead hand a run it took over to
+// this build's runner, started as a launcher starts it in the tool's
+// runner image, which executes the run's phases and reports them itself.
 //
+// ref: decision 0008
 // ref: decision 0010
 // ref: decision 0016
 //

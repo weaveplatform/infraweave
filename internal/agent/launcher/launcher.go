@@ -441,6 +441,7 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Con
 	if err := handoff.Write(&h, handoff.Handoff{
 		Endpoint: client.Base(l.id.endpoint), Run: a.Run, RunToken: a.RunToken,
 		Assigned: a.State, StateVersion: a.StateVersion, Spec: spec, Secrets: secrets,
+		StateLockTimeout: l.d.Config.StateLockTimeout,
 	}); err != nil {
 		return nil, err //nolint:wrapcheck // handoff names the write
 	}

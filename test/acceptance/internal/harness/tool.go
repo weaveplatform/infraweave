@@ -37,10 +37,14 @@ type Tool struct {
 // ToolRun is what a Tool runs: Bin, mounted read-only, with Args and Env
 // in Dir, mounted as the workspace, on Network, labelled Scenario, in a
 // container of Image, one Launchers.Build built, or RunnerImage when it
-// is empty.
+// is empty. Mounts are further host files, each mounted read-only at
+// the container path it maps to, and Stdin, when set, is written to the
+// process's standard input, which is then closed.
 type ToolRun struct {
 	Scenario, Network, Bin, Dir, Image string
 	Env, Args                          []string
+	Mounts                             map[string]string
+	Stdin                              []byte
 }
 
 // RunTool starts run's container. It runs as the host's user rather than
@@ -49,29 +53,54 @@ type ToolRun struct {
 // it.
 func (l *Launchers) RunTool(ctx context.Context, run ToolRun) (*Tool, error) {
 	image := cmp.Or(run.Image, RunnerImage)
+	binds := make([]string, 0, 2+len(run.Mounts))
+	binds = append(binds, run.Bin+":"+toolPath+":ro", run.Dir+":"+workspacePath)
+	for host, path := range run.Mounts {
+		binds = append(binds, host+":"+path+":ro")
+	}
+	stdin := run.Stdin != nil
 	c, err := l.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
-			Image:      image,
-			User:       strconv.Itoa(os.Getuid()) + ":" + strconv.Itoa(os.Getgid()),
-			Entrypoint: []string{toolPath},
-			Cmd:        run.Args,
-			Env:        run.Env,
-			WorkingDir: workspacePath,
-			Labels:     map[string]string{LabelScenario: run.Scenario},
+			Image:       image,
+			User:        strconv.Itoa(os.Getuid()) + ":" + strconv.Itoa(os.Getgid()),
+			Entrypoint:  []string{toolPath},
+			Cmd:         run.Args,
+			Env:         run.Env,
+			WorkingDir:  workspacePath,
+			Labels:      map[string]string{LabelScenario: run.Scenario},
+			AttachStdin: stdin,
+			OpenStdin:   stdin,
+			StdinOnce:   stdin,
 		},
 		HostConfig: &container.HostConfig{
-			Binds: []string{
-				run.Bin + ":" + toolPath + ":ro",
-				run.Dir + ":" + workspacePath,
-			},
+			Binds:       binds,
 			NetworkMode: container.NetworkMode(run.Network),
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("the tool's container: %w", err)
 	}
+	if !stdin {
+		if _, err := l.cli.ContainerStart(ctx, c.ID, client.ContainerStartOptions{}); err != nil {
+			return nil, fmt.Errorf("the tool's container: %w", err)
+		}
+		return &Tool{cli: l.cli, id: c.ID}, nil
+	}
+	att, err := l.cli.ContainerAttach(ctx, c.ID, client.ContainerAttachOptions{
+		Stream: true, Stdin: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("the tool's standard input: %w", err)
+	}
+	defer att.Close()
 	if _, err := l.cli.ContainerStart(ctx, c.ID, client.ContainerStartOptions{}); err != nil {
 		return nil, fmt.Errorf("the tool's container: %w", err)
+	}
+	if _, err := att.Conn.Write(run.Stdin); err != nil {
+		return nil, fmt.Errorf("the tool's standard input: %w", err)
+	}
+	if err := att.CloseWrite(); err != nil {
+		return nil, fmt.Errorf("the tool's standard input: %w", err)
 	}
 	return &Tool{cli: l.cli, id: c.ID}, nil
 }

@@ -50,8 +50,8 @@ type backendSteps struct {
 
 // takenRun is a run the scenario took over: its ID, the name of its run
 // token, the state version its next report names, its workspace, its
-// tool's environment, its backend's path and its tool's last standard
-// output.
+// tool's environment, its backend's path, its tool's last standard
+// output, and the handoff a runner of it reads.
 type takenRun struct {
 	id, token string
 	version   int64
@@ -59,6 +59,7 @@ type takenRun struct {
 	env       []string
 	path      string
 	stdout    string
+	handoff   handoff.Handoff
 }
 
 // process is a tool's process started in the background, of the run it
@@ -103,6 +104,7 @@ func (b *backendSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the process "(\w+)" exits (\d+)$`, b.processExits)
 	sc.Step(`^the last output of the run "(\w+)" is "([^"]*)"$`, b.output)
 	b.registerChecks(sc)
+	b.registerRunner(sc)
 }
 
 // run is the run the scenario took over as name.
@@ -164,17 +166,19 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 	if err := b.checkOut(ctx, repo, spec.Commit.Hash, dir); err != nil {
 		return err
 	}
-	env, err := backend.Configure(dir, handoff.Handoff{
+	spec.Sealed = nil
+	h := handoff.Handoff{
 		Endpoint: b.relay.URL + client.BasePath, Run: id, RunToken: b.w.Tokens[token],
 		Assigned: wire.AssignmentState(spec.Run.State), StateVersion: spec.Run.StateVersion,
-		Spec: spec, Secrets: secrets,
-	})
+		Spec: spec, Secrets: secrets, StateLockTimeout: stateLockTimeout,
+	}
+	env, err := backend.Configure(dir, h)
 	if err != nil {
 		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
 	b.runs[run] = &takenRun{
 		id: id, token: token, version: spec.Run.StateVersion, dir: dir,
-		env: append(env, toolEnv...), path: spec.StateBackend.Path,
+		env: append(env, toolEnv...), path: spec.StateBackend.Path, handoff: h,
 	}
 	return nil
 }

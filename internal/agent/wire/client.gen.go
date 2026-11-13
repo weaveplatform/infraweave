@@ -613,7 +613,7 @@ type RunSpec struct {
 	// Files The files mounted into the run's workspace, by path.
 	Files []RunSpecFile `json:"files"`
 
-	// Hooks Each phase's commands, by phase such as beforeInit or afterPlan, in the order they run. Before a phase, the hooks of the contexts attached by hand run first, by priority, then those of the contexts attached automatically, then the stack's; after a phase they run in the reverse order.
+	// Hooks Each phase's commands, by phase such as before_init or after_plan, in the order they run. Before a phase, the hooks of the contexts attached by hand run first, by priority, then those of the contexts attached automatically, then the stack's; after a phase they run in the reverse order.
 	Hooks map[string][]string `json:"hooks"`
 
 	// Run The run.

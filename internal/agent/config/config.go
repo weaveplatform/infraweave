@@ -42,6 +42,9 @@ type Launcher struct {
 	// CacheDir holds what the launcher keeps between starts: the worker it
 	// registered, so a restart resumes it.
 	CacheDir string `mapstructure:"cache_dir"`
+	// StateLockTimeout is how long each command of a run that locks the
+	// state waits for the lock, which the handoff carries to the runner.
+	StateLockTimeout time.Duration `mapstructure:"state_lock_timeout"`
 	// Metadata describes the worker at registration. Each
 	// INFRAWEAVE_LAUNCHER_METADATA_<key> variable adds <key>, as
 	// SPACELIFT_METADATA_<key> does.
@@ -99,6 +102,7 @@ func Defaults() Config {
 		PollTimeout:        60 * time.Second,
 		DefaultRunnerImage: "ghcr.io/weaveplatform/infraweave-runner-terraform",
 		CacheDir:           filepath.Join(cache, "infraweave-launcher"),
+		StateLockTimeout:   5 * time.Minute,
 		AdminListen:        ":9091",
 		Log:                observe.LogDefaults(),
 	}}
@@ -128,6 +132,9 @@ func (c Launcher) Validate() error {
 	}
 	if c.CacheDir == "" {
 		bad("launcher.cache_dir is required")
+	}
+	if c.StateLockTimeout < 0 {
+		bad("launcher.state_lock_timeout must not be negative, got %s", c.StateLockTimeout)
 	}
 	if len(c.Metadata) > MaxMetadata {
 		bad("launcher.metadata holds at most %d entries, got %d", MaxMetadata, len(c.Metadata))

@@ -48,7 +48,7 @@ func TestUnitLoadDefaults(t *testing.T) {
 	l, d := c.Launcher, config.Defaults().Launcher
 	if l.Token != "token" || l.PrivateKey.Reveal() != keyPEM || l.PollTimeout != time.Minute ||
 		l.AdminListen != ":9091" || l.DefaultRunnerImage != d.DefaultRunnerImage || l.CacheDir != d.CacheDir ||
-		l.Log.Level != "info" || l.Metadata != nil {
+		l.Log.Level != "info" || l.Metadata != nil || l.StateLockTimeout != 5*time.Minute {
 		t.Fatalf("defaults: %+v", l)
 	}
 }
@@ -73,6 +73,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	f := file(t, `launcher:
   admin_listen: ":7000"
   poll_timeout: 30s
+  state_lock_timeout: 90s
   metadata:
     zone: a
   docker:
@@ -85,7 +86,8 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	}
 	if c.Launcher.AdminListen != ":7000" || c.Launcher.PollTimeout != 30*time.Second ||
 		c.Launcher.Docker.Network != "runs" || c.Launcher.Metadata["zone"] != "a" ||
-		c.Launcher.Docker.RunnerBinary != "/opt/linux/infraweave" {
+		c.Launcher.Docker.RunnerBinary != "/opt/linux/infraweave" ||
+		c.Launcher.StateLockTimeout != 90*time.Second {
 		t.Fatalf("file: %+v", c.Launcher)
 	}
 
@@ -129,6 +131,7 @@ func TestUnitValidate(t *testing.T) {
 		"launcher.poll_timeout":          func(l *config.Launcher) { l.PollTimeout = 7500 * time.Millisecond },
 		"launcher.default_runner_image":  func(l *config.Launcher) { l.DefaultRunnerImage = "" },
 		"launcher.cache_dir":             func(l *config.Launcher) { l.CacheDir = "" },
+		"launcher.state_lock_timeout":    func(l *config.Launcher) { l.StateLockTimeout = -time.Second },
 		"launcher.metadata holds":        func(l *config.Launcher) { l.Metadata = many },
 		"launcher.metadata \"\"":         func(l *config.Launcher) { l.Metadata = map[string]string{"": "v"} },
 		"launcher.admin_listen \"9091\"": func(l *config.Launcher) { l.AdminListen = "9091" },
