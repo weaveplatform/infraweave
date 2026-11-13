@@ -4,10 +4,11 @@ name: go | Quality gate
 # Windows, govulncheck, a cross-compile of every cmd/* binary, and the merged
 # coverage gate (>=95% total, >=90% per package), the acceptance partitions
 # against real dependencies in Docker, the unit tests and every partition
-# again in FIPS 140-only mode, and the parity check over their results. The
-# `gate` job is the single required status check: make it required in branch
-# protection. Every required job is in its `needs` and, when it produces
-# coverage, in the coverage job's.
+# again in FIPS 140-only mode, the parity check over their results, and the
+# runner images when their definitions change. The `gate` job is the single
+# required status check: make it required in branch protection. Every
+# required job is in its `needs` and, when it produces coverage, in the
+# coverage job's.
 # ref: decision 0016
 
 on:
@@ -449,17 +450,97 @@ jobs:
       - name: Merge and enforce the gate
         run: make cover
 
+  # Which of the path-dependent jobs the change needs: images when it
+  # touches deploy/images/ or this workflow. A run with no base commit to
+  # compare against, a dispatch or a branch's first push, needs them all.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.diff.outputs.images }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Diff against the base
+        id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          images=true
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null &&
+            git diff --quiet "$BASE" HEAD -- deploy/images .github/workflows/quality-gate.yml; then
+            images=false
+          fi
+          echo "images=$images" | tee -a "$GITHUB_OUTPUT"
+
+  # infraweave's runner images, each built for both platforms a worker runs
+  # on, arm64 under QEMU, and held to the runner image contract by
+  # deploy/images/contract.sh in a container of each. gate requires it when
+  # it runs.
+  # ref: decision 0008 § "Runner images"
+  images:
+    name: 'Runner image (${{ matrix.image }}, ${{ matrix.platform }})'
+    needs: [changes]
+    if: needs.changes.outputs.images == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [runner-terraform, runner-opentofu]
+        platform: [linux/amd64, linux/arm64]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up QEMU
+        if: matrix.platform != 'linux/amd64'
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Build
+        env:
+          IMAGE: ${{ matrix.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: docker build --platform "$PLATFORM" -t "$IMAGE:contract" "deploy/images/$IMAGE"
+
+      - name: Check the contract
+        env:
+          IMAGE: ${{ matrix.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          line=$(docker run --rm --platform "$PLATFORM" -i "$IMAGE:contract" sh -s < deploy/images/contract.sh)
+          echo "$line"
+          echo "$IMAGE ($PLATFORM): $line" >> "$GITHUB_STEP_SUMMARY"
+
+  # images is the one job that may be skipped: it is when the change leaves
+  # the image definitions alone.
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, fips-only, parity, reference, generated, lint, vuln, build, coverage]
+    needs: [unit, accept, fips-only, parity, reference, generated, lint, vuln, build, coverage, changes, images]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          echo "results: $RESULTS"
-          for r in $RESULTS; do
-            [ "$r" = success ] || { echo "a gate job did not succeed"; exit 1; }
-          done
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
+          jq -e '.changes.outputs.images as $images | to_entries | all(.value.result == "success"
+            or (.key == "images" and $images == "false" and .value.result == "skipped"))' \
+            <<<"$NEEDS" >/dev/null || { echo "a gate job did not succeed"; exit 1; }

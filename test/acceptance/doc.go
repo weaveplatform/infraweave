@@ -26,16 +26,19 @@
 // parity bug named by its capture. TestUnitCaptureRedaction fails on a
 // fixture that Leaks a credential or a real e-mail address. A capture a
 // feature stands in for until it is recorded runs as a skipped subtest.
+// TestAccRunnerImages builds the runner images of deploy/images and holds
+// a container of each to the runner image contract.
 //
 // ref: decision 0016, report 30
 //
 // # Input and output
 //
 // It reads features/, test/fixtures/captures, the open-questions register
-// in docs/data/open-questions.json and the committed reference and bundle,
-// builds and runs infraweave, starts containers through the Docker daemon,
-// and writes godog's cucumber report and the subprocesses' coverage to make
-// accept's -test.gocoverdir, cover/accept.
+// in docs/data/open-questions.json, the committed reference and bundle,
+// and the runner image definitions in deploy/images; builds and runs
+// infraweave, builds images and starts containers through the Docker
+// daemon; and writes godog's cucumber report and the subprocesses'
+// coverage to make accept's -test.gocoverdir, cover/accept.
 //
 // # Dependencies
 //

@@ -10,11 +10,13 @@
 // Tenants are the accounts seeded through SQL with their API keys;
 // Partitions are CI's slices of the features; captures.go loads and
 // replays the capture fixtures. Launchers are what a @docker scenario
-// runs in Docker: the runner image, the Linux builds of the launcher's
-// runner, and a tool's process (RunTool) in a container of the image;
-// a Relay is the worker API and state backend as those containers reach
-// them, recording each call and holding reports or UNLOCK calls on
-// demand. A failed scenario leaves its evidence in out/<scenario>/.
+// runs in Docker: the minimal runner image, the Linux builds of the
+// launcher's runner, the runner images of deploy/images (Build), and a
+// tool's process (RunTool) in a container of one; RunnerContract holds a
+// runner image to deploy/images/contract.sh. A Relay is the worker API and
+// state backend as those containers reach them, recording each call and
+// holding reports or UNLOCK calls on demand. A failed scenario leaves its
+// evidence in out/<scenario>/.
 //
 // ref: decision 0016
 //
@@ -22,7 +24,8 @@
 //
 // It reads the features and the variables Env* name, builds and runs
 // infraweave as subprocesses (serve modes, migrate) whose JSON logs give
-// their listeners, reaches their listeners over loopback HTTP, queries
+// their listeners, builds the runner images from deploy/images with the
+// Docker daemon's builder, reaches their listeners over loopback HTTP, queries
 // the scenario's database, and writes godog's cucumber report, the
 // subprocesses' coverage and a failed scenario's evidence.
 //
