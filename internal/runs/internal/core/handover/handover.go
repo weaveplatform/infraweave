@@ -47,6 +47,9 @@ type Store interface {
 	// ArtifactKey is run's artifact key, made and stored sealed the first
 	// time it is asked for.
 	ArtifactKey(ctx context.Context, run lifecycle.Run) (crypt.Value, error)
+	// Overrides opens run's environment overrides, none for a run
+	// without.
+	Overrides(ctx context.Context, run lifecycle.Run) ([]lifecycle.Override, error)
 }
 
 // Tokens mints a run's in-run API token; the access domain's Tokens is
@@ -236,8 +239,13 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if st.ManagesState {
 		spec.StateBackend = &workersapi.StateBackend{Path: StatePath + r.Stack.String()}
 	}
+	ovs, err := s.store.Overrides(ctx, r)
+	if err != nil {
+		return workersapi.Handover{}, err //nolint:wrapcheck // the store names the read
+	}
 	sec := secrets{Environment: map[string]string{}, Files: map[string][]byte{}}
-	if err := s.environment(ctx, r, stack, account, resolved.Elements, &spec, &sec); err != nil {
+	err = s.environment(ctx, r, stack, account, resolved.Elements, ovs, &spec, &sec)
+	if err != nil {
 		return workersapi.Handover{}, err
 	}
 	// The source's token is minted after every check that can refuse the
@@ -399,15 +407,21 @@ func at(inv *kernel.Invalid, pointer string) *kernel.Invalid {
 	return out
 }
 
-// environment fills spec's variables and files from elements and
-// infraweave's own variables of r on stack in account, by name and by
-// path, and sec with the write-only values.
+// environment fills spec's variables and files from elements, the run's
+// overrides ovs and infraweave's own variables of r on stack in account,
+// by name and by path, and sec with the write-only values. An override
+// replaces the element of its name, unrendered, and stays write-only
+// when the element is; one no element names is set in the clear. A
+// template reads the overridden value.
+//
+// ref: decision 0008 § "The run specification and its secrets"
 func (s *Service) environment(
 	ctx context.Context,
 	r lifecycle.Run,
 	stack workersapi.SpecStack,
 	account string,
 	elements []configapi.Element,
+	ovs []lifecycle.Override,
 	spec *workersapi.Spec,
 	sec *secrets,
 ) error {
@@ -416,6 +430,10 @@ func (s *Service) environment(
 		if !e.FileMount {
 			env[e.Name], writeOnly[e.Name] = string(reveal(e.Value)), e.WriteOnly
 		}
+	}
+	overridden := make(map[string]string, len(ovs))
+	for _, o := range ovs {
+		overridden[o.Name], env[o.Name] = o.Value, o.Value
 	}
 	in := expr.Input{
 		Now:  r.StateChangedAt,
@@ -438,9 +456,21 @@ func (s *Service) environment(
 			spec.Files = append(spec.Files, f)
 			continue
 		}
-		v, secret, err := s.render(ctx, e.Name, string(reveal(e.Value)), in, writeOnly)
-		if err != nil {
-			return err
+		v, over := overridden[e.Name]
+		secret := false
+		if over {
+			delete(overridden, e.Name)
+		} else {
+			var err error
+			if v, secret, err = s.render(
+				ctx,
+				e.Name,
+				string(reveal(e.Value)),
+				in,
+				writeOnly,
+			); err != nil {
+				return err
+			}
 		}
 		if e.WriteOnly || secret {
 			sec.Environment[e.Name] = v
@@ -449,6 +479,9 @@ func (s *Service) environment(
 			continue
 		}
 		spec.Environment = append(spec.Environment, workersapi.Variable{Name: e.Name, Value: &v})
+	}
+	for name, v := range overridden {
+		spec.Environment = append(spec.Environment, workersapi.Variable{Name: name, Value: &v})
 	}
 	for _, v := range own(r, stack, account) {
 		if _, ok := writeOnly[v.Name]; !ok {

@@ -3,10 +3,12 @@
 // Handover finds the run by its ID alone, as a run token names it, and
 // refuses one that is not on a private pool's worker. It reads the run's
 // stack, its labels and its space's slug, and the stack's environment,
-// opened, and renders each variable's ${{ … }} templates against the
-// environment surface: env, the variables as saved, stack and run. A
-// write-only value, or one whose template reads a write-only variable,
-// goes into the secrets, with the in-run API token it mints and the run's
+// opened, sets the run's overrides over it, each in place of the variable
+// of its name and unrendered, and renders each other variable's ${{ … }}
+// templates against the environment surface: env, the variables as
+// saved with the overrides, stack and run. A write-only value, an
+// override of a write-only variable, and a value whose template reads a
+// write-only variable go into the secrets, with the in-run API token it mints and the run's
 // artifact key; every other value, the TF_VAR_infraweave_ variables a
 // variable of the same name overrides, the hooks, the runtime
 // configuration and the runner image the run or its stack names go into

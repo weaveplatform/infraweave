@@ -1,12 +1,14 @@
 package pg_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -100,6 +102,37 @@ func TestAccTrigger(t *testing.T) {
 		t.Errorf("on a named commit: %+v, %v", named.Run.Commit, err)
 	}
 
+	ovs := []lifecycle.Override{{Name: "TOKEN", Value: "override-s3cret"}, {Name: "DEBUG"}}
+	over, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{
+		Type: kernel.RunTypeProposed, Overrides: ovs,
+	})
+	if err != nil || over.Run.ID == v.Run.ID || over.Run.Commit.Hash != "tracked" {
+		t.Fatalf("a proposal with overrides = %+v, %v; want a run of its own", over.Run, err)
+	}
+	var sealed []byte
+	if err := w.db.QueryRow(t.Context(), `SELECT env_overrides_sealed FROM runs
+		WHERE account_id = $1 AND id = $2`, w.acct, over.Run.ID).Scan(&sealed); err != nil ||
+		sealed == nil || bytes.Contains(sealed, []byte("override-s3cret")) {
+		t.Errorf("the stored overrides %q, %v; want them sealed", sealed, err)
+	}
+	if got, err := w.store.Overrides(t.Context(), over.Run); err != nil || !slices.Equal(got, ovs) {
+		t.Errorf("the overrides = %+v, %v", got, err)
+	}
+	if got, err := w.store.Overrides(t.Context(), v.Run); err != nil || got != nil {
+		t.Errorf("the overrides of a run without = %+v, %v", got, err)
+	}
+	twice, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{
+		Type: kernel.RunTypeProposed, Overrides: ovs,
+	})
+	if err != nil || twice.Run.ID == over.Run.ID {
+		t.Errorf("the same overrides again = %s, %v; want another run", twice.Run.ID, err)
+	}
+	if plain, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{
+		Type: kernel.RunTypeProposed,
+	}); err != nil || plain.Run.ID != v.Run.ID {
+		t.Errorf("a proposal without overrides = %s, %v; want %s", plain.Run.ID, err, v.Run.ID)
+	}
+
 	for name, c := range map[string]struct {
 		s       *trigger.Service
 		slug    string
@@ -107,7 +140,19 @@ func TestAccTrigger(t *testing.T) {
 		pointer string
 		is      error
 	}{
-		"a task":          {s, "network", trigger.Input{Type: kernel.RunTypeTask}, "/runType", nil},
+		"a task": {s, "network", trigger.Input{Type: kernel.RunTypeTask}, "/runType", nil},
+		"overrides on a tracked run": {
+			s, "network",
+			trigger.Input{Overrides: []lifecycle.Override{{Name: "A", Value: "1"}}},
+			"/environmentVarsOverrides", nil,
+		},
+		"an infraweave variable": {
+			s, "network",
+			trigger.Input{Type: kernel.RunTypeProposed, Overrides: []lifecycle.Override{
+				{Name: "TF_VAR_infraweave_run_id", Value: "1"},
+			}},
+			"/environmentVarsOverrides/0/key", nil,
+		},
 		"an unknown SHA":  {s, "network", trigger.Input{CommitSHA: "gone"}, "/commitSha", nil},
 		"an unknown slug": {s, "gone", trigger.Input{}, "", stacksapi.ErrNotFound},
 		"no sources": {
@@ -143,6 +188,13 @@ func TestAccTrigger(t *testing.T) {
 	}); !errors.Is(err, lifecycle.ErrDisabled) {
 		t.Errorf("a disabled stack = %v, want ErrDisabled", err)
 	}
+}
+
+// refused reports whether err is a *kernel.Invalid refusing one field,
+// at pointer.
+func refused(err error, pointer string) bool {
+	inv, ok := errors.AsType[*kernel.Invalid](err)
+	return ok && len(inv.Errors) == 1 && inv.Errors[0].Pointer == pointer
 }
 
 // uploads is the uploads store as the trigger sees it: each key's
@@ -229,8 +281,16 @@ func TestAccTriggerLocalPreview(t *testing.T) {
 		trigger.ErrLocalPreview) {
 		t.Errorf("an upload to a stack without local previews = %v", err)
 	}
-	if _, err := s.ProposeWorkspace(ctx, alice, "network", kernel.NewULID().String()); !errors.Is(
-		err, trigger.ErrLocalPreview) {
+	if _, err := s.ProposeWorkspace(
+		ctx,
+		alice,
+		"network",
+		kernel.NewULID().String(),
+		nil,
+	); !errors.Is(
+		err,
+		trigger.ErrLocalPreview,
+	) {
 		t.Errorf("a proposal on a stack without local previews = %v", err)
 	}
 	st.LocalPreviewEnabled = true
@@ -272,33 +332,33 @@ func TestAccTriggerLocalPreview(t *testing.T) {
 		"an upload never put": up.ID.String(), "another stack's upload": other.String(),
 		"an unknown upload": kernel.NewULID().String(), "no ULID": "workspace",
 	} {
-		_, err := s.ProposeWorkspace(ctx, alice, "network", id)
+		_, err := s.ProposeWorkspace(ctx, alice, "network", id, nil)
 		if inv, ok := errors.AsType[*kernel.Invalid](err); !ok ||
 			inv.Errors[0].Pointer != "/workspace" || inv.Errors[0].Reason != kernel.ReasonNotFound {
 			t.Errorf("%s = %v, want Invalid at /workspace", name, err)
 		}
 	}
 	u.stored[key] = 10
-	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); err == nil ||
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil); err == nil ||
 		!strings.Contains(err.Error(), "holds other bytes") {
 		t.Errorf("an upload of other bytes = %v", err)
 	}
 	u.stored[key] = trigger.MaxWorkspace
 
-	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil); !errors.Is(err,
 		trigger.ErrNoCommit) {
 		t.Errorf("a stack with no commit = %v, want ErrNoCommit", err)
 	}
 	tracked := stacksapi.Commit{Hash: "tracked", Message: "Pinned"}
 	st.TrackedCommit = &tracked
 	w.stacks.settings[w.stack] = st
-	v, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String())
+	v, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil)
 	if err != nil || v.Run.Type != kernel.RunTypeProposed || v.Run.LocalWorkspace != key ||
 		!v.Run.LocalPreview() || v.Run.Commit.Hash != "tracked" || v.Run.Commit.Branch != "main" ||
 		!u.live[key] {
 		t.Fatalf("a proposal = %+v, %v", v.Run, err)
 	}
-	again, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String())
+	again, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil)
 	if err != nil || again.Run.ID != v.Run.ID {
 		t.Errorf("a second proposal = %s, %v; want %s", again.Run.ID, err, v.Run.ID)
 	}
@@ -306,13 +366,28 @@ func TestAccTriggerLocalPreview(t *testing.T) {
 	if err != nil || commit.Run.ID == v.Run.ID || commit.Run.LocalPreview() {
 		t.Errorf("a proposal on the tracked commit = %+v, %v", commit.Run, err)
 	}
+	ovs := []lifecycle.Override{{Name: "DEBUG", Value: "1"}}
+	over, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), ovs)
+	if err != nil || over.Run.ID == v.Run.ID || over.Run.LocalWorkspace != key {
+		t.Errorf("a proposal with overrides on the same upload = %+v, %v", over.Run, err)
+	}
+	if again, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil); err != nil ||
+		again.Run.ID != v.Run.ID {
+		t.Errorf("a proposal after one with overrides = %s, %v; want %s", again.Run.ID, err,
+			v.Run.ID)
+	}
+	bad := []lifecycle.Override{{Name: "INFRAWEAVE_API_TOKEN", Value: "x"}}
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), bad); !refused(err,
+		"/environmentVarsOverrides/0/key") {
+		t.Errorf("a proposal overriding infraweave's variable = %v", err)
+	}
 
 	if _, err := s.UploadWorkspace(ctx, alice, "gone", 10, sum); !errors.Is(err,
 		stacksapi.ErrNotFound) {
 		t.Errorf("an unknown stack = %v", err)
 	}
 	w.stacks.err["Settings"] = errInjected
-	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil); !errors.Is(err,
 		errInjected) {
 		t.Errorf("a failed settings read = %v", err)
 	}
@@ -326,7 +401,7 @@ func TestAccTriggerLocalPreview(t *testing.T) {
 		delete(u.err, method)
 	}
 	u.err["Live"] = errInjected
-	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil); !errors.Is(err,
 		errInjected) {
 		t.Errorf("a failed Live = %v", err)
 	}
@@ -338,7 +413,7 @@ func TestAccTriggerLocalPreview(t *testing.T) {
 		t.Fatal(err)
 	}
 	u.stored[fmt.Sprintf("%s/%s/%s", w.acct, w.stack, up.ID)] = 10
-	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String()); !errors.Is(err,
+	if _, err := s.ProposeWorkspace(ctx, alice, "network", up.ID.String(), nil); !errors.Is(err,
 		lifecycle.ErrDisabled) {
 		t.Errorf("a disabled stack = %v, want ErrDisabled", err)
 	}

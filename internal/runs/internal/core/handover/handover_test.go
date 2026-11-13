@@ -34,9 +34,14 @@ var errDown = errors.New("down")
 // store holds one run and its artifact key; err fails Handed and keyErr
 // ArtifactKey.
 type store struct {
-	run         lifecycle.Run
-	key         []byte
-	err, keyErr error
+	run                      lifecycle.Run
+	key                      []byte
+	overrides                []lifecycle.Override
+	err, keyErr, overrideErr error
+}
+
+func (s *store) Overrides(context.Context, lifecycle.Run) ([]lifecycle.Override, error) {
+	return s.overrides, s.overrideErr
 }
 
 func (s *store) Handed(_ context.Context, id kernel.ULID) (lifecycle.Run, error) {
@@ -560,6 +565,53 @@ func TestUnitHandoverMetadata(t *testing.T) {
 					count["local_preview"])
 			}
 		})
+	}
+}
+
+// TestUnitHandoverOverrides checks that a run's overrides replace the
+// stack's variables of their names, unrendered, keeping a write-only
+// one sealed; that a template reads the overridden value; that an
+// override no variable names is set in the clear; and that a failed read
+// of the overrides fails the handover.
+func TestUnitHandoverOverrides(t *testing.T) {
+	w := newWorld(t)
+	w.env.resolved.Elements = []configapi.Element{
+		variable("REGION", "eu", false),
+		variable("TOKEN", "s3cret", true),
+		variable("URL", "https://${{ env.REGION }}.example.com", false),
+	}
+	w.store.overrides = []lifecycle.Override{
+		{Name: "REGION", Value: "${{ us }}"},
+		{Name: "TOKEN", Value: "t3st"},
+		{Name: "DEBUG", Value: "1"},
+	}
+	h, err := w.handover(t, w.run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clear, writeOnly := map[string]string{}, map[string]bool{}
+	for _, v := range h.Spec.Environment {
+		if v.Value != nil {
+			clear[v.Name] = *v.Value
+		}
+		writeOnly[v.Name] = v.WriteOnly
+	}
+	if clear["REGION"] != "${{ us }}" || clear["DEBUG"] != "1" ||
+		clear["URL"] != "https://${{ us }}.example.com" || !writeOnly["TOKEN"] {
+		t.Errorf("environment = %v, write-only %v", clear, writeOnly)
+	}
+	var got sealed
+	if err := json.Unmarshal(h.Secrets.Reveal(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Environment["TOKEN"] != "t3st" {
+		t.Errorf("the sealed TOKEN = %q", got.Environment["TOKEN"])
+	}
+
+	down := errors.New("store down")
+	w.store.overrideErr = down
+	if _, err := w.handover(t, w.run.ID); !errors.Is(err, down) {
+		t.Errorf("a handover whose overrides fail = %v", err)
 	}
 }
 

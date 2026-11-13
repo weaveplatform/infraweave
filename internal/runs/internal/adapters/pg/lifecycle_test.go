@@ -298,7 +298,7 @@ func newWorld(t *testing.T) *world {
 	db := pool(t)
 	w := &world{
 		db: db, acct: kernel.NewAccountID(), stack: kernel.NewULID(),
-		sources: &fakeSources{}, store: pg.New(db, nil), jobs: queue.New(db),
+		sources: &fakeSources{}, store: pg.New(db, keyring(t, db)), jobs: queue.New(db),
 		now: time.Date(2026, 11, 11, 9, 30, 0, 123456789, time.UTC),
 	}
 	kinds := outbox.NewKinds()

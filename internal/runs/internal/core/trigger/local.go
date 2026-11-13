@@ -91,11 +91,12 @@ func (s *Service) UploadWorkspace(
 
 // ProposeWorkspace creates a PROPOSED run of p's account's stack slug on
 // the local workspace upload uploaded, with the stack's tracked commit,
-// else its branch head, as its commit's metadata, or answers the run of
-// that upload that has not ended. The upload is committed with the run,
+// else its branch head, as its commit's metadata, and the environment
+// overrides ovs, or, with no overrides, answers the run of that upload
+// that has not ended. The upload is committed with the run,
 // so it is read from then on. An upload that is not the stack's, was
 // never uploaded, or has expired is a *kernel.Invalid pointing at
-// /workspace; a stack that does not enable local previews refuses with
+// /workspace, as are overrides CheckOverrides refuses; a stack that does not enable local previews refuses with
 // ErrLocalPreview.
 //
 // ref: decision 0008 § "The run specification and its secrets"
@@ -103,7 +104,11 @@ func (s *Service) ProposeWorkspace(
 	ctx context.Context,
 	p kernel.Principal,
 	slug, upload string,
+	ovs []lifecycle.Override,
 ) (read.View, error) {
+	if err := CheckOverrides(ovs); err != nil {
+		return read.View{}, err
+	}
 	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.previewable(ctx, p.AccountID, slug)
@@ -125,7 +130,7 @@ func (s *Service) ProposeWorkspace(
 		commit.Branch = st.Branch
 		run, _, err := s.d.Lifecycle.Create(ctx, lifecycle.NewRun{
 			Account: p.AccountID, Stack: st.ID, Type: kernel.RunTypeProposed, Commit: commit,
-			Actor: lifecycle.ActorOf(p), LocalWorkspace: k,
+			Actor: lifecycle.ActorOf(p), LocalWorkspace: k, Overrides: ovs,
 		})
 		if err != nil {
 			return err //nolint:wrapcheck // the lifecycle names the refusal

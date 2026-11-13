@@ -48,18 +48,21 @@ func (s *Service) BindSources(src stacksapi.StackSources) {
 
 // Input is a trigger: the run's type, TRACKED when empty; the commit SHA
 // it works on, the stack's tracked commit when empty; its runtime
-// configuration, as JSON; and its force-apply mode.
+// configuration, as JSON; its force-apply mode; and the environment
+// overrides of a PROPOSED run.
 type Input struct {
 	Type          kernel.RunType
 	CommitSHA     string
 	RuntimeConfig json.RawMessage
 	ForceApply    string
+	Overrides     []lifecycle.Override
 }
 
 // Trigger creates p's run on its account's stack slug in one transaction,
-// or answers the run of the stack, type and commit that has not ended. A
-// type other than TRACKED or PROPOSED, and a commit the repository lacks,
-// are a *kernel.Invalid; with no commit named, the stack's tracked commit
+// or, with no overrides, answers the run of the stack, type and commit
+// that has not ended. A type other than TRACKED or PROPOSED, overrides on
+// another type or that CheckOverrides refuses, and a commit the
+// repository lacks, are a *kernel.Invalid; with no commit named, the stack's tracked commit
 // is used, else its branch head, else ErrNoCommit. A trigger names no
 // branch, so the run is created for the stack's tracked branch whatever
 // its type. The lifecycle refuses a disabled stack and one another caller
@@ -85,6 +88,18 @@ func (s *Service) Trigger(
 			}},
 		}
 	}
+	if len(in.Overrides) > 0 && typ != kernel.RunTypeProposed {
+		return read.View{}, &kernel.Invalid{
+			Detail: "Only a proposed run takes environment variable overrides.",
+			Errors: []kernel.FieldError{{
+				Pointer: "/environmentVarsOverrides", Reason: kernel.ReasonRule,
+				Message: fmt.Sprintf("A %s run takes no overrides.", typ),
+			}},
+		}
+	}
+	if err := CheckOverrides(in.Overrides); err != nil {
+		return read.View{}, err
+	}
 	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
@@ -103,6 +118,7 @@ func (s *Service) Trigger(
 		run, _, err := s.d.Lifecycle.Create(ctx, lifecycle.NewRun{
 			Account: p.AccountID, Stack: st.ID, Type: typ, Commit: commit,
 			Actor: lifecycle.ActorOf(p), RuntimeConfig: in.RuntimeConfig, ForceApply: in.ForceApply,
+			Overrides: in.Overrides,
 		})
 		if err != nil {
 			return err //nolint:wrapcheck // the lifecycle names the refusal
