@@ -3,6 +3,7 @@ package workspace_test
 import (
 	"archive/tar"
 	"bytes"
+	"crypto/ecdh"
 	"crypto/rand"
 	"errors"
 	"os"
@@ -12,6 +13,18 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/workspace"
 )
+
+const run = "01HZX4Y9Q2W8E5R7T3V6K1M0PA"
+
+// poolKey is a fresh pool key.
+func poolKey(t *testing.T) *ecdh.PrivateKey {
+	t.Helper()
+	k, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return k
+}
 
 // ent is a tar entry with its body.
 type ent struct {

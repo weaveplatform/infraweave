@@ -19,8 +19,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/workspace"
 )
 
-const run = "01HZX4Y9Q2W8E5R7T3V6K1M0PA"
-
 // tree writes files, by slash path, under a new directory and answers it.
 func tree(t *testing.T, files map[string]string) string {
 	t.Helper()
@@ -35,15 +33,6 @@ func tree(t *testing.T, files map[string]string) string {
 		}
 	}
 	return dir
-}
-
-func poolKey(t *testing.T) *ecdh.PrivateKey {
-	t.Helper()
-	k, err := ecdh.P256().GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return k
 }
 
 // contents are dir's entries by slash path: a file's content, a link's
