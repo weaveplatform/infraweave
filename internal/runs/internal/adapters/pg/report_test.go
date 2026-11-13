@@ -17,12 +17,12 @@ import (
 )
 
 // TestAccReportStore checks a run's state by state version, the plan's
-// delta kept on it, its log chunks indexed once by state version and
-// sequence number, its other
-// uploads recorded once by kind and name with the last workspace read
-// back, and a deleted account's chunks and records purged a batch at a
-// time with their objects' stores and keys and each state's compacted
-// log, another account's kept.
+// delta kept on it and read back with the run, its log chunks indexed
+// once by state version and sequence number, its other uploads recorded
+// once by kind and name with the last workspace and the last changes
+// document of a planning state read back, and a deleted account's chunks
+// and records purged a batch at a time with their objects' stores and
+// keys and each state's compacted log, another account's kept.
 func TestAccReportStore(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -51,6 +51,12 @@ func TestAccReportStore(t *testing.T) {
 			`"outputs": true, "resources": 9}` {
 		t.Errorf("the kept delta is %s, %v", delta, err)
 	}
+	if r, err := s.Get(ctx, acct, id); err != nil || r.Delta == nil ||
+		*r.Delta != (workersapi.Delta{
+			Add: 1, Import: 4, Move: 2, Forget: 3, Resources: 9, Outputs: true,
+		}) {
+		t.Errorf("the run's delta is %+v, %v", r.Delta, err)
+	}
 
 	at := time.Unix(1_800_000_000, 0).UTC()
 	for _, seq := range []int64{0, 1} {
@@ -76,11 +82,27 @@ func TestAccReportStore(t *testing.T) {
 	if _, ok, err := s.Workspace(ctx, run); ok || err != nil {
 		t.Errorf("Workspace of none = %t, %v", ok, err)
 	}
+	if _, ok, err := s.Changes(ctx, run); ok || err != nil {
+		t.Errorf("Changes of none = %t, %v", ok, err)
+	}
+	for seq, state := range map[int]kernel.RunState{
+		3: kernel.RunStatePlanning, 5: kernel.RunStatePlanning, 7: kernel.RunStateApplying,
+	} {
+		if _, err := db.Exec(ctx, `INSERT INTO run_state_transitions (account_id, run_id,
+			sequence, state, terminal) VALUES ($1, $2, $3, $4, false)`, acct, id, seq,
+			state); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for _, a := range []report.Artifact{
 		{Version: 3, Kind: workersapi.UploadWorkspace, Name: "ws", Key: "ws-3"},
 		{Version: 5, Kind: workersapi.UploadWorkspace, Name: "ws", Key: "ws-5"},
 		{Version: 5, Kind: workersapi.UploadArtifact, Name: "plan.json", Key: "plan", Size: 9},
 		{Version: 5, Kind: workersapi.UploadObservability, Name: "trace", Key: "trace"},
+		{Version: 3, Kind: workersapi.UploadArtifact, Name: "changes.json", Key: "changes-3"},
+		{Version: 5, Kind: workersapi.UploadArtifact, Name: "changes.json", Key: "changes-5"},
+		{Version: 7, Kind: workersapi.UploadArtifact, Name: "changes.json", Key: "changes-7"},
+		{Version: 9, Kind: workersapi.UploadWorkspace, Name: "changes.json", Key: "ws-9"},
 	} {
 		if err := s.Record(ctx, run, a); err != nil {
 			t.Fatal(err)
@@ -100,8 +122,11 @@ func TestAccReportStore(t *testing.T) {
 		err != nil {
 		t.Errorf("Recorded of another kind = %t, %v", ok, err)
 	}
-	if key, ok, err := s.Workspace(ctx, run); key != "ws-5" || !ok || err != nil {
+	if key, ok, err := s.Workspace(ctx, run); key != "ws-9" || !ok || err != nil {
 		t.Errorf("Workspace = %q, %t, %v", key, ok, err)
+	}
+	if key, ok, err := s.Changes(ctx, run); key != "changes-5" || !ok || err != nil {
+		t.Errorf("Changes = %q, %t, %v", key, ok, err)
 	}
 
 	otherRun, err := s.Handed(ctx, insertRun(t, db, other, kernel.NewULID(), false))
@@ -137,7 +162,9 @@ func TestAccReportStore(t *testing.T) {
 		report.LogKey(acct, id, kernel.RunStatePlanning, 3): objectstore.RunLogs,
 		"ws-3": objectstore.Workspaces,
 		"ws-5": objectstore.Workspaces, "plan": objectstore.RunArtifacts,
-		"trace": objectstore.RunObservability,
+		"trace": objectstore.RunObservability, "changes-3": objectstore.RunArtifacts,
+		"changes-5": objectstore.RunArtifacts, "changes-7": objectstore.RunArtifacts,
+		"ws-9": objectstore.Workspaces,
 	}
 	if len(got) != len(want) {
 		t.Errorf("purged %+v", got)
@@ -162,6 +189,7 @@ func TestAccReportStore(t *testing.T) {
 		}(),
 		"Record":       s.Record(ctx, run, report.Artifact{Kind: workersapi.UploadArtifact}),
 		"Workspace":    func() error { _, _, err := s.Workspace(ctx, run); return err }(),
+		"Changes":      func() error { _, _, err := s.Changes(ctx, run); return err }(),
 		"SetDelta":     s.SetDelta(ctx, run, workersapi.Delta{}),
 		"PurgeObjects": func() error { _, err := s.PurgeObjects(context.Background(), acct, 1); return err }(),
 	} {

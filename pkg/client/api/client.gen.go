@@ -809,6 +809,51 @@ func (e BlobStorageSubtype) Valid() bool {
 	}
 }
 
+// Defines values for ChangeValueBooleanKind.
+const (
+	ChangeValueBooleanKindChangeValueBoolean ChangeValueBooleanKind = "ChangeValueBoolean"
+)
+
+// Valid indicates whether the value is a known member of the ChangeValueBooleanKind enum.
+func (e ChangeValueBooleanKind) Valid() bool {
+	switch e {
+	case ChangeValueBooleanKindChangeValueBoolean:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeValueFloatKind.
+const (
+	ChangeValueFloatKindChangeValueFloat ChangeValueFloatKind = "ChangeValueFloat"
+)
+
+// Valid indicates whether the value is a known member of the ChangeValueFloatKind enum.
+func (e ChangeValueFloatKind) Valid() bool {
+	switch e {
+	case ChangeValueFloatKindChangeValueFloat:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeValueStringKind.
+const (
+	ChangeValueStringKindChangeValueString ChangeValueStringKind = "ChangeValueString"
+)
+
+// Valid indicates whether the value is a known member of the ChangeValueStringKind enum.
+func (e ChangeValueStringKind) Valid() bool {
+	switch e {
+	case ChangeValueStringKindChangeValueString:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CloudFormationOutputKind.
 const (
 	CloudFormationOutputKindCloudFormationOutput CloudFormationOutputKind = "CloudFormationOutput"
@@ -881,6 +926,117 @@ const (
 func (e ContextKind) Valid() bool {
 	switch e {
 	case ContextKindContext:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for EntityChangePhase.
+const (
+	EntityChangePhaseAPPLY EntityChangePhase = "APPLY"
+	EntityChangePhaseDRIFT EntityChangePhase = "DRIFT"
+	EntityChangePhasePLAN  EntityChangePhase = "PLAN"
+)
+
+// Valid indicates whether the value is a known member of the EntityChangePhase enum.
+func (e EntityChangePhase) Valid() bool {
+	switch e {
+	case EntityChangePhaseAPPLY:
+		return true
+	case EntityChangePhaseDRIFT:
+		return true
+	case EntityChangePhasePLAN:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for EntityChangeResult.
+const (
+	EntityChangeResultFAILED     EntityChangeResult = "FAILED"
+	EntityChangeResultPARTIAL    EntityChangeResult = "PARTIAL"
+	EntityChangeResultPLANNED    EntityChangeResult = "PLANNED"
+	EntityChangeResultSUCCESSFUL EntityChangeResult = "SUCCESSFUL"
+	EntityChangeResultUNKNOWN    EntityChangeResult = "UNKNOWN"
+	EntityChangeResultUNPLANNED  EntityChangeResult = "UNPLANNED"
+)
+
+// Valid indicates whether the value is a known member of the EntityChangeResult enum.
+func (e EntityChangeResult) Valid() bool {
+	switch e {
+	case EntityChangeResultFAILED:
+		return true
+	case EntityChangeResultPARTIAL:
+		return true
+	case EntityChangeResultPLANNED:
+		return true
+	case EntityChangeResultSUCCESSFUL:
+		return true
+	case EntityChangeResultUNKNOWN:
+		return true
+	case EntityChangeResultUNPLANNED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for EntityChangeType.
+const (
+	EntityChangeTypeADD                        EntityChangeType = "ADD"
+	EntityChangeTypeCHANGE                     EntityChangeType = "CHANGE"
+	EntityChangeTypeCREATEAFTERFORGOTTEN       EntityChangeType = "CREATE_AFTER_FORGOTTEN"
+	EntityChangeTypeDELETE                     EntityChangeType = "DELETE"
+	EntityChangeTypeFAILED                     EntityChangeType = "FAILED"
+	EntityChangeTypeFORGET                     EntityChangeType = "FORGET"
+	EntityChangeTypeIGNORED                    EntityChangeType = "IGNORED"
+	EntityChangeTypeIMPORT                     EntityChangeType = "IMPORT"
+	EntityChangeTypeNOOP                       EntityChangeType = "NOOP"
+	EntityChangeTypeOK                         EntityChangeType = "OK"
+	EntityChangeTypeREAD                       EntityChangeType = "READ"
+	EntityChangeTypeREPLACECREATEBEFOREDESTROY EntityChangeType = "REPLACE_CREATE_BEFORE_DESTROY"
+	EntityChangeTypeREPLACEDESTROYBEFORECREATE EntityChangeType = "REPLACE_DESTROY_BEFORE_CREATE"
+	EntityChangeTypeRESCUED                    EntityChangeType = "RESCUED"
+	EntityChangeTypeSKIPPED                    EntityChangeType = "SKIPPED"
+	EntityChangeTypeUNREACHABLE                EntityChangeType = "UNREACHABLE"
+)
+
+// Valid indicates whether the value is a known member of the EntityChangeType enum.
+func (e EntityChangeType) Valid() bool {
+	switch e {
+	case EntityChangeTypeADD:
+		return true
+	case EntityChangeTypeCHANGE:
+		return true
+	case EntityChangeTypeCREATEAFTERFORGOTTEN:
+		return true
+	case EntityChangeTypeDELETE:
+		return true
+	case EntityChangeTypeFAILED:
+		return true
+	case EntityChangeTypeFORGET:
+		return true
+	case EntityChangeTypeIGNORED:
+		return true
+	case EntityChangeTypeIMPORT:
+		return true
+	case EntityChangeTypeNOOP:
+		return true
+	case EntityChangeTypeOK:
+		return true
+	case EntityChangeTypeREAD:
+		return true
+	case EntityChangeTypeREPLACECREATEBEFOREDESTROY:
+		return true
+	case EntityChangeTypeREPLACEDESTROYBEFORECREATE:
+		return true
+	case EntityChangeTypeRESCUED:
+		return true
+	case EntityChangeTypeSKIPPED:
+		return true
+	case EntityChangeTypeUNREACHABLE:
 		return true
 	default:
 		return false
@@ -1093,37 +1249,37 @@ func (e ForceApplyMode) Valid() bool {
 
 // Defines values for GitHubAppStatus.
 const (
-	APPNOTFOUND                       GitHubAppStatus = "APP_NOT_FOUND"
-	COULDNOTDECODE                    GitHubAppStatus = "COULD_NOT_DECODE"
-	ERROR                             GitHubAppStatus = "ERROR"
-	OK                                GitHubAppStatus = "OK"
-	VCSAGENTERROR                     GitHubAppStatus = "VCS_AGENT_ERROR"
-	VCSAGENTERRORFORBIDDEN            GitHubAppStatus = "VCS_AGENT_ERROR_FORBIDDEN"
-	VCSAGENTERRORNOPOOLAGENTCONNECTED GitHubAppStatus = "VCS_AGENT_ERROR_NO_POOL_AGENT_CONNECTED"
-	VCSAGENTERRORTIMEOUT              GitHubAppStatus = "VCS_AGENT_ERROR_TIMEOUT"
-	VCSAGENTPOOLNOTFOUND              GitHubAppStatus = "VCS_AGENT_POOL_NOT_FOUND"
+	GitHubAppStatusAPPNOTFOUND                       GitHubAppStatus = "APP_NOT_FOUND"
+	GitHubAppStatusCOULDNOTDECODE                    GitHubAppStatus = "COULD_NOT_DECODE"
+	GitHubAppStatusERROR                             GitHubAppStatus = "ERROR"
+	GitHubAppStatusOK                                GitHubAppStatus = "OK"
+	GitHubAppStatusVCSAGENTERROR                     GitHubAppStatus = "VCS_AGENT_ERROR"
+	GitHubAppStatusVCSAGENTERRORFORBIDDEN            GitHubAppStatus = "VCS_AGENT_ERROR_FORBIDDEN"
+	GitHubAppStatusVCSAGENTERRORNOPOOLAGENTCONNECTED GitHubAppStatus = "VCS_AGENT_ERROR_NO_POOL_AGENT_CONNECTED"
+	GitHubAppStatusVCSAGENTERRORTIMEOUT              GitHubAppStatus = "VCS_AGENT_ERROR_TIMEOUT"
+	GitHubAppStatusVCSAGENTPOOLNOTFOUND              GitHubAppStatus = "VCS_AGENT_POOL_NOT_FOUND"
 )
 
 // Valid indicates whether the value is a known member of the GitHubAppStatus enum.
 func (e GitHubAppStatus) Valid() bool {
 	switch e {
-	case APPNOTFOUND:
+	case GitHubAppStatusAPPNOTFOUND:
 		return true
-	case COULDNOTDECODE:
+	case GitHubAppStatusCOULDNOTDECODE:
 		return true
-	case ERROR:
+	case GitHubAppStatusERROR:
 		return true
-	case OK:
+	case GitHubAppStatusOK:
 		return true
-	case VCSAGENTERROR:
+	case GitHubAppStatusVCSAGENTERROR:
 		return true
-	case VCSAGENTERRORFORBIDDEN:
+	case GitHubAppStatusVCSAGENTERRORFORBIDDEN:
 		return true
-	case VCSAGENTERRORNOPOOLAGENTCONNECTED:
+	case GitHubAppStatusVCSAGENTERRORNOPOOLAGENTCONNECTED:
 		return true
-	case VCSAGENTERRORTIMEOUT:
+	case GitHubAppStatusVCSAGENTERRORTIMEOUT:
 		return true
-	case VCSAGENTPOOLNOTFOUND:
+	case GitHubAppStatusVCSAGENTPOOLNOTFOUND:
 		return true
 	default:
 		return false
@@ -3812,6 +3968,41 @@ type BranchesPage struct {
 	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
+// ChangeValue defines model for ChangeValue.
+type ChangeValue struct {
+	union json.RawMessage
+}
+
+// ChangeValueBoolean defines model for ChangeValueBoolean.
+type ChangeValueBoolean struct {
+	// Kind The concrete type, for union and interface responses.
+	Kind  ChangeValueBooleanKind `json:"kind"`
+	Value bool                   `json:"value"`
+}
+
+// ChangeValueBooleanKind The concrete type, for union and interface responses.
+type ChangeValueBooleanKind string
+
+// ChangeValueFloat defines model for ChangeValueFloat.
+type ChangeValueFloat struct {
+	// Kind The concrete type, for union and interface responses.
+	Kind  ChangeValueFloatKind `json:"kind"`
+	Value float32              `json:"value"`
+}
+
+// ChangeValueFloatKind The concrete type, for union and interface responses.
+type ChangeValueFloatKind string
+
+// ChangeValueString defines model for ChangeValueString.
+type ChangeValueString struct {
+	// Kind The concrete type, for union and interface responses.
+	Kind  ChangeValueStringKind `json:"kind"`
+	Value string                `json:"value"`
+}
+
+// ChangeValueStringKind The concrete type, for union and interface responses.
+type ChangeValueStringKind string
+
 // ClaimMapping defines model for ClaimMapping.
 type ClaimMapping struct {
 	Entries []ClaimMappingEntry `json:"entries"`
@@ -4275,6 +4466,114 @@ type EffectiveTerragruntVersionResult struct {
 
 	// Tool TerragruntTool defines the underlying tool run by Terragrunt.
 	Tool TerragruntTool `json:"tool"`
+}
+
+// EntityAttributeChange defines model for EntityAttributeChange.
+type EntityAttributeChange struct {
+	ChangeForPhase EntityAttributeChangeForPhase `json:"changeForPhase"`
+
+	// Path JSON path to the changed property
+	Path string `json:"path"`
+}
+
+// EntityAttributeChangeForPhase defines model for EntityAttributeChangeForPhase.
+type EntityAttributeChangeForPhase struct {
+	After *ChangeValue `json:"after,omitempty"`
+
+	// AfterUnknown True when the after value is "known after apply" — the value cannot be determined
+	// at plan time and will only be resolved during apply. Clients should render this
+	// as "(known after apply)" rather than treating `after` as a literal null.
+	AfterUnknown bool                                  `json:"afterUnknown"`
+	Before       *ChangeValue                          `json:"before,omitempty"`
+	Metadata     EntityAttributeChangeForPhaseMetadata `json:"metadata"`
+}
+
+// EntityAttributeChangeForPhaseMetadata defines model for EntityAttributeChangeForPhaseMetadata.
+type EntityAttributeChangeForPhaseMetadata struct {
+	Phase EntityChangePhase `json:"phase"`
+
+	// Type Type of a entity change.
+	Type EntityChangeType `json:"type"`
+}
+
+// EntityChangeCollectionInputV2 defines model for EntityChangeCollectionInputV2.
+type EntityChangeCollectionInputV2 struct {
+	// After List the entity changes after this ID
+	// When paginating the PageInfo.endCursor returned contains the next after value
+	After       *string            `json:"after,omitempty"`
+	ChangePhase *EntityChangePhase `json:"changePhase,omitempty"`
+
+	// ChangeType Type of a entity change.
+	ChangeType *EntityChangeType `json:"changeType,omitempty"`
+
+	// First List the first * items
+	First *int32 `json:"first,omitempty"`
+}
+
+// EntityChangeConnectionV2 defines model for EntityChangeConnectionV2.
+type EntityChangeConnectionV2 struct {
+	Cursor string `json:"cursor"`
+
+	// Node A Terraform managed entity change description.
+	Node EntityChangeV2 `json:"node"`
+}
+
+// EntityChangeMetadata defines model for EntityChangeMetadata.
+type EntityChangeMetadata struct {
+	Moved bool `json:"moved"`
+
+	// Result Status of a entity change.
+	Result EntityChangeResult `json:"result"`
+
+	// Type Type of a entity change.
+	Type EntityChangeType `json:"type"`
+}
+
+// EntityChangePhase defines model for EntityChangePhase.
+type EntityChangePhase string
+
+// EntityChangeResult Status of a entity change.
+type EntityChangeResult string
+
+// EntityChangeType Type of a entity change.
+type EntityChangeType string
+
+// EntityChangeV2 A Terraform managed entity change description.
+type EntityChangeV2 struct {
+	// Entity Managed infrastructure entity V2
+	Entity ManagedEntityV2   `json:"entity"`
+	Phase  EntityChangePhase `json:"phase"`
+
+	// Type Type of a entity change.
+	Type EntityChangeType `json:"type"`
+}
+
+// EntityChangeV3 A Terraform-family (Terraform, OpenTofu, Terragrunt) managed entity change description.
+type EntityChangeV3 struct {
+	// Address The address of the resource
+	Address string `json:"address"`
+
+	// AttributeChanges Changes here is a list of the changes that happened to the individual resource
+	// For example: if someone edited the tags on an EC2 instance, this would be a list of the tags that changed
+	AttributeChanges []EntityAttributeChange `json:"attributeChanges"`
+	Metadata         EntityChangeMetadata    `json:"metadata"`
+
+	// PreviousAddress The previous address of the resource in the case of the resource being moved
+	PreviousAddress string `json:"previousAddress"`
+}
+
+// EntityChangesInputV3 defines model for EntityChangesInputV3.
+type EntityChangesInputV3 struct {
+	ChangePhase *EntityChangePhase `json:"changePhase,omitempty"`
+
+	// ChangeType Type of a entity change.
+	ChangeType *EntityChangeType `json:"changeType,omitempty"`
+}
+
+// EntityChangesV2 defines model for EntityChangesV2.
+type EntityChangesV2 struct {
+	Edges    []EntityChangeConnectionV2 `json:"edges"`
+	PageInfo PageInfo                   `json:"pageInfo"`
 }
 
 // EntityVendor Vendor-specific managed entity metadata.
@@ -5123,6 +5422,36 @@ type ManagedEntity struct {
 
 	// Vendor Vendor-specific managed entity metadata.
 	Vendor EntityVendor `json:"vendor"`
+}
+
+// ManagedEntityV2 Managed infrastructure entity V2
+type ManagedEntityV2 struct {
+	// Address Address of the ManagedEntity in the module.
+	Address string `json:"address"`
+
+	// Creator A reference to a Run; fetch it with GET /runs/{runId}.
+	Creator *RunRef `json:"creator,omitempty"`
+
+	// Drifted Unix timestamp of when drift was detected on this entity, if ever.
+	Drifted *int32 `json:"drifted,omitempty"`
+
+	// Id ID of the ManagedEntity, its full address.
+	Id string `json:"id"`
+
+	// Name ManagedEntity Name.
+	Name string `json:"name"`
+
+	// Parent Parent of this entity. May be a module or may be another entity.
+	Parent string `json:"parent"`
+
+	// ThirdPartyMetadata Custom metadata attached to the entity by a third-party integration.
+	ThirdPartyMetadata *string `json:"thirdPartyMetadata,omitempty"`
+
+	// Type ManagedEntity Type.
+	Type string `json:"type"`
+
+	// Updater A reference to a Run; fetch it with GET /runs/{runId}.
+	Updater *RunRef `json:"updater,omitempty"`
 }
 
 // ManagedStateVersion This represent a managed state version
@@ -6088,6 +6417,11 @@ type RepositoryPage struct {
 
 	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
 	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// ResourceChange defines model for ResourceChange.
+type ResourceChange struct {
+	Resources []EntityChangeV3 `json:"resources"`
 }
 
 // Role defines model for Role.
@@ -10843,6 +11177,16 @@ type RoleUpdateParams struct {
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
+// RunChangesV2Params defines parameters for RunChangesV2.
+type RunChangesV2Params struct {
+	Input EntityChangeCollectionInputV2 `form:"input" json:"input"`
+}
+
+// RunChangesV3Params defines parameters for RunChangesV3.
+type RunChangesV3Params struct {
+	Input EntityChangesInputV3 `form:"input" json:"input"`
+}
+
 // RunLogsParams defines parameters for RunLogs.
 type RunLogsParams struct {
 	// State The state whose lines to read.
@@ -12212,6 +12556,143 @@ func (t AnsibleEntity) MarshalJSON() ([]byte, error) {
 }
 
 func (t *AnsibleEntity) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsChangeValueBoolean returns the union data inside the ChangeValue as a ChangeValueBoolean
+func (t ChangeValue) AsChangeValueBoolean() (ChangeValueBoolean, error) {
+	var body ChangeValueBoolean
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromChangeValueBoolean overwrites any union data inside the ChangeValue as the provided ChangeValueBoolean
+func (t *ChangeValue) FromChangeValueBoolean(v ChangeValueBoolean) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ChangeValueBoolean"}`))
+	t.union = b
+	return err
+}
+
+// MergeChangeValueBoolean performs a merge with any union data inside the ChangeValue, using the provided ChangeValueBoolean
+func (t *ChangeValue) MergeChangeValueBoolean(v ChangeValueBoolean) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ChangeValueBoolean"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsChangeValueString returns the union data inside the ChangeValue as a ChangeValueString
+func (t ChangeValue) AsChangeValueString() (ChangeValueString, error) {
+	var body ChangeValueString
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromChangeValueString overwrites any union data inside the ChangeValue as the provided ChangeValueString
+func (t *ChangeValue) FromChangeValueString(v ChangeValueString) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ChangeValueString"}`))
+	t.union = b
+	return err
+}
+
+// MergeChangeValueString performs a merge with any union data inside the ChangeValue, using the provided ChangeValueString
+func (t *ChangeValue) MergeChangeValueString(v ChangeValueString) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ChangeValueString"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsChangeValueFloat returns the union data inside the ChangeValue as a ChangeValueFloat
+func (t ChangeValue) AsChangeValueFloat() (ChangeValueFloat, error) {
+	var body ChangeValueFloat
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromChangeValueFloat overwrites any union data inside the ChangeValue as the provided ChangeValueFloat
+func (t *ChangeValue) FromChangeValueFloat(v ChangeValueFloat) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ChangeValueFloat"}`))
+	t.union = b
+	return err
+}
+
+// MergeChangeValueFloat performs a merge with any union data inside the ChangeValue, using the provided ChangeValueFloat
+func (t *ChangeValue) MergeChangeValueFloat(v ChangeValueFloat) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"kind":"ChangeValueFloat"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ChangeValue) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"kind"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t ChangeValue) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "ChangeValueBoolean":
+		return t.AsChangeValueBoolean()
+	case "ChangeValueFloat":
+		return t.AsChangeValueFloat()
+	case "ChangeValueString":
+		return t.AsChangeValueString()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t ChangeValue) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ChangeValue) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -16040,6 +16521,33 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /runs/{runId} (the `Run` operationId).
 	Run(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunChangesV2 Run changes V2
+	//
+	// The entities the run changed, a page at a time, in the order its
+	// plan lists them. Pass the page's pageInfo.endCursor as input.after
+	// to read on. Without input.changePhase every phase's changes are
+	// listed. Only the plan records changes, so an apply or a drift
+	// detection lists none, and a run that has not planned lists none.
+	// Each entity's id is its address, address its address within its
+	// module, and parent that module, empty for the root module.
+	//
+	// Corresponds with GET /runs/{runId}/changes-v2 (the `RunChangesV2` operationId).
+	RunChangesV2(ctx context.Context, runId string, params *RunChangesV2Params, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunChangesV3 Run changes V3
+	//
+	// The resources the run changed in the phase input.changePhase names,
+	// else in its latest phase that recorded changes, in the order its
+	// plan lists them, as one set. Only the plan records changes, so an
+	// apply or a drift detection answers none, and a run that has not
+	// planned answers an empty list. Only Terraform and OpenTofu stacks
+	// have resource changes: another vendor's run is refused, and
+	// changes-v2 reads its changes. Each change's attributeChanges is
+	// empty.
+	//
+	// Corresponds with GET /runs/{runId}/changes-v3 (the `RunChangesV3` operationId).
+	RunChangesV3(ctx context.Context, runId string, params *RunChangesV3Params, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunLogs Run logs
 	//
@@ -22701,6 +23209,53 @@ func (c *Client) SearchRunsSuggestions(ctx context.Context, body SearchRunsSugge
 // Corresponds with GET /runs/{runId} (the `Run` operationId).
 func (c *Client) Run(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunRequest(c.Server, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunChangesV2 Run changes V2
+//
+// The entities the run changed, a page at a time, in the order its
+// plan lists them. Pass the page's pageInfo.endCursor as input.after
+// to read on. Without input.changePhase every phase's changes are
+// listed. Only the plan records changes, so an apply or a drift
+// detection lists none, and a run that has not planned lists none.
+// Each entity's id is its address, address its address within its
+// module, and parent that module, empty for the root module.
+//
+// Corresponds with GET /runs/{runId}/changes-v2 (the `RunChangesV2` operationId).
+func (c *Client) RunChangesV2(ctx context.Context, runId string, params *RunChangesV2Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunChangesV2Request(c.Server, runId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunChangesV3 Run changes V3
+//
+// The resources the run changed in the phase input.changePhase names,
+// else in its latest phase that recorded changes, in the order its
+// plan lists them, as one set. Only the plan records changes, so an
+// apply or a drift detection answers none, and a run that has not
+// planned answers an empty list. Only Terraform and OpenTofu stacks
+// have resource changes: another vendor's run is refused, and
+// changes-v2 reads its changes. Each change's attributeChanges is
+// empty.
+//
+// Corresponds with GET /runs/{runId}/changes-v3 (the `RunChangesV3` operationId).
+func (c *Client) RunChangesV3(ctx context.Context, runId string, params *RunChangesV3Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunChangesV3Request(c.Server, runId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -36521,6 +37076,116 @@ func NewRunRequest(server string, runId string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewRunChangesV2Request constructs an http.Request for the RunChangesV2 method
+func NewRunChangesV2Request(server string, runId string, params *RunChangesV2Params) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/changes-v2", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRunChangesV3Request constructs an http.Request for the RunChangesV3 method
+func NewRunChangesV3Request(server string, runId string, params *RunChangesV3Params) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/changes-v3", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRunLogsRequest constructs an http.Request for the RunLogs method
 func NewRunLogsRequest(server string, runId string, params *RunLogsParams) (*http.Request, error) {
 	var err error
@@ -48374,6 +49039,37 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /runs/{runId} (the `Run` operationId).
 	RunWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RunResponse, error)
+
+	// RunChangesV2WithResponse Run changes V2
+	//
+	// The entities the run changed, a page at a time, in the order its
+	// plan lists them. Pass the page's pageInfo.endCursor as input.after
+	// to read on. Without input.changePhase every phase's changes are
+	// listed. Only the plan records changes, so an apply or a drift
+	// detection lists none, and a run that has not planned lists none.
+	// Each entity's id is its address, address its address within its
+	// module, and parent that module, empty for the root module.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId}/changes-v2 (the `RunChangesV2` operationId).
+	RunChangesV2WithResponse(ctx context.Context, runId string, params *RunChangesV2Params, reqEditors ...RequestEditorFn) (*RunChangesV2Response, error)
+
+	// RunChangesV3WithResponse Run changes V3
+	//
+	// The resources the run changed in the phase input.changePhase names,
+	// else in its latest phase that recorded changes, in the order its
+	// plan lists them, as one set. Only the plan records changes, so an
+	// apply or a drift detection answers none, and a run that has not
+	// planned answers an empty list. Only Terraform and OpenTofu stacks
+	// have resource changes: another vendor's run is refused, and
+	// changes-v2 reads its changes. Each change's attributeChanges is
+	// empty.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId}/changes-v3 (the `RunChangesV3` operationId).
+	RunChangesV3WithResponse(ctx context.Context, runId string, params *RunChangesV3Params, reqEditors ...RequestEditorFn) (*RunChangesV3Response, error)
 
 	// RunLogsWithResponse Run logs
 	//
@@ -69296,6 +69992,203 @@ func (r RunResponse) ContentType() string {
 	return ""
 }
 
+// RunChangesV2Response200Headers the declared response headers of an HTTP 200 response for RunChangesV2
+type RunChangesV2Response200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunChangesV2Response429Headers the declared response headers of an HTTP 429 response for RunChangesV2
+type RunChangesV2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunChangesV2Response503Headers the declared response headers of an HTTP 503 response for RunChangesV2
+type RunChangesV2Response503Headers struct {
+	RetryAfter *int
+}
+
+type RunChangesV2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EntityChangesV2
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunChangesV2Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunChangesV2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunChangesV2Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunChangesV2Response) GetJSON200() *EntityChangesV2 {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RunChangesV2Response) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunChangesV2Response) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunChangesV2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunChangesV2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunChangesV2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunChangesV2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunChangesV2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunChangesV2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunChangesV2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunChangesV3Response200Headers the declared response headers of an HTTP 200 response for RunChangesV3
+type RunChangesV3Response200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunChangesV3Response429Headers the declared response headers of an HTTP 429 response for RunChangesV3
+type RunChangesV3Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunChangesV3Response503Headers the declared response headers of an HTTP 503 response for RunChangesV3
+type RunChangesV3Response503Headers struct {
+	RetryAfter *int
+}
+
+type RunChangesV3Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]ResourceChange
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunChangesV3Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunChangesV3Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunChangesV3Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunChangesV3Response) GetJSON200() *[]ResourceChange {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunChangesV3Response) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunChangesV3Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunChangesV3Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunChangesV3Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunChangesV3Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunChangesV3Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunChangesV3Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunChangesV3Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RunLogsResponse200Headers the declared response headers of an HTTP 200 response for RunLogs
 type RunLogsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -89788,6 +90681,49 @@ func (c *ClientWithResponses) RunWithResponse(ctx context.Context, runId string,
 		return nil, err
 	}
 	return ParseRunResponse(rsp)
+}
+
+// RunChangesV2WithResponse Run changes V2
+//
+// The entities the run changed, a page at a time, in the order its
+// plan lists them. Pass the page's pageInfo.endCursor as input.after
+// to read on. Without input.changePhase every phase's changes are
+// listed. Only the plan records changes, so an apply or a drift
+// detection lists none, and a run that has not planned lists none.
+// Each entity's id is its address, address its address within its
+// module, and parent that module, empty for the root module.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId}/changes-v2 (the `RunChangesV2` operationId).
+func (c *ClientWithResponses) RunChangesV2WithResponse(ctx context.Context, runId string, params *RunChangesV2Params, reqEditors ...RequestEditorFn) (*RunChangesV2Response, error) {
+	rsp, err := c.RunChangesV2(ctx, runId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunChangesV2Response(rsp)
+}
+
+// RunChangesV3WithResponse Run changes V3
+//
+// The resources the run changed in the phase input.changePhase names,
+// else in its latest phase that recorded changes, in the order its
+// plan lists them, as one set. Only the plan records changes, so an
+// apply or a drift detection answers none, and a run that has not
+// planned answers an empty list. Only Terraform and OpenTofu stacks
+// have resource changes: another vendor's run is refused, and
+// changes-v2 reads its changes. Each change's attributeChanges is
+// empty.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId}/changes-v3 (the `RunChangesV3` operationId).
+func (c *ClientWithResponses) RunChangesV3WithResponse(ctx context.Context, runId string, params *RunChangesV3Params, reqEditors ...RequestEditorFn) (*RunChangesV3Response, error) {
+	rsp, err := c.RunChangesV3(ctx, runId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunChangesV3Response(rsp)
 }
 
 // RunLogsWithResponse Run logs
@@ -117426,6 +118362,257 @@ func ParseRunResponse(rsp *http.Response) (*RunResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunChangesV2Response parses an HTTP response from a RunChangesV2WithResponse call
+func ParseRunChangesV2Response(rsp *http.Response) (*RunChangesV2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunChangesV2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EntityChangesV2
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunChangesV2Response200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunChangesV2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunChangesV2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunChangesV3Response parses an HTTP response from a RunChangesV3WithResponse call
+func ParseRunChangesV3Response(rsp *http.Response) (*RunChangesV3Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunChangesV3Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ResourceChange
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunChangesV3Response200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunChangesV3Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunChangesV3Response503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

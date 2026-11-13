@@ -313,8 +313,6 @@
       "searchManagedEntitiesGroupByTypes"
     ],
     "Runs": [
-      "runChangesV2",
-      "runChangesV3",
       "runComment",
       "runCpuProfileDownloadURL",
       "runDiscardAll",

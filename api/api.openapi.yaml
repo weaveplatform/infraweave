@@ -9661,6 +9661,135 @@ paths:
         - rate-limit
       x-infraweave-subject: path:runId:run
       x-rest-style: item
+  /runs/{runId}/changes-v2:
+    get:
+      description: |-
+        The entities the run changed, a page at a time, in the order its
+        plan lists them. Pass the page's pageInfo.endCursor as input.after
+        to read on. Without input.changePhase every phase's changes are
+        listed. Only the plan records changes, so an apply or a drift
+        detection lists none, and a run that has not planned lists none.
+        Each entity's id is its address, address its address within its
+        module, and parent that module, empty for the root module.
+      operationId: runChangesV2
+      x-infraweave-feature: runs
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityChangeCollectionInputV2'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityChangesV2'
+          description: The changesV2 result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run changes V2
+      tags:
+        - Runs
+      x-graphql:
+        field: changesV2
+        operation: query
+        type: Run
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: field
+  /runs/{runId}/changes-v3:
+    get:
+      description: |-
+        The resources the run changed in the phase input.changePhase names,
+        else in its latest phase that recorded changes, in the order its
+        plan lists them, as one set. Only the plan records changes, so an
+        apply or a drift detection answers none, and a run that has not
+        planned answers an empty list. Only Terraform and OpenTofu stacks
+        have resource changes: another vendor's run is refused, and
+        changes-v2 reads its changes. Each change's attributeChanges is
+        empty.
+      operationId: runChangesV3
+      x-infraweave-feature: runs
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityChangesInputV3'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ResourceChange'
+                type: array
+          description: The changesV3 result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run changes V3
+      tags:
+        - Runs
+      x-graphql:
+        field: changesV3
+        operation: query
+        type: Run
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: field
   /runs/{runId}/logs:
     get:
       description: |-
@@ -21452,6 +21581,61 @@ components:
       required:
         - items
       type: object
+    ChangeValue:
+      discriminator:
+        mapping:
+          ChangeValueBoolean: '#/components/schemas/ChangeValueBoolean'
+          ChangeValueFloat: '#/components/schemas/ChangeValueFloat'
+          ChangeValueString: '#/components/schemas/ChangeValueString'
+        propertyName: kind
+      oneOf:
+        - $ref: '#/components/schemas/ChangeValueBoolean'
+        - $ref: '#/components/schemas/ChangeValueString'
+        - $ref: '#/components/schemas/ChangeValueFloat'
+      x-graphql-kind: UNION
+      x-graphql-type: ChangeValue
+    ChangeValueBoolean:
+      properties:
+        kind:
+          description: The concrete type, for union and interface responses.
+          enum:
+            - ChangeValueBoolean
+          type: string
+        value:
+          type: boolean
+      required:
+        - kind
+        - value
+      type: object
+      x-graphql-type: ChangeValueBoolean
+    ChangeValueFloat:
+      properties:
+        kind:
+          description: The concrete type, for union and interface responses.
+          enum:
+            - ChangeValueFloat
+          type: string
+        value:
+          type: number
+      required:
+        - kind
+        - value
+      type: object
+      x-graphql-type: ChangeValueFloat
+    ChangeValueString:
+      properties:
+        kind:
+          description: The concrete type, for union and interface responses.
+          enum:
+            - ChangeValueString
+          type: string
+        value:
+          type: string
+      required:
+        - kind
+        - value
+      type: object
+      x-graphql-type: ChangeValueString
     ClaimMapping:
       properties:
         entries:
@@ -22237,6 +22421,226 @@ components:
         - tool
       type: object
       x-graphql-type: EffectiveTerragruntVersionResult
+    EntityAttributeChange:
+      properties:
+        changeForPhase:
+          $ref: '#/components/schemas/EntityAttributeChangeForPhase'
+        path:
+          description: JSON path to the changed property
+          type: string
+      required:
+        - changeForPhase
+        - path
+      type: object
+      x-graphql-type: EntityAttributeChange
+    EntityAttributeChangeForPhase:
+      properties:
+        after:
+          $ref: '#/components/schemas/ChangeValue'
+        afterUnknown:
+          description: |-
+            True when the after value is "known after apply" — the value cannot be determined
+            at plan time and will only be resolved during apply. Clients should render this
+            as "(known after apply)" rather than treating `after` as a literal null.
+          type: boolean
+        before:
+          $ref: '#/components/schemas/ChangeValue'
+        metadata:
+          $ref: '#/components/schemas/EntityAttributeChangeForPhaseMetadata'
+      required:
+        - afterUnknown
+        - metadata
+      type: object
+      x-graphql-type: EntityAttributeChangeForPhase
+    EntityAttributeChangeForPhaseMetadata:
+      properties:
+        phase:
+          $ref: '#/components/schemas/EntityChangePhase'
+        type:
+          $ref: '#/components/schemas/EntityChangeType'
+      required:
+        - phase
+        - type
+      type: object
+      x-graphql-type: EntityAttributeChangeForPhaseMetadata
+    EntityChangeCollectionInputV2:
+      additionalProperties: false
+      properties:
+        after:
+          description: |-
+            List the entity changes after this ID
+            When paginating the PageInfo.endCursor returned contains the next after value
+          nullable: true
+          type: string
+        changePhase:
+          $ref: '#/components/schemas/EntityChangePhase'
+        changeType:
+          $ref: '#/components/schemas/EntityChangeType'
+        first:
+          description: List the first * items
+          format: int32
+          nullable: true
+          type: integer
+      type: object
+      x-graphql-type: EntityChangeCollectionInputV2
+    EntityChangeConnectionV2:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/EntityChangeV2'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: EntityChangeConnectionV2
+    EntityChangeMetadata:
+      properties:
+        moved:
+          type: boolean
+        result:
+          $ref: '#/components/schemas/EntityChangeResult'
+        type:
+          $ref: '#/components/schemas/EntityChangeType'
+      required:
+        - moved
+        - result
+        - type
+      type: object
+      x-graphql-type: EntityChangeMetadata
+    EntityChangePhase:
+      enum:
+        - DRIFT
+        - PLAN
+        - APPLY
+      type: string
+      x-enum-descriptions:
+        APPLY: entity change was performed during the applying phase
+        DRIFT: entity change was performed during a drift detection run
+        PLAN: entity change was performed during the planning phase
+      x-graphql-type: EntityChangePhase
+    EntityChangeResult:
+      description: Status of a entity change.
+      enum:
+        - PLANNED
+        - SUCCESSFUL
+        - FAILED
+        - PARTIAL
+        - UNPLANNED
+        - UNKNOWN
+      type: string
+      x-enum-descriptions:
+        FAILED: Change was planned and has not been applied.
+        PARTIAL: |-
+          Change was planned and has been applied but has partially failed.
+          Change type is REPLACE_* and either ADD or DELETE has not been applied.
+        PLANNED: Change has not been applied.
+        SUCCESSFUL: Change was planned and has been applied.
+        UNKNOWN: Change result is unknown
+        UNPLANNED: Change which wasn't planned but is being applied.
+      x-graphql-type: EntityChangeResult
+    EntityChangeType:
+      description: Type of a entity change.
+      enum:
+        - ADD
+        - CHANGE
+        - DELETE
+        - REPLACE_CREATE_BEFORE_DESTROY
+        - REPLACE_DESTROY_BEFORE_CREATE
+        - NOOP
+        - READ
+        - IMPORT
+        - FORGET
+        - CREATE_AFTER_FORGOTTEN
+        - OK
+        - SKIPPED
+        - RESCUED
+        - IGNORED
+        - UNREACHABLE
+        - FAILED
+      type: string
+      x-enum-descriptions:
+        ADD: A new entity will be created.
+        CHANGE: An existing entity will be updated in-place.
+        CREATE_AFTER_FORGOTTEN: |-
+          An existing entity will be removed from the state but not destroyed, and a
+          replacement will be created.
+        DELETE: An existing entity will be deleted.
+        FAILED: A task that failed.
+        FORGET: An existing entity will be removed from the state but not destroyed.
+        IGNORED: A task that resulted with status ignored.
+        IMPORT: A new entity will be imported.
+        NOOP: A no-op change.
+        OK: A task that resulted with status ok.
+        READ: A read, no-op change.
+        REPLACE_CREATE_BEFORE_DESTROY: An existing entity will replaced by first creating a replacement and then deleting the original.
+        REPLACE_DESTROY_BEFORE_CREATE: An existing entity will replaced by first deleting the original and then creating a replacement.
+        RESCUED: A task that resulted with status rescued.
+        SKIPPED: A task that resulted with status skipped.
+        UNREACHABLE: A host that was unreachable.
+      x-graphql-type: EntityChangeType
+    EntityChangeV2:
+      description: A Terraform managed entity change description.
+      properties:
+        entity:
+          $ref: '#/components/schemas/ManagedEntityV2'
+        phase:
+          $ref: '#/components/schemas/EntityChangePhase'
+        type:
+          $ref: '#/components/schemas/EntityChangeType'
+      required:
+        - entity
+        - phase
+        - type
+      type: object
+      x-graphql-type: EntityChangeV2
+    EntityChangeV3:
+      description: A Terraform-family (Terraform, OpenTofu, Terragrunt) managed entity change description.
+      properties:
+        address:
+          description: The address of the resource
+          type: string
+        attributeChanges:
+          description: |-
+            Changes here is a list of the changes that happened to the individual resource
+            For example: if someone edited the tags on an EC2 instance, this would be a list of the tags that changed
+          items:
+            $ref: '#/components/schemas/EntityAttributeChange'
+          type: array
+        metadata:
+          $ref: '#/components/schemas/EntityChangeMetadata'
+        previousAddress:
+          description: The previous address of the resource in the case of the resource being moved
+          type: string
+      required:
+        - address
+        - attributeChanges
+        - metadata
+        - previousAddress
+      type: object
+      x-graphql-type: EntityChangeV3
+    EntityChangesInputV3:
+      additionalProperties: false
+      properties:
+        changePhase:
+          $ref: '#/components/schemas/EntityChangePhase'
+        changeType:
+          $ref: '#/components/schemas/EntityChangeType'
+      type: object
+      x-graphql-type: EntityChangesInputV3
+    EntityChangesV2:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/EntityChangeConnectionV2'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: EntityChangesV2
     EntityVendor:
       description: Vendor-specific managed entity metadata.
       discriminator:
@@ -23734,6 +24138,45 @@ components:
         - vendor
       type: object
       x-graphql-type: ManagedEntity
+    ManagedEntityV2:
+      description: Managed infrastructure entity V2
+      properties:
+        address:
+          description: Address of the ManagedEntity in the module.
+          type: string
+        creator:
+          $ref: '#/components/schemas/RunRef'
+        drifted:
+          description: Unix timestamp of when drift was detected on this entity, if ever.
+          format: int32
+          nullable: true
+          type: integer
+        id:
+          description: ID of the ManagedEntity, its full address.
+          type: string
+        name:
+          description: ManagedEntity Name.
+          type: string
+        parent:
+          description: Parent of this entity. May be a module or may be another entity.
+          type: string
+        thirdPartyMetadata:
+          description: Custom metadata attached to the entity by a third-party integration.
+          nullable: true
+          type: string
+        type:
+          description: ManagedEntity Type.
+          type: string
+        updater:
+          $ref: '#/components/schemas/RunRef'
+      required:
+        - address
+        - id
+        - name
+        - parent
+        - type
+      type: object
+      x-graphql-type: ManagedEntityV2
     ManagedStateVersion:
       description: This represent a managed state version
       properties:
@@ -25386,6 +25829,16 @@ components:
       required:
         - items
       type: object
+    ResourceChange:
+      properties:
+        resources:
+          items:
+            $ref: '#/components/schemas/EntityChangeV3'
+          type: array
+      required:
+        - resources
+      type: object
+      x-graphql-type: ResourceChange
     Role:
       properties:
         actions:

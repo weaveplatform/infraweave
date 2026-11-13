@@ -694,5 +694,95 @@ func TestUnitStrictBodies(t *testing.T) {
 	}
 }
 
+// TestUnitStrictQueries checks that an operation whose query parameter
+// carries a JSON object its schema closes answers 400 invalid-request,
+// before its handler, for an unknown member, named by its pointer under
+// the parameter, a value its enum lacks, a wrong type, JSON that does not
+// parse and a missing required parameter, and passes a good one; a
+// lenient parameter is not checked. The served runChangesV3 and
+// stackSearchManagedEntities are strict.
+func TestUnitStrictQueries(t *testing.T) {
+	ops := apiOperations()
+	for _, key := range []string{
+		"GET /runs/{runId}/changes-v3", "GET /stacks/{stackId}/search-managed-entities",
+	} {
+		method, path, _ := strings.Cut(key, " ")
+		if q := ops[method+" "+BaseURL+path].Query; len(q) != 1 || q[0].Value.Name != "input" {
+			t.Errorf("%s's input is not checked", key)
+		}
+	}
+	if q := ops["GET "+BaseURL+"/runs/{runId}/logs"].Query; len(q) != 0 {
+		t.Errorf("runLogs' plain parameters are checked as JSON: %v", q)
+	}
+	no := false
+	object := func(closed bool) *openapi3.Schema {
+		s := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"phase": openapi3.NewStringSchema().WithEnum("PLAN", "APPLY").NewRef(),
+			},
+		}
+		if closed {
+			s.AdditionalProperties = openapi3.AdditionalProperties{Has: &no}
+		}
+		return s
+	}
+	param := func(closed bool) *openapi3.ParameterRef {
+		return &openapi3.ParameterRef{Value: &openapi3.Parameter{
+			Name: "input", In: openapi3.ParameterInQuery, Required: true,
+			Content: openapi3.NewContentWithJSONSchema(object(closed)),
+		}}
+	}
+	strict := strictQuery(&openapi3.Operation{Parameters: openapi3.Parameters{
+		param(true), {Value: openapi3.NewQueryParameter("plain")},
+	}})
+	if len(strict) != 1 || len(strictQuery(&openapi3.Operation{
+		Parameters: openapi3.Parameters{param(false)},
+	})) != 0 {
+		t.Fatalf("strictQuery = %v", strict)
+	}
+	runs := 0
+	r := Guarded(discard(), config.Defaults().Server, Operations{
+		"GET /strict": {Cost: ratelimit.Standard, Public: true, Query: strict},
+		"GET /plain":  {Cost: ratelimit.Standard, Public: true},
+	}, memory(config.Defaults().Server), nil, nil, nil)
+	ok := func(w http.ResponseWriter, r *http.Request) {
+		runs++
+		w.WriteHeader(http.StatusOK)
+	}
+	r.Get("/strict", ok)
+	r.Get("/plain", ok)
+	get := func(path, input string) *httptest.ResponseRecorder {
+		target := path
+		if input != "" {
+			target += "?input=" + url.QueryEscape(input)
+		}
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
+		req.RemoteAddr = "192.0.2.1:1"
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		return rec
+	}
+	for _, input := range []string{`{"phase":"LATER"}`, `{"phase":7}`, `{"phase"`, ``} {
+		wantTyped(t, get("/strict", input), problem.InvalidRequest)
+	}
+	var p problem.Problem
+	rec := get("/strict", `{"phase":"PLAN","after":"x"}`)
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || len(p.Errors) != 1 ||
+		p.Errors[0].Pointer != "#/query/input/after" ||
+		p.Errors[0].Reason != kernel.ReasonUnknownField {
+		t.Errorf("an unknown member answers %s", rec.Body)
+	}
+	if runs != 0 {
+		t.Fatalf("a refused input reached the handler %d times", runs)
+	}
+	if rec := get("/strict", `{"phase":"PLAN"}`); rec.Code != http.StatusOK {
+		t.Errorf("a good input: %d %s", rec.Code, rec.Body)
+	}
+	if rec := get("/plain", `{"anything":1}`); rec.Code != http.StatusOK || runs != 2 {
+		t.Errorf("a plain parameter: %d, %d runs", rec.Code, runs)
+	}
+}
+
 // gate is the gate of an operation that needs the capability feature only.
 func gate(feature string) featuresapi.Gate { return featuresapi.Gate{Feature: feature} }

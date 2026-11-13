@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 var (
@@ -24,10 +25,11 @@ var (
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config,
 	coalesce(force_apply_mode, ''), coalesce(local_workspace, ''), worker_pool_id, worker_id,
-	created_at, updated_at`
+	created_at, updated_at, delta`
 
 // insertColumns are runColumns as an INSERT names them, with the
-// priority_tier the claim orders by.
+// priority_tier the claim orders by and without the delta, which a plan
+// sets.
 const insertColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config, force_apply_mode,
 	local_workspace, worker_pool_id, worker_id, created_at, updated_at, priority_tier`
@@ -37,16 +39,26 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 	var (
 		r                    lifecycle.Run
 		typ, state, priority string
-		commit               []byte
+		commit, d            []byte
 	)
 	err := row.Scan(&r.Account, &r.ID, &r.Stack, &typ, &state, &r.Version, &r.StateChangedAt,
 		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.RuntimeConfig, &r.ForceApply,
-		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt)
+		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt, &d)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
 	}
 	if err := json.Unmarshal(commit, &r.Commit); err != nil {
 		return lifecycle.Run{}, fmt.Errorf("runs: decode the commit of run %s: %w", r.ID, err)
+	}
+	if d != nil {
+		var kept delta
+		if err := json.Unmarshal(d, &kept); err != nil {
+			return lifecycle.Run{}, fmt.Errorf("runs: decode the delta of run %s: %w", r.ID, err)
+		}
+		r.Delta = &workersapi.Delta{
+			Add: kept.Add, Change: kept.Change, Delete: kept.Delete, Import: kept.Import,
+			Move: kept.Move, Forget: kept.Forget, Resources: kept.Resources, Outputs: kept.Outputs,
+		}
 	}
 	r.Type, r.State, r.Priority = kernel.RunType(typ), kernel.RunState(state),
 		kernel.RunPriority(priority)

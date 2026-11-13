@@ -762,6 +762,14 @@ func (UnimplementedStrict) Run(context.Context, RunRequestObject) (RunResponseOb
 	return nil, &problem.NotImplementedError{OperationID: "run", Route: "GET /runs/{runId}"}
 }
 
+func (UnimplementedStrict) RunChangesV2(context.Context, RunChangesV2RequestObject) (RunChangesV2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runChangesV2", Route: "GET /runs/{runId}/changes-v2"}
+}
+
+func (UnimplementedStrict) RunChangesV3(context.Context, RunChangesV3RequestObject) (RunChangesV3ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runChangesV3", Route: "GET /runs/{runId}/changes-v3"}
+}
+
 func (UnimplementedStrict) RunLogs(context.Context, RunLogsRequestObject) (RunLogsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runLogs", Route: "GET /runs/{runId}/logs"}
 }
