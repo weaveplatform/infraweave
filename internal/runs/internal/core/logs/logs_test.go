@@ -459,33 +459,46 @@ func TestUnitLogsDownload(t *testing.T) {
 		return d
 	}
 	planning := report.LogKey(w.s.run.Account, w.s.run.ID, kernel.RunStatePlanning, 5)
-	for name, c := range map[string]struct {
+	// The cases run in order: compacted writes the object pending reads
+	// as missing.
+	for _, c := range []struct {
+		name  string
 		setup func()
 		state kernel.RunState
 		v     *int64
 		want  logs.Download
 	}{
-		"never entered": {state: kernel.RunStateDestroying, want: logs.Download{Expired: true}},
-		"no chunk":      {state: kernel.RunStateInitializing, want: logs.Download{Expired: true}},
-		"in the state":  {state: kernel.RunStateApplying, want: logs.Download{Ongoing: true}},
-		"pending": {
-			setup: func() { w.chunk(5, 0, "a\n", 0) }, state: kernel.RunStatePlanning,
+		{
+			name: "never entered", state: kernel.RunStateDestroying,
+			want: logs.Download{Expired: true},
+		},
+		{
+			name: "no chunk", state: kernel.RunStateInitializing,
+			want: logs.Download{Expired: true},
+		},
+		{
+			name: "in the state", state: kernel.RunStateApplying,
 			want: logs.Download{Ongoing: true},
 		},
-		"compacted": {
-			setup: func() { w.o.put(planning, "a\n") }, state: kernel.RunStatePlanning,
-			v: version(5), want: logs.Download{URL: "https://store.test/" + planning},
+		{
+			name: "pending", setup: func() { w.chunk(5, 0, "a\n", 0) },
+			state: kernel.RunStatePlanning, want: logs.Download{Ongoing: true},
 		},
-		"retention removed the chunks": {
-			setup: func() { w.chunk(6, 0, "expired", 2) }, state: kernel.RunStateConfirmed,
-			want: logs.Download{Expired: true},
+		{
+			name: "compacted", setup: func() { w.o.put(planning, "a\n") },
+			state: kernel.RunStatePlanning, v: version(5),
+			want: logs.Download{URL: "https://store.test/" + planning},
+		},
+		{
+			name: "retention removed the chunks", setup: func() { w.chunk(6, 0, "expired", 2) },
+			state: kernel.RunStateConfirmed, want: logs.Download{Expired: true},
 		},
 	} {
 		if c.setup != nil {
 			c.setup()
 		}
 		if got := download(c.state, c.v); got != c.want {
-			t.Errorf("%s: %+v, want %+v", name, got, c.want)
+			t.Errorf("%s: %+v, want %+v", c.name, got, c.want)
 		}
 	}
 	if _, err := w.svc.Download(t.Context(), w.p, "nope", kernel.RunStatePlanning,
