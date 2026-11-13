@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -22,11 +23,13 @@ type Server struct {
 	trigger *trigger.Service
 	read    *read.Service
 	control *control.Service
+	logs    *logs.Service
 }
 
-// New returns the partial over the trigger, read and control services.
-func New(t *trigger.Service, r *read.Service, c *control.Service) Server {
-	return Server{trigger: t, read: r, control: c}
+// New returns the partial over the trigger, read, control and logs
+// services.
+func New(t *trigger.Service, r *read.Service, c *control.Service, l *logs.Service) Server {
+	return Server{trigger: t, read: r, control: c, logs: l}
 }
 
 // RunTrigger creates a run on the stack, or answers the one of the same

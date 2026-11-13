@@ -71,8 +71,9 @@ func (g grantsOf) Actions(
 
 // TestUnitRequire checks each subject's decision: 404 with one body for
 // a missing entity and one the caller cannot read, 403 naming the
-// action, 501 for an entity no domain registers, and the store's and
-// the authorizer's failures.
+// action, 501 for an entity no domain registers, the store's and the
+// authorizer's failures, and 403 for a run's token reading a run its
+// stack's space would show, though not for its reading the stack.
 func TestUnitRequire(t *testing.T) {
 	acct := kernel.NewAccountID()
 	top, team, secret := acct.ULID, kernel.NewULID(), kernel.NewULID()
@@ -110,6 +111,16 @@ func TestUnitRequire(t *testing.T) {
 			return kernel.ULID{}, accessapi.ErrNoSubject
 		},
 	)
+	subjects.Register(
+		"run",
+		func(_ context.Context, _ kernel.AccountID, id string) (kernel.ULID, error) {
+			if id == "mine" {
+				return team, nil
+			}
+			return kernel.ULID{}, accessapi.ErrNoSubject
+		},
+	)
+	inRun := kernel.Principal{Kind: kernel.PrincipalRun, ActorID: kernel.NewULID(), AccountID: acct}
 	stack := func(param string) accessapi.Subject {
 		return accessapi.Subject{Kind: accessapi.SubjectPath, Param: param, Entity: "stack"}
 	}
@@ -125,6 +136,7 @@ func TestUnitRequire(t *testing.T) {
 	}
 	for _, c := range []struct {
 		name   string
+		who    *kernel.Principal
 		authz  accessapi.Authorizer
 		req    accessapi.Required
 		target string
@@ -221,6 +233,21 @@ func TestUnitRequire(t *testing.T) {
 			req:  accessapi.Required{Action: accessapi.ActionStackCreate, Subject: query},
 			code: http.StatusNotFound, typ: problem.NotFound, detail: `No space "elsewhere" in this account.`,
 		},
+		{name: "in-run stack read", who: &inRun, req: accessapi.Required{
+			Action: read, Subject: stack("stackId"), Params: map[string]string{"stackId": "mine"},
+		}, code: http.StatusOK},
+		{name: "in-run run read", who: &inRun, req: accessapi.Required{
+			Action: read, Params: map[string]string{"runId": "mine"},
+			Subject: accessapi.Subject{Kind: accessapi.SubjectPath, Param: "runId", Entity: "run"},
+		}, code: http.StatusForbidden, typ: problem.Forbidden},
+		{name: "in-run run hidden", who: &inRun, req: accessapi.Required{
+			Action: read, Params: map[string]string{"runId": "theirs"},
+			Subject: accessapi.Subject{Kind: accessapi.SubjectPath, Param: "runId", Entity: "run"},
+		}, code: http.StatusNotFound, typ: problem.NotFound, detail: `No run "theirs" in this account.`},
+		{name: "run read", req: accessapi.Required{
+			Action: read, Params: map[string]string{"runId": "mine"},
+			Subject: accessapi.Subject{Kind: accessapi.SubjectPath, Param: "runId", Entity: "run"},
+		}, code: http.StatusOK},
 		{name: "authorizer down", authz: grantsOf{err: kernel.ErrUnavailable}, req: accessapi.Required{
 			Action: accessapi.ActionStackLock, Subject: stack("stackId"),
 			Params: map[string]string{"stackId": "mine"},
@@ -247,7 +274,11 @@ func TestUnitRequire(t *testing.T) {
 			if target == "" {
 				target = "/"
 			}
-			req := httptest.NewRequestWithContext(kernel.WithPrincipal(t.Context(), p),
+			who := p
+			if c.who != nil {
+				who = *c.who
+			}
+			req := httptest.NewRequestWithContext(kernel.WithPrincipal(t.Context(), who),
 				http.MethodPost, target, strings.NewReader(c.body))
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)

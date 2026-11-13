@@ -1177,6 +1177,15 @@
       "why": "The views answer from the evaluator that decides requests, which reads a grant inherited from a descendant and a key's teams, so a view that left them out would disagree with the decision",
       "impact": "A client that reads only `propagated` sees an inherited grant as bound on another space, which `source` tells apart; the session views answer rows where Spacelift answers none",
       "source": "[0007 Evaluation](../research/decisions/0007-authorization-spaces-and-roles.md#evaluation)"
+    },
+    {
+      "id": "DV-117",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "`runLogs` answers each line with its own timestamp, and `sanitize` strips ANSI codes, timestamps and noise lines",
+      "infraweave": "Each line's timestamp is when the worker began the chunk that holds it, so a chunk's lines share one; `sanitize` strips ANSI escape sequences and nothing else",
+      "why": "A runner writes plain masked lines in chunks and indexes each chunk's first and last write times, so no time is kept per line; which lines Spacelift counts as noise is unpublished",
+      "impact": "Lines within two seconds of each other can share a timestamp; a client that expects sanitized lines without leading timestamps or noise reads them as the tool wrote them",
+      "source": "[0008 Logs and artifacts](../research/decisions/0008-run-execution-and-worker-protocol.md#logs-and-artifacts)"
     }
   ]
 }

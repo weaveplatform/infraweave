@@ -284,11 +284,23 @@ func TestAccBlobsExpireBatch(t *testing.T) {
 
 // TestAccBlobsDelete checks that a delete in a transaction that rolls
 // back leaves the object live, and one that commits removes it after
-// the commit.
+// the commit; Live reports it live until the delete commits.
 func TestAccBlobsDelete(t *testing.T) {
 	h := open(t, objectstore.DriverFS)
 	body := random(100)
-	h.put(t, objectstore.RunArtifacts, "acct/plan", body)
+	if _, err := h.o.Put(t.Context(), objectstore.RunArtifacts, "acct/plan",
+		bytes.NewReader(body), int64(len(body))); err != nil {
+		t.Fatal(err)
+	}
+	if live, err := h.o.Live(t.Context(), objectstore.RunArtifacts, "acct/plan"); live ||
+		err != nil {
+		t.Errorf("Live of a pending object = %t, %v", live, err)
+	}
+	if err := tx.Do(t.Context(), h.pool, tx.Options{}, func(ctx context.Context) error {
+		return h.o.Commit(ctx, objectstore.RunArtifacts, "acct/plan")
+	}); err != nil {
+		t.Fatal(err)
+	}
 	h.run()
 
 	rollback := errors.New("the business change failed")
@@ -305,6 +317,10 @@ func TestAccBlobsDelete(t *testing.T) {
 		!bytes.Equal(h.read(t, objectstore.RunArtifacts, "acct/plan"), body) {
 		t.Fatal("a rolled-back delete removed the object")
 	}
+	if live, err := h.o.Live(t.Context(), objectstore.RunArtifacts, "acct/plan"); !live ||
+		err != nil {
+		t.Errorf("Live of a committed object = %t, %v", live, err)
+	}
 
 	if err := tx.Do(t.Context(), h.pool, tx.Options{}, func(ctx context.Context) error {
 		if err := h.o.Delete(ctx, objectstore.RunArtifacts, "acct/plan"); err != nil {
@@ -316,6 +332,10 @@ func TestAccBlobsDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.gone(t, objectstore.RunArtifacts, "acct/plan")
+	if live, err := h.o.Live(t.Context(), objectstore.RunArtifacts, "acct/plan"); live ||
+		err != nil {
+		t.Errorf("Live of a deleted object = %t, %v", live, err)
+	}
 	if _, err := h.o.Open(
 		t.Context(),
 		objectstore.RunArtifacts,

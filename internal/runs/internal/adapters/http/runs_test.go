@@ -16,7 +16,7 @@ import (
 // and an end before start or more than eight days after it, naming the
 // parameter.
 func TestUnitRunsInRange(t *testing.T) {
-	s := New(nil, nil, nil)
+	s := New(nil, nil, nil, nil)
 	for _, c := range []struct {
 		start, end, pointer, reason string
 	}{
@@ -37,10 +37,11 @@ func TestUnitRunsInRange(t *testing.T) {
 }
 
 // TestUnitRunsRefusals answers each operation with no principal 401, and
-// refuses a list's cursor or before that names no run, and a search's
-// offset below zero or beside a cursor, before any read.
+// refuses a list's cursor or before that names no run, a search's offset
+// below zero or beside a cursor, and a log's token that does not decode
+// or belongs to another run, state or state version, before any read.
 func TestUnitRunsRefusals(t *testing.T) {
-	s := New(nil, nil, nil)
+	s := New(nil, nil, nil, nil)
 	bg := context.Background()
 	for name, err := range map[string]error{
 		"Run":       second(s.Run(bg, api.RunRequestObject{})),
@@ -58,6 +59,9 @@ func TestUnitRunsRefusals(t *testing.T) {
 		"RunConfirm":     second(s.RunConfirm(bg, api.RunConfirmRequestObject{})),
 		"RunDiscard":     second(s.RunDiscard(bg, api.RunDiscardRequestObject{})),
 		"RunPrioritySet": second(s.RunPrioritySet(bg, api.RunPrioritySetRequestObject{})),
+		"RunLogs":        second(s.RunLogs(bg, api.RunLogsRequestObject{})),
+		"RunLogsDownloadURL": second(s.RunLogsDownloadURL(bg,
+			api.RunLogsDownloadURLRequestObject{})),
 	} {
 		if p, ok := errors.AsType[*problem.Error](err); !ok || p.Problem.Status != 401 {
 			t.Errorf("%s with no principal = %v", name, err)
@@ -81,7 +85,31 @@ func TestUnitRunsRefusals(t *testing.T) {
 			t.Errorf("%s = %v", name, err)
 		}
 	}
-	_, err := s.StackProposedRuns(ctx, api.StackProposedRunsRequestObject{
+	run := kernel.NewULID().String()
+	token, _ := page.Encode(logsList, kernel.Cursor[position]{
+		Key: position{State: kernel.RunStatePlanning, Version: 5, Seq: 2}, ID: run,
+	})
+	five, six := int32(5), int32(6)
+	for name, params := range map[string]api.RunLogsParams{
+		"a token that does not decode": {State: api.RunStatePLANNING, Token: &nope},
+		"another state's token":        {State: api.RunStateAPPLYING, Token: &token},
+		"another state version's token": {
+			State: api.RunStatePLANNING, StateVersion: &six, Token: &token,
+		},
+	} {
+		_, err := s.RunLogs(ctx, api.RunLogsRequestObject{RunId: run, Params: params})
+		if p, ok := errors.AsType[*problem.Error](err); !ok || p.Problem.Status != 400 {
+			t.Errorf("%s = %v", name, err)
+		}
+	}
+	_, err := s.RunLogs(ctx, api.RunLogsRequestObject{
+		RunId:  kernel.NewULID().String(),
+		Params: api.RunLogsParams{State: api.RunStatePLANNING, StateVersion: &five, Token: &token},
+	})
+	if p, ok := errors.AsType[*problem.Error](err); !ok || p.Problem.Status != 400 {
+		t.Errorf("another run's token = %v", err)
+	}
+	_, err = s.StackProposedRuns(ctx, api.StackProposedRunsRequestObject{
 		Params: api.StackProposedRunsParams{Before: &nope},
 	})
 	if inv, ok := errors.AsType[*kernel.Invalid](err); !ok ||

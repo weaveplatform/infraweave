@@ -1,10 +1,12 @@
-// Package runs holds the acceptance steps of features/runs: the run queue
-// and the scheduling of runs.
+// Package runs holds the acceptance steps of features/runs: the run
+// queue, the scheduling of runs, and a run's logs, which it writes as a
+// worker does and reads back.
 //
 // # Input and output
 //
-// It sends requests to the scenario's servers through pkg/sdk and seeds
-// and reads their database through SQL.
+// It sends requests to the scenario's servers through pkg/sdk, uploads
+// and downloads objects through the store's signed URLs, and seeds and
+// reads their database through SQL.
 //
 // # Dependencies
 //

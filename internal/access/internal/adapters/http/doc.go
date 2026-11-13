@@ -138,6 +138,8 @@
 // an entity the account lacks and one whose space the caller cannot read
 // answer one 404 not-found, an action the caller may not perform 403
 // forbidden naming it, and an entity kind no lookup is registered for 501.
+// A run's token is refused a visible run, task or log that RunDenied
+// keeps from it, which only the entity's kind tells apart.
 // It reads at most a mebibyte of a body for its field and leaves the body
 // whole for the handler.
 //

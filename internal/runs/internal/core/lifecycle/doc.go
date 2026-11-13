@@ -9,7 +9,9 @@
 // and blocked are written into the stacks domain whenever the tracked run
 // moves or a lock is released. Each move appends runsapi.Updated to the
 // outbox and, when it creates the run, ends it or leaves it waiting for a
-// confirmation, enqueues ScheduleKind for its stack. Create creates a run
+// confirmation, enqueues ScheduleKind for its stack; a move out of a
+// state a worker holds the run in enqueues CompactKind for that state's
+// log. Create creates a run
 // in QUEUED once per stack, type and commit among runs that have not
 // ended, after locking the stack's row, refusing a disabled stack with
 // ErrDisabled and a stack another caller locked with a Locked. Store is

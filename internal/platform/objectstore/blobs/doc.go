@@ -18,7 +18,8 @@
 // caller's transaction: CommitUpload checks the size with Head and, on gcs
 // and azureblob, whose URLs bind no SHA-256, reads the object back to
 // compare, and answers the size and SHA-256; a mismatch leaves the row
-// pending. Open reads a live object, opening a sealed one.
+// pending. Open reads a live object, opening a sealed one, and Live
+// reports whether an object is live.
 // Delete marks the row deleting and enqueues blob.delete in the caller's
 // transaction. Reaper is the scheduler's side, over the full Store:
 // blob.delete removes the object and then the row, and blob.expire marks
