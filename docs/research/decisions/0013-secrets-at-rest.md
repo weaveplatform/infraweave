@@ -262,6 +262,11 @@ the owning record beside it.
     artifact key ([0008](0008-run-execution-and-worker-protocol.md)).
   - **Per-object keys.** The runner derives each object's content key as
     HKDF-SHA256 of the artifact key with info `infraweave/artifact/<object key>`.
+    The object key is `<account>/<run>/<STATE>-<stateVersion>/<name>`. The
+    runner seals before it declares the upload, since the declaration names
+    the sealed bytes' size and SHA-256, so it builds the key from the run
+    spec, which names the run's account, ID, state and state version. The
+    server and the runner build it with the same function.
     It seals the object in the format above, the same code in the same binary,
     and uploads it with a pre-signed `PUT`.
   - **Declaring the upload.** Before it signs the `PUT`, the server derives

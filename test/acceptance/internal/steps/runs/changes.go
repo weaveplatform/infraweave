@@ -17,6 +17,7 @@ import (
 	"github.com/cucumber/godog"
 
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
@@ -33,7 +34,8 @@ type changeSteps struct {
 
 func (c *changeSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^token "(\w+)" commits the changes of the recorded (terraform|tofu) plan "(\w+)", `+
-		`sealed with the artifact key "(\w+)", for the run "(\w+)" in state version (\d+) `+
+		`sealed with the artifact key "(\w+)", for the run "(\w+)" of the account "(\w+)" `+
+		`in state version (\d+) `+
 		`through ([AB])$`, c.commit)
 	sc.Step(`^the answer lists the changes of the recorded (terraform|tofu) plan "(\w+)"$`,
 		c.lists)
@@ -43,14 +45,16 @@ func (c *changeSteps) register(sc *godog.ScenarioContext) {
 
 // commit commits the changes of the recorded plan name of tool as the
 // run kept as run's changes.json in its PLANNING state at state version
-// version, with the run token kept as token. It seals the document under
-// the content key derived from the artifact key kept, in hex, as key and
-// the object key the server names, the home account's, declares it to
-// upload-urls, checks that the answer names that object key, PUTs it,
-// and commits it to artifacts. The commit's answer is the last.
+// version, with the run token kept as token. It builds the object's key
+// as a runner does, from the account kept as acct, which the run's
+// specification names, and seals the document under the content key
+// derived from it and the artifact key kept, in hex, as key. It declares
+// the document to upload-urls, checks that the answer names the same
+// object key, PUTs it, and commits it to artifacts. The commit's answer
+// is the last.
 func (c *changeSteps) commit(
 	ctx context.Context,
-	token, tool, name, key, run string,
+	token, tool, name, key, run, acct string,
 	version int64,
 	replica string,
 ) error {
@@ -62,8 +66,15 @@ func (c *changeSteps) commit(
 	if err != nil {
 		return fmt.Errorf("%w: the artifact key %q: %w", harness.ErrStep, key, err)
 	}
-	object := fmt.Sprintf("%s/%s/PLANNING-%d/changes.json", harness.Home.Account, c.w.IDs[run],
-		version)
+	account, err := kernel.ParseAccountID(c.w.IDs[acct])
+	if err != nil {
+		return fmt.Errorf("%w: the account %q: %w", harness.ErrStep, acct, err)
+	}
+	id, err := kernel.ParseULID(c.w.IDs[run])
+	if err != nil {
+		return fmt.Errorf("%w: the run %q: %w", harness.ErrStep, run, err)
+	}
+	object := kernel.RunObjectKey(account, id, kernel.RunStatePlanning, version, "changes.json")
 	content, err := seal.ArtifactKey(artifact, object)
 	if err != nil {
 		return fmt.Errorf("%w: %w", harness.ErrStep, err)

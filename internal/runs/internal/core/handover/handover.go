@@ -218,7 +218,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	}
 	spec := workersapi.Spec{
 		Run: workersapi.SpecRun{
-			ID: r.ID, Type: r.Type, State: r.State, StateVersion: r.Version,
+			Account: r.Account, ID: r.ID, Type: r.Type, State: r.State, StateVersion: r.Version,
 			TriggeredBy: r.TriggeredBy, Priority: r.Priority, DriftDetection: r.DriftDetection,
 			CreatedAt: r.CreatedAt,
 		},

@@ -929,8 +929,21 @@ components:
     RunSpecRun:
       description: The run.
       type: object
-      required: [id, type, state, stateVersion, triggeredBy, priority, driftDetection, createdAt]
+      required:
+        - account
+        - id
+        - type
+        - state
+        - stateVersion
+        - triggeredBy
+        - priority
+        - driftDetection
+        - createdAt
       properties:
+        account:
+          type: string
+          description: >-
+            The ID of the run's account, which the key of each object the run uploads starts with, so a runner derives an artifact's content key from the key before it declares the upload.
         id:
           type: string
           description: The run's ID.

@@ -287,7 +287,8 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
 ### The run specification and its secrets
 
 `GET .../spec` returns what the run needs, in one document: run, stack and commit
-metadata; the source, as a git URL with a short-lived credential or as a
+metadata, where the run names its account, the start of each of its objects'
+keys; the source, as a git URL with a short-lived credential or as a
 pre-signed archive URL ([0012](0012-vcs-integration-model.md) says which per
 provider); the runtime configuration and hooks; tool versions and the runner image;
 timeouts; environment variables and mounted files; the managed state backend's

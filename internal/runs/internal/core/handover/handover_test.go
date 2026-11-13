@@ -388,7 +388,7 @@ func TestUnitHandover(t *testing.T) {
 	}
 	spec := h.Spec
 	if spec.Run != (workersapi.SpecRun{
-		ID: w.run.ID, Type: kernel.RunTypeTracked, State: kernel.RunStatePreparing,
+		Account: w.run.Account, ID: w.run.ID, Type: kernel.RunTypeTracked, State: kernel.RunStatePreparing,
 		StateVersion: 2, TriggeredBy: "alice", Priority: kernel.RunPriorityNormal,
 		CreatedAt: w.run.CreatedAt,
 	}) {

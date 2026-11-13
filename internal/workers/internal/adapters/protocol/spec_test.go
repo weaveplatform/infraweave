@@ -50,9 +50,14 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		Account: f.store.pool.Account, Pool: f.store.pool.ID, Secrets: crypt.NewValue(doc),
 		Spec: workersapi.Spec{
 			Run: workersapi.SpecRun{
-				ID: run, Type: kernel.RunTypeTracked, State: kernel.RunStatePreparing,
-				StateVersion: 3, TriggeredBy: "alice", Priority: kernel.RunPriorityNormal,
-				CreatedAt: at,
+				Account:      f.store.pool.Account,
+				ID:           run,
+				Type:         kernel.RunTypeTracked,
+				State:        kernel.RunStatePreparing,
+				StateVersion: 3,
+				TriggeredBy:  "alice",
+				Priority:     kernel.RunPriorityNormal,
+				CreatedAt:    at,
 			},
 			Stack: workersapi.SpecStack{
 				Slug: "infra", Name: "Infra", Space: "legacy", Repository: "infra",
@@ -101,9 +106,15 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 	delete(body, "sealed")
 	want := map[string]any{
 		"run": map[string]any{
-			"id": run.String(), "type": "TRACKED", "state": "PREPARING", "stateVersion": 3.0,
-			"triggeredBy": "alice", "priority": "normal", "driftDetection": false,
-			"createdAt": 1.8e9,
+			"account":        f.store.pool.Account.String(),
+			"id":             run.String(),
+			"type":           "TRACKED",
+			"state":          "PREPARING",
+			"stateVersion":   3.0,
+			"triggeredBy":    "alice",
+			"priority":       "normal",
+			"driftDetection": false,
+			"createdAt":      1.8e9,
 		},
 		"stack": map[string]any{
 			"id": "infra", "name": "Infra", "space": "legacy", "labels": []any{},

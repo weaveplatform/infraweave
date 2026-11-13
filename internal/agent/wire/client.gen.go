@@ -688,6 +688,9 @@ type RunSpecFile struct {
 
 // RunSpecRun The run.
 type RunSpecRun struct {
+	// Account The ID of the run's account, which the key of each object the run uploads starts with, so a runner derives an artifact's content key from the key before it declares the upload.
+	Account string `json:"account"`
+
 	// CreatedAt When the run was created, in Unix seconds.
 	CreatedAt int64 `json:"createdAt"`
 
