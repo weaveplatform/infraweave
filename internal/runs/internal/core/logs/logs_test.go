@@ -205,11 +205,8 @@ func (o *objects) Put(_ context.Context, _ objectstore.Name, key string, r io.Re
 	o.puts++
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return objectstore.Object{}, fmt.Errorf(
-			"driver: put %s: %v",
-			key,
-			err,
-		) //nolint:errorlint // as a driver may
+		//nolint:errorlint // a driver may drop the reader's error, which the stream keeps
+		return objectstore.Object{}, fmt.Errorf("driver: put %s: %v", key, err)
 	}
 	if int64(len(b)) != size {
 		return objectstore.Object{}, objectstore.ErrSize
