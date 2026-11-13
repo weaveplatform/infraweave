@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 )
 
@@ -140,6 +141,45 @@ func (s *Store) ReleaseRun(ctx context.Context, acct kernel.AccountID, run kerne
 	if _, err := tx.Q(ctx, s.db).Exec(ctx,
 		`DELETE FROM state_locks WHERE account_id = $1 AND run_id = $2`, acct, run); err != nil {
 		return fmt.Errorf("state: release the locks of run %s: %w", run, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// Current reads the version t's workspace points at, false when the
+// workspace has none or does not exist.
+func (s *Store) Current(ctx context.Context, t core.Target) (core.Version, bool, error) {
+	v := core.Version{Version: stateapi.Version{Stack: t.Stack, Workspace: t.Workspace}}
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT v.id, v.object_key, v.size, v.sha256,
+		v.serial, v.lineage, v.client_encrypted, v.run_id, v.imported, v.rollback, v.created_at
+		FROM state_workspaces w JOIN managed_state_versions v
+			ON v.account_id = w.account_id AND v.id = w.current_version_id
+		WHERE w.account_id = $1 AND w.stack_id = $2 AND w.name = $3`,
+		t.Account, t.Stack, t.Workspace).Scan(&v.ID, &v.Key, &v.Size, &v.SHA256, &v.Serial,
+		&v.Lineage, &v.ClientEncrypted, &v.Run, &v.Imported, &v.Rollback, &v.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return core.Version{}, false, nil
+	}
+	if err != nil {
+		return core.Version{}, false, fmt.Errorf(
+			"state: read the version of workspace %q of stack %s: %w", t.Workspace, t.Stack,
+			sql.Unavailable(err))
+	}
+	return v, true, nil
+}
+
+// AddVersion records v in acct's stack's workspace and points the
+// workspace at it, in one statement.
+func (s *Store) AddVersion(ctx context.Context, acct kernel.AccountID, v core.Version) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `WITH v AS (
+		INSERT INTO managed_state_versions (account_id, id, stack_id, workspace, object_key,
+			size, sha256, serial, lineage, client_encrypted, run_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id)
+		UPDATE state_workspaces SET current_version_id = (SELECT id FROM v)
+		WHERE account_id = $1 AND stack_id = $3 AND name = $4`,
+		acct, v.ID, v.Stack, v.Workspace, v.Key, v.Size, v.SHA256, v.Serial, v.Lineage,
+		v.ClientEncrypted, v.Run); err != nil {
+		return fmt.Errorf("state: add version %s to workspace %q of stack %s: %w", v.ID,
+			v.Workspace, v.Stack, sql.Unavailable(err))
 	}
 	return nil
 }

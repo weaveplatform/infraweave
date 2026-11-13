@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 	"github.com/weaveplatform/infraweave/internal/state/internal/pg"
 )
@@ -258,8 +261,12 @@ func TestAccStoreLocks(t *testing.T) {
 	}
 }
 
-// recorder records the objects a purge hands on.
-type recorder struct{ keys []string }
+// recorder records the objects a purge hands on; it serves no other
+// call.
+type recorder struct {
+	core.Objects
+	keys []string
+}
 
 func (r *recorder) Delete(_ context.Context, store objectstore.Name, key string) error {
 	r.keys = append(r.keys, string(store)+"/"+key)
@@ -377,6 +384,67 @@ func TestAccStoreUnavailable(t *testing.T) {
 	}
 	if _, _, err := s.Purge(ctx, at.Account, nil, 1); err == nil {
 		t.Error("Purge on a closed pool succeeded")
+	}
+	if _, _, err := s.Current(ctx, at); err == nil {
+		t.Error("Current on a closed pool succeeded")
+	}
+	if err := s.AddVersion(ctx, at.Account, core.Version{}); err == nil {
+		t.Error("AddVersion on a closed pool succeeded")
+	}
+}
+
+// TestAccStoreVersions adds versions to a workspace and reads back the
+// current one with each column: a run's plain state, then a
+// client-encrypted one without serial, lineage or run. A workspace with
+// no version, or none at all, has no current version, and a version of
+// a workspace that does not exist is refused.
+func TestAccStoreVersions(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	at := core.Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID(), Workspace: "blue"}
+	if _, ok, err := s.Current(ctx, at); ok || err != nil {
+		t.Errorf("no workspace: %v, %v", ok, err)
+	}
+	if err := s.OpenWorkspace(ctx, at.Account, at.Stack, at.Workspace); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := s.Current(ctx, at); ok || err != nil {
+		t.Errorf("no version: %v, %v", ok, err)
+	}
+	serial, lineage, run := int64(3), "l", kernel.NewULID()
+	sum := make([]byte, 32)
+	sum[0] = 1
+	plain := core.Version{Version: stateapi.Version{
+		ID: kernel.NewULID(), Stack: at.Stack, Workspace: at.Workspace, Size: 10, SHA256: sum,
+		Serial: &serial, Lineage: &lineage, Run: &run,
+	}, Key: "a/b/c/1"}
+	encrypted := core.Version{Version: stateapi.Version{
+		ID: kernel.NewULID(), Stack: at.Stack, Workspace: at.Workspace, Size: 0,
+		SHA256: make([]byte, 32), ClientEncrypted: true,
+	}, Key: "a/b/c/2"}
+	for _, want := range []core.Version{plain, encrypted} {
+		if err := s.AddVersion(ctx, at.Account, want); err != nil {
+			t.Fatal(err)
+		}
+		got, ok, err := s.Current(ctx, at)
+		if err != nil || !ok || got.CreatedAt.IsZero() {
+			t.Fatalf("Current %+v, %v, %v", got, ok, err)
+		}
+		got.CreatedAt = time.Time{}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Current %+v, want %+v", got, want)
+		}
+	}
+	if n := count(t, db, "managed_state_versions", at.Account); n != 2 {
+		t.Errorf("%d versions, want 2", n)
+	}
+	gone := at
+	gone.Workspace = "gone"
+	v := encrypted
+	v.ID, v.Workspace = kernel.NewULID(), gone.Workspace
+	if err := s.AddVersion(ctx, at.Account, v); err == nil {
+		t.Error("a version of no workspace was added")
 	}
 }
 

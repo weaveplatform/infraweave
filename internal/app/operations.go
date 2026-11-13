@@ -484,18 +484,23 @@ var apiOperations = sync.OnceValue(func() Operations {
 	//     so the run is its own subject and loses access as it moves on.
 	//   - Feature gates: none; the operation that created the run was
 	//     gated, and gating state would strand an apply part way.
-	//   - Idempotency keys: ignored (State); Terraform sends none, and a
-	//     LOCK repeating a lock its run holds is granted again.
-	//   - Strict bodies: none; the handler checks a LockInfo as JSON,
-	//     Terraform's shape, which no schema describes.
+	//   - Idempotency keys: ignored (State); Terraform sends none, an
+	//     identical state adds no version, a write must name the exclusive
+	//     lock its run holds, and a LOCK repeating a lock its run holds is
+	//     granted again.
+	//   - Strict bodies: none; the handler checks a state or a LockInfo as
+	//     JSON, Terraform's shapes, which no schema describes.
 	//   - Bounded bodies: the backend's own (OwnBodyBound): LOCK and UNLOCK
-	//     apply the API's body bound at 16 KiB, a LockInfo's largest, so a
-	//     state, which exceeds any API body, is bounded where it is served.
-	//   - Bounded connections: none yet; LOCK and UNLOCK keep the
-	//     listener's timeouts, and GET and POST answer 501 until state
-	//     versions are served.
+	//     apply the API's body bound at 16 KiB, a LockInfo's largest, and
+	//     POST refuses a Content-Length over state.max_size before it
+	//     streams, since a state exceeds any API body.
+	//   - Bounded connections: once the run token verifies, a POST's
+	//     deadlines move to moving.Stall past each read of its body and a
+	//     GET's past each write of its answer, since a state exceeds any
+	//     fixed time; LOCK and UNLOCK keep the listener's timeouts.
 	//   - Problem details: a 423 answers the holder's LockInfo, from which
-	//     Terraform names the lock's holder.
+	//     Terraform names the lock's holder, or {} for a write when no lock
+	//     is held.
 	// Each draws on the standard budget of its run, the same as the worker
 	// API's calls of the run.
 	// ref: decision 0003 § "API surfaces"; decision 0010

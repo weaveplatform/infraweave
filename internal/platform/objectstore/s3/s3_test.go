@@ -5,17 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/objectstoretest"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/s3"
-	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 const accessKey, secretKey = "infraweave-test", "infraweave-test-secret"
@@ -27,29 +22,7 @@ var static = config.WithCredentialsProvider(
 // TestAccS3Contract runs the contract against RustFS, the harness's
 // @objectstore image.
 func TestAccS3Contract(t *testing.T) {
-	endpoint := objectstoretest.Emulator(
-		t,
-		deps.ImageObjectStore,
-		"9000/tcp",
-		testcontainers.WithEnv(map[string]string{
-			"RUSTFS_ACCESS_KEY": accessKey,
-			"RUSTFS_SECRET_KEY": secretKey,
-		}),
-		testcontainers.WithWaitStrategy(
-			wait.ForHTTP(deps.ObjectStoreReady).WithPort("9000/tcp"),
-		),
-	)
-	c := objectstore.Defaults().S3
-	c.Bucket, c.Endpoint, c.PathStyle = "contract", endpoint, true
-	b, err := s3.New(t.Context(), c, "", objectstore.MinPartSize, static,
-		config.WithHTTPClient(objectstoretest.NoMD5(t, http.DefaultTransport)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := b.Client().
-		CreateBucket(t.Context(), &awss3.CreateBucketInput{Bucket: aws.String("contract")}); err != nil {
-		t.Fatal(err)
-	}
+	b := objectstoretest.S3(t, "contract")
 	objectstoretest.Run(t, b, objectstoretest.Options{
 		PartSize: objectstore.MinPartSize,
 		Skip:     objectstoretest.Skip(objectstore.DriverS3),

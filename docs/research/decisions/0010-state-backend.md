@@ -124,7 +124,8 @@ session token, in-run API token).
   workspace and each released `LockInfo`.
 - **Writes under a lock.** `POST` carries the lock ID in the `ID` query parameter, as
   Terraform sends it. A `POST` whose ID does not name an exclusive lock held by the same run
-  answers `423`.
+  answers `423` with the holder's `LockInfo`, or `{}` when no lock is held, both before
+  the body streams and as the version commits.
 - **Locks die with their run.** A run transition writes only the `runs` domain's tables, so
   `state` deletes a run's locks when it consumes the run's terminal `run_updated`, and
   `runsapi.StateAccess` refuses a lock to a run that is no longer active
@@ -158,10 +159,11 @@ session token, in-run API token).
 
 ### Writing a version
 
-1. A `blob_objects` row for the new object is inserted as `pending` (decision
-   [0005](0005-persistence-postgresql.md)). `POST` then streams the body through a SHA-256
-   hasher, a size limit (`state.max_size`, default 512 MiB, `413` beyond) and the sealer
-   into the object store.
+1. A `POST` declares its `Content-Length`, since a sealed object's size is fixed before
+   it streams: one without it answers `400`, and one over `state.max_size` (default
+   512 MiB) answers `413` before anything streams. A `blob_objects` row for the new object
+   is then inserted as `pending` (decision [0005](0005-persistence-postgresql.md)), and
+   the body streams through a SHA-256 hasher and the sealer into the object store.
 2. **`Content-MD5`.** Terraform's and OpenTofu's `http` clients send a `Content-MD5`
    header on every write. Normally the body also streams through an MD5 hasher, and a
    header that disagrees with the body answers `400`. When the process runs with
@@ -169,15 +171,20 @@ session token, in-run API token).
    returns an error; see [0013](0013-secrets-at-rest.md#fips-140-3)), so the header is
    accepted and ignored. TLS protects the body in transit and the recorded SHA-256 protects
    it at rest.
-3. The body must be JSON. A body with `version`, `serial` and `lineage` is a plain state and
-   those are recorded. A body without `serial` and `lineage`, as OpenTofu's client-side
-   encryption produces, is stored as `client_encrypted` and never parsed again
-   ([16 section 9](../reference/16-state-management.md#9-opentofu-state-encryption)).
+3. The body must be a JSON object, scanned as it streams. A body with `version`, `serial`
+   and `lineage` is a plain state and those are recorded. A body without `serial` and
+   `lineage`, as OpenTofu's client-side encryption produces, is stored as
+   `client_encrypted` and never parsed again
+   ([16 section 9](../reference/16-state-management.md#9-opentofu-state-encryption)). Any
+   other body answers `400`. A body refused for its `Content-MD5` or its JSON has its
+   object deleted.
 4. When the SHA-256 equals the current version's, no version is added and the object is
    deleted: a run with no changes creates none
    ([16 section 6.2](../reference/16-state-management.md#62-behaviour)).
-5. Otherwise one transaction marks the object `live`, inserts the version row and moves
-   `current_version_id`. A consumer that reads state, such as the resources view, adds its
+5. Otherwise one transaction, under the stack's hold and the workspace row's lock, checks
+   the write's lock again, marks the object `live`, inserts the version row and moves
+   `current_version_id`. A run whose lock went while its body streamed gets `423` and its
+   object is deleted. A consumer that reads state, such as the resources view, adds its
    `state.indexed` job to this transaction: a job kind is enqueued only where a handler
    runs it (decision [0011](0011-persistent-work-queue.md)).
 6. An object whose transaction never commits keeps its `pending` row, and decision
@@ -192,7 +199,9 @@ The server does not compare lineage or serial: Terraform enforces both on the cl
 `GET` opens the current version's object, unseals while streaming, and answers `200` with
 `Content-Type: application/json` and no `Content-MD5`, in every mode: the header is
 optional, and the client computes the MD5 itself when it is absent. A workspace with no
-version answers `204`, which Terraform reads as no state.
+version, or one no lock has yet made, answers `204`, which Terraform reads as no state.
+Each write of the answer moves the connection's deadlines, as each read of a `POST`'s body
+does (decision [0003](0003-api-conventions.md)).
 
 ### Upload, import and download URLs
 
@@ -252,13 +261,13 @@ conflict, whose body Terraform reads:
 |---|---|---|
 | `200` | success | state, or empty |
 | `204` | `GET` with no state | empty |
-| `400` | bad `Content-MD5` (not under `fips140=only`), body not JSON, `LockInfo` not JSON | problem `invalid-request` |
+| `400` | `POST` without `Content-Length`, bad `Content-MD5` (not under `fips140=only`), body not a plain or client-encrypted state, a body cut short, `LockInfo` not JSON | problem `invalid-request` |
 | `401` | missing or invalid credentials, or another surface's credential, with `WWW-Authenticate: Basic realm="infraweave-state"` | problem `unauthenticated` |
 | `403` | valid credentials without the right in the table above, or an empty-body `UNLOCK` or an `UNLOCK` of another run's lock from a caller not granted the exclusive lock | problem `forbidden` |
 | `404` | unknown stack or workspace, or the stack does not manage state | problem `not-found` |
 | `405` | any other method | problem `method-not-allowed` |
 | `413` | body over `state.max_size`, or a `LockInfo` over 16 KiB | problem `payload-too-large` |
-| `423` | lock conflict | the holder's `LockInfo` JSON |
+| `423` | lock conflict, or a `POST` without the run's exclusive lock | the holder's `LockInfo` JSON, or `{}` for a `POST` when no lock is held |
 
 The shared controls' own refusals, such as `429` and a panic's `500`, are problems here as
 on every surface.

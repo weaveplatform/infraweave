@@ -23,7 +23,8 @@
 // worker.poll_timeout_max, worker.offline_after and
 // worker.samples.retention, the workers domain's assembly Settings; Run holds run.lost_after and
 // run.preparing_timeout_default, the runs domain's assembly Settings, and
-// Load rejects a run.lost_after no greater than worker.offline_after.
+// Load rejects a run.lost_after no greater than worker.offline_after;
+// State holds state.max_size, the state domain's assembly Settings.
 // Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags
@@ -40,7 +41,7 @@
 // INFRAWEAVE_SECRETS_KEK itself: bound as the key secrets.kek, the
 // variable would hide every other key below it.
 //
-// ref: decisions 0003, 0005, 0006, 0008, 0011, 0013, 0015, 0017, 0020 and 0024
+// ref: decisions 0003, 0005, 0006, 0008, 0010, 0011, 0013, 0015, 0017, 0020 and 0024
 //
 // # Input and output
 //
@@ -55,7 +56,7 @@
 // types of platform/httpkit/serve, middleware/ratelimit,
 // middleware/idempotency, platform/sql, platform/observe, platform/queue,
 // platform/outbox, platform/crypt, crypt/kek, platform/expr and
-// platform/objectstore, and the access, features, vendors, vcs, workers
-// and runs domains' assemblies for their Settings. internal/app and cmd/
+// platform/objectstore, and the access, features, vendors, vcs, workers,
+// runs and state domains' assemblies for their Settings. internal/app and cmd/
 // import it.
 package config
