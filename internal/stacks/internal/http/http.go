@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apidelta"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
@@ -456,8 +457,9 @@ func (s Server) views(
 			v.AttachedContexts = append(v.AttachedContexts, contextView(c))
 		}
 		v.Config = elementViews(config[st.ID])
-		if run, ok := blockers[st.ID]; ok {
-			v.Blocker = &api.RunRef{Id: run.String()}
+		if b, ok := blockers[st.ID]; ok {
+			v.Blocker = &api.RunRef{Id: b.Run.String()}
+			v.Delta = apidelta.Of(b.Delta)
 		}
 		out = append(out, v)
 	}

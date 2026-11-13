@@ -4,7 +4,18 @@
 // with neither with ErrNoCommit, and creates the run through the
 // lifecycle, which answers a run of the stack, type and commit that has
 // not ended instead of a second and refuses a disabled or locked stack.
-// It answers the run as a read.View.
+// It answers the run as a read.View. A proposed run may carry
+// environment variable overrides, which CheckOverrides bounds and the
+// lifecycle keeps sealed; a run with overrides is never answered in place
+// of a second.
+//
+// A local preview takes two calls on a stack that enables local
+// previews. UploadWorkspace records a pending tar.gz of a declared size,
+// at most MaxWorkspace, and SHA-256 in the uploads store and signs its
+// PUT. ProposeWorkspace commits that upload and creates a PROPOSED run on
+// it, with the stack's tracked commit as its commit's metadata and any
+// overrides; the run's specification then names the archive as its
+// source.
 //
 // A local preview takes two calls on a stack that enables local
 // previews. UploadWorkspace records a pending tar.gz of a declared size,

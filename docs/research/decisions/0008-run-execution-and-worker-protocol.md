@@ -308,6 +308,22 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   the run's last transition. A template that does not render answers `422`
   `validation-failed` naming the variable, and leaves out the evaluator's
   message when the template reads a secret, so a failure cannot echo one.
+- **Overrides.** A proposed run, from `proposeWithOverrides` or
+  `runProposeLocalWorkspace`, may carry environment variable overrides for
+  that run alone. They are kept in `runs.env_overrides_sealed`
+  ([0013](0013-secrets-at-rest.md)), and only the specification answers
+  them. The handover applies them over the variables the stack resolves
+  to:
+  - an override replaces the variable of the same name, unrendered, and
+    stays write-only, in the sealed part, when that variable is;
+  - a template reads the overridden value;
+  - a name the stack does not set is set in the clear.
+
+  No override names a variable infraweave sets for the run,
+  `TF_VAR_infraweave_*` or `INFRAWEAVE_*`, and names follow a context's
+  rules. A proposal with overrides creates a run each time, since no other
+  run shares them, and one without them never answers a run that has
+  them.
 - **The runner image** is the run's runtime configuration's, else the
   stack's, else the account's default for private pools.
 - **The source.** The clear part's `source` names `kind`, `url` and

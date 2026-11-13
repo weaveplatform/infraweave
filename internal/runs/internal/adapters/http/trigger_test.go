@@ -141,4 +141,40 @@ func TestUnitTriggerRefusals(t *testing.T) {
 	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
 		t.Errorf("a refused body = %v", err)
 	}
+	if _, err := s.ProposeWithOverrides(context.Background(),
+		api.ProposeWithOverridesRequestObject{}); err == nil {
+		t.Error("a proposal with overrides and no principal passed")
+	}
+	sha := "abc"
+	_, err = s.ProposeWithOverrides(ctx, api.ProposeWithOverridesRequestObject{
+		Body: &api.ProposeWithOverridesRequest{
+			CommitSha:                &sha,
+			EnvironmentVarsOverrides: &[]api.EnvironmentVariable{{Key: "INFRAWEAVE_X", Value: "1"}},
+		},
+	})
+	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
+		t.Errorf("a refused override = %v", err)
+	}
+	_, err = s.RunProposeLocalWorkspace(ctx, api.RunProposeLocalWorkspaceRequestObject{
+		Body: &api.RunProposeLocalWorkspaceRequest{
+			Workspace:                "upload",
+			EnvironmentVarsOverrides: &[]api.EnvironmentVariable{{Key: "A=B", Value: "1"}},
+		},
+	})
+	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
+		t.Errorf("a refused override of a local workspace = %v", err)
+	}
+}
+
+// TestUnitOverrides takes a body's overrides in its order, and none from
+// a body that names none.
+func TestUnitOverrides(t *testing.T) {
+	if got := overrides(nil); got != nil {
+		t.Errorf("no overrides = %+v", got)
+	}
+	got := overrides(&[]api.EnvironmentVariable{{Key: "B", Value: "2"}, {Key: "A", Value: "1"}})
+	if len(got) != 2 || got[0] != (lifecycle.Override{Name: "B", Value: "2"}) ||
+		got[1] != (lifecycle.Override{Name: "A", Value: "1"}) {
+		t.Errorf("overrides = %+v", got)
+	}
 }

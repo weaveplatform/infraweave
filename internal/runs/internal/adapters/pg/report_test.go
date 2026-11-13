@@ -39,7 +39,7 @@ func TestAccReportStore(t *testing.T) {
 	if _, err := s.StateAt(ctx, acct, id, 2); !errors.Is(err, lifecycle.ErrNotFound) {
 		t.Errorf("StateAt(2) = %v", err)
 	}
-	if err := s.SetDelta(ctx, run, workersapi.Delta{
+	if err := s.SetDelta(ctx, run, kernel.PlanDelta{
 		Add: 1, Import: 4, Move: 2, Forget: 3, Resources: 9, Outputs: true,
 	}); err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestAccReportStore(t *testing.T) {
 		t.Errorf("the kept delta is %s, %v", delta, err)
 	}
 	if r, err := s.Get(ctx, acct, id); err != nil || r.Delta == nil ||
-		*r.Delta != (workersapi.Delta{
+		*r.Delta != (kernel.PlanDelta{
 			Add: 1, Import: 4, Move: 2, Forget: 3, Resources: 9, Outputs: true,
 		}) {
 		t.Errorf("the run's delta is %+v, %v", r.Delta, err)
@@ -190,7 +190,7 @@ func TestAccReportStore(t *testing.T) {
 		"Record":       s.Record(ctx, run, report.Artifact{Kind: workersapi.UploadArtifact}),
 		"Workspace":    func() error { _, _, err := s.Workspace(ctx, run); return err }(),
 		"Changes":      func() error { _, _, err := s.Changes(ctx, run); return err }(),
-		"SetDelta":     s.SetDelta(ctx, run, workersapi.Delta{}),
+		"SetDelta":     s.SetDelta(ctx, run, kernel.PlanDelta{}),
 		"PurgeObjects": func() error { _, err := s.PurgeObjects(context.Background(), acct, 1); return err }(),
 	} {
 		if err == nil {

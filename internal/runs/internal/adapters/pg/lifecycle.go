@@ -13,7 +13,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
-	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 var (
@@ -50,15 +49,8 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 	if err := json.Unmarshal(commit, &r.Commit); err != nil {
 		return lifecycle.Run{}, fmt.Errorf("runs: decode the commit of run %s: %w", r.ID, err)
 	}
-	if d != nil {
-		var kept delta
-		if err := json.Unmarshal(d, &kept); err != nil {
-			return lifecycle.Run{}, fmt.Errorf("runs: decode the delta of run %s: %w", r.ID, err)
-		}
-		r.Delta = &workersapi.Delta{
-			Add: kept.Add, Change: kept.Change, Delete: kept.Delete, Import: kept.Import,
-			Move: kept.Move, Forget: kept.Forget, Resources: kept.Resources, Outputs: kept.Outputs,
-		}
+	if r.Delta, err = deltaOf(d); err != nil {
+		return lifecycle.Run{}, fmt.Errorf("runs: decode the delta of run %s: %w", r.ID, err)
 	}
 	r.Type, r.State, r.Priority = kernel.RunType(typ), kernel.RunState(state),
 		kernel.RunPriority(priority)
@@ -148,6 +140,7 @@ func (s *Store) Active(
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND stack_id = $2 AND type = $3 AND commit->>'hash' = $4
 			AND state <> ALL($5) AND local_workspace IS NOT DISTINCT FROM nullif($6, '')
+			AND env_overrides_sealed IS NULL
 		ORDER BY id LIMIT 1`, acct, stack, string(typ), hash, terminal, workspace))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):

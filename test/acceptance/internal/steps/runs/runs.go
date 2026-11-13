@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,22 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 		r.idle)
 	sc.Step(`^a third infraweave server runs the default queue's jobs$`, r.third)
 	sc.Step(`^the "run.schedule" jobs are (\d+), (pending|succeeded)$`, r.scheduled)
+	sc.Step(`^neither the answer nor a server's log names "([^"]+)"$`, r.unnamed)
+}
+
+// unnamed checks that neither the last answer nor any server's output
+// holds value, such as an override's value that only a run's sealed
+// specification may carry.
+func (r *runSteps) unnamed(value string) error {
+	if bytes.Contains(r.w.Last().Body, []byte(value)) {
+		return fmt.Errorf("%w: the answer names %q: %s", harness.ErrStep, value, r.w.Last().Body)
+	}
+	for i, srv := range r.w.Servers {
+		if bytes.Contains(srv.Stdout(), []byte(value)) {
+			return fmt.Errorf("%w: server %d logged %q", harness.ErrStep, i+1, value)
+		}
+	}
+	return nil
 }
 
 // idle starts the scenario's two servers with no worker on the default

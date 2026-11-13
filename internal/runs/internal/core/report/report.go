@@ -78,7 +78,7 @@ type Store interface {
 	// Record records a, an uploaded object of run.
 	Record(ctx context.Context, run lifecycle.Run, a Artifact) error
 	// SetDelta keeps d, run's plan's delta, on the run.
-	SetDelta(ctx context.Context, run lifecycle.Run, d workersapi.Delta) error
+	SetDelta(ctx context.Context, run lifecycle.Run, d kernel.PlanDelta) error
 	// Workspace reads the key of the workspace run recorded last, and
 	// false when it recorded none.
 	Workspace(ctx context.Context, run lifecycle.Run) (string, bool, error)
@@ -295,7 +295,7 @@ func (s *Service) decide(
 // edges is refused by the lifecycle.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
-func Decision(t kernel.RunType, d workersapi.Delta, st stacksapi.Settings) kernel.RunState {
+func Decision(t kernel.RunType, d kernel.PlanDelta, st stacksapi.Settings) kernel.RunState {
 	switch {
 	case t == kernel.RunTypeTesting:
 		return kernel.RunStateApplying

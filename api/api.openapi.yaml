@@ -13650,12 +13650,12 @@ paths:
       x-rest-style: field
     post:
       description: |-
-        Trigger a proposed Run. By default, this mutation triggers a proposed run for the
-        commit currently tracked by a Stack or, if the Stack is not yet tracking any
-        commit, against the HEAD of the Stack's tracked branch. These defaults can
-        be overridden. In contrary to the generic runTrigger mutation, proposeWithOverrides allows
-        overriding environment variables in the proposed runs to enable more complex testing environment.
-        Bear in mind that these environment variables are NOT supposed to be secrets, therefore are not treated as such.
+        Trigger a proposed run on the stack, on the commit named, else the commit
+        the stack tracks, else the head of its tracked branch. Unlike runTrigger,
+        it takes environment variables the run sets over the stack's, for this run
+        alone. A trigger with overrides always creates a run, since no other run
+        shares them; one without answers the proposed run of the same commit that
+        has not ended, as runTrigger does.
       operationId: proposeWithOverrides
       x-infraweave-feature: stacks
       x-infraweave-action: RUN_PROPOSE_WITH_OVERRIDES
@@ -14252,7 +14252,7 @@ paths:
   /stacks/{stackId}/runs/propose-local-workspace:
     post:
       description: >-
-        Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload answers its run while that has not ended.
+        Create a proposed run that previews an uploaded local workspace instead of a commit of the stack's repository, with the stack's tracked commit as its commit. Proposing again on the same upload, with no environment variable overrides, answers its run while that has not ended; a proposal with overrides always creates a run.
       operationId: runProposeLocalWorkspace
       x-infraweave-feature: runs
       parameters:
@@ -25599,6 +25599,8 @@ components:
           nullable: true
           type: string
         environmentVarsOverrides:
+          description: >-
+            Environment variables the run sets over the stack's, for this run alone. An override replaces the stack's variable of the same name and stays write-only when that variable is; any other is set in the clear. The variables infraweave sets for a run, TF_VAR_infraweave_* and INFRAWEAVE_*, cannot be overridden. The overrides are kept sealed, and no answer returns them.
           items:
             $ref: '#/components/schemas/EnvironmentVariable'
           nullable: true
@@ -26490,6 +26492,13 @@ components:
       additionalProperties: false
       description: The arguments of runProposeLocalWorkspace not carried in the path.
       properties:
+        environmentVarsOverrides:
+          description: >-
+            Environment variables the run sets over the stack's, for this run alone. An override replaces the stack's variable of the same name and stays write-only when that variable is; any other is set in the clear. The variables infraweave sets for a run, TF_VAR_infraweave_* and INFRAWEAVE_*, cannot be overridden. The overrides are kept sealed, and no answer returns them.
+          items:
+            $ref: '#/components/schemas/EnvironmentVariable'
+          nullable: true
+          type: array
         workspace:
           description: The ID of the local workspace's upload.
           type: string

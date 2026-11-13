@@ -105,9 +105,63 @@ func TestAccHandover(t *testing.T) {
 	if _, err := s.ArtifactKey(ctx, gone); !errors.Is(err, lifecycle.ErrNotFound) {
 		t.Errorf("ArtifactKey of no run = %v", err)
 	}
-	if cols := pg.SealedColumns(); len(cols) != 1 || cols[0].Table != "runs" ||
-		cols[0].Name != "artifact_key_sealed" {
+	if cols := pg.SealedColumns(); len(cols) != 2 || cols[0].Table != "runs" ||
+		cols[0].Name != "artifact_key_sealed" || cols[1].Table != "runs" ||
+		cols[1].Name != "env_overrides_sealed" {
 		t.Errorf("SealedColumns = %+v", cols)
+	}
+}
+
+// TestAccOverridesBroken checks that overrides the keyring cannot seal
+// are not stored, that ones it cannot open or decode fail the read, that
+// a run that is gone has none to read, and that the read and the write
+// fail on a closed pool.
+func TestAccOverridesBroken(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	ring := keyring(t, db)
+	s, broken := pg.New(db, ring), pg.New(db, failingSealer{})
+	run, err := s.Handed(ctx, insertRun(t, db, kernel.NewAccountID(), kernel.NewULID(), false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ovs := []lifecycle.Override{{Name: "A", Value: "1"}}
+	if err := broken.SetOverrides(ctx, run, ovs); !errors.Is(err, errSeal) {
+		t.Errorf("SetOverrides that cannot seal = %v", err)
+	}
+	if got, err := s.Overrides(ctx, run); err != nil || got != nil {
+		t.Errorf("overrides that could not be sealed are stored: %+v, %v", got, err)
+	}
+	if err := s.SetOverrides(ctx, run, ovs); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := broken.Overrides(ctx, run); !errors.Is(err, errSeal) {
+		t.Errorf("Overrides that cannot open = %v", err)
+	}
+	sealed, err := ring.SealColumn(ctx, crypt.Column{
+		Table: "runs", Name: "env_overrides_sealed", Key: []string{"account_id", "id"},
+	}, []string{run.Account.UUID(), run.ID.UUID()}, []byte("not JSON"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ctx, `UPDATE runs SET env_overrides_sealed = $2 WHERE id = $1`,
+		run.ID, sealed); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Overrides(ctx, run); err == nil {
+		t.Error("Overrides that do not decode succeeded")
+	}
+	gone := run
+	gone.ID = kernel.NewULID()
+	if _, err := s.Overrides(ctx, gone); !errors.Is(err, lifecycle.ErrNotFound) {
+		t.Errorf("Overrides of no run = %v", err)
+	}
+
+	if err := pg.New(db, closingSealer{db: db}).SetOverrides(ctx, run, ovs); err == nil {
+		t.Error("SetOverrides whose write fails succeeded")
+	}
+	if _, err := s.Overrides(ctx, run); err == nil {
+		t.Error("Overrides on a closed pool succeeded")
 	}
 }
 

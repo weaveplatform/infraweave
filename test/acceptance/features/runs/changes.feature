@@ -6,15 +6,17 @@ Feature: A run's changes and delta are read after it plans
   caller who can read the run reads its changes: changes-v3 as one set
   of resources and changes-v2 as entities a page at a time, in the
   plan's order, each read of a phase and change type the input selects.
-  The run answers every count of its delta. Before the plan both reads
-  answer none and the run no delta. Here the scenario is the worker:
-  it builds the document's key, as a runner does, from the account the
-  run's specification names. The changes are those of internal/iac's
-  recorded Terraform plan of one change of every type. The run's in-run
-  API token reads none of it. The release indexes serve the recorded
-  fixtures, so the run's specification names a Terraform release. The
-  home key is space-admin on the account's top space; the member key
-  holds no binding. Stack infra lives in legacy and runs on the pool.
+  The run answers every count of its delta, and so does its stack,
+  which the run blocks, while the run waits for the plan's
+  confirmation. Before the plan both reads answer none, and neither the
+  run nor the stack a delta. Here the scenario is the worker: it builds
+  the document's key, as a runner does, from the account the run's
+  specification names. The changes are those of internal/iac's recorded
+  Terraform plan of one change of every type. The run's in-run API token
+  reads none of it. The release indexes serve the recorded fixtures, so
+  the run's specification names a Terraform release. The home key is
+  space-admin on the account's top space; the member key holds no
+  binding. Stack infra lives in legacy and runs on the pool.
   ref: decision 0007
   ref: decision 0008
   ref: decision 0013
@@ -49,8 +51,8 @@ Feature: A run's changes and delta are read after it plans
     And token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"INITIALIZING","stateVersion":4}' through A
     And the answer's state is '"PLANNING"'
 
-  @op:runChangesV2 @op:runChangesV3 @op:run @case:success
-  Scenario: Once the run plans, both reads answer the plan's changes and the run its delta
+  @op:runChangesV2 @op:runChangesV3 @op:run @op:stack @op:runStack @case:success
+  Scenario: Once the run plans, both reads answer the plan's changes, and the run and its stack its delta
     When token "h" sends "GET /api/v1/runs/{run}/changes-v3?input=%7B%7D" through A
     Then it answers 200
     And the answer is '[]'
@@ -60,6 +62,10 @@ Feature: A run's changes and delta are read after it plans
     When token "h" sends "GET /api/v1/runs/{run}" through A
     Then it answers 200
     And the answer leaves out "delta"
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then it answers 200
+    And the answer's blocker is '{"id":"{run}"}'
+    And the answer leaves out "delta"
     When token "rt" commits the changes of the recorded terraform plan "all", sealed with the artifact key "ak", for the run "run" of the account "acct" in state version 5 through B
     And token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"PLANNING","stateVersion":5,"delta":{"add":3,"change":1,"delete":3,"import":1,"move":1,"forget":1,"resources":7,"outputs":true}}' through A
     Then the answer's state is '"UNCONFIRMED"'
@@ -68,6 +74,12 @@ Feature: A run's changes and delta are read after it plans
     And the answer's delta is '{"addCount":3,"changeCount":1,"deleteCount":3,"importCount":1,"moveCount":1,"forgetCount":1,"resources":7,"okCount":0,"skipCount":0,"rescueCount":0,"ignoreCount":0,"unreachableCount":0,"failedCount":0}'
     When token "h" sends "GET /api/v1/stacks/infra/run?id={run}" through A
     Then the answer's delta is '{"addCount":3,"changeCount":1,"deleteCount":3,"importCount":1,"moveCount":1,"forgetCount":1,"resources":7,"okCount":0,"skipCount":0,"rescueCount":0,"ignoreCount":0,"unreachableCount":0,"failedCount":0}'
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then it answers 200
+    And the answer's delta is '{"addCount":3,"changeCount":1,"deleteCount":3,"importCount":1,"moveCount":1,"forgetCount":1,"resources":7,"okCount":0,"skipCount":0,"rescueCount":0,"ignoreCount":0,"unreachableCount":0,"failedCount":0}'
+    When token "h" sends "GET /api/v1/runs/{run}/stack" through A
+    Then it answers 200
+    And the answer's delta is '{"addCount":3,"changeCount":1,"deleteCount":3,"importCount":1,"moveCount":1,"forgetCount":1,"resources":7,"okCount":0,"skipCount":0,"rescueCount":0,"ignoreCount":0,"unreachableCount":0,"failedCount":0}'
     When token "h" sends "GET /api/v1/runs/{run}/changes-v3?input=%7B%7D" through A
     Then the answer lists the changes of the recorded terraform plan "all"
     When token "h" sends "GET /api/v1/runs/{run}/changes-v3?input=%7B%22changePhase%22%3A%22PLAN%22%7D" through B

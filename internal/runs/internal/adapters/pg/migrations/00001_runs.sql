@@ -29,6 +29,10 @@
 -- artifact_key_sealed is the run's 256-bit artifact key, sealed by the
 -- keyring, made the first time the run's specification is handed over;
 -- the runner seals the run's artifacts with it.
+-- env_overrides_sealed is a proposed run's environment variable
+-- overrides, a JSON array of {name, value}, sealed by the keyring as
+-- they may hold secrets; NULL for a run without overrides, which alone
+-- an equal trigger answers instead of creating another.
 CREATE TABLE runs (
     account_id       uuid        NOT NULL,
     id               uuid        NOT NULL,
@@ -49,6 +53,7 @@ CREATE TABLE runs (
     worker_pool_id   uuid,
     worker_id        uuid,
     artifact_key_sealed bytea,
+    env_overrides_sealed bytea,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, id),
