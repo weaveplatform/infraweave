@@ -83,7 +83,9 @@ func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
 		case wire.Execute:
 			state := wire.WorkerState(step.State)
 			d.Log.InfoContext(ctx, "phase started", "run", h.Run, "state", state)
-			r.log.Begin(step.StateVersion)
+			if err := r.log.Begin(ctx, step.StateVersion); err != nil {
+				d.Log.WarnContext(ctx, "log not synced", "run", h.Run, "state", state, "error", err)
+			}
 			rep := r.phase(ctx, state, step.StateVersion)
 			if err := r.log.End(ctx); err != nil {
 				d.Log.WarnContext(
