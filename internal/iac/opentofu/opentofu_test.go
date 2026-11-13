@@ -12,6 +12,10 @@ func TestUnitContract(t *testing.T) {
 	if !ok {
 		t.Fatal("opentofu is not registered")
 	}
+	plans, err := iactest.Recorded("../plan/testdata/tofu")
+	if err != nil {
+		t.Fatal(err)
+	}
 	iactest.Run(t, v, []iactest.Case{
 		{Name: "every setting", Settings: `{"version": "1.8.3", "workflowTool": "OPENTOFU",
 			"workspace": "default", "externalStateAccessEnabled": false, "useSmartSanitization": true,
@@ -42,5 +46,5 @@ func TestUnitContract(t *testing.T) {
 			Settings: `{"concise": "on", "enableCPUProfiling": "off"}`,
 			Refused:  []string{"/concise", "/enableCPUProfiling"},
 		},
-	})
+	}, plans...)
 }

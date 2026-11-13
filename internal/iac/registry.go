@@ -2,9 +2,11 @@ package iac
 
 import (
 	"encoding/json"
+	"io"
 	"slices"
 
 	"github.com/weaveplatform/infraweave/internal/iac/opentofu"
+	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/iac/terraform"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -21,6 +23,7 @@ const (
 type vendor struct {
 	kind     Kind
 	validate func(json.RawMessage) []kernel.FieldError
+	plan     func(io.Reader) (plan.Plan, error)
 }
 
 func (v vendor) Kind() Kind { return v.kind }
@@ -29,11 +32,14 @@ func (v vendor) ValidateSettings(settings json.RawMessage) []kernel.FieldError {
 	return v.validate(settings)
 }
 
+func (v vendor) ParsePlan(r io.Reader) (plan.Plan, error) { return v.plan(r) }
+
 // registry is every vendor infraweave runs, in the order Vendors lists
-// them.
+// them. OpenTofu writes Terraform's plan format, so both read plans with
+// plan.Parse.
 var registry = []Vendor{
-	vendor{kind: Terraform, validate: terraform.ValidateSettings},
-	vendor{kind: OpenTofu, validate: opentofu.ValidateSettings},
+	vendor{kind: Terraform, validate: terraform.ValidateSettings, plan: plan.Parse},
+	vendor{kind: OpenTofu, validate: opentofu.ValidateSettings, plan: plan.Parse},
 }
 
 // Lookup is the registered vendor of kind k.
