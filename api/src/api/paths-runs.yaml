@@ -479,6 +479,18 @@ components:
       additionalProperties: false
       description: The arguments of runProposeLocalWorkspace not carried in the path.
       properties:
+        environmentVarsOverrides:
+          description: >-
+            Environment variables the run sets over the stack's, for this run
+            alone. An override replaces the stack's variable of the same name
+            and stays write-only when that variable is; any other is set in
+            the clear. The variables infraweave sets for a run,
+            TF_VAR_infraweave_* and INFRAWEAVE_*, cannot be overridden. The
+            overrides are kept sealed, and no answer returns them.
+          items:
+            $ref: '#/components/schemas/EnvironmentVariable'
+          nullable: true
+          type: array
         workspace:
           description: The ID of the local workspace's upload.
           type: string
@@ -1238,8 +1250,9 @@ paths:
       description: >-
         Create a proposed run that previews an uploaded local workspace
         instead of a commit of the stack's repository, with the stack's
-        tracked commit as its commit. Proposing again on the same upload
-        answers its run while that has not ended.
+        tracked commit as its commit. Proposing again on the same upload,
+        with no environment variable overrides, answers its run while that
+        has not ended; a proposal with overrides always creates a run.
       operationId: runProposeLocalWorkspace
       x-infraweave-feature: runs
       parameters:

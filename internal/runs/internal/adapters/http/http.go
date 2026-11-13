@@ -109,15 +109,56 @@ func (s Server) RunProposeLocalWorkspace(
 	if err != nil {
 		return nil, err
 	}
-	var upload string
+	var (
+		upload string
+		ovs    []lifecycle.Override
+	)
 	if req.Body != nil {
-		upload = req.Body.Workspace
+		upload, ovs = req.Body.Workspace, overrides(req.Body.EnvironmentVarsOverrides)
 	}
-	v, err := s.trigger.ProposeWorkspace(ctx, p, req.StackId, upload)
+	v, err := s.trigger.ProposeWorkspace(ctx, p, req.StackId, upload, ovs)
 	if err != nil {
 		return nil, runError(err, req.StackId, "")
 	}
 	return api.RunProposeLocalWorkspace200JSONResponse{Body: runOf(v)}, nil
+}
+
+// ProposeWithOverrides creates a proposed run on the stack with the
+// environment overrides the body names, or, with none, answers the
+// proposed run of the same commit that has not ended. The route has
+// decided RUN_PROPOSE_WITH_OVERRIDES on the stack's space.
+func (s Server) ProposeWithOverrides(
+	ctx context.Context,
+	req api.ProposeWithOverridesRequestObject,
+) (api.ProposeWithOverridesResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	in := trigger.Input{Type: kernel.RunTypeProposed}
+	if req.Body != nil {
+		if req.Body.CommitSha != nil {
+			in.CommitSHA = *req.Body.CommitSha
+		}
+		in.Overrides = overrides(req.Body.EnvironmentVarsOverrides)
+	}
+	v, err := s.trigger.Trigger(ctx, p, req.StackId, in)
+	if err != nil {
+		return nil, runError(err, req.StackId, "")
+	}
+	return api.ProposeWithOverrides201JSONResponse{Body: runOf(v)}, nil
+}
+
+// overrides are the environment overrides a body names, in its order.
+func overrides(vars *[]api.EnvironmentVariable) []lifecycle.Override {
+	if vars == nil {
+		return nil
+	}
+	out := make([]lifecycle.Override, len(*vars))
+	for i, v := range *vars {
+		out[i] = lifecycle.Override{Name: v.Key, Value: v.Value}
+	}
+	return out
 }
 
 // principal is the caller the route authenticated.

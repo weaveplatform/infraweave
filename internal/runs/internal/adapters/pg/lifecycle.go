@@ -140,6 +140,7 @@ func (s *Store) Active(
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND stack_id = $2 AND type = $3 AND commit->>'hash' = $4
 			AND state <> ALL($5) AND local_workspace IS NOT DISTINCT FROM nullif($6, '')
+			AND env_overrides_sealed IS NULL
 		ORDER BY id LIMIT 1`, acct, stack, string(typ), hash, terminal, workspace))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):

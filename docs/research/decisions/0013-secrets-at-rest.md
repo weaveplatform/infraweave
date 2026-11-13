@@ -213,7 +213,7 @@ the owning record beside it.
 | `signing_keys` | `private_key_sealed` | public key, `kid`, state | [0006](0006-authentication-and-tokens.md) |
 | `ai_integrations` | `credentials_sealed` | provider, base URL, models | decision 0019 |
 | `flows_secrets` | `value_sealed` | name | decision 0018 |
-| `runs` | `artifact_key_sealed` | | [0008](0008-run-execution-and-worker-protocol.md) |
+| `runs` | `artifact_key_sealed`; `env_overrides_sealed`, a proposed run's environment variable overrides | | [0008](0008-run-execution-and-worker-protocol.md) |
 | `worker_pool_ca` | `private_key_sealed`, the installation's pool CA | certificate, next serial | [0008](0008-run-execution-and-worker-protocol.md) |
 | `idempotency_keys` | `body_sealed` | status, headers | [0005](0005-persistence-postgresql.md) |
 | `blob_objects` | `content_key_sealed`, for objects in sealed stores | size, checksum | [0005](0005-persistence-postgresql.md) |

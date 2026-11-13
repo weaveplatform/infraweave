@@ -5,13 +5,16 @@ Feature: A run previews an uploaded local workspace
   upload ID and a signed URL that accepts those bytes alone, put the
   archive there, and propose a run on the upload. The run is PROPOSED,
   with the stack's tracked commit as its commit, and a second proposal on
-  the same upload answers it while it has not ended. Its specification
+  the same upload answers it while it has not ended; a proposal with
+  environment variable overrides creates a run each time, since no other
+  run shares them, and no answer names them. Its specification
   names the archive's signed GET as its source, with no credential, and
   sets TF_VAR_infraweave_local_preview to true. Both calls need a stack
   that allows local previews, and a space writer; a space reader is
   refused each one's action. A size over 2 GiB, or a SHA-256 that is not
   64 lowercase hex digits, is an invalid request; an upload that is not
-  the stack's, was never put, or does not exist is refused at /workspace. The release indexes
+  the stack's, was never put, or does not exist is refused at /workspace,
+  and an override of a variable infraweave sets at its key. The release indexes
   serve the recorded fixtures, so the run's specification names a
   Terraform release. The home key is space-admin on the account's top
   space; the member key holds only the bindings a scenario gives it.
@@ -58,6 +61,10 @@ Feature: A run previews an uploaded local workspace
     When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"workspace":"{upload}"}' through A
     Then it answers 200
     And the answer's id is '"{run}"'
+    When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"workspace":"{upload}","environmentVarsOverrides":[{"key":"EXTRA","value":"pl41n-extra"}]}' through B
+    Then it answers 200
+    And the answer's id names "over"
+    And neither the answer nor a server's log names "pl41n-extra"
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED"}' through B
     Then it answers 200
     And the answer's id names "commit"
@@ -69,6 +76,8 @@ Feature: A run previews an uploaded local workspace
     And the specification fetches its source from the local workspace "ws"
     And the specification's variable "TF_VAR_infraweave_local_preview" is "true"
     And the specification's sealed part opens with the key of "csr" to no source credential
+    When token "h" sends "GET /api/v1/stacks/infra/proposed-runs" through B
+    Then the answer's items are the runs "commit, over, run"
 
   @op:uploadLocalWorkspace @op:runProposeLocalWorkspace @case:denial
   Scenario: A space reader is refused both calls, and a stack that does not allow local previews refuses everyone
@@ -91,7 +100,7 @@ Feature: A run previews an uploaded local workspace
     Then it answers 201
 
   @op:uploadLocalWorkspace @op:runProposeLocalWorkspace @case:failure
-  Scenario: A declaration outside the bounds, and an upload that is not the stack's, was never put or does not exist, are refused
+  Scenario: A declaration outside the bounds, an upload that is not the stack's, was never put or does not exist, and an override of a variable infraweave sets are refused
     When token "h" sends "POST /api/v1/stacks/infra/local-workspace-uploads" with '{"size":0,"sha256":"{ws.sha256}"}' through A
     Then it answers a 400 problem "invalid-request"
     When token "h" sends "POST /api/v1/stacks/infra/local-workspace-uploads" with '{"size":2147483649,"sha256":"{ws.sha256}"}' through B
@@ -111,6 +120,9 @@ Feature: A run previews an uploaded local workspace
     When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"workspace":"{unput}"}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/workspace" as "not-found"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"workspace":"{unput}","environmentVarsOverrides":[{"key":"INFRAWEAVE_API_TOKEN","value":"forged"}]}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"
     When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"workspace":"01HZX4Y9Q2W8E5R7T3V6K1M0PA"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/workspace" as "not-found"

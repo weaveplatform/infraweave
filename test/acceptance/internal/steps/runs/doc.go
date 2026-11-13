@@ -3,7 +3,9 @@
 // worker does and reads back, local previews, whose workspace archives
 // it builds, uploads and reads back from a run's specification, and a
 // run's changes, whose document it writes from internal/iac's recorded
-// plans and seals and commits as a worker does.
+// plans and seals and commits as a worker does; and it checks that a
+// value, such as an override's, is named in no answer and no server's
+// log.
 //
 // # Input and output
 //
