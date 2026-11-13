@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -76,6 +77,8 @@ type Store interface {
 		kind workersapi.UploadKind, name string) (bool, error)
 	// Record records a, an uploaded object of run.
 	Record(ctx context.Context, run lifecycle.Run, a Artifact) error
+	// SetDelta keeps d, run's plan's delta, on the run.
+	SetDelta(ctx context.Context, run lifecycle.Run, d workersapi.Delta) error
 	// Workspace reads the key of the workspace run recorded last, and
 	// false when it recorded none.
 	Workspace(ctx context.Context, run lifecycle.Run) (string, bool, error)
@@ -107,14 +110,21 @@ type Mover interface {
 	Transition(ctx context.Context, req lifecycle.Request) (lifecycle.Run, error)
 }
 
+// Stacks reads a run's stack for the plan decision; stacksapi.Stacks is
+// one.
+type Stacks interface {
+	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error)
+}
+
 // Deps are what reports read and write through: the database a purge
-// opens its transactions on, the runs' storage, the objects, and the
-// lifecycle.
+// opens its transactions on, the runs' storage, the objects, the
+// lifecycle, and the stacks the plan decision reads.
 type Deps struct {
 	DB        tx.Beginner
 	Store     Store
 	Objects   Objects
 	Lifecycle Mover
+	Stacks    Stacks
 }
 
 // Service is the runs domain's workersapi.Reports.
@@ -191,20 +201,28 @@ func (s *Service) current(
 }
 
 // Report moves run id as r reports, as workersapi.Reports says, through
-// the edges a worker's report drives, and answers the next step. A
-// report one state version behind is answered as it was when it took the
-// run's last transition, so a worker whose answer was lost asks again.
+// the edges a worker's report drives, and answers the next step; a
+// succeeded report of PLANNING takes the plan decision instead. A report
+// one state version behind is answered as it was when it took the run's
+// last transition, so a worker whose answer was lost asks again.
 func (s *Service) Report(
 	ctx context.Context,
 	id kernel.ULID,
 	r workersapi.Report,
 ) (workersapi.Step, error) {
+	if planned(r) != (r.Delta != nil) {
+		return workersapi.Step{}, fmt.Errorf("%w: %s %s", workersapi.ErrDeltaRefused, r.State,
+			r.Event)
+	}
 	run, err := s.held(ctx, id)
 	if err != nil {
 		return workersapi.Step{}, err
 	}
 	switch r.StateVersion {
 	case run.Version:
+		if planned(r) && run.State == kernel.RunStatePlanning {
+			return s.decide(ctx, run, r)
+		}
 		to, err := target(run.Type, run.State, r)
 		if err != nil {
 			return workersapi.Step{}, err
@@ -212,18 +230,14 @@ func (s *Service) Report(
 		if to == run.State {
 			return step(run), nil
 		}
-		moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
-			Account: run.Account, Run: run.ID, Version: run.Version, To: to,
-			Driver: machine.DriverWorkerReport, Note: r.Details,
-		})
-		if err != nil {
-			return workersapi.Step{}, err //nolint:wrapcheck // the lifecycle names the move
-		}
-		return step(moved), nil
+		return s.move(ctx, run, to, machine.DriverWorkerReport, r.Details)
 	case run.Version - 1:
 		from, err := s.d.Store.StateAt(ctx, run.Account, run.ID, r.StateVersion)
 		if err != nil {
 			return workersapi.Step{}, err //nolint:wrapcheck // the store names the read
+		}
+		if planned(r) && from == kernel.RunStatePlanning && decided(run.Type, run.State) {
+			return step(run), nil
 		}
 		if to, err := target(run.Type, from, r); err == nil && to == run.State && to != from {
 			return step(run), nil
@@ -233,12 +247,88 @@ func (s *Service) Report(
 		id, run.Version, r.StateVersion)
 }
 
+// move moves run to to, driven by driver, with note as the transition's,
+// and answers the next step.
+func (s *Service) move(
+	ctx context.Context,
+	run lifecycle.Run,
+	to kernel.RunState,
+	driver machine.Driver,
+	note string,
+) (workersapi.Step, error) {
+	moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
+		Account: run.Account, Run: run.ID, Version: run.Version, To: to, Driver: driver,
+		Note: note,
+	})
+	if err != nil {
+		return workersapi.Step{}, err //nolint:wrapcheck // the lifecycle names the move
+	}
+	return step(moved), nil
+}
+
+// decide takes the plan decision for run, in PLANNING, on r's delta, in
+// the report's transaction: it keeps the delta on the run and moves it
+// to the state Decision answers for its stack.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+func (s *Service) decide(
+	ctx context.Context,
+	run lifecycle.Run,
+	r workersapi.Report,
+) (workersapi.Step, error) {
+	st, err := s.d.Stacks.Settings(ctx, run.Account, run.Stack)
+	if err != nil {
+		return workersapi.Step{}, err //nolint:wrapcheck // the stacks domain names the read
+	}
+	if err := s.d.Store.SetDelta(ctx, run, *r.Delta); err != nil {
+		return workersapi.Step{}, err //nolint:wrapcheck // the store names the write
+	}
+	return s.move(ctx, run, Decision(run.Type, *r.Delta, st), machine.DriverDecision, r.Details)
+}
+
+// Decision is the state the plan decision moves a run of type t out of
+// PLANNING to when no plan policy is attached, from its plan's delta d and
+// its stack st: a test case applies (T21); a tracked run with changes
+// applies when its stack deploys automatically and is unlocked (T21), and
+// waits for confirmation otherwise (T20); any other run, or a tracked one
+// whose plan changes nothing, finishes (T17). A type with none of these
+// edges is refused by the lifecycle.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+func Decision(t kernel.RunType, d workersapi.Delta, st stacksapi.Settings) kernel.RunState {
+	switch {
+	case t == kernel.RunTypeTesting:
+		return kernel.RunStateApplying
+	case t != kernel.RunTypeTracked || !d.Changes():
+		return kernel.RunStateFinished
+	case st.Autodeploy && st.Lock == nil:
+		return kernel.RunStateApplying
+	default:
+		return kernel.RunStateUnconfirmed
+	}
+}
+
+// planned reports whether r is a succeeded report of PLANNING, the one
+// that carries the plan's delta.
+func planned(r workersapi.Report) bool {
+	return r.Event == workersapi.ReportSucceeded && r.State == kernel.RunStatePlanning
+}
+
+// decided reports whether the plan decision moves a run of type t out of
+// PLANNING to state, so a repeated planning report finds its decision
+// whatever the stack is now.
+func decided(t kernel.RunType, state kernel.RunState) bool {
+	return slices.ContainsFunc(machine.Next(t, kernel.RunStatePlanning), func(e machine.Edge) bool {
+		return e.To == state && slices.Contains(e.Drivers, machine.DriverDecision)
+	})
+}
+
 // target is the state a run of type t in state from enters on r: for a
 // started report of the state from leads to, its handover's edge; for a
 // started report of from itself, from; for a succeeded, failed or stopped
 // report of from, the edge a worker's report drives out of from to the
-// next phase, to FAILED or to STOPPED. A succeeded report of PLANNING is
-// the plan decision's.
+// next phase, to FAILED or to STOPPED. A succeeded report of PLANNING has
+// no such edge: Report takes the plan decision for it.
 func target(t kernel.RunType, from kernel.RunState, r workersapi.Report) (kernel.RunState, error) {
 	if r.Event == workersapi.ReportStarted && r.State == from && !preparing(from) {
 		return from, nil
@@ -262,10 +352,6 @@ func target(t kernel.RunType, from kernel.RunState, r workersapi.Report) (kernel
 		if ok {
 			return e.To, nil
 		}
-	}
-	if r.Event == workersapi.ReportSucceeded && r.State == from &&
-		from == kernel.RunStatePlanning {
-		return "", workersapi.ErrNoPlanDecision
 	}
 	return "", fmt.Errorf("%w: %s %s while %s", workersapi.ErrReportRefused, r.State, r.Event,
 		from)

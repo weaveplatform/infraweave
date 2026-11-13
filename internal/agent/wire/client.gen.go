@@ -416,6 +416,24 @@ type NextStep struct {
 // NextStepAction What the worker does next.
 type NextStepAction string
 
+// PlanDelta What the run's plan changes, which a succeeded report of PLANNING carries and no other report does: the resources it adds, changes, deletes and imports, and whether any output changes.
+type PlanDelta struct {
+	// Add Resources the plan adds.
+	Add int32 `json:"add"`
+
+	// Change Resources the plan changes in place.
+	Change int32 `json:"change"`
+
+	// Delete Resources the plan deletes.
+	Delete int32 `json:"delete"`
+
+	// Import Resources the plan imports.
+	Import int32 `json:"import"`
+
+	// Outputs Whether any of the root module's outputs changes.
+	Outputs bool `json:"outputs"`
+}
+
 // PollRequest The worker's state, which each poll reports.
 type PollRequest struct {
 	// Busy Whether the launcher is executing a run.
@@ -523,6 +541,9 @@ type Registration struct {
 
 // RunReport What happened to a phase of the run: it started, succeeded, failed or stopped.
 type RunReport struct {
+	// Delta What the run's plan changes, which a succeeded report of PLANNING carries and no other report does: the resources it adds, changes, deletes and imports, and whether any output changes.
+	Delta *PlanDelta `json:"delta,omitempty"`
+
 	// Details What the worker says about the event, such as why a phase failed, which the transition records as its note.
 	Details *string `json:"details,omitempty"`
 
@@ -775,6 +796,9 @@ type Run = string
 // ApiDisabled An RFC 9457 problem detail. Every error response uses the status code and this body.
 type ApiDisabled = Problem
 
+// InvalidRequest An RFC 9457 problem detail. Every error response uses the status code and this body.
+type InvalidRequest = Problem
+
 // InvalidState An RFC 9457 problem detail. Every error response uses the status code and this body.
 type InvalidState = Problem
 
@@ -960,7 +984,7 @@ type ClientInterface interface {
 
 	// WorkerRunReportWithBody Report a phase of a run
 	//
-	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -969,7 +993,7 @@ type ClientInterface interface {
 
 	// WorkerRunReport Report a phase of a run
 	//
-	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1180,7 +1204,7 @@ func (c *Client) WorkerRunLogChunks(ctx context.Context, run Run, body WorkerRun
 
 // WorkerRunReportWithBody Report a phase of a run
 //
-// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1199,7 +1223,7 @@ func (c *Client) WorkerRunReportWithBody(ctx context.Context, run Run, contentTy
 
 // WorkerRunReport Report a phase of a run
 //
-// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1778,7 +1802,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerRunReportWithBodyWithResponse Report a phase of a run
 	//
-	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -1787,7 +1811,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerRunReportWithResponse Report a phase of a run
 	//
-	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+	// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -2324,6 +2348,8 @@ type WorkerRunReportResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *NextStep
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidRequest
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Unauthenticated
 	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
@@ -2345,6 +2371,11 @@ type WorkerRunReportResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r WorkerRunReportResponse) GetJSON200() *NextStep {
 	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r WorkerRunReportResponse) GetApplicationproblemJSON400() *InvalidRequest {
+	return r.ApplicationproblemJSON400
 }
 
 // GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
@@ -2845,7 +2876,7 @@ func (c *ClientWithResponses) WorkerRunLogChunksWithResponse(ctx context.Context
 
 // WorkerRunReportWithBodyWithResponse Report a phase of a run
 //
-// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -2860,7 +2891,7 @@ func (c *ClientWithResponses) WorkerRunReportWithBodyWithResponse(ctx context.Co
 
 // WorkerRunReportWithResponse Report a phase of a run
 //
-// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING answers 501 not-implemented while the server takes no plan decision.
+// Reports that a phase of the run the run token names started, succeeded, failed or stopped, and answers what the worker does next. The first started report ends the handover. A report that names a state version the run moved on from answers 409 invalid-state, as does one the run's state cannot take, unless it repeats the report that took the run's last transition, which answers as that report did. A succeeded report of PLANNING carries the plan's delta, and the server takes the plan decision in its transaction: with no plan policy attached, a proposed run, or a tracked run whose plan changes nothing, finishes and answers exit; a tracked run with changes applies when its stack deploys automatically and is unlocked, answering execute, and waits for confirmation otherwise, answering pause; a test case applies. A succeeded report of PLANNING without a delta, or any other report with one, answers 400 invalid-request.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -3565,6 +3596,13 @@ func ParseWorkerRunReportResponse(rsp *http.Response) (*WorkerRunReportResponse,
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthenticated

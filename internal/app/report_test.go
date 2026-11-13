@@ -107,8 +107,10 @@ func (c runCalls) upload(t *testing.T, v int64, kind, name string, body []byte) 
 // declared size; a log chunk is indexed once; an artifact the runner
 // seals with the content key derived from the specification's artifact
 // key opens on the server; the saved workspace answers 307 to its bytes;
-// a stale report answers 409 and PLANNING's plan decision 501; another
-// run's token answers 401. The account's purge deletes the chunks and
+// a stale report answers 409; a planning report without its delta, or
+// another with one, answers 400; with autodeploy on, the plan decision
+// moves the run to APPLYING, keeps its delta and answers its repeat
+// alike, and the apply finishes it; another run's token answers 401. The account's purge deletes the chunks and
 // records and marks their objects for deletion.
 func TestAccRunReports(t *testing.T) {
 	w := newClaimWorld(t)
@@ -221,23 +223,48 @@ func TestAccRunReports(t *testing.T) {
 	})
 	wantProblem(t, rec, http.StatusConflict, "moved on")
 	v++
-	rec = calls.post(t, "reports", map[string]any{
-		"stateVersion": v, "state": "PLANNING",
-		"event": "succeeded",
-	})
-	wantProblem(t, rec, http.StatusNotImplemented, "plan decision")
+	delta := map[string]any{"add": 1, "change": 0, "delete": 0, "import": 0, "outputs": false}
+	wantProblem(t, calls.post(t, "reports", map[string]any{
+		"stateVersion": v, "state": "PLANNING", "event": "succeeded",
+	}), http.StatusBadRequest, "delta")
+	wantProblem(t, calls.post(t, "reports", map[string]any{
+		"stateVersion": v, "state": "PLANNING", "event": "failed", "delta": delta,
+	}), http.StatusBadRequest, "delta")
+	if _, err := w.q.Exec(ctx, `UPDATE stacks SET autodeploy = true WHERE id = $1`,
+		w.stacks["one"]); err != nil {
+		t.Fatal(err)
+	}
+	planned := map[string]any{
+		"stateVersion": v, "state": "PLANNING", "event": "succeeded", "delta": delta,
+	}
+	for range 2 {
+		rec = calls.post(t, "reports", planned)
+		var step workerapi.NextStep
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &step) != nil ||
+			step != (workerapi.NextStep{
+				Action: workerapi.Execute, State: "APPLYING", StateVersion: v + 1,
+			}) {
+			t.Fatalf("the plan decision = %d %s", rec.Code, rec.Body)
+		}
+	}
+	var kept string
+	if err := w.q.QueryRow(ctx, `SELECT delta->>'add' FROM runs WHERE id = $1`, run).
+		Scan(&kept); err != nil || kept != "1" {
+		t.Errorf("the run kept %q of its delta, %v", kept, err)
+	}
+	v++
 	other := runCalls{
 		h: calls.h, token: calls.token,
 		path: WorkerBaseURL + "/runs/" + kernel.NewULID().String(),
 	}
 	wantProblem(t, other.post(t, "reports", map[string]any{
 		"stateVersion": v,
-		"state":        "PLANNING", "event": "failed",
+		"state":        "APPLYING", "event": "failed",
 	}), http.StatusUnauthorized, "")
-	calls.report(t, v, "PLANNING", "failed", workerapi.Exit, "FAILED", v+1)
+	calls.report(t, v, "APPLYING", "succeeded", workerapi.Exit, "FINISHED", v+1)
 	wantProblem(t, calls.post(t, "reports", map[string]any{
 		"stateVersion": v + 1,
-		"state":        "PLANNING", "event": "failed",
+		"state":        "APPLYING", "event": "failed",
 	}), http.StatusConflict, "not on a worker")
 
 	if err := w.d.Runs.Purge(ctx, w.acct); err != nil {
