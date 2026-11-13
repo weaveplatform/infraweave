@@ -152,12 +152,21 @@ func (e *Executor) Ping(ctx context.Context) error {
 }
 
 // Start pulls j's image when the host lacks it, creates its container
-// with the launcher's binary mounted read-only as its root process,
-// starts it, writes j.Handoff to its standard input and closes it, and
-// copies its output to j.Output until it ends.
+// with the launcher's binary mounted read-only as its root process and
+// j's mounts, starts it, writes j.Handoff to its standard input and
+// closes it, and copies its output to j.Output until it ends.
 func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Container, error) {
 	if err := e.image(ctx, j.Image); err != nil {
 		return nil, err
+	}
+	binds := make([]string, 0, 1+len(j.Mounts))
+	binds = append(binds, e.binary+":"+BinaryPath+":ro")
+	for _, m := range j.Mounts {
+		bind := m.Source + ":" + m.Target
+		if m.ReadOnly {
+			bind += ":ro"
+		}
+		binds = append(binds, bind)
 	}
 	created, err := e.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
@@ -174,7 +183,7 @@ func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Containe
 			StdinOnce:    true,
 		},
 		HostConfig: &container.HostConfig{
-			Binds:       []string{e.binary + ":" + BinaryPath + ":ro"},
+			Binds:       binds,
 			NetworkMode: container.NetworkMode(e.c.Network),
 			Runtime:     e.c.Runtime,
 		},

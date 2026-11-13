@@ -48,7 +48,8 @@ func TestUnitLoadDefaults(t *testing.T) {
 	l, d := c.Launcher, config.Defaults().Launcher
 	if l.Token != "token" || l.PrivateKey.Reveal() != keyPEM || l.PollTimeout != time.Minute ||
 		l.AdminListen != ":9091" || l.DefaultRunnerImage != d.DefaultRunnerImage || l.CacheDir != d.CacheDir ||
-		l.Log.Level != "info" || l.Metadata != nil || l.StateLockTimeout != 5*time.Minute {
+		l.Log.Level != "info" || l.Metadata != nil || l.StateLockTimeout != 5*time.Minute ||
+		l.ToolMirror != "" {
 		t.Fatalf("defaults: %+v", l)
 	}
 }
@@ -74,6 +75,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
   admin_listen: ":7000"
   poll_timeout: 30s
   state_lock_timeout: 90s
+  tool_mirror: https://mirror.example.com/releases
   metadata:
     zone: a
   docker:
@@ -87,7 +89,8 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	if c.Launcher.AdminListen != ":7000" || c.Launcher.PollTimeout != 30*time.Second ||
 		c.Launcher.Docker.Network != "runs" || c.Launcher.Metadata["zone"] != "a" ||
 		c.Launcher.Docker.RunnerBinary != "/opt/linux/infraweave" ||
-		c.Launcher.StateLockTimeout != 90*time.Second {
+		c.Launcher.StateLockTimeout != 90*time.Second ||
+		c.Launcher.ToolMirror != "https://mirror.example.com/releases" {
 		t.Fatalf("file: %+v", c.Launcher)
 	}
 
@@ -132,6 +135,9 @@ func TestUnitValidate(t *testing.T) {
 		"launcher.default_runner_image":  func(l *config.Launcher) { l.DefaultRunnerImage = "" },
 		"launcher.cache_dir":             func(l *config.Launcher) { l.CacheDir = "" },
 		"launcher.state_lock_timeout":    func(l *config.Launcher) { l.StateLockTimeout = -time.Second },
+		"launcher.tool_mirror \"ftp:":    func(l *config.Launcher) { l.ToolMirror = "ftp://mirror" },
+		"launcher.tool_mirror \"https:/": func(l *config.Launcher) { l.ToolMirror = "https:///x" },
+		"launcher.tool_mirror \"::\"":    func(l *config.Launcher) { l.ToolMirror = "::" },
 		"launcher.metadata holds":        func(l *config.Launcher) { l.Metadata = many },
 		"launcher.metadata \"\"":         func(l *config.Launcher) { l.Metadata = map[string]string{"": "v"} },
 		"launcher.admin_listen \"9091\"": func(l *config.Launcher) { l.AdminListen = "9091" },

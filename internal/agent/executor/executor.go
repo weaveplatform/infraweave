@@ -9,13 +9,22 @@ import (
 
 // Job is one run's container: the worker and the run it belongs to, which
 // label it so a restarted launcher finds it, the image it starts from, the
-// handoff its runner reads on standard input, and where its output goes.
+// host paths it mounts, the handoff its runner reads on standard input,
+// and where its output goes.
 type Job struct {
 	Worker  string
 	Run     string
 	Image   string
+	Mounts  []Mount
 	Handoff []byte
 	Output  io.Writer
+}
+
+// Mount is a host path, absolute, that the container sees at Target.
+type Mount struct {
+	Source   string
+	Target   string
+	ReadOnly bool
 }
 
 // Exit is how a container ended: its root process's exit code and why it
