@@ -14,10 +14,10 @@
 // altered, expired or for the other method, 413 for a PUT above its size
 // and 400 below it or without a length, and 422 when the bytes do not
 // match the bound SHA-256, which the handler checks before the object
-// becomes readable. A verified transfer's deadlines move to Stall past
-// each read of an upload or write of a download, so an object of any size
-// moves for as long as it keeps moving, and a transfer that stalls loses
-// its connection.
+// becomes readable. A verified transfer's deadlines move to moving.Stall
+// past each read of an upload or write of a download, so an object of any
+// size moves for as long as it keeps moving, and a transfer that stalls
+// loses its connection.
 //
 // # Input and output
 //
@@ -27,7 +27,7 @@
 //
 // # Dependencies
 //
-// It imports chi for the routes, httpkit/problem for the answers and
-// objectstore; the keyring arrives as Keys. internal/app opens it for
+// It imports chi for the routes, httpkit/problem for the answers,
+// httpkit/moving for a transfer's deadlines and objectstore; the keyring arrives as Keys. internal/app opens it for
 // objectstore.driver fs and mounts its routes.
 package fs

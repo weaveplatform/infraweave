@@ -34,7 +34,7 @@ func TestUnitAssembly(t *testing.T) {
 	_ = d.OperatorAPI()
 	_ = (*Domain)(nil).OperatorAPI()
 	if d.Authenticator() == nil || d.OperatorAuthenticator() == nil ||
-		d.WorkerAuthenticator() == nil {
+		d.WorkerAuthenticator() == nil || d.StateAuthenticator() == nil {
 		t.Error("no authenticator")
 	}
 	if s := DefaultSettings().Session; s.IdleTimeout != 12*time.Hour || s.MaxAge != 7*24*time.Hour {

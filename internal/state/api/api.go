@@ -12,6 +12,26 @@ import (
 // Terraform's and OpenTofu's http backend reaches.
 const DefaultWorkspace = ""
 
+// BaseURL is the state backend's prefix on the API listener, and
+// StackPattern and WorkspacePattern the chi patterns of a stack's default
+// workspace and of a named one under it, which internal/app's route table
+// names. {stack} is a stack's ULID, or its slug when the segment is no
+// canonical ULID; {workspace} is URL-encoded.
+//
+// ref: decision 0010 § "Endpoints"
+const (
+	BaseURL          = "/state/v1"
+	StackPattern     = BaseURL + "/stacks/{stack}"
+	WorkspacePattern = StackPattern + "/workspaces/{workspace}"
+)
+
+// MethodLock and MethodUnlock are the methods Terraform's and OpenTofu's
+// http backend takes and releases a lock with.
+const (
+	MethodLock   = "LOCK"
+	MethodUnlock = "UNLOCK"
+)
+
 // Version is a managed state version's metadata, without its contents.
 // Serial and Lineage are nil for a client-encrypted version, whose body
 // the server never parses; Run is nil for a version no run wrote, such as

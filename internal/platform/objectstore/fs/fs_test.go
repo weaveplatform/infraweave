@@ -266,7 +266,7 @@ func TestUnitFSLayout(t *testing.T) {
 // TestUnitFSMovingTransfers checks, on a listener whose read and write
 // timeouts are far shorter than the transfers, that an upload trickled
 // past them and a download read slowly past them both complete while
-// they keep moving, and that an upload that stalls for longer than Stall
+// they keep moving, and that an upload that stalls for longer than its stall
 // loses its connection and stores nothing.
 func TestUnitFSMovingTransfers(t *testing.T) {
 	r := chi.NewRouter()

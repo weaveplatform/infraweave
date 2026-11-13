@@ -15,8 +15,9 @@ import (
 
 // calls records the holds and opens of a fake Stacks and Store in order,
 // each with whether its context carried a transaction; held is the stack
-// the hold knows, and err fails the open.
+// the hold knows, and err fails the open. The lock methods are mem's.
 type calls struct {
+	*mem
 	log  []string
 	held kernel.ULID
 	err  error
@@ -70,7 +71,7 @@ func inTransaction(t *testing.T, f func(ctx context.Context) error) error {
 func TestUnitWorkspace(t *testing.T) {
 	acct, stack := kernel.NewAccountID(), kernel.NewULID()
 	c := &calls{held: stack}
-	s := New(c, c)
+	s := New(db{}, c, c)
 	err := inTransaction(t, func(ctx context.Context) error {
 		return s.Workspace(ctx, acct, stack, "")
 	})

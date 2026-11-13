@@ -29,6 +29,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
 
 // Operation is what the controls in front of the router need to know about
@@ -53,6 +54,12 @@ type Operation struct {
 	//
 	// ref: decision 0006 § "The principal"
 	Runner bool
+	// State marks a route of the state backend, which a run token
+	// authenticates as the password of HTTP Basic credentials and which
+	// ignores Idempotency-Key.
+	//
+	// ref: decision 0003 § "API surfaces"
+	State bool
 	// Public marks an operation that takes no credential, whose security
 	// is the empty list, such as POST /auth/token. Every other operation
 	// requires the API's global bearerAuth.
@@ -467,6 +474,38 @@ var apiOperations = sync.OnceValue(func() Operations {
 	// ref: decision 0005
 	ops[http.MethodGet+" "+fs.Pattern] = Operation{Public: true}
 	ops[http.MethodPut+" "+fs.Pattern] = Operation{Public: true, OwnBodyBound: true}
+	// The state backend speaks Terraform's and OpenTofu's http backend
+	// protocol, so each shared control it departs from does so here:
+	//   - Authentication: HTTP Basic with the user name run and a run token
+	//     as the password, challenged with Basic realm="infraweave-state",
+	//     since the http backend sends Basic credentials alone.
+	//   - Authorization: no account action decides a route; the runs
+	//     domain's StateAccess grants what the run's current state allows,
+	//     so the run is its own subject and loses access as it moves on.
+	//   - Feature gates: none; the operation that created the run was
+	//     gated, and gating state would strand an apply part way.
+	//   - Idempotency keys: ignored (State); Terraform sends none, and a
+	//     LOCK repeating a lock its run holds is granted again.
+	//   - Strict bodies: none; the handler checks a LockInfo as JSON,
+	//     Terraform's shape, which no schema describes.
+	//   - Bounded bodies: the backend's own (OwnBodyBound): LOCK and UNLOCK
+	//     apply the API's body bound at 16 KiB, a LockInfo's largest, so a
+	//     state, which exceeds any API body, is bounded where it is served.
+	//   - Bounded connections: none yet; LOCK and UNLOCK keep the
+	//     listener's timeouts, and GET and POST answer 501 until state
+	//     versions are served.
+	//   - Problem details: a 423 answers the holder's LockInfo, from which
+	//     Terraform names the lock's holder.
+	// Each draws on the standard budget of its run, the same as the worker
+	// API's calls of the run.
+	// ref: decision 0003 § "API surfaces"; decision 0010
+	for _, pattern := range []string{stateapi.StackPattern, stateapi.WorkspacePattern} {
+		for _, method := range []string{
+			http.MethodGet, http.MethodPost, stateapi.MethodLock, stateapi.MethodUnlock,
+		} {
+			ops[method+" "+pattern] = Operation{State: true, OwnBodyBound: true}
+		}
+	}
 	return ops
 })
 
@@ -584,7 +623,7 @@ func Guarded(
 		idempotency.Middleware(g.Keys, caller,
 			func(req *http.Request) bool {
 				op, ok := resolve(req)
-				return ok && !op.Search && !op.Worker
+				return ok && !op.Search && !op.Worker && !op.State
 			}, log),
 		strictBodies(func(req *http.Request) *openapi3.RequestBody {
 			op, _ := resolve(req)
@@ -631,6 +670,8 @@ func (o Operation) access() accessapi.Access {
 		return accessapi.Public
 	case o.Runner:
 		return accessapi.Runner
+	case o.State:
+		return accessapi.State
 	case o.Worker:
 		return accessapi.Worker
 	case o.Organization:

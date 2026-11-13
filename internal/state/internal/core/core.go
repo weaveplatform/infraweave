@@ -25,11 +25,26 @@ var (
 	ErrWorkspaceName = errors.New("state: invalid workspace name")
 )
 
-// Store is the state domain's storage port.
+// Store is the state domain's storage port. Each method joins the
+// transaction its context carries.
 type Store interface {
-	// OpenWorkspace makes acct's stack's workspace name exist, in the
-	// context's transaction, leaving one that exists as it is.
+	// OpenWorkspace makes acct's stack's workspace name exist, leaving one
+	// that exists as it is.
 	OpenWorkspace(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, name string) error
+	// LockWorkspace locks t's workspace's row until the transaction ends,
+	// so takers and releasers of its locks go one at a time; false when
+	// the workspace does not exist.
+	LockWorkspace(ctx context.Context, t Target) (bool, error)
+	// Locks are the locks held on t's workspace, oldest first.
+	Locks(ctx context.Context, t Target) ([]Lock, error)
+	// AddLock records l on t's workspace.
+	AddLock(ctx context.Context, t Target, l Lock) error
+	// RemoveLocks deletes the locks on t's workspace whose IDs ids holds.
+	RemoveLocks(ctx context.Context, t Target, ids []string) error
+	// ReleaseRun deletes every lock run holds in acct.
+	ReleaseRun(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error
+	// Audit records e on its account's trail.
+	Audit(ctx context.Context, e kernel.AuditEntry) error
 }
 
 // Stacks is what the state domain asks of the stacks domain;
@@ -43,13 +58,15 @@ type Stacks interface {
 
 // Service is the state domain's core.
 type Service struct {
+	db     tx.Beginner
 	store  Store
 	stacks Stacks
 }
 
-// New returns the service over store, holding stacks through stacks.
-func New(store Store, stacks Stacks) *Service {
-	return &Service{store: store, stacks: stacks}
+// New returns the service over store, holding stacks through stacks and
+// opening its transactions on db.
+func New(db tx.Beginner, store Store, stacks Stacks) *Service {
+	return &Service{db: db, store: store, stacks: stacks}
 }
 
 // Workspace holds acct's stack and makes its workspace name exist, both

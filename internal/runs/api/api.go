@@ -29,9 +29,10 @@ const (
 )
 
 // StateGrant is what a run may do with its stack's managed state in the
-// run's current state; the zero StateGrant grants nothing. Account is the
-// run's account, which the state domain scopes its rows by, so no part of
-// a request's URL chooses the account it reaches.
+// run's current state; one with Read, Lock and Write unset grants nothing.
+// Account is the run's account whenever some account has the run, which
+// the state domain scopes its rows and a stack's slug by, so no part of a
+// request's URL chooses the account it reaches.
 //
 // ref: decision 0010 § "Who may call what"
 type StateGrant struct {
@@ -45,9 +46,10 @@ type StateGrant struct {
 // forward edge internal/app hands the state domain.
 type StateAccess interface {
 	// Access answers run's grant on stack's state: the zero StateGrant
-	// when no account has the run, when it is another stack's, or when its
-	// state grants nothing. It reads the run on every call, so a run that
-	// ends or stops loses its access at once, whatever its token's expiry.
+	// when no account has the run, and one granting nothing but naming the
+	// run's account when it is another stack's or its state grants
+	// nothing. It reads the run on every call, so a run that ends or stops
+	// loses its access at once, whatever its token's expiry.
 	Access(ctx context.Context, run, stack kernel.ULID) (StateGrant, error)
 }
 

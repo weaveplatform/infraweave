@@ -100,13 +100,18 @@ session token, in-run API token).
   | shared locks only | shared | granted, `200` |
   | shared locks | exclusive | `423`, body the oldest holder's `LockInfo` |
   | exclusive | either | `423`, body the holder's `LockInfo` |
-  | the same `lock_id` | the same mode | `200` (Terraform retries are idempotent) |
+  | the same `lock_id`, held by the same run | the same mode | `200` (Terraform retries are idempotent) |
+  | the same `lock_id`, held by another run or in the other mode | either | `423`, body that lock's `LockInfo` |
 
   Terraform's `http` backend reads a `423` body as the current lock and reports its holder
   to the user.
-- **Releasing.** `UNLOCK` deletes the row whose `lock_id` matches the body's `ID`; a
-  mismatch answers `423` with the holder's `LockInfo`. A client sends back the `LockInfo`
-  of the lock it took. `tofu force-unlock <id>` sends a `LockInfo` carrying the given ID.
+- **Releasing.** `UNLOCK` deletes the row whose `lock_id` matches the body's `ID`. When
+  locks are held and none has that ID, it answers `423` with the holder's `LockInfo`; when
+  none is held, `200`, so a repeated release is idempotent. A client sends back the
+  `LockInfo` of the lock it took. `tofu force-unlock <id>` sends a `LockInfo` carrying the
+  given ID. Releasing a lock that another run holds, by its ID, needs the exclusive grant,
+  as a force-unlock does; any other caller gets `403`, so a planning run cannot release an
+  apply's lock.
 - **Force-unlock.** `terraform force-unlock` sends an `UNLOCK` with an empty body,
   because Terraform's `http` client ignores the ID argument and sends only the lock its own
   process took, which a new process does not have. An `UNLOCK` with an empty body is a
@@ -249,7 +254,7 @@ conflict, whose body Terraform reads:
 | `204` | `GET` with no state | empty |
 | `400` | bad `Content-MD5` (not under `fips140=only`), body not JSON, `LockInfo` not JSON | problem `invalid-request` |
 | `401` | missing or invalid credentials, or another surface's credential, with `WWW-Authenticate: Basic realm="infraweave-state"` | problem `unauthenticated` |
-| `403` | valid credentials without the right in the table above, or an empty-body `UNLOCK` from a caller that may not force-unlock | problem `forbidden` |
+| `403` | valid credentials without the right in the table above, or an empty-body `UNLOCK` or an `UNLOCK` of another run's lock from a caller not granted the exclusive lock | problem `forbidden` |
 | `404` | unknown stack or workspace, or the stack does not manage state | problem `not-found` |
 | `405` | any other method | problem `method-not-allowed` |
 | `413` | body over `state.max_size`, or a `LockInfo` over 16 KiB | problem `payload-too-large` |

@@ -109,3 +109,82 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 		}
 	}
 }
+
+// TestUnitStateAuthenticator checks that the state backend's
+// authenticator admits a run token as the password of Basic credentials
+// named run, putting the run's principal on the context, and refuses with
+// the Basic challenge another user name, a worker session token, an API
+// token, a bearer header and no credential; that it refuses any other
+// route; and that no other authenticator admits a state route.
+func TestUnitStateAuthenticator(t *testing.T) {
+	base := newWorld(t)
+	auth := authn.New(authn.Deps{
+		Keys: base.st, Sessions: base.st, Tokens: subjects{base.st}, Audience: audience,
+		TTL: 10 * time.Hour, WorkerTTL: time.Hour, RunTTL: time.Hour,
+		Now: func() time.Time { return t0 },
+	})
+	run := kernel.NewULID()
+	runTok, err := auth.RunToken(t.Context(), run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workerTok, err := auth.WorkerToken(t.Context(), kernel.NewULID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, apiTok := base.memberToken(kernel.NewAccountID())
+	apiTok = strings.TrimPrefix(apiTok, "Bearer ")
+	var got kernel.Principal
+	seen := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got, _ = kernel.PrincipalFrom(r.Context())
+		w.WriteHeader(http.StatusNoContent)
+	})
+	send := func(a Authenticator, acc accessapi.Access, set func(*http.Request)) *httptest.
+		ResponseRecorder {
+		got = kernel.Principal{}
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(t.Context(), "LOCK", "/", nil)
+		set(req)
+		a.Middleware(func(*http.Request) accessapi.Access { return acc })(seen).ServeHTTP(rec, req)
+		return rec
+	}
+	basic := func(user, pass string) func(*http.Request) {
+		return func(r *http.Request) { r.SetBasicAuth(user, pass) }
+	}
+	state := NewStateAuthenticator(auth)
+	if rec := send(state, accessapi.State, basic("run", runTok.Raw)); rec.Code !=
+		http.StatusNoContent || got.Kind != kernel.PrincipalRunner || got.ActorID != run {
+		t.Errorf("a run token = %d, %+v", rec.Code, got)
+	}
+	challenge := `Basic realm="infraweave-state"`
+	for name, set := range map[string]func(*http.Request){
+		"no credential":          func(*http.Request) {},
+		"another user name":      basic("admin", runTok.Raw),
+		"an empty password":      basic("run", ""),
+		"a worker session token": basic("run", workerTok.Raw),
+		"an API token":           basic("run", apiTok),
+		"a bearer header": func(r *http.Request) {
+			r.Header.Set("Authorization", "Bearer "+runTok.Raw)
+		},
+	} {
+		if rec := send(state, accessapi.State, set); rec.Code != http.StatusUnauthorized ||
+			rec.Header().Get("WWW-Authenticate") != challenge {
+			t.Errorf("%s = %d %q", name, rec.Code, rec.Header().Get("WWW-Authenticate"))
+		}
+	}
+	for name, tc := range map[string]struct {
+		a   Authenticator
+		acc accessapi.Access
+	}{
+		"an API route":                  {state, accessapi.Account},
+		"a runner route":                {state, accessapi.Runner},
+		"the API's on a state route":    {NewAuthenticator(auth, publicURL), accessapi.State},
+		"the worker's on a state route": {NewWorkerAuthenticator(auth), accessapi.State},
+		"the operator's on one":         {NewOperatorAuthenticator(auth), accessapi.State},
+	} {
+		if rec := send(tc.a, tc.acc, basic("run", runTok.Raw)); rec.Code !=
+			http.StatusUnauthorized {
+			t.Errorf("%s = %d", name, rec.Code)
+		}
+	}
+}

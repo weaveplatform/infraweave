@@ -115,12 +115,16 @@ breaking change to retrofit once clients exist:
   | The state backend | Authentication | HTTP Basic with the username `run`, the credential as the password, and the challenge `Basic realm="infraweave-state"` | Terraform's and OpenTofu's `http` backend sends Basic credentials alone |
   | The state backend | Authorization | No account action decides a run token's route: `runsapi.StateAccess` grants what the run's current state allows | The run is its own subject, as on the worker API, and loses access the moment it moves on |
   | The state backend | Feature gates | No capability gates a route | The operation that created the run was gated; gating state would strand an apply part way when an organization's tier drops |
-  | The state backend | Idempotency keys | `Idempotency-Key` is ignored | Terraform sends none; an identical body adds no version, a write must name the exclusive lock it holds, and a `LOCK` repeating a held lock's ID is granted again |
+  | The state backend | Idempotency keys | `Idempotency-Key` is ignored | Terraform sends none; an identical body adds no version, a write must name the exclusive lock it holds, and a `LOCK` repeating a lock its run holds is granted again |
   | The state backend | Strict bodies | The handler checks a state or `LockInfo` body as JSON | They are Terraform's shapes, which no schema describes |
   | The state backend | Bounded bodies | A `POST` is bounded by `state.max_size` (512 MiB) and a `LockInfo` by 16 KiB, not by `server.max_body_bytes` | A state file exceeds any API body |
   | The state backend | Bounded connections | Once the credential verifies, a transfer's deadlines move to 30 seconds past each read of a `POST`'s body or write of a `GET`'s | A state transfer exceeds any fixed time, so it keeps its connection while it moves and loses it when it stalls, as the fs blobs do |
   | The state backend | Problem details | A `423` answers the holder's `LockInfo` | Terraform names the lock's holder from that body |
   | The admin listener | All but bounded connections | A separate listener with no controls but the listener's timeouts, so a probe connection cannot be held open either | Probes and metrics must answer while the API sheds load; it is never routed through ingress, and deployments restrict it with network policy ([0017](0017-observability-and-health.md)) |
+
+  Each state backend row is one item, under its control's name, of the comment on the
+  state backend's entries in the route table (`apiOperations` in
+  `internal/app/operations.go`).
 
 ### Idempotency keys
 
