@@ -161,6 +161,10 @@ func New(d Deps) *Domain {
 // internal/app registers with the access domain for Entity.
 func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.read.SpaceOf }
 
+// RunAccess is the run reader an in-run API token's authentication reads
+// its run through, a back edge internal/app binds in the access domain.
+func (d *Domain) RunAccess() accessapi.Runs { return d.read }
+
 // PurgeBatch is how many rows one statement of Purge deletes, so no
 // transaction holds an account's every run and transition at once.
 const PurgeBatch = 500

@@ -6,8 +6,9 @@
 // its transitions and the actions the caller may take on it, which
 // Allowed derives from the edges its state allows next and the actions
 // the caller holds on the stack's space. SpaceOf finds a run's space for
-// the route's decision, and StackOf a run's stack. Store is its storage
-// port.
+// the route's decision, StackOf a run's stack, and RunAccess a run's
+// stack, space and whether it plans, applies or performs, for its in-run
+// API token's authentication. Store is its storage port.
 //
 // # Input and output
 //

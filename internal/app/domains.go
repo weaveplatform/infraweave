@@ -164,6 +164,7 @@ func newDomains(
 	})
 	stacks.GuardStacks(runs.StackGuard())
 	access.ResolveSubjects(runsassembly.Entity, runs.SpaceOf())
+	access.BindRuns(runs.RunAccess())
 	stacks.SetStackStatus(runs.StackStatus())
 	workers.BindScheduler(runs.Scheduler())
 	workers.BindReports(runs.Reports())

@@ -239,6 +239,42 @@ func (s *Service) SpaceOf(
 	return st.Space, err //nolint:wrapcheck // the stacks domain names the read
 }
 
+// live are the states in which a run's in-run API token authenticates,
+// the phases whose code calls the API.
+//
+// ref: decision 0006 § "In-run API token"
+var live = []kernel.RunState{
+	kernel.RunStatePlanning, kernel.RunStateApplying, kernel.RunStatePerforming,
+}
+
+// RunAccess is acct's run's stack, the stack's space and whether the run
+// is live, for its in-run API token's authentication, which reads it on
+// every request; accessapi.ErrNoSubject when acct lacks the run or its
+// stack.
+func (s *Service) RunAccess(
+	ctx context.Context,
+	acct kernel.AccountID,
+	run kernel.ULID,
+) (accessapi.RunAccess, error) {
+	r, err := s.d.Store.Get(ctx, acct, run)
+	if errors.Is(err, ErrNotFound) {
+		return accessapi.RunAccess{}, accessapi.ErrNoSubject
+	}
+	if err != nil {
+		return accessapi.RunAccess{}, err //nolint:wrapcheck // the store names the read
+	}
+	st, err := s.d.Stacks.Get(ctx, acct, r.Stack)
+	if errors.Is(err, stacksapi.ErrNotFound) {
+		return accessapi.RunAccess{}, accessapi.ErrNoSubject
+	}
+	if err != nil {
+		return accessapi.RunAccess{}, err //nolint:wrapcheck // the stacks domain names the read
+	}
+	return accessapi.RunAccess{
+		Stack: r.Stack, Space: st.Space, Live: slices.Contains(live, r.State),
+	}, nil
+}
+
 // StackOf is the stack of acct's run id; ErrNotFound when acct lacks it.
 func (s *Service) StackOf(
 	ctx context.Context,
