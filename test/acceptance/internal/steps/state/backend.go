@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
@@ -138,7 +139,8 @@ func (b *backendSteps) start(ctx context.Context, replica string) error {
 // takeOver does what a launcher does with the run kept as run, whose run
 // token token names, before its runner starts: it reads the run's
 // specification through replica, opens its sealed part with the private
-// key of the request kept as csr, checks out the run's commit of the
+// key of the request kept as csr, whose public key the handoff carries
+// for a saved workspace, checks out the run's commit of the
 // repository kept as repo into a workspace of the run's own, and writes
 // the backend file there with the backend package, addressed to the
 // relay. Its tool runs with the credentials the package answers.
@@ -158,7 +160,7 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 	if spec.StateBackend == nil {
 		return fmt.Errorf("%w: the specification names no state backend", harness.ErrStep)
 	}
-	secrets, err := b.open(csr, spec)
+	secrets, pool, err := b.open(csr, spec)
 	if err != nil {
 		return err
 	}
@@ -171,6 +173,7 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 		Endpoint: b.relay.URL + client.BasePath, Run: id, RunToken: b.w.Tokens[token],
 		Assigned: wire.AssignmentState(spec.Run.State), StateVersion: spec.Run.StateVersion,
 		Spec: spec, Secrets: secrets, StateLockTimeout: stateLockTimeout,
+		PoolKey: pool.PublicKey().Bytes(),
 	}
 	env, err := backend.Configure(dir, h)
 	if err != nil {
@@ -184,25 +187,29 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 }
 
 // open opens spec's sealed part with the private key of the request kept
-// as csr, for the run and state version spec names.
-func (b *backendSteps) open(csr string, spec wire.RunSpec) (wire.RunSpecSecrets, error) {
+// as csr, for the run and state version spec names, and answers the key.
+func (b *backendSteps) open(
+	csr string,
+	spec wire.RunSpec,
+) (wire.RunSpecSecrets, *ecdh.PrivateKey, error) {
 	var secrets wire.RunSpecSecrets
 	key, ok := b.w.Keys[csr].(*ecdsa.PrivateKey)
 	if !ok {
-		return secrets, fmt.Errorf("%w: no P-256 key of %q", harness.ErrStep, csr)
+		return secrets, nil, fmt.Errorf("%w: no P-256 key of %q", harness.ErrStep, csr)
 	}
 	priv, err := key.ECDH()
 	if err != nil {
-		return secrets, fmt.Errorf("the key of %q: %w", csr, err)
+		return secrets, nil, fmt.Errorf("the key of %q: %w", csr, err)
 	}
 	plain, err := seal.OpenEnvelope(priv, spec.Run.Id, spec.Run.StateVersion, spec.Sealed)
 	if err != nil {
-		return secrets, fmt.Errorf("%w: the sealed part does not open: %w", harness.ErrStep, err)
+		return secrets, nil, fmt.Errorf("%w: the sealed part does not open: %w", harness.ErrStep,
+			err)
 	}
 	if err := json.Unmarshal(plain, &secrets); err != nil {
-		return secrets, fmt.Errorf("%w: the secrets: %w", harness.ErrStep, err)
+		return secrets, nil, fmt.Errorf("%w: the secrets: %w", harness.ErrStep, err)
 	}
-	return secrets, nil
+	return secrets, priv, nil
 }
 
 // checkOut writes the files at commit of the repository kept as repo

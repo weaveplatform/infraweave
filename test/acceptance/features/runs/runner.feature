@@ -10,7 +10,8 @@ Feature: The runner executes a run's phases and their hooks in one shell session
   Each phase's output is masked, written to standard output and uploaded
   as the state's log before the phase's report; a word a hook names with
   ::add-mask is masked from then on, and the afterRun hooks' output goes
-  to standard output alone.
+  to standard output alone. Planning saves its plan's results, and a
+  tracked run's workspace sealed to the pool's key, before its report.
   Here the scenario is the launcher: it registers with the pool's key,
   claims a run, opens its sealed specification, checks out its commit
   from Gitea and starts this build's runner in a container of the tool's
@@ -55,6 +56,7 @@ Feature: The runner executes a run's phases and their hooks in one shell session
     Then the runner executes the run "run" with <tool> and exits 0
     And the runner's output of the run "run" holds "infraweave: working on commit"
     And the runner's output of the run "run" holds "after plan: hello"
+    And the runner's output of the run "run" holds "infraweave: saved the workspace for the plan's confirmation"
     And the runner's output of the run "run" holds "Apply complete! Resources: 1 added, 0 changed, 0 destroyed."
     And the runner's output of the run "run" holds "after run: FINISHED hello"
     And the runner's output of the run "run" holds "fish *****"

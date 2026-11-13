@@ -48,7 +48,9 @@ const planJSON = `{"format_version":"1.2","resource_changes":[` +
 
 // worker is a fake worker API that holds one run: it applies a report
 // that names the run's state version, answers a repeated report the step
-// it answered before, refuses any other with 409, and can lose answers.
+// it answered before, refuses any other with 409, refuses with 400 a
+// delta on any report but planning's success, as the server does, and
+// can lose answers.
 // It takes the run's log chunks and artifacts, and keeps the order in
 // which it took them and the reports; it refuses every declaration with
 // uploads, and signs other names than declared with rename.
@@ -148,6 +150,9 @@ func (w *worker) Report(
 	}
 	if w.refuse != 0 {
 		return wire.NextStep{}, &client.Error{Op: "report", Status: w.refuse}
+	}
+	if (r.Delta != nil) != (r.State == wire.WorkerStatePLANNING && r.Event == wire.Succeeded) {
+		return wire.NextStep{}, &client.Error{Op: "report", Status: 400}
 	}
 	if len(w.reports) > 1 && reflect.DeepEqual(r, w.last) {
 		return w.step, nil

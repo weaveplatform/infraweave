@@ -190,8 +190,10 @@ func (r *run) report(ctx context.Context, rep wire.RunReport) (wire.NextStep, er
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) wire.RunReport {
 	rep := wire.RunReport{StateVersion: version, State: state, Event: wire.Succeeded}
+	// A failed report carries no delta, even once the plan was read: the
+	// worker API refuses a delta on any report but planning's success.
 	fail := func(detail string) wire.RunReport {
-		rep.Event, rep.Details = wire.Failed, &detail
+		rep.Event, rep.Details, rep.Delta = wire.Failed, &detail, nil
 		return rep
 	}
 	if !r.ready {
