@@ -1802,8 +1802,9 @@ through the backend.
    `before_*` and `after_*` hooks in one shell session, reports per phase,
    `pause` and `exit` answers, the lock timeout and
    `INFRAWEAVE_DISABLE_STATE_LOCK` of [0010](../research/decisions/0010-state-backend.md).
-   `internal/agent/vendors/{terraform,opentofu}`
-   and `internal/iac/{terraform,opentofu}` with plan JSON parsing into
+   `internal/agent/vendors`, one command set that Terraform and OpenTofu
+   share under their own binaries, `launcher.state_lock_timeout` in the
+   handoff, and `internal/iac/{terraform,opentofu}` with plan JSON parsing into
    changes and the plan's delta, whose `move`, `forget` and `resources`
    counts `PlanDelta` gains.
 2. `internal/agent/tools`: download and verification of Terraform (HashiCorp

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
@@ -42,7 +43,10 @@ func assigned(t *testing.T) (*agenttest.Server, []byte) {
 	return srv, b.Bytes()
 }
 
-func TestUnitRunnerReportsStartedThenFailed(t *testing.T) {
+// TestUnitRunnerExecutesTheRun checks that the runner executes the run
+// its handoff names through the worker API: a specification that names
+// no tool fails the first phase with a note that says so.
+func TestUnitRunnerExecutesTheRun(t *testing.T) {
 	srv, h := assigned(t)
 	var log bytes.Buffer
 	if err := runner.Run(
@@ -65,15 +69,22 @@ func TestUnitRunnerReportsStartedThenFailed(t *testing.T) {
 	}
 	if failed.Event != wire.Failed || failed.State != wire.WorkerStateAPPLYING ||
 		failed.StateVersion != 6 ||
-		*failed.Details != runner.Detail {
+		*failed.Details != "The run's specification names no tool to run." {
 		t.Fatalf("failed: %+v", failed)
 	}
-	if !strings.Contains(log.String(), `msg="run ended" run=run-1 state=FAILED action=exit`) {
+	if !strings.Contains(log.String(), `msg="run ended" run=run-1 state=FAILED`) {
 		t.Fatalf("log: %s", log.String())
 	}
 }
 
+// TestUnitRunnerFailures checks a handoff the runner cannot read, and a
+// report that keeps failing, which the runner sends again for ten minutes
+// of the bubble's time before it fails.
 func TestUnitRunnerFailures(t *testing.T) {
+	synctest.Test(t, runnerFailures)
+}
+
+func runnerFailures(t *testing.T) {
 	log := slog.New(slog.DiscardHandler)
 	if err := runner.Run(
 		t.Context(),

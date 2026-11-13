@@ -353,7 +353,7 @@ func TestUnitHandover(t *testing.T) {
 				Value: secret("PRIVATE"),
 			},
 		},
-		Hooks: map[string][]string{"beforeInit": {"echo hi"}},
+		Hooks: map[string][]string{"before_init": {"echo hi"}},
 	}
 	h, err := w.handover(t, w.run.ID)
 	if err != nil {
@@ -377,7 +377,7 @@ func TestUnitHandover(t *testing.T) {
 		t.Errorf("stack = %+v", st)
 	}
 	if *spec.RunnerImage != "ghcr.io/acme/run" || spec.Commit.Hash != "abc" ||
-		!slices.Equal(spec.Hooks["beforeInit"], []string{"echo hi"}) {
+		!slices.Equal(spec.Hooks["before_init"], []string{"echo hi"}) {
 		t.Errorf("image %s, commit %+v, hooks %v", *spec.RunnerImage, spec.Commit, spec.Hooks)
 	}
 	plain := map[string]string{}

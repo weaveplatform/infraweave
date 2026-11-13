@@ -5,13 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
 // Handoff is what the launcher hands the runner: the worker API it
 // reports to, the run with its run token and the state its preparation
-// leads to, and the run's specification with its secrets opened.
+// leads to, the run's specification with its secrets opened, and the
+// launcher's settings the runner applies.
 //
 // ref: decision 0008 § "The launcher and the runner"
 type Handoff struct {
@@ -26,6 +28,9 @@ type Handoff struct {
 	StateVersion int64                `json:"stateVersion"`
 	Spec         wire.RunSpec         `json:"spec"`
 	Secrets      wire.RunSpecSecrets  `json:"secrets"`
+	// StateLockTimeout is launcher.state_lock_timeout: how long each
+	// command that locks the state waits for the lock.
+	StateLockTimeout time.Duration `json:"stateLockTimeout"`
 }
 
 // MaxSize bounds a handoff the runner reads. A specification holds a
