@@ -17,23 +17,36 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
 
 // Deps are what a launcher takes: its settings, the HTTP client its
-// worker API calls go through, the executor that runs its runs, its log,
-// a clock, time.Now when nil, and what it registers as.
+// worker API calls and downloads go through, the executor that runs its
+// runs, the tool binaries they mount, its log, a clock, time.Now when
+// nil, and what it registers as. Tools is a tools.Fetcher on the cache
+// directory and the tool mirror when nil.
 type Deps struct {
 	Config   config.Launcher
 	Doer     wire.HttpRequestDoer
 	Executor executor.Executor
+	Tools    Tools
 	Log      *slog.Logger
 	Now      func() time.Time
 	Version  string
 	OS       string
 	Arch     string
 }
+
+// Tools answers the path of a verified binary of a tool's release.
+type Tools interface {
+	Binary(ctx context.Context, r tools.Release) (string, error)
+}
+
+// toolOS is the platform of the binaries a run mounts: a run's container
+// is Linux whatever the launcher's host is, on the host's architecture.
+const toolOS = "linux"
 
 // The bounds of a launcher's calls: callTimeout for each call but the
 // poll, which may take its hold and callTimeout more; a failed call is
@@ -86,6 +99,11 @@ type waited struct {
 func New(d Deps) (*Launcher, error) {
 	if d.Now == nil {
 		d.Now = time.Now
+	}
+	if d.Tools == nil {
+		d.Tools = tools.New(tools.Config{
+			Dir: d.Config.CacheDir, Mirror: d.Config.ToolMirror, Doer: d.Doer,
+		})
 	}
 	key, err := d.Config.Key()
 	if err != nil {
@@ -414,8 +432,13 @@ func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 }
 
 // prepare fetches a's specification, opens its sealed part with the
-// pool's private key, and starts the run's container with the handoff,
-// which holds the opened secrets in memory alone.
+// pool's private key, fetches the tool the specification names, and
+// starts the run's container with the tool's binary mounted read-only at
+// /bin/<tool> and the handoff, which holds the opened secrets in memory
+// alone. A specification whose tool download is false mounts none, so the
+// image's own binary runs.
+//
+// ref: decision 0008 § "Runner images"
 func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Container, error) {
 	cctx, cancel := context.WithTimeout(ctx, callTimeout)
 	spec, err := l.api.Spec(cctx, a.RunToken, a.Run)
@@ -431,6 +454,18 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Con
 	var secrets wire.RunSpecSecrets
 	if err := json.Unmarshal(plain, &secrets); err != nil {
 		return nil, fmt.Errorf("read the run's secrets: %w", err)
+	}
+	var mounts []executor.Mount
+	if t := spec.Tool; t != nil && t.Download {
+		bin, err := l.d.Tools.Binary(ctx, tools.Release{
+			Tool: t.Name, Version: t.Version, OS: toolOS, Arch: l.d.Arch,
+		})
+		if err != nil {
+			return nil, err //nolint:wrapcheck // tools names the release and the step
+		}
+		mounts = append(mounts, executor.Mount{
+			Source: bin, Target: "/bin/" + string(t.Name), ReadOnly: true,
+		})
 	}
 	image := l.d.Config.DefaultRunnerImage
 	if spec.RunnerImage != nil && *spec.RunnerImage != "" {
@@ -448,7 +483,8 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Con
 	defer clear(h.Bytes())
 	out := &lines{log: l.d.Log, run: a.Run}
 	c, err := l.d.Executor.Start(ctx, executor.Job{
-		Worker: l.st.Worker, Run: a.Run, Image: image, Handoff: h.Bytes(), Output: out,
+		Worker: l.st.Worker, Run: a.Run, Image: image, Mounts: mounts, Handoff: h.Bytes(),
+		Output: out,
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the executor names the step

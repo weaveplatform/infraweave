@@ -73,6 +73,7 @@ in Go's FIPS 140-3 mode, including its strictest setting.
   | Call | Result under `fips140=only` |
   |---|---|
   | `crypto/md5.Sum` | panics: `crypto/md5: use of MD5 is not allowed in FIPS 140-only mode` |
+  | `crypto/sha1`, which go-crypto's `openpgp.ReadArmoredKeyRing` calls for a version 4 key's fingerprint | panics: `crypto/sha1: use of SHA-1 is not allowed in FIPS 140-only mode` |
   | `md5.New().Write` | returns the same message as an error |
   | `cipher.NewGCM` | returns an error: `use of GCM with arbitrary IVs is not allowed in FIPS 140-only mode, use NewGCMWithRandomNonce` |
   | `crypto/hpke` with DHKEM(P-256), HKDF-SHA256, AES-256-GCM, built with `GOFIPS140=certified` | returns the `cipher.NewGCM` error, because module v1.0.0's HPKE builds on it |
@@ -83,6 +84,13 @@ in Go's FIPS 140-3 mode, including its strictest setting.
   `Content-MD5` header under `fips140=only` and relies on the SHA-256 it
   records, and decision 0005's object store drivers never use MD5. 0010
   lists the first among its departures from Spacelift.
+- **OpenPGP fingerprints.** A version 4 OpenPGP key's fingerprint is its
+  SHA-1, which names the key and secures nothing. The launcher verifies
+  Terraform and OpenTofu releases against the vendors' keys, which its
+  binary carries ([0008](0008-run-execution-and-worker-protocol.md#runner-images)),
+  so it reads those keys inside `fips140.WithoutEnforcement`. It checks
+  each release's signature outside it, with RSA and SHA-2. This is the one
+  place infraweave lifts enforcement.
 - **CI.** A blocking job runs the test suite with the binary built with
   `GOFIPS140=certified` and run with `GODEBUG=fips140=only`
   ([0016](0016-testing-and-acceptance.md#ci)), so a dependency that reaches
@@ -451,6 +459,8 @@ nothing about them is secret:
 - **MD5 is unavailable under `fips140=only`.** A client feature that depends
   on it, such as Terraform's `Content-MD5`, is accepted without a check in
   that mode ([0010](0010-state-backend.md)).
+- **Reading an OpenPGP key lifts enforcement.** Only the vendors' compiled-in
+  keys are read that way; a signature is still verified under it.
 
 ## Verification
 

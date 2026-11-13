@@ -11,9 +11,12 @@
 // that ended since the last poll; a container that ends cuts a held poll
 // short. An assignment is prepared: the launcher fetches the run's
 // specification with the run token, opens its sealed part with the pool's
-// private key, and starts the container with the handoff, so the opened
-// secrets reach the runner without touching the host's disk; a
-// preparation that fails reports the run failed in its preparing state.
+// private key, fetches the release of the tool the specification names
+// through internal/agent/tools, unless its download is false, and starts
+// the container with the tool's binary mounted read-only at /bin/<tool>
+// and the handoff, so the opened secrets reach the runner without
+// touching the host's disk; a preparation that fails reports the run
+// failed in its preparing state, with the error as its note.
 // stop and kill reach the run's container, cycle exits once the launcher
 // is idle, and a renewed session token replaces the old one.
 //
@@ -30,18 +33,21 @@
 // server answered within three poll timeouts, for /readyz.
 //
 // ref: decision 0008 § "The launcher and the runner"
+// ref: decision 0008 § "Runner images"
 //
 // # Input and output
 //
-// It calls the worker API through the caller's HTTP client, starts and
-// waits on containers through the executor, and reads and writes
-// worker.json in launcher.cache_dir. It logs registration, each run's
+// It calls the worker API and downloads tool releases through the
+// caller's HTTP client, starts and waits on containers through the
+// executor, and reads and writes worker.json and the tool binaries in
+// launcher.cache_dir. It logs registration, each run's
 // start, signals and end, each line of the runner's output as "runner
 // output", and each failed call with its retry.
 //
 // # Dependencies
 //
-// It imports internal/agent/client, config, executor, handoff and wire,
+// It imports internal/agent/client, config, executor, handoff, tools and
+// wire,
 // platform/seal to open specifications, and go-jose to sign
 // registrations; no server package. internal/agent/cli runs it as
 // infraweave launcher.

@@ -5,8 +5,8 @@
 // container with the launcher's own binary bind-mounted read-only at
 // BinaryPath and run as the root process with the argument runner,
 // replacing the image's ENTRYPOINT and CMD, as UID and GID 1983, in
-// Workspace, labelled with the worker and the run, on the configured
-// network and runtime. It attaches before it starts the container, writes
+// Workspace, with the job's mounts bound, labelled with the worker and
+// the run, on the configured network and runtime. It attaches before it starts the container, writes
 // the job's handoff to the runner's standard input and closes it, so the
 // opened specification never reaches the container's configuration on
 // the host's disk, and copies the runner's output to the job's writer.

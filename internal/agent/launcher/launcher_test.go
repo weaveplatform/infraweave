@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
+	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 )
@@ -47,11 +48,12 @@ func (l *logs) String() string {
 // world is a pool's fake worker API and a fake executor, which launchers
 // of the pool share across restarts through one cache directory.
 type world struct {
-	pool agenttest.Pool
-	srv  *agenttest.Server
-	exec *agenttest.Executor
-	dir  string
-	log  *logs
+	pool  agenttest.Pool
+	srv   *agenttest.Server
+	exec  *agenttest.Executor
+	tools *fakeTools
+	dir   string
+	log   *logs
 }
 
 func newWorld(t *testing.T) *world {
@@ -62,7 +64,7 @@ func newWorld(t *testing.T) *world {
 	}
 	return &world{
 		pool: pool, srv: agenttest.NewServer(pool), exec: agenttest.NewExecutor(),
-		dir: t.TempDir(), log: &logs{},
+		tools: &fakeTools{}, dir: t.TempDir(), log: &logs{},
 	}
 }
 
@@ -76,7 +78,7 @@ func (w *world) config() config.Launcher {
 func (w *world) launcher(t *testing.T) *launcher.Launcher {
 	t.Helper()
 	l, err := launcher.New(launcher.Deps{
-		Config: w.config(), Doer: w.srv.Client(), Executor: w.exec,
+		Config: w.config(), Doer: w.srv.Client(), Executor: w.exec, Tools: w.tools,
 		Log:     slog.New(slog.NewTextHandler(w.log, nil)),
 		Version: "1.2.3", OS: "linux", Arch: "arm64",
 	})
@@ -84,6 +86,29 @@ func (w *world) launcher(t *testing.T) *launcher.Launcher {
 		t.Fatal(err)
 	}
 	return l
+}
+
+// fakeTools answers each release's binary under /cache, or err.
+type fakeTools struct {
+	mu  sync.Mutex
+	got []tools.Release
+	err error
+}
+
+func (f *fakeTools) Binary(_ context.Context, r tools.Release) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.got = append(f.got, r)
+	if f.err != nil {
+		return "", f.err
+	}
+	return "/cache/" + string(r.Tool) + "/" + r.Version + "/" + r.OS + "_" + r.Arch, nil
+}
+
+func (f *fakeTools) fetched() []tools.Release {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.got)
 }
 
 // running is a launcher's Run, until the test stops it.
@@ -125,6 +150,19 @@ func (w *world) runFor(t *testing.T, d time.Duration) error {
 // launcher acted on it.
 func (w *world) assign(t *testing.T, run string, state wire.AssignmentState, image string) {
 	t.Helper()
+	w.assignTool(t, run, state, image, nil)
+}
+
+// assignTool assigns as assign does, of a run whose specification names
+// tool.
+func (w *world) assignTool(
+	t *testing.T,
+	run string,
+	state wire.AssignmentState,
+	image string,
+	tool *wire.RunSpecTool,
+) {
+	t.Helper()
 	r := agenttest.Run{
 		Assignment: wire.Assignment{
 			Run:          run,
@@ -135,6 +173,7 @@ func (w *world) assign(t *testing.T, run string, state wire.AssignmentState, ima
 		Spec: wire.RunSpec{
 			Run:   wire.RunSpecRun{},
 			Hooks: map[string][]string{"before_init": {"echo hi"}},
+			Tool:  tool,
 		},
 		Secrets: wire.RunSpecSecrets{
 			ApiToken:    "api-" + run,
@@ -323,6 +362,95 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 		r.stop(t)
 		if got := w.srv.Deregistered(); len(got) != 1 {
 			t.Fatalf("an idle launcher deregisters: %v", got)
+		}
+	})
+}
+
+var errRefused = errors.New(
+	"terraform 1.17.2 for linux/arm64: verify terraform_1.17.2_SHA256SUMS: " +
+		"the signature does not verify",
+)
+
+// TestUnitLauncherMountsTheRunsTool checks that a run whose specification
+// names a tool to download gets its binary for Linux at the worker's
+// architecture, mounted read-only at /bin/<tool>; that one whose download
+// is false mounts nothing; and that a refused release fails the run in its
+// preparing state with the refusal as its note, starting no container.
+func TestUnitLauncherMountsTheRunsTool(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		end := func() {
+			w.exec.Container("worker-1").End(ended(0, wire.Exited))
+			synctest.Wait()
+			w.answer(wire.PollResult{})
+		}
+		w.assignTool(t, "run-1", wire.AssignmentStatePREPARING, "",
+			&wire.RunSpecTool{Name: wire.Tofu, Version: "1.13.9", Download: true})
+		want := []executor.Mount{
+			{Source: "/cache/tofu/1.13.9/linux_arm64", Target: "/bin/tofu", ReadOnly: true},
+		}
+		if got := w.exec.Jobs()[0].Mounts; !slices.Equal(got, want) {
+			t.Fatalf("mounts: %+v", got)
+		}
+		if got := w.tools.fetched(); !slices.Equal(got, []tools.Release{
+			{Tool: wire.Tofu, Version: "1.13.9", OS: "linux", Arch: "arm64"},
+		}) {
+			t.Fatalf("fetched: %+v", got)
+		}
+		end()
+
+		w.assignTool(t, "run-2", wire.AssignmentStatePREPARING, "",
+			&wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2"})
+		if got := w.exec.Jobs()[1].Mounts; got != nil || len(w.tools.fetched()) != 1 {
+			t.Fatalf("a tool not to download: mounts %+v, fetched %+v", got, w.tools.fetched())
+		}
+		end()
+
+		w.tools.err = errRefused
+		w.assignTool(t, "run-3", wire.AssignmentStatePREPARING, "",
+			&wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2", Download: true})
+		reps := w.srv.Reports()
+		if rep := reps[len(reps)-1]; rep.Run != "run-3" || rep.Report.Event != wire.Failed ||
+			*rep.Report.Details != errRefused.Error() || len(w.exec.Jobs()) != 2 {
+			t.Fatalf("a refused release: %+v, %d jobs", rep, len(w.exec.Jobs()))
+		}
+		w.wantPoll(t, false, "", nil)
+		r.stop(t)
+	})
+}
+
+// TestUnitNewFetchesToolsIntoTheCache checks that a launcher given no
+// Tools fetches through a tools.Fetcher on its cache directory and
+// mirror, which reaches the mirror for the first file of a release.
+func TestUnitNewFetchesToolsIntoTheCache(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		c := w.config()
+		c.ToolMirror = "http://mirror.invalid"
+		l, err := launcher.New(launcher.Deps{
+			Config: c, Doer: w.srv.Client(), Executor: w.exec,
+			Log:     slog.New(slog.NewTextHandler(w.log, nil)),
+			Version: "1.2.3", OS: "linux", Arch: "arm64",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan error, 1)
+		go func() { done <- l.Run(ctx) }()
+		synctest.Wait()
+		w.assignTool(t, "run-1", wire.AssignmentStatePREPARING, "",
+			&wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2", Download: true})
+		d := *w.srv.Reports()[0].Report.Details
+		if !strings.HasPrefix(d, "terraform 1.17.2 for linux/arm64: download "+
+			"terraform_1.17.2_SHA256SUMS: the download failed") ||
+			!strings.Contains(d, "http://mirror.invalid/terraform/1.17.2/") {
+			t.Fatalf("details: %s", d)
+		}
+		cancel()
+		if err := <-done; err != nil {
+			t.Fatal(err)
 		}
 	})
 }

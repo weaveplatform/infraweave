@@ -704,8 +704,15 @@ has failed":
   | Terragrunt, kubectl | The published SHA-256 checksum |
 
   Binaries are cached at `<cache_dir>/binaries/<tool>/<version>/<os>_<arch>` and
-  reused. `launcher.tool_mirror` points downloads at a mirror for air-gapped
-  installations, and `skipVendorBinaryDownload` skips the download.
+  reused. Each is written beside its path and renamed into place, so
+  launchers that share a cache never see a partial one. Archives are
+  bounded at 256 MiB, and only the tool's binary is extracted.
+  `launcher.tool_mirror` points downloads at a mirror for air-gapped
+  installations, which serves each release's files under
+  `<tool_mirror>/<tool>/<version>/` with the vendor's file names, the layout
+  of `releases.hashicorp.com`. `skipVendorBinaryDownload` skips the download.
+  A refused release fails the run in preparation, and its note names the
+  release and the step that refused it.
 
 ### Timeouts and timers
 

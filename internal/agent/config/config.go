@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -40,8 +41,15 @@ type Launcher struct {
 	// none.
 	DefaultRunnerImage string `mapstructure:"default_runner_image"`
 	// CacheDir holds what the launcher keeps between starts: the worker it
-	// registered, so a restart resumes it.
+	// registered, so a restart resumes it, and the tool binaries runs
+	// mount, so each release is downloaded once.
 	CacheDir string `mapstructure:"cache_dir"`
+	// ToolMirror is the base URL of a mirror of the tool releases, for a
+	// host that cannot reach the vendors: it serves each release's files
+	// under <tool_mirror>/<tool>/<version>/, as releases.hashicorp.com
+	// does, such as terraform/1.17.2/terraform_1.17.2_SHA256SUMS. Empty
+	// downloads from the vendors.
+	ToolMirror string `mapstructure:"tool_mirror"`
 	// StateLockTimeout is how long each command of a run that locks the
 	// state waits for the lock, which the handoff carries to the runner.
 	StateLockTimeout time.Duration `mapstructure:"state_lock_timeout"`
@@ -132,6 +140,10 @@ func (c Launcher) Validate() error {
 	}
 	if c.CacheDir == "" {
 		bad("launcher.cache_dir is required")
+	}
+	if u, err := url.Parse(c.ToolMirror); c.ToolMirror != "" &&
+		(err != nil || u.Scheme != "https" && u.Scheme != "http" || u.Host == "") {
+		bad("launcher.tool_mirror %q: want an http or https URL", c.ToolMirror)
 	}
 	if c.StateLockTimeout < 0 {
 		bad("launcher.state_lock_timeout must not be negative, got %s", c.StateLockTimeout)

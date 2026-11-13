@@ -6,6 +6,7 @@ import (
 	"io"
 	"iter"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -183,7 +184,16 @@ var errDaemon = errors.New("the daemon refused")
 // fails, and one for a container that has ended or gone does not.
 func TestUnitDockerExecutorFailures(t *testing.T) {
 	ctx := t.Context()
-	job := executor.Job{Worker: "w", Run: "r", Image: "img", Handoff: []byte("{}")}
+	job := executor.Job{
+		Worker:  "w",
+		Run:     "r",
+		Image:   "img",
+		Handoff: []byte("{}"),
+		Mounts: []executor.Mount{
+			{Source: "/cache/terraform", Target: "/bin/terraform", ReadOnly: true},
+			{Source: "/work/run", Target: docker.Workspace},
+		},
+	}
 
 	d := &daemon{missing: true}
 	e := docker.NewWith(
@@ -198,7 +208,10 @@ func TestUnitDockerExecutorFailures(t *testing.T) {
 	if got := strings.Join(append(d.created.Entrypoint, d.created.Cmd...), " "); got !=
 		docker.BinaryPath+" runner" || d.created.User != docker.User ||
 		d.created.WorkingDir != docker.Workspace || d.created.Labels[docker.LabelRun] != "r" ||
-		d.host.Binds[0] != "/usr/local/bin/infraweave:"+docker.BinaryPath+":ro" ||
+		!slices.Equal(d.host.Binds, []string{
+			"/usr/local/bin/infraweave:" + docker.BinaryPath + ":ro",
+			"/cache/terraform:/bin/terraform:ro", "/work/run:" + docker.Workspace,
+		}) ||
 		d.host.NetworkMode != "runs" || d.host.Runtime != "runsc" {
 		t.Errorf("created %+v with %+v", d.created, d.host)
 	}

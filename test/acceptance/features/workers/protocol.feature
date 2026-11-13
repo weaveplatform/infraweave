@@ -16,7 +16,8 @@ Feature: The worker protocol end to end
   indexes serve the recorded fixtures, so a run's specification names a
   Terraform release. The home key is space-admin on the account's top
   space. Stack infra lives in legacy and runs on the pool, in the runner
-  image.
+  image, and skips the vendor's binary, so the launcher downloads no
+  tool.
   ref: decision 0008
   ref: decision 0016
 
@@ -31,7 +32,7 @@ Feature: The worker protocol end to end
     And the head of "main" of "infra" is kept as "seed"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "pool"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","runnerImage":"infraweave-runner:acceptance"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","runnerImage":"infraweave-runner:acceptance","skipVendorBinaryDownload":true},"manageState":false}' through B
     And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 
