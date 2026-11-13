@@ -2,8 +2,12 @@ package pg_test
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 	"github.com/weaveplatform/infraweave/internal/state/internal/pg"
 )
 
@@ -137,14 +142,152 @@ func TestAccSchema(t *testing.T) {
 	}
 }
 
+// anyStack holds every stack.
+type anyStack struct{}
+
+func (anyStack) Hold(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
+
+// info is a LockInfo of id as Terraform sends it, with a field the server
+// keeps without reading.
+func info(id string) json.RawMessage {
+	return json.RawMessage(`{"ID": "` + id + `", "Operation": "OperationTypeApply"}`)
+}
+
+// TestAccStoreLocks takes and releases locks through the core over the
+// store: of concurrent exclusive locks on a new workspace exactly one is
+// granted; shared locks are held together, refuse an exclusive one with
+// the oldest's LockInfo as it was sent, and are granted again to their
+// run; another run's lock is released only by a breaking caller, which
+// the trail records; and a run's end releases its locks.
+func TestAccStoreLocks(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := core.New(db, pg.New(db), anyStack{})
+	at := core.Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID(), Workspace: "blue"}
+
+	const racers = 8
+	errs := make([]error, racers)
+	var wg sync.WaitGroup
+	for i := range racers {
+		wg.Go(func() {
+			id := fmt.Sprintf("x%d", i)
+			errs[i] = s.Lock(ctx, at, core.Lock{
+				ID: id, Mode: core.Exclusive, Run: kernel.NewULID(), Info: info(id),
+			})
+		})
+	}
+	wg.Wait()
+	granted, winner := 0, ""
+	for i, err := range errs {
+		switch c, ok := errors.AsType[*core.Conflict](err); {
+		case err == nil:
+			granted++
+			winner = fmt.Sprintf("x%d", i)
+		case !ok:
+			t.Fatalf("racer %d = %v", i, err)
+		case c.Holder.Mode != core.Exclusive:
+			t.Errorf("racer %d was refused for %+v", i, c.Holder)
+		}
+	}
+	if granted != 1 {
+		t.Fatalf("%d of %d exclusive locks were granted", granted, racers)
+	}
+	breaker := kernel.NewULID()
+	if err := s.Unlock(ctx, core.Unlock{
+		Target: at, Run: breaker, Break: true,
+		RemoteIP: "192.0.2.7",
+	}); err != nil {
+		t.Fatalf("a force-unlock = %v", err)
+	}
+	var (
+		meta, ip string
+		by       kernel.ULID
+	)
+	if err := db.QueryRow(ctx, `SELECT affected_metadata::text, remote_ip, actor_run
+		FROM audit_trail_entries WHERE account_id = $1 AND action = $2`,
+		at.Account, core.ActionBreakLock).Scan(&meta, &ip, &by); err != nil {
+		t.Fatalf("the break was not recorded: %v", err)
+	}
+	if !strings.Contains(meta, `"ID": "`+winner+`"`) || !strings.Contains(meta, `"blue"`) ||
+		ip != "192.0.2.7" || by != breaker {
+		t.Errorf("the break recorded %s from %q by %s", meta, ip, by)
+	}
+
+	planA, planB := kernel.NewULID(), kernel.NewULID()
+	for _, l := range []core.Lock{
+		{ID: "a", Mode: core.Shared, Run: planA, Info: info("a")},
+		{ID: "b", Mode: core.Shared, Run: planB, Info: info("b")},
+		{ID: "a", Mode: core.Shared, Run: planA, Info: info("a")},
+	} {
+		if err := s.Lock(ctx, at, l); err != nil {
+			t.Fatalf("shared lock %s = %v", l.ID, err)
+		}
+	}
+	err := s.Lock(ctx, at, core.Lock{
+		ID: "c", Mode: core.Exclusive, Run: kernel.NewULID(),
+		Info: info("c"),
+	})
+	if c, ok := errors.AsType[*core.Conflict](err); !ok || c.Holder.ID != "a" ||
+		string(c.Holder.Info) != string(info("a")) || c.Holder.Run != planA ||
+		c.Holder.CreatedAt.IsZero() {
+		t.Errorf("an exclusive lock beside shared ones = %v", err)
+	}
+	if err := s.Unlock(ctx, core.Unlock{Target: at, Run: planA, ID: "b"}); !errors.Is(err,
+		core.ErrBreak) {
+		t.Errorf("a release of another run's lock = %v", err)
+	}
+	if err := s.Unlock(ctx, core.Unlock{Target: at, Run: planA, ID: "a"}); err != nil {
+		t.Errorf("a release of the run's own lock = %v", err)
+	}
+	if err := s.RunEnded(ctx, at.Account, planB, kernel.RunStateFinished); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, db, "state_locks", at.Account); n != 0 {
+		t.Errorf("%d locks outlive their runs", n)
+	}
+	if n := count(t, db, "audit_trail_entries", at.Account); n != 1 {
+		t.Errorf("%d entries, want the one break", n)
+	}
+
+	other := at
+	other.Workspace = "never"
+	if err := s.Unlock(ctx, core.Unlock{Target: other, Run: planA, ID: "a"}); !errors.Is(err,
+		core.ErrNoWorkspace) {
+		t.Errorf("an unlock of a workspace never locked = %v", err)
+	}
+}
+
 // TestAccStoreUnavailable fails each method on a closed pool.
 func TestAccStoreUnavailable(t *testing.T) {
 	db := pool(t)
 	s := pg.New(db)
 	db.Close()
-	if err := s.OpenWorkspace(context.Background(), kernel.NewAccountID(), kernel.NewULID(),
-		""); err == nil {
+	ctx := context.Background()
+	at := core.Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID()}
+	if err := s.OpenWorkspace(ctx, at.Account, at.Stack, ""); err == nil {
 		t.Error("OpenWorkspace on a closed pool succeeded")
+	}
+	if _, err := s.LockWorkspace(ctx, at); err == nil {
+		t.Error("LockWorkspace on a closed pool succeeded")
+	}
+	if _, err := s.Locks(ctx, at); err == nil {
+		t.Error("Locks on a closed pool succeeded")
+	}
+	if err := s.AddLock(
+		ctx,
+		at,
+		core.Lock{ID: "a", Mode: core.Shared, Info: info("a")},
+	); err == nil {
+		t.Error("AddLock on a closed pool succeeded")
+	}
+	if err := s.RemoveLocks(ctx, at, []string{"a"}); err == nil {
+		t.Error("RemoveLocks on a closed pool succeeded")
+	}
+	if err := s.ReleaseRun(ctx, at.Account, kernel.NewULID()); err == nil {
+		t.Error("ReleaseRun on a closed pool succeeded")
+	}
+	if err := s.Audit(ctx, kernel.AuditEntry{}); err == nil {
+		t.Error("Audit of no entry succeeded")
 	}
 }
 

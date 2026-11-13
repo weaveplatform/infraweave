@@ -91,9 +91,9 @@ func TestUnitService(t *testing.T) {
 }
 
 // TestUnitStateAccessTable checks each run state's grant on its stack's
-// state, the run's account on every grant that grants anything, and the
-// zero grant for every terminal state, another stack, an unknown run and a
-// failing store. The grant is the state's alone, so every run type that
+// state, the run's account on every grant, one granting nothing for every
+// terminal state and another stack, and the zero grant for an unknown run
+// and a failing store. The grant is the state's alone, so every run type that
 // reaches a state gets the same grant.
 //
 // ref: decision 0010 § "Who may call what"
@@ -104,6 +104,7 @@ func TestUnitStateAccessTable(t *testing.T) {
 	exclusive := runsapi.StateGrant{
 		Account: acct, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
 	}
+	none := runsapi.StateGrant{Account: acct}
 	want := map[kernel.RunState]runsapi.StateGrant{
 		kernel.RunStateInitializing: shared,
 		kernel.RunStatePlanning:     shared,
@@ -116,15 +117,17 @@ func TestUnitStateAccessTable(t *testing.T) {
 	for _, state := range kernel.RunStates() {
 		run := kernel.NewULID()
 		st.runs[run] = Run{Account: acct, Stack: stack, State: state}
-		got, err := s.Access(ctx, run, stack)
-		if err != nil || got != want[state] {
-			t.Errorf("Access in %s = %+v, %v; want %+v", state, got, err, want[state])
+		w, ok := want[state]
+		if !ok {
+			w = none
 		}
-		if state.Terminal() && got != (runsapi.StateGrant{}) {
-			t.Errorf("terminal %s grants %+v", state, got)
+		if got, err := s.Access(ctx, run, stack); err != nil || got != w {
+			t.Errorf("Access in %s = %+v, %v; want %+v", state, got, err, w)
 		}
-		if got, err := s.Access(ctx, run, kernel.NewULID()); err != nil ||
-			got != (runsapi.StateGrant{}) {
+		if state.Terminal() && w != none {
+			t.Errorf("terminal %s grants %+v", state, w)
+		}
+		if got, err := s.Access(ctx, run, kernel.NewULID()); err != nil || got != none {
 			t.Errorf("Access in %s to another stack = %+v, %v", state, got, err)
 		}
 	}

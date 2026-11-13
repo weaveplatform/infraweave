@@ -53,6 +53,9 @@ type Domains struct {
 	// WorkerAuth authenticates the worker API's requests, admitting worker
 	// session tokens alone; nil refuses every credential.
 	WorkerAuth accessapi.Authenticator
+	// StateAuth authenticates the state backend's requests, admitting run
+	// tokens as HTTP Basic passwords alone; nil refuses every credential.
+	StateAuth accessapi.Authenticator
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
@@ -166,7 +169,9 @@ func newDomains(
 	}
 	configuration.BindExpressions(registry)
 	runs.BindExpressions(registry)
-	state := stateassembly.New(stateassembly.Deps{DB: db.Primary(), Stacks: stacks.Stacks()})
+	state := stateassembly.New(stateassembly.Deps{
+		DB: db.Primary(), Stacks: stacks.Stacks(), Access: runs.StateAccess(),
+	})
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:       db.Primary(),
 		Keys:     keys,
@@ -199,6 +204,7 @@ func newDomains(
 		Auth:          access.Authenticator(),
 		OperatorAuth:  access.OperatorAuthenticator(),
 		WorkerAuth:    access.WorkerAuthenticator(),
+		StateAuth:     access.StateAuthenticator(),
 	}
 	if err := subscribePurges(events, d); err != nil {
 		return Domains{}, err
@@ -210,6 +216,9 @@ func newDomains(
 		return Domains{}, err //nolint:wrapcheck // names the consumer
 	}
 	if err := runs.Subscribe(events); err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the consumer
+	}
+	if err := state.Subscribe(events); err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the consumer
 	}
 	return d, nil

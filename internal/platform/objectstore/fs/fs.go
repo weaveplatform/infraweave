@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/moving"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 )
 
@@ -56,7 +57,7 @@ func New(c objectstore.FSConfig, keys Keys) (*Bucket, error) {
 	if err := root.MkdirAll(tmp, 0o750); err != nil {
 		return nil, errors.Join(fmt.Errorf("fs: %w", err), root.Close())
 	}
-	return &Bucket{root: root, url: c.URL, keys: keys, now: time.Now, stall: Stall}, nil
+	return &Bucket{root: root, url: c.URL, keys: keys, now: time.Now, stall: moving.Stall}, nil
 }
 
 // Close releases the directory.

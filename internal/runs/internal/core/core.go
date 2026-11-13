@@ -105,16 +105,17 @@ var grants = map[kernel.RunState]runsapi.StateGrant{
 }
 
 // Access answers run's grant on stack's state from the state it reads the
-// run in: the zero grant when no account has the run, when it is another
-// stack's, or when grants holds no entry for its state.
+// run in: the zero grant when no account has the run, and the run's
+// account alone when it is another stack's or grants holds no entry for
+// its state.
 func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.StateGrant, error) {
 	r, ok, err := s.store.RunOf(ctx, run)
-	if err != nil {
+	if err != nil || !ok {
 		return runsapi.StateGrant{}, err //nolint:wrapcheck // the store names the read
 	}
-	g, granted := grants[r.State]
-	if !ok || r.Stack != stack || !granted {
-		return runsapi.StateGrant{}, nil
+	g := grants[r.State]
+	if r.Stack != stack {
+		g = runsapi.StateGrant{}
 	}
 	g.Account = r.Account
 	return g, nil

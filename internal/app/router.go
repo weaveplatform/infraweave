@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
@@ -94,13 +95,13 @@ type Blobs struct {
 var _ api.StrictServerInterface = apiServer{}
 
 // API is the API listener's handler: the API under BaseURL, the
-// operator API under OperatorBaseURL and the worker API under
-// WorkerBaseURL behind c's rate limits and idempotency keys, whose state
-// g holds, with each domain's operations from d, the installation's own
-// from p and objects in b, and the fs driver's signed-URL routes beside
-// them. Each API authenticates with its own authenticator, so none
-// accepts another's tokens. It
-// serves no probe; those are the admin listener's alone, and are never
+// operator API under OperatorBaseURL, the worker API under WorkerBaseURL
+// and the state backend under stateapi.BaseURL behind c's rate limits and
+// idempotency keys, whose state g holds, with each domain's operations
+// from d, the installation's own from p and objects in b, and the fs
+// driver's signed-URL routes beside them. Each surface authenticates with
+// its own authenticator, so none accepts another's tokens. It serves no
+// probe; those are the admin listener's alone, and are never
 // rate-limited.
 func API(
 	log *slog.Logger,
@@ -119,11 +120,13 @@ func API(
 		require = d.Access.Requirer()
 	}
 	r := Guarded(log, c, withPollHold(apiOperations(), d.Workers.PollHold()), g,
-		byPrefix{api: d.Auth, operator: d.OperatorAuth, worker: d.WorkerAuth}, require, gated)
+		byPrefix{api: d.Auth, operator: d.OperatorAuth, worker: d.WorkerAuth, state: d.StateAuth},
+		require, gated)
 	if b.Routes != nil {
 		b.Routes(r)
 	}
 	d.Access.Routes(r)
+	d.State.Routes(r)
 	strict := api.NewStrictHandlerWithOptions(
 		apiServer{
 			AccessAPI:        d.Access.API(),
@@ -197,9 +200,11 @@ func withPollHold(ops Operations, poll time.Duration) Operations {
 }
 
 // byPrefix authenticates a request under OperatorBaseURL with operator,
-// one under WorkerBaseURL with worker and every other with api; a nil one
-// refuses every credential.
-type byPrefix struct{ api, operator, worker accessapi.Authenticator }
+// one under WorkerBaseURL with worker, one under stateapi.BaseURL with
+// state and every other with api; a nil one refuses every credential.
+// Every request under stateapi.BaseURL is a state route's, so a method no
+// route serves answers 405 to a run token and 401 to anything else.
+type byPrefix struct{ api, operator, worker, state accessapi.Authenticator }
 
 func (b byPrefix) Middleware(
 	access func(*http.Request) accessapi.Access,
@@ -208,12 +213,17 @@ func (b byPrefix) Middleware(
 		api := orRefuse(b.api).Middleware(access)(next)
 		operator := orRefuse(b.operator).Middleware(access)(next)
 		worker := orRefuse(b.worker).Middleware(access)(next)
+		state := orRefuse(b.state).Middleware(func(*http.Request) accessapi.Access {
+			return accessapi.State
+		})(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch p := routePath(r); {
 			case under(p, OperatorBaseURL):
 				operator.ServeHTTP(w, r)
 			case under(p, WorkerBaseURL):
 				worker.ServeHTTP(w, r)
+			case under(p, stateapi.BaseURL):
+				state.ServeHTTP(w, r)
 			default:
 				api.ServeHTTP(w, r)
 			}

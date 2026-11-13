@@ -370,6 +370,12 @@ func (d *Domain) WorkerAuthenticator() accessapi.Authenticator {
 	return http.NewWorkerAuthenticator(d.authn)
 }
 
+// StateAuthenticator is the middleware that authenticates the state
+// backend's requests, accepting run tokens as HTTP Basic passwords alone.
+func (d *Domain) StateAuthenticator() accessapi.Authenticator {
+	return http.NewStateAuthenticator(d.authn)
+}
+
 // WatchSessions keeps the replica's session cache in step with
 // revocations until ctx ends: a session:<id> message on sub, a
 // subscription to infraweave_invalidate, drops that session, and a Resync,

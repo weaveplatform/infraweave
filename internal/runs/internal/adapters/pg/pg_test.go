@@ -127,8 +127,9 @@ func TestAccStore(t *testing.T) {
 // TestAccStoreStateAccess reads a run of every type by its ID alone, none
 // for an unknown run, and answers the core's access from the state each
 // Transition moves a tracked run to: a shared lock while it plans, writes
-// under an exclusive lock while it applies, and nothing once it finishes;
-// another account's applying run never reaches the stack.
+// under an exclusive lock while it applies, and nothing but its account
+// once it finishes; another account's applying run never reaches the
+// stack.
 func TestAccStoreStateAccess(t *testing.T) {
 	ctx := t.Context()
 	w := newWorld(t)
@@ -150,7 +151,8 @@ func TestAccStoreStateAccess(t *testing.T) {
 	}
 
 	access := core.New(w.store)
-	other := insertRun(t, w.db, kernel.NewAccountID(), kernel.NewULID(), false)
+	otherAcct := kernel.NewAccountID()
+	other := insertRun(t, w.db, otherAcct, kernel.NewULID(), false)
 	grant := func(run kernel.ULID) runsapi.StateGrant {
 		t.Helper()
 		g, err := access.Access(ctx, run, w.stack)
@@ -158,16 +160,17 @@ func TestAccStoreStateAccess(t *testing.T) {
 			t.Fatal(err)
 		}
 		if g, err := access.Access(ctx, other, w.stack); err != nil ||
-			g != (runsapi.StateGrant{}) {
+			g != (runsapi.StateGrant{Account: otherAcct}) {
 			t.Errorf("another account's applying run = %+v, %v", g, err)
 		}
 		return g
 	}
+	none := runsapi.StateGrant{Account: w.acct}
 	run, _, err := w.create(t, kernel.RunTypeTracked, "abc123")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if g := grant(run.ID); g != (runsapi.StateGrant{}) {
+	if g := grant(run.ID); g != none {
 		t.Errorf("QUEUED grants %+v", g)
 	}
 	run = w.mustMove(t, run, kernel.RunStateReady, machine.DriverScheduler,
@@ -189,7 +192,7 @@ func TestAccStoreStateAccess(t *testing.T) {
 		t.Errorf("PLANNING grants %+v, want %+v", g, shared)
 	}
 	run = w.mustMove(t, run, kernel.RunStateUnconfirmed, machine.DriverDecision)
-	if g := grant(run.ID); g != (runsapi.StateGrant{}) {
+	if g := grant(run.ID); g != none {
 		t.Errorf("UNCONFIRMED grants %+v", g)
 	}
 	run = w.mustMove(t, run, kernel.RunStateConfirmed, machine.DriverAPI, machine.GuardApproved)
@@ -209,7 +212,7 @@ func TestAccStoreStateAccess(t *testing.T) {
 		t.Errorf("APPLYING grants %+v, want %+v", g, exclusive)
 	}
 	run = w.mustMove(t, run, kernel.RunStateFinished, machine.DriverWorkerReport)
-	if g := grant(run.ID); g != (runsapi.StateGrant{}) {
+	if g := grant(run.ID); g != none {
 		t.Errorf("FINISHED grants %+v", g)
 	}
 }

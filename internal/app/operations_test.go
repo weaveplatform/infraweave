@@ -26,6 +26,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
 
 var param = regexp.MustCompile(`\{[^}]+\}`)
@@ -73,6 +74,10 @@ func TestUnitAPIOperations(t *testing.T) {
 		"POST /oauth/token":                           {Public: true},
 		"GET /blobs/{token}":                          {Public: true},
 		"PUT /blobs/{token}":                          {Public: true, OwnBodyBound: true},
+		"LOCK /state/v1/stacks/{stack}":               {State: true, OwnBodyBound: true},
+		"POST /state/v1/stacks/{stack}/workspaces/{workspace}": {
+			State: true, OwnBodyBound: true,
+		},
 	} {
 		got := ops[key]
 		got.Required, got.Body = nil, nil
@@ -80,12 +85,16 @@ func TestUnitAPIOperations(t *testing.T) {
 			t.Errorf("%s: %+v, want %+v", key, got, want)
 		}
 	}
-	// Only the blob PUT departs from the body bound.
+	// Only the blob PUT and the state backend depart from the body bound.
 	// ref: decision 0003 § "API surfaces"
 	for key, op := range ops {
-		if op.OwnBodyBound != (key == http.MethodPut+" "+fs.Pattern) {
-			t.Errorf("%s: OwnBodyBound %v; only the blob PUT bounds its own body", key,
-				op.OwnBodyBound)
+		state := strings.Contains(key, " "+stateapi.BaseURL+"/")
+		if op.State != state {
+			t.Errorf("%s: State %v", key, op.State)
+		}
+		if op.OwnBodyBound != (key == http.MethodPut+" "+fs.Pattern || state) {
+			t.Errorf("%s: OwnBodyBound %v; only the blob PUT and the state backend bound "+
+				"their own bodies", key, op.OwnBodyBound)
 		}
 	}
 	// Every API operation names its action and subject; nothing else does.
@@ -104,7 +113,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		case strings.HasSuffix(key, " "+accessapi.LoginPattern),
 			strings.HasSuffix(key, " "+fs.Pattern),
 			strings.HasPrefix(key, "GET /.well-known/"), strings.Contains(key, " /oauth/"),
-			op.Worker:
+			op.Worker, op.State:
 			if op.Gate.Feature != "" {
 				t.Errorf("%s names %s; a route outside the API documents names none",
 					key, op.Gate.Feature)

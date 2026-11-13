@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
 
 // blobKeys derives one fixed objectstore-url key, ID 1.
@@ -45,7 +46,7 @@ func TestUnitUncacheableAnswers(t *testing.T) {
 	c := config.Defaults().Server
 	c.RateLimit.Standard = ratelimit.Limit{Rate: 1e-6, Burst: 1}
 	ops := Operations{}
-	for _, base := range []string{BaseURL, OperatorBaseURL, WorkerBaseURL} {
+	for _, base := range []string{BaseURL, OperatorBaseURL, WorkerBaseURL, stateapi.BaseURL} {
 		ops["GET "+base+"/ok"] = Operation{Cost: ratelimit.Standard}
 		ops["GET "+base+"/boom"] = Operation{Cost: ratelimit.Standard}
 	}
@@ -53,7 +54,7 @@ func TestUnitUncacheableAnswers(t *testing.T) {
 		Get(string, http.HandlerFunc)
 	},
 	) {
-		for _, base := range []string{BaseURL, OperatorBaseURL, WorkerBaseURL} {
+		for _, base := range []string{BaseURL, OperatorBaseURL, WorkerBaseURL, stateapi.BaseURL} {
 			r.Get(base+"/ok", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
@@ -65,7 +66,7 @@ func TestUnitUncacheableAnswers(t *testing.T) {
 	refused := Guarded(discard(), c, ops, memory(c), nil, nil, nil)
 	route(refused)
 	sent := 0
-	for _, base := range []string{BaseURL, OperatorBaseURL, WorkerBaseURL} {
+	for _, base := range []string{BaseURL, OperatorBaseURL, WorkerBaseURL, stateapi.BaseURL} {
 		// Each request is its own caller but the 429, which repeats the
 		// 200's to drain its bucket of one.
 		for _, tc := range []struct {
@@ -120,6 +121,7 @@ func TestUnitUncacheableAnswers(t *testing.T) {
 	for _, target := range []string{
 		BaseURL + "/integrations-count", OperatorBaseURL + "/organizations",
 		WorkerBaseURL + "/runs/" + "01KACME000000000000000000A" + "/spec",
+		stateapi.BaseURL + "/stacks/one",
 	} {
 		wantUncacheable(t, "GET "+target, request(t, h, http.MethodGet, target))
 	}

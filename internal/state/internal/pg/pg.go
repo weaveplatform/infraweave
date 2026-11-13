@@ -3,14 +3,19 @@ package pg
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/audit"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 )
 
 // StreamName is the state stream's name in schema_migrations.
@@ -66,4 +71,81 @@ func (s *Store) OpenWorkspace(
 			sql.Unavailable(err))
 	}
 	return nil
+}
+
+// LockWorkspace locks t's workspace's row FOR UPDATE until the context's
+// transaction ends; false when the workspace does not exist.
+func (s *Store) LockWorkspace(ctx context.Context, t core.Target) (bool, error) {
+	var found bool
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT true FROM state_workspaces
+		WHERE account_id = $1 AND stack_id = $2 AND name = $3 FOR UPDATE`,
+		t.Account, t.Stack, t.Workspace).Scan(&found)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("state: lock workspace %q of stack %s: %w", t.Workspace, t.Stack,
+			sql.Unavailable(err))
+	}
+	return true, nil
+}
+
+// Locks are the locks held on t's workspace, oldest first, in the order
+// of their IDs within one instant.
+func (s *Store) Locks(ctx context.Context, t core.Target) ([]core.Lock, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT lock_id, mode, run_id, info, created_at
+		FROM state_locks WHERE account_id = $1 AND stack_id = $2 AND workspace = $3
+		ORDER BY created_at, lock_id`, t.Account, t.Stack, t.Workspace)
+	if err != nil {
+		return nil, fmt.Errorf("state: read the locks of workspace %q of stack %s: %w",
+			t.Workspace, t.Stack, sql.Unavailable(err))
+	}
+	locks, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (core.Lock, error) {
+		var l core.Lock
+		err := row.Scan(&l.ID, &l.Mode, &l.Run, &l.Info, &l.CreatedAt)
+		return l, err //nolint:wrapcheck // CollectRows' caller names the read
+	})
+	if err != nil {
+		return nil, fmt.Errorf("state: read the locks of workspace %q of stack %s: %w",
+			t.Workspace, t.Stack, sql.Unavailable(err))
+	}
+	return locks, nil
+}
+
+// AddLock records l on t's workspace.
+func (s *Store) AddLock(ctx context.Context, t core.Target, l core.Lock) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO state_locks
+		(account_id, stack_id, workspace, lock_id, mode, run_id, info)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		t.Account, t.Stack, t.Workspace, l.ID, l.Mode, l.Run, string(l.Info)); err != nil {
+		return fmt.Errorf("state: lock workspace %q of stack %s: %w", t.Workspace, t.Stack,
+			sql.Unavailable(err))
+	}
+	return nil
+}
+
+// RemoveLocks deletes the locks on t's workspace whose IDs ids holds.
+func (s *Store) RemoveLocks(ctx context.Context, t core.Target, ids []string) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM state_locks
+		WHERE account_id = $1 AND stack_id = $2 AND workspace = $3 AND lock_id = ANY($4)`,
+		t.Account, t.Stack, t.Workspace, ids); err != nil {
+		return fmt.Errorf("state: unlock workspace %q of stack %s: %w", t.Workspace, t.Stack,
+			sql.Unavailable(err))
+	}
+	return nil
+}
+
+// ReleaseRun deletes every lock run holds in acct.
+func (s *Store) ReleaseRun(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx,
+		`DELETE FROM state_locks WHERE account_id = $1 AND run_id = $2`, acct, run); err != nil {
+		return fmt.Errorf("state: release the locks of run %s: %w", run, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// Audit records e on its account's trail, in the context's transaction.
+func (s *Store) Audit(ctx context.Context, e kernel.AuditEntry) error {
+	_, err := audit.Record(ctx, e)
+	return err //nolint:wrapcheck // the trail names the write
 }

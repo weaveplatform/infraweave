@@ -19,9 +19,10 @@ import (
 
 // Authenticator is accessapi.Authenticator over the authn service: the
 // API's, which accepts a bearer token or a browser session's cookie, the
-// operator API's, which accepts operator tokens alone, or the worker
-// API's, which accepts worker session tokens on its worker routes and run
-// tokens on its runner routes, and nothing else.
+// operator API's, which accepts operator tokens alone, the worker API's,
+// which accepts worker session tokens on its worker routes and run tokens
+// on its runner routes, or the state backend's, which accepts run tokens
+// as HTTP Basic passwords, and nothing else.
 type Authenticator struct {
 	token func(ctx context.Context, raw string, reach authn.Reach) (kernel.Principal, token.Claims, error)
 	// runner authenticates a runner route's run token, on the worker API's
@@ -40,6 +41,9 @@ type Authenticator struct {
 	// to the wrong authenticator is refused rather than authenticated as
 	// another surface's caller.
 	worker bool
+	// state is set on the state backend's authenticator, which alone
+	// admits a route of accessapi.State, for the same reason.
+	state bool
 }
 
 var _ accessapi.Authenticator = Authenticator{}
@@ -82,6 +86,23 @@ func NewWorkerAuthenticator(auth *authn.Service) Authenticator {
 		runner: auth.AuthenticateRunner,
 		worker: true,
 	}
+}
+
+// StateUser is the user name of the state backend's HTTP Basic
+// credentials, whose password is a run token.
+//
+// ref: decision 0010 § "Who may call what"
+const StateUser = "run"
+
+// StateRealm is the realm of the state backend's challenge.
+const StateRealm = "infraweave-state"
+
+// NewStateAuthenticator returns the state backend's middleware source
+// over auth: it admits a run token as the password of HTTP Basic
+// credentials whose user name is StateUser, which Terraform's and
+// OpenTofu's http backend send, and challenges anything else with Basic.
+func NewStateAuthenticator(auth *authn.Service) Authenticator {
+	return Authenticator{runner: auth.AuthenticateRunner, state: true}
 }
 
 // Origin is u's origin, <scheme>://<host>, as a browser sends it in an
@@ -130,8 +151,9 @@ func (a Authenticator) Middleware(
 				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestKey{}, rec)))
 				return
 			}
-			if (acc == accessapi.Worker || acc == accessapi.Runner) != a.worker {
-				unauthenticated(w)
+			if (acc == accessapi.Worker || acc == accessapi.Runner) != a.worker ||
+				(acc == accessapi.State) != a.state {
+				a.unauthenticated(w)
 				return
 			}
 			reach := reaches[acc]
@@ -139,7 +161,15 @@ func (a Authenticator) Middleware(
 				p   kernel.Principal
 				err error
 			)
-			if raw, ok := bearer(r); ok {
+			if a.state {
+				var c token.Claims
+				if user, raw, ok := r.BasicAuth(); ok && user == StateUser && raw != "" {
+					p, c, err = a.runner(r.Context(), raw)
+					rec.token, rec.expiry = raw, c.Expiry
+				} else {
+					err = authn.ErrUnauthenticated
+				}
+			} else if raw, ok := bearer(r); ok {
 				var c token.Claims
 				if acc == accessapi.Runner {
 					p, c, err = a.runner(r.Context(), raw)
@@ -155,7 +185,7 @@ func (a Authenticator) Middleware(
 				err = authn.ErrUnauthenticated
 			}
 			if errors.Is(err, authn.ErrUnauthenticated) {
-				unauthenticated(w)
+				a.unauthenticated(w)
 				return
 			}
 			if err != nil {
@@ -207,8 +237,14 @@ func bearer(r *http.Request) (string, bool) {
 	return token, ok && strings.EqualFold(scheme, "Bearer") && token != ""
 }
 
-// unauthenticated answers 401 with the challenge RFC 6750 asks for.
-func unauthenticated(w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", "Bearer")
+// unauthenticated answers 401 with the challenge RFC 6750 asks for, or
+// on the state backend the Basic challenge of RFC 7617, which Terraform's
+// and OpenTofu's http backend answer.
+func (a Authenticator) unauthenticated(w http.ResponseWriter) {
+	challenge := "Bearer"
+	if a.state {
+		challenge = `Basic realm="` + StateRealm + `"`
+	}
+	w.Header().Set("WWW-Authenticate", challenge)
 	problem.Write(w, problem.Unauthenticated.New(refused))
 }

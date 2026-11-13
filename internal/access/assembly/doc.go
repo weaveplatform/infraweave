@@ -37,8 +37,9 @@
 // holds no certificate; Deps.KMS are the
 // kms backend's keys, which internal/app opens. Authenticator is the
 // middleware internal/app puts in front of the API,
-// OperatorAuthenticator the one in front of the operator API and
-// WorkerAuthenticator the one in front of the worker API; Tokens
+// OperatorAuthenticator the one in front of the operator API,
+// WorkerAuthenticator the one in front of the worker API and
+// StateAuthenticator the one in front of the state backend; Tokens
 // mints the worker protocol's tokens, and BindRuns binds the runs an
 // in-run API token's authentication reads; Routes
 // mounts the break-glass login at accessapi.LoginPattern and the
