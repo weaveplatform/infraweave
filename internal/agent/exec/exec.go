@@ -14,9 +14,11 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/runlog"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
+	"github.com/weaveplatform/infraweave/internal/platform/mask"
 )
 
 // Reporter sends a run's reports and answers each one's next step;
@@ -25,11 +27,13 @@ type Reporter interface {
 	Report(ctx context.Context, token, run string, r wire.RunReport) (wire.NextStep, error)
 }
 
-// Deps are what Run needs beyond the handoff: the worker API, the
-// runner's log, where the session's output goes, the workspace the
-// source is checked out in, and the environment the session starts from.
+// Deps are what Run needs beyond the handoff: the worker API's reports and
+// log uploads, the runner's log, where the session's masked output goes,
+// the workspace the source is checked out in, and the environment the
+// session starts from.
 type Deps struct {
 	Reports   Reporter
+	Logs      runlog.API
 	Log       *slog.Logger
 	Out       io.Writer
 	Workspace string
@@ -55,15 +59,22 @@ var errMovedOn = errors.New("the run moved on")
 // Run executes the run h hands over. It reports that the state the run's
 // preparation leads to started, which ends the handover, and then
 // follows each answer: execute runs that state's phase in the run's one
-// shell session and reports how it ended; pause ends the runner while the
-// run waits for a decision; exit runs the after_run hooks with the run's
-// final state and ends it. A report refused with 409 ends the runner
-// with no further report, since the run has moved on without it.
+// shell session, its output in the state's log, and reports how it ended
+// once the log is flushed; pause ends the runner while the run waits for
+// a decision; exit runs the after_run hooks with the run's final state
+// and ends it. A report refused with 409 ends the runner with no further
+// report, since the run has moved on without it.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
-	r := &run{h: h, d: d}
-	defer r.close()
+	log, err := runlog.New(ctx, runlog.Deps{
+		API: d.Logs, Out: d.Out, Log: d.Log, Run: h.Run, Token: h.RunToken, Masker: masker(h),
+	})
+	if err != nil {
+		return err //nolint:wrapcheck // runlog names the step
+	}
+	r := &run{h: h, d: d, log: log}
+	defer r.close(ctx)
 	step, err := r.report(ctx, wire.RunReport{
 		StateVersion: h.StateVersion, State: h.First(), Event: wire.Started,
 	})
@@ -72,7 +83,21 @@ func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
 		case wire.Execute:
 			state := wire.WorkerState(step.State)
 			d.Log.InfoContext(ctx, "phase started", "run", h.Run, "state", state)
-			step, err = r.report(ctx, r.phase(ctx, state, step.StateVersion))
+			r.log.Begin(step.StateVersion)
+			rep := r.phase(ctx, state, step.StateVersion)
+			if err := r.log.End(ctx); err != nil {
+				d.Log.WarnContext(
+					ctx,
+					"log not flushed",
+					"run",
+					h.Run,
+					"state",
+					state,
+					"error",
+					err,
+				)
+			}
+			step, err = r.report(ctx, rep)
 		case wire.Pause:
 			d.Log.InfoContext(ctx, "run paused", "run", h.Run, "state", step.State)
 			return nil
@@ -91,11 +116,12 @@ func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
 	return err
 }
 
-// run is one run's execution: its handoff, its prepared environment and
-// session, and the plan's JSON file.
+// run is one run's execution: its handoff, its log, its prepared
+// environment and session, and the plan's JSON file.
 type run struct {
 	h       handoff.Handoff
 	d       Deps
+	log     *runlog.Log
 	ready   bool
 	failure string
 	dir     string
@@ -273,14 +299,15 @@ func (r *run) announce() {
 	case r.h.Secrets.SourceCredential != nil:
 		how = "with the integration's own credential"
 	}
-	_, _ = fmt.Fprintf(r.d.Out, "infraweave: working on commit %s, read from its repository %s\n",
+	_, _ = fmt.Fprintf(r.log, "infraweave: working on commit %s, read from its repository %s\n",
 		r.h.Spec.Commit.Hash, how)
 }
 
 // afterRun runs the after_run hooks with the run's final state, in the
 // session or, when a step ended it, a new one. Their failure changes
-// nothing, since the run has ended; it is logged. A runner that executed
-// no phase runs none.
+// nothing, since the run has ended; it is logged. Their output, read
+// while no state is open, goes to standard output alone. A runner that
+// executed no phase runs none.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func (r *run) afterRun(ctx context.Context, final string) {
@@ -288,7 +315,7 @@ func (r *run) afterRun(ctx context.Context, final string) {
 		return
 	}
 	if r.shell == nil || r.shell.cmd == nil {
-		s, err := start(ctx, r.dir, r.env, r.d.Out)
+		s, err := start(ctx, r.dir, r.env, r.log.File())
 		if err != nil {
 			r.d.Log.WarnContext(ctx, "after_run hooks not run", "run", r.h.Run, "error", err)
 			return
@@ -303,14 +330,42 @@ func (r *run) afterRun(ctx context.Context, final string) {
 	}
 }
 
-// close ends the session and removes the run's temporary files.
-func (r *run) close() {
+// close ends the session and then the log, once it has read the
+// session's last line, and removes the run's temporary files.
+func (r *run) close(ctx context.Context) {
 	if r.shell != nil {
 		_ = r.shell.close()
+	}
+	if err := r.log.Close(ctx); err != nil {
+		r.d.Log.WarnContext(ctx, "log not flushed", "run", r.h.Run, "error", err)
 	}
 	if r.temp != "" {
 		_ = os.RemoveAll(r.temp)
 	}
+}
+
+// masker masks the run's secrets in its log: every write-only variable's
+// value and file's content, the in-run API token, the run token the state
+// backend's credentials carry, the source credential's token, and, when
+// the stack enables them, the well-known patterns.
+//
+// ref: decision 0013 § "Masking"
+func masker(h handoff.Handoff) *mask.Masker {
+	secrets := [][]byte{[]byte(h.RunToken), []byte(h.Secrets.ApiToken)}
+	for _, v := range h.Secrets.Environment {
+		secrets = append(secrets, []byte(v))
+	}
+	for _, f := range h.Secrets.Files {
+		secrets = append(secrets, f)
+	}
+	if c := h.Secrets.SourceCredential; c != nil {
+		secrets = append(secrets, []byte(c.Token))
+	}
+	m := mask.New(secrets...)
+	if h.Spec.Stack.EnableWellKnownSecretMasking {
+		m = m.WellKnown()
+	}
+	return m
 }
 
 // project is the run's project root under the workspace.

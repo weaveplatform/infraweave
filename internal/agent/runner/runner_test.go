@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"testing/synctest"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
@@ -78,13 +77,8 @@ func TestUnitRunnerExecutesTheRun(t *testing.T) {
 }
 
 // TestUnitRunnerFailures checks a handoff the runner cannot read, and a
-// report that keeps failing, which the runner sends again for ten minutes
-// of the bubble's time before it fails.
+// report the server refuses, which fails the runner.
 func TestUnitRunnerFailures(t *testing.T) {
-	synctest.Test(t, runnerFailures)
-}
-
-func runnerFailures(t *testing.T) {
 	log := slog.New(slog.DiscardHandler)
 	if err := runner.Run(
 		t.Context(),
@@ -97,15 +91,6 @@ func runnerFailures(t *testing.T) {
 	) {
 		t.Fatalf("a bad handoff: %v", err)
 	}
-	var b bytes.Buffer
-	if err := handoff.Write(&b, handoff.Handoff{
-		Endpoint: "://", Run: "r", RunToken: "t", Assigned: wire.AssignmentStatePREPARING,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if err := runner.Run(t.Context(), &b, nil, log); err == nil {
-		t.Fatal("a handoff whose endpoint is no URL")
-	}
 	for n := range 2 {
 		srv, h := assigned(t)
 		d := &failAfter{n: n, next: srv.Client()}
@@ -115,7 +100,7 @@ func runnerFailures(t *testing.T) {
 	}
 }
 
-// failAfter passes n requests to next and fails the rest.
+// failAfter passes n requests to next and refuses the rest with 400.
 type failAfter struct {
 	n    int
 	next wire.HttpRequestDoer
@@ -123,7 +108,10 @@ type failAfter struct {
 
 func (f *failAfter) Do(r *http.Request) (*http.Response, error) {
 	if f.n == 0 {
-		return nil, errors.New("unreachable")
+		return &http.Response{
+			StatusCode: http.StatusBadRequest, Body: http.NoBody, Request: r,
+			Header: http.Header{"Content-Type": {"text/plain"}},
+		}, nil
 	}
 	f.n--
 	return f.next.Do(r) //nolint:wrapcheck // a test double

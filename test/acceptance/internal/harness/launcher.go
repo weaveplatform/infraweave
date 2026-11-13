@@ -157,21 +157,26 @@ func importRunnerImage(ctx context.Context, cli *testcontainers.DockerClient) er
 }
 
 // Network is the launcher.docker.network that puts a run container where
-// 127.0.0.1:port reaches the relay listening there on the host. On Linux
-// the daemon is the host's, and the host network is that place. Elsewhere
-// the daemon runs in a virtual machine, so a container of the scenario,
-// labelled scenario, runs testdata/forward from 127.0.0.1:port to the
-// relay as host.docker.internal names it, and each run container joins
-// its network namespace.
-func (l *Launchers) Network(ctx context.Context, scenario, port string) (string, error) {
+// 127.0.0.1:port reaches what listens there on the host, for each of
+// ports, such as the relay. On Linux the daemon is the host's, and the
+// host network is that place. Elsewhere the daemon runs in a virtual
+// machine, so a container of the scenario, labelled scenario, runs
+// testdata/forward from 127.0.0.1:port to the port as
+// host.docker.internal names it, and each run container joins its network
+// namespace.
+func (l *Launchers) Network(ctx context.Context, scenario string, ports ...string) (string, error) {
 	if runtime.GOOS == "linux" {
 		return "host", nil
+	}
+	pairs := make([]string, 0, 2*len(ports))
+	for _, port := range ports {
+		pairs = append(pairs, "127.0.0.1:"+port, "host.docker.internal:"+port)
 	}
 	c, err := l.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
 			Image:      RunnerImage,
 			Entrypoint: []string{"/opt/forward"},
-			Cmd:        []string{"127.0.0.1:" + port, "host.docker.internal:" + port},
+			Cmd:        pairs,
 			Labels:     map[string]string{LabelScenario: scenario},
 		},
 		HostConfig: &container.HostConfig{

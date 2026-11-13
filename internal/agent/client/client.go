@@ -1,11 +1,14 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -19,8 +22,12 @@ const BasePath = "/worker/v1"
 // which a pool token names.
 func Base(public string) string { return strings.TrimSuffix(public, "/") + BasePath }
 
-// Client calls the worker API at one base URL.
-type Client struct{ c *wire.ClientWithResponses }
+// Client calls the worker API at one base URL, and the pre-signed URLs it
+// answers.
+type Client struct {
+	c    *wire.ClientWithResponses
+	doer wire.HttpRequestDoer
+}
 
 // New is a client of the worker API at base, sending its requests through
 // doer. A base that is no URL fails each call.
@@ -28,7 +35,7 @@ func New(base string, doer wire.HttpRequestDoer) *Client {
 	// The generated constructor fails only when an option does, and
 	// WithHTTPClient never does.
 	c, _ := wire.NewClientWithResponses(base, wire.WithHTTPClient(doer))
-	return &Client{c: c}
+	return &Client{c: c, doer: doer}
 }
 
 // Error is a call the server refused: its status and problem detail.
@@ -146,4 +153,72 @@ func (c *Client) Report(
 		return wire.NextStep{}, refused(op, res.HTTPResponse, res.Body)
 	}
 	return *res.JSON200, nil
+}
+
+// UploadURLs declares the uploads of run's state version in.StateVersion
+// with its run token, and answers where to PUT each, in the order
+// declared. A declaration repeated as it was answers the same object.
+func (c *Client) UploadURLs(
+	ctx context.Context,
+	token, run string,
+	in wire.UploadURLsRequest,
+) ([]wire.SignedUpload, error) {
+	const op = "declare uploads"
+	res, err := c.c.WorkerRunUploadURLsWithResponse(ctx, run, in, bearer(token))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	if res.JSON200 == nil {
+		return nil, refused(op, res.HTTPResponse, res.Body)
+	}
+	return res.JSON200.Uploads, nil
+}
+
+// maxStoreAnswer bounds what Put reads of an object store's answer.
+const maxStoreAnswer = 64 << 10
+
+// Put uploads body to u, a pre-signed URL UploadURLs answered, with the
+// headers it names and no bearer token, since the URL is its own
+// credential; no error names the URL. A store's refusal is an *Error
+// with its status.
+func (c *Client) Put(ctx context.Context, u wire.SignedUpload, body []byte) error {
+	op := "upload " + u.Name
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, u.Url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	for k, v := range u.Headers {
+		req.Header.Set(k, v)
+	}
+	res, err := c.doer.Do(req)
+	if err != nil {
+		// The URL's query is its signature, which the error would carry
+		// into the runner's log.
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			err = ue.Err
+		}
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer res.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, maxStoreAnswer))
+	if res.StatusCode/100 != 2 {
+		return &Error{Op: op, Status: res.StatusCode}
+	}
+	return nil
+}
+
+// LogChunks commits uploaded log chunks of run's state version
+// in.StateVersion with its run token. A chunk already committed is
+// skipped.
+func (c *Client) LogChunks(ctx context.Context, token, run string, in wire.LogChunksRequest) error {
+	const op = "commit log chunks"
+	res, err := c.c.WorkerRunLogChunksWithResponse(ctx, run, in, bearer(token))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.StatusCode() != http.StatusNoContent {
+		return refused(op, res.HTTPResponse, res.Body)
+	}
+	return nil
 }

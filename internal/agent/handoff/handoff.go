@@ -31,6 +31,9 @@ type Handoff struct {
 	// StateLockTimeout is launcher.state_lock_timeout: how long each
 	// command that locks the state waits for the lock.
 	StateLockTimeout time.Duration `json:"stateLockTimeout"`
+	// MaskEnvs is launcher.mask_envs: the names of the run's variables
+	// whose values the runner masks in its log.
+	MaskEnvs []string `json:"maskEnvs,omitempty"`
 }
 
 // MaxSize bounds a handoff the runner reads. A specification holds a

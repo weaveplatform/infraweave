@@ -1,6 +1,8 @@
 package client_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -52,6 +54,32 @@ func TestUnitClientCalls(t *testing.T) {
 	if err != nil || step.Action != wire.Execute || step.StateVersion != 3 {
 		t.Fatalf("Report: %+v, %v", step, err)
 	}
+	body := []byte("a line\n")
+	sum := sha256.Sum256(body)
+	ups, err := c.UploadURLs(ctx, "token", "run-1", wire.UploadURLsRequest{
+		StateVersion: 3, Uploads: []wire.Upload{{
+			Kind: wire.UploadKindLogChunk, Name: "0", Size: int64(len(body)),
+			Sha256: hex.EncodeToString(sum[:]),
+		}},
+	})
+	if err != nil || len(ups) != 1 || ups[0].Name != "0" {
+		t.Fatalf("UploadURLs: %+v, %v", ups, err)
+	}
+	if err := c.Put(ctx, ups[0], []byte("another")); client.Status(err) != http.StatusBadRequest ||
+		!strings.HasPrefix(err.Error(), "upload 0: 400 ") {
+		t.Fatalf("Put of other bytes: %v", err)
+	}
+	if err := c.Put(ctx, ups[0], body); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if err := c.LogChunks(ctx, "token", "run-1", wire.LogChunksRequest{
+		StateVersion: 3, Chunks: []wire.LogChunk{{Seq: 0, FirstAt: 1, LastAt: 2}},
+	}); err != nil {
+		t.Fatalf("LogChunks: %v", err)
+	}
+	if got := srv.Chunks(); len(got) != 1 || string(got[0].Body) != "a line\n" {
+		t.Fatalf("indexed %+v", got)
+	}
 
 	for op, call := range map[string]func() error{
 		"register":   func() error { _, err := c.Register(ctx, "not a JWS"); return err },
@@ -66,6 +94,13 @@ func TestUnitClientCalls(t *testing.T) {
 				State: wire.WorkerStateINITIALIZING, Event: wire.Started,
 			})
 			return err
+		},
+		"declare uploads": func() error {
+			_, err := c.UploadURLs(ctx, "wrong", "run-1", wire.UploadURLsRequest{})
+			return err
+		},
+		"commit log chunks": func() error {
+			return c.LogChunks(ctx, "wrong", "run-1", wire.LogChunksRequest{})
 		},
 	} {
 		err := call()
@@ -105,11 +140,30 @@ func TestUnitClientFailures(t *testing.T) {
 			"deregister": c.Deregister(ctx, "s"),
 			"spec":       func() error { _, err := c.Spec(ctx, "t", "r"); return err }(),
 			"report":     func() error { _, err := c.Report(ctx, "t", "r", wire.RunReport{}); return err }(),
+			"uploads": func() error {
+				_, err := c.UploadURLs(ctx, "t", "r", wire.UploadURLsRequest{})
+				return err
+			}(),
+			"put":     c.Put(ctx, wire.SignedUpload{Url: "http://store.invalid/k"}, nil),
+			"bad url": c.Put(ctx, wire.SignedUpload{Url: "http://[::1"}, nil),
+			"chunks":  c.LogChunks(ctx, "t", "r", wire.LogChunksRequest{}),
 		} {
 			if err == nil {
 				t.Errorf("%s succeeded", name)
 			}
 		}
+	}
+	if err := plain.Put(ctx, wire.SignedUpload{
+		Name: "0", Url: "http://store.invalid/k?X-Amz-Signature=secret",
+	}, nil); err == nil || strings.Contains(err.Error(), "secret") {
+		t.Errorf("a store's refusal: %v", err)
+	}
+	httpDown := client.New("http://iw.invalid/worker/v1", http.DefaultClient)
+	if err := httpDown.Put(ctx, wire.SignedUpload{
+		Name: "0", Url: "http://127.0.0.1:1/k?X-Amz-Signature=secret",
+	}, nil); err == nil || strings.Contains(err.Error(), "secret") ||
+		!strings.HasPrefix(err.Error(), "upload 0: ") {
+		t.Errorf("an unreachable store: %v", err)
 	}
 	err := plain.Deregister(ctx, "s")
 	if client.Status(err) != http.StatusBadGateway || err.Error() != "deregister: 502 Bad Gateway" {

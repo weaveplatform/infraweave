@@ -9,8 +9,9 @@
 // JWS against the pool's certificate, registers or resumes the worker it
 // names, holds polls until Answer or Assign queues a result or the poll's
 // wait passes, seals each assigned run's secrets for the pool, answers a
-// started report with execute and any other with exit, and records every
-// call. Refuse makes calls fail with a status, Renew hands a worker a new
+// started report with execute and any other with exit, signs uploads to
+// an in-memory store that checks each PUT against its declaration,
+// indexes uploaded log chunks once, and records every call. Refuse makes calls fail with a status, Renew hands a worker a new
 // session token, and Lose forgets every worker. Executor is a fake executor.Executor whose containers run until
 // the test ends them, or fails their wait, and which a restarted launcher
 // finds again.

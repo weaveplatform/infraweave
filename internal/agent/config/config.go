@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +59,10 @@ type Launcher struct {
 	// StateLockTimeout is how long each command of a run that locks the
 	// state waits for the lock, which the handoff carries to the runner.
 	StateLockTimeout time.Duration `mapstructure:"state_lock_timeout"`
+	// MaskEnvs names the run's variables whose values the runner masks in
+	// its log, whether or not they are secret, as SPACELIFT_MASK_ENVS
+	// does; the handoff carries the names.
+	MaskEnvs []string `mapstructure:"mask_envs"`
 	// Metadata describes the worker at registration. Each
 	// INFRAWEAVE_LAUNCHER_METADATA_<key> variable adds <key>, as
 	// SPACELIFT_METADATA_<key> does.
@@ -99,6 +104,9 @@ const (
 	MaxMetadataKey   = 64
 	MaxMetadataValue = 255
 )
+
+// envName is a variable's name, as a shell takes it.
+var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 // MetadataEnv prefixes each variable that adds a metadata entry.
 const MetadataEnv = "INFRAWEAVE_LAUNCHER_METADATA_"
@@ -152,6 +160,11 @@ func (c Launcher) Validate() error {
 	}
 	if c.StateLockTimeout < 0 {
 		bad("launcher.state_lock_timeout must not be negative, got %s", c.StateLockTimeout)
+	}
+	for _, name := range c.MaskEnvs {
+		if !envName.MatchString(name) {
+			bad("launcher.mask_envs %q: want a variable's name", name)
+		}
 	}
 	if len(c.Metadata) > MaxMetadata {
 		bad("launcher.metadata holds at most %d entries, got %d", MaxMetadata, len(c.Metadata))
