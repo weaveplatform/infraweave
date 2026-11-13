@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"flag"
 	"fmt"
@@ -285,6 +286,7 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 func (s *Suite) initScenario(sc *godog.ScenarioContext) {
 	w := &World{
 		Suite: s, Tokens: map[string]string{}, IDs: map[string]string{},
+		Keys:    map[string]crypto.Signer{},
 		Answers: map[string][][]byte{}, Jar: NewJar(), Settings: map[string]map[string]any{},
 	}
 	sc.Before(func(ctx context.Context, p *godog.Scenario) (context.Context, error) {

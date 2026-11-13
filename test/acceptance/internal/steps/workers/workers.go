@@ -21,7 +21,6 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/go-jose/go-jose/v4"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -39,8 +38,6 @@ import (
 // secrets"
 type workerSteps struct {
 	w *harness.World
-	// keys are the pool keys by the name of their request.
-	keys map[string]crypto.Signer
 	// certs are the pool certificates by the name their serial is kept
 	// as, each with its pool's ID.
 	certs map[string]poolCert
@@ -99,7 +96,7 @@ func (w *workerSteps) request(kind, name string) error {
 	if err != nil {
 		return fmt.Errorf("a %s key: %w", kind, err)
 	}
-	w.keys[name] = key
+	w.w.Keys[name] = key
 	der, err := x509.CreateCertificateRequest(rand.Reader,
 		&x509.CertificateRequest{Subject: pkix.Name{CommonName: "acceptance"}}, key)
 	if err != nil {
@@ -193,19 +190,7 @@ func (w *workerSteps) replaced(ctx context.Context, pool, name string) error {
 
 // row scans the one row query answers into dest.
 func (w *workerSteps) row(ctx context.Context, query string, args []any, dest ...any) error {
-	db, err := w.w.Database(ctx)
-	if err != nil {
-		return err
-	}
-	conn, err := pgx.Connect(ctx, db.DSN)
-	if err != nil {
-		return fmt.Errorf("connect: %w", err)
-	}
-	defer conn.Close(context.WithoutCancel(ctx))
-	if err := conn.QueryRow(ctx, query, args...).Scan(dest...); err != nil {
-		return fmt.Errorf("%w: %s: %w", harness.ErrStep, query, err)
-	}
-	return nil
+	return w.w.Row(ctx, query, args, dest...)
 }
 
 // wire is a client of the worker API through replica.
@@ -230,10 +215,10 @@ func (w *workerSteps) registerLauncher(
 	launcher, key, cert, named, replica string,
 ) error {
 	pc, ok := w.certs[cert]
-	if !ok || w.keys[key] == nil {
+	if !ok || w.w.Keys[key] == nil {
 		return fmt.Errorf("%w: no certificate %q or key %q", harness.ErrStep, cert, key)
 	}
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: w.keys[key]},
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: w.w.Keys[key]},
 		(&jose.SignerOptions{}).WithHeader("x5c",
 			[]string{base64.StdEncoding.EncodeToString(pc.cert.Raw)}))
 	if err != nil {

@@ -3,13 +3,18 @@
 // area's steps share, and MainWithBuild builds cmd/infraweave and
 // cmd/infraweavectl with coverage once per test binary. A World holds the
 // scenario's servers (StartServer, Launch, TwoReplicas), its database and
-// object storage, its named tokens and IDs, the answers it was sent
+// object storage, an @objectstore scenario's in a RustFS bucket of its
+// own, its named tokens, IDs and pool keys, the answers it was sent
 // (Send, Do, SendAs, Last), its browser (Jar) and the settings sections
 // every server it starts reads, with the Fakes its tags start merged in.
 // Tenants are the accounts seeded through SQL with their API keys;
 // Partitions are CI's slices of the features; captures.go loads and
-// replays the capture fixtures, and Launchers the worker launcher images.
-// A failed scenario leaves its evidence in out/<scenario>/.
+// replays the capture fixtures. Launchers are what a @docker scenario
+// runs in Docker: the runner image, the Linux builds of the launcher's
+// runner, and a tool's process (RunTool) in a container of the image;
+// a Relay is the worker API and state backend as those containers reach
+// them, recording each call and holding reports or UNLOCK calls on
+// demand. A failed scenario leaves its evidence in out/<scenario>/.
 //
 // ref: decision 0016
 //

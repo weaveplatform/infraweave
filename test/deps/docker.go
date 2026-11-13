@@ -16,6 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
@@ -127,6 +130,73 @@ func (o *ObjectStore) Healthy(ctx context.Context) (bool, error) {
 	return resp.StatusCode == http.StatusOK, nil
 }
 
+// ObjectStoreRegion is the region a client of the store names, which
+// RustFS takes but does not check.
+const ObjectStoreRegion = "us-east-1"
+
+// client is an S3 client of the store with its keys. It asks for and
+// checks only the checksums S3 requires, as the s3 driver does.
+func (o *ObjectStore) client() *s3.Client {
+	return s3.New(s3.Options{
+		Region:       ObjectStoreRegion,
+		BaseEndpoint: aws.String(o.Endpoint),
+		UsePathStyle: true,
+		Credentials: credentials.NewStaticCredentialsProvider(
+			o.AccessKey, o.SecretKey, "",
+		),
+		RequestChecksumCalculation: aws.RequestChecksumCalculationWhenRequired,
+		ResponseChecksumValidation: aws.ResponseChecksumValidationWhenRequired,
+	})
+}
+
+// Bucket creates the bucket name, for one caller's objects alone.
+func (o *ObjectStore) Bucket(ctx context.Context, name string) error {
+	if _, err := o.client().CreateBucket(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(name),
+	}); err != nil {
+		return fmt.Errorf("@objectstore: create bucket %s: %w", name, err)
+	}
+	return nil
+}
+
+// Containing reads every object in bucket and answers the keys of those
+// whose bytes hold needle, and how many objects it read.
+func (o *ObjectStore) Containing(
+	ctx context.Context,
+	bucket string,
+	needle []byte,
+) ([]string, int, error) {
+	c := o.client()
+	var keys []string
+	n := 0
+	pages := s3.NewListObjectsV2Paginator(c, &s3.ListObjectsV2Input{Bucket: aws.String(bucket)})
+	for pages.HasMorePages() {
+		page, err := pages.NextPage(ctx)
+		if err != nil {
+			return nil, 0, fmt.Errorf("@objectstore: list %s: %w", bucket, err)
+		}
+		for _, obj := range page.Contents {
+			out, err := c.GetObject(
+				ctx,
+				&s3.GetObjectInput{Bucket: aws.String(bucket), Key: obj.Key},
+			)
+			if err != nil {
+				return nil, 0, fmt.Errorf("@objectstore: get %s: %w", aws.ToString(obj.Key), err)
+			}
+			b, err := io.ReadAll(out.Body)
+			out.Body.Close()
+			if err != nil {
+				return nil, 0, fmt.Errorf("@objectstore: get %s: %w", aws.ToString(obj.Key), err)
+			}
+			n++
+			if bytes.Contains(b, needle) {
+				keys = append(keys, aws.ToString(obj.Key))
+			}
+		}
+	}
+	return keys, n, nil
+}
+
 // Dependencies starts each dependency the first time a scenario asks for
 // it and shares it with every later scenario of the test binary, so a
 // dependency no selected scenario needs never starts.
@@ -135,8 +205,13 @@ type Dependencies struct {
 	// template is migrated with it once, so every scenario's database
 	// starts migrated. Nil leaves the template empty.
 	Migrate func(ctx context.Context, dsn string) error
+	// ToolCache is where Tool keeps the archives it downloads; empty is
+	// infraweave-acceptance under the user's cache directory, which
+	// outlives the test binary.
+	ToolCache string
 
 	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce sync.Once
+	tools                                             tools
 
 	pg       *Database
 	pgErr    error

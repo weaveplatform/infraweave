@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -305,6 +306,50 @@ func (g *Gitea) Tag(ctx context.Context, name, tag, commit string) error {
 // CloneURL is the HTTPS URL the repository name is cloned from.
 func (g *Gitea) CloneURL(name string) string {
 	return g.URL + "/" + giteaUser + "/" + name + ".git"
+}
+
+// Repository is the name of the repository CloneURL answers cloneURL for,
+// empty for a URL it did not answer.
+func (g *Gitea) Repository(cloneURL string) string {
+	name, ok := strings.CutPrefix(cloneURL, g.URL+"/"+giteaUser+"/")
+	if !ok {
+		return ""
+	}
+	name, _ = strings.CutSuffix(name, ".git")
+	return name
+}
+
+// Files are the files at the top of the repository name at ref, a commit
+// or branch, by path: what a checkout of ref holds at its root.
+func (g *Gitea) Files(ctx context.Context, name, ref string) (map[string]string, error) {
+	base := "/repos/" + giteaUser + "/" + name + "/contents"
+	var entries []struct {
+		Path string `json:"path"`
+		Type string `json:"type"`
+	}
+	if err := g.call(ctx, http.MethodGet, base+"?ref="+url.QueryEscape(ref), nil,
+		&entries); err != nil {
+		return nil, err
+	}
+	files := map[string]string{}
+	for _, e := range entries {
+		if e.Type != "file" {
+			continue
+		}
+		var f struct {
+			Content string `json:"content"`
+		}
+		if err := g.call(ctx, http.MethodGet, base+"/"+e.Path+"?ref="+url.QueryEscape(ref), nil,
+			&f); err != nil {
+			return nil, err
+		}
+		b, err := base64.StdEncoding.DecodeString(f.Content)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s at %s is not base64: %w", ErrGitea, e.Path, ref, err)
+		}
+		files[e.Path] = string(b)
+	}
+	return files, nil
 }
 
 func (g *Gitea) branchExists(ctx context.Context, name, branch string) (bool, error) {

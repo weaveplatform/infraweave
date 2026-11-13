@@ -22,6 +22,8 @@ import (
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"github.com/testcontainers/testcontainers-go"
+
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
 
 // RunnerImage is the image of a @docker scenario's run containers: a
@@ -52,7 +54,10 @@ type Launchers struct {
 	Runner string
 	// Forward is testdata/forward's Linux build.
 	Forward string
-	cli     *testcontainers.DockerClient
+	// Arch is the daemon's architecture as GOARCH names it, which a
+	// binary its containers run is built or fetched for.
+	Arch string
+	cli  *testcontainers.DockerClient
 }
 
 // prepare builds what the launchers need into dir, from the module at
@@ -71,6 +76,7 @@ func (l *Launchers) prepare(ctx context.Context, root, dir string) error {
 	if arch == "" {
 		return fmt.Errorf("%w: %q", ErrDockerArch, info.Info.Architecture)
 	}
+	l.Arch = arch
 	if l.Runner, err = buildLinux(ctx, root, dir, arch, "./cmd/infraweave"); err != nil {
 		return err
 	}
@@ -209,23 +215,50 @@ type Call struct {
 	Status int    `json:"status"`
 }
 
-// reportsPath is the worker API's route a runner reports on.
-const reportsPath = "/worker/v1/runs/{run}/reports"
+// Refusal is a call a relay passed on that answered 423, with the body it
+// answered: the LockInfo of the lock that refused it, or {}.
+type Refusal struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+	Body   string `json:"body"`
+}
 
-// Relay is the worker API as a scenario's launchers and their run
-// containers reach it: a reverse proxy on loopback to a server's API
-// listener, which records each call and, while it holds, keeps each
-// runner's report waiting until it releases them or the report's caller
-// gives up.
+// The routes a relay holds calls of: a runner's reports, keyed by run,
+// and the state backend's UNLOCK, keyed by path.
+const (
+	reportsPath = "/worker/v1/runs/{run}/reports"
+	statePath   = "/state/v1/*"
+)
+
+// init registers the state backend's lock methods with chi, which routes
+// only the methods it knows. RegisterMethod writes a map every chi router
+// reads, so it runs here, before any scenario's goroutine starts a relay
+// or serves a fake.
+func init() {
+	chi.RegisterMethod(stateapi.MethodLock)
+	chi.RegisterMethod(stateapi.MethodUnlock)
+}
+
+// maxRefusal bounds a 423's body the relay keeps, above the 16 KiB a
+// LockInfo the state backend stores may take.
+const maxRefusal = 64 << 10
+
+// Relay is the worker API and the state backend as a scenario's launchers,
+// its run containers and its tools reach them: a reverse proxy on loopback
+// to a server's API listener, which records each call and the body of
+// each 423. While it holds reports, each runner's report waits until it
+// releases them or the report's caller gives up; while it holds unlocks,
+// each UNLOCK of the state backend waits the same way, so the lock it
+// would release stays held.
 type Relay struct {
 	// URL is the relay's base URL; Port is its port.
 	URL, Port string
 	srv       *http.Server
 	mu        sync.Mutex
 	calls     []Call
-	holding   bool
-	held      map[string]int
-	release   chan struct{}
+	refusals  []Refusal
+	reports   *gate
+	unlocks   *gate
 }
 
 // StartRelay starts a relay to the API listener at target, a host:port.
@@ -236,15 +269,22 @@ func StartRelay(ctx context.Context, target string) (*Relay, error) {
 	}
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 	r := &Relay{
-		URL: "http://" + ln.Addr().String(), Port: port, held: map[string]int{},
-		release: make(chan struct{}),
+		URL: "http://" + ln.Addr().String(), Port: port, reports: newGate(), unlocks: newGate(),
 	}
 	to := &url.URL{Scheme: "http", Host: target}
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) { pr.SetURL(to) },
 		ModifyResponse: func(resp *http.Response) error {
-			r.record(resp.Request.Method, resp.Request.URL.Path, resp.StatusCode)
-			return nil
+			req := resp.Request
+			r.record(req.Method, req.URL.Path, resp.StatusCode)
+			if resp.StatusCode != http.StatusLocked {
+				return nil
+			}
+			body, err := io.ReadAll(io.LimitReader(resp.Body, maxRefusal))
+			resp.Body.Close()
+			resp.Body = io.NopCloser(bytes.NewReader(body))
+			r.refused(Refusal{Method: req.Method, Path: req.URL.Path, Body: string(body)})
+			return err
 		},
 		ErrorHandler: func(w http.ResponseWriter, req *http.Request, _ error) {
 			r.record(req.Method, req.URL.Path, http.StatusBadGateway)
@@ -253,11 +293,16 @@ func StartRelay(ctx context.Context, target string) (*Relay, error) {
 	}
 	mux := chi.NewRouter()
 	mux.Post(reportsPath, func(w http.ResponseWriter, req *http.Request) {
-		if !r.wait(req.Context(), chi.URLParam(req, "run")) {
-			return
+		if r.reports.wait(req.Context(), chi.URLParam(req, "run")) {
+			proxy.ServeHTTP(w, req)
 		}
-		proxy.ServeHTTP(w, req)
 	})
+	mux.Method(stateapi.MethodUnlock, statePath, http.HandlerFunc(
+		func(w http.ResponseWriter, req *http.Request) {
+			if r.unlocks.wait(req.Context(), req.URL.Path) {
+				proxy.ServeHTTP(w, req)
+			}
+		}))
 	mux.Handle("/*", proxy)
 	r.srv = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() { _ = r.srv.Serve(ln) }()
@@ -270,21 +315,83 @@ func (r *Relay) record(method, path string, status int) {
 	r.calls = append(r.calls, Call{Method: method, Path: path, Status: status})
 }
 
-// wait holds a report of run while the relay holds, and reports whether
-// to pass it on: false when its caller gave up first.
-func (r *Relay) wait(ctx context.Context, run string) bool {
+func (r *Relay) refused(f Refusal) {
 	r.mu.Lock()
-	if !r.holding {
-		r.mu.Unlock()
+	defer r.mu.Unlock()
+	r.refusals = append(r.refusals, f)
+}
+
+// Hold makes the relay hold the runners' reports from now on.
+func (r *Relay) Hold() { r.reports.shut() }
+
+// Release passes the held reports on, and later ones at once.
+func (r *Relay) Release() { r.reports.open() }
+
+// Held reports how many of run's reports the relay holds.
+func (r *Relay) Held(run string) int { return r.reports.count(run) }
+
+// HoldUnlocks makes the relay hold the state backend's UNLOCK calls from
+// now on.
+func (r *Relay) HoldUnlocks() { r.unlocks.shut() }
+
+// ReleaseUnlocks passes the held UNLOCK calls on, and later ones at once.
+func (r *Relay) ReleaseUnlocks() { r.unlocks.open() }
+
+// HeldUnlocks reports how many UNLOCK calls of the backend at path the
+// relay holds.
+func (r *Relay) HeldUnlocks(path string) int { return r.unlocks.count(path) }
+
+// Calls are the calls the relay passed on so far, in the order answered.
+func (r *Relay) Calls() []Call {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]Call(nil), r.calls...)
+}
+
+// Refusals are the calls the relay passed on that answered 423, in the
+// order answered.
+func (r *Relay) Refusals() []Refusal {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]Refusal(nil), r.refusals...)
+}
+
+// Close releases what it holds and stops the relay.
+func (r *Relay) Close(ctx context.Context) error {
+	r.reports.open()
+	r.unlocks.open()
+	if err := r.srv.Shutdown(ctx); err != nil {
+		return fmt.Errorf("relay: %w", err)
+	}
+	return nil
+}
+
+// gate holds calls while it is shut, each under a key, until it opens or
+// a call's caller gives up.
+type gate struct {
+	mu      sync.Mutex
+	holding bool
+	held    map[string]int
+	release chan struct{}
+}
+
+func newGate() *gate { return &gate{held: map[string]int{}, release: make(chan struct{})} }
+
+// wait holds a call under key while the gate is shut, and reports whether
+// to pass it on: false when its caller gave up first.
+func (g *gate) wait(ctx context.Context, key string) bool {
+	g.mu.Lock()
+	if !g.holding {
+		g.mu.Unlock()
 		return true
 	}
-	r.held[run]++
-	release := r.release
-	r.mu.Unlock()
+	g.held[key]++
+	release := g.release
+	g.mu.Unlock()
 	defer func() {
-		r.mu.Lock()
-		r.held[run]--
-		r.mu.Unlock()
+		g.mu.Lock()
+		g.held[key]--
+		g.mu.Unlock()
 	}()
 	select {
 	case <-release:
@@ -294,43 +401,24 @@ func (r *Relay) wait(ctx context.Context, run string) bool {
 	}
 }
 
-// Hold makes the relay hold the runners' reports from now on.
-func (r *Relay) Hold() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.holding = true
+func (g *gate) shut() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.holding = true
 }
 
-// Release passes the held reports on, and later ones at once.
-func (r *Relay) Release() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.holding {
-		r.holding = false
-		close(r.release)
-		r.release = make(chan struct{})
+func (g *gate) open() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.holding {
+		g.holding = false
+		close(g.release)
+		g.release = make(chan struct{})
 	}
 }
 
-// Held reports how many of run's reports the relay holds.
-func (r *Relay) Held(run string) int {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.held[run]
-}
-
-// Calls are the calls the relay passed on so far, in the order answered.
-func (r *Relay) Calls() []Call {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return append([]Call(nil), r.calls...)
-}
-
-// Close releases what it holds and stops the relay.
-func (r *Relay) Close(ctx context.Context) error {
-	r.Release()
-	if err := r.srv.Shutdown(ctx); err != nil {
-		return fmt.Errorf("relay: %w", err)
-	}
-	return nil
+func (g *gate) count(key string) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.held[key]
 }
