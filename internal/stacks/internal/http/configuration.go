@@ -17,8 +17,8 @@ func (unbound) Blockers(
 	context.Context,
 	kernel.AccountID,
 	[]kernel.ULID,
-) (map[kernel.ULID]kernel.ULID, error) {
-	return map[kernel.ULID]kernel.ULID{}, nil
+) (map[kernel.ULID]stacksapi.Blocker, error) {
+	return map[kernel.ULID]stacksapi.Blocker{}, nil
 }
 
 func (unbound) RunStack(context.Context, kernel.AccountID, kernel.ULID) (kernel.ULID, error) {

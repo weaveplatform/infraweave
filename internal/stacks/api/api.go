@@ -322,10 +322,20 @@ type StackStatus interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		stacks []kernel.ULID,
-	) (map[kernel.ULID]kernel.ULID, error)
+	) (map[kernel.ULID]Blocker, error)
 	// RunStack is the stack of acct's run, which runStack answers;
 	// ErrNotFound when acct lacks the run.
 	RunStack(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, error)
+}
+
+// Blocker is the run that holds a stack's run lock: Run, its ID, and
+// Delta, its plan's delta while it waits in UNCONFIRMED for the plan's
+// confirmation, which the stack's view shows; nil in any other state.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+type Blocker struct {
+	Run   kernel.ULID
+	Delta *kernel.PlanDelta
 }
 
 // AttachedContext is a context attached to a stack as the stack's view

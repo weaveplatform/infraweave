@@ -92,7 +92,7 @@ func TestUnitProtocolRunReports(t *testing.T) {
 			"add": 1, "change": 2, "delete": 3, "import": 4, "outputs": true,
 		},
 	})
-	if code != http.StatusOK || r.report.Delta == nil || *r.report.Delta != (workersapi.Delta{
+	if code != http.StatusOK || r.report.Delta == nil || *r.report.Delta != (kernel.PlanDelta{
 		Add: 1, Change: 2, Delete: 3, Import: 4, Outputs: true,
 	}) {
 		t.Errorf("a report with a delta = %d, reported %+v", code, r.report)
@@ -104,7 +104,7 @@ func TestUnitProtocolRunReports(t *testing.T) {
 			"move": 5, "forget": 6, "resources": 7,
 		},
 	})
-	if code != http.StatusOK || r.report.Delta == nil || *r.report.Delta != (workersapi.Delta{
+	if code != http.StatusOK || r.report.Delta == nil || *r.report.Delta != (kernel.PlanDelta{
 		Move: 5, Forget: 6, Resources: 7,
 	}) {
 		t.Errorf("a delta that moves and forgets = %d, reported %+v", code, r.report)

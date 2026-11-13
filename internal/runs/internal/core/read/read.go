@@ -102,7 +102,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		stacks []kernel.ULID,
-	) (map[kernel.ULID]kernel.ULID, error)
+	) (map[kernel.ULID]stacksapi.Blocker, error)
 	// List reads up to q.Limit+1 of acct's stack's runs of types, as q
 	// pages them.
 	List(
@@ -425,7 +425,7 @@ func (s *Service) Views(
 		blocker, ok := blockers[r.Stack]
 		out[i] = View{
 			Run: r, Stack: st.Stack, History: histories[r.ID],
-			Actions: Allowed(r, ok && blocker == r.ID, held[st.Space]),
+			Actions: Allowed(r, ok && blocker.Run == r.ID, held[st.Space]),
 		}
 	}
 	return out, nil

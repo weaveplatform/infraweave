@@ -253,33 +253,7 @@ type Report struct {
 	State        kernel.RunState
 	Event        ReportEvent
 	Details      string
-	Delta        *Delta
-}
-
-// Delta is what a run's plan changes: the resources it adds, changes in
-// place, deletes, imports, moves and forgets, whether any root module
-// output changes, and Resources, the state's resource count before the
-// plan. A worker that does not count moves, forgets or resources reports
-// zero.
-//
-// ref: decision 0008 § "Phases, reports and the plan decision"
-type Delta struct {
-	Add       int
-	Change    int
-	Delete    int
-	Import    int
-	Move      int
-	Forget    int
-	Resources int
-	Outputs   bool
-}
-
-// Changes reports whether the plan changes any resource or output. A
-// move or a forget changes the state only when applied, so either is a
-// change; Resources counts what the state holds, not what the plan does.
-func (d Delta) Changes() bool {
-	return d.Add > 0 || d.Change > 0 || d.Delete > 0 || d.Import > 0 || d.Move > 0 ||
-		d.Forget > 0 || d.Outputs
+	Delta        *kernel.PlanDelta
 }
 
 // Action is what a report's answer tells the worker to do.

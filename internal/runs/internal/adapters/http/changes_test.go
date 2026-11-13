@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +19,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
-	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // planned is one run whose changes document is doc, nil for a run that
@@ -219,23 +217,9 @@ func TestUnitRunChangesV3(t *testing.T) {
 	}
 }
 
-// TestUnitDeltaOf answers no delta before a plan, and every count the
-// plan kept, clamped to int32, with the Ansible counts zero.
-func TestUnitDeltaOf(t *testing.T) {
-	if d := deltaOf(nil); d != nil {
-		t.Errorf("no delta = %+v", d)
-	}
-	got := deltaOf(&workersapi.Delta{
-		Add: 1, Change: 2, Delete: 3, Import: 4, Move: 5, Forget: 6, Resources: math.MaxInt32 + 1,
-		Outputs: true,
-	})
-	if *got != (api.Delta{
-		AddCount: 1, ChangeCount: 2, DeleteCount: 3, ImportCount: 4, MoveCount: 5,
-		ForgetCount: 6, Resources: math.MaxInt32,
-	}) {
-		t.Errorf("delta = %+v", got)
-	}
-	if r := runOf(readView(&workersapi.Delta{Add: 1})); r.Delta == nil || r.Delta.AddCount != 1 {
+// TestUnitRunDelta answers a run's delta once it plans, and none before.
+func TestUnitRunDelta(t *testing.T) {
+	if r := runOf(readView(&kernel.PlanDelta{Add: 1})); r.Delta == nil || r.Delta.AddCount != 1 {
 		t.Errorf("a run's delta = %+v", r.Delta)
 	}
 	if r := runOf(readView(nil)); r.Delta != nil {
@@ -244,6 +228,6 @@ func TestUnitDeltaOf(t *testing.T) {
 }
 
 // readView is a run whose plan's delta is d as the read service views it.
-func readView(d *workersapi.Delta) read.View {
+func readView(d *kernel.PlanDelta) read.View {
 	return read.View{Run: lifecycle.Run{ID: kernel.NewULID(), Delta: d}}
 }

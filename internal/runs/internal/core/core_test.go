@@ -13,7 +13,7 @@ import (
 // store answers blockers, runs' stacks and runs and records each read and
 // delete, failing with err.
 type store struct {
-	blockers map[kernel.ULID]kernel.ULID
+	blockers map[kernel.ULID]stacksapi.Blocker
 	stacks   map[kernel.ULID]kernel.ULID
 	runs     map[kernel.ULID]Run
 	err      error
@@ -39,7 +39,7 @@ func (s *store) Blockers(
 	context.Context,
 	kernel.AccountID,
 	[]kernel.ULID,
-) (map[kernel.ULID]kernel.ULID, error) {
+) (map[kernel.ULID]stacksapi.Blocker, error) {
 	s.reads++
 	return s.blockers, s.err
 }
@@ -56,7 +56,7 @@ func TestUnitService(t *testing.T) {
 	ctx := t.Context()
 	stack, run := kernel.NewULID(), kernel.NewULID()
 	st := &store{
-		blockers: map[kernel.ULID]kernel.ULID{stack: run},
+		blockers: map[kernel.ULID]stacksapi.Blocker{stack: {Run: run}},
 		stacks:   map[kernel.ULID]kernel.ULID{run: stack},
 	}
 	s := New(st)
@@ -65,7 +65,12 @@ func TestUnitService(t *testing.T) {
 		st.reads != 0 {
 		t.Errorf("Blockers of no stacks = %v, %v after %d reads", got, err, st.reads)
 	}
-	if got, err := s.Blockers(ctx, acct, []kernel.ULID{stack}); err != nil || got[stack] != run {
+	if got, err := s.Blockers(
+		ctx,
+		acct,
+		[]kernel.ULID{stack},
+	); err != nil ||
+		got[stack].Run != run {
 		t.Errorf("Blockers = %v, %v", got, err)
 	}
 	if got, err := s.RunStack(ctx, acct, run); err != nil || got != stack {

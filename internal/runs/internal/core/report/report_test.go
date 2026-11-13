@@ -35,12 +35,12 @@ type store struct {
 	states   map[int64]kernel.RunState
 	chunks   map[int64]report.Chunk
 	recorded map[string]report.Artifact
-	deltas   []workersapi.Delta
+	deltas   []kernel.PlanDelta
 	purge    [][]report.Object
 	fail     string
 }
 
-func (s *store) SetDelta(_ context.Context, _ lifecycle.Run, d workersapi.Delta) error {
+func (s *store) SetDelta(_ context.Context, _ lifecycle.Run, d kernel.PlanDelta) error {
 	if err := s.err("SetDelta"); err != nil {
 		return err
 	}
@@ -440,12 +440,12 @@ func TestUnitReportEdges(t *testing.T) {
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func TestUnitPlanDecision(t *testing.T) {
-	none, adds := workersapi.Delta{}, workersapi.Delta{Add: 1}
+	none, adds := kernel.PlanDelta{}, kernel.PlanDelta{Add: 1}
 	auto := stacksapi.Settings{Autodeploy: true}
 	locked := stacksapi.Settings{Autodeploy: true, Lock: &stacksapi.Lock{Holder: "user:alice"}}
 	for name, tc := range map[string]struct {
 		typ    kernel.RunType
-		delta  workersapi.Delta
+		delta  kernel.PlanDelta
 		stack  stacksapi.Settings
 		to     kernel.RunState
 		action workersapi.Action
@@ -461,43 +461,43 @@ func TestUnitPlanDecision(t *testing.T) {
 		},
 		"tracked, outputs alone": {
 			kernel.RunTypeTracked,
-			workersapi.Delta{Outputs: true},
+			kernel.PlanDelta{Outputs: true},
 			auto,
 			kernel.RunStateApplying, workersapi.ActionExecute,
 		},
 		"tracked, imports alone": {
 			kernel.RunTypeTracked,
-			workersapi.Delta{Import: 2},
+			kernel.PlanDelta{Import: 2},
 			auto,
 			kernel.RunStateApplying, workersapi.ActionExecute,
 		},
 		"tracked, deletes alone, no autodeploy": {
 			kernel.RunTypeTracked,
-			workersapi.Delta{Delete: 3},
+			kernel.PlanDelta{Delete: 3},
 			stacksapi.Settings{},
 			kernel.RunStateUnconfirmed, workersapi.ActionPause,
 		},
 		"tracked, moves alone": {
 			kernel.RunTypeTracked,
-			workersapi.Delta{Move: 1, Resources: 4},
+			kernel.PlanDelta{Move: 1, Resources: 4},
 			stacksapi.Settings{},
 			kernel.RunStateUnconfirmed, workersapi.ActionPause,
 		},
 		"tracked, forgets alone": {
 			kernel.RunTypeTracked,
-			workersapi.Delta{Forget: 1},
+			kernel.PlanDelta{Forget: 1},
 			auto,
 			kernel.RunStateApplying, workersapi.ActionExecute,
 		},
 		"tracked, resources alone": {
 			kernel.RunTypeTracked,
-			workersapi.Delta{Resources: 9},
+			kernel.PlanDelta{Resources: 9},
 			auto,
 			kernel.RunStateFinished, workersapi.ActionExit,
 		},
 		"tracked, changes, locked": {
 			kernel.RunTypeTracked,
-			workersapi.Delta{Change: 1},
+			kernel.PlanDelta{Change: 1},
 			locked,
 			kernel.RunStateUnconfirmed, workersapi.ActionPause,
 		},
@@ -533,7 +533,7 @@ func TestUnitPlanDecision(t *testing.T) {
 // changed, a run the decision took off its worker is not on one, and the
 // stacks' and the store's failures fail the report.
 func TestUnitPlanDecisionReports(t *testing.T) {
-	adds := &workersapi.Delta{Add: 1}
+	adds := &kernel.PlanDelta{Add: 1}
 	planned := workersapi.Report{
 		StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportSucceeded,
 		Delta: adds,

@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"math"
 	"slices"
 	"strings"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
-	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // changesList is the list runChangesV2's cursors belong to. A cursor's
@@ -130,19 +128,3 @@ func entityChange(phase changes.Phase, c plan.Change) api.EntityChangeV2 {
 		Type: api.EntityChangeType(c.Metadata.Type),
 	}
 }
-
-// deltaOf is d as a run answers it, nil before the run plans. The
-// counts of Ansible's tasks are zero: no Terraform-family plan has them.
-func deltaOf(d *workersapi.Delta) *api.Delta {
-	if d == nil {
-		return nil
-	}
-	return &api.Delta{
-		AddCount: count(d.Add), ChangeCount: count(d.Change), DeleteCount: count(d.Delete),
-		ImportCount: count(d.Import), MoveCount: count(d.Move), ForgetCount: count(d.Forget),
-		Resources: count(d.Resources),
-	}
-}
-
-// count is n as the API's int32 counts carry it.
-func count(n int) int32 { return int32(min(n, math.MaxInt32)) } //nolint:gosec // clamped above
