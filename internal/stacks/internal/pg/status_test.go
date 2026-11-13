@@ -3,6 +3,7 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -14,7 +15,7 @@ import (
 // status is the runs domain's answer of the run blocking each stack,
 // failing with err.
 type status struct {
-	blockers map[kernel.ULID]kernel.ULID
+	blockers map[kernel.ULID]stacksapi.Blocker
 	err      error
 }
 
@@ -26,14 +27,15 @@ func (s status) Blockers(
 	context.Context,
 	kernel.AccountID,
 	[]kernel.ULID,
-) (map[kernel.ULID]kernel.ULID, error) {
+) (map[kernel.ULID]stacksapi.Blocker, error) {
 	return s.blockers, s.err
 }
 
 // TestAccHandlersStatus checks that a stack's view shows its state and
 // blocked from the projection, NONE and unblocked with no run, its
-// blocker from the bound status, none before one is bound, and that it
-// fails when the runs domain does.
+// blocker from the bound status, none before one is bound, the blocker's
+// delta while the runs domain answers one, and that it fails when the
+// runs domain does.
 func TestAccHandlersStatus(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
@@ -64,12 +66,27 @@ func TestAccHandlersStatus(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	s.SetStackStatus(status{blockers: map[kernel.ULID]kernel.ULID{infra.ID: run}})
+	s.SetStackStatus(status{blockers: map[kernel.ULID]stacksapi.Blocker{infra.ID: {Run: run}}})
 	v, err = read()
 	if err != nil || v.State != api.StackStateAPPLYING || v.StateIsTerminal || !v.Blocked ||
-		v.Blocker == nil || v.Blocker.Id != run.String() {
-		t.Errorf("a stack an applying run blocks: %s, terminal %v, blocked %v, blocker %v, %v",
-			v.State, v.StateIsTerminal, v.Blocked, v.Blocker, err)
+		v.Blocker == nil || v.Blocker.Id != run.String() || v.Delta != nil {
+		t.Errorf("a stack an applying run blocks: %s, terminal %v, blocked %v, blocker %v, "+
+			"delta %v, %v", v.State, v.StateIsTerminal, v.Blocked, v.Blocker, v.Delta, err)
+	}
+
+	s.SetStackStatus(status{blockers: map[kernel.ULID]stacksapi.Blocker{infra.ID: {
+		Run: run, Delta: &kernel.PlanDelta{
+			Add: 3, Change: 1, Delete: 2, Import: 1, Move: 1, Forget: 1, Resources: math.MaxInt64,
+			Outputs: true,
+		},
+	}}})
+	v, err = read()
+	want := api.Delta{
+		AddCount: 3, ChangeCount: 1, DeleteCount: 2, ImportCount: 1, MoveCount: 1, ForgetCount: 1,
+		Resources: math.MaxInt32,
+	}
+	if err != nil || v.Delta == nil || *v.Delta != want {
+		t.Errorf("the delta of a stack an unconfirmed run blocks = %+v, %v", v.Delta, err)
 	}
 
 	down := errors.New("runs down")

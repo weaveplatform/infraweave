@@ -13,7 +13,8 @@
 //
 // # Dependencies
 //
-// It imports the generated API, platform/httpkit/problem, stacksapi,
+// It imports the generated API, platform/httpkit/apidelta,
+// platform/httpkit/problem, stacksapi,
 // internal/kernel and the domain's lifecycle and trigger. The runs
 // domain's assembly constructs it.
 package http

@@ -15,7 +15,6 @@ import (
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
-	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // Errors of Transition and Create. Each refusal is also a typed error
@@ -145,7 +144,7 @@ type Run struct {
 	LocalWorkspace string
 	WorkerPool     *kernel.ULID
 	Worker         *kernel.ULID
-	Delta          *workersapi.Delta
+	Delta          *kernel.PlanDelta
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

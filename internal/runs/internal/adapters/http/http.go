@@ -12,6 +12,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apidelta"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
@@ -267,7 +268,7 @@ func runOf(v read.View) api.Run {
 		},
 		Commits:              []string{r.Commit.Hash},
 		CreatedAt:            unix(r.CreatedAt.Unix()),
-		Delta:                deltaOf(r.Delta),
+		Delta:                apidelta.Of(r.Delta),
 		DependsOn:            []api.RunDependency{},
 		DriftDetection:       r.DriftDetection,
 		ExternalDependencies: []api.RunExternalDependency{},

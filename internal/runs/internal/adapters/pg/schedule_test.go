@@ -128,7 +128,7 @@ func TestAccScheduleLock(t *testing.T) {
 		}
 	}
 	blockers, err := core.New(w.store).Blockers(t.Context(), w.acct, []kernel.ULID{w.stack})
-	if err != nil || blockers[w.stack] != first.ID {
+	if err != nil || blockers[w.stack].Run != first.ID {
 		t.Errorf("Blockers = %v, %v; want the first run", blockers, err)
 	}
 	if p, _ := w.stacks.last(w.stack); p != (projection{"READY", true}) {
@@ -142,7 +142,7 @@ func TestAccScheduleLock(t *testing.T) {
 		t.Errorf("the second run is %s after the first's cancel, want READY", got)
 	}
 	blockers, _ = core.New(w.store).Blockers(t.Context(), w.acct, []kernel.ULID{w.stack})
-	if blockers[w.stack] != second.ID {
+	if blockers[w.stack].Run != second.ID {
 		t.Errorf("Blockers = %v, want the second run", blockers)
 	}
 }

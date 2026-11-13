@@ -13,7 +13,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
-	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 var (
@@ -50,15 +49,8 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 	if err := json.Unmarshal(commit, &r.Commit); err != nil {
 		return lifecycle.Run{}, fmt.Errorf("runs: decode the commit of run %s: %w", r.ID, err)
 	}
-	if d != nil {
-		var kept delta
-		if err := json.Unmarshal(d, &kept); err != nil {
-			return lifecycle.Run{}, fmt.Errorf("runs: decode the delta of run %s: %w", r.ID, err)
-		}
-		r.Delta = &workersapi.Delta{
-			Add: kept.Add, Change: kept.Change, Delete: kept.Delete, Import: kept.Import,
-			Move: kept.Move, Forget: kept.Forget, Resources: kept.Resources, Outputs: kept.Outputs,
-		}
+	if r.Delta, err = deltaOf(d); err != nil {
+		return lifecycle.Run{}, fmt.Errorf("runs: decode the delta of run %s: %w", r.ID, err)
 	}
 	r.Type, r.State, r.Priority = kernel.RunType(typ), kernel.RunState(state),
 		kernel.RunPriority(priority)

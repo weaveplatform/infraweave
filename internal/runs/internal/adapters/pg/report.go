@@ -110,7 +110,7 @@ func (s *Store) Record(ctx context.Context, run lifecycle.Run, a report.Artifact
 }
 
 // SetDelta keeps d, run's plan's delta, on the run.
-func (s *Store) SetDelta(ctx context.Context, run lifecycle.Run, d workersapi.Delta) error {
+func (s *Store) SetDelta(ctx context.Context, run lifecycle.Run, d kernel.PlanDelta) error {
 	// Integers and a boolean, so never an error.
 	doc, _ := json.Marshal(delta{
 		Add: d.Add, Change: d.Change, Delete: d.Delete, Import: d.Import, Move: d.Move,
@@ -133,6 +133,21 @@ type delta struct {
 	Forget    int  `json:"forget"`
 	Resources int  `json:"resources"`
 	Outputs   bool `json:"outputs"`
+}
+
+// deltaOf decodes d, a runs.delta document, nil for a run without one.
+func deltaOf(d []byte) (*kernel.PlanDelta, error) {
+	if d == nil {
+		return nil, nil //nolint:nilnil // a run without a delta
+	}
+	var kept delta
+	if err := json.Unmarshal(d, &kept); err != nil {
+		return nil, err //nolint:wrapcheck // the caller names the run
+	}
+	return &kernel.PlanDelta{
+		Add: kept.Add, Change: kept.Change, Delete: kept.Delete, Import: kept.Import,
+		Move: kept.Move, Forget: kept.Forget, Resources: kept.Resources, Outputs: kept.Outputs,
+	}, nil
 }
 
 // Workspace reads the key of the workspace run recorded last, and false

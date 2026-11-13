@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // TestMain migrates the platform stream and the runs stream alone: no
@@ -84,7 +85,8 @@ var tables = []string{
 }
 
 // TestAccStore reads the run that holds each stack's run lock, none for
-// another account's stack or an unlocked one, and deletes a stack's runs
+// another account's stack or an unlocked one, with the run's delta only
+// while it waits in UNCONFIRMED, and deletes a stack's runs
 // and every row of it in a transaction, keeping another stack's.
 func TestAccStore(t *testing.T) {
 	ctx := t.Context()
@@ -98,8 +100,33 @@ func TestAccStore(t *testing.T) {
 	keptRun := insertRun(t, db, acct, kept, true)
 
 	got, err := s.Blockers(ctx, acct, []kernel.ULID{locked, idle, kept})
-	if err != nil || len(got) != 2 || got[locked] != run || got[kept] != keptRun {
+	if err != nil || len(got) != 2 || got[locked] != (stacksapi.Blocker{Run: run}) ||
+		got[kept] != (stacksapi.Blocker{Run: keptRun}) {
 		t.Errorf("Blockers = %v, %v", got, err)
+	}
+	if _, err := db.Exec(ctx, `UPDATE runs SET delta = '{"add":3,"change":1,"delete":2,
+		"import":1,"move":1,"forget":1,"resources":7,"outputs":true}'
+		WHERE account_id = $1 AND id = ANY($2)`, acct, []kernel.ULID{run, keptRun}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ctx, `UPDATE runs SET state = 'UNCONFIRMED'
+		WHERE account_id = $1 AND id = $2`, acct, run); err != nil {
+		t.Fatal(err)
+	}
+	got, err = s.Blockers(ctx, acct, []kernel.ULID{locked, kept})
+	delta := kernel.PlanDelta{
+		Add: 3, Change: 1, Delete: 2, Import: 1, Move: 1, Forget: 1, Resources: 7, Outputs: true,
+	}
+	if err != nil || got[locked].Delta == nil || *got[locked].Delta != delta ||
+		got[kept].Delta != nil {
+		t.Errorf("Blockers' deltas = %+v and %+v, %v", got[locked].Delta, got[kept].Delta, err)
+	}
+	if _, err := db.Exec(ctx, `UPDATE runs SET delta = '[]'
+		WHERE account_id = $1 AND id = $2`, acct, run); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Blockers(ctx, acct, []kernel.ULID{locked}); err == nil {
+		t.Error("Blockers of a run whose delta is not an object succeeded")
 	}
 	if got, err := s.Blockers(ctx, other, []kernel.ULID{locked}); err != nil || len(got) != 0 {
 		t.Errorf("Blockers of another account = %v, %v", got, err)

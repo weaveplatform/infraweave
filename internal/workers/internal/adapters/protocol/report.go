@@ -34,7 +34,7 @@ func (s Server) WorkerRunReport(
 		r.Details = *req.Body.Details
 	}
 	if d := req.Body.Delta; d != nil {
-		r.Delta = &workersapi.Delta{
+		r.Delta = &kernel.PlanDelta{
 			Add: int(d.Add), Change: int(d.Change), Delete: int(d.Delete), Import: int(d.Import),
 			Move: count(d.Move), Forget: count(d.Forget), Resources: count(d.Resources),
 			Outputs: d.Outputs,

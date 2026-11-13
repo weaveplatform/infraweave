@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // StreamName is the runs stream's name in schema_migrations.
@@ -69,25 +70,35 @@ type Sealer interface {
 func New(db tx.Querier, seal Sealer) *Store { return &Store{db: db, seal: seal} }
 
 // Blockers reads which run holds the run lock of each of acct's stacks,
-// keyed by stack ID; a stack whose lock no run holds is absent.
+// keyed by stack ID, with the run's delta while it waits in UNCONFIRMED;
+// a stack whose lock no run holds is absent.
 func (s *Store) Blockers(
 	ctx context.Context,
 	acct kernel.AccountID,
 	stacks []kernel.ULID,
-) (map[kernel.ULID]kernel.ULID, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT stack_id, run_id FROM stack_run_locks
-		WHERE account_id = $1 AND stack_id = ANY($2)`, acct, stacks)
+) (map[kernel.ULID]stacksapi.Blocker, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT l.stack_id, l.run_id,
+		CASE WHEN r.state = 'UNCONFIRMED' THEN r.delta END
+		FROM stack_run_locks l JOIN runs r ON r.account_id = l.account_id AND r.id = l.run_id
+		WHERE l.account_id = $1 AND l.stack_id = ANY($2)`, acct, stacks)
 	if err != nil {
 		return nil, fmt.Errorf("runs: read the stacks' run locks: %w", sql.Unavailable(err))
 	}
 	defer rows.Close()
-	out := make(map[kernel.ULID]kernel.ULID)
+	out := make(map[kernel.ULID]stacksapi.Blocker)
 	for rows.Next() {
-		var stack, run kernel.ULID
-		if err := rows.Scan(&stack, &run); err != nil {
+		var (
+			stack kernel.ULID
+			b     stacksapi.Blocker
+			d     []byte
+		)
+		if err := rows.Scan(&stack, &b.Run, &d); err != nil {
 			return nil, fmt.Errorf("runs: read a stack's run lock: %w", sql.Unavailable(err))
 		}
-		out[stack] = run
+		if b.Delta, err = deltaOf(d); err != nil {
+			return nil, fmt.Errorf("runs: decode the delta of run %s: %w", b.Run, err)
+		}
+		out[stack] = b
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("runs: read the stacks' run locks: %w", sql.Unavailable(err))

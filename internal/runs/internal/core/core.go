@@ -12,13 +12,13 @@ import (
 // Store is the runs domain's storage port.
 type Store interface {
 	// Blockers reads which run holds the run lock of each of acct's
-	// stacks, keyed by stack ID; a stack whose lock no run holds is
-	// absent.
+	// stacks, keyed by stack ID, with its delta while it waits in
+	// UNCONFIRMED; a stack whose lock no run holds is absent.
 	Blockers(
 		ctx context.Context,
 		acct kernel.AccountID,
 		stacks []kernel.ULID,
-	) (map[kernel.ULID]kernel.ULID, error)
+	) (map[kernel.ULID]stacksapi.Blocker, error)
 	// StackOf reads the stack of acct's run, false when acct lacks it.
 	StackOf(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, bool, error)
 	// RunOf reads run's account, stack and state, whichever account has
@@ -51,9 +51,9 @@ func (s *Service) Blockers(
 	ctx context.Context,
 	acct kernel.AccountID,
 	stacks []kernel.ULID,
-) (map[kernel.ULID]kernel.ULID, error) {
+) (map[kernel.ULID]stacksapi.Blocker, error) {
 	if len(stacks) == 0 {
-		return map[kernel.ULID]kernel.ULID{}, nil
+		return map[kernel.ULID]stacksapi.Blocker{}, nil
 	}
 	return s.store.Blockers(ctx, acct, stacks) //nolint:wrapcheck // the store names the read
 }
