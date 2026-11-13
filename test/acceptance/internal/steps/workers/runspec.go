@@ -86,10 +86,7 @@ func (w *workerSteps) tool(name, version, notDownloaded, masking string) error {
 		return err
 	}
 	want := wire.RunSpecTool{
-		Name: wire.RunSpecToolName(
-			name,
-		),
-		Version:  w.w.Resolve(version),
+		Name: wire.RunSpecToolName(name), Version: w.w.Resolve(version),
 		Download: notDownloaded == "",
 	}
 	if s.Tool == nil || *s.Tool != want ||
@@ -100,11 +97,81 @@ func (w *workerSteps) tool(name, version, notDownloaded, masking string) error {
 	return nil
 }
 
-// secrets opens the last answer's sealed part, a run's specification's,
-// with the private key of the request kept as csr, for the run and state
+// noCredential checks that the sealed part, opened with the key of csr,
+// holds no source credential.
+func (w *workerSteps) noCredential(csr string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	if c := secrets.SourceCredential; c != nil {
+		return fmt.Errorf("%w: the secrets hold the source credential of %s", harness.ErrStep,
+			c.Username)
+	}
+	return nil
+}
+
+// credential checks that the sealed part, opened with the key of csr,
+// holds a source credential of username whose token neither the clear
+// part nor any server's log names.
+func (w *workerSteps) credential(csr, username string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	c := secrets.SourceCredential
+	if c == nil || c.Username != username || c.Token == "" {
+		return fmt.Errorf("%w: the source credential is %v, want one of %s", harness.ErrStep,
+			c != nil, username)
+	}
+	if bytes.Contains(w.w.Last().Body, []byte(c.Token)) {
+		return fmt.Errorf("%w: the clear part names the source token", harness.ErrStep)
+	}
+	for i, srv := range w.w.Servers {
+		if bytes.Contains(srv.Stdout(), []byte(c.Token)) {
+			return fmt.Errorf("%w: server %d logged the source token", harness.ErrStep, i+1)
+		}
+	}
+	return nil
+}
+
+// sealed opens the last answer's sealed part, a run's specification's,
+// with the private key of the request kept as csr, and checks that it
+// holds the secret name's value want, an in-run API token and a 256-bit
+// artifact key.
+func (w *workerSteps) sealed(csr, name, want string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	if secrets.Environment[name] != want || secrets.ApiToken == "" ||
+		len(secrets.ArtifactKey) != 32 {
+		return fmt.Errorf("%w: %s is %q, with %d bytes of artifact key", harness.ErrStep, name,
+			secrets.Environment[name], len(secrets.ArtifactKey))
+	}
+	return nil
+}
+
+// inRun keeps the in-run API token of the last answer's sealed part, a
+// run's specification's opened with the private key of the request kept
+// as csr, as the token name.
+func (w *workerSteps) inRun(csr, name string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	if secrets.ApiToken == "" {
+		return fmt.Errorf("%w: the sealed part holds no in-run API token", harness.ErrStep)
+	}
+	w.w.Tokens[name] = secrets.ApiToken
+	return nil
+}
+
+// open opens the last answer's sealed part, a run's specification's, with
+// the private key of the request kept as csr, for the run and state
 // version the specification names, refusing anything the API's schema
 // does not name.
-func (w *workerSteps) secrets(csr string) (wire.RunSpecSecrets, error) {
+func (w *workerSteps) open(csr string) (wire.RunSpecSecrets, error) {
 	var secrets wire.RunSpecSecrets
 	s, err := w.spec()
 	if err != nil {
@@ -128,58 +195,4 @@ func (w *workerSteps) secrets(csr string) (wire.RunSpecSecrets, error) {
 		return secrets, fmt.Errorf("%w: the secrets: %w", harness.ErrStep, err)
 	}
 	return secrets, nil
-}
-
-// noCredential checks that the sealed part, opened with the key of csr,
-// holds no source credential.
-func (w *workerSteps) noCredential(csr string) error {
-	secrets, err := w.secrets(csr)
-	if err != nil {
-		return err
-	}
-	if c := secrets.SourceCredential; c != nil {
-		return fmt.Errorf("%w: the secrets hold the source credential of %s", harness.ErrStep,
-			c.Username)
-	}
-	return nil
-}
-
-// credential checks that the sealed part, opened with the key of csr,
-// holds a source credential of username whose token neither the clear
-// part nor any server's log names.
-func (w *workerSteps) credential(csr, username string) error {
-	secrets, err := w.secrets(csr)
-	if err != nil {
-		return err
-	}
-	c := secrets.SourceCredential
-	if c == nil || c.Username != username || c.Token == "" {
-		return fmt.Errorf("%w: the source credential is %v, want one of %s", harness.ErrStep,
-			c != nil, username)
-	}
-	if bytes.Contains(w.w.Last().Body, []byte(c.Token)) {
-		return fmt.Errorf("%w: the clear part names the source token", harness.ErrStep)
-	}
-	for i, srv := range w.w.Servers {
-		if bytes.Contains(srv.Stdout(), []byte(c.Token)) {
-			return fmt.Errorf("%w: server %d logged the source token", harness.ErrStep, i+1)
-		}
-	}
-	return nil
-}
-
-// sealed checks that the sealed part, opened with the key of csr, holds
-// the secret name's value want, an in-run API token and a 256-bit
-// artifact key.
-func (w *workerSteps) sealed(csr, name, want string) error {
-	secrets, err := w.secrets(csr)
-	if err != nil {
-		return err
-	}
-	if secrets.Environment[name] != want || secrets.ApiToken == "" ||
-		len(secrets.ArtifactKey) != 32 {
-		return fmt.Errorf("%w: %s is %q, with %d bytes of artifact key", harness.ErrStep, name,
-			secrets.Environment[name], len(secrets.ArtifactKey))
-	}
-	return nil
 }

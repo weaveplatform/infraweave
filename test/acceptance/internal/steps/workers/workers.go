@@ -94,6 +94,10 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		`^the specification's sealed part opens with the key of "(\w+)" to the source credential of "([^"]+)", whose token neither the answer nor a server's log names$`,
 		w.credential,
 	)
+	sc.Step(
+		`^the specification's sealed part opens with the key of "(\w+)" to an in-run API token, kept as "(\w+)"$`,
+		w.inRun,
+	)
 }
 
 // request keeps base64 of the PEM of a certificate signing request for a

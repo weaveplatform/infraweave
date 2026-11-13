@@ -6,16 +6,22 @@ Feature: A tracked run waiting for confirmation is confirmed or discarded
   assigned it to apply, or discards it, which ends it and releases the
   lock. Each names the run, or by default acts on the run that holds the
   stack's lock. Here the scenario is the worker: it registers with the
-  pool's key, claims the run, and reports its phases through the worker
-  API. The home key is space-admin on the account's top space; the member
-  key holds only the bindings a scenario gives it. Stack infra lives in
-  legacy and runs on the pool.
+  pool's key, claims the run, opens its specification for the in-run API
+  token, and reports its phases through the worker API. The in-run API
+  token authenticates only while its run plans, applies or performs, and
+  takes no RUN_ action. The release indexes serve the recorded fixtures,
+  so the run's specification names a Terraform release. The home key is
+  space-admin on the account's top space; the member key holds only the
+  bindings a scenario gives it. Stack infra lives in legacy and runs on
+  the pool.
   ref: decision 0008
   ref: decision 0016
 
   Background:
-    Given two infraweave servers, A and B, on one database
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
     And the member key is exchanged through A for token "m"
     And a certificate signing request for a P-256 key is kept as "csr"
     And a Gitea repository "infra" with the files:
@@ -31,6 +37,8 @@ Feature: A tracked run waiting for confirmation is confirmed or discarded
     And token "h" eventually reads the run "run" in the state "READY" through A
     And token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
     And the answer assigns the run "run", its run token kept as "rt"
+    And token "rt" sends "GET /worker/v1/runs/{run}/spec" through A
+    And the specification's sealed part opens with the key of "csr" to an in-run API token, kept as "it"
     And token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"started","state":"INITIALIZING","stateVersion":3}' through B
     And it answers 200
     And token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"INITIALIZING","stateVersion":4}' through A
@@ -83,6 +91,21 @@ Feature: A tracked run waiting for confirmation is confirmed or discarded
     And the answer's action is '"RUN_DISCARD"'
     When token "h" sends "GET /api/v1/runs/{run}" through B
     Then the answer's state is '"UNCONFIRMED"'
+
+  @op:runConfirm @op:runDiscard @op:stack @case:denial
+  Scenario: The run's own in-run API token reads its stack while the run plans, confirms and discards nothing, and ends when the run waits
+    When token "it" sends "GET /api/v1/stacks/infra" through A
+    Then it answers 200
+    When token "it" sends "POST /api/v1/stacks/infra/runs/confirm" with '{"run":"{run}"}' through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"RUN_CONFIRM"'
+    When token "it" sends "POST /api/v1/stacks/infra/runs/discard" with '{}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"RUN_DISCARD"'
+    When token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"PLANNING","stateVersion":5,"delta":{"add":2,"change":0,"delete":0,"import":0,"outputs":false}}' through B
+    Then the answer's state is '"UNCONFIRMED"'
+    When token "it" sends "GET /api/v1/stacks/infra" through A
+    Then it answers a 401 problem "unauthenticated"
 
   @op:runConfirm @op:runDiscard @case:failure
   Scenario: A run that does not wait for confirmation, a run of another stack, an unknown run and a stack with no blocking run are refused
