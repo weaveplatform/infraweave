@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	osexec "os/exec"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/backend"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
+	"github.com/weaveplatform/infraweave/internal/iac/workflow"
 )
 
 // Errors of a run the runner cannot prepare.
@@ -35,8 +37,8 @@ const (
 // ref: decision 0010 § "How a run reaches it"
 const DisableStateLock = "INFRAWEAVE_DISABLE_STATE_LOCK"
 
-// prepare readies the run's first phase: the vendor's command set, the
-// mounted files, the backend file, the phase environment, whose variables
+// prepare readies the run's first phase: the mounted files, the run's
+// workflow, the backend file, the phase environment, whose variables
 // launcher.mask_envs names the log masks, the plan's JSON file and the
 // session. What fails is kept as the first phase's
 // failure, so the run fails with it as its note.
@@ -52,11 +54,11 @@ func (r *run) setUp(ctx context.Context) string {
 	if tool == nil {
 		return "The run's specification names no tool to run."
 	}
-	v, err := vendors.Lookup(tool.Name)
+	w, err := vendors.Defaults(tool.Name)
 	if err != nil {
 		return "The runner has no commands for " + string(tool.Name) + "."
 	}
-	r.vendor = v
+	r.workflow = w
 	if r.dir, err = r.project(); err != nil {
 		return fmt.Sprintf("The project root cannot be used: %v.", err)
 	}
@@ -66,6 +68,9 @@ func (r *run) setUp(ctx context.Context) string {
 	}
 	if err := r.files(); err != nil {
 		return fmt.Sprintf("The mounted files cannot be written: %v.", err)
+	}
+	if d := r.readWorkflow(); d != "" {
+		return d
 	}
 	creds, err := backend.Configure(r.dir, r.h)
 	if err != nil {
@@ -81,9 +86,14 @@ func (r *run) setUp(ctx context.Context) string {
 		return fmt.Sprintf("The runner cannot make its temporary directory: %v.", err)
 	}
 	r.options = vendors.Options{
-		LockTimeout: r.h.StateLockTimeout,
-		NoLock:      lookup(r.env, DisableStateLock) == "true",
-		PlanJSON:    filepath.Join(r.temp, "plan.json"),
+		Params: workflow.Params{
+			PlanFileName:  vendors.PlanFile,
+			Lock:          lookup(r.env, DisableStateLock) != "true",
+			Refresh:       true,
+			WorkspaceName: r.workspaceName(),
+			LockTimeout:   r.h.StateLockTimeout,
+		},
+		PlanJSON: filepath.Join(r.temp, "plan.json"),
 	}
 	if r.shell, err = start(ctx, r.dir, r.env, r.log.File()); err != nil {
 		if errors.Is(err, osexec.ErrNotFound) {
@@ -92,6 +102,82 @@ func (r *run) setUp(ctx context.Context) string {
 		return fmt.Sprintf("The runner cannot start its shell: %v.", err)
 	}
 	return ""
+}
+
+// readWorkflow replaces the built-in workflow with the project root's
+// workflow file when it has one, every key checked before any command
+// runs, and answers the note of what fails; empty when nothing does. A
+// stack whose workflow tool is CUSTOM must have the file. The project
+// root is opened as a root, so a link the repository commits reads
+// nothing outside it, and no more of the file than workflow.MaxSize and
+// one byte is read.
+//
+// ref: decision 0024 "Workflow command templates"
+func (r *run) readWorkflow() string {
+	data, err := readFile(r.dir, workflow.File, workflow.MaxSize+1)
+	switch {
+	case errors.Is(err, fs.ErrNotExist) && r.setting(workflowTool) == customTool:
+		return "The workflow file " + workflow.File + " is missing, and the stack's workflow " +
+			"tool is " + customTool + "."
+	case errors.Is(err, fs.ErrNotExist):
+		return ""
+	case err != nil:
+		return fmt.Sprintf("The workflow file %s cannot be read: %v.", workflow.File, err)
+	}
+	w, err := vendors.Read(data)
+	if err != nil {
+		return fmt.Sprintf("The workflow file %s cannot be used: %s.", workflow.File,
+			strings.TrimSuffix(err.Error(), "."))
+	}
+	r.workflow = w
+	return ""
+}
+
+// The stack's vendor settings the runner reads: the workflow tool, whose
+// value CUSTOM runs only a workflow file's commands, and the workspace,
+// which templates read as workspaceName.
+const (
+	workflowTool     = "workflowTool"
+	customTool       = "CUSTOM"
+	workspaceSetting = "workspace"
+)
+
+// defaultWorkspace is the workspace a stack that names none works in,
+// as both tools name the one a configuration starts in.
+const defaultWorkspace = "default"
+
+// setting is the stack's vendor setting name, empty when it is not a
+// string.
+func (r *run) setting(name string) string {
+	s, _ := r.h.Spec.Stack.VendorConfig[name].(string)
+	return s
+}
+
+// workspaceName is the stack's workspace, or defaultWorkspace.
+func (r *run) workspaceName() string {
+	if ws := r.setting(workspaceSetting); ws != "" {
+		return ws
+	}
+	return defaultWorkspace
+}
+
+// readFile reads at most limit bytes of name under dir, opened as a root.
+func readFile(dir, name string, limit int64) ([]byte, error) {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("open the project root: %w", err)
+	}
+	defer root.Close()
+	f, err := root.Open(filepath.FromSlash(name))
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the caller names the file
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, limit))
+	if err != nil {
+		return nil, err //nolint:wrapcheck // as above
+	}
+	return data, nil
 }
 
 // environment is the phase environment: the container's, the tool's

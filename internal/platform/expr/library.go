@@ -227,29 +227,6 @@ func library(maxResult int, a types.Adapter) []cel.EnvOption {
 					}
 					return a.NativeToValue(v)
 				}))),
-		cel.Function(fnUUID,
-			cel.FunctionDocs("Returns a version 4 UUID drawn from the evaluation's seed."),
-			cel.Overload("infraweave_random_uuid", nil, cel.StringType,
-				cel.OverloadExamples(`random.uuid() // "1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633b"`),
-				cel.LateFunctionBinding())),
-		cel.Function(
-			fnInt,
-			cel.FunctionDocs("Returns an integer from min to max, both included, drawn from "+
-				"the evaluation's seed."),
-			cel.Overload(
-				"infraweave_random_int_int_int",
-				[]*cel.Type{cel.IntType, cel.IntType},
-				cel.IntType,
-				cel.OverloadExamples(`random.int(1, 6) // 4`),
-				cel.LateFunctionBinding(),
-			),
-		),
-		cel.Function(fnString,
-			cel.FunctionDocs("Returns a string of ASCII letters and digits of the given "+
-				"length, drawn from the evaluation's seed."),
-			cel.Overload("infraweave_random_string_int", []*cel.Type{cel.IntType}, cel.StringType,
-				cel.OverloadExamples(`random.string(8) // "q3ZfK0aB"`),
-				cel.LateFunctionBinding())),
 		cel.Function(fnFail,
 			cel.FunctionDocs("Stops the evaluation with the message."),
 			cel.Overload(
@@ -277,6 +254,36 @@ func library(maxResult int, a types.Adapter) []cel.EnvOption {
 				}),
 			),
 		),
+	}
+}
+
+// randomLibrary declares random.*, which every surface has but a shell
+// one.
+func randomLibrary() []cel.EnvOption {
+	return []cel.EnvOption{
+		cel.Function(fnUUID,
+			cel.FunctionDocs("Returns a version 4 UUID drawn from the evaluation's seed."),
+			cel.Overload("infraweave_random_uuid", nil, cel.StringType,
+				cel.OverloadExamples(`random.uuid() // "1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633b"`),
+				cel.LateFunctionBinding())),
+		cel.Function(
+			fnInt,
+			cel.FunctionDocs("Returns an integer from min to max, both included, drawn from "+
+				"the evaluation's seed."),
+			cel.Overload(
+				"infraweave_random_int_int_int",
+				[]*cel.Type{cel.IntType, cel.IntType},
+				cel.IntType,
+				cel.OverloadExamples(`random.int(1, 6) // 4`),
+				cel.LateFunctionBinding(),
+			),
+		),
+		cel.Function(fnString,
+			cel.FunctionDocs("Returns a string of ASCII letters and digits of the given "+
+				"length, drawn from the evaluation's seed."),
+			cel.Overload("infraweave_random_string_int", []*cel.Type{cel.IntType}, cel.StringType,
+				cel.OverloadExamples(`random.string(8) // "q3ZfK0aB"`),
+				cel.LateFunctionBinding())),
 	}
 }
 

@@ -267,6 +267,31 @@ func newWorld(t *testing.T) *world {
 	}
 }
 
+// customWorkflow is a workflow file that echoes the workspace and the
+// targets before it plans, and pipes the plan's JSON.
+const customWorkflow = `init: terraform init
+workspaceSelect: terraform workspace select ${{ workspaceName }}
+workspaceNew: terraform workspace new ${{ workspaceName }}
+plan: echo workspace ${{ workspaceName }} targets ${{ targets }} && terraform plan -out=${{ planFileName }} && [ ! -e pwned ]
+showState: terraform show -json
+showPlan: terraform show -json ${{ planFileName }} | cat
+getOutputs: terraform output -json
+apply: terraform apply ${{ planFileName }}
+destroy: terraform destroy
+`
+
+// workflow writes content as the project root's workflow file.
+func (w *world) workflow(content string) {
+	w.t.Helper()
+	dir := filepath.Join(w.workspace, ".infraweave")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		w.t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "workflow.yml"), []byte(content), 0o600); err != nil {
+		w.t.Fatal(err)
+	}
+}
+
 // run runs the world's run and answers Run's error.
 func (w *world) run() error {
 	w.t.Helper()
@@ -374,7 +399,7 @@ func TestUnitExecAutodeploy(t *testing.T) {
 		"init -input=false -lock-timeout=5m0s",
 		"after_init",
 		"before_plan PLANNING",
-		"plan -input=false -lock-timeout=5m0s -out=infraweave.plan",
+		"plan -input=false -lock-timeout=5m0s -lock=true -out=infraweave.plan",
 		"show -json infraweave.plan",
 		"after_plan from-init",
 		"before_apply APPLYING",
@@ -449,6 +474,54 @@ func TestUnitExecPausesAndResumes(t *testing.T) {
 	}
 }
 
+// TestUnitExecWorkflowFile checks that a workflow file in the project
+// root replaces the built-in commands, each rendered when its phase runs
+// with every value one shell word, so a hostile workspace name is echoed
+// as it is and creates nothing; and that a template whose evaluation
+// fails fails its phase, naming its key and range.
+func TestUnitExecWorkflowFile(t *testing.T) {
+	w := newWorld(t)
+	w.h.Spec.Stack.VendorConfig = map[string]any{"workspace": "x; touch pwned"}
+	w.workflow(customWorkflow)
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "reports", w.events(), []string{
+		"INITIALIZING started 3", "INITIALIZING succeeded 4", "PLANNING succeeded 5",
+	})
+	equal(t, "trace", w.traced(), []string{
+		"init", "plan -out=infraweave.plan", "show -json infraweave.plan",
+	})
+	if !strings.Contains(w.out.String(), "workspace x; touch pwned targets\n") {
+		t.Errorf("output: %s", w.out.String())
+	}
+	if _, err := os.Stat(filepath.Join(w.workspace, "pwned")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the workspace name ran as a command: %v", err)
+	}
+
+	w = newWorld(t)
+	w.workflow(strings.Replace(customWorkflow, "${{ targets }}", `${{ fail("no targets") }}`, 1))
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "failed reports", w.events(), []string{
+		"INITIALIZING started 3", "INITIALIZING succeeded 4",
+		"PLANNING failed 5: The workflow's commands cannot be rendered: plan: 1:53: no targets.",
+	})
+
+	w = newWorld(t)
+	w.h.Assigned, w.h.StateVersion, w.w.version = wire.AssignmentStatePREPARINGAPPLY, 8, 8
+	w.workflow(strings.Replace(customWorkflow, "init: terraform init",
+		`init: terraform init ${{ fail("no init") }}`, 1))
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "resumed reports", w.events(), []string{
+		"APPLYING started 8",
+		"APPLYING failed 9: The workflow's commands cannot be rendered: init: 1:24: no init.",
+	})
+}
+
 // TestUnitExecFailures checks that the first hook or command that fails
 // fails its phase, naming it and its exit status, that nothing after it
 // in the phase runs, and that after_run runs with the final state.
@@ -466,10 +539,10 @@ func TestUnitExecFailures(t *testing.T) {
 		},
 		"a command": {
 			env:  []string{"EXIT_plan=2"},
-			want: "PLANNING failed 5: The command terraform plan failed with exit status 2.",
+			want: "PLANNING failed 5: The plan command failed with exit status 2.",
 			traced: []string{
 				"init -input=false -lock-timeout=5m0s",
-				"plan -input=false -lock-timeout=5m0s -out=infraweave.plan", "after_run FAILED set",
+				"plan -input=false -lock-timeout=5m0s -lock=true -out=infraweave.plan", "after_run FAILED set",
 			},
 		},
 		"an after-hook": {
@@ -594,6 +667,58 @@ func TestUnitExecPreparationFails(t *testing.T) {
 			edit: func(w *world) { w.environ = []string{"PATH=" + w.t.TempDir()} },
 			want: "The run's image has no sh to run its phases in.",
 		},
+		"a workflow file with a type error": {
+			edit: func(w *world) {
+				w.workflow(strings.Replace(customWorkflow, "${{ planFileName }} &&",
+					"${{ lock + 1 }} &&", 1))
+			},
+			want: "The workflow file .infraweave/workflow.yml cannot be used: a template does " +
+				"not check: plan (line 4): 1:",
+		},
+		"a workflow file with a syntax error": {
+			edit: func(w *world) { w.workflow(customWorkflow + "destroy: ${{ oops\n") },
+			want: "The workflow file .infraweave/workflow.yml cannot be used: the file is not " +
+				"a workflow: line 10: destroy is given twice.",
+		},
+		"a workflow file with a template that is never closed": {
+			edit: func(w *world) {
+				w.workflow(strings.Replace(customWorkflow, "destroy: terraform destroy",
+					"destroy: terraform destroy ${{ oops", 1))
+			},
+			want: "destroy (line 9): 1:19: This ${{ is never closed by }}.",
+		},
+		"a workflow file missing a key": {
+			edit: func(w *world) {
+				w.workflow(strings.Replace(customWorkflow, "getOutputs: terraform output -json\n",
+					"", 1))
+			},
+			want: "The workflow file .infraweave/workflow.yml cannot be used: the file is not " +
+				"a workflow: getOutputs missing.",
+		},
+		"a workflow file linked outside the project root": {
+			edit: func(w *world) {
+				outside := filepath.Join(w.t.TempDir(), "workflow.yml")
+				if err := os.WriteFile(outside, []byte(customWorkflow), 0o600); err != nil {
+					w.t.Fatal(err)
+				}
+				w.workflow("")
+				name := filepath.Join(w.workspace, ".infraweave", "workflow.yml")
+				if err := os.Remove(name); err != nil {
+					w.t.Fatal(err)
+				}
+				if err := os.Symlink(outside, name); err != nil {
+					w.t.Fatal(err)
+				}
+			},
+			want: "The workflow file .infraweave/workflow.yml cannot be read: ",
+		},
+		"a CUSTOM workflow tool with no workflow file": {
+			edit: func(w *world) {
+				w.h.Spec.Stack.VendorConfig = map[string]any{"workflowTool": "CUSTOM"}
+			},
+			want: "The workflow file .infraweave/workflow.yml is missing, and the stack's " +
+				"workflow tool is CUSTOM.",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			w := newWorld(t)
@@ -657,7 +782,7 @@ func TestUnitExecReports(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := w.events(); len(got) != 2 || !strings.HasPrefix(got[1],
-		"PLANNING failed 4: The command tofu init failed with exit status 127.") {
+		"PLANNING failed 4: The init command failed with exit status 127.") {
 		t.Errorf("tofu, which the image lacks, on a replan: %q", got)
 	}
 }

@@ -1029,3 +1029,73 @@ func TestUnitExprComplete(t *testing.T) {
 		}
 	}
 }
+
+// TestUnitExprShellSurface renders a shell surface's templates as shell
+// words: every embedded value single-quoted, a list one word per element
+// and an empty one none, a map its JSON as one word, and a template that
+// is one ${{ … }} text all the same. An expression keeps its type. The
+// surface has no now and no random.*, and its completions offer neither;
+// a declaration of the same name without Shell keeps the merged surface
+// a shell one.
+func TestUnitExprShellSurface(t *testing.T) {
+	r := registry(t, expr.Defaults(),
+		expr.Surface{Name: "sh", Variables: []expr.Variable{{Name: "v"}}, Shell: true},
+		expr.Surface{Name: "sh", Variables: []expr.Variable{{Name: "w"}}},
+	)
+	if s, _ := r.Surface("sh"); !s.Shell {
+		t.Error("the merged surface is not a shell one")
+	}
+	in := expr.Input{Values: map[string]any{
+		"v": map[string]any{
+			"s": "it's $(x)",
+			"l": []any{"a b", "c"},
+			"m": map[string]any{"k": "v"},
+		},
+		"w": nil,
+	}}
+	for src, want := range map[string]string{
+		"run ${{ v.s }}":                   `run 'it'\''s $(x)'`,
+		"${{ v.s }}":                       `'it'\''s $(x)'`,
+		"run ${{ v.l }} ${{ [] }}.":        `run 'a b' 'c' .`,
+		"run ${{ v.m }} ${{ 1 }} ${{ w }}": `run '{"k":"v"}' '1' ''`,
+		"run ${{ [[1], true] }} $${{ v }}": `run '[1]' 'true' ${{ v }}`,
+		"${{ v.l.map(x, x + \"!\") }} end": `'a b!' 'c!' end`,
+	} {
+		res, err := r.Evaluate(t.Context(),
+			expr.Request{Surface: "sh", Form: expr.FormTemplate, Source: src}, in)
+		if err != nil || res.Value != want || res.Type != "string" {
+			t.Errorf("%s = %#v (%s), %v, want %s", src, res.Value, res.Type, err, want)
+		}
+	}
+	res, err := r.Evaluate(t.Context(),
+		expr.Request{Surface: "sh", Form: expr.FormExpression, Source: "v.l"}, in)
+	if err != nil || !reflect.DeepEqual(res.Value, []any{"a b", "c"}) {
+		t.Errorf("an expression: %#v, %v", res.Value, err)
+	}
+	for _, src := range []string{"${{ now }}", "${{ random.uuid() }}"} {
+		chk, err := r.Check(expr.Request{Surface: "sh", Form: expr.FormTemplate, Source: src})
+		if err != nil || chk.OK() {
+			t.Errorf("%s checks: %+v, %v", src, chk, err)
+		}
+	}
+	items, err := r.Complete(expr.Request{Surface: "sh", Form: expr.FormExpression, Source: ""},
+		kernel.Position{Line: 1, Column: 1}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range items {
+		if c.Label == expr.Now || strings.HasPrefix(c.Label, "random") {
+			t.Errorf("a shell surface completes %s", c.Label)
+		}
+	}
+	items, err = r.Complete(
+		expr.Request{Surface: "sh", Form: expr.FormExpression, Source: "random."},
+		kernel.Position{Line: 1, Column: 8},
+		nil,
+	)
+	if err != nil || slices.ContainsFunc(items, func(c expr.Completion) bool {
+		return c.Label == "uuid"
+	}) {
+		t.Errorf("random. completes uuid: %v", err)
+	}
+}
