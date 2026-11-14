@@ -73,7 +73,8 @@ type World struct {
 	// the host's loopback, which the URLs its servers sign name.
 	storePort string
 	// env is what every process mode of the scenario runs with beyond
-	// the test binary's environment: the object store's keys.
+	// the test binary's environment: the object store's keys and what
+	// Setenv adds.
 	env []string
 }
 
@@ -212,11 +213,10 @@ func (w *World) objectStore(ctx context.Context, config []byte) ([]byte, error) 
 		}
 		w.Bucket = name
 	}
-	w.env = []string{
-		"AWS_ACCESS_KEY_ID=" + store.AccessKey,
-		"AWS_SECRET_ACCESS_KEY=" + store.SecretKey,
-		"AWS_EC2_METADATA_DISABLED=true",
-	}
+	w.env = append(slices.DeleteFunc(w.env, func(kv string) bool {
+		return strings.HasPrefix(kv, "AWS_")
+	}), "AWS_ACCESS_KEY_ID="+store.AccessKey, "AWS_SECRET_ACCESS_KEY="+store.SecretKey,
+		"AWS_EC2_METADATA_DISABLED=true")
 	return withSection(config, "objectstore", map[string]any{
 		"driver": "s3",
 		"s3": map[string]any{
@@ -285,6 +285,15 @@ func (w *World) KEK() map[string]any {
 // SetKEK makes kek the secrets.kek settings of the servers the scenario
 // starts from now on and of its commands.
 func (w *World) SetKEK(kek map[string]any) { w.Settings["secrets"] = SecretsWith(kek) }
+
+// Setenv sets key to value in the environment of the process modes the
+// scenario starts from now on, where a setting's variable overrides its
+// file.
+func (w *World) Setenv(key, value string) {
+	w.env = append(slices.DeleteFunc(w.env, func(kv string) bool {
+		return strings.HasPrefix(kv, key+"=")
+	}), key+"="+value)
+}
 
 // Launch runs one more infraweave process mode with config and gives the
 // scenario SDK clients for its listeners.

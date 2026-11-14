@@ -1,6 +1,7 @@
 // Package api is what other domains read of the runs domain: Updated, the
 // event the domain appends to the outbox each time a run changes state,
-// with UpdatedSchema its document's schema; RunSources, what a run's end
+// with UpdatedSchema its document's schema and Timer the run.timers rule
+// it names when a timer moved the run; RunSources, what a run's end
 // asks of the vcs domain, a back edge that domain implements; and
 // StateAccess, which decides from a run's current state its StateGrant on
 // its stack's managed state, the read, lock and write the state domain

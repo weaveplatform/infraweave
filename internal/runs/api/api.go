@@ -110,16 +110,35 @@ const (
 // Updated is an UpdatedKind event's document, the notification policy's
 // run_updated input: snake_case, with timestamps in nanoseconds since the
 // Unix epoch. Username is nil when the server moved the run, and Note when
-// the move carries none.
+// the move carries none. Timer names the run.timers rule that moved the
+// run, and is absent when none did.
 //
 // ref: report 19 § "Input documents"
+// ref: decision 0008 § "Timeouts and timers"
 type Updated struct {
 	State    kernel.RunState `json:"state"`
 	Username *string         `json:"username"`
 	Note     *string         `json:"note"`
+	Timer    Timer           `json:"timer,omitempty"`
 	Run      UpdatedRun      `json:"run"`
 	Stack    UpdatedStack    `json:"stack"`
 }
+
+// Timer is a run.timers rule, by its key under run.timers. The shorter
+// rules notify; TimerMaxAge, which ends a run a month after its creation,
+// never does.
+//
+// ref: report 08 § "Timers"
+type Timer string
+
+// The run.timers rules.
+const (
+	TimerPickupProposed Timer = "pickup_proposed"
+	TimerPickupBlocking Timer = "pickup_blocking"
+	TimerUnconfirmed    Timer = "unconfirmed"
+	TimerConfirmed      Timer = "confirmed"
+	TimerMaxAge         Timer = "max_age"
+)
 
 // UpdatedRun is the run an Updated event is about; TriggeredBy is nil
 // when no login or trigger is recorded.
@@ -166,6 +185,8 @@ var UpdatedSchema = []byte(`{
 		"state": {"type": "string", "minLength": 1},
 		"username": {"type": ["string", "null"]},
 		"note": {"type": ["string", "null"]},
+		"timer": {"enum": ["pickup_proposed", "pickup_blocking", "unconfirmed", "confirmed",
+			"max_age"]},
 		"run": {
 			"type": "object",
 			"required": ["id", "type", "state", "commit", "created_at", "updated_at",

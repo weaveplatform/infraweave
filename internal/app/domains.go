@@ -150,18 +150,20 @@ func newDomains(
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
 	runs := runsassembly.New(runsassembly.Deps{
-		DB:          db.Primary(),
-		Keys:        keys,
-		Objects:     objects,
-		Spaces:      access.Spaces(),
-		Accounts:    access.Accounts(),
-		Authz:       access.Authorizer(),
-		Tokens:      access.Tokens(),
-		Stacks:      stacks.Stacks(),
-		Environment: configuration.Environment(),
-		Catalog:     vendors.Catalog(),
-		Events:      events,
-		Jobs:        queue.New(db.Primary()),
+		DB:           db.Primary(),
+		Keys:         keys,
+		Objects:      objects,
+		Spaces:       access.Spaces(),
+		Accounts:     access.Accounts(),
+		Authz:        access.Authorizer(),
+		Tokens:       access.Tokens(),
+		Stacks:       stacks.Stacks(),
+		Environment:  configuration.Environment(),
+		Catalog:      vendors.Catalog(),
+		Events:       events,
+		Jobs:         queue.New(db.Primary()),
+		Settings:     c.Run,
+		LogRetention: c.ObjectStore.Retention.RunLogs,
 	})
 	stacks.GuardStacks(runs.StackGuard())
 	access.ResolveSubjects(runsassembly.Entity, runs.SpaceOf())
@@ -272,5 +274,5 @@ func newKinds() *outbox.Kinds {
 // over q, which the scheduler role runs, logging to log.
 func (d Domains) cron(q tx.Querier, log *slog.Logger) []cron.Task {
 	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), d.Workers.Cron(),
-		[]cron.Task{orphansTask(q, log)})
+		d.Runs.Cron(log), []cron.Task{orphansTask(q, log)})
 }

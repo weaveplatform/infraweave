@@ -14,7 +14,9 @@
 // one object, report.LogKey, through blob_objects, and commits it with
 // the job, so running it again writes nothing. Service.Download signs a
 // GET of that object, or answers that the state is ongoing, its
-// compaction pending, or its log expired.
+// compaction pending, or its log expired. Service.RetentionDays is how
+// many days the run-logs store keeps a log, which runLogRetentionDays
+// answers.
 //
 // ref: decision 0008 § "Logs and artifacts"
 // ref: decision 0005 § "Keys"
@@ -22,7 +24,8 @@
 // # Input and output
 //
 // New takes the Store, the Objects of blob_objects, the queue a
-// compaction completes its job on, and the database it commits on. Page
+// compaction completes its job on, the database it commits on, and
+// objectstore.retention.run-logs. Page
 // and Download answer read.ErrNotFound for a run the caller's account
 // lacks. Nothing is logged.
 //
