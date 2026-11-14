@@ -112,6 +112,14 @@ func (w *world) write(parts ...string) {
 	}
 }
 
+// begin opens state version and fails the test if it cannot.
+func (w *world) begin(version int64) {
+	w.t.Helper()
+	if err := w.log.Begin(w.t.Context(), version); err != nil {
+		w.t.Fatal(err)
+	}
+}
+
 // end ends the open state and fails the test if it cannot.
 func (w *world) end() {
 	w.t.Helper()
@@ -144,7 +152,7 @@ func equal(t *testing.T, what string, got, want []string) {
 func TestUnitLogMasks(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
-		w.log.Begin(4)
+		w.begin(4)
 		jwt := "eyJ" + "hbGciOiJIUzI1NiJ9.eyJ" + "zdWIiOiIxMjM0In0.c2ln"
 		w.write("pw hun", "ter22\n", "::add-mask swordfish ab\n", "swordfish and ab\n",
 			"  ::add-mask marlin42\nmarlin42 "+jwt+"\n", "::add-masks shark\n", "unterminated")
@@ -167,7 +175,7 @@ func TestUnitLogMasks(t *testing.T) {
 func TestUnitLogCuts(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
-		w.log.Begin(4)
+		w.begin(4)
 		line := strings.Repeat("a", mask.MaxLine-1) + "\n"
 		for range 17 {
 			w.write(line)
@@ -206,7 +214,7 @@ func TestUnitLogCuts(t *testing.T) {
 func TestUnitLogRetries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
-		w.log.Begin(4)
+		w.begin(4)
 		w.srv.Refuse("put", http.StatusServiceUnavailable, 1)
 		w.srv.Refuse("upload-urls", http.StatusTooManyRequests, 1)
 		w.srv.Refuse("log-chunks", http.StatusBadGateway, 2)
@@ -233,7 +241,7 @@ func TestUnitLogRetries(t *testing.T) {
 func TestUnitLogGivesUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
-		w.log.Begin(4)
+		w.begin(4)
 		w.srv.Refuse("log-chunks", http.StatusServiceUnavailable, 1000)
 		start := time.Now()
 		w.write("one\n")
@@ -243,7 +251,7 @@ func TestUnitLogGivesUp(t *testing.T) {
 		}
 		w.srv.Refuse("log-chunks", 0, 0)
 		w.log.d.API = noURL{w.api}
-		w.log.Begin(5)
+		w.begin(5)
 		w.write("two\n")
 		w.end()
 		if got := w.chunks(); len(got) != 0 {
@@ -266,16 +274,21 @@ func (noURL) UploadURLs(context.Context, string, string, wire.UploadURLsRequest)
 func TestUnitLogStates(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
-		w.log.Begin(4)
+		w.begin(4)
 		w.write("init\n")
 		w.end()
 		w.write("between\n")
-		w.log.Begin(6)
+		w.begin(6)
 		w.write("plan\n")
 		w.end()
 		equal(t, "chunks", w.chunks(), []string{"4/0: init\n", "6/0: plan\n"})
 		if got := w.out.String(); got != "init\nbetween\nplan\n" {
 			t.Errorf("standard output = %q", got)
+		}
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		if err := w.log.Begin(ctx, 8); !errors.Is(err, context.Canceled) {
+			t.Errorf("Begin after the context ended = %v", err)
 		}
 	})
 }
@@ -285,7 +298,7 @@ func TestUnitLogStates(t *testing.T) {
 func TestUnitLogLongLine(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
-		w.log.Begin(4)
+		w.begin(4)
 		w.write(strings.Repeat("b", mask.MaxLine+100))
 		w.end()
 		got := w.srv.Chunks()
@@ -301,7 +314,7 @@ func TestUnitLogLongLine(t *testing.T) {
 func TestUnitLogClose(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
-		w.log.Begin(4)
+		w.begin(4)
 		w.write("last\n")
 		if err := w.log.Close(t.Context()); err != nil {
 			t.Fatal(err)
@@ -344,7 +357,9 @@ func TestUnitLogNew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.Begin(4)
+	if err := l.Begin(t.Context(), 4); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := l.File().WriteString("from the shell\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +411,7 @@ func TestUnitLogCanceled(t *testing.T) {
 				API: api, Out: w.out, Log: slog.New(slog.DiscardHandler), Run: "run-1",
 				Token: "token",
 			}, r, pw)
-			w.log.Begin(4)
+			w.begin(4)
 			w.srv.Refuse("put", http.StatusServiceUnavailable, 1000)
 			w.write("one\n")
 			<-time.After(Cut + time.Second/2)

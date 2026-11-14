@@ -171,12 +171,17 @@ func (l *Log) Add(words ...[]byte) {
 	l.lines.Add(words...)
 }
 
-// Begin opens state version's chunks, from sequence number 0. Lines read
-// while no state is open go to Out alone.
-func (l *Log) Begin(version int64) {
+// Begin opens state version's chunks, from sequence number 0, once every
+// line written before it is read: lines read while no state is open go to
+// Out alone, and without the wait a line written just before Begin would
+// land in the state's first chunk. The state opens even when the wait
+// ends with ctx, whose error Begin answers.
+func (l *Log) Begin(ctx context.Context, version int64) error {
+	err := l.sync(ctx, false)
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.open, l.version, l.seq = true, version, 0
+	return err
 }
 
 // End closes the open state: once every line written before it is read,
@@ -188,8 +193,10 @@ func (l *Log) End(ctx context.Context) error {
 	return l.end(ctx, false)
 }
 
-// Close ends the log as End does, and stops reading and uploading.
-// Closing it again does nothing.
+// Close ends the log as End does, and stops reading and uploading; it
+// answers once the reader has ended, so a later End or Begin finds the
+// log closed rather than writing a barrier to the closed pipe. Closing it
+// again does nothing.
 func (l *Log) Close(ctx context.Context) error {
 	err := l.end(ctx, true)
 	l.mu.Lock()
@@ -209,6 +216,7 @@ func (l *Log) Close(ctx context.Context) error {
 	}
 	_ = l.w.Close()
 	_ = l.r.Close()
+	<-l.read
 	return err
 }
 
@@ -243,9 +251,14 @@ func (l *Log) sync(ctx context.Context, final bool) error {
 	}
 	l.barrier.Lock()
 	defer l.barrier.Unlock()
+	// An ended reader is checked alone first: a select with a word left in
+	// synced as well would pick either, and write to a closed pipe.
 	select {
 	case <-l.read:
 		return nil
+	default:
+	}
+	select {
 	case <-l.synced:
 	default:
 	}
