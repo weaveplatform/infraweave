@@ -104,8 +104,8 @@ func TestAccOutputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	var writer kernel.ULID
-	if err := db.QueryRow(ctx, `SELECT run_id FROM stack_outputs WHERE account_id = $1`,
-		acct).Scan(&writer); err != nil || writer != second.ID {
+	if err := db.QueryRow(ctx, `SELECT run_id FROM stack_outputs WHERE account_id = $1
+		AND stack_id = $2`, acct, stack).Scan(&writer); err != nil || writer != second.ID {
 		t.Errorf("the outputs' run = %s, %v, want %s", writer, err, second.ID)
 	}
 	if got := read(); len(got) != 1 || got[0].Name != "name" || string(got[0].Value) != `"api"` ||

@@ -5,7 +5,8 @@
 // scenario's servers (StartServer, Launch, TwoReplicas), its database and
 // object storage, an @objectstore scenario's in a RustFS bucket of its
 // own, its named tokens, IDs and pool keys, the answers it was sent
-// (Send, Do, SendAs, Last), its browser (Jar) and the settings sections
+// (Send, Do, SendAs, Last), the artifacts it records as a runner does
+// (RecordArtifact), its browser (Jar) and the settings sections
 // every server it starts reads, with the Fakes its tags start merged in.
 // Tenants are the accounts seeded through SQL with their API keys;
 // Partitions are CI's slices of the features; captures.go loads and

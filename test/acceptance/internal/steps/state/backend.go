@@ -100,6 +100,10 @@ func (b *backendSteps) register(sc *godog.ScenarioContext) {
 		b.report,
 	)
 	sc.Step(`^the report's answer is to (execute|pause|exit) in ([A-Z_]+)$`, b.answer)
+	sc.Step(
+		`^the worker records the last output of the run "(\w+)" as its outputs.json through ([AB])$`,
+		b.recordOutputs,
+	)
 	sc.Step(`^(terraform|tofu) "([^"]+)" of the run "(\w+)" exits (\d+)$`, b.exits)
 	sc.Step(`^(terraform|tofu) "([^"]+)" of the run "(\w+)" starts as "(\w+)"$`, b.starts)
 	sc.Step(`^the process "(\w+)" exits (\d+)$`, b.processExits)
@@ -266,6 +270,26 @@ func (b *backendSteps) report(ctx context.Context, run, event, state, delta, rep
 	}
 	tr.version = b.next.StateVersion
 	return nil
+}
+
+// recordOutputs records the last output of the run kept as run, its
+// tool's output -json, as the outputs.json of its state version, as a
+// runner records the apply's outputs before it reports the apply.
+func (b *backendSteps) recordOutputs(ctx context.Context, run, replica string) error {
+	tr, err := b.run(run)
+	if err != nil {
+		return err
+	}
+	acct, err := kernel.ParseAccountID(tr.handoff.Spec.Run.Account)
+	if err != nil {
+		return fmt.Errorf("%w: the specification's account: %w", harness.ErrStep, err)
+	}
+	id, err := kernel.ParseULID(tr.id)
+	if err != nil {
+		return fmt.Errorf("%w: the run %q: %w", harness.ErrStep, run, err)
+	}
+	return b.w.RecordArtifact(ctx, replica, tr.token, acct, id, kernel.RunStateApplying, tr.version,
+		"outputs.json", tr.handoff.Secrets.ArtifactKey, []byte(tr.stdout))
 }
 
 // answer checks the last report's answer: what the worker does next, in
