@@ -31,6 +31,8 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^two infraweave servers, A and B, on one database, that run no default-queue jobs$`,
 		r.idle)
 	sc.Step(`^a third infraweave server runs the default queue's jobs$`, r.third)
+	sc.Step(`^two infraweave servers, A and B, on one database, keeping run logs for (\S+)$`,
+		r.keeping)
 	sc.Step(`^the "run.schedule" jobs are (\d+), (pending|succeeded)$`, r.scheduled)
 	sc.Step(`^neither the answer nor a server's log names "([^"]+)"$`, r.unnamed)
 }
@@ -59,6 +61,14 @@ func (r *runSteps) idle(ctx context.Context) error {
 		"queues": map[string]any{"default": map[string]any{"workers": 0}},
 	}
 	defer delete(w.Settings, "queue")
+	return r.w.TwoReplicas(ctx)
+}
+
+// keeping starts the scenario's two servers with
+// objectstore.retention.run-logs set to retention through its environment
+// variable.
+func (r *runSteps) keeping(ctx context.Context, retention string) error {
+	r.w.Setenv("INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS", retention)
 	return r.w.TwoReplicas(ctx)
 }
 

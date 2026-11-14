@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 )
 
 // loadArgs parses args as the serve process mode does and decodes them.
@@ -208,11 +209,15 @@ server:
 	}
 }
 
-// TestUnitLoadLiveness checks that the worker and run liveness settings
-// and the sample retention decode from the file and, over it, the
-// environment.
+// TestUnitLoadLiveness checks that the worker and run liveness settings,
+// the run timers and the sample retention decode from the file and, over
+// it, the environment, and that the timers default to the runs domain's.
 func TestUnitLoadLiveness(t *testing.T) {
+	if got := Defaults().Run.Timers; got != runsassembly.DefaultSettings().Timers {
+		t.Errorf("default run.timers %+v", got)
+	}
 	t.Setenv("INFRAWEAVE_RUN_LOST_AFTER", "2h")
+	t.Setenv("INFRAWEAVE_RUN_TIMERS_MAX_AGE", "1000h")
 	t.Setenv("INFRAWEAVE_WORKER_SAMPLES_RETENTION", "72h")
 	c, err := loadArgs(t, "--config", writeFile(t, `
 worker:
@@ -222,6 +227,9 @@ worker:
 run:
   lost_after: 90m
   preparing_timeout_default: 10m
+  timers:
+    pickup_proposed: 24h
+    max_age: 500h
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -230,6 +238,11 @@ run:
 		c.Run.PreparingTimeoutDefault != 10*time.Minute ||
 		c.Worker.Samples.Retention != 72*time.Hour {
 		t.Errorf("worker %+v, run %+v", c.Worker, c.Run)
+	}
+	want := runsassembly.DefaultSettings().Timers
+	want.PickupProposed, want.MaxAge = 24*time.Hour, 1000*time.Hour
+	if c.Run.Timers != want {
+		t.Errorf("run.timers %+v, want %+v", c.Run.Timers, want)
 	}
 }
 
@@ -377,6 +390,13 @@ func TestUnitLoadRejects(t *testing.T) {
 			nil,
 			"run.preparing_timeout_default",
 		},
+		{
+			"short timer",
+			"run:\n  timers:\n    unconfirmed: 30s\n",
+			nil,
+			"run.timers.unconfirmed 30s is under 1m0s",
+		},
+		{"unknown timer", "run:\n  timers:\n    forever: 1h\n", nil, "forever"},
 		{"no state bound", "state:\n  max_size: 0\n", nil, "state.max_size"},
 	}
 	for _, tc := range cases {

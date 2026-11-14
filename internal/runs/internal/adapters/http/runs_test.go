@@ -3,13 +3,16 @@ package http
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 )
 
 // TestUnitRunsInRange refuses a start or end that is not Unix seconds,
@@ -64,6 +67,8 @@ func TestUnitRunsRefusals(t *testing.T) {
 		"RunChangesV3":   second(s.RunChangesV3(bg, api.RunChangesV3RequestObject{})),
 		"RunLogsDownloadURL": second(s.RunLogsDownloadURL(bg,
 			api.RunLogsDownloadURLRequestObject{})),
+		"RunLogRetentionDays": second(s.RunLogRetentionDays(bg,
+			api.RunLogRetentionDaysRequestObject{})),
 	} {
 		if p, ok := errors.AsType[*problem.Error](err); !ok || p.Problem.Status != 401 {
 			t.Errorf("%s with no principal = %v", name, err)
@@ -158,3 +163,22 @@ func TestUnitUnder(t *testing.T) {
 }
 
 func second[T any](_ T, err error) error { return err }
+
+// TestUnitRunLogRetentionDays answers objectstore.retention.run-logs in
+// days, a part of a day counting as a whole one, and 0 for logs kept
+// until their run goes.
+func TestUnitRunLogRetentionDays(t *testing.T) {
+	ctx := kernel.WithPrincipal(context.Background(), kernel.Principal{})
+	day := 24 * time.Hour
+	for retention, want := range map[time.Duration]int32{
+		0: 0, 60 * day: 60, 36 * time.Hour: 2, 12 * time.Hour: 1, day + time.Nanosecond: 2,
+		time.Duration(math.MaxInt64): 106752,
+	} {
+		s := New(nil, nil, nil, logs.New(logs.Deps{Retention: retention}), nil)
+		got, err := s.RunLogRetentionDays(ctx, api.RunLogRetentionDaysRequestObject{})
+		if r, ok := got.(api.RunLogRetentionDays200JSONResponse); err != nil || !ok ||
+			r.Body != want {
+			t.Errorf("a retention of %s answers %+v, %v, want %d", retention, got, err, want)
+		}
+	}
+}

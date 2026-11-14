@@ -21,8 +21,8 @@
 // Vendors holds the vendors.* release indexes the version catalogue
 // refreshes from, the vendors domain's assembly Settings; Worker holds
 // worker.poll_timeout_max, worker.offline_after and
-// worker.samples.retention, the workers domain's assembly Settings; Run holds run.lost_after and
-// run.preparing_timeout_default, the runs domain's assembly Settings, and
+// worker.samples.retention, the workers domain's assembly Settings; Run holds run.lost_after,
+// run.preparing_timeout_default and run.timers.*, the runs domain's assembly Settings, and
 // Load rejects a run.lost_after no greater than worker.offline_after;
 // State holds state.max_size, the state domain's assembly Settings.
 // Defaults are what an empty configuration
