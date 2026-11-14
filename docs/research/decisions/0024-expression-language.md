@@ -92,7 +92,7 @@ doublestar globs stay as the standard mini-languages they are
 | Output references | Expression, optional on a reference | `value` (the referenced output), `outputs` (the upstream stack's outputs) | `serve`, at the downstream run's handover |
 | Notification text | Text template in every string a notification policy returns, and in the default messages | `event` (the event document of [0015](0015-events-notifications-webhooks-audit.md)), `logs(phase)` | `scheduler`, in the delivery job |
 | Environment interpolation | Text template in a variable's value | `env` (the run's other variables), `run`, `stack` | `serve`, at the run's handover ([0008](0008-run-execution-and-worker-protocol.md)) |
-| Workflow command templates | Text template, shell-quoted (below) | `planFileName`, `lock`, `refresh`, `targets`, `workspaceName` | The runner, at initialization |
+| Workflow command templates | Text template, shell-quoted (below) | `planFileName`, `lock`, `refresh`, `targets`, `workspaceName`, `lockTimeout` | The runner: checked at initialization, each command rendered when its phase runs |
 
 - **Flows variables.** `outputs.<block>` holds each upstream block's output
   on the event's primary lineage, keyed by the block's camelCase name, as
@@ -121,13 +121,21 @@ doublestar globs stay as the standard mini-languages they are
   the environment surface with `env` and `stack`, and `runs` adds `run`.
   A variable's templates are type-checked against the surface when the
   variable is saved, so a misspelt reference is refused before any run.
+  `vendors` declares the workflow surface, whose context is a vendor
+  named by its kind, such as `opentofu`.
+- **Who reads a context.** A context's `Env` authorizes its read as the
+  context's own data is authorized: a stack's by a read of its space,
+  answering a stack the caller cannot read as one that does not exist.
+  A vendor holds no account's data, so every principal reads the workflow
+  surface's contexts, as every principal reads the version catalogue.
 
 ### Multi-step logic
 
 The language stays CEL; multi-step logic is built from five parts.
 
 - **Locals.** `cel.bind(name, init, body)` names an intermediate value.
-- **A curated function library**, the same on every surface:
+- **A curated function library**, the same on every surface but the
+  workflow surface, which has no `random.*` (below):
 
   | Area | Functions |
   |---|---|
@@ -283,24 +291,45 @@ templates.
 
 ### Workflow command templates
 
-- **File.** `.infraweave/workflow.yml` holds the nine keys of
+- **File.** `.infraweave/workflow.yml` in the run's project root holds the
+  nine keys of
   [20 section 3.2](../reference/20-vendors.md#32-commands-per-phase); each
-  value is a text template.
+  value is a text template whose literal text is shell. The runner reads it
+  whenever the project root has it, after writing the mounted files, so a
+  mounted file can supply it. A stack whose workflow tool is `CUSTOM` must
+  have it; any other stack without it renders the vendor's built-in
+  templates, which `internal/iac/workflow` declares. A key it does not
+  know, a key given twice, or a value that is null, empty or not a scalar
+  fails the run; a scalar is its text as written, so `init: true` runs
+  `true`. The runner reads at most 256 KiB of it, and only inside the
+  project root, so a committed link reads nothing outside it.
 - **Variables** are the fixed run parameters, renamed to CEL identifiers:
-  `planFileName`, `lock`, `refresh`, `targets` (a list) and
-  `workspaceName`. No other variable, no secret and no `now` or randomness
-  is in scope, so rendering needs nothing the worker does not already hold.
-- **Rendered by the runner** at initialization with the same `internal/platform/expr`
-  package and library. Every key is parsed and type-checked before the
-  first command runs; a missing key, a syntax error or a type error fails
-  the run at initialization, as Spacelift's validation does.
+  `planFileName`, `lock`, `refresh`, `targets` (a list), `workspaceName`
+  (the stack's `workspace` setting, else `default`) and `lockTimeout`
+  (`launcher.state_lock_timeout`, written as Go writes a duration, such as
+  `5m0s`, which both tools parse). No other variable, no secret and no
+  `now` or `random.*` is in scope, so rendering needs nothing the worker
+  does not already hold and the same parameters always render the same
+  line.
+- **Checked at initialization, rendered when the phase runs.** The runner
+  uses the same `internal/platform/expr` package and library. Every key is
+  parsed and type-checked before the first command runs; a missing key, a
+  syntax error or a type error fails the run at initialization, as
+  Spacelift's validation does, with a note naming each key, its line in
+  the file and the fault's range in the template. Each phase renders its
+  commands when it runs, so a `fail(...)` fails that phase with its range.
+- **The editor surface.** `vendors` declares the `workflow` surface, so
+  Check, Complete and Evaluate take a workflow template with a vendor as
+  its context and sample run parameters, and render it as the runner
+  does.
 - **Automatic shell quoting.** The template's literal text is shell; every
   interpolated value is quoted for POSIX `sh` (single quotes, with embedded
   single quotes escaped). A list renders as one quoted word per element. No
   function emits unquoted text, so a workspace name or target can never
   become shell syntax. The built-in plan command is
-  `terraform plan -input=false -lock=${{ lock }} -out=${{ planFileName }} ${{ targets.map(t, "-target=" + t) }}`,
-  with `-refresh=false` added when `refresh` is false.
+  `terraform plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} ${{ refresh ? [] : ["-refresh=false"] }} -out=${{ planFileName }} ${{ targets.map(t, "-target=" + t) }}`.
+  A NUL byte cannot be in a shell word, so a value holding one fails the
+  phase.
 
 ## Rationale
 
@@ -367,6 +396,11 @@ templates.
   expressions.
 - **Departure from Spacelift:** `.infraweave/workflow.yml` uses `${{ }}`
   text templates with shell quoting, not Go templates.
+- **Departure from Spacelift:** the workflow file is read from the
+  project root whenever it exists, not from the repository root only when
+  the workflow tool is `CUSTOM`. A stack in a monorepo has its own file,
+  and a stack can change a flag of one command without bringing its own
+  binary; `CUSTOM` still requires the file.
 - **Departure from Spacelift:** environment interpolation is
   `${{ env.NAME }}`, rendered on the server; `${NAME}` is left to the shell.
 - **Departure from Spacelift:** blueprint and template context time and
@@ -413,20 +447,28 @@ templates.
 - `TestUnitExprSchemaTypes` maps JSON Schema fixtures to CEL types and
   checks that a misspelt field is a save-time error.
 - `TestUnitWorkflowQuoting` renders targets and workspace names containing
-  quotes, spaces, `$()` and newlines, and runs the result through `sh -n`
-  and `sh -c 'printf %s\n "$@"'` to prove each value stays one word.
+  quotes, spaces, `$()`, backticks, newlines and `;` into a command that
+  prints each argument, checks the line with `sh -n` and runs it with
+  `sh`, proving each value comes back as one word, unchanged, and that
+  nothing in it ran.
+- `TestUnitExprShellSurface`: a shell surface quotes every embedded
+  value, renders a list as one word per element, keeps a whole template
+  text, and has no `now` and no `random.*`.
 - `test/acceptance/features/expressions/flows.feature` (`@postgres`,
   `@flows-agent`): a Transform in the steps form, a named expression, a
   `fail` routed to a Handle Error block, a retry reproducing `now` and
   `random.uuid()`.
 - `test/acceptance/features/expressions/editor.feature` (`@postgres`):
-  Check, Complete and Evaluate against a flow and a template, and a save
-  refused with diagnostics.
+  Check, Complete and Evaluate against a flow, a template and a workflow
+  template, and a save refused with diagnostics.
+- `test/acceptance/features/expressions/workflow.feature` (`@postgres`,
+  `@objectstore`, `@vcs`, `@docker`, `@tofu`): a run on a real launcher
+  whose workflow file echoes a hostile workspace name as one word, and a
+  workflow file with a type error failing the run in `INITIALIZING`.
 - `test/acceptance/features/expressions/deploy.feature` (`@postgres`,
-  `@tofu`): a custom workflow template with a hostile workspace name, an
-  interpolated environment variable reading a secret and staying masked,
-  an output reference with an expression, and a notification message
-  template.
+  `@tofu`): an interpolated environment variable reading a secret and
+  staying masked, an output reference with an expression, and a
+  notification message template.
 
 ## References
 

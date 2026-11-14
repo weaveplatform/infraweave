@@ -180,6 +180,10 @@ _Avoid_: workspace, which is a state workspace; working directory
 A proposed run on code uploaded from a developer's machine rather than a commit.
 _Avoid_: dry run, local run
 
+**Workflow file**:
+A file in a stack's project root whose command templates replace the tool's commands, one for each command a run may need.
+_Avoid_: custom workflow, workflow tool, which is the stack setting that requires one
+
 **Runner image**:
 The container image a run's container starts from, which brings the shell and tools hooks use but not Terraform or OpenTofu.
 _Avoid_: worker image, base image

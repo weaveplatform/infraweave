@@ -73,6 +73,13 @@ type Surface struct {
 	// fails with an error wrapping ErrNoContext for a context p cannot
 	// read, whether or not it exists.
 	Env func(ctx context.Context, p kernel.Principal, ref string) (Context, error)
+	// Shell makes the surface's templates shell command lines: a template
+	// is always text, and every value it embeds is quoted for POSIX sh, a
+	// list as one word per element. The surface has no now and no
+	// random.*, so a rendering depends on its variables alone.
+	//
+	// ref: decision 0024 "Workflow command templates"
+	Shell bool
 }
 
 // Request names what to compile: the surface, the variables of the
@@ -281,6 +288,7 @@ func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 			merged.Env = s.Env
 		}
 		merged.Variables = slices.Concat(merged.Variables, s.Variables)
+		merged.Shell = merged.Shell || s.Shell
 		r.surfaces[s.Name] = merged
 	}
 	for _, s := range r.surfaces {
@@ -297,11 +305,11 @@ func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 			seen[v.Name] = true
 		}
 	}
-	none, err := fingerprint(nil)
+	none, err := fingerprint(nil, false)
 	if err != nil {
 		return nil, err
 	}
-	base, err := r.environment(none, nil)
+	base, err := r.environment(none, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -420,9 +428,10 @@ func (r *Registry) declared(req Request) ([]Variable, error) {
 }
 
 // fingerprint identifies a set of declared variables by their names,
-// secrecy and schemas.
-func fingerprint(vars []Variable) ([32]byte, error) {
+// secrecy and schemas, and whether they are a shell surface's.
+func fingerprint(vars []Variable, shell bool) ([32]byte, error) {
 	h := sha256.New()
+	fmt.Fprintf(h, "shell %t\n", shell)
 	sorted := slices.SortedFunc(slices.Values(vars), func(a, b Variable) int {
 		return strings.Compare(a.Name, b.Name)
 	})
@@ -444,8 +453,8 @@ func fingerprint(vars []Variable) ([32]byte, error) {
 }
 
 // environment builds, or finds, the cel-go environment of vars, whose
-// fingerprint is key.
-func (r *Registry) environment(key [32]byte, vars []Variable) (*environment, error) {
+// fingerprint is key; a shell surface's has no now and no random.*.
+func (r *Registry) environment(key [32]byte, vars []Variable, shell bool) (*environment, error) {
 	return r.envs.get(key, func() (*environment, error) {
 		p, err := newProvider()
 		if err != nil {
@@ -457,9 +466,12 @@ func (r *Registry) environment(key [32]byte, vars []Variable) (*environment, err
 			cel.CustomTypeProvider(p),
 			cel.CustomTypeAdapter(a),
 			cel.EagerlyValidateDeclarations(true),
-			cel.Variable(Now, cel.TimestampType),
 		}
 		opts = append(opts, library(r.cfg.MaxResult, a)...)
+		if !shell {
+			opts = append(opts, cel.Variable(Now, cel.TimestampType))
+			opts = append(opts, randomLibrary()...)
+		}
 		for _, v := range vars {
 			s, err := parseSchema(v.Schema)
 			if err != nil {
@@ -488,6 +500,7 @@ type program struct {
 	check   Check
 	parts   []part
 	whole   bool
+	shell   bool
 	secrets map[string][]string
 }
 
@@ -514,11 +527,12 @@ func (r *Registry) compile(req Request) (*program, *environment, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	fp, err := fingerprint(vars)
+	shell := r.surfaces[req.Surface].Shell
+	fp, err := fingerprint(vars, shell)
 	if err != nil {
 		return nil, nil, err
 	}
-	env, err := r.environment(fp, vars)
+	env, err := r.environment(fp, vars, shell)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -526,15 +540,17 @@ func (r *Registry) compile(req Request) (*program, *environment, error) {
 	fmt.Fprintf(h, "%q %x %s %d:", req.Surface, fp, req.Form, len(req.Source))
 	h.Write([]byte(req.Source))
 	p, err := r.programs.get([32]byte(h.Sum(nil)), func() (*program, error) {
-		return r.build(env, req), nil
+		return r.build(env, req, shell), nil
 	})
 	return p, env, err
 }
 
 // build compiles req's source in env, recording every finding as a
-// diagnostic.
-func (r *Registry) build(env *environment, req Request) *program {
-	p := &program{secrets: map[string][]string{}, whole: req.Form == FormExpression}
+// diagnostic; a shell surface's template is always text.
+func (r *Registry) build(env *environment, req Request, shell bool) *program {
+	p := &program{
+		secrets: map[string][]string{}, whole: req.Form == FormExpression, shell: shell,
+	}
 	if n := len(req.Source); n > r.cfg.MaxSource {
 		p.check.Diagnostics = []Diagnostic{{
 			Severity: SeverityError,
@@ -558,7 +574,7 @@ func (r *Registry) build(env *environment, req Request) *program {
 			}}
 			return p
 		}
-		p.whole = whole(segs)
+		p.whole = whole(segs) && !shell
 	}
 	for _, seg := range segs {
 		if !seg.isExpr {
@@ -907,14 +923,10 @@ func (r *Registry) run(
 			if p.whole {
 				return val, r.size(val)
 			}
-			if s, err = text(val); err != nil {
-				return nil, &Failed{
-					Message: fmt.Sprintf(
-						"A %s value cannot be inserted into text.",
-						val.Type().TypeName(),
-					),
-					Range: &pt.span,
-				}
+			var bad *Failed
+			if s, bad = embed(val, p.shell); bad != nil {
+				bad.Range = &pt.span
+				return nil, bad
 			}
 		}
 		out.WriteString(s)
