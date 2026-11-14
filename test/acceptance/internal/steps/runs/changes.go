@@ -40,6 +40,7 @@ func (c *changeSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer lists the changes of the recorded (terraform|tofu) plan "(\w+)"$`,
 		c.lists)
 	sc.Step(`^the answer's edges are the changes "([^"]*)"$`, c.edges)
+	sc.Step(`^the answer's resources are the changes "([^"]*)"$`, c.resources)
 	sc.Step(`^the answer's endCursor is kept as "(\w+)"$`, c.endCursor)
 }
 
@@ -278,6 +279,27 @@ func (c *changeSteps) edges(addresses string) error {
 	}
 	if !slices.Equal(got, want) {
 		return fmt.Errorf("%w: the edges are %v, want %v", harness.ErrStep, got, want)
+	}
+	return nil
+}
+
+// resources checks the resources of the last answer, of changes-v3, in
+// its order, against want, comma-separated, each its address and its
+// change's type, as "terraform_data.this ADD".
+func (c *changeSteps) resources(want string) error {
+	var sets v3
+	r := c.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &sets) != nil {
+		return fmt.Errorf("%w: answered %d %s", harness.ErrStep, r.Status, r.Body)
+	}
+	var got []string
+	for _, set := range sets {
+		for _, res := range set.Resources {
+			got = append(got, res.Address+" "+string(res.Metadata.Type))
+		}
+	}
+	if g := strings.Join(got, ", "); g != want {
+		return fmt.Errorf("%w: the changes are %q, want %q", harness.ErrStep, g, want)
 	}
 	return nil
 }

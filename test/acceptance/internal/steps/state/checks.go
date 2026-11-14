@@ -142,15 +142,16 @@ func (b *backendSteps) locked(ctx context.Context, run, mode, runs string) error
 	return nil
 }
 
-// wrote checks how many state versions the run kept as run wrote.
+// wrote checks how many state versions the run kept as run wrote, whether
+// the scenario's worker or a launcher ran it.
 func (b *backendSteps) wrote(ctx context.Context, run string, n int) error {
-	tr, err := b.run(run)
-	if err != nil {
-		return err
+	id, ok := b.w.IDs[run]
+	if !ok {
+		return fmt.Errorf("%w: no run %q", harness.ErrStep, run)
 	}
 	var got int
 	if err := b.w.Row(ctx, `SELECT count(*) FROM managed_state_versions WHERE run_id = $1`,
-		[]any{harness.UUIDOf(tr.id)}, &got); err != nil {
+		[]any{harness.UUIDOf(id)}, &got); err != nil {
 		return err
 	}
 	if got != n {

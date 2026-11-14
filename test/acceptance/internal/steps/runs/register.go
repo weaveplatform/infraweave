@@ -13,4 +13,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&logSteps{w: w}).register(sc)
 	(&previewSteps{w: w, archives: map[string][]byte{}}).register(sc)
 	(&changeSteps{w: w}).register(sc)
+	(&trackedSteps{w: w}).register(sc)
 }

@@ -191,6 +191,14 @@ everywhere, and the reason names where the contract checks it instead.
   suite and a release build from one pin. An archive is downloaded once into
   the user's cache directory and checked against its pin each time a test
   binary uses it.
+- **The newest releases everywhere.** A scenario's stack sets no version,
+  so its runs take the newest release the recorded release indexes list,
+  and `TestUnitToolPins` holds each pin to its index's newest;
+  `deps-refresh.yml` records the indexes whenever it moves a pin. A real
+  launcher downloads its runs' tool from the suite's tool mirror, which
+  serves the pinned archive with the release's `SHA256SUMS` and its
+  signature, so the launcher verifies it against the vendor's key as it
+  would a download from the vendor, and no scenario downloads a release.
 
 ### Docker: skip locally, never in CI
 
