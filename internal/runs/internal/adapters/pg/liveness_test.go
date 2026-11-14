@@ -115,7 +115,9 @@ func TestAccLivenessEnded(t *testing.T) {
 		{Code: 137, Reason: workersapi.ExitKilled}:      schedule.NoteKilled,
 		{Code: 137, Reason: workersapi.ExitOutOfMemory}: "container out of memory",
 		{Reason: workersapi.ExitMissing}:                "container missing",
-		{}:                                              "container ended",
+		{Code: 137, Reason: workersapi.ExitRunTimeout}:  schedule.NoteRunTimeout,
+		{Code: 137, Reason: workersapi.ExitLogTimeout}:  schedule.NoteLogTimeout,
+		{}: "container ended",
 	} {
 		run := w.working(t, kernel.RunTypeTracked, kernel.RunStateApplying, nil, worker, w.now)
 		if failed, err := ended(kernel.NewULID(), run, exit); err != nil || failed {

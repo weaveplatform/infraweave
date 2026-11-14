@@ -773,6 +773,133 @@ func TestUnitLauncherReportsAnExitAfterARestart(t *testing.T) {
 	})
 }
 
+// TestUnitLauncherKillsASilentRun checks that a run whose container
+// prints a line every minute runs on, that a line moves the no-log
+// timeout's end within a held poll, and that a run silent for the no-log
+// timeout is killed and reported as such. The lines fall between the
+// polls, which renew each minute from the assignment, so the timeout
+// ends inside a held poll.
+func TestUnitLauncherKillsASilentRun(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		w.assign(t, "run-1", wire.AssignmentStatePREPARING, "")
+		c := w.exec.Container("worker-1")
+		<-time.After(30 * time.Second)
+		for range 10 {
+			c.Print("still planning")
+			<-time.After(time.Minute)
+		}
+		<-time.After(5*time.Minute + 45*time.Second)
+		synctest.Wait()
+		if c.Killed() {
+			t.Fatal("a run that printed a line every minute was killed")
+		}
+		c.Print("planned")
+		<-time.After(7*time.Minute - time.Second)
+		synctest.Wait()
+		if c.Killed() {
+			t.Fatal("a run silent for less than the no-log timeout was killed")
+		}
+		w.wantPoll(t, true, "run-1", nil)
+
+		<-time.After(time.Second)
+		synctest.Wait()
+		if !c.Killed() {
+			t.Fatal("a run silent for the no-log timeout runs on")
+		}
+		w.wantPoll(t, false, "run-1", &wire.ContainerExit{Code: 137, Reason: wire.LogTimeout})
+		if !strings.Contains(w.log.String(),
+			`msg="killed the run on its timeout" run=run-1 reason=log-timeout`) {
+			t.Fatalf("log: %s", w.log)
+		}
+		r.stop(t)
+	})
+}
+
+// TestUnitLauncherKillsALongRun checks that a run whose container prints
+// a line every five minutes is killed at the run timeout.
+func TestUnitLauncherKillsALongRun(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		w.assign(t, "run-1", wire.AssignmentStatePREPARING, "")
+		c := w.exec.Container("worker-1")
+		for range 13 {
+			<-time.After(5 * time.Minute)
+			c.Print("still applying")
+		}
+		<-time.After(5*time.Minute - time.Second)
+		synctest.Wait()
+		if c.Killed() {
+			t.Fatal("a run younger than the run timeout was killed")
+		}
+
+		<-time.After(time.Second)
+		synctest.Wait()
+		w.wantPoll(t, false, "run-1", &wire.ContainerExit{Code: 137, Reason: wire.RunTimeout})
+		r.stop(t)
+	})
+}
+
+// TestUnitLauncherTimesAResumedRun checks that a restarted launcher
+// times its resumed run from the container's start and from its own
+// start for output.
+func TestUnitLauncherTimesAResumedRun(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		w.assign(t, "run-1", wire.AssignmentStatePREPARING, "")
+		c := w.exec.Container("worker-1")
+		for range 6 {
+			<-time.After(5 * time.Minute)
+			c.Print("still applying")
+		}
+		r.stop(t)
+		<-time.After(30 * time.Minute)
+
+		r = w.start(t)
+		if c.Killed() {
+			t.Fatal("a resumed run's no-log timeout counts from before the restart")
+		}
+		<-time.After(5 * time.Minute)
+		c.Print("still applying")
+		<-time.After(5*time.Minute - time.Second)
+		synctest.Wait()
+		if c.Killed() {
+			t.Fatal("a resumed run was killed before its run timeout")
+		}
+		<-time.After(time.Second)
+		synctest.Wait()
+		w.wantPoll(t, false, "run-1", &wire.ContainerExit{Code: 137, Reason: wire.RunTimeout})
+		r.stop(t)
+	})
+}
+
+// TestUnitLauncherRetriesAFailedTimeoutKill checks that a kill the host
+// refuses is logged and tried again at the next poll.
+func TestUnitLauncherRetriesAFailedTimeoutKill(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		w.assign(t, "run-1", wire.AssignmentStatePREPARING, "")
+		c := w.exec.Container("worker-1")
+		c.FailKill(errors.New("refused"))
+		<-time.After(7 * time.Minute)
+		synctest.Wait()
+		if c.Killed() || !strings.Contains(w.log.String(),
+			`msg="kill the run on its timeout" run=run-1 reason=log-timeout error=refused`) {
+			t.Fatalf("killed %v; log: %s", c.Killed(), w.log)
+		}
+
+		c.FailKill(nil)
+		<-time.After(time.Minute)
+		synctest.Wait()
+		w.wantPoll(t, false, "run-1", &wire.ContainerExit{Code: 137, Reason: wire.LogTimeout})
+		r.stop(t)
+	})
+}
+
 func TestUnitLauncherRegistersAgainWhenItsSessionIsRefused(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)

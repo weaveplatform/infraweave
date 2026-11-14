@@ -30,10 +30,16 @@
 // stop and kill reach the run's container, cycle exits once the launcher
 // is idle, and a renewed session token replaces the old one.
 //
-// The cache directory's worker.json keeps the pool's worker and the run it
-// executes, so a restarted launcher resumes the worker, finds the run's
-// container by its labels, and reports its exit, or reports it missing
-// when it is gone. A refused session registers again: the same worker
+// The launcher kills a run's container that runs longer than
+// launcher.run_timeout from its start, or writes no output line for
+// launcher.log_timeout, and reports its exit with the reason run-timeout
+// or log-timeout; a kill the host refuses is tried again at the next poll.
+//
+// The cache directory's worker.json keeps the pool's worker, the run it
+// executes and when that run's container started, so a restarted launcher
+// resumes the worker, finds the run's container by its labels, keeps its
+// run timeout from that start, starts its no-log timeout afresh, and
+// reports its exit, or reports it missing when it is gone. A refused session registers again: the same worker
 // keeps its run, and a new one means the server lost the old worker and
 // failed its run, whose container is removed. A refused registration,
 // such as after a pool reset, ends Run with an error; other failures are
@@ -44,6 +50,7 @@
 //
 // ref: decision 0008 § "The launcher and the runner"
 // ref: decision 0008 § "Runner images"
+// ref: decision 0008 § "Timeouts and timers"
 //
 // # Input and output
 //
@@ -54,9 +61,9 @@
 // waits on containers through the executor, and reads and writes
 // worker.json, the tool binaries and the runs' workspaces in
 // launcher.cache_dir. It logs registration, each run's
-// start, signals and end, each line of the runner's output as "runner
-// output", each workspace it cannot remove, and each failed call with its
-// retry.
+// start, signals, timeout kills and end, each line of the runner's output
+// as "runner output", each workspace it cannot remove, and each failed
+// call with its retry.
 //
 // # Dependencies
 //
