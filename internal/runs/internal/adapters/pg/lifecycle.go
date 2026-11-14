@@ -27,7 +27,8 @@ const runColumns = `account_id, id, stack_id, type, state, state_version, state_
 	coalesce(force_apply_mode, ''), coalesce(local_workspace, ''), worker_pool_id, worker_id,
 	created_at, updated_at, delta, command, skip_initialization,
 	stop_requested_at, coalesce(stop_requested_by, ''), coalesce(stop_note, ''), stop_delivered_at,
-	kill_requested_at, coalesce(kill_requested_by, ''), coalesce(kill_note, ''), kill_delivered_at`
+	kill_requested_at, coalesce(kill_requested_by, ''), coalesce(kill_note, ''), kill_delivered_at,
+	logs_deleted_at`
 
 // insertColumns are runColumns as an INSERT names them, with the
 // priority_tier the claim orders by and without the delta, which a plan
@@ -52,7 +53,7 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt, &d, &command,
 		&skipInit,
 		&stop.at, &stop.by, &stop.note, &stop.delivered,
-		&kill.at, &kill.by, &kill.note, &kill.delivered)
+		&kill.at, &kill.by, &kill.note, &kill.delivered, &r.LogsDeletedAt)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
 	}
@@ -70,6 +71,10 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 		kernel.RunPriority(priority)
 	r.StateChangedAt, r.CreatedAt, r.UpdatedAt = r.StateChangedAt.UTC(), r.CreatedAt.UTC(),
 		r.UpdatedAt.UTC()
+	if r.LogsDeletedAt != nil {
+		at := r.LogsDeletedAt.UTC()
+		r.LogsDeletedAt = &at
+	}
 	return r, nil
 }
 

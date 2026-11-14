@@ -82,7 +82,8 @@ type Commit struct {
 // once. EnableWellKnownSecretMasking turns on the runner's well-known
 // secret patterns, and SkipVendorBinaryDownload runs the image's own
 // tool rather than the one the launcher mounts. LocalPreviewEnabled lets
-// runs be proposed on uploaded local workspaces. Deleting marks a stack
+// runs be proposed on uploaded local workspaces, and GithubActionDeploy
+// lets a proposed run be promoted to a tracked one. Deleting marks a stack
 // whose delete waits for its destroy run, which no other run joins.
 // Version counts the stack's writes, which SetTracked and Destroyed are
 // not.
@@ -110,6 +111,7 @@ type Settings struct {
 	Autoretry                    bool
 	Disabled                     bool
 	LocalPreviewEnabled          bool
+	GithubActionDeploy           bool
 	Lock                         *Lock
 	TrackedBranchHead            *Commit
 	TrackedCommit                *Commit

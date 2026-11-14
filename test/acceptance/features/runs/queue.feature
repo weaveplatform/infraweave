@@ -17,7 +17,8 @@ Feature: Runs queue on their stack
   run whatever the lock. Canceling the run that holds the lock releases
   it, which needs RUN_CANCEL_BLOCKING as well as RUN_CANCEL. A run's
   allowedActions are the actions its state allows next that the caller
-  holds, none once it ends; its priority is set until it ends. A run, its
+  holds, with a comment on any run and a retry once it ends; its priority
+  is set until it ends. A run, its
   stack and a stack's lists of runs, newest first and paged by cursor,
   read as their stack does; a search of runs keeps to the stacks the
   caller may read, pages by cursor or by offset, and counts its total.
@@ -111,13 +112,13 @@ Feature: Runs queue on their stack
     When token "h" sends "GET /api/v1/runs/{second}" through B
     Then it answers 200
     And the answer's state is '"QUEUED"'
-    And the answer's allowedActions is '["RUN_DISCARD","RUN_CANCEL","RUN_PRIORITIZE_SET"]'
+    And the answer's allowedActions is '["RUN_DISCARD","RUN_CANCEL","RUN_PRIORITIZE_SET","RUN_COMMENT"]'
     When token "h" sends "GET /api/v1/runs/{first}" through A
-    Then the answer's allowedActions is '["RUN_DISCARD","RUN_CANCEL_BLOCKING","RUN_PRIORITIZE_SET"]'
+    Then the answer's allowedActions is '["RUN_DISCARD","RUN_CANCEL_BLOCKING","RUN_PRIORITIZE_SET","RUN_COMMENT"]'
     When token "h" sends "POST /api/v1/stacks/infra/runs/{first}/cancel" with '{"note":"Not now"}' through B
     Then it answers 200
     And the answer's state is '"CANCELED"'
-    And the answer's allowedActions is '[]'
+    And the answer's allowedActions is '["RUN_RETRY_BLOCKING","RUN_COMMENT"]'
     And token "h" eventually reads the run "second" in the state "READY" through A
 
   @op:runPrioritySet @op:runStack @op:run @op:stackRuns @op:stackProposedRuns @op:stackRun @case:success
