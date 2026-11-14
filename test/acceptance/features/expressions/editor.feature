@@ -43,6 +43,28 @@ Feature: Expressions editor
     Then it answers 200
     And the answer's value is '"PROPOSED-abc"'
 
+  @op:expressionCheck @op:expressionComplete @op:expressionEvaluate @case:success
+  Scenario: A workflow command template is checked, completed and evaluated against a vendor, every value one shell word
+    On the workflow surface a context is a vendor, which every member
+    reads, with sample run parameters; the surface has no now.
+    Given two infraweave servers, A and B, on one database
+    And the member key is exchanged through A for token "m"
+    When token "m" sends "POST /api/v1/expressions/check" with '{"surface":"workflow","ref":"opentofu","form":"template","source":"tofu plan -lock=${{ lock }} -out=${{ planFileName }} ${{ targets.map(t, \"-target=\" + t) }}"}' through A
+    Then it answers 200
+    And the answer's diagnostics is '[]'
+    And the answer's type is '"string"'
+    When token "m" sends "POST /api/v1/expressions/complete" with '{"surface":"workflow","ref":"terraform","form":"template","source":"${{ work }}","position":{"line":1,"column":9}}' through B
+    Then it answers 200
+    And the answer completes "workspaceName"
+    When token "m" sends "POST /api/v1/expressions/evaluate" with '{"surface":"workflow","ref":"opentofu","form":"template","source":"tofu plan -out=${{ planFileName }} ${{ targets.map(t, \"-target=\" + t) }}","sample":{"targets":["a.b","x; touch pwned"]}}' through A
+    Then it answers 200
+    And the answer's value is '"tofu plan -out=\u0027infraweave.plan\u0027 \u0027-target=a.b\u0027 \u0027-target=x; touch pwned\u0027"'
+    When token "m" sends "POST /api/v1/expressions/check" with '{"surface":"workflow","ref":"opentofu","form":"template","source":"${{ now }}"}' through B
+    Then it answers 200
+    And the answer flags an error from 1:5 to 1:8
+    When token "m" sends "POST /api/v1/expressions/check" with '{"surface":"workflow","ref":"pulumi","form":"template","source":"x"}' through A
+    Then it answers a 404 problem "not-found"
+
   @op:expressionCheck @op:expressionComplete @op:expressionEvaluate @case:denial
   Scenario: A stack in a space the caller cannot read answers 404 until the caller reads the space
     Given two infraweave servers, A and B, on one database

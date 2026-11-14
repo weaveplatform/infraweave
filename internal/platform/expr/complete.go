@@ -90,7 +90,10 @@ func (r *Registry) Complete(
 			})
 		}
 	}
-	funcs := r.Functions()
+	shell := r.surfaces[req.Surface].Shell
+	funcs := slices.DeleteFunc(r.Functions(), func(f Function) bool {
+		return shell && strings.HasPrefix(f.Name, "random.")
+	})
 	if path == "" && !called {
 		for _, v := range vars {
 			s, err := parseSchema(v.Schema)
@@ -99,7 +102,9 @@ func (r *Registry) Complete(
 			}
 			add(v.Name, KindVariable, typeOf(s), "")
 		}
-		add(Now, KindVariable, "google.protobuf.Timestamp", "The evaluation's fixed time.")
+		if !shell {
+			add(Now, KindVariable, "google.protobuf.Timestamp", "The evaluation's fixed time.")
+		}
 		for _, f := range funcs {
 			if global(f) {
 				add(f.Name, kindOf(f), strings.Join(f.Signatures, "\n"), f.Description)

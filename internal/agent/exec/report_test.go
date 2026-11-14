@@ -88,8 +88,7 @@ func TestUnitLookupAndQuote(t *testing.T) {
 		lookup(env, "D") != "" {
 		t.Error("lookup")
 	}
-	if got := line([]string{"echo", "it's", "a b"}, "/tmp/o ut"); got !=
-		`'echo' 'it'\''s' 'a b' >'/tmp/o ut'` {
-		t.Errorf("line: %s", got)
+	if got := quote("it's a b"); got != `'it'\''s a b'` {
+		t.Errorf("quote: %s", got)
 	}
 }

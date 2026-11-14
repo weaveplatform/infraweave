@@ -1,20 +1,26 @@
-// Package vendors holds the command sets the runner calls in each phase,
-// one per tool a run's specification names. Lookup answers the Vendor of
-// a tool; its Commands are the commands of a worker state's phase, each
-// an argument list and the file its standard output goes to. Terraform
-// and OpenTofu share one command set under their own binaries: init,
-// plan to PlanFile and show of it as JSON, and apply of PlanFile, with
-// the launcher's lock timeout on each command that can lock.
+// Package vendors holds the runner's workflow: the command templates a
+// run executes in each phase, and the registry that renders them on the
+// workflow surface. Defaults answers a tool's built-in workflow, the
+// templates internal/iac/workflow declares under its binary; Read answers
+// the workflow a .infraweave/workflow.yml holds. Either checks every key
+// before any command runs, a fault naming the key, its line in the file
+// and its range. Commands renders a worker state's phase with the run's
+// parameters when the phase runs: init; plan, then showPlan with its
+// output to the plan's JSON file; and apply. Every value a template
+// embeds is one shell word, so no workspace name or target becomes shell
+// syntax.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
-// ref: decision 0010 § "How a run reaches it"
+// ref: decision 0024 "Workflow command templates"
 //
 // # Input and output
 //
-// None. It answers argument lists in memory; it runs nothing.
+// None. It takes a workflow file's bytes and answers shell lines in
+// memory; it reads no file and runs nothing.
 //
 // # Dependencies
 //
-// It imports internal/agent/wire's models and the standard library.
-// internal/agent/exec runs the commands it answers.
+// It imports internal/agent/wire's models, internal/iac/workflow,
+// internal/platform/expr and the standard library. internal/agent/exec
+// reads the workflow file and runs the lines it answers.
 package vendors

@@ -7,14 +7,18 @@
 // refused with 409 ends the runner with no further report.
 //
 // Before its first phase the runner writes the specification's mounted
-// files under the workspace, the managed state backend's file at the
-// project root, and builds the phase environment: the container's, the
+// files under the workspace, reads the project root's
+// .infraweave/workflow.yml when it has one, which a stack whose workflow
+// tool is CUSTOM must, and checks every template of it, or of the tool's
+// built-in workflow, failing the phase with the key at fault; it writes
+// the managed state backend's file at the project root, and builds the
+// phase environment: the container's, the
 // specification's variables with their write-only values opened, the
 // in-run API token, the backend's credentials, TF_IN_AUTOMATION and
 // TF_INPUT. One sh session runs every phase, so a variable a hook exports
 // is set in every later hook and command. A phase sets
-// TF_VAR_infraweave_run_state, then runs its before-hooks, its vendor's
-// commands and its after-hooks, each in a group of its own with no
+// TF_VAR_infraweave_run_state, then runs its before-hooks, its workflow's
+// commands, rendered then with the run's parameters, and its after-hooks, each in a group of its own with no
 // standard input, stopping at the first that fails, whose exit status the
 // failed report's details name. Planning's succeeded report carries the
 // delta internal/iac/plan reads from the plan's JSON.
@@ -62,7 +66,7 @@
 // # Dependencies
 //
 // It imports internal/agent/backend, client, handoff, runlog, vendors,
-// wire and workspace, internal/iac/plan, internal/kernel for the objects'
-// keys, and platform/mask and platform/seal. internal/agent/runner runs
+// wire and workspace, internal/iac/plan and workflow, internal/kernel for
+// the objects' keys, and platform/mask and platform/seal. internal/agent/runner runs
 // it.
 package exec

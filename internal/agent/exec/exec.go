@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/client"
@@ -143,7 +144,7 @@ type run struct {
 	failure     string
 	dir         string
 	env         []string
-	vendor      vendors.Vendor
+	workflow    *vendors.Workflow
 	options     vendors.Options
 	temp        string
 	shell       *session
@@ -182,7 +183,7 @@ func (r *run) report(ctx context.Context, rep wire.RunReport) (wire.NextStep, er
 }
 
 // phase executes state's phase in the session: the state's before-hooks,
-// its vendor's commands and its after-hooks, each in a group of its own,
+// its workflow's commands and its after-hooks, each in a group of its own,
 // stopping at the first that fails. A session that did not initialize the
 // workspace, as when a run resumes in a new container to apply or replan
 // its saved workspace, runs initialization's hooks and commands first.
@@ -207,19 +208,24 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	if state == wire.WorkerStateINITIALIZING {
 		r.announce()
 	}
-	commands, err := r.vendor.Commands(state, r.options)
-	if err != nil {
+	commands, err := r.workflow.Commands(ctx, state, r.options)
+	if errors.Is(err, vendors.ErrState) {
 		return fail("This runner executes no " + string(state) + " phase.")
 	}
-	init, err := r.vendor.Commands(wire.WorkerStateINITIALIZING, r.options)
+	reinit := !r.initialized && state != wire.WorkerStateINITIALIZING
+	var init []vendors.Command
+	if err == nil && reinit {
+		init, err = r.workflow.Commands(ctx, wire.WorkerStateINITIALIZING, r.options)
+	}
 	if err != nil {
-		return fail("This runner executes no INITIALIZING phase.")
+		return fail("The workflow's commands cannot be rendered: " +
+			strings.TrimSuffix(err.Error(), ".") + ".")
 	}
 	lists := [][]step{{{
 		text: "export TF_VAR_infraweave_run_state=" + quote(string(state)),
 		what: "Setting TF_VAR_infraweave_run_state",
 	}}}
-	if !r.initialized && state != wire.WorkerStateINITIALIZING {
+	if reinit {
 		lists = append(lists, r.hooks("before_init"), commandSteps(init), r.hooks("after_init"))
 	}
 	name := hookPhases[state]
@@ -270,15 +276,17 @@ func (r *run) hooks(phase string) []step {
 	return out
 }
 
-// commandSteps are the steps of a vendor's commands.
+// commandSteps are the steps of a workflow's commands. A command whose
+// output goes to a file is grouped first, so a line of several commands
+// writes all of their output there.
 func commandSteps(commands []vendors.Command) []step {
 	out := make([]step, len(commands))
 	for i, c := range commands {
-		what := "The command " + c.Args[0]
-		if len(c.Args) > 1 {
-			what += " " + c.Args[1]
+		text := c.Line
+		if c.Stdout != "" {
+			text = "{ " + text + "\n} >" + quote(c.Stdout)
 		}
-		out[i] = step{text: line(c.Args, c.Stdout), what: what}
+		out[i] = step{text: text, what: "The " + string(c.Key) + " command"}
 	}
 	return out
 }

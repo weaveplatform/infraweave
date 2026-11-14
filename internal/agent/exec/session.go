@@ -2,7 +2,6 @@ package exec
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -159,20 +158,4 @@ func (s *session) close() error {
 // quote is s as one word of the shell's language.
 func quote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
-}
-
-// line is args as one shell command, its standard output redirected to
-// stdout unless that is empty.
-func line(args []string, stdout string) string {
-	var b bytes.Buffer
-	for i, a := range args {
-		if i > 0 {
-			b.WriteByte(' ')
-		}
-		b.WriteString(quote(a))
-	}
-	if stdout != "" {
-		b.WriteString(" >" + quote(stdout))
-	}
-	return b.String()
 }

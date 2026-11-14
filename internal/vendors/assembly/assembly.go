@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -18,6 +19,7 @@ import (
 	vhttp "github.com/weaveplatform/infraweave/internal/vendors/internal/http"
 	"github.com/weaveplatform/infraweave/internal/vendors/internal/index"
 	"github.com/weaveplatform/infraweave/internal/vendors/internal/pg"
+	"github.com/weaveplatform/infraweave/internal/vendors/internal/surface"
 )
 
 // Stream is the vendors domain's migration stream.
@@ -113,6 +115,12 @@ func (d *Domain) Cron(log *slog.Logger) []cron.Task {
 		},
 	}}
 }
+
+// Surfaces are the domain's expression surfaces: the workflow command
+// templates', whose contexts are the vendors.
+//
+// ref: decision 0024 "Who declares a surface"
+func (d *Domain) Surfaces() []expr.Surface { return []expr.Surface{surface.Workflow()} }
 
 // Catalog is what other domains call of this one.
 func (d *Domain) Catalog() vendorsapi.Catalog { return d.catalog }

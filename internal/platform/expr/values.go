@@ -168,6 +168,39 @@ var (
 	errIterator = errors.New("an iterator does not convert")
 )
 
+// embed is val as a template embeds it: its text, or on a shell surface
+// a word quoted for POSIX sh, a list one word per element and an empty
+// list none. Each word is single-quoted, with each single quote it holds
+// closed, escaped and reopened, so the shell reads it back as it is and
+// nothing in it is syntax. A value holding a NUL byte has no word, since
+// no shell argument can hold one.
+//
+// ref: decision 0024 "Workflow command templates"
+func embed(val ref.Val, shell bool) (string, *Failed) {
+	items := []ref.Val{val}
+	if l, ok := val.(traits.Lister); ok && shell {
+		items = items[:0]
+		for it := l.Iterator(); it.HasNext() == types.True; {
+			items = append(items, it.Next())
+		}
+	}
+	words := make([]string, len(items))
+	for i, v := range items {
+		s, err := text(v)
+		switch {
+		case err != nil:
+			return "", &Failed{Message: fmt.Sprintf(
+				"A %s value cannot be inserted into text.", v.Type().TypeName())}
+		case !shell:
+			return s, nil
+		case strings.ContainsRune(s, 0):
+			return "", &Failed{Message: "A value holding a NUL byte cannot be a shell word."}
+		}
+		words[i] = "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+	}
+	return strings.Join(words, " "), nil
+}
+
 // text renders v as a template inserts it: a string as it is; an int,
 // uint, double, bool or duration as CEL's string() gives it; a timestamp
 // in RFC 3339; bytes in base64; a list or map as compact JSON with sorted

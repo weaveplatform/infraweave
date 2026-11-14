@@ -172,7 +172,7 @@ func newDomains(
 	workers.BindLiveness(runs.Liveness())
 	registry, err := expr.NewRegistry(
 		c.Expressions,
-		slices.Concat(configuration.Surfaces(), runs.Surfaces())...,
+		slices.Concat(configuration.Surfaces(), runs.Surfaces(), vendors.Surfaces())...,
 	)
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the surface or the setting

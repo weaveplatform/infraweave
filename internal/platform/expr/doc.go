@@ -18,6 +18,11 @@
 // infraweave's base64.*, json.*, url.*, merge, pick, omit, random.* and
 // fail. Functions lists it from the environment itself.
 //
+// A shell surface, the workflow's, has no now and no random.*, and its
+// templates are shell command lines: always text, with every value they
+// embed single-quoted for POSIX sh, a list as one word per element, so no
+// value becomes shell syntax.
+//
 // An evaluation is deterministic: now and a seed come with its Input,
 // random.* draws from the seed, every map is iterated in key order, and no
 // function reads the clock, the network or a file. It runs under
