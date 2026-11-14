@@ -88,7 +88,16 @@ func TestAccServiceGuards(t *testing.T) {
 	}
 
 	loud.err = errors.New("guard down")
-	if _, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{}); !errors.Is(err, loud.err) {
+	if _, err := f.svc.Delete(
+		ctx,
+		f.admin,
+		"infra",
+		kernel.Expect{},
+		false,
+	); !errors.Is(
+		err,
+		loud.err,
+	) {
 		t.Errorf("a delete whose guard fails = %v", err)
 	}
 	if _, err := f.svc.Stack(ctx, f.acct, "infra"); err != nil {
@@ -96,7 +105,7 @@ func TestAccServiceGuards(t *testing.T) {
 	}
 	loud.err = nil
 	quiet.deleted, loud.deleted = nil, nil
-	gone, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{})
+	gone, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

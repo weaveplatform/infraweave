@@ -677,7 +677,7 @@ func TestAccServiceStateChanges(t *testing.T) {
 		t.Errorf("SetStar of a missing stack = %v", err)
 	}
 	if got := pointers(t, func() error {
-		_, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{})
+		_, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{}, false)
 		return err
 	}()); len(got) != 0 {
 		t.Errorf("a protected stack's delete names %v", got)
@@ -687,7 +687,7 @@ func TestAccServiceStateChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := f.svc.Delete(
-		ctx, f.admin, "infra", kernel.ExpectVersions(st.Version),
+		ctx, f.admin, "infra", kernel.ExpectVersions(st.Version), false,
 	); !errors.Is(err, kernel.ErrStale) {
 		t.Errorf("a Delete of a stale version = %v", err)
 	}
@@ -696,6 +696,7 @@ func TestAccServiceStateChanges(t *testing.T) {
 		f.admin,
 		"infra",
 		kernel.ExpectAny(),
+		false,
 	); err != nil ||
 		got.ID != st.ID {
 		t.Errorf("Delete = %+v, %v", got, err)
@@ -705,6 +706,7 @@ func TestAccServiceStateChanges(t *testing.T) {
 		f.admin,
 		"infra",
 		kernel.Expect{},
+		false,
 	); !errors.Is(
 		err,
 		stacksapi.ErrNotFound,

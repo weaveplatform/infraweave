@@ -26,8 +26,9 @@ func (w *world) working(
 	t.Helper()
 	id := kernel.NewULID()
 	if _, err := w.db.Exec(t.Context(), `INSERT INTO runs (account_id, id, stack_id, type,
-		state, state_changed_at, commit, triggered_by, worker_pool_id, worker_id)
-		VALUES ($1, $2, $3, $4, $5, $6, '{"hash":"abc"}', 'alice', $7, $8)`,
+		state, state_changed_at, commit, triggered_by, worker_pool_id, worker_id, command)
+		VALUES ($1, $2, $3, $4, $5, $6, '{"hash":"abc"}', 'alice', $7, $8,
+			CASE WHEN $4 = 'TASK' THEN 'ls' END)`,
 		w.acct, id, w.stack, string(typ), string(state), changed, pool, worker); err != nil {
 		t.Fatal(err)
 	}

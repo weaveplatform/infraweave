@@ -190,6 +190,52 @@ func TestAccTrigger(t *testing.T) {
 	}
 }
 
+// TestAccTriggerTask creates a TASK run of the command on the stack's
+// tracked commit each time it is asked, answering its command, and
+// refuses a blank or overlong command at /command, a stack with no
+// commit, an unknown stack and a disabled stack.
+func TestAccTriggerTask(t *testing.T) {
+	w := newWorld(t)
+	s := w.triggerer(true)
+	task := kernel.Task{Command: "terraform output -json", SkipInitialization: true}
+	if _, err := s.Task(t.Context(), w.alice(), "network", task); !errors.Is(err,
+		trigger.ErrNoCommit) {
+		t.Errorf("a task on a stack with no commit = %v, want ErrNoCommit", err)
+	}
+	st := w.stacks.settings[w.stack]
+	st.Branch, st.TrackedCommit = "main", &stacksapi.Commit{Hash: "tracked"}
+	w.stacks.settings[w.stack] = st
+	v, err := s.Task(t.Context(), w.alice(), "network", task)
+	if err != nil || v.Run.Type != kernel.RunTypeTask || v.Run.Task == nil ||
+		*v.Run.Task != task || v.Run.Commit.Hash != "tracked" || v.Run.Commit.Branch != "main" ||
+		v.Run.State != kernel.RunStateQueued {
+		t.Fatalf("a task = %+v, %v", v.Run, err)
+	}
+	if again, err := s.Task(t.Context(), w.alice(), "network", task); err != nil ||
+		again.Run.ID == v.Run.ID {
+		t.Errorf("the task again = %s, %v; want another run", again.Run.ID, err)
+	}
+	for name, cmd := range map[string]string{
+		"a blank command":     "  ",
+		"an overlong command": strings.Repeat("x", kernel.MaxTaskCommand+1),
+	} {
+		if _, err := s.Task(t.Context(), w.alice(), "network",
+			kernel.Task{Command: cmd}); !refused(err, "/command") {
+			t.Errorf("%s = %v, want Invalid at /command", name, err)
+		}
+	}
+	if _, err := s.Task(t.Context(), w.alice(), "gone", task); !errors.Is(err,
+		stacksapi.ErrNotFound) {
+		t.Errorf("a task on an unknown stack = %v", err)
+	}
+	st.Disabled = true
+	w.stacks.settings[w.stack] = st
+	if _, err := s.Task(t.Context(), w.alice(), "network", task); !errors.Is(err,
+		lifecycle.ErrDisabled) {
+		t.Errorf("a task on a disabled stack = %v, want ErrDisabled", err)
+	}
+}
+
 // refused reports whether err is a *kernel.Invalid refusing one field,
 // at pointer.
 func refused(err error, pointer string) bool {

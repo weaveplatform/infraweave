@@ -123,7 +123,7 @@ func (s *Service) ProposeWorkspace(
 		if err := s.commitUpload(ctx, k, upload); err != nil {
 			return err
 		}
-		commit, err := s.commit(ctx, p.AccountID, st, "")
+		commit, err := s.commit(ctx, p.AccountID, st, "", "")
 		if err != nil {
 			return err
 		}

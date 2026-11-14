@@ -126,8 +126,9 @@ func (w *claimWorld) run(
 	t.Helper()
 	id := kernel.NewULID()
 	w.exec(t, `INSERT INTO runs (account_id, id, stack_id, type, state, commit, triggered_by,
-		priority, drift_detection, priority_tier, worker_pool_id, created_at)
-		VALUES ($1, $2, $3, $4, 'READY', '{"hash":"abc"}', 'alice', $5, $6, $7, $8, $9)`,
+		priority, drift_detection, priority_tier, worker_pool_id, created_at, command)
+		VALUES ($1, $2, $3, $4, 'READY', '{"hash":"abc"}', 'alice', $5, $6, $7, $8, $9,
+			CASE WHEN $4 = 'TASK' THEN 'ls' END)`,
 		acct, id, w.stacks["one"], string(s.typ), string(s.p), s.drift, s.tier(), pool, at)
 	return id
 }

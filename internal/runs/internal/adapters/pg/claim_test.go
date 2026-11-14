@@ -34,7 +34,8 @@ func (w *world) waits(
 	id := kernel.NewULID()
 	if _, err := w.db.Exec(t.Context(), `INSERT INTO runs (account_id, id, stack_id, type,
 		state, commit, triggered_by, priority, drift_detection, priority_tier, worker_pool_id,
-		created_at) VALUES ($1, $2, $3, $4, $5, '{"hash":"abc"}', 'alice', $6, $7, $8, $9, $10)`,
+		created_at, command) VALUES ($1, $2, $3, $4, $5, '{"hash":"abc"}', 'alice', $6, $7, $8,
+			$9, $10, CASE WHEN $4 = 'TASK' THEN 'ls' END)`,
 		acct, id, w.stack, string(typ), string(state), string(p), drift,
 		kernel.RunTier(p, typ, drift), pool, at); err != nil {
 		t.Fatal(err)

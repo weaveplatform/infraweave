@@ -65,6 +65,43 @@ func (s Server) RunTrigger(
 	return api.RunTrigger200JSONResponse{Body: runOf(v)}, nil
 }
 
+// RunTriggerBatch triggers a tracked run on each stack the body lists,
+// all or none, and answers the runs in the body's order. The route has
+// decided RUN_TRIGGER in some space of the account; the trigger decides
+// it in each stack's.
+func (s Server) RunTriggerBatch(
+	ctx context.Context,
+	req api.RunTriggerBatchRequestObject,
+) (api.RunTriggerBatchResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		stacks []trigger.BatchStack
+		force  string
+	)
+	if b := req.Body; b != nil {
+		stacks = make([]trigger.BatchStack, len(b.Stacks))
+		for i, in := range b.Stacks {
+			stacks[i] = trigger.BatchStack{Stack: in.Stack, CommitSHA: deref(in.CommitSha)}
+		}
+		if b.ForceApply != nil {
+			force = string(*b.ForceApply)
+		}
+	}
+	views, err := s.trigger.Batch(ctx, p, stacks, force)
+	if err != nil {
+		return nil, runError(err, "", "")
+	}
+	out := api.RunTriggerBatchOutput{Runs: make([]api.RunTriggerBatchRun, len(views))}
+	for i, v := range views {
+		id := v.Run.ID.String()
+		out.Runs[i] = api.RunTriggerBatchRun{RunId: id, Run: &api.RunRef{Id: id}}
+	}
+	return api.RunTriggerBatch200JSONResponse{Body: out}, nil
+}
+
 // UploadLocalWorkspace starts the upload of a local workspace for a run
 // proposed on the stack to preview. The route has decided
 // STACK_UPLOAD_LOCAL_WORKSPACE on the stack's space.
@@ -147,6 +184,31 @@ func (s Server) ProposeWithOverrides(
 		return nil, runError(err, req.StackId, "")
 	}
 	return api.ProposeWithOverrides201JSONResponse{Body: runOf(v)}, nil
+}
+
+// TaskCreate creates a task on the stack: a TASK run of the command the
+// body names, on the stack's tracked commit. The route has decided
+// TASK_CREATE on the stack's space, with the tasks feature.
+func (s Server) TaskCreate(
+	ctx context.Context,
+	req api.TaskCreateRequestObject,
+) (api.TaskCreateResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var t kernel.Task
+	if req.Body != nil {
+		t = kernel.Task{
+			Command:            req.Body.Command,
+			SkipInitialization: deref(req.Body.SkipInitialization),
+		}
+	}
+	v, err := s.trigger.Task(ctx, p, req.StackId, t)
+	if err != nil {
+		return nil, runError(err, req.StackId, "")
+	}
+	return api.TaskCreate201JSONResponse{Body: runOf(v)}, nil
 }
 
 // overrides are the environment overrides a body names, in its order.
@@ -237,6 +299,10 @@ func runError(err error, slug, run string) error {
 	case errors.Is(err, lifecycle.ErrDisabled):
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.InvalidState.Error("The stack is disabled; enable it to trigger runs.")
+	case errors.Is(err, lifecycle.ErrDeleting):
+		//nolint:wrapcheck // as above
+		return problem.InvalidState.Error(
+			"The stack is being deleted; it runs nothing but its destroy run.")
 	case errors.Is(err, trigger.ErrLocalPreview):
 		//nolint:wrapcheck // as above
 		return problem.Forbidden.Error(fmt.Sprintf(
@@ -298,9 +364,14 @@ func runOf(v read.View) api.Run {
 	for i, a := range v.Actions {
 		allowed[i] = api.Action(a)
 	}
+	var command *string
+	if r.Task != nil {
+		command = &r.Task.Command
+	}
 	return api.Run{
 		AllowedActions: allowed,
 		Branch:         r.Commit.Branch,
+		Command:        command,
 		Comments:       []api.RunComment{},
 		Commit: api.Commit{
 			Hash: r.Commit.Hash, Tag: r.Commit.Tag, Url: r.Commit.URL, Message: r.Commit.Message,

@@ -5984,6 +5984,8 @@ components:
       properties:
         command:
           description: Command that will be run.
+          maxLength: 4096
+          minLength: 1
           type: string
           x-terraform:
             - spacelift_task.command
@@ -7453,6 +7455,11 @@ paths:
           x-graphql-arg: id
         - in: query
           name: destroyResources
+          description: |-
+            Destroy the stack's resources before deleting it. The stack answers
+            deleting and runs a DESTROY run on its tracked commit, and nothing
+            else, until that run ends; it is deleted when the run finishes, and
+            stays, no longer deleting, when the run ends any other way.
           schema:
             type: boolean
           x-graphql-arg: destroyResources
@@ -10903,7 +10910,7 @@ paths:
     post:
       description: Create a Task from a command.
       operationId: taskCreate
-      x-infraweave-feature: stacks
+      x-infraweave-feature: tasks
       x-infraweave-action: TASK_CREATE
       x-infraweave-subject: path:stackId:stack
       parameters:

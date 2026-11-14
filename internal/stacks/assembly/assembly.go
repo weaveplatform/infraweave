@@ -110,6 +110,11 @@ func (d *Domain) BindIntegrations(in stacksapi.StackIntegrations) {
 	d.stacks.BindIntegrations(in)
 }
 
+// BindDestroyer binds the runs domain's creation of a stack's destroy
+// run, a back edge internal/app binds after it constructs that domain;
+// until then a delete with destroyResources is refused.
+func (d *Domain) BindDestroyer(x stacksapi.StackDestroyer) { d.stacks.BindDestroyer(x) }
+
 // BindConfiguration binds the configuration domain's reader of a stack's
 // contexts and config elements, a back edge internal/app binds after it
 // constructs that domain; until then a stack has neither.

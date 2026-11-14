@@ -234,6 +234,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		RuntimeConfig: r.RuntimeConfig,
 		RunnerImage:   cmp.Or(rc.RunnerImage, st.RunnerImage),
 		Tool:          tool,
+		Task:          r.Task,
 		Hooks:         resolved.Hooks,
 	}
 	if st.ManagesState {

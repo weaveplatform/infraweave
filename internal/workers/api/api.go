@@ -93,7 +93,9 @@ type Spec struct {
 	Source SpecSource
 	// Tool is the infrastructure tool the run's launcher mounts, nil for a
 	// vendor with none.
-	Tool        *SpecTool
+	Tool *SpecTool
+	// Task is what a TASK run performs, nil for every other type.
+	Task        *kernel.Task
 	Hooks       map[string][]string
 	Environment []Variable
 	Files       []File
