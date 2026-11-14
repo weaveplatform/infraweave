@@ -361,8 +361,12 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   archive's URL, whose signature reads it, and the credential is replaced in
   any error that echoes it. The project root must then be a directory of the
   workspace. The workspace is owned by UID and GID 1983 when the launcher may
-  change owners; otherwise every user may read and write it, and a launcher
-  that is not root may be refused removing what the run wrote, which it logs.
+  change owners; otherwise every user may read and write it, and the
+  runner, before it exits, makes every directory the run made writable by
+  every user too, so a launcher that is not root removes the workspace once
+  the run pauses or ends, and restores a confirmed run's saved workspace
+  into a clean one. Only the launcher's user and the run's container reach
+  it, through the launcher's cache directory.
 - **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
   and `download`. The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the

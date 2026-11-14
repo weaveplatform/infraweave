@@ -40,6 +40,10 @@
 // before the phase's report; the after_run hooks' go to standard output
 // alone.
 //
+// Before it returns, a runner whose workspace another user owns, as a
+// launcher that is not root hands it, makes every directory the run made
+// writable by every user, so that launcher removes the workspace.
+//
 // ref: decision 0008 § "Phases, reports and the plan decision"
 // ref: decision 0008 § "Logs and artifacts"
 // ref: decision 0013 § "Masking"
@@ -47,7 +51,8 @@
 //
 // # Input and output
 //
-// It writes files under the workspace and a temporary directory, runs sh
+// It writes files under the workspace and a temporary directory, changes
+// the modes of the workspace's directories it made, runs sh
 // and the tool, whose output it masks onto the output it is given and
 // uploads, sends reports through a Reporter and log chunks through a
 // runlog.API, and uploads and records its artifacts through Uploads. It

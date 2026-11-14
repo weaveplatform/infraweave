@@ -27,11 +27,16 @@ import (
 
 // launcherSteps run real launchers of a @docker scenario's pools: each an
 // infraweave launcher process with coverage, which reaches the server
-// through the scenario's relay and runs its runs in containers of
-// RunnerImage on the suite's Docker daemon, mounting the Linux build of
-// infraweave as their runner. The relay records each call and holds the
+// through the scenario's relay and runs its runs in containers on the
+// suite's Docker daemon, mounting the Linux build of infraweave as their
+// runner. A run's image is its stack's, else the runner image of the
+// scenario's tool, @terraform's or @tofu's, else RunnerImage; a launcher
+// of a @terraform or @tofu scenario downloads and verifies the tool
+// from the suite's tool mirror. The relay records each call and holds the
 // runners' reports on demand, so a run stays on its worker while the
-// scenario kills the launcher.
+// scenario kills the launcher; a run's container reaches the API through
+// it at {relay.url}. {runner.spacelift} names Spacelift's public runner
+// image as test/deps pins it, for a stack to run in.
 //
 // ref: decision 0008 § "The launcher and the runner"
 // ref: decision 0016
@@ -56,6 +61,7 @@ type launcher struct {
 
 func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	l.launchers = map[string]*launcher{}
+	l.w.IDs["runner.spacelift"] = deps.ImageSpaceliftRunnerTerraform
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)
@@ -108,6 +114,7 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 		if l.network, err = host.Network(ctx, l.label, w.Ports(l.relay.Port)...); err != nil {
 			return err
 		}
+		w.IDs["relay.url"] = l.relay.URL
 	}
 	poolToken, err := l.poolToken(ctx, token, pool, replica)
 	if err != nil {
@@ -141,12 +148,34 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, repli
 	if ca := w.CAFile(); ca != "" {
 		settings["ca_file"] = ca
 	}
+	for _, t := range scenarioTools {
+		if !slices.Contains(w.Tags, t.tag) {
+			continue
+		}
+		if err := host.Build(ctx, t.image); err != nil {
+			return err //nolint:wrapcheck // names the image
+		}
+		if settings["tool_mirror"], err = host.Mirror(ctx, w.Suite.Deps, t.tool); err != nil {
+			return err //nolint:wrapcheck // names the release
+		}
+		settings["default_runner_image"] = t.image
+	}
 	config, err := yaml.Marshal(map[string]any{"launcher": settings})
 	if err != nil {
 		return fmt.Errorf("launcher config: %w", err)
 	}
 	l.launchers[name] = &launcher{dir: dir, config: config}
 	return l.run(ctx, name)
+}
+
+// scenarioTools are the tools a scenario's tags name, with the runner
+// image each runs in.
+var scenarioTools = []struct {
+	tag, image string
+	tool       deps.Tool
+}{
+	{"@terraform", harness.RunnerTerraform, deps.Terraform},
+	{"@tofu", harness.RunnerOpenTofu, deps.OpenTofu},
 }
 
 // poolToken reads the pool kept as pool through replica with token and

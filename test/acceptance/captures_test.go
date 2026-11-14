@@ -57,6 +57,12 @@ func captureEntries(t *testing.T) map[string]bool {
 // TestAccCaptures runs each one missing from the fixtures as a skipped
 // subtest, so a run names what it still waits for.
 var awaited = map[string]string{
+	"C17":  "runs/terraform.feature",
+	"C98":  "runs/terraform.feature",
+	"C101": "runs/terraform.feature",
+	"C102": "runs/terraform.feature",
+	"C103": "runs/terraform.feature",
+	"C104": "runs/terraform.feature",
 	"C105": "state/backend.feature",
 	"C111": "state/backend.feature",
 }

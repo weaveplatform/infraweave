@@ -369,7 +369,8 @@ func (r *run) afterRun(ctx context.Context, final string) {
 }
 
 // close ends the session and then the log, once it has read the
-// session's last line, and removes the run's temporary files.
+// session's last line, removes the run's temporary files, and hands the
+// workspace back to its launcher.
 func (r *run) close(ctx context.Context) {
 	if r.shell != nil {
 		_ = r.shell.close()
@@ -379,6 +380,12 @@ func (r *run) close(ctx context.Context) {
 	}
 	if r.temp != "" {
 		_ = os.RemoveAll(r.temp)
+	}
+	if r.d.Workspace == "" {
+		return
+	}
+	if err := handBack(r.d.Workspace); err != nil {
+		r.d.Log.WarnContext(ctx, "workspace not handed back", "run", r.h.Run, "error", err)
 	}
 }
 

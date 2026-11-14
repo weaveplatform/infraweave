@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -29,13 +30,17 @@ type Tool struct {
 	Download string
 	// SHA256 is the hex SHA-256 of each Linux archive, by its file name.
 	SHA256 map[string]string
+	// Signature is the suffix of the release's detached signature of its
+	// SHA256SUMS, which a launcher verifies against the vendor's key.
+	Signature string
 }
 
 // Terraform serves @terraform, from HashiCorp's release site.
 var Terraform = Tool{
-	Name:     "terraform",
-	Version:  "1.17.2",
-	Download: "https://releases.hashicorp.com/terraform/%s/",
+	Name:      "terraform",
+	Version:   "1.17.2",
+	Download:  "https://releases.hashicorp.com/terraform/%s/",
+	Signature: ".sig",
 	SHA256: map[string]string{
 		"terraform_1.17.2_linux_amd64.zip": "e6f16b2f0b137ee5729caa8c4e79a3bae4ee261acd198a1fcfa8584a6296605b",
 		"terraform_1.17.2_linux_arm64.zip": "858e08c181a76b6b223e8c767a8e983922eebe2d062db949a2de66ce040c368c",
@@ -44,9 +49,10 @@ var Terraform = Tool{
 
 // OpenTofu serves @tofu, from its GitHub releases.
 var OpenTofu = Tool{
-	Name:     "tofu",
-	Version:  "1.13.9",
-	Download: "https://github.com/opentofu/opentofu/releases/download/v%s/",
+	Name:      "tofu",
+	Version:   "1.13.9",
+	Download:  "https://github.com/opentofu/opentofu/releases/download/v%s/",
+	Signature: ".gpgsig",
 	SHA256: map[string]string{
 		"tofu_1.13.9_linux_amd64.zip": "bc44eb6b06446ba83bd4072114891987f590f66cca712737a7f1147c50c539ce",
 		"tofu_1.13.9_linux_arm64.zip": "04f7c93828b859d420269ed30f923ffebf09157b5d7fb95bf8d88a4d208b7fa3",
@@ -56,6 +62,11 @@ var OpenTofu = Tool{
 // Archive is the file name of t's Linux archive for arch, a GOARCH.
 func (t Tool) Archive(arch string) string {
 	return fmt.Sprintf("%s_%s_linux_%s.zip", t.Name, t.Version, arch)
+}
+
+// Sums is the file name of t's release's list of SHA-256s.
+func (t Tool) Sums() string {
+	return fmt.Sprintf("%s_%s_SHA256SUMS", t.Name, t.Version)
 }
 
 // The bounds of a download and of the binary it holds. Each tool's
@@ -119,10 +130,27 @@ func (d *Dependencies) Tool(ctx context.Context, t Tool, arch string) (string, e
 	return o.bin, o.err
 }
 
-// extract checks archive, downloading it when the cache lacks it or holds
-// other bytes, and extracts its binary into the test binary's tools
+// extract extracts archive's binary into the test binary's tools
 // directory.
 func (d *Dependencies) extract(ctx context.Context, t Tool, archive string) (string, error) {
+	path, err := d.cached(ctx, t, archive)
+	if err != nil {
+		return "", err
+	}
+	dir, err := d.toolsDir()
+	if err != nil {
+		return "", err
+	}
+	bin := filepath.Join(dir, archive+".d", t.Name)
+	if err := unzip(path, t.Name, bin); err != nil {
+		return "", err
+	}
+	return bin, nil
+}
+
+// cached is the path of archive in the tool cache, checked against its
+// pin and downloaded when the cache lacks it or holds other bytes.
+func (d *Dependencies) cached(ctx context.Context, t Tool, archive string) (string, error) {
 	want, ok := t.SHA256[archive]
 	if !ok {
 		return "", fmt.Errorf("%w for %s", ErrToolPin, archive)
@@ -143,15 +171,75 @@ func (d *Dependencies) extract(ctx context.Context, t Tool, archive string) (str
 			return "", fmt.Errorf("%w: %s is %s, pinned %s", ErrToolChecksum, archive, sum, want)
 		}
 	}
-	dir, err := d.toolsDir()
+	return path, nil
+}
+
+// Release returns the files of t's release for linux/arch that a mirror
+// serves, by name, as paths in the tool cache: the archive, SHA256SUMS
+// and its signature. The archive is checked against its pin, and
+// SHA256SUMS must list that SHA-256 for it, so the cache is fetched again
+// when it lists another. The signature is left to the launcher, which
+// verifies it as it would the vendor's.
+func (d *Dependencies) Release(
+	ctx context.Context,
+	t Tool,
+	arch string,
+) (map[string]string, error) {
+	archive := t.Archive(arch)
+	files, err := d.release(ctx, t, archive)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("%s %s for linux/%s: %w", t.Name, t.Version, arch, err)
 	}
-	bin := filepath.Join(dir, archive+".d", t.Name)
-	if err := unzip(path, t.Name, bin); err != nil {
-		return "", err
+	return files, nil
+}
+
+func (d *Dependencies) release(ctx context.Context, t Tool, archive string) (map[string]string,
+	error,
+) {
+	path, err := d.cached(ctx, t, archive)
+	if err != nil {
+		return nil, err
 	}
-	return bin, nil
+	cache, err := d.toolCache()
+	if err != nil {
+		return nil, err
+	}
+	sums := filepath.Join(cache, t.Sums())
+	sig := sums + t.Signature
+	base := fmt.Sprintf(t.Download, t.Version)
+	if !lists(sums, archive, t.SHA256[archive]) {
+		for _, f := range []string{sums, sig} {
+			if err := download(ctx, base+filepath.Base(f), f); err != nil {
+				return nil, err
+			}
+		}
+		if !lists(sums, archive, t.SHA256[archive]) {
+			return nil, fmt.Errorf("%w: %s does not list %s", ErrToolChecksum, t.Sums(),
+				t.SHA256[archive])
+		}
+	}
+	if _, err := os.Stat(sig); err != nil {
+		if err := download(ctx, base+filepath.Base(sig), sig); err != nil {
+			return nil, err
+		}
+	}
+	return map[string]string{
+		archive: path, t.Sums(): sums, t.Sums() + t.Signature: sig,
+	}, nil
+}
+
+// lists reports whether the SHA256SUMS at path lists sum for file.
+func lists(path, file, sum string) bool {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	for line := range strings.Lines(string(b)) {
+		if f := strings.Fields(line); len(f) == 2 && f[0] == sum && f[1] == file {
+			return true
+		}
+	}
+	return false
 }
 
 // toolCache is ToolCache, or infraweave-acceptance under the user's

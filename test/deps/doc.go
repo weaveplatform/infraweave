@@ -11,7 +11,9 @@
 // OpenTofu releases @terraform and @tofu run, and Tool downloads one's
 // Linux archive into a cache that outlives the test binary, checks it
 // against its pinned SHA-256 on each use, and extracts its binary once
-// per test binary. Eventually is the only way a TestAcc
+// per test binary; Release adds the release's SHA256SUMS, which must list
+// that SHA-256, and its signature, for a tool mirror to serve. Eventually
+// is the only way a TestAcc
 // test waits, polling with backoff up to WaitLimit. DockerReachable
 // reports whether a daemon answers, and KEK is the test key every server
 // runs with.
@@ -23,7 +25,8 @@
 // It starts and removes containers through the Docker daemon
 // testcontainers finds, writes the Gitea CA's files to a temporary
 // directory, calls Vault's and Gitea's APIs, and downloads the tools'
-// archives over HTTPS into the user's cache directory. It logs nothing.
+// archives, SHA256SUMS and signatures over HTTPS into the user's cache
+// directory. It logs nothing.
 //
 // # Dependencies
 //

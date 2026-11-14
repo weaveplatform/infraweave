@@ -89,7 +89,8 @@ func (c *catalogSteps) switchOff(names string) error {
 
 // serve starts the index server for the scenario's servers to read,
 // Terraform's without its newest release when without is set, and keeps
-// the newest Terraform release it lists as {terraform.newest}.
+// the newest release of each it lists as {terraform.newest} and
+// {opentofu.newest}.
 func (c *catalogSteps) serve(without string) error {
 	var tf, tofu struct {
 		Body json.RawMessage `json:"body"`
@@ -116,6 +117,9 @@ func (c *catalogSteps) serve(without string) error {
 		c.withheld, newest = newest[0], newest[1:]
 	}
 	c.w.IDs["terraform.newest"] = newest[0]
+	if c.w.IDs["opentofu.newest"], err = Newest("opentofu"); err != nil {
+		return err
+	}
 
 	r := chi.NewRouter()
 	r.Get("/terraform", c.hashicorp)
@@ -188,6 +192,30 @@ func (c *catalogSteps) stop() error {
 	defer c.mu.Unlock()
 	c.down = true
 	return nil
+}
+
+// Newest is the newest stable release the recorded index name,
+// terraform or opentofu, lists: the release a stack that sets no version
+// runs.
+func Newest(name string) (string, error) {
+	raw, err := os.ReadFile(fixtures + name + ".json")
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", harness.ErrStep, err)
+	}
+	var f struct {
+		Body json.RawMessage `json:"body"`
+	}
+	if err := json.Unmarshal(raw, &f); err != nil {
+		return "", fmt.Errorf("%w: fixture %s: %w", harness.ErrStep, name, err)
+	}
+	rs, err := stableReleases(name, f.Body)
+	if err != nil {
+		return "", err
+	}
+	if len(rs) == 0 {
+		return "", fmt.Errorf("%w: fixture %s lists no stable release", harness.ErrStep, name)
+	}
+	return rs[0], nil
 }
 
 // stableReleases are the stable releases of the recorded index name's
