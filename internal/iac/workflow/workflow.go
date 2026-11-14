@@ -25,6 +25,14 @@ const MaxSize = 256 << 10
 // Surface names the expression surface of the templates.
 const Surface = "workflow"
 
+// PlanFile is the saved plan's name in the project root, which planning
+// writes and applying reads, and planFileName's value.
+const PlanFile = "infraweave.plan"
+
+// DefaultWorkspace is workspaceName's value for a stack that names no
+// workspace: the one both tools start a configuration in.
+const DefaultWorkspace = "default"
+
 // Key names one command of a workflow.
 type Key string
 

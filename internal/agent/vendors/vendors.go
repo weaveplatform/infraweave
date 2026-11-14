@@ -11,10 +11,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 )
 
-// PlanFile is the saved plan's name in the project root, which planning
-// writes and applying reads. A paused run's saved workspace carries it to
-// the container that applies.
-const PlanFile = "infraweave.plan"
+// PlanFile is the saved plan's name in the project root. A paused run's
+// saved workspace carries it to the container that applies.
+const PlanFile = workflow.PlanFile
 
 // Command is one command of a phase: the workflow key it renders, its
 // shell line, and Stdout, a file its standard output is written to

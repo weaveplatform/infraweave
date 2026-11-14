@@ -142,10 +142,6 @@ const (
 	workspaceSetting = "workspace"
 )
 
-// defaultWorkspace is the workspace a stack that names none works in,
-// as both tools name the one a configuration starts in.
-const defaultWorkspace = "default"
-
 // setting is the stack's vendor setting name, empty when it is not a
 // string.
 func (r *run) setting(name string) string {
@@ -153,12 +149,12 @@ func (r *run) setting(name string) string {
 	return s
 }
 
-// workspaceName is the stack's workspace, or defaultWorkspace.
+// workspaceName is the stack's workspace, or workflow.DefaultWorkspace.
 func (r *run) workspaceName() string {
 	if ws := r.setting(workspaceSetting); ws != "" {
 		return ws
 	}
-	return defaultWorkspace
+	return workflow.DefaultWorkspace
 }
 
 // readFile reads at most limit bytes of name under dir, opened as a root.

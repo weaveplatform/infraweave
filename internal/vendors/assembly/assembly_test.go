@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/weaveplatform/infraweave/internal/iac/workflow"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
@@ -60,6 +61,9 @@ func TestUnitDomain(t *testing.T) {
 		Refresh.Queue != queue.Maintenance ||
 		Refresh.Policy != queue.Ignore {
 		t.Errorf("tasks %+v", tasks)
+	}
+	if s := (&Domain{}).Surfaces(); len(s) != 1 || s[0].Name != workflow.Surface || !s[0].Shell {
+		t.Errorf("surfaces %+v", s)
 	}
 }
 
