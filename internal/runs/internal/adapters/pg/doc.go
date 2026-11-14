@@ -26,7 +26,11 @@
 // run's handover it reads and locks a run by its ID alone, as a run token
 // names it, and makes the run's artifact key once, sealed to its row in
 // artifact_key_sealed, opening it on every later read, and opens the
-// run's overrides; SealedColumns names both columns. Held names the columns
+// run's overrides. For a tracked run's apply it replaces its stack's
+// outputs, each value sealed to its row in value_sealed whether or not it
+// is sensitive, and the stack's read reads them, opening the value of
+// each that is not sensitive. SealedColumns names the three sealed
+// columns. Held names the columns
 // that hold the access domain's accounts and the stacks domain's stacks,
 // and Keys declares the runs' key, which other domains' held columns name.
 // Every method joins the transaction its context carries.
@@ -34,13 +38,13 @@
 // # Input and output
 //
 // It reads and writes PostgreSQL through the querier it is given, and
-// seals and opens the artifact key and the overrides through the Sealer
-// it is given.
+// seals and opens the artifact key, the overrides and the outputs'
+// values through the Sealer it is given.
 //
 // # Dependencies
 //
-// It imports pgx, workersapi, the domain's core, handover, lifecycle and
-// schedule, internal/kernel, platform/crypt, platform/sql,
+// It imports pgx, stacksapi, workersapi, the domain's core, handover,
+// lifecycle and schedule, internal/iac/plan, internal/kernel, platform/crypt, platform/sql,
 // platform/sql/integrity, platform/sql/migrate, platform/sql/notify and
 // platform/tx. The runs domain's assembly constructs it over the
 // platform's keyring.

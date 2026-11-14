@@ -5,13 +5,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
@@ -28,14 +31,17 @@ import (
 var errDown = errors.New("down")
 
 // store holds one run, the states it entered by state version, its
-// indexed chunks, recorded objects and kept deltas; the named method in
-// fail fails.
+// indexed chunks, recorded objects, the key of the plan's JSON it
+// recorded while planning, kept deltas and its stack's outputs; the
+// named method in fail fails.
 type store struct {
 	run      lifecycle.Run
 	states   map[int64]kernel.RunState
 	chunks   map[int64]report.Chunk
 	recorded map[string]report.Artifact
+	plan     string
 	deltas   []kernel.PlanDelta
+	outputs  map[string]plan.Output
 	purge    [][]report.Object
 	fail     string
 }
@@ -120,6 +126,20 @@ func (s *store) Workspace(context.Context, lifecycle.Run) (string, bool, error) 
 	return a.Key, ok, s.err("Workspace")
 }
 
+func (s *store) Planned(context.Context, lifecycle.Run, string) (string, bool, error) {
+	return s.plan, s.plan != "", s.err("Planned")
+}
+
+func (s *store) ReplaceOutputs(_ context.Context, _ lifecycle.Run,
+	outs map[string]plan.Output,
+) error {
+	if err := s.err("ReplaceOutputs"); err != nil {
+		return err
+	}
+	s.outputs = outs
+	return nil
+}
+
 func (s *store) PurgeObjects(context.Context, kernel.AccountID, int) ([]report.Object, error) {
 	if err := s.err("PurgeObjects"); err != nil || len(s.purge) == 0 {
 		return nil, err
@@ -130,11 +150,12 @@ func (s *store) PurgeObjects(context.Context, kernel.AccountID, int) ([]report.O
 }
 
 // objects records what it was asked; uploaded holds the size and
-// SHA-256 of each key's upload, and the named method in fail fails with
-// failErr, errDown when nil.
+// SHA-256 of each key's upload, contents what each key opens to, and the
+// named method in fail fails with failErr, errDown when nil.
 type objects struct {
 	begun    map[string][]byte
 	uploaded map[string]objectstore.Object
+	contents map[string]string
 	deleted  []string
 	fail     string
 	failErr  error
@@ -148,6 +169,17 @@ func (o *objects) err(m string) error {
 		return o.failErr
 	}
 	return errDown
+}
+
+func (o *objects) Open(_ context.Context, s objectstore.Name, k string) (io.ReadCloser, error) {
+	if err := o.err("Open"); err != nil {
+		return nil, err
+	}
+	c, ok := o.contents[string(s)+"/"+k]
+	if !ok {
+		return nil, objectstore.ErrNotFound
+	}
+	return io.NopCloser(strings.NewReader(c)), nil
 }
 
 func (o *objects) Begin(_ context.Context, s objectstore.Name, k string, _ int64, _ []byte) error {
@@ -249,12 +281,23 @@ func newWorld(typ kernel.RunType, state kernel.RunState) *world {
 		chunks:   map[int64]report.Chunk{},
 		recorded: map[string]report.Artifact{},
 	}
-	o := &objects{begun: map[string][]byte{}, uploaded: map[string]objectstore.Object{}}
+	o := &objects{
+		begun: map[string][]byte{}, uploaded: map[string]objectstore.Object{},
+		contents: map[string]string{},
+	}
 	m := &mover{s: s}
 	st := &stacks{}
 	return &world{s: s, o: o, m: m, st: st, svc: report.New(report.Deps{
 		DB: db{}, Store: s, Objects: o, Lifecycle: m, Stacks: st,
 	})}
+}
+
+// applied records doc as the outputs the run's apply at version 2
+// uploaded.
+func (w *world) applied(doc string) {
+	w.s.recorded["artifact/"+report.OutputsDocument] = report.Artifact{}
+	w.o.contents["run-artifacts/"+w.s.run.Account.String()+"/"+w.s.run.ID.String()+
+		"/APPLYING-2/"+report.OutputsDocument] = doc
 }
 
 // in runs fn in a transaction.
@@ -415,6 +458,7 @@ func TestUnitReportEdges(t *testing.T) {
 		},
 	} {
 		w := newWorld(tc.typ, tc.from)
+		w.applied(`{}`)
 		got, err := w.report(t, 2, tc.state, tc.ev)
 		if tc.refusals != nil {
 			if !errors.Is(err, tc.refusals) {
@@ -430,6 +474,119 @@ func TestUnitReportEdges(t *testing.T) {
 			StateVersion: 7,
 		}) {
 		t.Errorf("a run awaiting confirmation: %+v", s)
+	}
+}
+
+// TestUnitReportOutputs checks that a tracked run's succeeded apply
+// replaces its stack's outputs with those it recorded, each with its
+// description from the plan's JSON it recorded while planning, before
+// the run moves on; that a plan the store no longer holds leaves them
+// without descriptions; that an apply which recorded no outputs the
+// server reads is refused, as is any read or write that fails, without
+// moving the run; and that a failed apply, and a test case's apply,
+// keep no outputs.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func TestUnitReportOutputs(t *testing.T) {
+	const outputs = `{
+		"name": {"sensitive": false, "value": "web"},
+		"password": {"sensitive": true, "value": "hunter2"}
+	}`
+	planKey := func(w *world) string {
+		return w.s.run.Account.String() + "/" + w.s.run.ID.String() + "/PLANNING-1/" +
+			report.PlanDocument
+	}
+	newApply := func(typ kernel.RunType, doc string) *world {
+		w := newWorld(typ, kernel.RunStateApplying)
+		w.applied(doc)
+		w.s.plan = planKey(w)
+		w.o.contents["run-artifacts/"+w.s.plan] = `{"configuration": {"root_module": {
+			"outputs": {
+				"name": {"description": "The server's name"},
+				"gone": {"description": "An output the apply no longer has"}
+			}
+		}}}`
+		return w
+	}
+	apply := func(w *world, ev workersapi.ReportEvent) (workersapi.Step, error) {
+		return w.report(t, 2, kernel.RunStateApplying, ev)
+	}
+
+	w := newApply(kernel.RunTypeTracked, outputs)
+	got, err := apply(w, workersapi.ReportSucceeded)
+	want(t, got, err, workersapi.ActionExit, kernel.RunStateFinished, 3)
+	if !reflect.DeepEqual(w.s.outputs, map[string]plan.Output{
+		"name":     {Value: []byte(`"web"`), Description: "The server's name"},
+		"password": {Value: []byte(`"hunter2"`), Sensitive: true},
+	}) {
+		t.Errorf("the stack's outputs = %+v", w.s.outputs)
+	}
+
+	w = newApply(kernel.RunTypeTracked, outputs)
+	delete(w.o.contents, "run-artifacts/"+w.s.plan)
+	got, err = apply(w, workersapi.ReportSucceeded)
+	want(t, got, err, workersapi.ActionExit, kernel.RunStateFinished, 3)
+	if len(w.s.outputs) != 2 || w.s.outputs["name"].Description != "" {
+		t.Errorf("the outputs of a plan past its retention = %+v", w.s.outputs)
+	}
+
+	w = newApply(kernel.RunTypeTracked, outputs)
+	w.s.plan = ""
+	got, err = apply(w, workersapi.ReportSucceeded)
+	want(t, got, err, workersapi.ActionExit, kernel.RunStateFinished, 3)
+	if len(w.s.outputs) != 2 {
+		t.Errorf("the outputs of a run that recorded no plan = %+v", w.s.outputs)
+	}
+
+	for name, tc := range map[string]struct {
+		setup func(w *world)
+		want  error
+	}{
+		"none recorded": {
+			func(w *world) { delete(w.s.recorded, "artifact/"+report.OutputsDocument) },
+			workersapi.ErrNoOutputs,
+		},
+		"expired": {
+			func(w *world) { clear(w.o.contents) },
+			workersapi.ErrNoOutputs,
+		},
+		"malformed": {
+			func(w *world) {
+				for k := range w.o.contents {
+					if !strings.HasSuffix(k, report.PlanDocument) {
+						w.o.contents[k] = `{"name": {"sensitive": false}}`
+					}
+				}
+			},
+			workersapi.ErrNoOutputs,
+		},
+		"plan malformed": {
+			func(w *world) { w.o.contents["run-artifacts/"+w.s.plan] = `[` },
+			plan.ErrMalformed,
+		},
+		"recorded":        {func(w *world) { w.s.fail = "Recorded" }, errDown},
+		"planned":         {func(w *world) { w.s.fail = "Planned" }, errDown},
+		"open":            {func(w *world) { w.o.fail = "Open" }, errDown},
+		"replace outputs": {func(w *world) { w.s.fail = "ReplaceOutputs" }, errDown},
+	} {
+		w := newApply(kernel.RunTypeTracked, outputs)
+		tc.setup(w)
+		if _, err := apply(w, workersapi.ReportSucceeded); !errors.Is(err, tc.want) {
+			t.Errorf("%s: %v, want %v", name, err, tc.want)
+		}
+		if len(w.m.reqs) != 0 || w.s.outputs != nil {
+			t.Errorf("%s: moved %+v, kept %+v", name, w.m.reqs, w.s.outputs)
+		}
+	}
+
+	w = newApply(kernel.RunTypeTracked, outputs)
+	got, err = apply(w, workersapi.ReportFailed)
+	want(t, got, err, workersapi.ActionExit, kernel.RunStateFailed, 3)
+	w = newApply(kernel.RunTypeTesting, `[`)
+	got, err = apply(w, workersapi.ReportSucceeded)
+	want(t, got, err, workersapi.ActionExecute, kernel.RunStateDestroying, 3)
+	if w.s.outputs != nil {
+		t.Errorf("a test case's apply kept %+v", w.s.outputs)
 	}
 }
 

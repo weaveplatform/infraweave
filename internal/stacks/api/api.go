@@ -345,7 +345,8 @@ type StackConfiguration interface {
 // StackStatus is what the stack view reads of the runs domain, which is
 // constructed after stacks and implements it: the run blocking each of
 // the account's stacks, the run that holds its run lock, keyed by stack
-// ID, with a stack no run blocks absent, and the stack a run belongs to.
+// ID, with a stack no run blocks absent, the stack a run belongs to, and
+// the outputs of each stack's last applied run.
 // The stacks domain declares it,
 // so the back edge internal/app binds after construction adds no import.
 //
@@ -359,6 +360,25 @@ type StackStatus interface {
 	// RunStack is the stack of acct's run, which runStack answers;
 	// ErrNotFound when acct lacks the run.
 	RunStack(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, error)
+	// Outputs are the outputs of each of acct's stacks, by name, keyed by
+	// stack ID, with a stack that has none absent.
+	Outputs(
+		ctx context.Context,
+		acct kernel.AccountID,
+		stacks []kernel.ULID,
+	) (map[kernel.ULID][]Output, error)
+}
+
+// Output is one of a stack's outputs as its last applied run left it:
+// its name, description, whether it is sensitive, and its value as JSON,
+// nil for a sensitive output, whose value no read answers.
+//
+// ref: decision 0008 § "Logs and artifacts"
+type Output struct {
+	Name        string
+	Description string
+	Sensitive   bool
+	Value       json.RawMessage
 }
 
 // Blocker is the run that holds a stack's run lock: Run, its ID, and

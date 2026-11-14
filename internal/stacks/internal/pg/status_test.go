@@ -12,10 +12,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/http"
 )
 
-// status is the runs domain's answer of the run blocking each stack,
-// failing with err.
+// status is the runs domain's answer of the run blocking each stack and
+// each stack's outputs, failing with err.
 type status struct {
 	blockers map[kernel.ULID]stacksapi.Blocker
+	outputs  map[kernel.ULID][]stacksapi.Output
 	err      error
 }
 
@@ -31,11 +32,19 @@ func (s status) Blockers(
 	return s.blockers, s.err
 }
 
+func (s status) Outputs(
+	context.Context,
+	kernel.AccountID,
+	[]kernel.ULID,
+) (map[kernel.ULID][]stacksapi.Output, error) {
+	return s.outputs, s.err
+}
+
 // TestAccHandlersStatus checks that a stack's view shows its state and
 // blocked from the projection, NONE and unblocked with no run, its
 // blocker from the bound status, none before one is bound, the blocker's
-// delta while the runs domain answers one, and that it fails when the
-// runs domain does.
+// delta while the runs domain answers one, its outputs with no value for
+// a sensitive one, and that it fails when the runs domain does.
 func TestAccHandlersStatus(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
@@ -87,6 +96,20 @@ func TestAccHandlersStatus(t *testing.T) {
 	}
 	if err != nil || v.Delta == nil || *v.Delta != want {
 		t.Errorf("the delta of a stack an unconfirmed run blocks = %+v, %v", v.Delta, err)
+	}
+
+	s.SetStackStatus(status{outputs: map[kernel.ULID][]stacksapi.Output{infra.ID: {
+		{Name: "name", Description: "The server's name", Value: []byte(`"web"`)},
+		{Name: "password", Sensitive: true, Value: []byte(`"hunter2"`)},
+	}}})
+	v, err = read()
+	if err != nil || len(v.Outputs) != 2 ||
+		v.Outputs[0].Id != "name" || v.Outputs[0].Sensitive ||
+		v.Outputs[0].Description == nil || *v.Outputs[0].Description != "The server's name" ||
+		v.Outputs[0].Value == nil || *v.Outputs[0].Value != `"web"` ||
+		v.Outputs[1].Id != "password" || !v.Outputs[1].Sensitive ||
+		v.Outputs[1].Description != nil || v.Outputs[1].Value != nil {
+		t.Errorf("a stack's outputs = %+v, %v", v.Outputs, err)
 	}
 
 	down := errors.New("runs down")

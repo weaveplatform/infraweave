@@ -17,7 +17,9 @@
 // them, its state and blocked from the runs domain's projection, its
 // blocker from the stacksapi.StackStatus SetStackStatus binds, none until
 // one is bound, with the blocker's plan delta while it waits in
-// UNCONFIRMED, and the members later phases own at their empty values.
+// UNCONFIRMED, its outputs from the same StackStatus, each value the
+// JSON of the tool's output as a string and none for a sensitive output,
+// and the members later phases own at their empty values.
 // The service's errors answer as problems: a missing action 403 naming it, a
 // stack locked by another 409 resource-locked naming the holder, a commit
 // operation on a stack whose VCS integration was deleted 409

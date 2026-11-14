@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"regexp"
 	"slices"
 	"strconv"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
@@ -82,15 +84,21 @@ type Store interface {
 	// Workspace reads the key of the workspace run recorded last, and
 	// false when it recorded none.
 	Workspace(ctx context.Context, run lifecycle.Run) (string, bool, error)
+	// Planned reads the key of the artifact name run recorded last while
+	// planning, and false when it recorded none.
+	Planned(ctx context.Context, run lifecycle.Run, name string) (string, bool, error)
+	// ReplaceOutputs replaces the outputs of run's stack with outs.
+	ReplaceOutputs(ctx context.Context, run lifecycle.Run, outs map[string]plan.Output) error
 	// PurgeObjects deletes up to batch of acct's log chunks or other
 	// recorded objects and answers their objects, with the compacted log
 	// of each state whose chunks it deleted; none once both are empty.
 	PurgeObjects(ctx context.Context, acct kernel.AccountID, batch int) ([]Object, error)
 }
 
-// Objects records and signs objects in blob_objects; blobs.Objects is
-// one.
+// Objects records, signs and opens objects in blob_objects; blobs.Objects
+// is one.
 type Objects interface {
+	Open(ctx context.Context, store objectstore.Name, key string) (io.ReadCloser, error)
 	Begin(ctx context.Context, store objectstore.Name, key string, size int64, sum []byte) error
 	BeginSealed(ctx context.Context, store objectstore.Name, key string, size int64,
 		sum, content []byte) error
@@ -230,6 +238,11 @@ func (s *Service) Report(
 		if to == run.State {
 			return step(run), nil
 		}
+		if applied(run, r) {
+			if err := s.keepOutputs(ctx, run); err != nil {
+				return workersapi.Step{}, err
+			}
+		}
 		return s.move(ctx, run, to, machine.DriverWorkerReport, r.Details)
 	case run.Version - 1:
 		from, err := s.d.Store.StateAt(ctx, run.Account, run.ID, r.StateVersion)
@@ -306,6 +319,77 @@ func Decision(t kernel.RunType, d kernel.PlanDelta, st stacksapi.Settings) kerne
 	default:
 		return kernel.RunStateUnconfirmed
 	}
+}
+
+// The documents a run records that the server reads: the plan's JSON
+// while planning, and the outputs' JSON while applying.
+const (
+	PlanDocument    = "plan.json"
+	OutputsDocument = "outputs.json"
+)
+
+// applied reports whether r is a succeeded report of a tracked run's
+// APPLYING, whose outputs become its stack's.
+func applied(run lifecycle.Run, r workersapi.Report) bool {
+	return run.Type == kernel.RunTypeTracked && run.State == kernel.RunStateApplying &&
+		r.State == kernel.RunStateApplying && r.Event == workersapi.ReportSucceeded
+}
+
+// keepOutputs replaces the outputs of run's stack, in the report's
+// transaction, with those its apply recorded at its state version, each
+// with its description from the plan's JSON the run recorded while
+// planning, or none once the store's retention removed it. A run that
+// recorded no outputs the server reads is ErrNoOutputs, since its runner
+// records them before its report.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func (s *Service) keepOutputs(ctx context.Context, run lifecycle.Run) error {
+	ok, err := s.d.Store.Recorded(ctx, run, run.Version, workersapi.UploadArtifact,
+		OutputsDocument)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	if !ok {
+		return fmt.Errorf("%w: run %s", workersapi.ErrNoOutputs, run.ID)
+	}
+	var outs map[string]plan.Output
+	if err := s.read(ctx, key(run, OutputsDocument), func(r io.Reader) (err error) {
+		outs, err = plan.ReadOutputs(r)
+		return err //nolint:wrapcheck // plan names the document
+	}); err != nil {
+		return fmt.Errorf("%w: run %s: %w", workersapi.ErrNoOutputs, run.ID, err)
+	}
+	planned, ok, err := s.d.Store.Planned(ctx, run, PlanDocument)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	var descriptions map[string]string
+	if ok {
+		err := s.read(ctx, planned, func(r io.Reader) (err error) {
+			descriptions, err = plan.Descriptions(r)
+			return err //nolint:wrapcheck // plan names the document
+		})
+		if err != nil && !errors.Is(err, objectstore.ErrNotFound) {
+			return fmt.Errorf("runs: read run %s's plan for its outputs: %w", run.ID, err)
+		}
+	}
+	for name, d := range descriptions {
+		if o, ok := outs[name]; ok {
+			o.Description = d
+			outs[name] = o
+		}
+	}
+	return s.d.Store.ReplaceOutputs(ctx, run, outs) //nolint:wrapcheck // the store names the write
+}
+
+// read opens the run artifact at key and reads it with f.
+func (s *Service) read(ctx context.Context, key string, f func(io.Reader) error) error {
+	r, err := s.d.Objects.Open(ctx, objectstore.RunArtifacts, key)
+	if err != nil {
+		return err //nolint:wrapcheck // blobs names the object
+	}
+	defer r.Close()
+	return f(r)
 }
 
 // planned reports whether r is a succeeded report of PLANNING, the one

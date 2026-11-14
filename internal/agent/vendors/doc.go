@@ -6,7 +6,8 @@
 // before any command runs, a fault naming the key, its line in the file
 // and its range. Commands renders a worker state's phase with the run's
 // parameters when the phase runs: init; plan, then showPlan with its
-// output to the plan's JSON file; and apply. Every value a template
+// output to the plan's JSON file; and apply, then getOutputs with its
+// output to the outputs' JSON file. Every value a template
 // embeds is one shell word, so no workspace name or target becomes shell
 // syntax.
 //

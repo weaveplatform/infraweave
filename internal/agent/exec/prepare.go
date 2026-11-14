@@ -93,7 +93,8 @@ func (r *run) setUp(ctx context.Context) string {
 			WorkspaceName: r.workspaceName(),
 			LockTimeout:   r.h.StateLockTimeout,
 		},
-		PlanJSON: filepath.Join(r.temp, "plan.json"),
+		PlanJSON:    filepath.Join(r.temp, "plan.json"),
+		OutputsJSON: filepath.Join(r.temp, "outputs.json"),
 	}
 	if r.shell, err = start(ctx, r.dir, r.env, r.log.File()); err != nil {
 		if errors.Is(err, osexec.ErrNotFound) {
