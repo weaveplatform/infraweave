@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/go-chi/chi/v5"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -66,6 +67,10 @@ type Launchers struct {
 	root  string
 	mu    sync.Mutex
 	built map[string]error
+	// mirror is the tool mirror, once Mirror starts it. Its lock is its
+	// own, so a build never holds up a download.
+	mirrorMu sync.Mutex
+	mirror   *mirror
 }
 
 // prepare builds what the launchers need into dir, from the module at
@@ -193,7 +198,9 @@ func (l *Launchers) Network(ctx context.Context, scenario string, ports ...strin
 }
 
 // Remove removes every container labelled with the label key=value, run
-// containers and forwarders alike, running or not.
+// containers and forwarders alike, running or not. A container already
+// gone, or whose removal is in progress, such as one its launcher removes
+// as it stops, counts as removed.
 func (l *Launchers) Remove(ctx context.Context, key, value string) error {
 	list, err := l.cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true, Filters: client.Filters{}.Add("label", key+"="+value),
@@ -204,7 +211,9 @@ func (l *Launchers) Remove(ctx context.Context, key, value string) error {
 	var errs error
 	for _, c := range list.Items {
 		_, err := l.cli.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{Force: true})
-		errs = errors.Join(errs, err)
+		if !cerrdefs.IsConflict(err) && !cerrdefs.IsNotFound(err) {
+			errs = errors.Join(errs, err)
+		}
 	}
 	if errs != nil {
 		return fmt.Errorf("docker: %w", errs)
@@ -212,8 +221,12 @@ func (l *Launchers) Remove(ctx context.Context, key, value string) error {
 	return nil
 }
 
-// Close removes RunnerImage and closes the client.
+// Close stops the tool mirror, removes RunnerImage and closes the
+// client.
 func (l *Launchers) Close(ctx context.Context) error {
+	if l.mirror != nil {
+		l.mirror.srv.Close()
+	}
 	if l.cli == nil {
 		return nil
 	}
