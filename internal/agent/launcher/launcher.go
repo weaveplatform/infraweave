@@ -590,8 +590,10 @@ func (l *Launcher) restore(
 }
 
 // dropWorkspace removes run's workspace directory. A launcher that could
-// not hand the workspace to the run's user may be refused what the run
-// wrote there; that is logged, and the directory stays.
+// not hand the workspace to the run's user relies on the runner having
+// opened every directory the run made; one the runner never reached, as
+// when its container was killed, may refuse the removal, which is logged,
+// and the directory stays.
 func (l *Launcher) dropWorkspace(ctx context.Context, run string) {
 	dir, err := l.workspaceDir(run)
 	if err == nil {
