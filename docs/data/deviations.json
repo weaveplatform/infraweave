@@ -584,7 +584,7 @@
       "id": "DV-063",
       "group": "Observability: decision 0017",
       "spacelift": "Workers upload traces, CPU profiles and logs to a run observability bucket",
-      "infraweave": "Workers export traces over OTLP to the operator's collector",
+      "infraweave": "Workers export traces over OTLP to the operator's collector; the run observability store holds only the tool's CPU profiles, one per run state",
       "why": "One telemetry path, owned by the operator",
       "impact": "Operators run a collector the workers can reach",
       "source": "[0017 Rationale](../research/decisions/0017-observability-and-health.md#rationale)"

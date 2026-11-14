@@ -200,6 +200,34 @@ _Avoid_: log archive, full log
 The counts of resources a plan adds, changes, deletes, imports, moves and forgets, and whether any output changes.
 _Avoid_: diff, plan summary
 
+**Task**:
+A run that performs one command a user gives on a stack, after initializing it, and holds the stack's lock while it does.
+_Avoid_: job, ad hoc run
+
+**Destroy run**:
+A run that destroys every resource a stack manages, without planning first; deleting a stack with its resources creates one, and the stack goes when it finishes.
+_Avoid_: teardown, delete run
+
+**Targeted replan**:
+Planning an unconfirmed run again against chosen resource addresses only, after which it waits for confirmation again.
+_Avoid_: partial plan, retarget
+
+**Stop request**:
+A user's request that a run's current command end early, reaching the run as an interrupt through its worker; a kill follows only when a stop did not end it.
+_Avoid_: cancel, which ends a run that has not started
+
+**Run timer**:
+A rule that ends a run nobody moves after a fixed time in a state or since its creation.
+_Avoid_: expiry, timeout, which is the launcher's limit on a running container
+
+**Stack output**:
+A value the stack's last successful apply output, kept sealed and shown by name, with its value hidden when it is sensitive.
+_Avoid_: export, result
+
+**CPU profile**:
+A record of where the tool spent its processor time during one state of a run, which a user downloads.
+_Avoid_: trace, metrics
+
 ### State
 
 **Managed state**:
