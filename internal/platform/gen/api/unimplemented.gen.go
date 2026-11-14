@@ -750,6 +750,10 @@ func (UnimplementedStrict) RoleUpdate(context.Context, RoleUpdateRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "roleUpdate", Route: "PUT /roles/{roleId}"}
 }
 
+func (UnimplementedStrict) RunLogRetentionDays(context.Context, RunLogRetentionDaysRequestObject) (RunLogRetentionDaysResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runLogRetentionDays", Route: "GET /run-log-retention-days"}
+}
+
 func (UnimplementedStrict) SearchRuns(context.Context, SearchRunsRequestObject) (SearchRunsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchRuns", Route: "POST /runs/search"}
 }

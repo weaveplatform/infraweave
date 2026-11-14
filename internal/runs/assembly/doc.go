@@ -1,7 +1,8 @@
 // Package assembly constructs the runs domain over its Deps, after the
 // configuration domain, with the lifecycle every run is created and moved
 // through. Jobs is its run.schedule handler, which moves a stack's queued
-// runs to READY, and Subscribe subscribes the consumer that schedules a
+// runs to READY, Cron its run.timers periodic task, which ends the runs
+// nobody moves, and Subscribe subscribes the consumer that schedules a
 // stack once it is unlocked or enabled. RegisterEvents registers
 // runsapi.Updated with the outbox, and BindSources binds the vcs domain's
 // runsapi.RunSources and stacksapi.StackSources, back edges, so a run's
@@ -20,7 +21,8 @@
 // edge the reap fails lost runs and overdue preparations through and a
 // poll fails a run whose container ended; Settings are run.lost_after and
 // run.preparing_timeout_default, which internal/app hands the workers
-// domain;
+// domain, and run.timers, which Deps carries with
+// objectstore.retention.run-logs, which runLogRetentionDays answers;
 // BindExpressions binds the registry the handover renders a stack's
 // environment with; SealedColumns names the run's sealed artifact key, for
 // internal/app's reseal; StackGuard is the
@@ -48,7 +50,8 @@
 //
 // It imports runsapi, stacksapi, configapi, workersapi, accessapi,
 // internal/kernel, the domain's core, handover, lifecycle, schedule,
-// surface, trigger, http and pg packages, platform/crypt, platform/expr,
+// surface, timers, trigger, http and pg packages, platform/cron,
+// platform/crypt, platform/expr,
 // platform/outbox, platform/queue, platform/sql/integrity and
 // platform/sql/migrate. Only
 // internal/app and cmd/ import it, as the constructors rule enforces.

@@ -22,7 +22,10 @@
 // worker's claim it reads and locks a pool's next run, skipping locked
 // rows, records the run's worker, counts a pool's drift runs on workers
 // under a per-pool advisory lock, and reports whether a worker holds a run;
-// Announce notifies infraweave_runs that a run waits in its pool. For a
+// Announce notifies infraweave_runs that a run waits in its pool. For
+// run.timers, Due reads and locks the runs a timer's cutoffs end, oldest
+// state change first, skipping locked rows, over the runs_waiting index.
+// For a
 // run's handover it reads and locks a run by its ID alone, as a run token
 // names it, and makes the run's artifact key once, sealed to its row in
 // artifact_key_sealed, opening it on every later read, and opens the
@@ -39,8 +42,8 @@
 //
 // # Dependencies
 //
-// It imports pgx, workersapi, the domain's core, handover, lifecycle and
-// schedule, internal/kernel, platform/crypt, platform/sql,
+// It imports pgx, workersapi, the domain's core, handover, lifecycle,
+// schedule and timers, internal/kernel, platform/crypt, platform/sql,
 // platform/sql/integrity, platform/sql/migrate, platform/sql/notify and
 // platform/tx. The runs domain's assembly constructs it over the
 // platform's keyring.

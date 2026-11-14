@@ -836,13 +836,23 @@ has failed":
 
 The timer rules and their notification rules are report 08's
 ([08 timers](../reference/08-run-lifecycle.md#timers)), and their defaults
-are Spacelift's. `run.timers` runs every minute, reads
-`runs (state, state_changed_at, created_at)` in bounded batches, oldest
-first, and skips runs held by a worker that still has a row, offline or
-not. Each timer's transition carries a note naming its rule, and its
-`run_updated` event names the rule, so notifications apply report 08's
-rules: the shorter rules notify, and the 30-day rule never does
-([0015](0015-events-notifications-webhooks-audit.md)).
+are Spacelift's. `run.timers` runs every minute on the scheduler queue and
+reads `runs (state, state_changed_at, created_at)` in batches of 100, ten
+transactions a pass at most, oldest state change first, skipping rows
+another transaction locks, so two replicas never end a run twice. It
+reads only the states a run waits in with no worker: `QUEUED`, `READY`,
+`PENDING_REVIEW`, `UNCONFIRMED`, `CONFIRMED` and `REPLAN_REQUESTED`. A run
+on a worker is liveness's, offline worker or not, so the 30-day rule's
+"unless a worker is executing it" is every state on a worker. Each rule
+ends a run through the timers' edge out of its state (T4, T9, T25, T27,
+T31, T34). A rule fires once its time has passed in full, and a run that
+two rules time out takes the 30-day rule. Each timer's transition carries
+a note naming its rule, such as `not picked up within 2 days`, and its
+`run_updated` event names the rule in `timer`, by its key under
+`run.timers`, so notifications apply report 08's rules: the shorter rules
+notify, and the 30-day rule (`max_age`) never does
+([0015](0015-events-notifications-webhooks-audit.md)). Each timer is at
+least a minute.
 
 A launcher that kills a container on either of its timeouts reports the
 container's exit with the reason `run-timeout` or `log-timeout`, beside
@@ -1038,6 +1048,13 @@ offers this policy is available to it alone; 0009 lists built-ins.
   run untouched; a poll at 59 minutes clears the mark and the run finishes;
   `FAILED` with `worker lost` at 60 minutes; a late poll answers `401`; a
   resumed registration after the session token expired keeps the run.
+- `TestUnitRunTimers` (`internal/runs/internal/core/timers`, on a fake
+  clock): each rule ends its runs at its boundary and not a minute before,
+  with its note and its rule; the 30-day rule goes before a shorter one; a
+  tracked run queued behind the lock and a run on a worker stay; a pass ends
+  at most 1,000 runs. `TestAccRunTimers` (PostgreSQL): the boundary at
+  microsecond precision, the released stack run lock and the event's
+  `timer`, and two concurrent passes ending each run once.
 - Gherkin acceptance with PostgreSQL, RustFS and Docker:
   `test/acceptance/features/workers/protocol.feature`,
   `runs/lifecycle.feature` (proposed, tracked with confirm, autodeploy, task,
