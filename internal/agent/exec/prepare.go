@@ -102,6 +102,7 @@ func (r *run) setUp(ctx context.Context) string {
 		}
 		return fmt.Sprintf("The runner cannot start its shell: %v.", err)
 	}
+	r.attach(r.shell)
 	return ""
 }
 

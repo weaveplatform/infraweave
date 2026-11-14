@@ -91,12 +91,14 @@ type Container struct {
 	run    string
 	ended  chan executor.Exit
 
-	mu      sync.Mutex
-	stopped int
-	killed  bool
-	removed bool
-	exit    *executor.Exit
-	err     error
+	mu         sync.Mutex
+	stopped    int
+	killed     bool
+	removed    bool
+	handedBack int
+	handBack   func() error
+	exit       *executor.Exit
+	err        error
 }
 
 // End ends the container with exit; a container ends once.
@@ -140,7 +142,35 @@ func (c *Container) Removed() bool {
 	return c.removed
 }
 
+// OnHandBack makes each later HandBack answer f's error.
+func (c *Container) OnHandBack(f func() error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.handBack = f
+}
+
+// HandedBack counts the launcher's hand-backs of the container's
+// workspace.
+func (c *Container) HandedBack() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.handedBack
+}
+
 func (c *Container) Run() string { return c.run }
+
+// HandBack counts a hand-back and answers OnHandBack's function's error,
+// nil without one.
+func (c *Container) HandBack(context.Context) error {
+	c.mu.Lock()
+	c.handedBack++
+	f := c.handBack
+	c.mu.Unlock()
+	if f == nil {
+		return nil
+	}
+	return f()
+}
 
 // Wait answers the container's exit once it ends; an ended container
 // answers it again.

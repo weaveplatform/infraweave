@@ -49,12 +49,22 @@
 // before the phase's report; the after_run hooks' go to standard output
 // alone.
 //
+// A stop is each SIGINT the launcher sends the runner, which takes the
+// first alone. The session leads a process group of its own and traps
+// SIGINT, so a stop in initialization or planning reaches the running
+// command's group and leaves the session for the after_run hooks; the
+// phase runs no further step, writes that it stopped to the state's log
+// and reports stopped. A stop between phases ends the next one before its
+// first step when that one is initialization or planning; every other
+// phase ignores it.
+//
 // Before it returns, a runner whose workspace another user owns, as a
 // launcher that is not root hands it, makes every directory the run made
 // writable by every user, so that launcher removes the workspace.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 // ref: decision 0008 § "Logs and artifacts"
+// ref: decision 0008 § "Stop and kill"
 // ref: decision 0013 § "Masking"
 // ref: decision 0010 § "How a run reaches it"
 //
@@ -62,7 +72,8 @@
 //
 // It writes files under the workspace and a temporary directory, changes
 // the modes of the workspace's directories it made, runs sh
-// and the tool, whose output it masks onto the output it is given and
+// and the tool, signals the session's process group on a stop, masks
+// their output onto the output it is given and
 // uploads, sends reports through a Reporter and log chunks through a
 // runlog.API, and uploads and records its artifacts through Uploads. It
 // logs each phase, the run's end, each report or upload it sends again

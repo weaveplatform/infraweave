@@ -10,9 +10,10 @@ import (
 	"syscall"
 )
 
-// handBack makes every directory of the workspace at dir that the run
+// HandBack makes every directory of the workspace at dir that the run
 // made writable by every user, when the workspace is not the runner's
-// own. A launcher that cannot change owners, one that is not root, hands
+// own. The runner calls it as a run ends, and runner hand-back for a run
+// whose container ended first. A launcher that cannot change owners, one that is not root, hands
 // the runner a workspace every user may write, and removes it once the
 // run pauses or ends, before it restores a confirmed run's saved
 // workspace into the same place; removing an entry needs write access to
@@ -21,7 +22,7 @@ import (
 // workspace, through the launcher's cache directory.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func handBack(dir string) error {
+func HandBack(dir string) error {
 	fi, err := os.Lstat(dir)
 	if err != nil {
 		return err //nolint:wrapcheck // names the path

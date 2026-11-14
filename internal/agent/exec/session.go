@@ -28,9 +28,12 @@ var ErrExited = errors.New("the session's shell exited")
 // session is one shell the steps of a run share, so a variable one step
 // exports is set in every later one. The shell reads the steps from its
 // standard input and writes each step's exit status to descriptor 3,
-// which no step's commands inherit.
+// which no step's commands inherit. It leads a process group of its own,
+// pid, which its steps' commands join, and traps SIGINT, so a stop ends
+// the running command and the session goes on to the after_run hooks.
 type session struct {
 	cmd    *osexec.Cmd
+	pid    int
 	sh     string
 	steps  io.WriteCloser
 	status *bufio.Reader
@@ -54,18 +57,38 @@ func start(ctx context.Context, dir string, env []string, out io.Writer) (*sessi
 	cmd.Dir, cmd.Env, cmd.Stdout, cmd.Stderr = dir, env, out, out
 	cmd.ExtraFiles = []*os.File{w}
 	cmd.WaitDelay = waitDelay
+	ownGroup(cmd)
 	steps, err := cmd.StdinPipe()
 	if err == nil {
 		err = cmd.Start()
 	}
 	_ = w.Close()
+	if err == nil {
+		// A trap, not an ignored signal, which every command would inherit:
+		// a command the shell starts takes SIGINT's default action.
+		_, err = io.WriteString(steps, "trap : INT\n")
+	}
 	if err != nil {
 		_ = r.Close()
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
 		return nil, fmt.Errorf("start the shell: %w", err)
 	}
 	return &session{
-		cmd: cmd, sh: sh, steps: steps, status: bufio.NewReader(r), file: r, dir: dir, out: out,
+		cmd: cmd, pid: cmd.Process.Pid, sh: sh, steps: steps, status: bufio.NewReader(r), file: r,
+		dir: dir, out: out,
 	}, nil
+}
+
+// interrupt sends SIGINT to the session's process group: the shell, which
+// traps it, and the commands of the step it runs.
+func (s *session) interrupt() error {
+	if err := interruptGroup(s.pid); err != nil {
+		return fmt.Errorf("interrupt the session: %w", err)
+	}
+	return nil
 }
 
 // find is the path of the executable file name in the first directory of

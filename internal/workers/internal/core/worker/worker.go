@@ -272,6 +272,7 @@ type Service struct {
 	scheduler workersapi.Scheduler
 	reports   workersapi.Reports
 	liveness  workersapi.Liveness
+	signals   workersapi.Signals
 	version   string
 	pollMax   time.Duration
 	clocks    clocks
@@ -307,6 +308,11 @@ func (s *Service) BindReports(r workersapi.Reports) { s.reports = r }
 // poll that reports an ended container fail runs through; until then
 // neither fails a run.
 func (s *Service) BindLiveness(l workersapi.Liveness) { s.liveness = l }
+
+// BindSignals binds the runs domain's signals, which a busy worker's poll
+// delivers its run's stop or kill through; until then a poll delivers
+// none.
+func (s *Service) BindSignals(sig workersapi.Signals) { s.signals = sig }
 
 // Registration is a registered worker and its session token.
 type Registration struct {

@@ -15,10 +15,17 @@ import (
 // Run reads the launcher's handoff from in and executes the run it hands
 // over in the working directory, the container's workspace, reporting
 // and uploading its log through doer. The phases' masked output goes to
-// standard output, which the launcher reads, too.
+// standard output, which the launcher reads, too. stop carries the
+// launcher's SIGINTs, each a stop of the run.
 //
 // ref: decision 0008 § "The launcher and the runner"
-func Run(ctx context.Context, in io.Reader, doer wire.HttpRequestDoer, log *slog.Logger) error {
+func Run(
+	ctx context.Context,
+	in io.Reader,
+	doer wire.HttpRequestDoer,
+	log *slog.Logger,
+	stop <-chan os.Signal,
+) error {
 	h, err := handoff.Read(in)
 	if err != nil {
 		return err //nolint:wrapcheck // handoff names the read
@@ -32,5 +39,12 @@ func Run(ctx context.Context, in io.Reader, doer wire.HttpRequestDoer, log *slog
 		Out:       os.Stdout,
 		Workspace: ".",
 		Environ:   os.Environ(),
+		Stop:      stop,
 	})
 }
+
+// HandBack opens the working directory, a run's workspace, to its
+// launcher's user, as Run does as the run ends. The launcher runs it in a
+// container of its own over a run container that ended before its
+// runner did, as a killed one.
+func HandBack() error { return exec.HandBack(".") } //nolint:wrapcheck // names the path

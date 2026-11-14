@@ -243,7 +243,11 @@ func (s *Service) Report(
 				return workersapi.Step{}, err
 			}
 		}
-		return s.move(ctx, run, to, machine.DriverWorkerReport, r.Details)
+		actor, note := lifecycle.Actor{}, r.Details
+		if to == kernel.RunStateStopped {
+			actor, note = run.Stop.Ends(note)
+		}
+		return s.move(ctx, run, to, machine.DriverWorkerReport, actor, note)
 	case run.Version - 1:
 		from, err := s.d.Store.StateAt(ctx, run.Account, run.ID, r.StateVersion)
 		if err != nil {
@@ -260,18 +264,19 @@ func (s *Service) Report(
 		id, run.Version, r.StateVersion)
 }
 
-// move moves run to to, driven by driver, with note as the transition's,
-// and answers the next step.
+// move moves run to to, driven by driver, with actor and note as the
+// transition's, and answers the next step.
 func (s *Service) move(
 	ctx context.Context,
 	run lifecycle.Run,
 	to kernel.RunState,
 	driver machine.Driver,
+	actor lifecycle.Actor,
 	note string,
 ) (workersapi.Step, error) {
 	moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
 		Account: run.Account, Run: run.ID, Version: run.Version, To: to, Driver: driver,
-		Note: note,
+		Actor: actor, Note: note,
 	})
 	if err != nil {
 		return workersapi.Step{}, err //nolint:wrapcheck // the lifecycle names the move
@@ -296,7 +301,8 @@ func (s *Service) decide(
 	if err := s.d.Store.SetDelta(ctx, run, *r.Delta); err != nil {
 		return workersapi.Step{}, err //nolint:wrapcheck // the store names the write
 	}
-	return s.move(ctx, run, Decision(run.Type, *r.Delta, st), machine.DriverDecision, r.Details)
+	return s.move(ctx, run, Decision(run.Type, *r.Delta, st), machine.DriverDecision,
+		lifecycle.Actor{}, r.Details)
 }
 
 // Decision is the state the plan decision moves a run of type t out of

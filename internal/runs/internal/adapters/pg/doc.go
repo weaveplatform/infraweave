@@ -30,7 +30,10 @@
 // outputs, each value sealed to its row in value_sealed whether or not it
 // is sensitive, and the stack's read reads them, opening the value of
 // each that is not sensitive. SealedColumns names the three sealed
-// columns. Held names the columns
+// columns. For a stop or kill it records the request and notifies
+// infraweave_runs with the run's pool alone, and for a poll it reads and
+// locks the runs a worker holds with a request not yet delivered and
+// records each delivery. Held names the columns
 // that hold the access domain's accounts and the stacks domain's stacks,
 // and Keys declares the runs' key, which other domains' held columns name.
 // Every method joins the transaction its context carries.

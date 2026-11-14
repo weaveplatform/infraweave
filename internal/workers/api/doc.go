@@ -9,8 +9,10 @@
 // the workers domain to seal to the pool's key, and the Queued runs of
 // each pool that a pool Sample counts; ErrNotOnWorker when the run is not
 // on a worker. Waiting is the notification payload that wakes a held poll
-// for a run. Samples is the read of a pool's minute samples that the
-// usage assessment and the usage read models make.
+// for a run. Liveness is the back edge through which the reap and a poll
+// fail runs, and Signals the one through which a busy worker's poll
+// delivers its run's stop or kill. Samples is the read of a pool's minute
+// samples that the usage assessment and the usage read models make.
 //
 // # Input and output
 //
@@ -20,6 +22,7 @@
 //
 // It imports the standard library and internal/kernel. The stacks domain
 // imports it and implements PoolGuard; the runs domain imports it and
-// implements Scheduler; the workers domain's assembly implements Pools
+// implements Scheduler, Reports, Liveness and Signals; the workers
+// domain's assembly implements Pools
 // and Samples.
 package api

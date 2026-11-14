@@ -52,6 +52,10 @@ type Container interface {
 	Stop(ctx context.Context) error
 	// Kill ends the container with SIGKILL; its exit is wire.Killed.
 	Kill(ctx context.Context) error
+	// HandBack opens the workspace of the container, which has ended, to
+	// the launcher's user, as its runner does as a run ends, for a
+	// container that ended before its runner did, as a killed one.
+	HandBack(ctx context.Context) error
 	// Remove removes the container, which has ended or is killed first.
 	Remove(ctx context.Context) error
 }

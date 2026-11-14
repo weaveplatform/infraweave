@@ -125,6 +125,7 @@ type Domain struct {
 	scheduler *schedule.Scheduler
 	claims    *schedule.Claims
 	liveness  *schedule.Liveness
+	signals   *schedule.Signals
 	handover  *handover.Service
 	reports   *report.Service
 	logs      *logs.Service
@@ -150,6 +151,7 @@ func New(d Deps) *Domain {
 		}),
 		claims:   schedule.NewClaims(store, lc),
 		liveness: schedule.NewLiveness(store, lc),
+		signals:  schedule.NewSignals(store, d.Now),
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
 			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog, Objects: d.Objects,
@@ -283,6 +285,11 @@ func (d *Domain) Reports() workersapi.Reports { return d.reports }
 // overdue preparations, a back edge internal/app binds in the workers
 // domain, whose reap and polls fail runs through it.
 func (d *Domain) Liveness() workersapi.Liveness { return d.liveness }
+
+// Signals is the domain's side of the stops and kills callers ask for, a
+// back edge internal/app binds in the workers domain, whose polls deliver
+// them.
+func (d *Domain) Signals() workersapi.Signals { return d.signals }
 
 // BindExpressions binds the expression registry, which internal/app
 // builds from the domains' Surfaces after constructing them, and which a

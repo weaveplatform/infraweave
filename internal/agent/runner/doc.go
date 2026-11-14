@@ -2,7 +2,10 @@
 // which the launcher starts from its own binary. Run reads the launcher's
 // handoff from standard input and executes the run it hands over with
 // internal/agent/exec, in the working directory, which is the
-// container's workspace.
+// container's workspace, taking each SIGINT on the channel it is given as
+// a stop of the run. HandBack, infraweave runner hand-back, opens the
+// workspace of a run container that ended before its runner did to the
+// launcher's user.
 //
 // ref: decision 0008 § "The launcher and the runner"
 //
@@ -16,5 +19,6 @@
 // # Dependencies
 //
 // It imports internal/agent/handoff, internal/agent/client and
-// internal/agent/exec. internal/agent/cli runs it as infraweave runner.
+// internal/agent/exec. internal/agent/cli runs it as infraweave runner
+// and infraweave runner hand-back.
 package runner
