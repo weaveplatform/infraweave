@@ -17,6 +17,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -226,7 +227,10 @@ func TestUnitWorkspaceDir(t *testing.T) {
 // stays, and the refusal and the failure are logged; and that a run ID
 // that names no workspace is never handed back.
 func TestUnitDropWorkspaceHandsBack(t *testing.T) {
-	if os.Geteuid() == 0 {
+	switch {
+	case runtime.GOOS == "windows":
+		t.Skip("a directory's mode does not stop its removal on Windows")
+	case os.Geteuid() == 0:
 		t.Skip("root removes a directory whatever its mode")
 	}
 	var log bytes.Buffer
