@@ -114,6 +114,9 @@ var _ executor.Executor = (*Executor)(nil)
 // errWait marks a container whose end the daemon could not report.
 var errWait = errors.New("docker: wait for the container")
 
+// errHandBack marks a hand-back container that did not exit 0.
+var errHandBack = errors.New("docker: the hand-back failed")
+
 // New is an executor on the Docker daemon the DOCKER_* environment
 // names, or the local socket.
 func New(c Config) (*Executor, error) {
@@ -421,7 +424,8 @@ func (h *run) handBack(ctx context.Context) error {
 		case res.Error != nil:
 			return fmt.Errorf("%w: run %s's hand-back: %s", errWait, h.run, res.Error.Message)
 		case res.StatusCode != 0:
-			return fmt.Errorf("docker: run %s's hand-back exited %d", h.run, res.StatusCode)
+			return fmt.Errorf("%w: run %s's hand-back exited %d", errHandBack, h.run,
+				res.StatusCode)
 		}
 		return nil
 	case err := <-w.Error:

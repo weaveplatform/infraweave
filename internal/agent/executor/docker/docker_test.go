@@ -121,10 +121,7 @@ func TestAccDockerExecutor(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("Find = %v, %v", ok, err)
 		}
-		if err := found.Stop(ctx); err != nil {
-			t.Fatal(err)
-		}
-		exit, err := found.Wait(ctx)
+		exit, err := stop(ctx, t, found)
 		if err != nil || exit != (executor.Exit{Code: 130, Reason: wire.Exited}) ||
 			!strings.Contains(out.String(), "interrupted") {
 			t.Fatalf("a stopped runner: %+v, %v, output %q", exit, err, out.String())
@@ -216,6 +213,31 @@ func TestAccDockerExecutor(t *testing.T) {
 			t.Errorf("Start = %v", err)
 		}
 	})
+}
+
+// stop stops c until it ends, and answers its exit: the kernel drops a
+// SIGINT that reaches the probe, PID 1, before the probe handles one.
+func stop(ctx context.Context, t *testing.T, c executor.Container) (executor.Exit, error) {
+	t.Helper()
+	type waited struct {
+		exit executor.Exit
+		err  error
+	}
+	ended := make(chan waited, 1)
+	go func() {
+		exit, err := c.Wait(ctx)
+		ended <- waited{exit, err}
+	}()
+	for {
+		if err := c.Stop(ctx); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case w := <-ended:
+			return w.exit, w.err
+		case <-time.After(time.Second):
+		}
+	}
 }
 
 // emptyImage imports an image whose filesystem holds the workspace

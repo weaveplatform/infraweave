@@ -17,6 +17,10 @@ import (
 )
 
 func main() {
+	// As PID 1, the probe never sees a SIGINT that comes before it handles
+	// one, so it handles SIGINT first.
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT)
 	in, _ := io.ReadAll(os.Stdin)
 	wd, _ := os.Getwd()
 	got := map[string]any{
@@ -33,8 +37,6 @@ func main() {
 	_ = json.NewEncoder(os.Stdout).Encode(got)
 	cmd := strings.TrimSpace(string(in))
 	if cmd == "wait" {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGINT)
 		<-sig
 		_, _ = os.Stdout.WriteString("interrupted\n")
 		os.Exit(130)
