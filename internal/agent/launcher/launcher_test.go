@@ -3,6 +3,7 @@ package launcher_test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -24,6 +25,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
+	"github.com/weaveplatform/infraweave/internal/agent/workspace"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 )
 
@@ -91,12 +93,14 @@ func (w *world) launcher(t *testing.T) *launcher.Launcher {
 	return l
 }
 
-// fakeSources writes main.tf into each workspace, or answers err.
+// fakeSources writes main.tf into each workspace, fetched or restored,
+// or answers err.
 type fakeSources struct {
-	mu    sync.Mutex
-	dirs  []string
-	creds []*wire.RunSpecSourceCredential
-	err   error
+	mu       sync.Mutex
+	dirs     []string
+	creds    []*wire.RunSpecSourceCredential
+	restored []string
+	err      error
 }
 
 func (f *fakeSources) Fetch(
@@ -116,6 +120,30 @@ func (f *fakeSources) Fetch(
 	}
 	return f.err
 }
+
+func (f *fakeSources) Restore(
+	_ context.Context,
+	dir, src string,
+	pool *ecdh.PrivateKey,
+	_ string,
+	_ wire.RunSpec,
+) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if pool == nil {
+		return errNoPool
+	}
+	f.restored = append(f.restored, dir+" from "+src)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "main.tf"), nil, 0o600); err != nil {
+		return err
+	}
+	return f.err
+}
+
+var errNoPool = errors.New("no pool key")
 
 func (f *fakeSources) fetched() ([]string, []*wire.RunSpecSourceCredential) {
 	f.mu.Lock()
@@ -359,7 +387,8 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 			h.StateVersion != 4 || h.Secrets.ApiToken != "api-run-1" ||
 			h.Secrets.Environment["TF_VAR_x"] != "1" || h.Spec.Sealed != nil ||
 			h.Spec.Hooks["before_init"][0] != "echo hi" ||
-			!slices.Equal(h.MaskEnvs, []string{"DB_PASSWORD"}) {
+			!slices.Equal(h.MaskEnvs, []string{"DB_PASSWORD"}) ||
+			!bytes.Equal(h.PoolKey, poolKey(t, w.pool).Bytes()) {
 			t.Fatalf("handoff: %+v", h)
 		}
 		w.wantPoll(t, true, "run-1", nil)
@@ -393,6 +422,7 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 			t.Fatalf("worker.json once the exit is reported: %s, %v", state, err)
 		}
 
+		w.srv.SaveWorkspace("run-2", 3, []byte("sealed"))
 		w.assign(t, "run-2", wire.AssignmentStatePREPARINGAPPLY, "example.com/runner:1")
 		if j := w.exec.Jobs()[1]; j.Image != "example.com/runner:1" {
 			t.Fatalf("the specification's image: %q", j.Image)
@@ -472,7 +502,8 @@ func TestUnitLauncherMountsTheRunsTool(t *testing.T) {
 // gets its source fetched with its credential into a fresh workspace
 // under the cache directory, which its container mounts and which goes
 // when the container ends; that a run that applies after confirmation
-// gets none; and that a fetch that fails, or a container that does not
+// gets the workspace its planning saved restored instead, and fails with
+// none saved; and that a fetch that fails, or a container that does not
 // start, fails the run in preparation and leaves no workspace.
 func TestUnitLauncherFetchesTheRunsSource(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
@@ -501,8 +532,22 @@ func TestUnitLauncherFetchesTheRunsSource(t *testing.T) {
 		w.answer(wire.PollResult{})
 
 		w.assign(t, "run-2", wire.AssignmentStatePREPARINGAPPLY, "")
-		if dirs, _ := w.sources.fetched(); len(dirs) != 1 || w.exec.Jobs()[1].Workspace != "" {
-			t.Fatalf("an apply fetched %v into %q", dirs, w.exec.Jobs()[1].Workspace)
+		reps := w.srv.Reports()
+		if rep := reps[len(reps)-1]; rep.Run != "run-2" || *rep.Report.Details !=
+			"the run saved no workspace to apply or replan from" {
+			t.Fatalf("an apply with no saved workspace: %+v", rep)
+		}
+		w.answer(wire.PollResult{})
+
+		w.srv.SaveWorkspace("run-2b", 5, []byte("sealed"))
+		w.assign(t, "run-2b", wire.AssignmentStatePREPARINGREPLAN, "")
+		applied := filepath.Join(w.dir, "workspaces", "run-2b")
+		if dirs, _ := w.sources.fetched(); len(dirs) != 1 ||
+			w.exec.Jobs()[1].Workspace != applied || !slices.Equal(w.sources.restored, []string{
+			applied + " from " + agenttest.Endpoint + "/store/workspace/run-2b/5/workspace",
+		}) {
+			t.Fatalf("a replan fetched %v, restored %v, into %q", dirs, w.sources.restored,
+				w.exec.Jobs()[1].Workspace)
 		}
 		w.exec.Container("worker-1").End(ended(0, wire.Exited))
 		synctest.Wait()
@@ -510,7 +555,7 @@ func TestUnitLauncherFetchesTheRunsSource(t *testing.T) {
 
 		w.sources.err = errFetch
 		w.assign(t, "run-3", wire.AssignmentStatePREPARING, "")
-		reps := w.srv.Reports()
+		reps = w.srv.Reports()
 		if rep := reps[len(reps)-1]; rep.Run != "run-3" || *rep.Report.Details != errFetch.Error() {
 			t.Fatalf("a failed fetch: %+v", rep)
 		}
@@ -525,12 +570,24 @@ func TestUnitLauncherFetchesTheRunsSource(t *testing.T) {
 	})
 }
 
+// poolKey is p's public key.
+func poolKey(t *testing.T, p agenttest.Pool) *ecdh.PublicKey {
+	t.Helper()
+	k, err := p.PublicKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return k
+}
+
 var errFetch = errors.New("fetch commit abc from git.example.com: authentication required")
 
 // TestUnitNewDefaults checks that a launcher given no Sources or Tools
 // fetches through a source.Fetcher and a tools.Fetcher on its cache
 // directory and mirror: an archive source is read through the launcher's
-// HTTP client, and a tool's first file from the mirror.
+// HTTP client; a saved workspace from the store the worker API redirects
+// to, opened with the pool's key, which opens no other run's; and a
+// tool's first file from the mirror.
 func TestUnitNewDefaults(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
@@ -555,6 +612,17 @@ func TestUnitNewDefaults(t *testing.T) {
 			"fetch the archive from store.invalid: the download failed: answered 404 Not Found" {
 			t.Fatalf("details: %s", d)
 		}
+		src := t.TempDir()
+		if err := os.WriteFile(filepath.Join(src, "main.tf"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var saved bytes.Buffer
+		if _, err := workspace.Write(&saved, src, workspace.Options{
+			Pool: poolKey(t, w.pool), Run: "run-2", StateVersion: 3,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		w.srv.SaveWorkspace("run-2", 3, saved.Bytes())
 		w.assignTool(t, "run-2", wire.AssignmentStatePREPARINGAPPLY, "",
 			&wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2", Download: true})
 		d := *w.srv.Reports()[1].Report.Details
@@ -562,6 +630,12 @@ func TestUnitNewDefaults(t *testing.T) {
 			"terraform_1.17.2_SHA256SUMS: the download failed") ||
 			!strings.Contains(d, "http://mirror.invalid/terraform/1.17.2/") {
 			t.Fatalf("details: %s", d)
+		}
+		w.srv.SaveWorkspace("run-3", 3, saved.Bytes())
+		w.assign(t, "run-3", wire.AssignmentStatePREPARINGAPPLY, "")
+		if d := *w.srv.Reports()[2].Report.Details; !strings.HasPrefix(d, "restore the saved "+
+			"workspace from agenttest.invalid: the saved workspace is refused: ") {
+			t.Fatalf("details of another run's workspace: %s", d)
 		}
 		cancel()
 		if err := <-done; err != nil {

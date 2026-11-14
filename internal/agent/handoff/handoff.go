@@ -34,6 +34,9 @@ type Handoff struct {
 	// MaskEnvs is launcher.mask_envs: the names of the run's variables
 	// whose values the runner masks in its log.
 	MaskEnvs []string `json:"maskEnvs,omitempty"`
+	// PoolKey is the pool's public key, an uncompressed P-256 point, to
+	// which the runner seals a saved workspace's content key.
+	PoolKey []byte `json:"poolKey,omitempty"`
 }
 
 // MaxSize bounds a handoff the runner reads. A specification holds a

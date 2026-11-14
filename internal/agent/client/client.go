@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -27,6 +28,7 @@ func Base(public string) string { return strings.TrimSuffix(public, "/") + BaseP
 type Client struct {
 	c    *wire.ClientWithResponses
 	doer wire.HttpRequestDoer
+	base string
 }
 
 // New is a client of the worker API at base, sending its requests through
@@ -35,7 +37,12 @@ func New(base string, doer wire.HttpRequestDoer) *Client {
 	// The generated constructor fails only when an option does, and
 	// WithHTTPClient never does.
 	c, _ := wire.NewClientWithResponses(base, wire.WithHTTPClient(doer))
-	return &Client{c: c, doer: doer}
+	// A request's path resolves against base, so base ends in a slash,
+	// as the generated client's does, or its last segment would be lost.
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+	return &Client{c: c, doer: doer, base: base}
 }
 
 // Error is a call the server refused: its status and problem detail.
@@ -182,11 +189,31 @@ const maxStoreAnswer = 64 << 10
 // credential; no error names the URL. A store's refusal is an *Error
 // with its status.
 func (c *Client) Put(ctx context.Context, u wire.SignedUpload, body []byte) error {
+	return c.put(ctx, u, bytes.NewReader(body), int64(len(body)))
+}
+
+// PutFile uploads the file at path to u, as Put does, reading it as it
+// sends, so an upload as large as a saved workspace never sits in memory.
+func (c *Client) PutFile(ctx context.Context, u wire.SignedUpload, path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("upload %s: %w", u.Name, err)
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("upload %s: %w", u.Name, err)
+	}
+	return c.put(ctx, u, f, info.Size())
+}
+
+func (c *Client) put(ctx context.Context, u wire.SignedUpload, body io.Reader, size int64) error {
 	op := "upload " + u.Name
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, u.Url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, u.Url, body)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+	req.ContentLength = size
 	for k, v := range u.Headers {
 		req.Header.Set(k, v)
 	}
@@ -206,6 +233,55 @@ func (c *Client) Put(ctx context.Context, u wire.SignedUpload, body []byte) erro
 		return &Error{Op: op, Status: res.StatusCode}
 	}
 	return nil
+}
+
+// Artifacts records uploaded artifacts and workspaces of run's state
+// version in.StateVersion with its run token. One already recorded is
+// skipped.
+func (c *Client) Artifacts(ctx context.Context, token, run string, in wire.ArtifactsRequest) error {
+	const op = "record artifacts"
+	res, err := c.c.WorkerRunArtifactsWithResponse(ctx, run, in, bearer(token))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if res.StatusCode() != http.StatusNoContent {
+		return refused(op, res.HTTPResponse, res.Body)
+	}
+	return nil
+}
+
+// Workspace answers the pre-signed URL of run's saved workspace, which
+// the worker API answers as a redirect, with its run token. The redirect
+// is not followed: the store would be sent the bearer token, which the
+// HTTP client forwards to a URL on the same host. A run with none saved
+// is an *Error with 404.
+func (c *Client) Workspace(ctx context.Context, token, run string) (string, error) {
+	const op = "find the saved workspace"
+	doer := c.doer
+	if hc, ok := doer.(*http.Client); ok {
+		stay := *hc
+		stay.CheckRedirect = func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+		doer = &stay
+	}
+	req, err := wire.NewWorkerRunWorkspaceRequest(c.base, run)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+	req = req.WithContext(ctx)
+	_ = bearer(token)(ctx, req)
+	res, err := doer.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(res.Body, maxStoreAnswer))
+	loc := res.Header.Get("Location")
+	if res.StatusCode != http.StatusTemporaryRedirect || loc == "" {
+		return "", refused(op, res, body)
+	}
+	return loc, nil
 }
 
 // LogChunks commits uploaded log chunks of run's state version

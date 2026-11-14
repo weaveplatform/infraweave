@@ -2,6 +2,7 @@ package agenttest
 
 import (
 	"bytes"
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -17,6 +18,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,6 +43,16 @@ type Pool struct {
 	Key   []byte
 	cert  *x509.Certificate
 	key   *ecdsa.PrivateKey
+}
+
+// PublicKey is the pool's public key, to which a runner seals what only
+// the pool's launchers open.
+func (p Pool) PublicKey() (*ecdh.PublicKey, error) {
+	k, err := p.key.PublicKey.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("agenttest: pool key: %w", err)
+	}
+	return k, nil
 }
 
 // NewPool makes a pool with a fresh P-256 key and a certificate for it,
@@ -117,6 +129,16 @@ type Chunk struct {
 	Body         []byte
 }
 
+// Artifact is an artifact or workspace the server recorded: its run,
+// state version, kind and name, and its bytes.
+type Artifact struct {
+	Run          string
+	StateVersion int64
+	Kind         wire.ArtifactRecordKind
+	Name         string
+	Body         []byte
+}
+
 // object is an upload the server signed: its declaration, its bytes once
 // PUT, and whether a commit recorded it.
 type object struct {
@@ -160,6 +182,8 @@ type Server struct {
 	reports       []Report
 	objects       map[string]*object
 	chunks        []Chunk
+	artifacts     []Artifact
+	workspaces    map[string]string
 	deregistered  []string
 	refuse        map[string]int
 	lost          bool
@@ -170,7 +194,7 @@ func NewServer(pool Pool) *Server {
 	s := &Server{
 		pool: pool, wake: make(chan struct{}), sessions: map[string]string{},
 		workers: map[string]bool{}, runs: map[string]Run{}, refuse: map[string]int{},
-		objects: map[string]*object{},
+		objects: map[string]*object{}, workspaces: map[string]string{},
 	}
 	r := chi.NewRouter()
 	r.Route("/worker/v1", func(r chi.Router) {
@@ -181,8 +205,11 @@ func NewServer(pool Pool) *Server {
 		r.Post("/runs/{run}/reports", s.report)
 		r.Post("/runs/{run}/upload-urls", s.uploadURLs)
 		r.Post("/runs/{run}/log-chunks", s.logChunks)
+		r.Post("/runs/{run}/artifacts", s.artifactsCommit)
+		r.Get("/runs/{run}/workspace", s.workspace)
 	})
 	r.Put("/store/*", s.put)
+	r.Get("/store/*", s.get)
 	s.h = r
 	return s
 }
@@ -635,4 +662,110 @@ func (s *Server) logChunks(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// artifactsCommit records each uploaded artifact and workspace once, as
+// the server does, a run's last workspace being the one its workspace
+// call answers; one not uploaded is refused with 422.
+func (s *Server) artifactsCommit(w http.ResponseWriter, r *http.Request) {
+	if st := s.refused("artifacts"); st != 0 {
+		problem(w, st, "the artifacts are refused")
+		return
+	}
+	run, _, ok := s.run(r)
+	if !ok {
+		problem(w, http.StatusUnauthorized, "the run token is refused")
+		return
+	}
+	var req wire.ArtifactsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		problem(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, a := range req.Artifacts {
+		key := objectKey(wire.UploadKind(a.Kind), run.Assignment.Run, req.StateVersion, a.Name)
+		o, ok := s.objects[key]
+		switch {
+		case ok && o.recorded:
+			continue
+		case !ok || !o.uploaded:
+			problem(w, http.StatusUnprocessableEntity, "an artifact is not uploaded")
+			return
+		}
+		o.recorded = true
+		s.artifacts = append(s.artifacts, Artifact{
+			Run: run.Assignment.Run, StateVersion: req.StateVersion, Kind: a.Kind, Name: a.Name,
+			Body: o.body,
+		})
+		if a.Kind == wire.ArtifactRecordKindWorkspace {
+			s.workspaces[run.Assignment.Run] = key
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// workspace redirects to the run's last recorded workspace, as the server
+// does, or answers 404 when it recorded none.
+func (s *Server) workspace(w http.ResponseWriter, r *http.Request) {
+	if st := s.refused("workspace"); st != 0 {
+		problem(w, st, "the workspace is refused")
+		return
+	}
+	run, _, ok := s.run(r)
+	if !ok {
+		problem(w, http.StatusUnauthorized, "the run token is refused")
+		return
+	}
+	s.mu.Lock()
+	key, ok := s.workspaces[run.Assignment.Run]
+	s.mu.Unlock()
+	if !ok {
+		problem(w, http.StatusNotFound, "the run saved no workspace")
+		return
+	}
+	http.Redirect(w, r, Endpoint+"/store/"+key, http.StatusTemporaryRedirect)
+}
+
+// get answers an uploaded object's bytes to a request with no bearer
+// token, as a store reading a pre-signed GET does.
+func (s *Server) get(w http.ResponseWriter, r *http.Request) {
+	if st := s.refused("get"); st != 0 {
+		w.WriteHeader(st)
+		return
+	}
+	s.mu.Lock()
+	o, ok := s.objects[chi.URLParam(r, "*")]
+	var body []byte
+	if ok {
+		body = o.body
+	}
+	s.mu.Unlock()
+	switch {
+	case r.Header.Get("Authorization") != "":
+		w.WriteHeader(http.StatusForbidden)
+	case !ok || !o.uploaded:
+		w.WriteHeader(http.StatusNotFound)
+	default:
+		_, _ = w.Write(body)
+	}
+}
+
+// Artifacts are the artifacts and workspaces the server recorded, in
+// order.
+func (s *Server) Artifacts() []Artifact {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.artifacts)
+}
+
+// SaveWorkspace records body as run's workspace saved at version, as if a
+// runner had uploaded and recorded it.
+func (s *Server) SaveWorkspace(run string, version int64, body []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	key := objectKey(wire.UploadKindWorkspace, run, version, "workspace")
+	s.objects[key] = &object{body: bytes.Clone(body), uploaded: true, recorded: true}
+	s.workspaces[run] = key
 }
