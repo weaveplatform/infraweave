@@ -1065,9 +1065,9 @@
       "id": "DV-104",
       "group": "Expressions: decision 0024",
       "spacelift": "`.spacelift/workflow.yml` commands are Go templates",
-      "infraweave": "`.infraweave/workflow.yml` commands are text templates (`${{ … }}`) rendered by the runner, with every interpolated value quoted for the shell",
+      "infraweave": "`.infraweave/workflow.yml` commands are text templates (`${{ … }}`) rendered by the runner, with every interpolated value quoted for the shell. The runner reads the file from the project root whenever it exists, and a `CUSTOM` workflow tool requires it",
       "why": "A target or workspace name can never become shell syntax",
-      "impact": "Custom workflow files are rewritten in the text-template form",
+      "impact": "Custom workflow files are rewritten in the text-template form and moved to `.infraweave/workflow.yml` in each stack's project root",
       "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
     },
     {
