@@ -6926,6 +6926,41 @@ type RunTileWithApproval struct {
 	RunTile  RunTile `json:"runTile"`
 }
 
+// RunTriggerBatchInput defines model for RunTriggerBatchInput.
+type RunTriggerBatchInput struct {
+	// ForceApply ForceApplyMode controls whether a run should force apply even when delta is zero.
+	ForceApply *ForceApplyMode `json:"forceApply,omitempty"`
+
+	// Stacks The stacks to trigger runs for, each at most once.
+	Stacks []RunTriggerBatchStackInput `json:"stacks"`
+}
+
+// RunTriggerBatchOutput defines model for RunTriggerBatchOutput.
+type RunTriggerBatchOutput struct {
+	// Runs The runs of the batch, one per requested stack, in the order the request lists the stacks.
+	Runs []RunTriggerBatchRun `json:"runs"`
+}
+
+// RunTriggerBatchRun defines model for RunTriggerBatchRun.
+type RunTriggerBatchRun struct {
+	// Run A reference to a Run; fetch it with GET /runs/{runId}.
+	Run *RunRef `json:"run,omitempty"`
+
+	// RunId The ID of the run.
+	RunId string `json:"runId"`
+}
+
+// RunTriggerBatchStackInput defines model for RunTriggerBatchStackInput.
+type RunTriggerBatchStackInput struct {
+	// CommitSha Commit SHA to use. Defaults to the commit currently tracked by the stack,
+	// or to the HEAD of the tracked branch if the stack is not yet tracking any commit.
+	// The stack's tracked commit is updated to this commit.
+	CommitSha *string `json:"commitSha,omitempty"`
+
+	// Stack The stack slug.
+	Stack string `json:"stack"`
+}
+
 // RunTriggerRequest The arguments of runTrigger not carried in the path.
 type RunTriggerRequest struct {
 	// CommitSha The commit SHA for which to trigger a run.
@@ -11182,6 +11217,12 @@ type RoleUpdateParams struct {
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
+// RunTriggerBatchParams defines parameters for RunTriggerBatch.
+type RunTriggerBatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // RunChangesV2Params defines parameters for RunChangesV2.
 type RunChangesV2Params struct {
 	Input EntityChangeCollectionInputV2 `form:"input" json:"input"`
@@ -11383,6 +11424,10 @@ type StacksWithAccessToSpaceSuggestionsParams struct {
 
 // StackDeleteParams defines parameters for StackDelete.
 type StackDeleteParams struct {
+	// DestroyResources Destroy the stack's resources before deleting it. The stack answers
+	// deleting and runs a DESTROY run on its tracked commit, and nothing
+	// else, until that run ends; it is deleted when the run finishes, and
+	// stays, no longer deleting, when the run ends any other way.
 	DestroyResources *bool `form:"destroyResources,omitempty" json:"destroyResources,omitempty"`
 
 	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
@@ -12271,6 +12316,9 @@ type RolePatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // RoleUpdateJSONRequestBody defines body for RoleUpdate for application/json ContentType.
 type RoleUpdateJSONRequestBody = RoleUpdateInput
+
+// RunTriggerBatchJSONRequestBody defines body for RunTriggerBatch for application/json ContentType.
+type RunTriggerBatchJSONRequestBody = RunTriggerBatchInput
 
 // SearchRunsJSONRequestBody defines body for SearchRuns for application/json ContentType.
 type SearchRunsJSONRequestBody = SearchRunsRequest
@@ -16457,6 +16505,34 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 	RoleUpdate(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunTriggerBatchWithBody Trigger Run Batch
+	//
+	// Trigger a tracked run on each of several stacks as one batch: every run is
+	// created, or none is. Each run works on the commit its stack's entry names, or
+	// on the stack's tracked commit. A stack the caller cannot read, one it may not
+	// trigger runs on, one that is disabled, locked by another caller or being
+	// deleted, and a commit its repository lacks, refuse the whole batch, each at
+	// its entry's pointer.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+	RunTriggerBatchWithBody(ctx context.Context, params *RunTriggerBatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunTriggerBatch Trigger Run Batch
+	//
+	// Trigger a tracked run on each of several stacks as one batch: every run is
+	// created, or none is. Each run works on the commit its stack's entry names, or
+	// on the stack's tracked commit. A stack the caller cannot read, one it may not
+	// trigger runs on, one that is disabled, locked by another caller or being
+	// deleted, and a commit its repository lacks, refuse the whole batch, each at
+	// its entry's pointer.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+	RunTriggerBatch(ctx context.Context, params *RunTriggerBatchParams, body RunTriggerBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchRunsWithBody Search Runs
 	//
@@ -23095,6 +23171,54 @@ func (c *Client) RoleUpdateWithBody(ctx context.Context, roleId string, params *
 // Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 func (c *Client) RoleUpdate(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRoleUpdateRequest(c.Server, roleId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunTriggerBatchWithBody Trigger Run Batch
+//
+// Trigger a tracked run on each of several stacks as one batch: every run is
+// created, or none is. Each run works on the commit its stack's entry names, or
+// on the stack's tracked commit. A stack the caller cannot read, one it may not
+// trigger runs on, one that is disabled, locked by another caller or being
+// deleted, and a commit its repository lacks, refuse the whole batch, each at
+// its entry's pointer.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+func (c *Client) RunTriggerBatchWithBody(ctx context.Context, params *RunTriggerBatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunTriggerBatchRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunTriggerBatch Trigger Run Batch
+//
+// Trigger a tracked run on each of several stacks as one batch: every run is
+// created, or none is. Each run works on the commit its stack's entry names, or
+// on the stack's tracked commit. A stack the caller cannot read, one it may not
+// trigger runs on, one that is disabled, locked by another caller or being
+// deleted, and a commit its repository lacks, refuse the whole batch, each at
+// its entry's pointer.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+func (c *Client) RunTriggerBatch(ctx context.Context, params *RunTriggerBatchParams, body RunTriggerBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunTriggerBatchRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -36967,6 +37091,61 @@ func NewRoleUpdateRequestWithBody(server string, roleId string, params *RoleUpda
 	return req, nil
 }
 
+// NewRunTriggerBatchRequest calls the generic RunTriggerBatch builder with application/json body
+func NewRunTriggerBatchRequest(server string, params *RunTriggerBatchParams, body RunTriggerBatchJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunTriggerBatchRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewRunTriggerBatchRequestWithBody constructs an http.Request for the RunTriggerBatch method, with any body, and a specified content type
+func NewRunTriggerBatchRequestWithBody(server string, params *RunTriggerBatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/batch")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewSearchRunsRequest calls the generic SearchRuns builder with application/json body
 func NewSearchRunsRequest(server string, body SearchRunsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -48973,6 +49152,34 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 	RoleUpdateWithResponse(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RoleUpdateResponse, error)
+
+	// RunTriggerBatchWithBodyWithResponse Trigger Run Batch
+	//
+	// Trigger a tracked run on each of several stacks as one batch: every run is
+	// created, or none is. Each run works on the commit its stack's entry names, or
+	// on the stack's tracked commit. A stack the caller cannot read, one it may not
+	// trigger runs on, one that is disabled, locked by another caller or being
+	// deleted, and a commit its repository lacks, refuse the whole batch, each at
+	// its entry's pointer.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+	RunTriggerBatchWithBodyWithResponse(ctx context.Context, params *RunTriggerBatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunTriggerBatchResponse, error)
+
+	// RunTriggerBatchWithResponse Trigger Run Batch
+	//
+	// Trigger a tracked run on each of several stacks as one batch: every run is
+	// created, or none is. Each run works on the commit its stack's entry names, or
+	// on the stack's tracked commit. A stack the caller cannot read, one it may not
+	// trigger runs on, one that is disabled, locked by another caller or being
+	// deleted, and a commit its repository lacks, refuse the whole batch, each at
+	// its entry's pointer.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+	RunTriggerBatchWithResponse(ctx context.Context, params *RunTriggerBatchParams, body RunTriggerBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*RunTriggerBatchResponse, error)
 
 	// SearchRunsWithBodyWithResponse Search Runs
 	//
@@ -69720,6 +69927,108 @@ func (r RoleUpdateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RoleUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunTriggerBatchResponse200Headers the declared response headers of an HTTP 200 response for RunTriggerBatch
+type RunTriggerBatchResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunTriggerBatchResponse429Headers the declared response headers of an HTTP 429 response for RunTriggerBatch
+type RunTriggerBatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunTriggerBatchResponse503Headers the declared response headers of an HTTP 503 response for RunTriggerBatch
+type RunTriggerBatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunTriggerBatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RunTriggerBatchOutput
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunTriggerBatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunTriggerBatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunTriggerBatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunTriggerBatchResponse) GetJSON200() *RunTriggerBatchOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunTriggerBatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunTriggerBatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunTriggerBatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunTriggerBatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunTriggerBatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunTriggerBatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunTriggerBatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunTriggerBatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunTriggerBatchResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -90585,6 +90894,46 @@ func (c *ClientWithResponses) RoleUpdateWithResponse(ctx context.Context, roleId
 		return nil, err
 	}
 	return ParseRoleUpdateResponse(rsp)
+}
+
+// RunTriggerBatchWithBodyWithResponse Trigger Run Batch
+//
+// Trigger a tracked run on each of several stacks as one batch: every run is
+// created, or none is. Each run works on the commit its stack's entry names, or
+// on the stack's tracked commit. A stack the caller cannot read, one it may not
+// trigger runs on, one that is disabled, locked by another caller or being
+// deleted, and a commit its repository lacks, refuse the whole batch, each at
+// its entry's pointer.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+func (c *ClientWithResponses) RunTriggerBatchWithBodyWithResponse(ctx context.Context, params *RunTriggerBatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunTriggerBatchResponse, error) {
+	rsp, err := c.RunTriggerBatchWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunTriggerBatchResponse(rsp)
+}
+
+// RunTriggerBatchWithResponse Trigger Run Batch
+//
+// Trigger a tracked run on each of several stacks as one batch: every run is
+// created, or none is. Each run works on the commit its stack's entry names, or
+// on the stack's tracked commit. A stack the caller cannot read, one it may not
+// trigger runs on, one that is disabled, locked by another caller or being
+// deleted, and a commit its repository lacks, refuse the whole batch, each at
+// its entry's pointer.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/batch (the `RunTriggerBatch` operationId).
+func (c *ClientWithResponses) RunTriggerBatchWithResponse(ctx context.Context, params *RunTriggerBatchParams, body RunTriggerBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*RunTriggerBatchResponse, error) {
+	rsp, err := c.RunTriggerBatch(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunTriggerBatchResponse(rsp)
 }
 
 // SearchRunsWithBodyWithResponse Search Runs
@@ -118015,6 +118364,135 @@ func ParseRoleUpdateResponse(rsp *http.Response) (*RoleUpdateResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RoleUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunTriggerBatchResponse parses an HTTP response from a RunTriggerBatchWithResponse call
+func ParseRunTriggerBatchResponse(rsp *http.Response) (*RunTriggerBatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunTriggerBatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RunTriggerBatchOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunTriggerBatchResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunTriggerBatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunTriggerBatchResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

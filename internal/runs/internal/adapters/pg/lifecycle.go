@@ -24,14 +24,15 @@ var (
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config,
 	coalesce(force_apply_mode, ''), coalesce(local_workspace, ''), worker_pool_id, worker_id,
-	created_at, updated_at, delta`
+	created_at, updated_at, delta, command, skip_initialization`
 
 // insertColumns are runColumns as an INSERT names them, with the
 // priority_tier the claim orders by and without the delta, which a plan
 // sets.
 const insertColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config, force_apply_mode,
-	local_workspace, worker_pool_id, worker_id, created_at, updated_at, priority_tier`
+	local_workspace, worker_pool_id, worker_id, created_at, updated_at, priority_tier, command,
+	skip_initialization`
 
 // scanRun reads one row of runColumns.
 func scanRun(row pgx.Row) (lifecycle.Run, error) {
@@ -39,12 +40,18 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 		r                    lifecycle.Run
 		typ, state, priority string
 		commit, d            []byte
+		command              *string
+		skipInit             bool
 	)
 	err := row.Scan(&r.Account, &r.ID, &r.Stack, &typ, &state, &r.Version, &r.StateChangedAt,
 		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.RuntimeConfig, &r.ForceApply,
-		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt, &d)
+		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt, &d, &command,
+		&skipInit)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
+	}
+	if command != nil {
+		r.Task = &kernel.Task{Command: *command, SkipInitialization: skipInit}
 	}
 	if err := json.Unmarshal(commit, &r.Commit); err != nil {
 		return lifecycle.Run{}, fmt.Errorf("runs: decode the commit of run %s: %w", r.ID, err)
@@ -95,13 +102,21 @@ func (s *Store) Insert(ctx context.Context, run lifecycle.Run, step lifecycle.St
 	if err != nil {
 		return fmt.Errorf("runs: encode the commit of run %s: %w", run.ID, err)
 	}
+	var (
+		command  *string
+		skipInit bool
+	)
+	if run.Task != nil {
+		command, skipInit = &run.Task.Command, run.Task.SkipInitialization
+	}
 	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO runs (`+insertColumns+`)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nullif($13, ''),
-			nullif($14, ''), $15, $16, $17, $18, $19)`,
+			nullif($14, ''), $15, $16, $17, $18, $19, $20, $21)`,
 		run.Account, run.ID, run.Stack, string(run.Type), string(run.State), run.Version,
 		run.StateChangedAt, commit, run.TriggeredBy, string(run.Priority), run.DriftDetection,
 		[]byte(run.RuntimeConfig), run.ForceApply, run.LocalWorkspace, run.WorkerPool, run.Worker,
-		run.CreatedAt, run.UpdatedAt, kernel.RunTier(run.Priority, run.Type, run.DriftDetection))
+		run.CreatedAt, run.UpdatedAt, kernel.RunTier(run.Priority, run.Type, run.DriftDetection),
+		command, skipInit)
 	if err != nil {
 		return fmt.Errorf("runs: insert run %s: %w", run.ID, sql.Unavailable(err))
 	}

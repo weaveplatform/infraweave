@@ -632,6 +632,23 @@ func TestUnitHandoverStateBackend(t *testing.T) {
 	}
 }
 
+// TestUnitHandoverTask checks that a TASK run's specification carries its
+// command and skipInitialization, and that no other run's carries a task.
+func TestUnitHandoverTask(t *testing.T) {
+	w := newWorld(t)
+	h, err := w.handover(t, w.run.ID)
+	if err != nil || h.Spec.Task != nil {
+		t.Errorf("a tracked run's task = %+v, %v", h.Spec.Task, err)
+	}
+	task := kernel.Task{Command: "terraform output -json", SkipInitialization: true}
+	w.store.run.Type, w.store.run.Task = kernel.RunTypeTask, &task
+	h, err = w.handover(t, w.run.ID)
+	if err != nil || h.Spec.Task == nil || *h.Spec.Task != task ||
+		h.Spec.Run.Type != kernel.RunTypeTask {
+		t.Errorf("a task's specification = %+v, %v", h.Spec.Task, err)
+	}
+}
+
 // renderer fails every Check with check and every Evaluate with eval.
 type renderer struct{ check, eval error }
 

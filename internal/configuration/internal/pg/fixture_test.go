@@ -231,6 +231,11 @@ func (*stacks) SetRunState(
 	return nil
 }
 
+// Destroyed is never reached: the configuration domain ends no runs.
+func (*stacks) Destroyed(context.Context, kernel.AccountID, kernel.ULID, bool) error {
+	return nil
+}
+
 // SetTracked is never reached: the configuration domain does not track
 // commits.
 func (*stacks) SetTracked(

@@ -331,7 +331,6 @@
       "runStop",
       "runTargetedReplan",
       "runTraceSpans",
-      "runTriggerBatch",
       "runWorkerMetrics"
     ],
     "SSO": [

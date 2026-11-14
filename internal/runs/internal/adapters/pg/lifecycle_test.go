@@ -32,15 +32,39 @@ type projection struct {
 
 // fakeStacks is the stacks domain over settings by stack ID. LockForRun
 // takes a transaction-scoped advisory lock on the stack, as the real one
-// locks its row, and SetRunState records each projection; a non-nil err
-// fails the method it names.
+// locks its row, SetRunState records each projection and SetTracked each
+// tracked commit it sets; a non-nil err fails the method it names.
 type fakeStacks struct {
 	stacksapi.Stacks
-	db       *pgxpool.Pool
-	mu       sync.Mutex
-	settings map[kernel.ULID]stacksapi.Settings
-	written  map[kernel.ULID][]projection
-	err      map[string]error
+	db        *pgxpool.Pool
+	mu        sync.Mutex
+	settings  map[kernel.ULID]stacksapi.Settings
+	written   map[kernel.ULID][]projection
+	tracked   []tracked
+	destroyed []destroyed
+	err       map[string]error
+}
+
+// destroyed is one call of Destroyed: the stack, and whether its destroy
+// run finished.
+type destroyed struct {
+	stack    kernel.ULID
+	finished bool
+}
+
+func (f *fakeStacks) Destroyed(
+	_ context.Context,
+	_ kernel.AccountID,
+	id kernel.ULID,
+	finished bool,
+) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.err["Destroyed"]; err != nil {
+		return err
+	}
+	f.destroyed = append(f.destroyed, destroyed{id, finished})
+	return nil
 }
 
 func (f *fakeStacks) Get(
@@ -338,7 +362,17 @@ func (w *world) in(t *testing.T, f func(ctx context.Context) error) error {
 	return tx.Do(t.Context(), w.db, tx.Options{}, f)
 }
 
-// create creates a run of w's stack of typ on commit hash by alice.
+// taskOf is the task a run of typ carries: terraform output for a TASK,
+// none for any other type.
+func taskOf(typ kernel.RunType) *kernel.Task {
+	if typ != kernel.RunTypeTask {
+		return nil
+	}
+	return &kernel.Task{Command: "terraform output"}
+}
+
+// create creates a run of w's stack of typ on commit hash by alice, a
+// task running taskOf's command.
 func (w *world) create(
 	t *testing.T,
 	typ kernel.RunType,
@@ -358,6 +392,7 @@ func (w *world) create(
 				Timestamp: w.now.Add(-time.Hour),
 			},
 			Actor: lifecycle.Actor{Caller: "user:alice", Login: "alice"},
+			Task:  taskOf(typ),
 		})
 		return err
 	})
@@ -615,6 +650,54 @@ func TestAccLifecycleCreate(t *testing.T) {
 	}
 }
 
+// TestAccLifecycleTask creates a task each time one is asked for, even
+// on one commit, reads its command and skipInitialization back, and
+// refuses a TASK without its task and another type with one.
+func TestAccLifecycleTask(t *testing.T) {
+	w := newWorld(t)
+	first, created, err := w.create(t, kernel.RunTypeTask, "abc123")
+	if err != nil || !created || first.Task == nil || *first.Task != *taskOf(kernel.RunTypeTask) {
+		t.Fatalf("Create of a task = %+v, %v, %v", first, created, err)
+	}
+	second, created, err := w.create(t, kernel.RunTypeTask, "abc123")
+	if err != nil || !created || second.ID == first.ID {
+		t.Errorf("a second task on the commit = %s, %v, %v, want another run", second.ID,
+			created, err)
+	}
+	actor := lifecycle.Actor{Caller: "user:alice", Login: "alice"}
+	commit := stacksapi.Commit{Hash: "abc123"}
+	task := kernel.Task{Command: "make check", SkipInitialization: true}
+	if err := w.in(t, func(ctx context.Context) error {
+		r, _, err := w.lc.Create(ctx, lifecycle.NewRun{
+			Account: w.acct, Stack: w.stack, Type: kernel.RunTypeTask, Commit: commit,
+			Actor: actor, Task: &task,
+		})
+		if err != nil {
+			return err
+		}
+		got, err := w.store.Lock(ctx, w.acct, r.ID)
+		if err == nil && (got.Task == nil || *got.Task != task) {
+			t.Errorf("the task reads back as %+v", got.Task)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []lifecycle.NewRun{
+		{Type: kernel.RunTypeTask},
+		{Type: kernel.RunTypeTracked, Task: &task},
+	} {
+		n.Account, n.Stack, n.Commit, n.Actor = w.acct, w.stack, commit, actor
+		err := w.in(t, func(ctx context.Context) error {
+			_, _, err := w.lc.Create(ctx, n)
+			return err
+		})
+		if !errors.Is(err, lifecycle.ErrTask) {
+			t.Errorf("Create of a %s with task %v = %v, want ErrTask", n.Type, n.Task, err)
+		}
+	}
+}
+
 // TestAccLifecycleTransition takes a tracked run from QUEUED to FINISHED:
 // each move writes the run's state, version and transition, and appends
 // its event; the run becomes the stack's tracked run on READY and writes
@@ -819,6 +902,63 @@ func TestAccLifecycleTaskReleases(t *testing.T) {
 	w.mustMove(t, task, kernel.RunStateFailed, machine.DriverLiveness)
 	if p, _ := w.stacks.last(w.stack); p != (projection{"READY", false}) {
 		t.Errorf("projection after the task = %+v, want the tracked run's READY, unblocked", p)
+	}
+}
+
+// TestAccLifecycleDestroy ends a destroy run's stack deletion: FINISHED
+// asks the stacks domain to delete the stack, FAILED to keep it, and a
+// tracked run's end asks neither. A deleting stack refuses every new run
+// with ErrDeleting, and a deletion the stacks domain cannot end rolls the
+// run's end back.
+func TestAccLifecycleDestroy(t *testing.T) {
+	w := newWorld(t)
+	all := []machine.Guard{
+		machine.GuardStackLockFree, machine.GuardApproved, machine.GuardUpstreamFinished,
+		machine.GuardExternalSettled, machine.GuardStackEnabled,
+	}
+	destroying := func(commit string) lifecycle.Run {
+		t.Helper()
+		run, _, err := w.create(t, kernel.RunTypeDestroy, commit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		run = w.mustMove(t, run, kernel.RunStateReady, machine.DriverScheduler, all...)
+		w.takeLock(t, run)
+		run = w.mustMove(t, run, kernel.RunStatePreparing, machine.DriverWorkerClaim)
+		run = w.mustMove(t, run, kernel.RunStateInitializing, machine.DriverWorkerReport)
+		return w.mustMove(t, run, kernel.RunStateDestroying, machine.DriverWorkerReport)
+	}
+
+	tracked, _, err := w.create(t, kernel.RunTypeTracked, "abc123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.mustMove(t, tracked, kernel.RunStateCanceled, machine.DriverAPI)
+	w.mustMove(t, destroying("abc123"), kernel.RunStateFinished, machine.DriverWorkerReport)
+	w.mustMove(t, destroying("def456"), kernel.RunStateFailed, machine.DriverLiveness)
+	want := []destroyed{{w.stack, true}, {w.stack, false}}
+	if !slices.Equal(w.stacks.destroyed, want) {
+		t.Errorf("Destroyed calls = %+v, want %+v", w.stacks.destroyed, want)
+	}
+
+	run := destroying("0a1b2c")
+	w.stacks.err["Destroyed"] = errInjected
+	if _, err := w.move(t, run, kernel.RunStateFinished,
+		machine.DriverWorkerReport); !errors.Is(err, errInjected) {
+		t.Errorf("a FINISHED the stacks domain cannot end = %v", err)
+	}
+	if got := w.steps(t, run.ID); got[len(got)-1].State != "DESTROYING" {
+		t.Errorf("the run's last state after the rollback = %+v", got[len(got)-1])
+	}
+	delete(w.stacks.err, "Destroyed")
+
+	st := w.stacks.settings[w.stack]
+	st.Deleting = true
+	w.stacks.settings[w.stack] = st
+	for _, typ := range []kernel.RunType{kernel.RunTypeTracked, kernel.RunTypeDestroy} {
+		if _, _, err := w.create(t, typ, "fff000"); !errors.Is(err, lifecycle.ErrDeleting) {
+			t.Errorf("a %s on a deleting stack = %v, want ErrDeleting", typ, err)
+		}
 	}
 }
 

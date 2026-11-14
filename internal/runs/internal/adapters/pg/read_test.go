@@ -17,15 +17,17 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// fakeAccess holds held on every space and reaches reach, the account's
-// tree being tree; err fails the read its key names.
+// fakeAccess holds held on every space but the actions withheld names
+// for a space, and reaches reach, the account's tree being tree; err
+// fails the read its key names.
 type fakeAccess struct {
 	accessapi.Authorizer
 	accessapi.Spaces
-	held  []accessapi.Action
-	reach []kernel.ULID
-	tree  []accessapi.SpaceNode
-	err   map[string]error
+	held     []accessapi.Action
+	withheld map[kernel.ULID][]accessapi.Action
+	reach    []kernel.ULID
+	tree     []accessapi.SpaceNode
+	err      map[string]error
 }
 
 func (f *fakeAccess) Actions(
@@ -40,9 +42,10 @@ func (f *fakeAccess) Authorize(
 	_ context.Context,
 	_ kernel.Principal,
 	a accessapi.Action,
-	_ kernel.ULID,
+	space kernel.ULID,
 ) (bool, error) {
-	return slices.Contains(f.held, a), f.err["Authorize"]
+	return slices.Contains(f.held, a) && !slices.Contains(f.withheld[space], a),
+		f.err["Authorize"]
 }
 
 func (f *fakeAccess) Reachable(

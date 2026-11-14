@@ -248,6 +248,9 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 			Name: gen.RunSpecToolName(t.Name), Version: t.Version, Download: t.Download,
 		}
 	}
+	if t := spec.Task; t != nil {
+		out.Task = &gen.RunSpecTask{Command: t.Command, SkipInitialization: t.SkipInitialization}
+	}
 	for _, v := range spec.Environment {
 		out.Environment = append(out.Environment,
 			gen.RunSpecVariable{Name: v.Name, Value: v.Value, WriteOnly: v.WriteOnly})

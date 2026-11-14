@@ -59,6 +59,7 @@ func TestUnitTriggerErrors(t *testing.T) {
 	}{
 		{&lifecycle.Locked{By: "bob"}, http.StatusForbidden, "forbidden"},
 		{lifecycle.ErrDisabled, http.StatusConflict, "invalid-state"},
+		{lifecycle.ErrDeleting, http.StatusConflict, "invalid-state"},
 		{trigger.ErrNoCommit, http.StatusConflict, "invalid-state"},
 		{trigger.ErrLocalPreview, http.StatusForbidden, "forbidden"},
 		{stacksapi.ErrNotFound, http.StatusNotFound, "not-found"},
@@ -80,8 +81,8 @@ func TestUnitTriggerErrors(t *testing.T) {
 }
 
 // TestUnitTriggerRun answers a run with its history oldest first, its
-// until, its force-apply mode and who triggered it, and none of the
-// optional ones when it has none.
+// until, its force-apply mode, who triggered it and a task's command,
+// and none of the optional ones when it has none.
 func TestUnitTriggerRun(t *testing.T) {
 	at := time.Unix(1_800_000_000, 0).UTC()
 	alice, note := "alice", "pinned"
@@ -104,7 +105,7 @@ func TestUnitTriggerRun(t *testing.T) {
 	if r.Id != v.Run.ID.String() || r.WorkflowId != r.Id || r.StackId != "infra" ||
 		r.Branch != "main" || r.Title != "Add a subnet" || !r.Finished ||
 		r.Commits[0] != "abc" || *r.ForceApplyMode != "SINGLE" || *r.TriggeredBy != "alice" ||
-		r.CreatedAt != 1_800_000_000 || r.UpdatedAt != 1_800_000_060 {
+		r.CreatedAt != 1_800_000_000 || r.UpdatedAt != 1_800_000_060 || r.Command != nil {
 		t.Errorf("run %+v", r)
 	}
 	if len(r.History) != 2 || r.History[0].State != "QUEUED" || r.History[1].Terminal != true ||
@@ -115,6 +116,10 @@ func TestUnitTriggerRun(t *testing.T) {
 	v.Run.ForceApply, v.Run.TriggeredBy = "", ""
 	if r := runOf(v); r.ForceApplyMode != nil || r.TriggeredBy != nil {
 		t.Errorf("a run with neither = %+v", r)
+	}
+	v.Run.Type, v.Run.Task = kernel.RunTypeTask, &kernel.Task{Command: "terraform output"}
+	if r := runOf(v); r.Command == nil || *r.Command != "terraform output" || r.Type != "TASK" {
+		t.Errorf("a task = %+v", r)
 	}
 }
 
@@ -144,6 +149,29 @@ func TestUnitTriggerRefusals(t *testing.T) {
 	if _, err := s.ProposeWithOverrides(context.Background(),
 		api.ProposeWithOverridesRequestObject{}); err == nil {
 		t.Error("a proposal with overrides and no principal passed")
+	}
+	if _, err := s.TaskCreate(context.Background(), api.TaskCreateRequestObject{}); err == nil {
+		t.Error("a task with no principal passed")
+	}
+	if _, err := s.RunTriggerBatch(context.Background(),
+		api.RunTriggerBatchRequestObject{}); err == nil {
+		t.Error("a batch with no principal passed")
+	}
+	for _, body := range []*api.RunTriggerBatchInput{nil, {Stacks: []api.RunTriggerBatchStackInput{}}} {
+		_, err := s.RunTriggerBatch(ctx, api.RunTriggerBatchRequestObject{Body: body})
+		if inv, ok := errors.AsType[*kernel.Invalid](
+			err,
+		); !ok ||
+			inv.Errors[0].Pointer != "/stacks" {
+			t.Errorf("a batch with body %+v = %v, want Invalid at /stacks", body, err)
+		}
+	}
+	for _, body := range []*api.TaskCreateRequest{nil, {Command: " "}} {
+		_, err := s.TaskCreate(ctx, api.TaskCreateRequestObject{StackId: "infra", Body: body})
+		if inv, ok := errors.AsType[*kernel.Invalid](err); !ok ||
+			inv.Errors[0].Pointer != "/command" {
+			t.Errorf("a task with body %+v = %v, want Invalid at /command", body, err)
+		}
 	}
 	sha := "abc"
 	_, err = s.ProposeWithOverrides(ctx, api.ProposeWithOverridesRequestObject{

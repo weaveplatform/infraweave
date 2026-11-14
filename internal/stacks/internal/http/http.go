@@ -238,8 +238,9 @@ func (s Server) StackPatch(
 	}, nil
 }
 
-// StackDelete deletes a stack at once, since it manages no resources, and
-// answers it as it was, with the caller's access to it then.
+// StackDelete deletes a stack at once and answers it as it was, with the
+// caller's access to it then. With destroyResources, the stack stays,
+// deleting, until its destroy run finishes, and the answer shows it so.
 func (s Server) StackDelete(
 	ctx context.Context,
 	req api.StackDeleteRequestObject,
@@ -248,7 +249,8 @@ func (s Server) StackDelete(
 	if err != nil {
 		return nil, err
 	}
-	st, err := s.stacks.Delete(ctx, p, req.StackId, strict.IfMatch(req.Params.IfMatch))
+	destroy := req.Params.DestroyResources != nil && *req.Params.DestroyResources
+	st, err := s.stacks.Delete(ctx, p, req.StackId, strict.IfMatch(req.Params.IfMatch), destroy)
 	if err != nil {
 		return nil, stackError(err, req.StackId)
 	}
@@ -256,7 +258,7 @@ func (s Server) StackDelete(
 	if err != nil {
 		return nil, err
 	}
-	v.Deleted = true
+	v.Deleted = !st.Deleting
 	return api.StackDelete200JSONResponse{Body: v}, nil
 }
 
@@ -493,6 +495,19 @@ func stackError(err error, slug string) error {
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.InvalidState.Error(
 			"The stack's VCS integration was deleted; give the stack an integration first.")
+	}
+	if u, ok := errors.AsType[*stacksapi.Undestroyable](err); ok {
+		if u.LockedBy == "" {
+			return problem.InvalidState.Error(u.Detail) //nolint:wrapcheck // as above
+		}
+		p := problem.ResourceLocked.New(u.Detail)
+		p.LockedBy = u.LockedBy
+		return &problem.Error{Problem: p}
+	}
+	if errors.Is(err, core.ErrDeleting) {
+		//nolint:wrapcheck // as above
+		return problem.InvalidState.Error("The stack is being deleted; " +
+			"its destroy run ends before anything else deletes it.")
 	}
 	if sp, ok := errors.AsType[*core.SpaceError](err); ok {
 		//nolint:wrapcheck // a problem, answered as it is

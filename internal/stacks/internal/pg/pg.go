@@ -84,7 +84,7 @@ const columns = `s.account_id, s.id, s.slug, s.space_id, s.name, s.description, 
 	s.github_action_deploy, s.enable_sensitive_output_upload,
 	s.enable_well_known_secret_masking, s.skip_vendor_binary_download, s.manages_state, s.locked_at,
 	s.lock_holder, s.locked_by, s.lock_note, s.created_at, s.version, s.tracked_branch_head,
-	s.tracked_commit, s.tracked_commit_set_by, s.state, s.blocked,
+	s.tracked_commit, s.tracked_commit_set_by, s.state, s.blocked, s.deleting,
 	(SELECT coalesce(jsonb_object_agg(phase, commands), '{}') FROM (
 		SELECT h.phase, jsonb_agg(h.command ORDER BY h.position) AS commands FROM stack_hooks h
 		WHERE h.account_id = s.account_id AND h.stack_id = s.id GROUP BY h.phase) AS p),
@@ -109,7 +109,7 @@ func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 		&st.LocalPreviewEnabled, &st.GithubActionDeploy, &st.EnableSensitiveOutputUpload,
 		&st.EnableWellKnownSecretMasking, &st.SkipVendorBinaryDownload, &st.ManagesState, &lockedAt,
 		&holder, &lockedBy, &note, &st.CreatedAt, &st.Version, &head, &commit,
-		&st.TrackedCommitSetBy, &st.State, &st.Blocked, &hooks, &st.Labels,
+		&st.TrackedCommitSetBy, &st.State, &st.Blocked, &st.Deleting, &hooks, &st.Labels,
 	}, extra...)...)
 	if err != nil {
 		return core.Stack{}, err //nolint:wrapcheck // callers name the read
@@ -294,6 +294,25 @@ func (s *Store) SetRunState(
 	switch {
 	case err != nil:
 		return fmt.Errorf("stacks: set run state of %s: %w", id, sql.Unavailable(err))
+	case tag.RowsAffected() == 0:
+		return fmt.Errorf("%w: stack %s", stacksapi.ErrNotFound, id)
+	}
+	return nil
+}
+
+// SetDeleting marks acct's stack id deleting, or clears the mark. The
+// update changes no version, as SetRunState's does not.
+func (s *Store) SetDeleting(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	on bool,
+) error {
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET deleting = $3
+		WHERE account_id = $1 AND id = $2`, acct, id, on)
+	switch {
+	case err != nil:
+		return fmt.Errorf("stacks: set deleting of %s: %w", id, sql.Unavailable(err))
 	case tag.RowsAffected() == 0:
 		return fmt.Errorf("%w: stack %s", stacksapi.ErrNotFound, id)
 	}

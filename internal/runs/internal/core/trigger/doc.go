@@ -7,7 +7,14 @@
 // It answers the run as a read.View. A proposed run may carry
 // environment variable overrides, which CheckOverrides bounds and the
 // lifecycle keeps sealed; a run with overrides is never answered in place
-// of a second.
+// of a second. Task creates a TASK run of a command, kernel.Task bounds,
+// on the tracked commit, and every task is a run of its own.
+//
+// Batch creates a TRACKED run on each of up to MaxBatch stacks in one
+// transaction, locking their rows in ID order, and refuses the whole
+// batch with every entry's refusal at its index. Destroy is the
+// stacksapi.StackDestroyer a stack's delete with destroyResources creates
+// its DESTROY run through, in the delete's transaction.
 //
 // A local preview takes two calls on a stack that enables local
 // previews. UploadWorkspace records a pending tar.gz of a declared size,
@@ -17,23 +24,17 @@
 // overrides; the run's specification then names the archive as its
 // source.
 //
-// A local preview takes two calls on a stack that enables local
-// previews. UploadWorkspace records a pending tar.gz of a declared size,
-// at most MaxWorkspace, and SHA-256 in the uploads store and signs its
-// PUT. ProposeWorkspace commits that upload and creates a PROPOSED run on
-// it, with the stack's tracked commit as its commit's metadata; the
-// run's specification then names the archive as its source.
-//
 // # Input and output
 //
 // None of its own: it reaches the stacks domain through stacksapi.Stacks,
-// the vcs domain through stacksapi.StackSources, runs through the
-// lifecycle, their views through the read service, and the uploads store
-// through Objects.
+// the vcs domain through stacksapi.StackSources, the access domain's
+// decisions through accessapi.Authorizer, runs through the lifecycle,
+// their views through the read service, and the uploads store through
+// Objects.
 //
 // # Dependencies
 //
-// It imports stacksapi, the domain's lifecycle and read, internal/kernel,
-// platform/objectstore and its blobs, and platform/tx. The runs domain's
-// assembly constructs it.
+// It imports accessapi, stacksapi, the domain's lifecycle and read,
+// internal/kernel, platform/objectstore and its blobs, and platform/tx.
+// The runs domain's assembly constructs it.
 package trigger

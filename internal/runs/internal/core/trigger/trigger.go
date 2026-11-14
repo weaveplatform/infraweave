@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sync"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -18,11 +19,13 @@ import (
 // tracks none and whose branch head is not known yet.
 var ErrNoCommit = errors.New("runs: the stack tracks no commit")
 
-// Deps are what the trigger reads and writes through, with the objects
-// local workspaces are uploaded to.
+// Deps are what the trigger reads and writes through, the authorizer a
+// batch decides each stack's actions with, and the objects local
+// workspaces are uploaded to.
 type Deps struct {
 	DB        tx.Beginner
 	Stacks    stacksapi.Stacks
+	Authz     accessapi.Authorizer
 	Lifecycle *lifecycle.Lifecycle
 	Views     *read.Service
 	Objects   Objects
@@ -100,6 +103,39 @@ func (s *Service) Trigger(
 	if err := CheckOverrides(in.Overrides); err != nil {
 		return read.View{}, err
 	}
+	return s.create(ctx, p, slug, in.CommitSHA, lifecycle.NewRun{
+		Type: typ, RuntimeConfig: in.RuntimeConfig, ForceApply: in.ForceApply,
+		Overrides: in.Overrides,
+	})
+}
+
+// Task creates p's TASK run of t on its account's stack slug in one
+// transaction, on the stack's tracked commit, else its branch head, else
+// ErrNoCommit. Every task creates a run. A command t.Check refuses is a
+// *kernel.Invalid at /command; the lifecycle refuses a disabled stack and
+// one another caller locked.
+//
+// ref: decision 0008 § "Who drives each transition"
+func (s *Service) Task(
+	ctx context.Context,
+	p kernel.Principal,
+	slug string,
+	t kernel.Task,
+) (read.View, error) {
+	if errs := t.Check("/command"); errs != nil {
+		return read.View{}, &kernel.Invalid{Detail: "The task's command is refused.", Errors: errs}
+	}
+	return s.create(ctx, p, slug, "", lifecycle.NewRun{Type: kernel.RunTypeTask, Task: &t})
+}
+
+// create creates n's run as p on p's account's stack slug, on the commit
+// sha, in one transaction, and answers its view.
+func (s *Service) create(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, sha string,
+	n lifecycle.NewRun,
+) (read.View, error) {
 	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
@@ -110,16 +146,12 @@ func (s *Service) Trigger(
 		if err != nil {
 			return err //nolint:wrapcheck // as above
 		}
-		commit, err := s.commit(ctx, p.AccountID, settings, in.CommitSHA)
-		if err != nil {
+		if n.Commit, err = s.commit(ctx, p.AccountID, settings, sha, "/commitSha"); err != nil {
 			return err
 		}
-		commit.Branch = settings.Branch
-		run, _, err := s.d.Lifecycle.Create(ctx, lifecycle.NewRun{
-			Account: p.AccountID, Stack: st.ID, Type: typ, Commit: commit,
-			Actor: lifecycle.ActorOf(p), RuntimeConfig: in.RuntimeConfig, ForceApply: in.ForceApply,
-			Overrides: in.Overrides,
-		})
+		n.Commit.Branch = settings.Branch
+		n.Account, n.Stack, n.Actor = p.AccountID, st.ID, lifecycle.ActorOf(p)
+		run, _, err := s.d.Lifecycle.Create(ctx, n)
 		if err != nil {
 			return err //nolint:wrapcheck // the lifecycle names the refusal
 		}
@@ -130,12 +162,13 @@ func (s *Service) Trigger(
 }
 
 // commit is the commit a run of st works on: sha resolved on its
-// repository, or its tracked commit, or its branch head.
+// repository, a commit it lacks refused at at, or its tracked commit, or
+// its branch head.
 func (s *Service) commit(
 	ctx context.Context,
 	acct kernel.AccountID,
 	st stacksapi.Settings,
-	sha string,
+	sha, at string,
 ) (stacksapi.Commit, error) {
 	if sha == "" {
 		switch {
@@ -157,7 +190,7 @@ func (s *Service) commit(
 		return stacksapi.Commit{}, &kernel.Invalid{
 			Detail: "The stack's repository has no such commit.",
 			Errors: []kernel.FieldError{{
-				Pointer: "/commitSha", Reason: kernel.ReasonNotFound,
+				Pointer: at, Reason: kernel.ReasonNotFound,
 				Message: fmt.Sprintf("No commit %s in the stack's repository.", sha),
 			}},
 		}
