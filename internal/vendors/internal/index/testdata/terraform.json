@@ -1,6 +1,6 @@
 {
   "source": "https://api.releases.hashicorp.com/v1/releases/terraform",
-  "fetched": "2026-11-09",
+  "fetched": "2026-11-14",
   "body": [
     {
       "is_prerelease": false,
@@ -8,22 +8,22 @@
       "name": "terraform",
       "status": {
         "state": "supported",
-        "timestamp_updated": "2026-10-28T18:03:57.170Z"
+        "timestamp_updated": "2026-11-11T11:57:56.765Z"
       },
-      "timestamp_created": "2026-10-28T18:03:57.170Z",
-      "timestamp_updated": "2026-10-28T18:03:57.170Z",
+      "timestamp_created": "2026-11-11T11:57:56.765Z",
+      "timestamp_updated": "2026-11-11T11:57:56.765Z",
       "url_changelog": "https://github.com/hashicorp/terraform/blob/v1.17/CHANGELOG.md",
       "url_docker_registry_dockerhub": "https://hub.docker.com/r/hashicorp/terraform",
       "url_docker_registry_ecr": "https://gallery.ecr.aws/hashicorp/terraform",
       "url_license": "https://github.com/hashicorp/terraform/blob/main/LICENSE",
       "url_project_website": "https://www.terraform.io",
-      "url_shasums": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_SHA256SUMS",
+      "url_shasums": "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_SHA256SUMS",
       "url_shasums_signatures": [
-        "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_SHA256SUMS.sig",
-        "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_SHA256SUMS.72D7468F.sig"
+        "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_SHA256SUMS.sig",
+        "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_SHA256SUMS.72D7468F.sig"
       ],
       "url_source_repository": "https://github.com/hashicorp/terraform",
-      "version": "1.17.1"
+      "version": "1.17.2"
     },
     {
       "is_prerelease": true,

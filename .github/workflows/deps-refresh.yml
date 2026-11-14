@@ -12,7 +12,8 @@ name: deps | Refresh
 #   - the container images the acceptance suite and the vcs-lab job pin
 #     by digest in test/deps/images.go;
 #   - the Terraform and OpenTofu releases the acceptance suite pins by
-#     SHA-256 in test/deps/tools.go.
+#     SHA-256 in test/deps/tools.go, and with them the recorded release
+#     indexes, whose newest releases the suite's runs take.
 #
 # The result goes up as one PR from the org App, so the quality gate runs on
 # it like any other change, and auto-merge.yml merges it when the gate
@@ -178,6 +179,13 @@ jobs:
           tofu=${tofu#v}
           tool OpenTofu tofu "$tofu" "https://github.com/opentofu/opentofu/releases/download/v$tofu/tofu_${tofu}_SHA256SUMS"
           git diff --stat test/deps/tools.go
+          # A run whose stack sets no version takes the recorded index's
+          # newest release, which TestUnitToolPins holds to the pin. The
+          # indexes are recorded only when a pin moves, since each
+          # recording dates itself.
+          if ! git diff --quiet test/deps/tools.go; then
+            go run ./tools/vendorsfixtures internal/vendors/internal/index/testdata
+          fi
 
       - name: Open or update the refresh PR
         env:
