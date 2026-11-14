@@ -18,7 +18,10 @@
 // unseen for worker.offline_after offline, deletes each worker unseen for
 // run.lost_after in a transaction that fails the runs it held, and fails
 // the runs left in preparation past their pool's preparing timeout,
-// through the workersapi.Liveness BindLiveness binds. A poll that is not
+// through the workersapi.Liveness BindLiveness binds. A busy worker's poll
+// delivers its run's stop or kill through the workersapi.Signals
+// BindSignals binds, in a transaction that records the delivery, and
+// answers at once with it. A poll that is not
 // busy and names a run fails it there when the worker still holds it, as
 // one whose container ended without a report ending it; a poll clears
 // its worker's offline mark. Spec answers a run token's bearer its run's handover from the
@@ -28,15 +31,16 @@
 //
 // ref: decision 0008 § "Claiming runs", § "The worker API", § "Worker
 // status, drain, cycle and reset", § "The run specification and its
-// secrets", § "Liveness: offline workers and lost runs"
+// secrets", § "Liveness: offline workers and lost runs", § "Stop and
+// kill"
 //
 // # Input and output
 //
 // New takes the Store, the pool registrations and claims begin
 // transactions on, the worker session and run tokens it mints, the limits
 // it checks, the server's version, the longest hold and the reap's
-// clocks; BindScheduler takes the runs domain's claim and handover, and
-// BindLiveness its liveness.
+// clocks; BindScheduler takes the runs domain's claim and handover,
+// BindLiveness its liveness and BindSignals its signals.
 //
 // # Dependencies
 //

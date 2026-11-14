@@ -23,12 +23,19 @@
 // the runs a claim moved to a preparing state that no started report
 // moved on within their pool's preparing timeout, with the note
 // "preparing timeout", oldest first, skipping rows another transaction
-// locks. LivenessStore is its storage port.
+// locks. A container the launcher killed on a kill signal fails its run
+// with the note "killed", or the kill's own, in the killer's name.
+// LivenessStore is its storage port.
+//
+// Signals is the domain's workersapi.Signals, through which a busy
+// worker's poll delivers the stop or kill a caller asked of its run, once
+// each: a kill in place of a stop not yet delivered, and a stop only while
+// the run's state takes one. SignalStore is its storage port.
 //
 // # Input and output
 //
-// None of its own: it reaches storage through Store, ClaimStore and
-// LivenessStore, the
+// None of its own: it reaches storage through Store, ClaimStore,
+// LivenessStore and SignalStore, the
 // stacks domain through stacksapi.Stacks, runs through the lifecycle and
 // the queue through Queue.
 //

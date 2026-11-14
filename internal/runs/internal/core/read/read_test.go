@@ -41,3 +41,61 @@ func TestUnitAllowed(t *testing.T) {
 		}
 	}
 }
+
+// TestUnitAllowedStopKill lists stop for a run that initializes or plans
+// until one is asked of it, then kill while a worker holds it until one is
+// asked too, each needing its blocking variant for the run that holds its
+// stack's lock.
+func TestUnitAllowedStopKill(t *testing.T) {
+	all := []accessapi.Action{
+		accessapi.ActionRunStop, accessapi.ActionRunStopBlocking, accessapi.ActionRunKill,
+		accessapi.ActionRunKillBlocking,
+	}
+	worker, asked := kernel.NewULID(), &lifecycle.Signal{}
+	for _, c := range []struct {
+		name       string
+		typ        kernel.RunType
+		state      kernel.RunState
+		stop, kill *lifecycle.Signal
+		blocking   bool
+		want       []accessapi.Action
+	}{
+		{
+			name: "planning", typ: kernel.RunTypeProposed, state: kernel.RunStatePlanning,
+			want: []accessapi.Action{accessapi.ActionRunStop},
+		},
+		{
+			name: "planning, blocking", typ: kernel.RunTypeTracked,
+			state: kernel.RunStatePlanning, blocking: true,
+			want: []accessapi.Action{accessapi.ActionRunStopBlocking},
+		},
+		{
+			name: "a test case planning", typ: kernel.RunTypeTesting,
+			state: kernel.RunStatePlanning, want: []accessapi.Action{},
+		},
+		{
+			name: "stopping", typ: kernel.RunTypeTracked, state: kernel.RunStateInitializing,
+			stop: asked, want: []accessapi.Action{accessapi.ActionRunKill},
+		},
+		{
+			name: "stopping, blocking", typ: kernel.RunTypeTask,
+			state: kernel.RunStatePerforming, stop: asked, blocking: true,
+			want: []accessapi.Action{accessapi.ActionRunKillBlocking},
+		},
+		{
+			name: "killed", typ: kernel.RunTypeTracked, state: kernel.RunStatePlanning,
+			stop: asked, kill: asked, want: []accessapi.Action{},
+		},
+		{
+			name: "stopped", typ: kernel.RunTypeTracked, state: kernel.RunStateStopped,
+			stop: asked, want: []accessapi.Action{},
+		},
+	} {
+		r := lifecycle.Run{
+			Type: c.typ, State: c.state, Worker: &worker, Stop: c.stop, Kill: c.kill,
+		}
+		if got := read.Allowed(r, c.blocking, all); !slices.Equal(got, c.want) {
+			t.Errorf("Allowed of %s = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

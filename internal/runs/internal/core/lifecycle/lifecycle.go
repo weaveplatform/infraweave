@@ -133,7 +133,8 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // private pool when the run was created, nil for the public pool, and
 // Worker the worker that last claimed it. Delta is what its latest plan
 // changes, nil until it plans; the report service keeps it. Task is a
-// TASK run's command, nil for every other type.
+// TASK run's command, nil for every other type. Stop and Kill are a
+// caller's requests to stop and to kill it, nil until one asks.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -153,12 +154,50 @@ type Run struct {
 	Worker         *kernel.ULID
 	Delta          *kernel.PlanDelta
 	Task           *kernel.Task
+	Stop           *Signal
+	Kill           *Signal
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
 
+// Signal is a caller's request to stop or to kill a run: when it was
+// made, the login that made it and its note, which the transition the
+// signal ends the run with records, and when a poll delivered it to the
+// run's worker, nil until one did.
+//
+// ref: decision 0008 § "Stop and kill"
+type Signal struct {
+	At          time.Time
+	By          string
+	Note        string
+	DeliveredAt *time.Time
+}
+
 // LocalPreview reports whether r previews a local workspace.
 func (r Run) LocalPreview() bool { return r.LocalWorkspace != "" }
+
+// Stoppable reports whether r's state takes a stop: it has an edge to
+// STOPPED its worker's report drives.
+func (r Run) Stoppable() bool {
+	_, ok := machine.Allowed(r.Type, r.State, kernel.RunStateStopped, machine.DriverWorkerReport)
+	return ok
+}
+
+// Killable reports whether r takes a kill: a stop was asked of it, and a
+// worker holds it.
+func (r Run) Killable() bool { return r.Stop != nil && r.Worker != nil && r.State.OnWorker() }
+
+// Ends is who the transition s ends a run with records, and its note: the
+// request's own, else cause. A nil s is the server's, with cause.
+func (s *Signal) Ends(cause string) (Actor, string) {
+	if s == nil {
+		return Actor{}, cause
+	}
+	if s.Note != "" {
+		cause = s.Note
+	}
+	return Actor{Login: s.By}, cause
+}
 
 // Step is one run_state_transitions row: the state a transition enters,
 // its sequence, the run's new state_version, and who took it. HasLogs is

@@ -11,17 +11,20 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/config"
+	"github.com/weaveplatform/infraweave/internal/agent/executor"
 )
 
 func TestUnitIdentityKeys(t *testing.T) {
@@ -211,10 +214,74 @@ func TestUnitWorkspaceDir(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cache, "keep"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	l.dropWorkspace(t.Context(), "..")
+	l.dropWorkspace(t.Context(), "..", nil)
 	if _, err := os.Stat(filepath.Join(cache, "keep")); err != nil ||
 		!strings.Contains(log.String(), "remove the run's workspace") {
 		t.Fatalf("a run ID of ..: %v, %s", err, log.String())
+	}
+}
+
+// TestUnitDropWorkspaceHandsBack checks that a workspace whose removal is
+// refused, as one a killed runner left closed is, is handed back by the
+// run's container and removed; that one the container fails to hand back
+// stays, and the refusal and the failure are logged; and that a run ID
+// that names no workspace is never handed back.
+func TestUnitDropWorkspaceHandsBack(t *testing.T) {
+	switch {
+	case runtime.GOOS == "windows":
+		t.Skip("a directory's mode does not stop its removal on Windows")
+	case os.Geteuid() == 0:
+		t.Skip("root removes a directory whatever its mode")
+	}
+	var log bytes.Buffer
+	l := &Launcher{d: Deps{
+		Config: config.Launcher{CacheDir: t.TempDir()},
+		Log:    slog.New(slog.NewTextHandler(&log, nil)),
+	}}
+	e := agenttest.NewExecutor()
+	if _, err := e.Start(t.Context(), executor.Job{Worker: "w", Run: "01JRUN"}); err != nil {
+		t.Fatal(err)
+	}
+	c := e.Container("w")
+	ws, err := l.workspaceDir("01JRUN")
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := filepath.Join(ws, ".terraform")
+	shut := func(t *testing.T) {
+		t.Helper()
+		if err := os.MkdirAll(closed, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(closed, "terraform.tfstate"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(closed, 0o500); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(closed, 0o700) })
+	}
+
+	shut(t)
+	c.OnHandBack(func() error { return os.Chmod(closed, 0o700) })
+	l.dropWorkspace(t.Context(), "01JRUN", c)
+	if _, err := os.Stat(ws); !errors.Is(err, fs.ErrNotExist) || c.HandedBack() != 1 ||
+		log.Len() != 0 {
+		t.Fatalf("handed back: %v, %d hand-backs, log %s", err, c.HandedBack(), log.String())
+	}
+
+	shut(t)
+	c.OnHandBack(func() error { return errors.New("no hand-back") })
+	l.dropWorkspace(t.Context(), "01JRUN", c)
+	if _, err := os.Stat(closed); err != nil || c.HandedBack() != 2 ||
+		!strings.Contains(log.String(), "permission denied") ||
+		!strings.Contains(log.String(), "no hand-back") {
+		t.Fatalf("not handed back: %v, %d hand-backs, log %s", err, c.HandedBack(), log.String())
+	}
+
+	l.dropWorkspace(t.Context(), "..", c)
+	if c.HandedBack() != 2 {
+		t.Errorf("a run ID of .. handed back")
 	}
 }
 

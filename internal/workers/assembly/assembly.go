@@ -267,6 +267,11 @@ func (d *Domain) BindReports(r workersapi.Reports) { d.workers.BindReports(r) }
 // a poll that reports an ended container fail runs through.
 func (d *Domain) BindLiveness(l workersapi.Liveness) { d.workers.BindLiveness(l) }
 
+// BindSignals binds the runs domain's workersapi.Signals, a back edge
+// internal/app binds after it constructs that domain, which a busy
+// worker's poll delivers its run's stop or kill through.
+func (d *Domain) BindSignals(s workersapi.Signals) { d.workers.BindSignals(s) }
+
 // Reap is worker.reap, the pass that marks silent workers offline, deletes
 // lost ones and fails their runs, and fails overdue preparations. It runs
 // on the scheduler queue with the run timers, so a long maintenance job

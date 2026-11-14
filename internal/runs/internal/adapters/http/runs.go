@@ -303,6 +303,51 @@ func (s Server) RunCancel(
 	return api.RunCancel200JSONResponse{Body: runOf(v)}, nil
 }
 
+// RunStop asks the worker of a run of the stack that initializes or plans
+// to stop it. The route has decided RUN_STOP on the stack's space.
+func (s Server) RunStop(
+	ctx context.Context,
+	req api.RunStopRequestObject,
+) (api.RunStopResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var note string
+	var state kernel.RunState
+	if req.Body != nil {
+		note, state = deref(req.Body.Note), kernel.RunState(deref(req.Body.State))
+	}
+	v, err := s.control.Stop(ctx, p, req.StackId, req.RunId, note, state)
+	if err != nil {
+		return nil, runError(err, req.StackId, req.RunId)
+	}
+	return api.RunStop200JSONResponse{Body: runOf(v)}, nil
+}
+
+// RunKill asks the worker of a run of the stack that a stop did not end
+// to kill its container. The route has decided RUN_KILL on the stack's
+// space.
+func (s Server) RunKill(
+	ctx context.Context,
+	req api.RunKillRequestObject,
+) (api.RunKillResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var note string
+	var state kernel.RunState
+	if req.Body != nil {
+		note, state = deref(req.Body.Note), kernel.RunState(deref(req.Body.State))
+	}
+	v, err := s.control.Kill(ctx, p, req.StackId, req.RunId, note, state)
+	if err != nil {
+		return nil, runError(err, req.StackId, req.RunId)
+	}
+	return api.RunKill200JSONResponse{Body: runOf(v)}, nil
+}
+
 // RunConfirm confirms the stack's run waiting for confirmation, the one
 // the body names or else the one that holds the stack's run lock. The
 // route has decided RUN_CONFIRM on the stack's space.

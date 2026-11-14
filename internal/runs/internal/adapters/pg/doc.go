@@ -29,7 +29,11 @@
 // run's handover it reads and locks a run by its ID alone, as a run token
 // names it, and makes the run's artifact key once, sealed to its row in
 // artifact_key_sealed, opening it on every later read, and opens the
-// run's overrides; SealedColumns names both columns. Held names the columns
+// run's overrides; SealedColumns names both columns. For a stop or kill it
+// records the request and notifies infraweave_runs with the run's pool
+// alone, and for a poll it reads and locks the runs a worker holds with a
+// request not yet delivered and records each delivery. Held names the
+// columns
 // that hold the access domain's accounts and the stacks domain's stacks,
 // and Keys declares the runs' key, which other domains' held columns name.
 // Every method joins the transaction its context carries.

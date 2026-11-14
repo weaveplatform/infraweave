@@ -25,7 +25,8 @@
 // preparation that fails, including an apply with no workspace saved,
 // reports the run failed in its preparing state, with the error as its
 // note, and removes the workspace. The workspace is removed when the run
-// ends, is discarded, or is lost.
+// ends, is discarded, or is lost, before its container, which hands it
+// back first when a killed runner left it closed.
 // stop and kill reach the run's container, cycle exits once the launcher
 // is idle, and a renewed session token replaces the old one.
 //

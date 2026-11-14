@@ -53,6 +53,7 @@ func TestUnitRunnerExecutesTheRun(t *testing.T) {
 		bytes.NewReader(h),
 		srv.Client(),
 		slog.New(slog.NewTextHandler(&log, nil)),
+		nil,
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -85,6 +86,7 @@ func TestUnitRunnerFailures(t *testing.T) {
 		strings.NewReader("{"),
 		nil,
 		log,
+		nil,
 	); !errors.Is(
 		err,
 		handoff.ErrHandoff,
@@ -94,7 +96,7 @@ func TestUnitRunnerFailures(t *testing.T) {
 	for n := range 2 {
 		srv, h := assigned(t)
 		d := &failAfter{n: n, next: srv.Client()}
-		if err := runner.Run(t.Context(), bytes.NewReader(h), d, log); err == nil {
+		if err := runner.Run(t.Context(), bytes.NewReader(h), d, log, nil); err == nil {
 			t.Fatalf("report %d failed, and Run succeeded", n+1)
 		}
 	}

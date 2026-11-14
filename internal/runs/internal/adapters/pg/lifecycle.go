@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -24,7 +25,9 @@ var (
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config,
 	coalesce(force_apply_mode, ''), coalesce(local_workspace, ''), worker_pool_id, worker_id,
-	created_at, updated_at, delta, command, skip_initialization`
+	created_at, updated_at, delta, command, skip_initialization,
+	stop_requested_at, coalesce(stop_requested_by, ''), coalesce(stop_note, ''), stop_delivered_at,
+	kill_requested_at, coalesce(kill_requested_by, ''), coalesce(kill_note, ''), kill_delivered_at`
 
 // insertColumns are runColumns as an INSERT names them, with the
 // priority_tier the claim orders by and without the delta, which a plan
@@ -42,17 +45,21 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 		commit, d            []byte
 		command              *string
 		skipInit             bool
+		stop, kill           signalRow
 	)
 	err := row.Scan(&r.Account, &r.ID, &r.Stack, &typ, &state, &r.Version, &r.StateChangedAt,
 		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.RuntimeConfig, &r.ForceApply,
 		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt, &d, &command,
-		&skipInit)
+		&skipInit,
+		&stop.at, &stop.by, &stop.note, &stop.delivered,
+		&kill.at, &kill.by, &kill.note, &kill.delivered)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
 	}
 	if command != nil {
 		r.Task = &kernel.Task{Command: *command, SkipInitialization: skipInit}
 	}
+	r.Stop, r.Kill = stop.signal(), kill.signal()
 	if err := json.Unmarshal(commit, &r.Commit); err != nil {
 		return lifecycle.Run{}, fmt.Errorf("runs: decode the commit of run %s: %w", r.ID, err)
 	}
@@ -64,6 +71,25 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 	r.StateChangedAt, r.CreatedAt, r.UpdatedAt = r.StateChangedAt.UTC(), r.CreatedAt.UTC(),
 		r.UpdatedAt.UTC()
 	return r, nil
+}
+
+// signalRow is a run's stop_* or kill_* columns.
+type signalRow struct {
+	at, delivered *time.Time
+	by, note      string
+}
+
+// signal is the request c records, nil when none was made.
+func (c signalRow) signal() *lifecycle.Signal {
+	if c.at == nil {
+		return nil
+	}
+	sig := &lifecycle.Signal{At: c.at.UTC(), By: c.by, Note: c.note}
+	if c.delivered != nil {
+		at := c.delivered.UTC()
+		sig.DeliveredAt = &at
+	}
+	return sig
 }
 
 // Lock reads acct's run id and locks its row FOR UPDATE.

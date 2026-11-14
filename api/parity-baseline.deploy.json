@@ -316,7 +316,6 @@
       "runCpuProfileDownloadURL",
       "runDiscardAll",
       "runExternalDependencyMarkAsCompleted",
-      "runKill",
       "runLogsDelete",
       "runMinutesUsage",
       "runPluginLogsDownloadURL",
@@ -327,7 +326,6 @@
       "runReview",
       "runSearchEntityChanges",
       "runSearchEntityChangesSuggestions",
-      "runStop",
       "runTargetedReplan",
       "runTraceSpans",
       "runWorkerMetrics"

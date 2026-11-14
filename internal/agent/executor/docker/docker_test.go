@@ -49,7 +49,9 @@ func (o *output) String() string {
 // restarted launcher finds its worker's running container and follows its
 // output; Stop interrupts it, Kill ends it as killed, a container removed
 // behind the executor's back is missing, and an image the host lacks and
-// cannot pull fails the start.
+// cannot pull fails the start. HandBack runs the binary as runner
+// hand-back, as UID 1983, in the killed container's workspace, and fails
+// once the container is removed.
 func TestAccDockerExecutor(t *testing.T) {
 	ctx := t.Context()
 	cli, err := client.New(client.FromEnv)
@@ -119,10 +121,7 @@ func TestAccDockerExecutor(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("Find = %v, %v", ok, err)
 		}
-		if err := found.Stop(ctx); err != nil {
-			t.Fatal(err)
-		}
-		exit, err := found.Wait(ctx)
+		exit, err := stop(ctx, t, found)
 		if err != nil || exit != (executor.Exit{Code: 130, Reason: wire.Exited}) ||
 			!strings.Contains(out.String(), "interrupted") {
 			t.Fatalf("a stopped runner: %+v, %v, output %q", exit, err, out.String())
@@ -158,6 +157,51 @@ func TestAccDockerExecutor(t *testing.T) {
 		}
 	})
 
+	t.Run("handed back", func(t *testing.T) {
+		ws := t.TempDir()
+		// As a launcher that cannot change owners hands it over.
+		if err := os.Chmod(ws, 0o777); err != nil {
+			t.Fatal(err)
+		}
+		c, err := e.Start(ctx, executor.Job{
+			Worker: kernel.NewULID().String(), Run: kernel.NewULID().String(), Image: image,
+			Handoff: []byte("wait"), Workspace: ws,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = c.Remove(context.WithoutCancel(ctx)) })
+		if err := c.Kill(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Wait(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.HandBack(ctx); err != nil {
+			t.Fatal(err)
+		}
+		b, err := os.ReadFile(filepath.Join(ws, "handed-back"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got struct {
+			UID  int      `json:"uid"`
+			Args []string `json:"args"`
+			WD   string   `json:"wd"`
+		}
+		if err := json.Unmarshal(b, &got); err != nil || got.UID != 1983 ||
+			got.WD != docker.Workspace ||
+			strings.Join(got.Args, " ") != docker.BinaryPath+" runner hand-back" {
+			t.Errorf("handed back as %s: %v", b, err)
+		}
+		if err := c.Remove(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.HandBack(ctx); err == nil {
+			t.Error("HandBack of a removed container")
+		}
+	})
+
 	t.Run("an image the host cannot pull", func(t *testing.T) {
 		// The daemon retries an unreachable registry for longer than the
 		// test needs to see the pull fail.
@@ -169,6 +213,31 @@ func TestAccDockerExecutor(t *testing.T) {
 			t.Errorf("Start = %v", err)
 		}
 	})
+}
+
+// stop stops c until it ends, and answers its exit: the kernel drops a
+// SIGINT that reaches the probe, PID 1, before the probe handles one.
+func stop(ctx context.Context, t *testing.T, c executor.Container) (executor.Exit, error) {
+	t.Helper()
+	type waited struct {
+		exit executor.Exit
+		err  error
+	}
+	ended := make(chan waited, 1)
+	go func() {
+		exit, err := c.Wait(ctx)
+		ended <- waited{exit, err}
+	}()
+	for {
+		if err := c.Stop(ctx); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case w := <-ended:
+			return w.exit, w.err
+		case <-time.After(time.Second):
+		}
+	}
 }
 
 // emptyImage imports an image whose filesystem holds the workspace

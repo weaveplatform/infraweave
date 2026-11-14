@@ -433,6 +433,24 @@ func TestUnitReportEdges(t *testing.T) {
 	}
 }
 
+// TestUnitReportStopped checks that a stopped report records who asked
+// for the stop, and the stop's note in place of the worker's, when it has
+// one.
+func TestUnitReportStopped(t *testing.T) {
+	for _, tc := range []struct{ asked, want string }{
+		{"enough", "enough"}, {"", "exit code 0"},
+	} {
+		w := newWorld(kernel.RunTypeTracked, kernel.RunStatePlanning)
+		w.s.run.Stop = &lifecycle.Signal{By: "alice", Note: tc.asked}
+		got, err := w.report(t, 2, kernel.RunStatePlanning, workersapi.ReportStopped)
+		want(t, got, err, workersapi.ActionExit, kernel.RunStateStopped, 3)
+		if len(w.m.reqs) != 1 || w.m.reqs[0].Actor.Login != "alice" ||
+			w.m.reqs[0].Note != tc.want {
+			t.Errorf("a stop noted %q moved %+v", tc.asked, w.m.reqs)
+		}
+	}
+}
+
 // TestUnitPlanDecision checks the plan decision with no plan policy
 // attached against each row of its table: the state it moves the run to,
 // driven by the decision, the step it answers, and the delta kept on the

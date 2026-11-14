@@ -281,7 +281,7 @@ func (l *Launcher) start(ctx context.Context) error {
 		l.ended = l.st.Exit
 	case l.st.Run != "":
 		l.ended = &wire.ContainerExit{Code: executor.MissingCode, Reason: wire.Missing}
-		l.dropWorkspace(ctx, l.st.Run)
+		l.dropWorkspace(ctx, l.st.Run, nil)
 	}
 	return l.save()
 }
@@ -292,19 +292,24 @@ func (l *Launcher) discard(ctx context.Context, old string) {
 	l.d.Log.WarnContext(ctx, "the server no longer has the worker; its run ended there",
 		"worker", old, "run", l.st.Run)
 	if c, ok, err := l.d.Executor.Find(ctx, old, nil); err == nil && ok {
-		if err := c.Remove(ctx); err != nil {
-			l.d.Log.WarnContext(
-				ctx,
-				"remove the lost run's container",
-				"run",
-				c.Run(),
-				"error",
-				err,
-			)
-		}
+		l.lose(ctx, c, l.st.Run)
+	} else {
+		l.dropWorkspace(ctx, l.st.Run, nil)
 	}
-	l.dropWorkspace(ctx, l.st.Run)
 	l.st.Run, l.st.Exit = "", nil
+}
+
+// lose kills c, the container of run, which the server no longer has, and
+// removes run's workspace and then c, whose mounts hand the workspace
+// back, as the killed runner did not.
+func (l *Launcher) lose(ctx context.Context, c executor.Container, run string) {
+	if err := c.Kill(ctx); err != nil {
+		l.d.Log.WarnContext(ctx, "kill the lost run's container", "run", run, "error", err)
+	}
+	l.dropWorkspace(ctx, run, c)
+	if err := c.Remove(ctx); err != nil {
+		l.d.Log.WarnContext(ctx, "remove the lost run's container", "run", run, "error", err)
+	}
 }
 
 // register registers the worker, resuming l.st.Worker when it names one,
@@ -358,10 +363,7 @@ func (l *Launcher) reregister(ctx context.Context) error {
 	if l.cur != nil {
 		l.d.Log.WarnContext(ctx, "the server no longer has the worker; its run ended there",
 			"worker", old, "run", l.cur.c.Run())
-		if err := l.cur.c.Remove(ctx); err != nil {
-			l.d.Log.WarnContext(ctx, "remove the lost run's container", "error", err)
-		}
-		l.dropWorkspace(ctx, l.cur.c.Run())
+		l.lose(ctx, l.cur.c, l.cur.c.Run())
 		l.cur = nil
 	}
 	l.ended, l.st.Run, l.st.Exit = nil, "", nil
@@ -510,7 +512,7 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Con
 	}
 	c, err := l.container(ctx, a, spec, secrets, ws)
 	if err != nil && ws != "" {
-		l.dropWorkspace(ctx, a.Run)
+		l.dropWorkspace(ctx, a.Run, nil)
 	}
 	return c, err
 }
@@ -563,7 +565,7 @@ func (l *Launcher) workspace(
 		err = l.restore(ctx, a, dir, spec)
 	}
 	if err != nil {
-		l.dropWorkspace(ctx, a.Run)
+		l.dropWorkspace(ctx, a.Run, nil)
 		return "", err //nolint:wrapcheck // source names the step and the host
 	}
 	return dir, nil
@@ -591,13 +593,23 @@ func (l *Launcher) restore(
 
 // dropWorkspace removes run's workspace directory. A launcher that could
 // not hand the workspace to the run's user relies on the runner having
-// opened every directory the run made; one the runner never reached, as
-// when its container was killed, may refuse the removal, which is logged,
-// and the directory stays.
-func (l *Launcher) dropWorkspace(ctx context.Context, run string) {
+// opened every directory the run made. When the removal is refused, as
+// when the run's container was killed before its runner opened them, c,
+// the run's ended container, hands the workspace back and the removal is
+// tried again. A refusal that stays, or one with no container to hand the
+// workspace back, as for a container that is gone, is logged, and the
+// directory stays.
+func (l *Launcher) dropWorkspace(ctx context.Context, run string, c executor.Container) {
 	dir, err := l.workspaceDir(run)
 	if err == nil {
 		err = os.RemoveAll(dir)
+	}
+	if err != nil && dir != "" && c != nil {
+		if herr := c.HandBack(ctx); herr != nil {
+			err = errors.Join(err, herr)
+		} else {
+			err = os.RemoveAll(dir)
+		}
 	}
 	if err != nil {
 		l.d.Log.WarnContext(ctx, "remove the run's workspace", "run", run, "error", err)
@@ -681,7 +693,8 @@ func (l *Launcher) watch(ctx context.Context, c executor.Container) *running {
 }
 
 // end records how the current run's container ended, for the next poll,
-// and removes it. A container whose end the executor cannot read is
+// and removes its workspace and then it, whose mounts hand the workspace
+// back when its runner did not. A container whose end the executor cannot read is
 // reported missing.
 func (l *Launcher) end(ctx context.Context, w waited) {
 	run := l.cur.c.Run()
@@ -693,10 +706,10 @@ func (l *Launcher) end(ctx context.Context, w waited) {
 	}
 	l.d.Log.InfoContext(ctx, "run container ended", "run", run, "code", exit.Code,
 		"reason", exit.Reason)
+	l.dropWorkspace(ctx, run, l.cur.c)
 	if err := l.cur.c.Remove(ctx); err != nil {
 		l.d.Log.WarnContext(ctx, "remove the run's container", "run", run, "error", err)
 	}
-	l.dropWorkspace(ctx, run)
 	l.cur, l.ended, l.st.Exit = nil, &exit, &exit
 	l.saveOrLog(ctx)
 }

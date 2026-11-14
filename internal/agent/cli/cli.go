@@ -140,7 +140,7 @@ func Runner() *cobra.Command {
 }
 
 func runnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:    "runner",
 		Short:  "Execute a run's phase from the launcher's handoff on standard input",
 		Args:   cobra.NoArgs,
@@ -148,12 +148,26 @@ func runnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// NewLogger fails only on settings LogDefaults does not have.
 			log, _, _ := observe.NewLogger(cmd.OutOrStdout(), observe.LogDefaults(), "runner")
+			// The launcher's SIGINT stops the run's command, not the runner,
+			// so the root command's shutdown handler gives it up.
+			stop := make(chan os.Signal, 1)
+			signal.Reset(os.Interrupt)
+			signal.Notify(stop, os.Interrupt)
+			defer signal.Stop(stop)
 			return runner.Run(
 				cmd.Context(),
 				cmd.InOrStdin(),
 				doer,
 				log,
+				stop,
 			) //nolint:wrapcheck // runner names the step
 		},
 	}
+	cmd.AddCommand(&cobra.Command{
+		Use:   "hand-back",
+		Short: "Open the workspace of a run whose container ended first to the launcher's user",
+		Args:  cobra.NoArgs,
+		RunE:  func(*cobra.Command, []string) error { return runner.HandBack() },
+	})
+	return cmd
 }
