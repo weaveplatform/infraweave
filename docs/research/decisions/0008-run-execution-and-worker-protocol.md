@@ -98,6 +98,9 @@ facts shape the design.
   | Upstream run in a dependency chain fails or is canceled | dependants `SKIPPED`, note naming the upstream run | T6 |
   | Drift run on a pool with drift runs disabled | created `QUEUED` and failed in the same transaction (T1 then T5), note explaining the limit | T1, T5 |
   | Task with `skipInitialization` | passes through `INITIALIZING` with no vendor init | T13 |
+  | `runRetry` | a new run of the retried run's type on its commit, with its runtime configuration and overrides, for a `PROPOSED` or `TRACKED` run that has ended and whose source still exists; `canRetry` and `retryBlocker` say whether and why not; a retry never triggers dependants, and a tracked run needs `RUN_RETRY_BLOCKING` as well | T1 |
+  | `DESTROY` run | no plan and no confirmation: `INITIALIZING` straight to `DESTROYING` | T14 |
+  | The `state` argument of `runStop` and `runKill` | the state the caller saw; a run that has left it answers `409` `invalid-state` with its current state | none |
   | `PARSE` run type | served in the enum, never created | none |
 
 ### Who drives each transition
@@ -381,6 +384,13 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   preparation with that detail.
 - **Masking.** `stack.enableWellKnownSecretMasking` is the stack's flag,
   which turns on the well-known patterns ([0013](0013-secrets-at-rest.md#masking)).
+- **The run's work.** A `TASK` run's clear part carries
+  `task: {command, skipInitialization}`, and a run claimed from
+  `REPLAN_REQUESTED` carries `targets`, the resource addresses
+  `runTargetedReplan` keeps in `runs.replan_targets`. One constant bounds
+  their number and length in the document and the domain
+  ([0003](0003-api-conventions.md)). An OpenTofu stack's
+  `enableCPUProfiling` is in the clear part beside the tool.
 - **The state backend.** For a stack that manages state, the clear part
   names `stateBackend.path`, `/state/v1/stacks/<stack ULID>`, and a stack
   without managed state has no `stateBackend`. The runner resolves the path
@@ -576,6 +586,30 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   of the run's most recently recorded workspace, which the launcher
   downloads for `PREPARING_APPLY` and `PREPARING_REPLAN`, or `404`
   `not-found` when the run recorded none.
+- **Outputs.** After a successful `APPLYING`, the runner seals
+  `outputs.json`, the tool's `output -json` with each output's description
+  from the planned configuration in `plan.json`, and records it before the
+  phase's report. The server opens it in that report's transaction and
+  replaces the stack's `stack_outputs`, each value sealed in `value_sealed`
+  ([0013](0013-secrets-at-rest.md)) beside `sensitive` and `description`;
+  a failed apply leaves the previous outputs, and a `DESTROY` run's
+  `FINISHED` transition deletes them. The stack's read answers them through
+  `stacksapi.StackStatus`, which `runs` implements, with no value for a
+  sensitive output.
+- **CPU profiles.** On a stack whose OpenTofu settings enable CPU
+  profiling, with OpenTofu 1.11 or later, the runner points
+  `TOFU_CPU_PROFILE` at a fresh file for each tool command, merges a
+  state's files into one pprof whose samples carry the label
+  `infraweave.command`, and uploads it as the `observability` artifact
+  `cpu-<STATE>.pprof`. A profile that fails is logged and never fails the
+  run. `runCpuProfileDownloadURL` answers its pre-signed `GET` as
+  `runLogsDownloadURL` answers a log, with `ongoing`, `expired` and
+  `deleted`.
+- **Deleting logs.** `runLogsDelete`, decided as `SPACE_ADMIN` on the
+  account's root space, deletes a finished run's chunks, compacted logs
+  and CPU profiles with their records and sets `runs.logs_deleted_at`,
+  after which both log reads answer `deleted`. `runLogRetentionDays`
+  answers `objectstore.retention.run-logs` in whole days.
 - **Deletion.** An account's purge deletes its runs' chunk and artifact
   records with their objects, and their compacted logs. A run deleted with
   its stack leaves its objects to their stores' retention, which bounds
@@ -789,32 +823,65 @@ has failed":
 
 | Limit | Default | Enforced by | Outcome |
 |---|---|---|---|
-| Run timeout | 70 minutes | launcher, from container start | `FAILED`, note `run timeout` |
-| No-log timeout | 7 minutes | launcher, from the last line on the container's output | `FAILED`, note `no log output` |
+| Run timeout | 70 minutes (`launcher.run_timeout`) | launcher, from container start | `FAILED`, note `run timeout` |
+| No-log timeout | 7 minutes (`launcher.log_timeout`) | launcher, from the last line on the container's output | `FAILED`, note `no log output` |
 | Preparing timeout | 15 minutes, per pool | `worker.reap`: no `started` report in time | `FAILED` (T11, T36, T44), note `preparing timeout` |
 | Offline worker | 3 minutes (`worker.offline_after`) | `worker.reap` | no new work; the run continues |
 | Lost run | 60 minutes (`run.lost_after`) | `worker.reap` | `FAILED`, note `worker lost` |
-| Not picked up: 2 days (proposed, test) or 7 days (tracked, task, destroy) | as Spacelift | `run.timers` | `CANCELED` |
-| `UNCONFIRMED` 7 days unchanged | as Spacelift | `run.timers` | `DISCARDED` |
-| `CONFIRMED` or `REPLAN_REQUESTED` 7 days unchanged | as Spacelift | `run.timers` | `FAILED` |
-| 30 days after creation | as Spacelift | `run.timers` | `CANCELED`, `DISCARDED` or `FAILED` by state |
+| Not picked up: proposed and test runs | 2 days (`run.timers.pickup_proposed`) | `run.timers` | `CANCELED` |
+| Not picked up: tracked runs, tasks and destroy runs | 7 days (`run.timers.pickup_blocking`) | `run.timers` | `CANCELED` |
+| `UNCONFIRMED` unchanged | 7 days (`run.timers.unconfirmed`) | `run.timers` | `DISCARDED` |
+| `CONFIRMED` or `REPLAN_REQUESTED` unchanged | 7 days (`run.timers.confirmed`) | `run.timers` | `FAILED` |
+| Not terminal after creation | 30 days (`run.timers.max_age`) | `run.timers` | `CANCELED`, `DISCARDED` or `FAILED` by state |
 
 The timer rules and their notification rules are report 08's
-([08 timers](../reference/08-run-lifecycle.md#timers)). `run.timers` reads
-`runs (state, state_changed_at)` and skips runs held by a worker that still
-has a row, offline or not. The day
-counts are configuration with Spacelift's values as defaults.
+([08 timers](../reference/08-run-lifecycle.md#timers)), and their defaults
+are Spacelift's. `run.timers` runs every minute, reads
+`runs (state, state_changed_at, created_at)` in bounded batches, oldest
+first, and skips runs held by a worker that still has a row, offline or
+not. Each timer's transition carries a note naming its rule, and its
+`run_updated` event names the rule, so notifications apply report 08's
+rules: the shorter rules notify, and the 30-day rule never does
+([0015](0015-events-notifications-webhooks-audit.md)).
+
+A launcher that kills a container on either of its timeouts reports the
+container's exit with the reason `run-timeout` or `log-timeout`, beside
+`exited`, `killed`, `out-of-memory` and `missing`, and liveness fails the
+run through the edge out of its state with the note `run timeout` or
+`no log output`. A container killed on a `kill` signal fails its run with
+the note `killed`.
 
 ### Stop and kill
 
 - `runStop` is valid in `INITIALIZING` and `PLANNING` only
-  ([08 section 6](../reference/08-run-lifecycle.md#6-run-actions)). It records
-  `stop_requested_at`; the worker's next poll receives `stop`; the launcher sends
-  `SIGINT` to the runner, which passes it to the running command and reports
-  `stopped` when it ends (T16, T19).
-- `runKill` is valid once a stop was requested. The worker receives `kill`, the
-  launcher kills the container with `SIGKILL`, and the run fails with note
-  `killed`.
+  ([08 section 6](../reference/08-run-lifecycle.md#6-run-actions)), and
+  needs `RUN_STOP_BLOCKING` as well for the run that holds its stack's lock.
+  Its transaction records `runs.stop_requested_at`. The launcher sends
+  `SIGINT` to the runner, which passes it to the running command's process
+  group and reports `stopped` when the command ends (T16, T19). `PERFORMING`
+  ignores it.
+- `runKill` is valid once a stop was requested, while the run is on a
+  worker, and needs `RUN_KILL_BLOCKING` as well for the run that holds its
+  stack's lock. Its transaction records `runs.kill_requested_at`. The
+  launcher kills the container with `SIGKILL`, and liveness fails the run
+  with the note `killed`.
+- **Signals reach the worker through its poll.** `workersapi` holds a port,
+  which `runs` implements, through which a poll learns the pending signal of
+  the run its worker holds. Each signal is answered once, and the poll that
+  answers it records its delivery in the same transaction: a second
+  `SIGINT` makes Terraform and OpenTofu exit at once, mid-operation.
+
+### Destroy on delete
+
+- `stackDelete` with `destroyResources: true` answers the stack with
+  `deleting: true` and creates a `DESTROY` run on its tracked commit through
+  a `stacksapi` back edge, which `runs` implements, so `stacks` never
+  imports `runsapi` ([0004](0004-repository-architecture.md#constraints)).
+- The stack is deleted in the transaction of that run's `FINISHED`
+  transition. A destroy run that ends in any other state clears `deleting`,
+  and the stack stays with that run as its last.
+- While `deleting`, the stack creates no other run, answering `409`
+  `invalid-state`. `protectFromDeletion` refuses both forms of deletion.
 
 ### Signed runs
 
@@ -831,7 +898,9 @@ offers this policy is available to it alone; 0009 lists built-ins.
 
 - **Server:** `worker.poll_timeout_max` (120s), `worker.offline_after` (3m),
   `worker.samples.retention` (35 days, at least a minute), `run.lost_after` (60m),
-  `run.preparing_timeout_default` (15m), `run.timers.*`,
+  `run.preparing_timeout_default` (15m), `run.timers.pickup_proposed` (48h),
+  `run.timers.pickup_blocking` (168h), `run.timers.unconfirmed` (168h),
+  `run.timers.confirmed` (168h), `run.timers.max_age` (720h),
   `worker.public_pool.allowed_registries`.
 - **Launcher:** `launcher.token`, `launcher.private_key`, `launcher.poll_timeout`
   (60s), `launcher.run_timeout` (70m), `launcher.log_timeout` (7m),
@@ -972,7 +1041,8 @@ offers this policy is available to it alone; 0009 lists built-ins.
 - Gherkin acceptance with PostgreSQL, RustFS and Docker:
   `test/acceptance/features/workers/protocol.feature`,
   `runs/lifecycle.feature` (proposed, tracked with confirm, autodeploy, task,
-  targeted replan, stop, kill, offline worker, lost run, timers on a fake clock),
+  destroy on delete, targeted replan, stop, kill, no-log timeout, offline
+  worker, lost run, timers on a fake clock),
   `runs/runner_image.feature` (a Spacelift public runner image runs unchanged) and
   `runs/signed.feature`. `runs/terraform.feature` and `runs/tofu.feature`
   run a tracked run from a Gitea commit through `runConfirm` to `FINISHED`

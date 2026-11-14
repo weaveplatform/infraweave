@@ -146,7 +146,7 @@ and lint is clean.
 | P8 Worker protocol, private pools and the Docker launcher | Done | Epic [#358](https://github.com/weaveplatform/infraweave/issues/358). Done: [#359](https://github.com/weaveplatform/infraweave/issues/359) the claim columns, back edges, timeouts and Docker acceptance in the plan and decisions; [#361](https://github.com/weaveplatform/infraweave/issues/361) private worker pools from a CSR under an installation pool CA; [#362](https://github.com/weaveplatform/infraweave/issues/362) a stack's reachable worker pool and the account's default runner images; [#360](https://github.com/weaveplatform/infraweave/issues/360) worker session, run and in-run API tokens through `accessapi`; [#363](https://github.com/weaveplatform/infraweave/issues/363) workers registered and their polls held over `/worker/v1`, with drain and cycle; [#364](https://github.com/weaveplatform/infraweave/issues/364) ready runs claimed in priority order exactly once across instances; [#365](https://github.com/weaveplatform/infraweave/issues/365) a run's specification served with its secrets sealed to the pool's key; [#366](https://github.com/weaveplatform/infraweave/issues/366) worker reports, log chunks, artifacts and workspace uploads; [#367](https://github.com/weaveplatform/infraweave/issues/367) `infraweave launcher` running assigned runs in Docker with the runner stub; [#368](https://github.com/weaveplatform/infraweave/issues/368) silent workers marked `OFFLINE`, lost runs failed and the preparing timeout; [#369](https://github.com/weaveplatform/infraweave/issues/369) each pool's workers and queued runs sampled every minute; [#370](https://github.com/weaveplatform/infraweave/issues/370) `workers/protocol.feature` against a real `infraweave all`, launcher and Docker |
 | P8b Managed state backend | Done | Epic [#394](https://github.com/weaveplatform/infraweave/issues/394). Done: [#395](https://github.com/weaveplatform/infraweave/issues/395) the state surface, deviations, plan decision and purges in the plan and decisions; [#397](https://github.com/weaveplatform/infraweave/issues/397) the state domain with its workspaces, locks and versions; [#396](https://github.com/weaveplatform/infraweave/issues/396) a run's state access decided from its current state; [#398](https://github.com/weaveplatform/infraweave/issues/398) the plan decision taken when no policy is attached; [#399](https://github.com/weaveplatform/infraweave/issues/399) the state backend named in the run specification and `infraweave_backend.tf` written by the agent; [#400](https://github.com/weaveplatform/infraweave/issues/400) `/state/v1` and its locks served behind the API's shared controls; [#401](https://github.com/weaveplatform/infraweave/issues/401) a deleted stack's and account's state purged; [#402](https://github.com/weaveplatform/infraweave/issues/402) sealed state versions written and read through `/state/v1`; [#403](https://github.com/weaveplatform/infraweave/issues/403) `state/backend.feature` proving the backend with real Terraform and OpenTofu |
 | P9 First tracked run end to end | Done | **M3**. Epic [#413](https://github.com/weaveplatform/infraweave/issues/413). Done: [#414](https://github.com/weaveplatform/infraweave/issues/414) P9's run specification, artifacts, log compaction, images and captures in the plan and decisions; [#415](https://github.com/weaveplatform/infraweave/issues/415) a run's source, tool version and masking named in its specification, and the full plan delta taken; [#420](https://github.com/weaveplatform/infraweave/issues/420) Terraform and OpenTofu downloaded, verified and cached for each run; [#421](https://github.com/weaveplatform/infraweave/issues/421) a run's source fetched into its workspace before its container starts; [#416](https://github.com/weaveplatform/infraweave/issues/416) Terraform and OpenTofu plan JSON parsed into a run's changes and delta; [#423](https://github.com/weaveplatform/infraweave/issues/423) a run's phases executed with their hooks in one shell session; [#425](https://github.com/weaveplatform/infraweave/issues/425) a run's log masked and uploaded in chunks; [#426](https://github.com/weaveplatform/infraweave/issues/426) a run's plan sealed and its encrypted workspace saved for confirmation; [#422](https://github.com/weaveplatform/infraweave/issues/422) runs proposed on uploaded local workspaces; [#417](https://github.com/weaveplatform/infraweave/issues/417) runs awaiting confirmation confirmed and discarded; [#419](https://github.com/weaveplatform/infraweave/issues/419) a run's logs served per state with their compacted download; [#424](https://github.com/weaveplatform/infraweave/issues/424) a run's changes and delta served; [#418](https://github.com/weaveplatform/infraweave/issues/418) infraweave's Terraform and OpenTofu runner images, built in CI and the harness; [#429](https://github.com/weaveplatform/infraweave/issues/429) the runs reader in-run API tokens authenticate through; [#441](https://github.com/weaveplatform/infraweave/issues/441) the run's account named in its specification, so a runner derives each artifact's key; [#427](https://github.com/weaveplatform/infraweave/issues/427) `runs/terraform.feature`, `runs/tofu.feature`, `runs/runner_image.feature` and `platform/secrets_run_delivery.feature` proving tracked, discarded, local preview and proposed runs end to end through a real launcher with the newest Terraform and OpenTofu |
-| P10 Run lifecycle completeness | In progress | Epic [#451](https://github.com/weaveplatform/infraweave/issues/451). Done: [#453](https://github.com/weaveplatform/infraweave/issues/453) `.infraweave/workflow.yml` command templates checked at initialization and rendered by the runner with every value one shell word, the built-in commands as the same templates, and the `workflow` editor surface |
+| P10 Run lifecycle completeness | In progress | Epic [#451](https://github.com/weaveplatform/infraweave/issues/451). Done: [#452](https://github.com/weaveplatform/infraweave/issues/452) P10's run actions, timers, outputs, profiles and captures in the plan and decisions; [#453](https://github.com/weaveplatform/infraweave/issues/453) `.infraweave/workflow.yml` command templates checked at initialization and rendered by the runner with every value one shell word, the built-in commands as the same templates, and the `workflow` editor surface |
 | P11 State management | Not started | |
 | P12 VCS integrations | Done | Epic [#313](https://github.com/weaveplatform/infraweave/issues/313). Done: [#314](https://github.com/weaveplatform/infraweave/issues/314) the plan and decisions rewritten with P12 before runs and every provider a peer; [#315](https://github.com/weaveplatform/infraweave/issues/315) VCS integrations stored with sealed credentials, one default per provider; [#316](https://github.com/weaveplatform/infraweave/issues/316) GitHub, [#317](https://github.com/weaveplatform/infraweave/issues/317) GitLab, [#321](https://github.com/weaveplatform/infraweave/issues/321) Bitbucket Cloud, [#322](https://github.com/weaveplatform/infraweave/issues/322) Bitbucket Data Center and [#323](https://github.com/weaveplatform/infraweave/issues/323) Azure DevOps, each with its integration operations and provider; [#318](https://github.com/weaveplatform/infraweave/issues/318) repositories, branches and users browsed through every provider's integrations; [#319](https://github.com/weaveplatform/infraweave/issues/319) private stacks tracked on every provider, each run handed its source credential; [#320](https://github.com/weaveplatform/infraweave/issues/320) every provider proved by `vcs-lab` against real repositories that Terraform provisions. The Bitbucket Data Center lab is optional: it runs only where the `vcs-lab` environment holds a licence, and is skipped otherwise |
 | P12b VCS events and feedback | Not started | |
@@ -1877,8 +1877,12 @@ that depend on them.
 **Tasks**
 1. Run types: proposed, tracked, task, destroy and testing paths in
    `internal/runs/internal/core/lifecycle`; `taskCreate` with
-   `skipInitialization`;
-   `proposeWithOverrides`; `runTriggerBatch`; `stackTasks`.
+   `skipInitialization`; `runTriggerBatch`; destroy on delete, where
+   `stackDelete` with `destroyResources` creates a `DESTROY` run and the
+   stack goes when it finishes; the runner's `PERFORMING` and
+   `DESTROYING`. P9 serves `proposeWithOverrides`, and
+   [#307](https://github.com/weaveplatform/infraweave/issues/307) serves
+   `stackTasks`.
 2. Actions: `runRetry`, `runStop`, `runKill` (signals through the poll),
    `runTargetedReplan` with `PREPARING_REPLAN` and T44, `runPromote`,
    `runDiscardAll`, `runComment`, `runLogsDelete`.
@@ -1886,8 +1890,9 @@ that depend on them.
    2, 7 and 30 day rules; the run timeout and no-log timeout enforced by the
    launcher; `runLogRetentionDays`.
 4. Outputs and diagnostics: `stack_outputs` sealed per output with
-   `sensitive`; `runWorkerMetrics`, `runCpuProfileDownloadURL` from
-   `run-observability`.
+   `sensitive`, from the apply's sealed `outputs.json`; OpenTofu CPU
+   profiles, one per run state, and `runCpuProfileDownloadURL` from
+   `run-observability`. `runWorkerMetrics` is P18b's.
 5. Workflow files: `.infraweave/workflow.yml` command templates, checked
    by the runner in `internal/agent/exec` at initialization and rendered
    when each phase runs through `internal/platform/expr`'s shell surface,
@@ -1900,16 +1905,16 @@ that depend on them.
    `expressions/editor.feature`, and `expressions/workflow.feature`'s
    hostile workspace and type error. Records DV-104.
 6. Feature: `runs/lifecycle.feature` (proposed, tracked with confirm,
-   autodeploy, task, targeted replan, stop, kill, lost run, timers in
-   virtual time).
+   autodeploy, task, destroy on delete, targeted replan, stop, kill,
+   no-log timeout, offline worker, lost run, timers in virtual time).
 
 **Exit criteria**
 - The Runs operations of tasks 1 to 4 meet decision 0016's evidence rule,
   and report 26 shows `spacelift_run`, `spacelift_task` and
   `spacelift_stack_outputs` with their API `implemented` (the provider
   follows in P24).
-- Captures C10, C34, C36, C37, C38, C39, C42 and C44 replay once recorded;
-  until then the scenarios assert decision 0008's gap table.
+- Captures C10, C34, C36, C39, C42 and C44 replay once recorded; until
+  then the scenarios assert decision 0008's gap table.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P11: State management
@@ -2135,7 +2140,8 @@ state points, with receipts committed in the transition they justify.
 - Option 5's walkthrough holds against Gitea: a push opens a proposed run, a
   plan policy warns, and the check and pull request comment appear.
 - The operations of task 2 and task 4 meet decision 0016's evidence rule.
-- Captures C40, C41, C49, C50, C51, C55 and C57 replay once recorded.
+- Captures C37, C40, C41, C49, C50, C51, C55 and C57 replay once
+  recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P13b: Login, task and initialization policies, sampling and simulation
@@ -2339,7 +2345,7 @@ with output references and external dependencies.
 - Drift Detection and the schedule and dependency operations of the Stacks
   tag meet decision 0016's evidence rule.
 - Two instances fire each scheduled time once.
-- Captures C151 and C153 to C168 replay once recorded.
+- Captures C38, C151 and C153 to C168 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P17: Module registry
@@ -2568,12 +2574,17 @@ own records, and the metrics and traces operators run infraweave with.
    jobs and policy evaluations; trace context carried into runs and the
    launcher's phase spans. Feature: `platform/observability_tracing.feature`.
    Records DV-063, DV-064.
+5. Run diagnostics from the run's traces: `runWorkerMetrics`, each
+   state's, hook's, resource's and provider's duration against the
+   stack's finished tracked runs, with the run's `workerFindings` and
+   `observabilityStatus`.
 
 **Exit criteria**
 - Audit Trail meets decision 0016's evidence rule, and every mutating
   operation in `api/api.openapi.yaml` carries an audit action.
 - One trace ID spans a run's API request, its job, the launcher's phases and
   the runner's environment.
+- `runWorkerMetrics` meets decision 0016's evidence rule.
 - Captures C180 to C184 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 

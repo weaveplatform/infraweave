@@ -304,9 +304,11 @@ The launcher's shutdown, including runs in flight, is decision 0008's; its
 - **Departure from Spacelift:** probes are `/livez`, `/readyz` and
   `/startupz` on `:9090`, not `/readiness` and `/startup` on `:8080`; port
   `8080` is infraweave's API listener.
-- **Departure from Spacelift:** workers export traces over OTLP to the
-  operator's collector instead of uploading traces, CPU profiles and logs
-  to a run observability bucket.
+- **Departure from Spacelift:** workers export their traces over OTLP to
+  the operator's collector instead of uploading traces and JSON logs to a
+  run observability bucket. The `run-observability` store holds only the
+  tool's CPU profiles, one per run state, which a user downloads
+  ([0008](0008-run-execution-and-worker-protocol.md)).
 - **Departure from Spacelift:** no per-request query logging at `info`;
   the access log records the route pattern, never the body.
 

@@ -292,7 +292,7 @@ sees the same keys, buckets and switches.
   | `uploads` | Client uploads, such as a state file at stack creation or a local-preview workspace | API clients, through pre-signed `PUT` | 1 day | the owning family |
   | `deliveries` | Outbound webhook request and response bodies | Event delivery | `events.deliveries.retention` | [0015](0015-events-notifications-webhooks-audit.md) |
   | `inbox` | Inbound webhook bodies above the inline limit, and queue payloads above 64 KiB | VCS intake, queue | 2 days | [0012](0012-vcs-integration-model.md), [0011](0011-persistent-work-queue.md) |
-  | `run-observability` | Worker traces and metrics artifacts | Runner | 60 days | [0008](0008-run-execution-and-worker-protocol.md) |
+  | `run-observability` | The tool's CPU profiles, one per run state | Runner | 60 days | [0008](0008-run-execution-and-worker-protocol.md) |
   | `flows-events` | Flows event bodies above the inline limit | Flows engine | `flows.retention` | [0018](0018-flows-runtime.md) |
 
   The defaults follow the retention that self-hosted Spacelift's docs suggest
