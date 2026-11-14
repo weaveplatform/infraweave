@@ -45,6 +45,8 @@ components:
           $ref: '#/components/schemas/RunSpecSource'
         tool:
           $ref: '#/components/schemas/RunSpecTool'
+        task:
+          $ref: '#/components/schemas/RunSpecTask'
         hooks:
           type: object
           additionalProperties:
@@ -209,6 +211,24 @@ components:
             Whether the credential reads the stack's repository alone and
             expires when the run ends, rather than being the integration's
             own token.
+    RunSpecTask:
+      description: >-
+        What a TASK run performs in PERFORMING. Present for a TASK run alone.
+      type: object
+      required: [command, skipInitialization]
+      properties:
+        command:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: >-
+            The command the run performs in the stack's workspace, as one
+            shell command line.
+        skipInitialization:
+          type: boolean
+          description: >-
+            Whether the run performs the command without running the tool's
+            init first; INITIALIZING then runs its hooks alone.
     RunSpecTool:
       description: >-
         The infrastructure tool the launcher mounts into the run. Absent for

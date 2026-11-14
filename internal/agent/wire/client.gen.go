@@ -640,6 +640,9 @@ type RunSpec struct {
 	// StateBackend The stack's managed state backend, present only when infraweave keeps the stack's state. The runner points the infrastructure tool's HTTP backend at it, authenticating with the user name run and the run token as the password.
 	StateBackend *RunSpecStateBackend `json:"stateBackend,omitempty"`
 
+	// Task What a TASK run performs in PERFORMING. Present for a TASK run alone.
+	Task *RunSpecTask `json:"task,omitempty"`
+
 	// Tool The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none.
 	Tool *RunSpecTool `json:"tool,omitempty"`
 }
@@ -804,6 +807,15 @@ type RunSpecStack struct {
 type RunSpecStateBackend struct {
 	// Path The backend's path, /state/v1/stacks/ followed by the stack's ID, under the server URL the launcher reaches, so the backend answers behind the same relay or private address as this API.
 	Path string `json:"path"`
+}
+
+// RunSpecTask What a TASK run performs in PERFORMING. Present for a TASK run alone.
+type RunSpecTask struct {
+	// Command The command the run performs in the stack's workspace, as one shell command line.
+	Command string `json:"command"`
+
+	// SkipInitialization Whether the run performs the command without running the tool's init first; INITIALIZING then runs its hooks alone.
+	SkipInitialization bool `json:"skipInitialization"`
 }
 
 // RunSpecTool The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none.

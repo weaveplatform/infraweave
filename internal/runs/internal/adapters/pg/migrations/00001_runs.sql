@@ -33,6 +33,9 @@
 -- overrides, a JSON array of {name, value}, sealed by the keyring as
 -- they may hold secrets; NULL for a run without overrides, which alone
 -- an equal trigger answers instead of creating another.
+-- command and skip_initialization are a task's: the command it performs,
+-- and whether it performs it without initializing the tool first. A TASK
+-- run alone has a command.
 CREATE TABLE runs (
     account_id       uuid        NOT NULL,
     id               uuid        NOT NULL,
@@ -54,12 +57,15 @@ CREATE TABLE runs (
     worker_id        uuid,
     artifact_key_sealed bytea,
     env_overrides_sealed bytea,
+    command          text,
+    skip_initialization boolean NOT NULL DEFAULT false,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, id),
     CHECK (priority IN ('low', 'normal', 'high')),
     CHECK (priority_tier BETWEEN 1 AND 7),
-    CHECK (force_apply_mode IN ('SINGLE', 'CASCADE'))
+    CHECK (force_apply_mode IN ('SINGLE', 'CASCADE')),
+    CHECK ((type = 'TASK') = (command IS NOT NULL))
 );
 
 -- A stack's run lists read its runs of some types newest first, and its

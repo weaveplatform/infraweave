@@ -16,8 +16,10 @@
 -- the tracked commit. state and blocked are the runs domain's projection
 -- of the stack's tracked run and of its run lock, which it writes through
 -- stacksapi in the transaction that moves the run, so stack lists filter,
--- sort and count by state from this table. Writing any of them changes no
--- version, since no request body carries them. vcs_detached marks a stack
+-- sort and count by state from this table. deleting marks a stack whose
+-- delete waits for its destroy run, which the runs domain ends through
+-- stacksapi in the transaction that ends the run. Writing any of them
+-- changes no version, since no request body carries them. vcs_detached marks a stack
 -- whose VCS integration was deleted, which the vcs domain sets, clearing
 -- vcs_integration_id, in the delete's transaction; a write that changes
 -- the stack's source clears it.
@@ -62,6 +64,7 @@ CREATE TABLE stacks (
     tracked_commit_set_by            text        NOT NULL DEFAULT '',
     state                            text        NOT NULL DEFAULT 'NONE',
     blocked                          boolean     NOT NULL DEFAULT false,
+    deleting                         boolean     NOT NULL DEFAULT false,
     created_at                       timestamptz NOT NULL DEFAULT now(),
     version                          bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),

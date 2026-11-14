@@ -882,6 +882,16 @@ the note `killed`.
   and the stack stays with that run as its last.
 - While `deleting`, the stack creates no other run, answering `409`
   `invalid-state`. `protectFromDeletion` refuses both forms of deletion.
+- A stack that cannot run the destroy run refuses the delete, and nothing
+  changes: one locked by another caller with `409` `resource-locked`, as
+  the stack's other writes answer that lock, and one that is disabled or
+  tracks no commit with `409` `invalid-state`.
+- While `deleting`, a delete without `destroyResources` answers `409`
+  `invalid-state`, since the destroy run is still to end. Another delete
+  with it answers the stack as it is, and creates no second run.
+- `deleting` is the runs domain's state of the stack, as its projected run
+  state is, so setting and clearing it changes neither the stack's version
+  nor its `ETag`.
 
 ### Signed runs
 

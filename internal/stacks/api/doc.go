@@ -5,7 +5,7 @@
 // spaces and some stacks' labels, locks a stack for a run, holds a stack
 // for a domain about to store its ID, sets the Commit a stack tracks and
 // its branch's head, writes the runs domain's projection of a stack's run
-// state, detaches the stacks bound to a deleted VCS integration, and
+// state, ends a stack's deletion once its destroy run ends, detaches the stacks bound to a deleted VCS integration, and
 // searches the stacks that use an integration, which Use names, and
 // suggests their values;
 // ErrNotFound when the account lacks the stack. A domain whose rows name
@@ -15,7 +15,9 @@
 // what the stack view reads of the configuration domain, a back edge that
 // domain implements, with AttachedContext and ConfigElement its answers,
 // and StackStatus what it reads of the runs domain, the run blocking each
-// stack. StackSources is what the stack's commit operations resolve refs
+// stack. StackDestroyer is what a delete with destroyResources creates its
+// destroy run through, another back edge the runs domain implements, with
+// Undestroyable for a stack that cannot run one. StackSources is what the stack's commit operations resolve refs
 // through, a back edge the vcs domain implements, with ErrRefNotFound for
 // a ref the repository lacks, and StackIntegrations what a stack's write
 // checks the VCS integration it names with, another, with
@@ -34,6 +36,7 @@
 // domains above
 // stacks in the declared graph import it; the stacks domain's assembly
 // implements Stacks, those domains StackGuard, the configuration domain
-// StackConfiguration, the runs domain StackStatus, and the vcs domain
+// StackConfiguration, the runs domain StackStatus and StackDestroyer, and
+// the vcs domain
 // StackSources and StackIntegrations.
 package api

@@ -12,7 +12,10 @@
 // outputs PurgeBatch rows at a time, as internal/app's runs.purge consumer
 // of accessapi.Deleted. StackStatus
 // is the stacksapi.StackStatus internal/app binds in the stacks domain,
-// the back edge the stack view reads each stack's blocker through;
+// the back edge the stack view reads each stack's blocker through, and
+// StackDestroyer the stacksapi.StackDestroyer it binds there, the back
+// edge a stack's delete with destroyResources creates its destroy run
+// through;
 // Scheduler is the workersapi.Scheduler internal/app binds in the workers
 // domain, the back edge a worker's poll claims its pool's next run
 // through and a run token's bearer reads its run's handover through;

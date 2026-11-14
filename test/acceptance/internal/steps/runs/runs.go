@@ -26,6 +26,8 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 		r.eventually,
 	)
 	sc.Step(`^the answer's (items|edges) are the runs "([^"]*)"$`, r.lists)
+	sc.Step(`^the answer's batch runs name "([^"]+)"$`, r.batch)
+	sc.Step(`^the answer's first run names "(\w+)"$`, r.first)
 	sc.Step(`^two infraweave servers, A and B, on one database, that run no default-queue jobs$`,
 		r.idle)
 	sc.Step(`^a third infraweave server runs the default queue's jobs$`, r.third)
@@ -92,6 +94,51 @@ func (r *runSteps) scheduled(ctx context.Context, want int, state string) error 
 			want,
 		)
 	}
+	return nil
+}
+
+// batch keeps the run IDs of the last answer, a runTriggerBatch result,
+// under the comma-separated names of want, in the answer's order, and
+// checks that each entry's run is the run its runId names.
+func (r *runSteps) batch(want string) error {
+	var out struct {
+		Runs []struct {
+			RunID string `json:"runId"`
+			Run   struct {
+				ID string `json:"id"`
+			} `json:"run"`
+		} `json:"runs"`
+	}
+	last := r.w.Last()
+	names := strings.Split(want, ", ")
+	if err := json.Unmarshal(last.Body, &out); err != nil || len(out.Runs) != len(names) {
+		return fmt.Errorf("%w: not %d batch runs: %d %s", harness.ErrStep, len(names),
+			last.Status, last.Body)
+	}
+	for i, run := range out.Runs {
+		if run.RunID == "" || run.Run.ID != run.RunID {
+			return fmt.Errorf("%w: batch run %d is %q, its run %q", harness.ErrStep, i,
+				run.RunID, run.Run.ID)
+		}
+		r.w.IDs[names[i]] = run.RunID
+	}
+	return nil
+}
+
+// first keeps the ID of the first run of the last answer, a page of
+// runs, as name, for a run the scenario's requests did not create
+// themselves.
+func (r *runSteps) first(name string) error {
+	var page struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	last := r.w.Last()
+	if err := json.Unmarshal(last.Body, &page); err != nil || len(page.Items) == 0 {
+		return fmt.Errorf("%w: no run in %d %s", harness.ErrStep, last.Status, last.Body)
+	}
+	r.w.IDs[name] = page.Items[0].ID
 	return nil
 }
 

@@ -163,7 +163,8 @@ func TestAccStoreStateAccess(t *testing.T) {
 	for _, typ := range kernel.RunTypes() {
 		run := kernel.NewULID()
 		if _, err := w.db.Exec(ctx, `INSERT INTO runs (account_id, id, stack_id, type, state,
-			commit, triggered_by) VALUES ($1, $2, $3, $4, 'PLANNING', '{}', 'alice')`,
+			commit, triggered_by, command) VALUES ($1, $2, $3, $4, 'PLANNING', '{}', 'alice',
+			CASE WHEN $4 = 'TASK' THEN 'ls' END)`,
 			w.acct, run, w.stack, typ); err != nil {
 			t.Fatal(err)
 		}

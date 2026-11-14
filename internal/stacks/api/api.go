@@ -82,8 +82,10 @@ type Commit struct {
 // once. EnableWellKnownSecretMasking turns on the runner's well-known
 // secret patterns, and SkipVendorBinaryDownload runs the image's own
 // tool rather than the one the launcher mounts. LocalPreviewEnabled lets
-// runs be proposed on uploaded local workspaces. Version counts the
-// stack's writes, which SetTracked is not.
+// runs be proposed on uploaded local workspaces. Deleting marks a stack
+// whose delete waits for its destroy run, which no other run joins.
+// Version counts the stack's writes, which SetTracked and Destroyed are
+// not.
 type Settings struct {
 	Stack
 	Repository                   string
@@ -113,6 +115,7 @@ type Settings struct {
 	TrackedCommit                *Commit
 	TrackedCommitSetBy           string
 	ManagesState                 bool
+	Deleting                     bool
 	Version                      int64
 }
 
@@ -191,6 +194,14 @@ type Stacks interface {
 		head, commit *Commit,
 		setBy string,
 	) error
+	// Destroyed ends the deletion of acct's stack id once its destroy run
+	// ends, in the context's transaction: a finished run deletes the stack
+	// as a delete does, and any other end leaves it, no longer deleting.
+	// It leaves a stack that is not deleting as it is; ErrNotFound when
+	// acct lacks it.
+	//
+	// ref: decision 0008 § "Destroy on delete"
+	Destroyed(ctx context.Context, acct kernel.AccountID, id kernel.ULID, finished bool) error
 	// DetachVCS detaches acct's stacks bound to integration, in the
 	// context's transaction: each one forgets the integration and
 	// refuses its commit operations until a write gives it a source
@@ -262,6 +273,28 @@ var ErrRefNotFound = errors.New("stacks: ref not found")
 type StackSources interface {
 	Resolve(ctx context.Context, acct kernel.AccountID, id kernel.ULID, ref string) (Commit, error)
 }
+
+// StackDestroyer is what a stack's delete with destroyResources asks of
+// the runs domain, which is constructed after stacks and implements it:
+// Destroy creates p's DESTROY run on p's account's stack id in the
+// transaction ctx carries, which holds the stack's row; an *Undestroyable when the
+// stack cannot run one. The stacks domain declares it, so the back edge
+// internal/app binds after construction adds no import.
+//
+// ref: decisions 0004 and 0008
+type StackDestroyer interface {
+	Destroy(ctx context.Context, p kernel.Principal, id kernel.ULID) error
+}
+
+// Undestroyable is a destroy run the runs domain refuses, with Detail
+// saying why as the API answers it, and LockedBy naming the holder of the
+// stack's lock when another caller's lock refuses it.
+type Undestroyable struct {
+	Detail   string
+	LockedBy string
+}
+
+func (u *Undestroyable) Error() string { return "stacks: no destroy run: " + u.Detail }
 
 // StackGuard is a domain's say in a stack's moves and deletes: a domain
 // whose rows name stacks registers one, which the stacks domain asks in

@@ -70,6 +70,7 @@ func viewOf(
 		State:                        api.StackState(st.State),
 		StateIsTerminal:              st.State.Terminal(),
 		Blocked:                      st.Blocked,
+		Deleting:                     st.Deleting,
 		AttachedAwsIntegrations:      []api.StackAwsIntegrationAttachment{},
 		AttachedAzureIntegrations:    []api.StackAzureIntegrationAttachment{},
 		AttachedContexts:             []api.StackContextAttachment{},
