@@ -40,11 +40,11 @@ func TestUnitHandBack(t *testing.T) {
 	}
 	top := perm(dir)
 
-	if err := handBack(dir); err != nil {
+	if err := HandBack(dir); err != nil {
 		t.Fatal(err)
 	}
 	if got := perm(filepath.Join(dir, "modules")); got != 0o755 {
-		t.Errorf("handBack changed the runner's own workspace: modules is %v", got)
+		t.Errorf("HandBack changed the runner's own workspace: modules is %v", got)
 	}
 
 	if err := openUp(dir, os.Getuid()); err != nil {

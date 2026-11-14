@@ -140,7 +140,7 @@ func Runner() *cobra.Command {
 }
 
 func runnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:    "runner",
 		Short:  "Execute a run's phase from the launcher's handoff on standard input",
 		Args:   cobra.NoArgs,
@@ -163,4 +163,11 @@ func runnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
 			) //nolint:wrapcheck // runner names the step
 		},
 	}
+	cmd.AddCommand(&cobra.Command{
+		Use:   "hand-back",
+		Short: "Open the workspace of a run whose container ended first to the launcher's user",
+		Args:  cobra.NoArgs,
+		RunE:  func(*cobra.Command, []string) error { return runner.HandBack() },
+	})
+	return cmd
 }

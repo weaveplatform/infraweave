@@ -369,6 +369,66 @@ func (c *run) signal(ctx context.Context, sig string) error {
 	return nil
 }
 
+// HandBack runs the launcher's binary as runner hand-back in a container
+// of its own: the ended container's image, its mounts, User and no
+// network, and removes it. The runner's own end opens the workspace, so
+// only a container that ended before its runner did needs this.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+func (c *run) HandBack(ctx context.Context) error {
+	in, err := c.e.cli.ContainerInspect(ctx, c.id, client.ContainerInspectOptions{})
+	if err != nil {
+		return fmt.Errorf("docker: inspect run %s: %w", c.run, err)
+	}
+	created, err := c.e.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image:      in.Container.Image,
+			User:       User,
+			Entrypoint: []string{BinaryPath},
+			Cmd:        []string{"runner", "hand-back"},
+			WorkingDir: Workspace,
+		},
+		HostConfig: &container.HostConfig{
+			VolumesFrom: []string{c.id},
+			NetworkMode: "none",
+			Runtime:     c.e.c.Runtime,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("docker: create run %s's hand-back: %w", c.run, err)
+	}
+	h := &run{e: c.e, id: created.ID, run: c.run}
+	err = h.handBack(ctx)
+	_, rerr := c.e.cli.ContainerRemove(context.WithoutCancel(ctx), h.id,
+		client.ContainerRemoveOptions{Force: true})
+	if rerr != nil {
+		rerr = fmt.Errorf("docker: remove run %s's hand-back: %w", c.run, rerr)
+	}
+	return errors.Join(err, rerr)
+}
+
+// handBack starts the hand-back container h and waits for it to exit 0.
+func (h *run) handBack(ctx context.Context) error {
+	if _, err := h.e.cli.ContainerStart(ctx, h.id, client.ContainerStartOptions{}); err != nil {
+		return fmt.Errorf("docker: start run %s's hand-back: %w", h.run, err)
+	}
+	w := h.e.cli.ContainerWait(ctx, h.id, client.ContainerWaitOptions{
+		Condition: container.WaitConditionNotRunning,
+	})
+	select {
+	case res := <-w.Result:
+		switch {
+		case res.Error != nil:
+			return fmt.Errorf("%w: run %s's hand-back: %s", errWait, h.run, res.Error.Message)
+		case res.StatusCode != 0:
+			return fmt.Errorf("docker: run %s's hand-back exited %d", h.run, res.StatusCode)
+		}
+		return nil
+	case err := <-w.Error:
+		return fmt.Errorf("docker: wait for run %s's hand-back: %w", h.run, err)
+	}
+}
+
 // Remove removes the container, killing it first when it runs. A
 // container that is gone is not an error.
 func (c *run) Remove(ctx context.Context) error {

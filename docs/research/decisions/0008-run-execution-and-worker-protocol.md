@@ -368,8 +368,12 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   runner, before it exits, makes every directory the run made writable by
   every user too, so a launcher that is not root removes the workspace once
   the run pauses or ends, and restores a confirmed run's saved workspace
-  into a clean one. Only the launcher's user and the run's container reach
-  it, through the launcher's cache directory.
+  into a clean one. A container that ends before its runner does so, as a
+  killed one, leaves directories the launcher cannot remove; the launcher
+  then runs its binary as `runner hand-back` in a container of the ended
+  one's image, mounts and user, with no network, which does the same, and
+  removes the workspace before the container. Only the launcher's user and
+  the run's container reach it, through the launcher's cache directory.
 - **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
   and `download`. The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the

@@ -42,3 +42,9 @@ func Run(
 		Stop:      stop,
 	})
 }
+
+// HandBack opens the working directory, a run's workspace, to its
+// launcher's user, as Run does as the run ends. The launcher runs it in a
+// container of its own over a run container that ended before its
+// runner did, as a killed one.
+func HandBack() error { return exec.HandBack(".") } //nolint:wrapcheck // names the path

@@ -516,7 +516,7 @@ func (r *run) close(ctx context.Context) {
 	if r.d.Workspace == "" {
 		return
 	}
-	if err := handBack(r.d.Workspace); err != nil {
+	if err := HandBack(r.d.Workspace); err != nil {
 		r.d.Log.WarnContext(ctx, "workspace not handed back", "run", r.h.Run, "error", err)
 	}
 }

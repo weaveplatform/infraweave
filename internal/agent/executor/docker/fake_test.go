@@ -149,9 +149,9 @@ func (d *daemon) ContainerWait(
 func (d *daemon) ContainerInspect(
 	context.Context, string, client.ContainerInspectOptions,
 ) (client.ContainerInspectResult, error) {
-	return client.ContainerInspectResult{
-		Container: container.InspectResponse{State: &container.State{OOMKilled: d.oom}},
-	}, d.err("inspect")
+	return client.ContainerInspectResult{Container: container.InspectResponse{
+		Image: "sha256:img", State: &container.State{OOMKilled: d.oom},
+	}}, d.err("inspect")
 }
 
 func (d *daemon) ContainerKill(
@@ -309,6 +309,61 @@ func TestUnitDockerExecutorFailures(t *testing.T) {
 	}
 	if exit, _ := c.Wait(ctx); exit.Reason != wire.Killed {
 		t.Errorf("a killed container's exit = %+v", exit)
+	}
+}
+
+// TestUnitDockerExecutorHandBack checks HandBack on a fake daemon: the
+// hand-back container runs the binary as runner hand-back from the ended
+// container's image, with its mounts, as User, with no network, on the
+// configured runtime, and is removed; each step the daemon refuses, and
+// a hand-back that does not exit 0, fails it, naming the step.
+func TestUnitDockerExecutorHandBack(t *testing.T) {
+	ctx := t.Context()
+	job := executor.Job{Worker: "w", Run: "r", Image: "img", Handoff: []byte("{}")}
+	start := func(t *testing.T, d *daemon) executor.Container {
+		t.Helper()
+		c, err := docker.NewWith(d, "bin", docker.Config{Network: "runs", Runtime: "runsc"}).
+			Start(ctx, job)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d.removed = 0
+		return c
+	}
+
+	d := &daemon{}
+	if err := start(t, d).HandBack(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(append(d.created.Entrypoint, d.created.Cmd...), " "); got !=
+		docker.BinaryPath+" runner hand-back" || d.created.Image != "sha256:img" ||
+		d.created.User != docker.User || d.created.WorkingDir != docker.Workspace ||
+		len(d.created.Labels) != 0 || !slices.Equal(d.host.VolumesFrom, []string{"c1"}) ||
+		d.host.NetworkMode != "none" || d.host.Runtime != "runsc" || d.removed != 1 {
+		t.Errorf("handed back with %+v and %+v, %d removed", d.created, d.host, d.removed)
+	}
+
+	for _, tc := range []struct {
+		name, want string
+		d          *daemon
+		removed    int
+	}{
+		{"inspect", "inspect run r", &daemon{}, 0},
+		{"create", "create run r's hand-back", &daemon{}, 0},
+		{"start", "start run r's hand-back", &daemon{}, 1},
+		{"remove", "remove run r's hand-back", &daemon{}, 1},
+		{"wait error", "no exit", &daemon{wait: container.WaitResponse{
+			Error: &container.WaitExitError{Message: "no exit"},
+		}}, 1},
+		{"wait refused", "wait for run r's hand-back", &daemon{waitErr: errDaemon}, 1},
+		{"exit", "hand-back exited 1", &daemon{wait: container.WaitResponse{StatusCode: 1}}, 1},
+	} {
+		c := start(t, tc.d)
+		tc.d.errs = map[string]error{tc.name: errDaemon}
+		if err := c.HandBack(ctx); err == nil || !strings.Contains(err.Error(), tc.want) ||
+			tc.d.removed != tc.removed {
+			t.Errorf("%s: HandBack = %v, %d removed", tc.name, err, tc.d.removed)
+		}
 	}
 }
 

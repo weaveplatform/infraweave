@@ -49,7 +49,9 @@ func (o *output) String() string {
 // restarted launcher finds its worker's running container and follows its
 // output; Stop interrupts it, Kill ends it as killed, a container removed
 // behind the executor's back is missing, and an image the host lacks and
-// cannot pull fails the start.
+// cannot pull fails the start. HandBack runs the binary as runner
+// hand-back, as UID 1983, in the killed container's workspace, and fails
+// once the container is removed.
 func TestAccDockerExecutor(t *testing.T) {
 	ctx := t.Context()
 	cli, err := client.New(client.FromEnv)
@@ -155,6 +157,51 @@ func TestAccDockerExecutor(t *testing.T) {
 		}
 		if _, ok, err := e.Find(ctx, kernel.NewULID().String(), nil); ok || err != nil {
 			t.Errorf("Find of another worker = %v, %v", ok, err)
+		}
+	})
+
+	t.Run("handed back", func(t *testing.T) {
+		ws := t.TempDir()
+		// As a launcher that cannot change owners hands it over.
+		if err := os.Chmod(ws, 0o777); err != nil {
+			t.Fatal(err)
+		}
+		c, err := e.Start(ctx, executor.Job{
+			Worker: kernel.NewULID().String(), Run: kernel.NewULID().String(), Image: image,
+			Handoff: []byte("wait"), Workspace: ws,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = c.Remove(context.WithoutCancel(ctx)) })
+		if err := c.Kill(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Wait(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.HandBack(ctx); err != nil {
+			t.Fatal(err)
+		}
+		b, err := os.ReadFile(filepath.Join(ws, "handed-back"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got struct {
+			UID  int      `json:"uid"`
+			Args []string `json:"args"`
+			WD   string   `json:"wd"`
+		}
+		if err := json.Unmarshal(b, &got); err != nil || got.UID != 1983 ||
+			got.WD != docker.Workspace ||
+			strings.Join(got.Args, " ") != docker.BinaryPath+" runner hand-back" {
+			t.Errorf("handed back as %s: %v", b, err)
+		}
+		if err := c.Remove(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.HandBack(ctx); err == nil {
+			t.Error("HandBack of a removed container")
 		}
 	})
 
