@@ -18,6 +18,8 @@
 // run's logs ahead of their retention: its chunks, each state's compacted
 // log and its observability artifacts, with their records, and records
 // when, after which Page and Download answer that its logs were deleted.
+// Service.RetentionDays is how many days the run-logs store keeps a log,
+// which runLogRetentionDays answers.
 //
 // ref: decision 0008 § "Logs and artifacts"
 // ref: decision 0005 § "Keys"
@@ -26,9 +28,10 @@
 //
 // New takes the Store, the Objects of blob_objects, the queue a
 // compaction completes its job on, the stacks domain that finds a
-// deletion's stack, and the database it commits on. Page, Download and
-// Delete answer read.ErrNotFound for a run the caller's account lacks,
-// and Delete ErrRunning for one that has not ended. Nothing is logged.
+// deletion's stack, the database it commits on, and
+// objectstore.retention.run-logs. Page, Download and Delete answer
+// read.ErrNotFound for a run the caller's account lacks, and Delete
+// ErrRunning for one that has not ended. Nothing is logged.
 //
 // # Dependencies
 //

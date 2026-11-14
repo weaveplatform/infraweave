@@ -31,7 +31,6 @@
       "hasSSO",
       "infraAssistantBuildModeEnabled",
       "infraAssistantEnabled",
-      "runLogRetentionDays",
       "spaceliftIntelligenceEnabled",
       "spaceliftIntelligenceTermsAccepted",
       "spaceliftIntelligenceTermsLatestVersion",

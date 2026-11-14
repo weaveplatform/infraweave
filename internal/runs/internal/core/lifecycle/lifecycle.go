@@ -298,7 +298,8 @@ func (l *Lifecycle) BindSources(s runsapi.RunSources) { l.d.Sources = s }
 
 // Request is one transition: acct's run, the state_version its caller
 // read, the state it enters, the driver taking it, the guards the driver
-// checked, who takes it, a note, and when a timed state ends.
+// checked, who takes it, a note, when a timed state ends, and the
+// run.timers rule that takes it, which its run_updated event names.
 type Request struct {
 	Account kernel.AccountID
 	Run     kernel.ULID
@@ -309,6 +310,7 @@ type Request struct {
 	Actor   Actor
 	Note    string
 	Until   *time.Time
+	Timer   runsapi.Timer
 }
 
 // Transition moves req's run in the transaction ctx carries, so its row,
@@ -355,7 +357,7 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 	}
 	from := run.State
 	run.State, run.Version, run.StateChangedAt, run.UpdatedAt = req.To, step.Sequence, now, now
-	if err := l.consequences(ctx, run, step); err != nil {
+	if err := l.consequences(ctx, run, step, req.Timer); err != nil {
 		return Run{}, err
 	}
 	if from.OnWorker() {
@@ -479,7 +481,7 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 			return Run{}, false, err //nolint:wrapcheck // the store names the write
 		}
 	}
-	if err := l.consequences(ctx, run, step); err != nil {
+	if err := l.consequences(ctx, run, step, ""); err != nil {
 		return Run{}, false, err
 	}
 	return run, true, nil
@@ -490,7 +492,12 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 // of its credentials, the stack's projection when the run tracks the
 // stack or released the lock, its event, the stack's scheduling, and the
 // announcement to its private pool when it waits for a worker.
-func (l *Lifecycle) consequences(ctx context.Context, run Run, step Step) error {
+func (l *Lifecycle) consequences(
+	ctx context.Context,
+	run Run,
+	step Step,
+	timer runsapi.Timer,
+) error {
 	released := false
 	if run.State.Terminal() {
 		var err error
@@ -515,7 +522,7 @@ func (l *Lifecycle) consequences(ctx context.Context, run Run, step Step) error 
 			return err
 		}
 	}
-	if err := l.updated(ctx, run, step); err != nil {
+	if err := l.updated(ctx, run, step, timer); err != nil {
 		return err
 	}
 	if run.WorkerPool != nil && slices.Contains(machine.Claimable(), run.State) {
@@ -545,14 +552,20 @@ func (l *Lifecycle) Project(ctx context.Context, acct kernel.AccountID, stack ke
 	return l.d.Stacks.SetRunState(ctx, acct, stack, state, blocked)
 }
 
-// updated appends run's run_updated event for step.
-func (l *Lifecycle) updated(ctx context.Context, run Run, step Step) error {
+// updated appends run's run_updated event for step, which timer took
+// when it is not empty.
+func (l *Lifecycle) updated(
+	ctx context.Context,
+	run Run,
+	step Step,
+	timer runsapi.Timer,
+) error {
 	st, err := l.d.Stacks.Get(ctx, run.Account, run.Stack)
 	if err != nil {
 		return err //nolint:wrapcheck // the stacks domain names the read
 	}
 	doc, err := json.Marshal(runsapi.Updated{
-		State: run.State, Username: step.Username, Note: step.Note,
+		State: run.State, Username: step.Username, Note: step.Note, Timer: timer,
 		Run: runsapi.UpdatedRun{
 			ID: run.ID, Type: run.Type, State: run.State,
 			Commit: runsapi.UpdatedCommit{

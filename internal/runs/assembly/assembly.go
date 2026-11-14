@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -28,6 +30,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/timers"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
@@ -40,32 +43,42 @@ func Stream() migrate.Stream { return pg.Stream() }
 // Settings are the run settings: LostAfter, how long a worker goes unseen
 // before its run is a lost run and fails, run.lost_after, and
 // PreparingTimeoutDefault, the preparing timeout of a pool that sets
-// none, run.preparing_timeout_default. The workers domain's reap applies
-// both, so internal/app hands them to it.
+// none, run.preparing_timeout_default, which the workers domain's reap
+// applies, so internal/app hands them to it; and Timers, run.timers,
+// which end the runs nobody moves.
 //
 // ref: decision 0008 § "Configuration"
 type Settings struct {
-	LostAfter               time.Duration `mapstructure:"lost_after"`
-	PreparingTimeoutDefault time.Duration `mapstructure:"preparing_timeout_default"`
+	LostAfter               time.Duration   `mapstructure:"lost_after"`
+	PreparingTimeoutDefault time.Duration   `mapstructure:"preparing_timeout_default"`
+	Timers                  timers.Settings `mapstructure:"timers"`
 }
 
 // DefaultSettings fail a lost run an hour after its worker's last poll,
 // which covers a launcher's restart and a short outage, and a run no
-// started report moved on 15 minutes after its claim.
+// started report moved on 15 minutes after its claim, and keep
+// timers.DefaultSettings.
 func DefaultSettings() Settings {
-	return Settings{LostAfter: time.Hour, PreparingTimeoutDefault: 15 * time.Minute}
+	return Settings{
+		LostAfter: time.Hour, PreparingTimeoutDefault: 15 * time.Minute,
+		Timers: timers.DefaultSettings(),
+	}
 }
 
 // ErrConfig reports a run setting the server could not start with.
 var ErrConfig = errors.New("invalid run configuration")
 
 // Validate rejects a preparing timeout under a second, the unit a pool's
-// own is set in. run.lost_after is checked against worker.offline_after,
-// which internal/app/config does, since it spans both domains.
+// own is set in, and a timer under the minute run.timers runs every.
+// run.lost_after is checked against worker.offline_after, which
+// internal/app/config does, since it spans both domains.
 func (s Settings) Validate() error {
 	if s.PreparingTimeoutDefault < time.Second {
 		return fmt.Errorf("%w: run.preparing_timeout_default %s is under 1s", ErrConfig,
 			s.PreparingTimeoutDefault)
+	}
+	if err := s.Timers.Validate(); err != nil {
+		return fmt.Errorf("%w: %w", ErrConfig, err)
 	}
 	return nil
 }
@@ -99,22 +112,25 @@ type Objects interface {
 // the objects its workers upload, the access domain's spaces, accounts,
 // authorizer and the tokens a handover mints, the stacks domain, the
 // configuration domain's environment, which a handover opens, the outbox
-// its runs' events go to, the queue its jobs go to, and a clock, time.Now
-// when nil.
+// its runs' events go to, the queue its jobs go to, a clock, time.Now
+// when nil, the run settings, and LogRetention,
+// objectstore.retention.run-logs.
 type Deps struct {
-	DB          queue.DB
-	Keys        pg.Sealer
-	Objects     Objects
-	Spaces      accessapi.Spaces
-	Accounts    accessapi.Accounts
-	Authz       accessapi.Authorizer
-	Tokens      handover.Tokens
-	Stacks      stacksapi.Stacks
-	Environment configapi.Environment
-	Catalog     vendorsapi.Catalog
-	Events      lifecycle.Events
-	Jobs        schedule.Queue
-	Now         func() time.Time
+	DB           queue.DB
+	Keys         pg.Sealer
+	Objects      Objects
+	Spaces       accessapi.Spaces
+	Accounts     accessapi.Accounts
+	Authz        accessapi.Authorizer
+	Tokens       handover.Tokens
+	Stacks       stacksapi.Stacks
+	Environment  configapi.Environment
+	Catalog      vendorsapi.Catalog
+	Events       lifecycle.Events
+	Jobs         schedule.Queue
+	Now          func() time.Time
+	Settings     Settings
+	LogRetention time.Duration
 }
 
 // Domain is the runs domain, constructed once per process.
@@ -133,6 +149,7 @@ type Domain struct {
 	trigger   *trigger.Service
 	read      *read.Service
 	control   *control.Service
+	timers    *timers.Service
 }
 
 // New constructs the domain on d.
@@ -160,7 +177,8 @@ func New(d Deps) *Domain {
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
 		}),
 		logs: logs.New(logs.Deps{
-			DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs, Stacks: d.Stacks, Now: d.Now,
+			DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs, Stacks: d.Stacks,
+			Retention: d.LogRetention, Now: d.Now,
 		}),
 		changes: changes.New(changes.Deps{Store: store, Objects: d.Objects, Stacks: d.Stacks}),
 		trigger: trigger.New(trigger.Deps{
@@ -171,6 +189,9 @@ func New(d Deps) *Domain {
 		control: control.New(control.Deps{
 			DB: d.DB, Store: store, Stacks: d.Stacks, Authz: d.Authz, Lifecycle: lc,
 			Views: views, Now: d.Now,
+		}),
+		timers: timers.New(timers.Deps{
+			DB: d.DB, Store: store, Lifecycle: lc, Settings: d.Settings.Timers, Now: d.Now,
 		}),
 	}
 }
@@ -208,6 +229,27 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 			return err //nolint:wrapcheck // the store names the purge
 		}
 	}
+}
+
+// Cron is the domain's periodic task, run.timers, which ends the runs
+// nobody moves and logs to log what each pass ended.
+func (d *Domain) Cron(log *slog.Logger) []cron.Task {
+	return []cron.Task{{
+		Kind:  timers.Kind,
+		Every: timers.Every,
+		Handler: func(ctx context.Context, _ queue.Job) error {
+			ended, err := d.timers.Pass(ctx)
+			if len(ended) > 0 {
+				log.InfoContext(
+					ctx,
+					"runs ended on their timers",
+					"ended",
+					map[runsapi.Timer]int(ended),
+				)
+			}
+			return err //nolint:wrapcheck // the store, the lifecycle or the transaction names it
+		},
+	}}
 }
 
 // Surfaces are the domain's additions to the surfaces other domains own:

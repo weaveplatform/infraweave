@@ -16597,6 +16597,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 	RoleUpdate(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RunLogRetentionDays Run Log Retention Days
+	//
+	// How many days a run's logs are kept, a part of a day counting as a whole one; 0 when they are kept until their run is deleted.
+	//
+	// Corresponds with GET /run-log-retention-days (the `RunLogRetentionDays` operationId).
+	RunLogRetentionDays(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RunTriggerBatchWithBody Trigger Run Batch
 	//
 	// Trigger a tracked run on each of several stacks as one batch: every run is
@@ -23355,6 +23362,23 @@ func (c *Client) RoleUpdateWithBody(ctx context.Context, roleId string, params *
 // Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 func (c *Client) RoleUpdate(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRoleUpdateRequest(c.Server, roleId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunLogRetentionDays Run Log Retention Days
+//
+// How many days a run's logs are kept, a part of a day counting as a whole one; 0 when they are kept until their run is deleted.
+//
+// Corresponds with GET /run-log-retention-days (the `RunLogRetentionDays` operationId).
+func (c *Client) RunLogRetentionDays(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunLogRetentionDaysRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -37478,6 +37502,33 @@ func NewRoleUpdateRequestWithBody(server string, roleId string, params *RoleUpda
 	return req, nil
 }
 
+// NewRunLogRetentionDaysRequest constructs an http.Request for the RunLogRetentionDays method
+func NewRunLogRetentionDaysRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/run-log-retention-days")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRunTriggerBatchRequest calls the generic RunTriggerBatch builder with application/json body
 func NewRunTriggerBatchRequest(server string, params *RunTriggerBatchParams, body RunTriggerBatchJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -49976,6 +50027,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /roles/{roleId} (the `RoleUpdate` operationId).
 	RoleUpdateWithResponse(ctx context.Context, roleId string, params *RoleUpdateParams, body RoleUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*RoleUpdateResponse, error)
+
+	// RunLogRetentionDaysWithResponse Run Log Retention Days
+	//
+	// How many days a run's logs are kept, a part of a day counting as a whole one; 0 when they are kept until their run is deleted.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /run-log-retention-days (the `RunLogRetentionDays` operationId).
+	RunLogRetentionDaysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RunLogRetentionDaysResponse, error)
 
 	// RunTriggerBatchWithBodyWithResponse Trigger Run Batch
 	//
@@ -70850,6 +70910,94 @@ func (r RoleUpdateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RoleUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunLogRetentionDaysResponse200Headers the declared response headers of an HTTP 200 response for RunLogRetentionDays
+type RunLogRetentionDaysResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunLogRetentionDaysResponse429Headers the declared response headers of an HTTP 429 response for RunLogRetentionDays
+type RunLogRetentionDaysResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunLogRetentionDaysResponse503Headers the declared response headers of an HTTP 503 response for RunLogRetentionDays
+type RunLogRetentionDaysResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunLogRetentionDaysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *int32
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunLogRetentionDaysResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunLogRetentionDaysResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunLogRetentionDaysResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunLogRetentionDaysResponse) GetJSON200() *int32 {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunLogRetentionDaysResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunLogRetentionDaysResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunLogRetentionDaysResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunLogRetentionDaysResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunLogRetentionDaysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunLogRetentionDaysResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunLogRetentionDaysResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -92580,6 +92728,21 @@ func (c *ClientWithResponses) RoleUpdateWithResponse(ctx context.Context, roleId
 		return nil, err
 	}
 	return ParseRoleUpdateResponse(rsp)
+}
+
+// RunLogRetentionDaysWithResponse Run Log Retention Days
+//
+// How many days a run's logs are kept, a part of a day counting as a whole one; 0 when they are kept until their run is deleted.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /run-log-retention-days (the `RunLogRetentionDays` operationId).
+func (c *ClientWithResponses) RunLogRetentionDaysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RunLogRetentionDaysResponse, error) {
+	rsp, err := c.RunLogRetentionDays(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunLogRetentionDaysResponse(rsp)
 }
 
 // RunTriggerBatchWithBodyWithResponse Trigger Run Batch
@@ -120215,6 +120378,121 @@ func ParseRoleUpdateResponse(rsp *http.Response) (*RoleUpdateResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RoleUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunLogRetentionDaysResponse parses an HTTP response from a RunLogRetentionDaysWithResponse call
+func ParseRunLogRetentionDaysResponse(rsp *http.Response) (*RunLogRetentionDaysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunLogRetentionDaysResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest int32
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunLogRetentionDaysResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunLogRetentionDaysResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunLogRetentionDaysResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

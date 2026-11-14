@@ -112,6 +112,10 @@ CREATE INDEX runs_drift ON runs (worker_pool_id, state) WHERE drift_detection;
 CREATE INDEX runs_preparing ON runs (state_changed_at, id)
     WHERE state IN ('PREPARING', 'PREPARING_APPLY', 'PREPARING_REPLAN');
 
+-- run.timers reads the runs in the states it ends, oldest state change
+-- first.
+CREATE INDEX runs_waiting ON runs (state, state_changed_at, id);
+
 -- Each transition a run went through, sequence being the state_version it
 -- moved the run to. until is when a timed state ends; username is who
 -- moved it, absent for the server; terminal is whether the state ends the

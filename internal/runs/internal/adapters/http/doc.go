@@ -9,12 +9,12 @@
 // *control.Refused 409 invalid-state with what the action needs and a
 // *control.Blocked 403 forbidden with the blocking variant the caller
 // lacks; reads a run's changes through the changes service; and reads,
-// downloads and deletes a run's logs through the logs service. The
-// domain's other operations answer 501, or answer from the stacks
-// domain's partial where it serves them empty. Its tests hold
-// internal/kernel's run states, run types, stack states and run
-// priorities to the API's enums, and RunCommentRequest.body's bounds to
-// control.MaxComment.
+// downloads and deletes a run's logs through the logs service, whose
+// retention in days runLogRetentionDays answers. The domain's other
+// operations answer 501, or answer from the stacks domain's partial
+// where it serves them empty. Its tests hold internal/kernel's run
+// states, run types, stack states and run priorities to the API's enums,
+// and RunCommentRequest.body's bounds to control.MaxComment.
 //
 // # Input and output
 //

@@ -106,3 +106,16 @@ func (s Server) RunLogsDownloadURL(
 	}
 	return api.RunLogsDownloadURL200JSONResponse{Body: body}, nil
 }
+
+// RunLogRetentionDays answers how many days a run's logs are kept, which
+// the server's configuration sets for every account. The route has
+// decided the caller is authenticated.
+func (s Server) RunLogRetentionDays(
+	ctx context.Context,
+	_ api.RunLogRetentionDaysRequestObject,
+) (api.RunLogRetentionDaysResponseObject, error) {
+	if _, err := principal(ctx); err != nil {
+		return nil, err
+	}
+	return api.RunLogRetentionDays200JSONResponse{Body: s.logs.RetentionDays()}, nil
+}

@@ -1040,6 +1040,49 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /run-log-retention-days:
+    get:
+      description: >-
+        How many days a run's logs are kept, a part of a day counting as a
+        whole one; 0 when they are kept until their run is deleted.
+      operationId: runLogRetentionDays
+      x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                format: int32
+                minimum: 0
+                type: integer
+          description: The runLogRetentionDays result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run Log Retention Days
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Run Log Retention Days.bru
+      x-graphql:
+        field: runLogRetentionDays
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /security-email:
     get:
       description: >-
