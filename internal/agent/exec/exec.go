@@ -325,14 +325,17 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	if state == wire.WorkerStateINITIALIZING {
 		r.announce()
 	}
-	commands, err := r.workflow.Commands(ctx, state, r.options)
-	if errors.Is(err, vendors.ErrState) {
+	commands, err := r.commands(ctx, state)
+	switch {
+	case errors.Is(err, vendors.ErrState):
 		return fail("This runner executes no " + string(state) + " phase.")
+	case errors.Is(err, errNoTask):
+		return fail("The run's specification names no task to perform.")
 	}
 	reinit := !r.initialized && state != wire.WorkerStateINITIALIZING
-	var init []vendors.Command
+	var init []step
 	if err == nil && reinit {
-		init, err = r.workflow.Commands(ctx, wire.WorkerStateINITIALIZING, r.options)
+		init, err = r.commands(ctx, wire.WorkerStateINITIALIZING)
 	}
 	if err != nil {
 		return fail("The workflow's commands cannot be rendered: " +
@@ -343,10 +346,10 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 		what: "Setting TF_VAR_infraweave_run_state",
 	}}}
 	if reinit {
-		lists = append(lists, r.hooks("before_init"), commandSteps(init), r.hooks("after_init"))
+		lists = append(lists, r.hooks("before_init"), init, r.hooks("after_init"))
 	}
 	name := hookPhases[state]
-	lists = append(lists, r.hooks("before_"+name), commandSteps(commands))
+	lists = append(lists, r.hooks("before_"+name), commands)
 	if d := r.steps(ctx, lists...); d != "" || r.halted() {
 		return end(d)
 	}
@@ -376,6 +379,35 @@ var hookPhases = map[wire.WorkerState]string{
 	wire.WorkerStateINITIALIZING: "init",
 	wire.WorkerStatePLANNING:     "plan",
 	wire.WorkerStateAPPLYING:     "apply",
+	wire.WorkerStateDESTROYING:   "destroy",
+	wire.WorkerStatePERFORMING:   "perform",
+}
+
+// errNoTask marks a PERFORMING phase whose specification names no task.
+var errNoTask = errors.New("the specification names no task")
+
+// commands are the steps of state's phase: for PERFORMING, the task's
+// command, which sh -c runs so that neither an exit nor a cd in it ends
+// or moves the session the after_perform hooks run in; none for
+// INITIALIZING when the task skips initialization, whose hooks still
+// run; and for every other phase its workflow's commands, rendered now.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+func (r *run) commands(ctx context.Context, state wire.WorkerState) ([]step, error) {
+	task := r.h.Spec.Task
+	switch {
+	case state == wire.WorkerStatePERFORMING && task == nil:
+		return nil, errNoTask
+	case state == wire.WorkerStatePERFORMING:
+		return []step{{text: Shell + " -c " + quote(task.Command), what: "The task's command"}}, nil
+	case state == wire.WorkerStateINITIALIZING && task != nil && task.SkipInitialization:
+		return nil, nil
+	}
+	commands, err := r.workflow.Commands(ctx, state, r.options)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // vendors names the state or the key
+	}
+	return commandSteps(commands), nil
 }
 
 // step is one hook or command and how a failure names it.

@@ -1,5 +1,6 @@
-// Package stacks holds the acceptance steps of features/stacks: stacks and
-// their search.
+// Package stacks holds the acceptance steps of features/stacks: stacks,
+// their search, and the wait for a stack's deletion that a destroy run
+// commits.
 //
 // # Input and output
 //
