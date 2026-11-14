@@ -211,4 +211,11 @@ func TestUnitRunnerCommand(t *testing.T) {
 	if !cli.Runner().Hidden || cli.Launcher().Use != "launcher" {
 		t.Fatal("the runner is hidden, and the launcher is not")
 	}
+
+	t.Chdir(t.TempDir())
+	cmd = cli.RunnerCmd(srv.Client())
+	cmd.SetArgs([]string{"hand-back"})
+	if err := cmd.ExecuteContext(t.Context()); err != nil {
+		t.Errorf("runner hand-back of the runner's own workspace = %v", err)
+	}
 }

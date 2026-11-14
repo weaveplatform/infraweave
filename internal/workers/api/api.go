@@ -436,6 +436,29 @@ type Liveness interface {
 	) (int, error)
 }
 
+// Signal is what a caller asks of a run's worker through its poll.
+type Signal string
+
+// The signals: stop, on which the launcher sends the runner SIGINT, and
+// kill, on which it kills the run's container.
+const (
+	SignalStop Signal = "stop"
+	SignalKill Signal = "kill"
+)
+
+// Signals is the runs domain's side of a stop or kill a caller asked for,
+// which reaches the run's worker through the worker's poll: a back edge
+// internal/app binds after it constructs that domain.
+//
+// ref: decisions 0004 and 0008 § "Stop and kill"
+type Signals interface {
+	// Deliver answers the signal no poll has delivered of the run worker
+	// holds, and records its delivery, in the transaction ctx carries; ""
+	// when none waits. A kill goes in place of a stop not yet delivered,
+	// and a stop waits only while the run's state takes one.
+	Deliver(ctx context.Context, worker kernel.ULID) (Signal, error)
+}
+
 // Sample is a pool's figures at the minute At: its busy and registered
 // workers and the runs waiting for one.
 type Sample struct {

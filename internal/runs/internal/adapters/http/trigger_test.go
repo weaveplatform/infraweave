@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
@@ -67,12 +68,29 @@ func TestUnitTriggerErrors(t *testing.T) {
 		{control.ErrBlocking, http.StatusForbidden, "forbidden"},
 		{control.ErrState, http.StatusConflict, "invalid-state"},
 		{control.ErrNoHolder, http.StatusNotFound, "not-found"},
+		{
+			&control.Blocked{Action: accessapi.ActionRunStopBlocking},
+			http.StatusForbidden, "forbidden",
+		},
+		{
+			&control.Refused{State: kernel.RunStateApplying, Needs: "a stop needs"},
+			http.StatusConflict, "invalid-state",
+		},
 	} {
 		var p *problem.Error
 		if !errors.As(runError(c.err, "infra", ""), &p) || p.Problem.Status != c.status ||
 			p.Problem.Type != problem.TypePrefix+c.slug {
 			t.Errorf("%v = %+v, want %d %s", c.err, p, c.status, c.slug)
 		}
+	}
+	var p *problem.Error
+	if !errors.As(runError(&control.Blocked{Action: accessapi.ActionRunKillBlocking}, "infra",
+		""), &p) || p.Problem.Action != "RUN_KILL_BLOCKING" {
+		t.Errorf("a blocked kill names %q", p.Problem.Action)
+	}
+	if !errors.As(runError(&control.Refused{State: kernel.RunStateApplying, Needs: "a stop needs"},
+		"infra", ""), &p) || p.Problem.Detail != "The run is APPLYING; a stop needs." {
+		t.Errorf("a refusal's detail is %q", p.Problem.Detail)
 	}
 	other := errors.New("other")
 	if got := runError(other, "infra", ""); !errors.Is(got, other) {

@@ -13,16 +13,58 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
-// ErrBlocking reports a cancel of the run that holds its stack's run
-// lock by a caller without RUN_CANCEL_BLOCKING on the stack's space.
+// ErrBlocking reports an action on the run that holds its stack's run
+// lock by a caller without the action's blocking variant on the stack's
+// space; a *Blocked names the variant.
 var ErrBlocking = errors.New("runs: the run blocks its stack")
 
-// ErrState reports a run whose state the action does not leave from: a
-// cancel of a run that has started, a priority of one that has ended, or a
-// confirm or discard of one that does not wait for confirmation.
+// ErrState reports a run whose state refuses the action: a cancel of a run
+// that has started, a priority of one that has ended, a confirm or discard
+// of one that does not wait for confirmation, a stop of one that neither
+// initializes nor plans, or a kill of one no stop was asked of on a
+// worker. A *Refused carries the run's state.
 var ErrState = errors.New("runs: the run's state refuses the action")
+
+// Blocked is an ErrBlocking that names the blocking variant of the action
+// the caller lacks.
+type Blocked struct {
+	Run    kernel.ULID
+	Action accessapi.Action
+}
+
+func (e *Blocked) Error() string {
+	return fmt.Sprintf("%v: %s needs %s", ErrBlocking, e.Run, e.Action)
+}
+
+func (e *Blocked) Unwrap() error { return ErrBlocking }
+
+// Refused is an ErrState with the run's state now and what the action
+// needs, which the refusal answers.
+//
+// ref: report 08 § "6. Run actions" (C36)
+type Refused struct {
+	Run   kernel.ULID
+	State kernel.RunState
+	Needs string
+}
+
+func (e *Refused) Error() string {
+	return fmt.Sprintf("%v: %s is %s; %s", ErrState, e.Run, e.State, e.Needs)
+}
+
+func (e *Refused) Unwrap() error { return ErrState }
+
+// What each action needs of a run, which its refusal answers.
+const (
+	needsCancel   = "a cancel needs a run that has not started"
+	needsDecision = "a confirm or discard needs a run that waits for confirmation"
+	needsPriority = "a priority needs a run that has not ended"
+	needsStop     = "a stop needs a run that initializes, or a proposed or tracked run that plans"
+	needsKill     = "a kill needs a run on a worker that a stop was asked of"
+)
 
 // ErrNoHolder reports a confirm or discard that names no run, of a stack
 // whose run lock no run holds.
@@ -39,6 +81,15 @@ type Store interface {
 	Holder(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) (kernel.ULID, bool, error)
 	// SetPriority writes run's priority and its updated_at, at.
 	SetPriority(ctx context.Context, run lifecycle.Run, p kernel.RunPriority, at time.Time) error
+	// Request records sig as run's request of kind, and its updated_at,
+	// sig.At, and notifies the held polls of run's pool on commit, so its
+	// worker's poll delivers it.
+	Request(
+		ctx context.Context,
+		run lifecycle.Run,
+		kind workersapi.Signal,
+		sig lifecycle.Signal,
+	) error
 }
 
 // Deps are what the actions read and write through; Now is the clock,
@@ -90,7 +141,7 @@ func (s *Service) Cancel(
 				return r, err //nolint:wrapcheck // the snapshot's read names itself
 			}
 			if !ok {
-				return r, fmt.Errorf("%w: %s", ErrBlocking, r.ID)
+				return r, &Blocked{Run: r.ID, Action: accessapi.ActionRunCancelBlocking}
 			}
 		}
 		moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
@@ -98,7 +149,7 @@ func (s *Service) Cancel(
 			Driver: machine.DriverAPI, Actor: lifecycle.ActorOf(p), Note: note,
 		})
 		if errors.Is(err, lifecycle.ErrRefused) {
-			return r, fmt.Errorf("%w: %s is %s", ErrState, r.ID, r.State)
+			return r, &Refused{Run: r.ID, State: r.State, Needs: needsCancel}
 		}
 		return moved, err //nolint:wrapcheck // the lifecycle names the move
 	})
@@ -155,7 +206,7 @@ func (s *Service) decide(
 			Driver: machine.DriverAPI, Checked: checked, Actor: lifecycle.ActorOf(p), Note: note,
 		})
 		if errors.Is(err, lifecycle.ErrRefused) {
-			return r, fmt.Errorf("%w: %s is %s", ErrState, r.ID, r.State)
+			return r, &Refused{Run: r.ID, State: r.State, Needs: needsDecision}
 		}
 		return moved, err //nolint:wrapcheck // the lifecycle names the move
 	})
@@ -174,7 +225,7 @@ func (s *Service) SetPriority(
 		lifecycle.Run, error,
 	) {
 		if r.State.Terminal() {
-			return r, fmt.Errorf("%w: %s has ended", ErrState, r.ID)
+			return r, &Refused{Run: r.ID, State: r.State, Needs: needsPriority}
 		}
 		r.Priority, r.UpdatedAt = priority, s.d.Now().UTC().Truncate(time.Microsecond)
 		return r, s.d.Store.SetPriority(
@@ -183,6 +234,100 @@ func (s *Service) SetPriority(
 			priority,
 			r.UpdatedAt,
 		) //nolint:wrapcheck // as above
+	})
+}
+
+// Stop asks the worker of p's run raw of stack slug to stop it: the
+// launcher sends the runner SIGINT, which passes it to the running
+// command, and the runner reports stopped once the command ends (T16,
+// T19). A run that initializes, or a proposed or tracked one that plans,
+// may be stopped; the route has decided RUN_STOP on the stack's space,
+// and the run that holds the stack's run lock also needs
+// RUN_STOP_BLOCKING there, else a *Blocked. A run in another state, or in
+// a state other than state when state is not empty, is a *Refused. A run
+// a stop was asked of already is answered as it is, so its worker gets
+// one SIGINT.
+//
+// ref: decision 0008 § "Stop and kill"
+func (s *Service) Stop(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, raw, note string,
+	state kernel.RunState,
+) (read.View, error) {
+	return s.signal(ctx, p, slug, raw, note, state, workersapi.SignalStop)
+}
+
+// Kill asks the worker of p's run raw of stack slug to kill its
+// container, after a stop that did not end it: liveness then fails the
+// run with the note "killed", through the edge out of the state it is in.
+// A run on a worker that a stop was asked of may be killed; the route has
+// decided RUN_KILL on the stack's space, and the run that holds the
+// stack's run lock also needs RUN_KILL_BLOCKING there. A repeated kill,
+// and refusals, are as Stop's.
+//
+// ref: decision 0008 § "Stop and kill"
+func (s *Service) Kill(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, raw, note string,
+	state kernel.RunState,
+) (read.View, error) {
+	return s.signal(ctx, p, slug, raw, note, state, workersapi.SignalKill)
+}
+
+// signal records p's request of kind for the run, as Stop and Kill say.
+func (s *Service) signal(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, raw, note string,
+	state kernel.RunState,
+	kind workersapi.Signal,
+) (read.View, error) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (
+		lifecycle.Run, error,
+	) {
+		asked, ok, needs, blocking := r.Stop, r.Stoppable(), needsStop,
+			accessapi.ActionRunStopBlocking
+		if kind == workersapi.SignalKill {
+			asked, ok, needs, blocking = r.Kill, r.Killable(), needsKill,
+				accessapi.ActionRunKillBlocking
+		}
+		switch {
+		case state != "" && state != r.State:
+			return r, &Refused{Run: r.ID, State: r.State, Needs: "the request names " +
+				string(state)}
+		case !ok:
+			return r, &Refused{Run: r.ID, State: r.State, Needs: needs}
+		case asked != nil:
+			return r, nil
+		}
+		holder, held, err := s.d.Store.Holder(ctx, p.AccountID, st.ID)
+		if err != nil {
+			return r, err //nolint:wrapcheck // the store names the read
+		}
+		if held && holder == r.ID {
+			ok, err := s.d.Authz.Authorize(ctx, p, blocking, st.Space)
+			if err != nil {
+				return r, err //nolint:wrapcheck // the snapshot's read names itself
+			}
+			if !ok {
+				return r, &Blocked{Run: r.ID, Action: blocking}
+			}
+		}
+		sig := lifecycle.Signal{
+			At: s.d.Now().UTC().Truncate(time.Microsecond), By: p.Login, Note: note,
+		}
+		if err := s.d.Store.Request(ctx, r, kind, sig); err != nil {
+			return r, err //nolint:wrapcheck // the store names the write
+		}
+		r.UpdatedAt = sig.At
+		if kind == workersapi.SignalKill {
+			r.Kill = &sig
+		} else {
+			r.Stop = &sig
+		}
+		return r, nil
 	})
 }
 

@@ -61,18 +61,19 @@ func result(w Worker) PollResult {
 // the server has to say to it. A poll that is not busy and names a run
 // fails the run, when the worker still holds it, as one whose container
 // ended without a report ending it. An idle, undrained worker's poll first
-// claims its pool's next run, and answers at once with it. A poll also
-// answers at once with a renewed token when the session's has less than
-// RenewWithin left, with a cycle signal, or when the worker's drain flag
-// is not the one in reports; otherwise it holds the request, with no
-// transaction or pooled connection open, until a wake-up for its pool,
-// which it claims again on, the worker is cycled or its drain flag
-// changes, the same worker's next poll reaches this replica, or its hold
-// ends, so a worker holds at most one poll per replica. A worker that is
-// gone, or that registered under a certificate a reset replaced, is
-// ErrUnauthenticated.
+// claims its pool's next run, and answers at once with it; a busy
+// worker's poll delivers its run's stop or kill, which it answers at once
+// with. A poll also answers at once with a renewed token when the
+// session's has less than RenewWithin left, with a cycle signal, or when
+// the worker's drain flag is not the one in reports; otherwise it holds
+// the request, with no transaction or pooled connection open, until a
+// wake-up for its pool, which it claims and delivers again on, the worker
+// is cycled or its drain flag changes, the same worker's next poll
+// reaches this replica, or its hold ends, so a worker holds at most one
+// poll per replica. A worker that is gone, or that registered under a
+// certificate a reset replaced, is ErrUnauthenticated.
 //
-// ref: decision 0008 § "The worker API", § "Claiming runs"
+// ref: decision 0008 § "The worker API", § "Claiming runs", § "Stop and kill"
 func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (PollResult, error) {
 	now := s.now()
 	w, serial, err := s.store.Seen(ctx, b.ID, in.Busy, now)
@@ -121,8 +122,15 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 		if ok {
 			out.Assignment = &a
 		}
-		if out.Assignment != nil || out.Token != nil || cur.Cycle || cur.Drained != in.Drained ||
-			s.hub.stopped() {
+		sig, err := s.deliver(ctx, cur)
+		if err != nil {
+			return PollResult{}, err
+		}
+		if sig != "" {
+			out.Signals = append(out.Signals, string(sig))
+		}
+		if out.Assignment != nil || out.Token != nil || len(out.Signals) > 0 ||
+			cur.Drained != in.Drained || s.hub.stopped() {
 			return out, nil
 		}
 		select {
@@ -184,6 +192,24 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		return Assignment{}, false, s.unauthenticated(err)
 	}
 	return *out, true, nil
+}
+
+// deliver answers the stop or kill of the run w holds through the signals
+// internal/app binds, in a transaction that records its delivery, so no
+// other poll answers it; "" when w is not busy or none waits.
+//
+// ref: decision 0008 § "Stop and kill"
+func (s *Service) deliver(ctx context.Context, w Worker) (workersapi.Signal, error) {
+	if s.signals == nil || !w.Busy {
+		return "", nil
+	}
+	var sig workersapi.Signal
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		var err error
+		sig, err = s.signals.Deliver(ctx, w.ID)
+		return err //nolint:wrapcheck // the runs domain names the delivery
+	})
+	return sig, err //nolint:wrapcheck // as above
 }
 
 // hold is how long a poll that asks for wait is held: DefaultWait when

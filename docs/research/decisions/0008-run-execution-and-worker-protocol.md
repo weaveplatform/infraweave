@@ -368,8 +368,12 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   runner, before it exits, makes every directory the run made writable by
   every user too, so a launcher that is not root removes the workspace once
   the run pauses or ends, and restores a confirmed run's saved workspace
-  into a clean one. Only the launcher's user and the run's container reach
-  it, through the launcher's cache directory.
+  into a clean one. A container that ends before its runner does so, as a
+  killed one, leaves directories the launcher cannot remove; the launcher
+  then runs its binary as `runner hand-back` in a container of the ended
+  one's image, mounts and user, with no network, which does the same, and
+  removes the workspace before the container. Only the launcher's user and
+  the run's container reach it, through the launcher's cache directory.
 - **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
   and `download`. The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the
@@ -853,23 +857,51 @@ the note `killed`.
 
 ### Stop and kill
 
-- `runStop` is valid in `INITIALIZING` and `PLANNING` only
+- `runStop` is valid in `INITIALIZING` for every run type (T16) and in
+  `PLANNING` for proposed and tracked runs (T19)
   ([08 section 6](../reference/08-run-lifecycle.md#6-run-actions)), and
   needs `RUN_STOP_BLOCKING` as well for the run that holds its stack's lock.
-  Its transaction records `runs.stop_requested_at`. The launcher sends
-  `SIGINT` to the runner, which passes it to the running command's process
-  group and reports `stopped` when the command ends (T16, T19). `PERFORMING`
-  ignores it.
+  Its transaction records `runs.stop_requested_at`, the caller's login and
+  the request's note. The launcher sends `SIGINT` to the runner, which
+  passes it to the running command's process group and reports `stopped`
+  when the command ends. `APPLYING`, `DESTROYING` and `PERFORMING` ignore
+  it.
 - `runKill` is valid once a stop was requested, while the run is on a
   worker, and needs `RUN_KILL_BLOCKING` as well for the run that holds its
-  stack's lock. Its transaction records `runs.kill_requested_at`. The
-  launcher kills the container with `SIGKILL`, and liveness fails the run
-  with the note `killed`.
-- **Signals reach the worker through its poll.** `workersapi` holds a port,
-  which `runs` implements, through which a poll learns the pending signal of
-  the run its worker holds. Each signal is answered once, and the poll that
-  answers it records its delivery in the same transaction: a second
-  `SIGINT` makes Terraform and OpenTofu exit at once, mid-operation.
+  stack's lock. Its transaction records `runs.kill_requested_at`, the
+  login and the note. The launcher kills the container with `SIGKILL`, and
+  liveness fails the run through the edge out of its state (T15, T18, T38,
+  T41, T43, T45) with the note `killed`.
+- **The transition records the request.** `STOPPED`, and `FAILED` after a
+  kill, record the caller's login and the request's note; a request with
+  no note leaves the runner's details for a stop and `killed` for a kill.
+- **The `state` argument** names the state the caller saw. A run that has
+  left it answers `409 invalid-state`, as does a run whose state takes
+  neither action, and each refusal's detail names the run's state (C36).
+  A repeated stop or kill of a run that still takes it is answered as it
+  is, with no second request.
+- **`allowedActions`** lists stop, or its blocking variant, until a stop is
+  requested, and then kill while a worker holds the run, until a kill is
+  requested.
+- **Signals reach the worker through its poll.** The request notifies the
+  run's pool with the pool's ID alone, which wakes every held poll of the
+  pool, since the poll to wake is the busy worker's. A busy worker's poll
+  asks `workersapi.Signals`, which `runs` implements, for the pending
+  signal of the run the worker holds, in a transaction that locks the
+  run's row and records the delivery, so each signal is answered once: a
+  second `SIGINT` makes Terraform and OpenTofu exit at once,
+  mid-operation. A kill goes in place of a stop not yet delivered, and a
+  stop is delivered only while the run's state takes one.
+- **The runner's session** leads a process group of its own, which every
+  step's commands join, and traps `SIGINT` with a handler rather than
+  ignoring it, since commands inherit an ignored signal. The runner gives
+  `SIGINT` up from the process's shutdown handler and takes each one as a
+  stop, once: it signals the session's group, runs no further step of the
+  phase, and reports `stopped` whatever the interrupted step answered. A
+  stop that arrives between phases ends the next phase before its first
+  step when that phase is initialization or planning, and is dropped
+  otherwise. The `after_run` hooks then run with
+  `TF_VAR_infraweave_final_run_state=STOPPED`.
 
 ### Destroy on delete
 

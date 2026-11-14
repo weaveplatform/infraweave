@@ -21,7 +21,9 @@
 // through and a run token's bearer reads its run's handover through;
 // Liveness is the workersapi.Liveness internal/app binds there, the back
 // edge the reap fails lost runs and overdue preparations through and a
-// poll fails a run whose container ended; Settings are run.lost_after and
+// poll fails a run whose container ended; Signals is the
+// workersapi.Signals internal/app binds there, the back edge a busy
+// worker's poll delivers its run's stop or kill through; Settings are run.lost_after and
 // run.preparing_timeout_default, which internal/app hands the workers
 // domain;
 // BindExpressions binds the registry the handover renders a stack's

@@ -14,7 +14,11 @@
 // Find lists a worker's containers by label after a restart and follows
 // the newest one's output. A container's Wait answers its exit code with
 // killed after Kill, out-of-memory when the kernel ended it, and missing
-// when it is gone; Stop sends SIGINT and Kill SIGKILL; Remove removes it.
+// when it is gone; Stop sends SIGINT and Kill SIGKILL; HandBack runs the
+// binary as runner hand-back in a container of the ended one's image,
+// mounts and user, with no network, so the launcher can remove a
+// workspace whose runner was killed before it opened it; Remove removes
+// it.
 //
 // ref: decision 0008 § "The launcher and the runner"
 //
