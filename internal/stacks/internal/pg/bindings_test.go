@@ -535,14 +535,23 @@ func TestAccServiceRebind(t *testing.T) {
 	}
 
 	f.ledger.fail = errDown
-	if _, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{}); !errors.Is(err, errDown) {
+	if _, err := f.svc.Delete(
+		ctx,
+		f.admin,
+		"infra",
+		kernel.Expect{},
+		false,
+	); !errors.Is(
+		err,
+		errDown,
+	) {
 		t.Errorf("Delete with access down = %v", err)
 	}
 	f.ledger.fail = nil
 	if _, err := f.svc.Stack(ctx, f.acct, "infra"); err != nil {
 		t.Errorf("the stack after a failed Delete = %v", err)
 	}
-	if _, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{}); err != nil {
+	if _, err := f.svc.Delete(ctx, f.admin, "infra", kernel.Expect{}, false); err != nil {
 		t.Fatal(err)
 	}
 	if left, _ := f.ledger.list(func(accessapi.RoleBinding) bool { return true }); len(left) != 0 {

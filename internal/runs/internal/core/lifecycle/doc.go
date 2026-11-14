@@ -11,11 +11,13 @@
 // outbox and, when it creates the run, ends it or leaves it waiting for a
 // confirmation, enqueues ScheduleKind for its stack; a move out of a
 // state a worker holds the run in enqueues CompactKind for that state's
-// log. Create creates a run
+// log. A DESTROY run's end asks the stacks domain, last in its
+// transaction, to delete its stack when it finished and to keep it,
+// no longer deleting, otherwise. Create creates a run
 // in QUEUED once per stack, type and commit among runs that have not
 // ended, after locking the stack's row, refusing a disabled stack with
-// ErrDisabled and a stack another caller locked with a Locked. Store is
-// its storage port.
+// ErrDisabled, a deleting one with ErrDeleting and a stack another caller
+// locked with a Locked. Store is its storage port.
 //
 // # Input and output
 //

@@ -10,7 +10,10 @@
 // to, and asks each registered stacksapi.StackGuard what the stack would
 // lose, refusing the move as a *kernel.Invalid naming every entity; a
 // delete lets each guard delete its rows of the stack first, in its
-// transaction. Both ask after the stack's row is locked FOR UPDATE, which
+// transaction. A delete with destroy instead marks the stack deleting and
+// creates its destroy run through the stacksapi.StackDestroyer
+// BindDestroyer binds, and Destroyed deletes it, or clears the mark, when
+// that run ends. Both ask after the stack's row is locked FOR UPDATE, which
 // waits for every Hold. A write bumps the stack's version and appends
 // stacksapi.Changed in
 // the same transaction; Update and Delete take the kernel.Expect of the

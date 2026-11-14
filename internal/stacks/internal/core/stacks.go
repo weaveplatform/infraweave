@@ -164,6 +164,10 @@ type Store interface {
 		state kernel.StackState,
 		blocked bool,
 	) error
+	// SetDeleting marks acct's stack id deleting, or clears the mark,
+	// leaving its settings and version as they are;
+	// stacksapi.ErrNotFound when acct lacks it.
+	SetDeleting(ctx context.Context, acct kernel.AccountID, id kernel.ULID, on bool) error
 	// Find lists acct's stacks in spaces that carry any of labels, by
 	// slug.
 	Find(
@@ -252,6 +256,7 @@ type Service struct {
 	guards       []stacksapi.StackGuard
 	sources      stacksapi.StackSources
 	integrations stacksapi.StackIntegrations
+	destroyer    stacksapi.StackDestroyer
 }
 
 // New returns the service over d.
@@ -295,6 +300,15 @@ func (s *Service) BindIntegrations(in stacksapi.StackIntegrations) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.integrations = in
+}
+
+// BindDestroyer makes d what a delete with destroyResources creates its
+// destroy run through; until it runs, such a delete is refused. It runs
+// during construction, before the service serves a request.
+func (s *Service) BindDestroyer(d stacksapi.StackDestroyer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.destroyer = d
 }
 
 func (s *Service) registered() []stacksapi.StackGuard {
@@ -932,15 +946,28 @@ func (s *Service) Unlock(ctx context.Context, p kernel.Principal, slug string) (
 	)
 }
 
+// ErrDeleting reports a delete of a stack whose delete with
+// destroyResources waits for its destroy run.
+var ErrDeleting = errors.New("stacks: the stack is being deleted")
+
 // Delete deletes p's account's stack slug, when expect accepts its
 // version, and answers it as it was; a stack protected from deletion is
 // refused. Each registered guard deletes its rows of the stack first, and
 // the access domain its role bindings, in the same transaction.
+//
+// With destroy, the stack stays, deleting, and the runs domain creates
+// its DESTROY run in the same transaction; Destroyed deletes it once that
+// run finishes. A stack already deleting answers as it is to another such
+// delete, and refuses a delete without destroy with ErrDeleting, since
+// its destroy run is still to end.
+//
+// ref: decision 0008 § "Destroy on delete"
 func (s *Service) Delete(
 	ctx context.Context,
 	p kernel.Principal,
 	slug string,
 	expect kernel.Expect,
+	destroy bool,
 ) (Stack, error) {
 	var st Stack
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
@@ -955,21 +982,81 @@ func (s *Service) Delete(
 			return &kernel.Invalid{Detail: "The stack is protected from deletion; " +
 				"turn protectFromDeletion off first."}
 		}
-		for _, g := range s.registered() {
-			if err := g.Deleting(ctx, st.Stack); err != nil {
-				return fmt.Errorf("stacks: delete what holds stack %s: %w", st.Slug, err)
-			}
+		switch {
+		case destroy && st.Deleting:
+			return nil
+		case destroy:
+			return s.destroy(ctx, p, &st)
+		case st.Deleting:
+			return ErrDeleting
 		}
-		if err := s.bindings.UnbindActor(ctx, st.Account, accessapi.ActorStack, st.ID); err != nil {
-			return err //nolint:wrapcheck // the access domain names the write
-		}
-		if err := s.store.Delete(ctx, st.Account, st.ID); err != nil {
-			return err //nolint:wrapcheck // as above
-		}
-		st.Version++
-		return s.changed(ctx, st, stacksapi.ChangeDeleted, false)
+		return s.remove(ctx, &st)
 	})
 	return st, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// destroy creates p's destroy run on st through the bound destroyer and
+// marks st deleting, in the transaction ctx carries. The run is created
+// first, since the runs domain creates no run on a deleting stack.
+func (s *Service) destroy(ctx context.Context, p kernel.Principal, st *Stack) error {
+	s.mu.RLock()
+	d := s.destroyer
+	s.mu.RUnlock()
+	if d == nil {
+		return &stacksapi.Undestroyable{Detail: "This server creates no destroy runs."}
+	}
+	if err := d.Destroy(ctx, p, st.ID); err != nil {
+		return err //nolint:wrapcheck // the runs domain names the refusal
+	}
+	if err := s.store.SetDeleting(ctx, st.Account, st.ID, true); err != nil {
+		return err //nolint:wrapcheck // the store names the write
+	}
+	st.Deleting = true
+	return nil
+}
+
+// Destroyed ends acct's stack id's deletion once its destroy run ends,
+// in the transaction ctx carries, which the run's terminal transition
+// holds: deleting the stack when the run finished, else clearing the
+// mark.
+func (s *Service) Destroyed(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	finished bool,
+) error {
+	//nolint:wrapcheck // each step in the transaction names itself
+	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		st, err := s.store.Read(ctx, acct, id, true)
+		switch {
+		case err != nil:
+			return err //nolint:wrapcheck // the store names the read
+		case !st.Deleting:
+			return nil
+		case finished:
+			return s.remove(ctx, &st)
+		}
+		return s.store.SetDeleting(ctx, acct, id, false) //nolint:wrapcheck // as above
+	})
+}
+
+// remove deletes st, which the transaction ctx carries holds locked: each
+// registered guard's rows of it, its role bindings and its own rows, with
+// its deleted event.
+func (s *Service) remove(ctx context.Context, st *Stack) error {
+	for _, g := range s.registered() {
+		if err := g.Deleting(ctx, st.Stack); err != nil {
+			return fmt.Errorf("stacks: delete what holds stack %s: %w", st.Slug, err)
+		}
+	}
+	if err := s.bindings.UnbindActor(ctx, st.Account, accessapi.ActorStack, st.ID); err != nil {
+		return err //nolint:wrapcheck // the access domain names the write
+	}
+	if err := s.store.Delete(ctx, st.Account, st.ID); err != nil {
+		return err //nolint:wrapcheck // the store names the write
+	}
+	st.Version++
+	return s.changed(ctx, *st, stacksapi.ChangeDeleted, false)
 }
 
 // SetStar stars or unstars p's account's stack slug for p alone.

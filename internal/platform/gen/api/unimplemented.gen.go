@@ -750,6 +750,10 @@ func (UnimplementedStrict) RoleUpdate(context.Context, RoleUpdateRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "roleUpdate", Route: "PUT /roles/{roleId}"}
 }
 
+func (UnimplementedStrict) RunTriggerBatch(context.Context, RunTriggerBatchRequestObject) (RunTriggerBatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runTriggerBatch", Route: "POST /runs/batch"}
+}
+
 func (UnimplementedStrict) SearchRuns(context.Context, SearchRunsRequestObject) (SearchRunsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchRuns", Route: "POST /runs/search"}
 }

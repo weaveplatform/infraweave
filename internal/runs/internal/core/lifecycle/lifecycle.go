@@ -33,8 +33,14 @@ var (
 	ErrRefused = errors.New("runs: transition refused")
 	// ErrDisabled reports a run created on a disabled stack.
 	ErrDisabled = errors.New("runs: the stack is disabled")
+	// ErrDeleting reports a run created on a stack whose delete waits for
+	// its destroy run.
+	ErrDeleting = errors.New("runs: the stack is being deleted")
 	// ErrLocked reports a run created on a stack another caller locked.
 	ErrLocked = errors.New("runs: the stack is locked")
+	// ErrTask reports a TASK run created without its task, or another
+	// type with one.
+	ErrTask = errors.New("runs: a TASK run alone carries a task")
 )
 
 // Conflict is ErrConflict with the run's current state and version.
@@ -126,8 +132,9 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // for a run on a commit. WorkerPool is the stack's
 // private pool when the run was created, nil for the public pool, and
 // Worker the worker that last claimed it. Delta is what its latest plan
-// changes, nil until it plans; the report service keeps it. Stop and Kill
-// are a caller's requests to stop and to kill it, nil until one asks.
+// changes, nil until it plans; the report service keeps it. Task is a
+// TASK run's command, nil for every other type. Stop and Kill are a
+// caller's requests to stop and to kill it, nil until one asks.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -146,6 +153,7 @@ type Run struct {
 	WorkerPool     *kernel.ULID
 	Worker         *kernel.ULID
 	Delta          *kernel.PlanDelta
+	Task           *kernel.Task
 	Stop           *Signal
 	Kill           *Signal
 	CreatedAt      time.Time
@@ -306,9 +314,12 @@ type Request struct {
 // run's row, refuses a stale version with a *Conflict and a move no edge
 // allows, or one without the edge's guards checked, with a *Refused. On a
 // terminal state it releases the stack run lock the run holds and the
-// credentials minted for it. It returns the run as moved.
+// credentials minted for it, and a DESTROY run ends its stack's deletion:
+// FINISHED deletes the stack, with the run, and any other end leaves it.
+// It returns the run as moved.
 //
 // ref: decision 0008 § "One entry point"
+// ref: decision 0008 § "Destroy on delete"
 func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 	if !tx.In(ctx) {
 		return Run{}, ErrNoTransaction
@@ -355,14 +366,22 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 			return Run{}, err //nolint:wrapcheck // the queue names the kind
 		}
 	}
+	if run.Type == kernel.RunTypeDestroy && run.State.Terminal() {
+		// Last, since deleting the stack deletes its runs with it.
+		err := l.d.Stacks.Destroyed(ctx, run.Account, run.Stack,
+			run.State == kernel.RunStateFinished)
+		if err != nil {
+			return Run{}, err //nolint:wrapcheck // the stacks domain names the write
+		}
+	}
 	return run, nil
 }
 
 // NewRun is a run to create: acct's stack, its type, the commit it works
 // on, who creates it, its priority, normal when empty, whether drift
 // detection starts it, its runtime configuration and force-apply mode,
-// the local workspace it previews, and a note for its first
-// transition.
+// the local workspace it previews, the environment overrides of a
+// proposed run, a TASK run's task, and a note for its first transition.
 type NewRun struct {
 	Account        kernel.AccountID
 	Stack          kernel.ULID
@@ -375,6 +394,7 @@ type NewRun struct {
 	ForceApply     string
 	LocalWorkspace string
 	Overrides      []Override
+	Task           *kernel.Task
 	Note           string
 }
 
@@ -387,10 +407,13 @@ type Override struct {
 
 // Create creates n's run in QUEUED, T1, in the transaction ctx carries,
 // and reports whether it created one: a run of the stack, type, commit
-// and local workspace that has not ended is returned instead. It locks the stack's row first,
-// so two creations of one run wait on each other and a delete of the
-// stack waits for the creation to commit. A disabled stack refuses with
-// ErrDisabled, and a stack locked by another caller with a *Locked.
+// and local workspace that has not ended is returned instead, unless n
+// has overrides or a task. It locks the stack's row first, so two
+// creations of one run wait on each other and a delete of the stack
+// waits for the creation to commit. A disabled stack refuses with
+// ErrDisabled, a deleting one with ErrDeleting, a stack locked by another
+// caller with a *Locked, and a
+// TASK without its task, or another type with one, with ErrTask.
 //
 // ref: decision 0008 § "The human lock"
 func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
@@ -404,19 +427,25 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 			Driver: machine.DriverCreation,
 		}
 	}
+	if (n.Type == kernel.RunTypeTask) != (n.Task != nil) {
+		return Run{}, false, fmt.Errorf("%w: a %s run", ErrTask, n.Type)
+	}
 	st, err := l.d.Stacks.LockForRun(ctx, n.Account, n.Stack)
 	if err != nil {
 		return Run{}, false, err //nolint:wrapcheck // the stacks domain names the read
 	}
-	if st.Disabled {
+	switch {
+	case st.Disabled:
 		return Run{}, false, fmt.Errorf("%w: %s", ErrDisabled, st.Slug)
+	case st.Deleting:
+		return Run{}, false, fmt.Errorf("%w: %s", ErrDeleting, st.Slug)
 	}
 	if st.Lock != nil && st.Lock.Holder != n.Actor.Caller {
 		return Run{}, false, &Locked{By: st.Lock.By}
 	}
-	// No other run shares a run's overrides, so a creation with them
-	// always creates one.
-	if len(n.Overrides) == 0 {
+	// No other run shares a run's overrides, and a task is asked for to
+	// run each time, so a creation with either always creates one.
+	if len(n.Overrides) == 0 && n.Task == nil {
 		existing, found, err := l.d.Store.Active(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash,
 			n.LocalWorkspace)
 		if err != nil || found {
@@ -433,7 +462,7 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 		State: kernel.RunStateQueued, Version: 1, StateChangedAt: now, Commit: n.Commit,
 		TriggeredBy: n.Actor.Login, Priority: priority, DriftDetection: n.DriftDetection,
 		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, LocalWorkspace: n.LocalWorkspace,
-		WorkerPool: st.WorkerPool, CreatedAt: now, UpdatedAt: now,
+		WorkerPool: st.WorkerPool, Task: n.Task, CreatedAt: now, UpdatedAt: now,
 	}
 	step := Step{
 		Sequence: 1, State: kernel.RunStateQueued, At: now,

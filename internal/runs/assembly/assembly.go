@@ -162,7 +162,8 @@ func New(d Deps) *Domain {
 		logs:    logs.New(logs.Deps{DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs}),
 		changes: changes.New(changes.Deps{Store: store, Objects: d.Objects, Stacks: d.Stacks}),
 		trigger: trigger.New(trigger.Deps{
-			DB: d.DB, Stacks: d.Stacks, Lifecycle: lc, Views: views, Objects: d.Objects,
+			DB: d.DB, Stacks: d.Stacks, Authz: d.Authz, Lifecycle: lc, Views: views,
+			Objects: d.Objects,
 		}),
 		read: views,
 		control: control.New(control.Deps{
@@ -253,6 +254,11 @@ func (d *Domain) BindSources(s runsapi.RunSources, r stacksapi.StackSources) {
 	d.handover.BindSources(s)
 	d.trigger.BindSources(r)
 }
+
+// StackDestroyer creates the destroy run of a stack's delete with
+// destroyResources, a back edge internal/app binds into the stacks
+// domain.
+func (d *Domain) StackDestroyer() stacksapi.StackDestroyer { return d.trigger }
 
 // StackStatus is the domain's answer to the stack view's read of the run
 // blocking each stack and to runStack's read of a run's stack, a back

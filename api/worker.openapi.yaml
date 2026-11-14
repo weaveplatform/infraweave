@@ -853,6 +853,8 @@ components:
           $ref: '#/components/schemas/RunSpecSource'
         tool:
           $ref: '#/components/schemas/RunSpecTool'
+        task:
+          $ref: '#/components/schemas/RunSpecTask'
         hooks:
           type: object
           additionalProperties:
@@ -1094,6 +1096,22 @@ components:
           type: string
           description: >-
             The backend's path, /state/v1/stacks/ followed by the stack's ID, under the server URL the launcher reaches, so the backend answers behind the same relay or private address as this API.
+    RunSpecTask:
+      description: >-
+        What a TASK run performs in PERFORMING. Present for a TASK run alone.
+      type: object
+      required: [command, skipInitialization]
+      properties:
+        command:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: >-
+            The command the run performs in the stack's workspace, as one shell command line.
+        skipInitialization:
+          type: boolean
+          description: >-
+            Whether the run performs the command without running the tool's init first; INITIALIZING then runs its hooks alone.
     RunSpecTool:
       description: >-
         The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none.

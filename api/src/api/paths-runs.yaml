@@ -526,6 +526,61 @@ components:
         - workspace
       type: object
       x-graphql-args-of: runProposeLocalWorkspace
+    RunTriggerBatchInput:
+      additionalProperties: false
+      properties:
+        forceApply:
+          $ref: '#/components/schemas/ForceApplyMode'
+        stacks:
+          description: The stacks to trigger runs for, each at most once.
+          items:
+            $ref: '#/components/schemas/RunTriggerBatchStackInput'
+          maxItems: 50
+          minItems: 1
+          type: array
+      required:
+        - stacks
+      type: object
+      x-graphql-type: RunTriggerBatchInput
+    RunTriggerBatchOutput:
+      properties:
+        runs:
+          description: The runs of the batch, one per requested stack, in the order the request lists the stacks.
+          items:
+            $ref: '#/components/schemas/RunTriggerBatchRun'
+          type: array
+      required:
+        - runs
+      type: object
+      x-graphql-type: RunTriggerBatchOutput
+    RunTriggerBatchRun:
+      properties:
+        run:
+          $ref: '#/components/schemas/RunRef'
+        runId:
+          description: The ID of the run.
+          type: string
+      required:
+        - runId
+      type: object
+      x-graphql-type: RunTriggerBatchRun
+    RunTriggerBatchStackInput:
+      additionalProperties: false
+      properties:
+        commitSha:
+          description: |-
+            Commit SHA to use. Defaults to the commit currently tracked by the stack,
+            or to the HEAD of the tracked branch if the stack is not yet tracking any commit.
+            The stack's tracked commit is updated to this commit.
+          nullable: true
+          type: string
+        stack:
+          description: The stack slug.
+          type: string
+      required:
+        - stack
+      type: object
+      x-graphql-type: RunTriggerBatchStackInput
     RunWithStack:
       description: |-
         RunWithStack is a run together with the stack (or module) it belongs to, so
@@ -583,6 +638,68 @@ components:
       type: object
       x-graphql-args-of: searchRuns
 paths:
+  /runs/batch:
+    post:
+      description: |-
+        Trigger a tracked run on each of several stacks as one batch: every run is
+        created, or none is. Each run works on the commit its stack's entry names, or
+        on the stack's tracked commit. A stack the caller cannot read, one it may not
+        trigger runs on, one that is disabled, locked by another caller or being
+        deleted, and a commit its repository lacks, refuse the whole batch, each at
+        its entry's pointer.
+      operationId: runTriggerBatch
+      x-infraweave-feature: stacks
+      x-infraweave-action: RUN_TRIGGER
+      x-infraweave-subject: any
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              stacks:
+                - stack: STACK_ID_HERE
+            schema:
+              $ref: '#/components/schemas/RunTriggerBatchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunTriggerBatchOutput'
+          description: The runTriggerBatch result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Trigger Run Batch
+      tags:
+        - Runs
+      x-bruno: Runs/Trigger Run Batch.bru
+      x-graphql:
+        field: runTriggerBatch
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override
   /runs/{runId}:
     get:
       description: Details of a single Run by ID, without needing to know the stack.

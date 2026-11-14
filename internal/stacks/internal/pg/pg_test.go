@@ -339,6 +339,7 @@ func TestAccStoreUnavailable(t *testing.T) {
 		"Purge":        func() error { _, err := s.Purge(ctx, acct, 1); return err }(),
 		"Hold":         s.Hold(ctx, acct, id),
 		"SetRunState":  s.SetRunState(ctx, acct, id, kernel.StackStateNone, false),
+		"SetDeleting":  s.SetDeleting(ctx, acct, id, true),
 		"Find": func() error {
 			_, err := s.Find(ctx, acct, []kernel.ULID{id}, []string{"l"})
 			return err
