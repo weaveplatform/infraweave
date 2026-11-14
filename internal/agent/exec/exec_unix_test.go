@@ -170,7 +170,7 @@ func (w *worker) Report(
 }
 
 // decide is the next step of r: the phase a start names, the next phase
-// after a success, and the run's end after a failure.
+// after a success, and the run's end after a failure or a stop.
 func (w *worker) decide(r wire.RunReport) wire.NextStep {
 	next := func(a wire.NextStepAction, state string) wire.NextStep {
 		return wire.NextStep{Action: a, State: state, StateVersion: r.StateVersion + 1}
@@ -180,6 +180,8 @@ func (w *worker) decide(r wire.RunReport) wire.NextStep {
 		return next(wire.Execute, string(r.State))
 	case r.Event == wire.Failed:
 		return next(wire.Exit, "FAILED")
+	case r.Event == wire.Stopped:
+		return next(wire.Exit, "STOPPED")
 	case r.State == wire.WorkerStateINITIALIZING:
 		return next(wire.Execute, "PLANNING")
 	case r.State == wire.WorkerStatePLANNING && w.autodeploy:

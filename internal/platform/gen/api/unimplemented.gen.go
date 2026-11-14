@@ -1090,8 +1090,16 @@ func (UnimplementedStrict) RunCancel(context.Context, RunCancelRequestObject) (R
 	return nil, &problem.NotImplementedError{OperationID: "runCancel", Route: "POST /stacks/{stackId}/runs/{runId}/cancel"}
 }
 
+func (UnimplementedStrict) RunKill(context.Context, RunKillRequestObject) (RunKillResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runKill", Route: "POST /stacks/{stackId}/runs/{runId}/kill"}
+}
+
 func (UnimplementedStrict) RunPrioritySet(context.Context, RunPrioritySetRequestObject) (RunPrioritySetResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runPrioritySet", Route: "POST /stacks/{stackId}/runs/{runId}/priority-set"}
+}
+
+func (UnimplementedStrict) RunStop(context.Context, RunStopRequestObject) (RunStopResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runStop", Route: "POST /stacks/{stackId}/runs/{runId}/stop"}
 }
 
 func (UnimplementedStrict) StackScheduledDelete(context.Context, StackScheduledDeleteRequestObject) (StackScheduledDeleteResponseObject, error) {

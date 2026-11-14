@@ -33,6 +33,11 @@
 -- overrides, a JSON array of {name, value}, sealed by the keyring as
 -- they may hold secrets; NULL for a run without overrides, which alone
 -- an equal trigger answers instead of creating another.
+-- stop_* and kill_* are a caller's request to stop or to kill the run:
+-- when it was made, the login that made it and its note, which the
+-- transition the signal ends the run with records, and when a poll
+-- delivered it to the run's worker, NULL until one did. A poll delivers
+-- each once, as a second SIGINT makes the tool exit mid-operation.
 CREATE TABLE runs (
     account_id       uuid        NOT NULL,
     id               uuid        NOT NULL,
@@ -54,12 +59,21 @@ CREATE TABLE runs (
     worker_id        uuid,
     artifact_key_sealed bytea,
     env_overrides_sealed bytea,
+    stop_requested_at timestamptz,
+    stop_requested_by text,
+    stop_note        text,
+    stop_delivered_at timestamptz,
+    kill_requested_at timestamptz,
+    kill_requested_by text,
+    kill_note        text,
+    kill_delivered_at timestamptz,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, id),
     CHECK (priority IN ('low', 'normal', 'high')),
     CHECK (priority_tier BETWEEN 1 AND 7),
-    CHECK (force_apply_mode IN ('SINGLE', 'CASCADE'))
+    CHECK (force_apply_mode IN ('SINGLE', 'CASCADE')),
+    CHECK (kill_requested_at IS NULL OR stop_requested_at IS NOT NULL)
 );
 
 -- A stack's run lists read its runs of some types newest first, and its

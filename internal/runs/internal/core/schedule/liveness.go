@@ -38,6 +38,7 @@ type LivenessStore interface {
 const (
 	NoteWorkerLost       = "worker lost"
 	NotePreparingTimeout = "preparing timeout"
+	NoteKilled           = "killed"
 )
 
 // Liveness is the runs domain's workersapi.Liveness: the reap's lost
@@ -65,7 +66,7 @@ func (s *Liveness) Lost(ctx context.Context, worker kernel.ULID) (int, error) {
 		return 0, err //nolint:wrapcheck // the store names the read
 	}
 	for _, r := range runs {
-		if err := s.fail(ctx, r, NoteWorkerLost); err != nil {
+		if err := s.fail(ctx, r, lifecycle.Actor{}, NoteWorkerLost); err != nil {
 			return 0, err
 		}
 	}
@@ -86,9 +87,14 @@ func (s *Liveness) Ended(
 		return false, err //nolint:wrapcheck // the store names the read
 	}
 	for _, r := range runs {
-		if r.ID == run {
-			return true, s.fail(ctx, r, exitNote(exit))
+		if r.ID != run {
+			continue
 		}
+		actor, note := lifecycle.Actor{}, exitNote(exit)
+		if exit.Reason == workersapi.ExitKilled {
+			actor, note = r.Kill.Ends(note)
+		}
+		return true, s.fail(ctx, r, actor, note)
 	}
 	return false, nil
 }
@@ -110,7 +116,7 @@ func (s *Liveness) Overdue(
 		return 0, err //nolint:wrapcheck // the store names the read
 	}
 	for _, r := range runs {
-		if err := s.fail(ctx, r, NotePreparingTimeout); err != nil {
+		if err := s.fail(ctx, r, lifecycle.Actor{}, NotePreparingTimeout); err != nil {
 			return 0, err
 		}
 	}
@@ -118,23 +124,30 @@ func (s *Liveness) Overdue(
 }
 
 // fail moves r to FAILED through the liveness edge out of its state,
-// which every state on a worker has.
-func (s *Liveness) fail(ctx context.Context, r lifecycle.Run, note string) error {
+// which every state on a worker has, recording actor and note.
+func (s *Liveness) fail(
+	ctx context.Context,
+	r lifecycle.Run,
+	actor lifecycle.Actor,
+	note string,
+) error {
 	_, err := s.lifecycle.Transition(ctx, lifecycle.Request{
 		Account: r.Account, Run: r.ID, Version: r.Version, To: kernel.RunStateFailed,
-		Driver: machine.DriverLiveness, Note: note,
+		Driver: machine.DriverLiveness, Actor: actor, Note: note,
 	})
 	return err //nolint:wrapcheck // the lifecycle names the move
 }
 
 // exitNote is the note of a run whose container ended as e; a reason
-// the launcher did not learn names no cause.
+// the launcher did not learn names no cause. A container the launcher
+// killed on a kill signal is NoteKilled, which the kill's own note
+// replaces.
 func exitNote(e workersapi.Exit) string {
 	switch e.Reason {
 	case workersapi.ExitExited:
 		return fmt.Sprintf("container exited with code %d", e.Code)
 	case workersapi.ExitKilled:
-		return "container killed"
+		return NoteKilled
 	case workersapi.ExitOutOfMemory:
 		return "container out of memory"
 	case workersapi.ExitMissing:

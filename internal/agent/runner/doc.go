@@ -2,7 +2,8 @@
 // which the launcher starts from its own binary. Run reads the launcher's
 // handoff from standard input and executes the run it hands over with
 // internal/agent/exec, in the working directory, which is the
-// container's workspace.
+// container's workspace, taking each SIGINT on the channel it is given as
+// a stop of the run.
 //
 // ref: decision 0008 § "The launcher and the runner"
 //

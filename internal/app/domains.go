@@ -170,6 +170,7 @@ func newDomains(
 	workers.BindScheduler(runs.Scheduler())
 	workers.BindReports(runs.Reports())
 	workers.BindLiveness(runs.Liveness())
+	workers.BindSignals(runs.Signals())
 	registry, err := expr.NewRegistry(
 		c.Expressions,
 		slices.Concat(configuration.Surfaces(), runs.Surfaces(), vendors.Surfaces())...,

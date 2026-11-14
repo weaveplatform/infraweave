@@ -148,11 +148,18 @@ func runnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// NewLogger fails only on settings LogDefaults does not have.
 			log, _, _ := observe.NewLogger(cmd.OutOrStdout(), observe.LogDefaults(), "runner")
+			// The launcher's SIGINT stops the run's command, not the runner,
+			// so the root command's shutdown handler gives it up.
+			stop := make(chan os.Signal, 1)
+			signal.Reset(os.Interrupt)
+			signal.Notify(stop, os.Interrupt)
+			defer signal.Stop(stop)
 			return runner.Run(
 				cmd.Context(),
 				cmd.InOrStdin(),
 				doer,
 				log,
+				stop,
 			) //nolint:wrapcheck // runner names the step
 		},
 	}

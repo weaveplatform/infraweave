@@ -215,6 +215,14 @@ func runError(err error, slug, run string) error {
 		return forbidden(accessapi.ActionRunTrigger,
 			fmt.Sprintf("The stack is locked by %s; only its holder triggers runs.", l.By))
 	}
+	if b, ok := errors.AsType[*control.Blocked](err); ok {
+		return forbidden(b.Action, fmt.Sprintf(
+			"The run holds the stack's lock; acting on it needs %s.", b.Action))
+	}
+	if r, ok := errors.AsType[*control.Refused](err); ok {
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.InvalidState.Error(fmt.Sprintf("The run is %s; %s.", r.State, r.Needs))
+	}
 	switch {
 	case errors.Is(err, control.ErrBlocking):
 		return forbidden(accessapi.ActionRunCancelBlocking,

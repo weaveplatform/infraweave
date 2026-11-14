@@ -14380,6 +14380,74 @@ paths:
         - rate-limit
       x-infraweave-subject: path:runId:run
       x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/kill:
+    post:
+      description: >-
+        Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+      operationId: runKill
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              note: Force killing run
+            schema:
+              $ref: '#/components/schemas/RunKillRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runKill result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Kill Run
+      tags:
+        - Runs
+      x-bruno: Runs/Kill Run.bru
+      x-graphql:
+        field: runKill
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_KILL
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: action
   /stacks/{stackId}/runs/{runId}/priority-set:
     post:
       description: |-
@@ -14449,6 +14517,74 @@ paths:
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
+      x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/stop:
+    post:
+      description: >-
+        Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+      operationId: runStop
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              note: Stopping run
+            schema:
+              $ref: '#/components/schemas/RunStopRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runStop result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Stop Run
+      tags:
+        - Runs
+      x-bruno: Runs/Stop Run.bru
+      x-graphql:
+        field: runStop
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_STOP
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:runId:run
       x-rest-style: action
   /stacks/{stackId}/scheduled-delete:
     get:
@@ -26375,6 +26511,19 @@ components:
         - node
       type: object
       x-graphql-type: RunIgnoredTriggersConnection
+    RunKillRequest:
+      additionalProperties: false
+      description: The arguments of runKill not carried in the path.
+      properties:
+        note:
+          description: >-
+            The note of the transition the kill fails the run with, in place of "killed".
+          nullable: true
+          type: string
+        state:
+          $ref: '#/components/schemas/RunState'
+      type: object
+      x-graphql-args-of: runKill
     RunObservabilitySeverity:
       description: |-
         RunObservabilitySeverity says how much attention a run's observability data
@@ -26689,6 +26838,19 @@ components:
         - timestamp
       type: object
       x-graphql-type: RunStateTransition
+    RunStopRequest:
+      additionalProperties: false
+      description: The arguments of runStop not carried in the path.
+      properties:
+        note:
+          description: >-
+            The note of the transition to STOPPED, in place of the runner's account of how the command ended.
+          nullable: true
+          type: string
+        state:
+          $ref: '#/components/schemas/RunState'
+      type: object
+      x-graphql-args-of: runStop
     RunTile:
       properties:
         createdAt:

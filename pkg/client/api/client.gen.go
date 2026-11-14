@@ -6743,6 +6743,15 @@ type RunIgnoredTriggersConnection struct {
 	Node   RunIgnoredTrigger `json:"node"`
 }
 
+// RunKillRequest The arguments of runKill not carried in the path.
+type RunKillRequest struct {
+	// Note The note of the transition the kill fails the run with, in place of "killed".
+	Note *string `json:"note,omitempty"`
+
+	// State RunState represents a discrete state of a Run.
+	State *RunState `json:"state,omitempty"`
+}
+
 // RunObservabilitySeverity RunObservabilitySeverity says how much attention a run's observability data
 // reports needs.
 type RunObservabilitySeverity string
@@ -6901,6 +6910,15 @@ type RunStateTransition struct {
 
 	// Username GitHub username of the individual who caused the change, if any.
 	Username *string `json:"username,omitempty"`
+}
+
+// RunStopRequest The arguments of runStop not carried in the path.
+type RunStopRequest struct {
+	// Note The note of the transition to STOPPED, in place of the runner's account of how the command ended.
+	Note *string `json:"note,omitempty"`
+
+	// State RunState represents a discrete state of a Run.
+	State *RunState `json:"state,omitempty"`
 }
 
 // RunTile defines model for RunTile.
@@ -11613,8 +11631,20 @@ type RunCancelParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// RunKillParams defines parameters for RunKill.
+type RunKillParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // RunPrioritySetParams defines parameters for RunPrioritySet.
 type RunPrioritySetParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// RunStopParams defines parameters for RunStop.
+type RunStopParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
@@ -12398,8 +12428,14 @@ type RunProposeLocalWorkspaceJSONRequestBody = RunProposeLocalWorkspaceRequest
 // RunCancelJSONRequestBody defines body for RunCancel for application/json ContentType.
 type RunCancelJSONRequestBody = RunCancelRequest
 
+// RunKillJSONRequestBody defines body for RunKill for application/json ContentType.
+type RunKillJSONRequestBody = RunKillRequest
+
 // RunPrioritySetJSONRequestBody defines body for RunPrioritySet for application/json ContentType.
 type RunPrioritySetJSONRequestBody = RunPrioritySetRequest
+
+// RunStopJSONRequestBody defines body for RunStop for application/json ContentType.
+type RunStopJSONRequestBody = RunStopRequest
 
 // StackScheduledDeleteCreateJSONRequestBody defines body for StackScheduledDeleteCreate for application/json ContentType.
 type StackScheduledDeleteCreateJSONRequestBody = ScheduledDeleteInput
@@ -17581,6 +17617,24 @@ type ClientInterface interface {
 	// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
 	RunCancel(ctx context.Context, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RunKillWithBody Kill Run
+	//
+	// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+	RunKillWithBody(ctx context.Context, stackId string, runId string, params *RunKillParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunKill Kill Run
+	//
+	// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+	RunKill(ctx context.Context, stackId string, runId string, params *RunKillParams, body RunKillJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RunPrioritySetWithBody Set Run Priority
 	//
 	// Sets the priority preset of a run that has not ended.
@@ -17600,6 +17654,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
 	RunPrioritySet(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunStopWithBody Stop Run
+	//
+	// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+	RunStopWithBody(ctx context.Context, stackId string, runId string, params *RunStopParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunStop Stop Run
+	//
+	// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+	RunStop(ctx context.Context, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledDelete Stack scheduled delete
 	//
@@ -25498,6 +25570,44 @@ func (c *Client) RunCancel(ctx context.Context, stackId string, runId string, pa
 	return c.Client.Do(req)
 }
 
+// RunKillWithBody Kill Run
+//
+// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+func (c *Client) RunKillWithBody(ctx context.Context, stackId string, runId string, params *RunKillParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunKillRequestWithBody(c.Server, stackId, runId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunKill Kill Run
+//
+// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+func (c *Client) RunKill(ctx context.Context, stackId string, runId string, params *RunKillParams, body RunKillJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunKillRequest(c.Server, stackId, runId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RunPrioritySetWithBody Set Run Priority
 //
 // Sets the priority preset of a run that has not ended.
@@ -25528,6 +25638,44 @@ func (c *Client) RunPrioritySetWithBody(ctx context.Context, stackId string, run
 // Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
 func (c *Client) RunPrioritySet(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunPrioritySetRequest(c.Server, stackId, runId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunStopWithBody Stop Run
+//
+// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+func (c *Client) RunStopWithBody(ctx context.Context, stackId string, runId string, params *RunStopParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunStopRequestWithBody(c.Server, stackId, runId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunStop Stop Run
+//
+// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+func (c *Client) RunStop(ctx context.Context, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunStopRequest(c.Server, stackId, runId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -41784,6 +41932,75 @@ func NewRunCancelRequestWithBody(server string, stackId string, runId string, pa
 	return req, nil
 }
 
+// NewRunKillRequest calls the generic RunKill builder with application/json body
+func NewRunKillRequest(server string, stackId string, runId string, params *RunKillParams, body RunKillJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunKillRequestWithBody(server, stackId, runId, params, "application/json", bodyReader)
+}
+
+// NewRunKillRequestWithBody constructs an http.Request for the RunKill method, with any body, and a specified content type
+func NewRunKillRequestWithBody(server string, stackId string, runId string, params *RunKillParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/%s/kill", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewRunPrioritySetRequest calls the generic RunPrioritySet builder with application/json body
 func NewRunPrioritySetRequest(server string, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -41819,6 +42036,75 @@ func NewRunPrioritySetRequestWithBody(server string, stackId string, runId strin
 	}
 
 	operationPath := fmt.Sprintf("/stacks/%s/runs/%s/priority-set", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRunStopRequest calls the generic RunStop builder with application/json body
+func NewRunStopRequest(server string, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunStopRequestWithBody(server, stackId, runId, params, "application/json", bodyReader)
+}
+
+// NewRunStopRequestWithBody constructs an http.Request for the RunStop method, with any body, and a specified content type
+func NewRunStopRequestWithBody(server string, stackId string, runId string, params *RunStopParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/%s/stop", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -50183,6 +50469,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /stacks/{stackId}/runs/{runId}/cancel (the `RunCancel` operationId).
 	RunCancelWithResponse(ctx context.Context, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*RunCancelResponse, error)
 
+	// RunKillWithBodyWithResponse Kill Run
+	//
+	// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+	RunKillWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunKillParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunKillResponse, error)
+
+	// RunKillWithResponse Kill Run
+	//
+	// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+	RunKillWithResponse(ctx context.Context, stackId string, runId string, params *RunKillParams, body RunKillJSONRequestBody, reqEditors ...RequestEditorFn) (*RunKillResponse, error)
+
 	// RunPrioritySetWithBodyWithResponse Set Run Priority
 	//
 	// Sets the priority preset of a run that has not ended.
@@ -50202,6 +50506,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/{runId}/priority-set (the `RunPrioritySet` operationId).
 	RunPrioritySetWithResponse(ctx context.Context, stackId string, runId string, params *RunPrioritySetParams, body RunPrioritySetJSONRequestBody, reqEditors ...RequestEditorFn) (*RunPrioritySetResponse, error)
+
+	// RunStopWithBodyWithResponse Stop Run
+	//
+	// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+	RunStopWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunStopParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunStopResponse, error)
+
+	// RunStopWithResponse Stop Run
+	//
+	// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+	RunStopWithResponse(ctx context.Context, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody, reqEditors ...RequestEditorFn) (*RunStopResponse, error)
 
 	// StackScheduledDeleteWithResponse Stack scheduled delete
 	//
@@ -78243,6 +78565,115 @@ func (r RunCancelResponse) ContentType() string {
 	return ""
 }
 
+// RunKillResponse200Headers the declared response headers of an HTTP 200 response for RunKill
+type RunKillResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunKillResponse429Headers the declared response headers of an HTTP 429 response for RunKill
+type RunKillResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunKillResponse503Headers the declared response headers of an HTTP 503 response for RunKill
+type RunKillResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunKillResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunKillResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunKillResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunKillResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunKillResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunKillResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunKillResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunKillResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunKillResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunKillResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunKillResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunKillResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunKillResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunKillResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunKillResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RunPrioritySetResponse200Headers the declared response headers of an HTTP 200 response for RunPrioritySet
 type RunPrioritySetResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -78346,6 +78777,115 @@ func (r RunPrioritySetResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RunPrioritySetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunStopResponse200Headers the declared response headers of an HTTP 200 response for RunStop
+type RunStopResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunStopResponse429Headers the declared response headers of an HTTP 429 response for RunStop
+type RunStopResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunStopResponse503Headers the declared response headers of an HTTP 503 response for RunStop
+type RunStopResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunStopResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunStopResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunStopResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunStopResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunStopResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunStopResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunStopResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunStopResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunStopResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunStopResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunStopResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunStopResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunStopResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunStopResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -92558,6 +93098,36 @@ func (c *ClientWithResponses) RunCancelWithResponse(ctx context.Context, stackId
 	return ParseRunCancelResponse(rsp)
 }
 
+// RunKillWithBodyWithResponse Kill Run
+//
+// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+func (c *ClientWithResponses) RunKillWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunKillParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunKillResponse, error) {
+	rsp, err := c.RunKillWithBody(ctx, stackId, runId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunKillResponse(rsp)
+}
+
+// RunKillWithResponse Kill Run
+//
+// Kill the container of a Run that a stop did not end: the run fails with the note "killed", or the request's note, and releases the stack's lock if it holds it. Valid once a stop was requested, while the run is on a worker. Killing the run that holds the stack's lock also needs RUN_KILL_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already killed is answered as it is.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/kill (the `RunKill` operationId).
+func (c *ClientWithResponses) RunKillWithResponse(ctx context.Context, stackId string, runId string, params *RunKillParams, body RunKillJSONRequestBody, reqEditors ...RequestEditorFn) (*RunKillResponse, error) {
+	rsp, err := c.RunKill(ctx, stackId, runId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunKillResponse(rsp)
+}
+
 // RunPrioritySetWithBodyWithResponse Set Run Priority
 //
 // Sets the priority preset of a run that has not ended.
@@ -92588,6 +93158,36 @@ func (c *ClientWithResponses) RunPrioritySetWithResponse(ctx context.Context, st
 		return nil, err
 	}
 	return ParseRunPrioritySetResponse(rsp)
+}
+
+// RunStopWithBodyWithResponse Stop Run
+//
+// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+func (c *ClientWithResponses) RunStopWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunStopParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunStopResponse, error) {
+	rsp, err := c.RunStopWithBody(ctx, stackId, runId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunStopResponse(rsp)
+}
+
+// RunStopWithResponse Stop Run
+//
+// Stop a Run that is initializing, or a proposed or tracked Run that is planning: its worker sends the running command SIGINT, and the run becomes STOPPED once the command ends. A command that ignores the signal keeps running until runKill. Stopping the run that holds the stack's lock also needs RUN_STOP_BLOCKING. When state is given and the run has left it, the answer is a 409 that names the run's state. A run already asked to stop is answered as it is, and its worker gets one SIGINT.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
+func (c *ClientWithResponses) RunStopWithResponse(ctx context.Context, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody, reqEditors ...RequestEditorFn) (*RunStopResponse, error) {
+	rsp, err := c.RunStop(ctx, stackId, runId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunStopResponse(rsp)
 }
 
 // StackScheduledDeleteWithResponse Stack scheduled delete
@@ -128936,6 +129536,142 @@ func ParseRunCancelResponse(rsp *http.Response) (*RunCancelResponse, error) {
 	return response, nil
 }
 
+// ParseRunKillResponse parses an HTTP response from a RunKillWithResponse call
+func ParseRunKillResponse(rsp *http.Response) (*RunKillResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunKillResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunKillResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunKillResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunKillResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseRunPrioritySetResponse parses an HTTP response from a RunPrioritySetWithResponse call
 func ParseRunPrioritySetResponse(rsp *http.Response) (*RunPrioritySetResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -129059,6 +129795,142 @@ func ParseRunPrioritySetResponse(rsp *http.Response) (*RunPrioritySetResponse, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunPrioritySetResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunStopResponse parses an HTTP response from a RunStopWithResponse call
+func ParseRunStopResponse(rsp *http.Response) (*RunStopResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunStopResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunStopResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunStopResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunStopResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

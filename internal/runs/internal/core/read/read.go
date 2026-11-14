@@ -432,14 +432,23 @@ func (s *Service) Views(
 }
 
 // Allowed are the actions a caller holding held may take on r: one for
-// each edge its state allows next that a caller drives, cancel needing
-// RUN_CANCEL_BLOCKING when r holds its stack's run lock, and
-// RUN_PRIORITIZE_SET until it ends. A run that has ended allows none.
+// each edge its state allows next that a caller drives, stop until one is
+// asked of r, kill once one is and until a kill is, and
+// RUN_PRIORITIZE_SET until it ends. Cancel, stop and kill need their
+// blocking variants when r holds its stack's run lock. A run that has
+// ended allows none.
 func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action) []accessapi.Action {
 	out := []accessapi.Action{}
 	add := func(a accessapi.Action) {
 		if slices.Contains(held, a) && !slices.Contains(out, a) {
 			out = append(out, a)
+		}
+	}
+	either := func(plain, blocks accessapi.Action) {
+		if blocking {
+			add(blocks)
+		} else {
+			add(plain)
 		}
 	}
 	for _, e := range machine.Next(r.Type, r.State) {
@@ -448,20 +457,21 @@ func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action) []accessap
 		}
 		switch e.To {
 		case kernel.RunStateCanceled:
-			if blocking {
-				add(accessapi.ActionRunCancelBlocking)
-			} else {
-				add(accessapi.ActionRunCancel)
-			}
+			either(accessapi.ActionRunCancel, accessapi.ActionRunCancelBlocking)
 		case kernel.RunStateDiscarded:
 			add(accessapi.ActionRunDiscard)
 		case kernel.RunStateStopped:
-			add(accessapi.ActionRunStop)
+			if r.Stop == nil && r.Stoppable() {
+				either(accessapi.ActionRunStop, accessapi.ActionRunStopBlocking)
+			}
 		case kernel.RunStateConfirmed:
 			add(accessapi.ActionRunConfirm)
 		case kernel.RunStateReplanRequested:
 			add(accessapi.ActionRunTargetedReplan)
 		}
+	}
+	if r.Kill == nil && r.Killable() {
+		either(accessapi.ActionRunKill, accessapi.ActionRunKillBlocking)
 	}
 	if !r.State.Terminal() {
 		add(accessapi.ActionRunPrioritizeSet)
