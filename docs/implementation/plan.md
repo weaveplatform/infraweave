@@ -1877,8 +1877,12 @@ that depend on them.
 **Tasks**
 1. Run types: proposed, tracked, task, destroy and testing paths in
    `internal/runs/internal/core/lifecycle`; `taskCreate` with
-   `skipInitialization`;
-   `proposeWithOverrides`; `runTriggerBatch`; `stackTasks`.
+   `skipInitialization`; `runTriggerBatch`; destroy on delete, where
+   `stackDelete` with `destroyResources` creates a `DESTROY` run and the
+   stack goes when it finishes; the runner's `PERFORMING` and
+   `DESTROYING`. P9 serves `proposeWithOverrides`, and
+   [#307](https://github.com/weaveplatform/infraweave/issues/307) serves
+   `stackTasks`.
 2. Actions: `runRetry`, `runStop`, `runKill` (signals through the poll),
    `runTargetedReplan` with `PREPARING_REPLAN` and T44, `runPromote`,
    `runDiscardAll`, `runComment`, `runLogsDelete`.
@@ -1886,8 +1890,9 @@ that depend on them.
    2, 7 and 30 day rules; the run timeout and no-log timeout enforced by the
    launcher; `runLogRetentionDays`.
 4. Outputs and diagnostics: `stack_outputs` sealed per output with
-   `sensitive`; `runWorkerMetrics`, `runCpuProfileDownloadURL` from
-   `run-observability`.
+   `sensitive`, from the apply's sealed `outputs.json`; OpenTofu CPU
+   profiles, one per run state, and `runCpuProfileDownloadURL` from
+   `run-observability`. `runWorkerMetrics` is P18b's.
 5. Workflow files: `.infraweave/workflow.yml` command templates rendered
    by the runner in `internal/agent/exec` at initialization through
    `internal/platform/expr`, with every interpolated value shell-quoted.
@@ -1898,16 +1903,16 @@ that depend on them.
    the hostile workspace scenario of `expressions/deploy.feature`. Records
    DV-104.
 6. Feature: `runs/lifecycle.feature` (proposed, tracked with confirm,
-   autodeploy, task, targeted replan, stop, kill, lost run, timers in
-   virtual time).
+   autodeploy, task, destroy on delete, targeted replan, stop, kill,
+   no-log timeout, offline worker, lost run, timers in virtual time).
 
 **Exit criteria**
 - The Runs operations of tasks 1 to 4 meet decision 0016's evidence rule,
   and report 26 shows `spacelift_run`, `spacelift_task` and
   `spacelift_stack_outputs` with their API `implemented` (the provider
   follows in P24).
-- Captures C10, C34, C36, C37, C38, C39, C42 and C44 replay once recorded;
-  until then the scenarios assert decision 0008's gap table.
+- Captures C10, C34, C36, C39, C42 and C44 replay once recorded; until
+  then the scenarios assert decision 0008's gap table.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P11: State management
@@ -2133,7 +2138,8 @@ state points, with receipts committed in the transition they justify.
 - Option 5's walkthrough holds against Gitea: a push opens a proposed run, a
   plan policy warns, and the check and pull request comment appear.
 - The operations of task 2 and task 4 meet decision 0016's evidence rule.
-- Captures C40, C41, C49, C50, C51, C55 and C57 replay once recorded.
+- Captures C37, C40, C41, C49, C50, C51, C55 and C57 replay once
+  recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P13b: Login, task and initialization policies, sampling and simulation
@@ -2337,7 +2343,7 @@ with output references and external dependencies.
 - Drift Detection and the schedule and dependency operations of the Stacks
   tag meet decision 0016's evidence rule.
 - Two instances fire each scheduled time once.
-- Captures C151 and C153 to C168 replay once recorded.
+- Captures C38, C151 and C153 to C168 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P17: Module registry
@@ -2566,12 +2572,17 @@ own records, and the metrics and traces operators run infraweave with.
    jobs and policy evaluations; trace context carried into runs and the
    launcher's phase spans. Feature: `platform/observability_tracing.feature`.
    Records DV-063, DV-064.
+5. Run diagnostics from the run's traces: `runWorkerMetrics`, each
+   state's, hook's, resource's and provider's duration against the
+   stack's finished tracked runs, with the run's `workerFindings` and
+   `observabilityStatus`.
 
 **Exit criteria**
 - Audit Trail meets decision 0016's evidence rule, and every mutating
   operation in `api/api.openapi.yaml` carries an audit action.
 - One trace ID spans a run's API request, its job, the launcher's phases and
   the runner's environment.
+- `runWorkerMetrics` meets decision 0016's evidence rule.
 - Captures C180 to C184 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
