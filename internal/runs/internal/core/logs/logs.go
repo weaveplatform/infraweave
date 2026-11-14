@@ -64,12 +64,15 @@ type Jobs interface {
 }
 
 // Deps are what the logs read and write through: the database a
-// compaction commits on, the runs' storage, the objects and the queue.
+// compaction commits on, the runs' storage, the objects and the queue;
+// and Retention, objectstore.retention.run-logs, how long the run-logs
+// store keeps an object, 0 until its record goes.
 type Deps struct {
-	DB      tx.Beginner
-	Store   Store
-	Objects Objects
-	Jobs    Jobs
+	DB        tx.Beginner
+	Store     Store
+	Objects   Objects
+	Jobs      Jobs
+	Retention time.Duration
 }
 
 // Service reads a run's logs by state and compacts each state's log once
@@ -80,6 +83,21 @@ type Service struct{ d Deps }
 
 // New returns the service over d.
 func New(d Deps) *Service { return &Service{d: d} }
+
+// RetentionDays is how many days the run-logs store keeps a log, a part
+// of a day counting as a whole one, so a retention under a day answers 1
+// rather than 0, which answers a retention of none: logs kept until their
+// run goes.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func (s *Service) RetentionDays() int32 {
+	const day = 24 * time.Hour
+	days := s.d.Retention / day
+	if s.d.Retention%day != 0 {
+		days++
+	}
+	return int32(days) //nolint:gosec // a Duration spans at most 106,752 days
+}
 
 // A page holds whole chunks, at least one when one can be read, up to
 // pageBytes of them or pageChunks of them. A chunk is at most 1 MiB, the

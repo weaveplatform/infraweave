@@ -83,10 +83,10 @@ func runModeWith(
 
 // TestAccSchedulerModeStarts checks that the scheduler mode registers the
 // platform's periodic tasks, events.prune, the access domain's
-// authn.keys.rotate and the workers domain's worker.reap and
-// worker.sample, runs them through its workers, the workers domain's on
-// the scheduler queue, and stops the ticker before the workers; and that
-// serve runs neither.
+// authn.keys.rotate, the workers domain's worker.reap and worker.sample
+// and the runs domain's run.timers, runs them through its workers, the
+// workers and runs domains' on the scheduler queue, and stops the ticker
+// before the workers; and that serve runs neither.
 func TestAccSchedulerModeStarts(t *testing.T) {
 	observer := sqltest.Open(t)
 	out, _, stop := runMode(t, observer, ModeScheduler)
@@ -97,8 +97,11 @@ WHERE (name, interval) IN (('queue.prune', interval '10 minutes'), ('idempotency
 	}
 	if n := rows(t, observer, `SELECT count(*) FROM periodic_tasks
 WHERE (name, interval) IN (('worker.reap', interval '30 seconds'),
-    ('worker.sample', interval '1 minute'))`); n != 2 {
-		t.Errorf("%d of worker.reap every 30 seconds and worker.sample every minute, want 2", n)
+    ('worker.sample', interval '1 minute'), ('run.timers', interval '1 minute'))`); n != 3 {
+		t.Errorf(
+			"%d of worker.reap every 30 seconds, worker.sample and run.timers every minute, want 3",
+			n,
+		)
 	}
 	// Each is due once registered, so the first ticks run them.
 	until(t, "the tasks to run", func() bool {
@@ -106,8 +109,8 @@ WHERE (name, interval) IN (('worker.reap', interval '30 seconds'),
 WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune', 'authn.keys.rotate')
     AND queue = 'maintenance' AND state = 'succeeded'`) == 4 &&
 			rows(t, observer, `SELECT count(DISTINCT kind) FROM jobs
-WHERE kind IN ('worker.reap', 'worker.sample') AND queue = 'scheduler'
-    AND state = 'succeeded'`) == 2
+WHERE kind IN ('worker.reap', 'worker.sample', 'run.timers') AND queue = 'scheduler'
+    AND state = 'succeeded'`) == 3
 	})
 	// The first rotation on an empty table creates the first key.
 	if n := rows(t, observer, `SELECT count(*) FROM signing_keys WHERE state = 'active'`); n != 1 {
