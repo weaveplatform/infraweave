@@ -27,8 +27,11 @@ Feature: Runs of an OpenTofu stack end to end
   values and the stack's computed fields; and a name keeps an ro_ prefix.
   Every run gets INFRAWEAVE_API_TOKEN, on a stack with no role too, whose
   subject is the stack's slug and the run's ID, and with which a hook
-  reads its own stack and space. The release indexes serve the recorded
-  fixtures; the home key is space-admin on the account's top space.
+  reads its own stack and space. A run of a stack that enables CPU
+  profiling uploads its planning's profile, whose samples each name the
+  workflow command they come from; a stack that does not has none. The
+  release indexes serve the recorded fixtures; the home key is
+  space-admin on the account's top space.
   Stacks live in legacy, keep their state in infraweave and run on the
   pool; the repository's configuration has terraform_data resources and
   outputs alone, so no provider is downloaded.
@@ -84,7 +87,7 @@ Feature: Runs of an OpenTofu stack end to end
     And no object in the scenario's bucket holds "f1le-s3cr3t", of at least 6 objects
     And no answer of the scenario, log line of A or B, audit entry or event holds "s3cr3t-pl4n"
 
-  @op:runDiscard @op:runTrigger @case:success
+  @op:runDiscard @op:runTrigger @op:runCpuProfileDownloadURL @case:success
   Scenario: A run discarded from UNCONFIRMED ends, and its stack's lock passes to the next run
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}}},"manageState":true}' through B
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
@@ -101,6 +104,25 @@ Feature: Runs of an OpenTofu stack end to end
     And the answer's last state transition's note is "Not this one"
     And the outbox holds the run "first"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, UNCONFIRMED, DISCARDED"
     And the run "first" wrote 0 state versions
+    When token "h" sends "GET /api/v1/runs/{first}/cpu-profile-download-url?state=PLANNING" through A
+    Then it answers 200
+    And the answer's expired is 'true'
+    And the answer leaves out "url"
+
+  @op:runCpuProfileDownloadURL @op:runTrigger @case:success
+  Scenario: A run of a stack that enables CPU profiling uploads its planning's profile, each sample naming its command
+    Given a Gitea repository "heavy" with the files:
+      | main.tf | locals {\n  cells = flatten([for i in range(400) : [for j in range(400) : i * j]])\n}\n\noutput "cells" {\n  value = length(local.cells)\n}\n |
+    And the head of "main" of "heavy" is kept as "heavyseed"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Heavy","repository":"heavy","branch":"main","provider":"GIT","repositoryURL":"{heavy.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{"enableCPUProfiling":true}}},"manageState":true}' through B
+    And token "h" eventually reads the stack "heavy" tracking the commit kept as "heavyseed" through A
+    When token "h" sends "POST /api/v1/stacks/heavy/runs" with '{"runType":"PROPOSED","commitSha":"{heavyseed}"}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FINISHED"
+    When token "h" sends "GET /api/v1/runs/{run}/cpu-profile-download-url?state=PLANNING" through A
+    Then it answers 200
+    And the answer's url downloads a CPU profile whose samples each name one of the commands "plan, showPlan"
 
   @op:uploadLocalWorkspace @op:runProposeLocalWorkspace @case:success
   Scenario: A local preview plans the uncommitted code of an uploaded workspace, and finishes

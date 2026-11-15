@@ -1,6 +1,7 @@
 // Package runs holds the acceptance steps of features/runs: the run
-// queue, the scheduling of runs, a run's logs, which it writes as a
-// worker does and reads back, local previews, whose workspace archives
+// queue, the scheduling of runs, a run's logs and CPU profiles, which it
+// uploads as a worker does and reads back, a profile as pprof, local
+// previews, whose workspace archives
 // it builds, uploads and reads back from a run's specification, and a
 // run's changes, whose document it writes from internal/iac's recorded
 // plans and seals and commits as a worker does; and it checks that a
@@ -16,5 +17,6 @@
 // # Dependencies
 //
 // It builds on harness.World, test/deps's Eventually for what settles
-// after an answer, internal/iac/plan and platform/seal.
+// after an answer, internal/iac/plan, platform/seal and
+// github.com/google/pprof/profile.
 package runs

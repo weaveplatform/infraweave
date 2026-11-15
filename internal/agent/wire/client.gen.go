@@ -829,6 +829,9 @@ type RunSpecTool struct {
 	// Download Whether the launcher mounts the release; false when the stack runs the runner image's own binary instead.
 	Download bool `json:"download"`
 
+	// EnableCPUProfiling Whether the runner profiles each tool command's CPU and uploads each state's merged profile. Only an OpenTofu stack that enables CPU profiling, on release 1.11 or later, sets it.
+	EnableCPUProfiling *bool `json:"enableCPUProfiling,omitempty"`
+
 	// Name The binary the runner calls.
 	Name RunSpecToolName `json:"name"`
 

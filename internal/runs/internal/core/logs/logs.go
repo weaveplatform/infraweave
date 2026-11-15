@@ -303,6 +303,44 @@ func (s *Service) Download(
 	return Download{Ongoing: live, Expired: !live}, nil
 }
 
+// Profile answers where p's run raw's CPU profile of the latest
+// execution of state downloads from: URL once the runner recorded it;
+// otherwise Ongoing while the run is in that execution of the state, and
+// Expired when it wrote no profile, retention removed it or a caller
+// deleted the run's logs, which Deleted reports. The route has decided
+// SPACE_READ on the run's stack's space.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func (s *Service) Profile(
+	ctx context.Context,
+	p kernel.Principal,
+	raw string,
+	state kernel.RunState,
+) (Download, error) {
+	run, err := s.get(ctx, p.AccountID, raw)
+	if err != nil {
+		return Download{}, err
+	}
+	if run.LogsDeletedAt != nil {
+		return Download{Expired: true, Deleted: true}, nil
+	}
+	v, exists, err := s.version(ctx, run, state, nil)
+	if err != nil || !exists {
+		return Download{Expired: true}, err
+	}
+	signed, err := s.d.Objects.SignGet(ctx, objectstore.RunObservability,
+		kernel.RunObjectKey(run.Account, run.ID, state, v, kernel.CPUProfileName(state)))
+	switch {
+	case err == nil:
+		return Download{URL: signed.URL}, nil
+	case !errors.Is(err, objectstore.ErrNotFound):
+		return Download{}, err //nolint:wrapcheck // blobs names the object
+	case run.State == state && run.Version == v:
+		return Download{Ongoing: true}, nil
+	}
+	return Download{Expired: true}, nil
+}
+
 // Delete deletes the logs of p's run raw of stack slug ahead of their
 // retention, in one transaction: its log chunks, each state's compacted
 // log and its observability artifacts, with their records, the objects

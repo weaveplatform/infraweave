@@ -59,7 +59,8 @@ const planJSON = `{"format_version":"1.2","resource_changes":[` +
 // the reported one, as the server does for the run's type.
 // It takes the run's log chunks and artifacts, and keeps the order in
 // which it took them and the reports; it refuses every declaration with
-// uploads, and signs other names than declared with rename.
+// uploads, a declaration of an upload of kind refuseKind with 422, and
+// signs other names than declared with rename.
 type worker struct {
 	mu         sync.Mutex
 	version    int64
@@ -68,6 +69,7 @@ type worker struct {
 	lose       int
 	refuse     int
 	uploads    error
+	refuseKind wire.UploadKind
 	rename     bool
 	reports    []wire.RunReport
 	last       wire.RunReport
@@ -85,6 +87,9 @@ func (w *worker) UploadURLs(
 	}
 	out := make([]wire.SignedUpload, 0, len(in.Uploads))
 	for _, u := range in.Uploads {
+		if u.Kind == w.refuseKind {
+			return nil, &client.Error{Op: "upload-urls", Status: 422}
+		}
 		name := u.Name
 		if w.rename {
 			name += ".renamed"

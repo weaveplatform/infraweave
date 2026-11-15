@@ -251,6 +251,12 @@ components:
           description: >-
             Whether the launcher mounts the release; false when the stack
             runs the runner image's own binary instead.
+        enableCPUProfiling:
+          type: boolean
+          description: >-
+            Whether the runner profiles each tool command's CPU and uploads
+            each state's merged profile. Only an OpenTofu stack that enables
+            CPU profiling, on release 1.11 or later, sets it.
     RunSpecStateBackend:
       description: >-
         The stack's managed state backend, present only when infraweave keeps

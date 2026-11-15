@@ -35,6 +35,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v93 v93.0.0
+	github.com/google/pprof v0.0.0-20261111200114-fac431ef4d26
 	github.com/googleapis/gax-go/v2 v2.27.0
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/klauspost/compress v1.20.4

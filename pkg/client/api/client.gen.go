@@ -11270,6 +11270,12 @@ type RunChangesV3Params struct {
 	Input EntityChangesInputV3 `form:"input" json:"input"`
 }
 
+// RunCpuProfileDownloadURLParams defines parameters for RunCpuProfileDownloadURL.
+type RunCpuProfileDownloadURLParams struct {
+	// State The state whose profile to download.
+	State RunState `form:"state" json:"state"`
+}
+
 // RunLogsParams defines parameters for RunLogs.
 type RunLogsParams struct {
 	// State The state whose lines to read.
@@ -16727,6 +16733,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /runs/{runId}/changes-v3 (the `RunChangesV3` operationId).
 	RunChangesV3(ctx context.Context, runId string, params *RunChangesV3Params, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunCpuProfileDownloadURL Run cpu profile download URL
+	//
+	// A pre-signed URL that downloads the CPU profile (.pprof) of one of the run's states, which merges the profile of each OpenTofu command the state ran; the infraweave.command sample label names the workflow command each sample comes from. It is the profile of the state's latest execution. A run profiles only on a stack whose OpenTofu settings enable CPU profiling, at release 1.11 or later. While the run is in the state and has not uploaded the profile, ongoing is true; expired is true when the state wrote no profile or retention removed it, and deleted once the run's logs were deleted.
+	//
+	// Corresponds with GET /runs/{runId}/cpu-profile-download-url (the `RunCpuProfileDownloadURL` operationId).
+	RunCpuProfileDownloadURL(ctx context.Context, runId string, params *RunCpuProfileDownloadURLParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunLogs Run logs
 	//
@@ -23593,6 +23606,23 @@ func (c *Client) RunChangesV2(ctx context.Context, runId string, params *RunChan
 // Corresponds with GET /runs/{runId}/changes-v3 (the `RunChangesV3` operationId).
 func (c *Client) RunChangesV3(ctx context.Context, runId string, params *RunChangesV3Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunChangesV3Request(c.Server, runId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunCpuProfileDownloadURL Run cpu profile download URL
+//
+// A pre-signed URL that downloads the CPU profile (.pprof) of one of the run's states, which merges the profile of each OpenTofu command the state ran; the infraweave.command sample label names the workflow command each sample comes from. It is the profile of the state's latest execution. A run profiles only on a stack whose OpenTofu settings enable CPU profiling, at release 1.11 or later. While the run is in the state and has not uploaded the profile, ongoing is true; expired is true when the state wrote no profile or retention removed it, and deleted once the run's logs were deleted.
+//
+// Corresponds with GET /runs/{runId}/cpu-profile-download-url (the `RunCpuProfileDownloadURL` operationId).
+func (c *Client) RunCpuProfileDownloadURL(ctx context.Context, runId string, params *RunCpuProfileDownloadURLParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunCpuProfileDownloadURLRequest(c.Server, runId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -37808,6 +37838,63 @@ func NewRunChangesV3Request(server string, runId string, params *RunChangesV3Par
 	return req, nil
 }
 
+// NewRunCpuProfileDownloadURLRequest constructs an http.Request for the RunCpuProfileDownloadURL method
+func NewRunCpuProfileDownloadURLRequest(server string, runId string, params *RunCpuProfileDownloadURLParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/cpu-profile-download-url", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRunLogsRequest constructs an http.Request for the RunLogs method
 func NewRunLogsRequest(server string, runId string, params *RunLogsParams) (*http.Request, error) {
 	var err error
@@ -50166,6 +50253,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /runs/{runId}/changes-v3 (the `RunChangesV3` operationId).
 	RunChangesV3WithResponse(ctx context.Context, runId string, params *RunChangesV3Params, reqEditors ...RequestEditorFn) (*RunChangesV3Response, error)
+
+	// RunCpuProfileDownloadURLWithResponse Run cpu profile download URL
+	//
+	// A pre-signed URL that downloads the CPU profile (.pprof) of one of the run's states, which merges the profile of each OpenTofu command the state ran; the infraweave.command sample label names the workflow command each sample comes from. It is the profile of the state's latest execution. A run profiles only on a stack whose OpenTofu settings enable CPU profiling, at release 1.11 or later. While the run is in the state and has not uploaded the profile, ongoing is true; expired is true when the state wrote no profile or retention removed it, and deleted once the run's logs were deleted.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId}/cpu-profile-download-url (the `RunCpuProfileDownloadURL` operationId).
+	RunCpuProfileDownloadURLWithResponse(ctx context.Context, runId string, params *RunCpuProfileDownloadURLParams, reqEditors ...RequestEditorFn) (*RunCpuProfileDownloadURLResponse, error)
 
 	// RunLogsWithResponse Run logs
 	//
@@ -71574,6 +71670,101 @@ func (r RunChangesV3Response) ContentType() string {
 	return ""
 }
 
+// RunCpuProfileDownloadURLResponse200Headers the declared response headers of an HTTP 200 response for RunCpuProfileDownloadURL
+type RunCpuProfileDownloadURLResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunCpuProfileDownloadURLResponse429Headers the declared response headers of an HTTP 429 response for RunCpuProfileDownloadURL
+type RunCpuProfileDownloadURLResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunCpuProfileDownloadURLResponse503Headers the declared response headers of an HTTP 503 response for RunCpuProfileDownloadURL
+type RunCpuProfileDownloadURLResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunCpuProfileDownloadURLResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LogsDownloadURL
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunCpuProfileDownloadURLResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunCpuProfileDownloadURLResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunCpuProfileDownloadURLResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunCpuProfileDownloadURLResponse) GetJSON200() *LogsDownloadURL {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunCpuProfileDownloadURLResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunCpuProfileDownloadURLResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunCpuProfileDownloadURLResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunCpuProfileDownloadURLResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunCpuProfileDownloadURLResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunCpuProfileDownloadURLResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunCpuProfileDownloadURLResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunCpuProfileDownloadURLResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RunLogsResponse200Headers the declared response headers of an HTTP 200 response for RunLogs
 type RunLogsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -92927,6 +93118,21 @@ func (c *ClientWithResponses) RunChangesV3WithResponse(ctx context.Context, runI
 		return nil, err
 	}
 	return ParseRunChangesV3Response(rsp)
+}
+
+// RunCpuProfileDownloadURLWithResponse Run cpu profile download URL
+//
+// A pre-signed URL that downloads the CPU profile (.pprof) of one of the run's states, which merges the profile of each OpenTofu command the state ran; the infraweave.command sample label names the workflow command each sample comes from. It is the profile of the state's latest execution. A run profiles only on a stack whose OpenTofu settings enable CPU profiling, at release 1.11 or later. While the run is in the state and has not uploaded the profile, ongoing is true; expired is true when the state wrote no profile or retention removed it, and deleted once the run's logs were deleted.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId}/cpu-profile-download-url (the `RunCpuProfileDownloadURL` operationId).
+func (c *ClientWithResponses) RunCpuProfileDownloadURLWithResponse(ctx context.Context, runId string, params *RunCpuProfileDownloadURLParams, reqEditors ...RequestEditorFn) (*RunCpuProfileDownloadURLResponse, error) {
+	rsp, err := c.RunCpuProfileDownloadURL(ctx, runId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunCpuProfileDownloadURLResponse(rsp)
 }
 
 // RunLogsWithResponse Run logs
@@ -121225,6 +121431,128 @@ func ParseRunChangesV3Response(rsp *http.Response) (*RunChangesV3Response, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunChangesV3Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunCpuProfileDownloadURLResponse parses an HTTP response from a RunCpuProfileDownloadURLWithResponse call
+func ParseRunCpuProfileDownloadURLResponse(rsp *http.Response) (*RunCpuProfileDownloadURLResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunCpuProfileDownloadURLResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LogsDownloadURL
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunCpuProfileDownloadURLResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunCpuProfileDownloadURLResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunCpuProfileDownloadURLResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

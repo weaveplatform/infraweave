@@ -46,6 +46,15 @@
 // its report, so the server keeps the stack's outputs in that report's
 // transaction.
 //
+// A run whose specification enables CPU profiling runs each tool command
+// with TOFU_CPU_PROFILE naming a fresh file of the temporary directory,
+// unset again for the hooks. Before each phase's report, whatever its end,
+// it merges the files the phase's commands wrote, each sample labelled
+// infraweave.command with the workflow command's key, or task for a
+// task's command, and uploads the result unsealed as the observability
+// object cpu-<STATE>.pprof. A profile that does not parse, merge or upload
+// is noted in the state's log and fails nothing.
+//
 // The session's output, and the runner's own lines, go to the run's log,
 // internal/agent/runlog, which masks the run's secrets: its write-only
 // values and files, its tokens, the values of the variables the
@@ -80,14 +89,16 @@
 // and the tool, signals the session's process group on a stop, masks
 // their output onto the output it is given and
 // uploads, sends reports through a Reporter and log chunks through a
-// runlog.API, and uploads and records its artifacts through Uploads. It
-// logs each phase, the run's end, each report or upload it sends again
-// and a log it could not flush.
+// runlog.API, and uploads and records its artifacts and CPU profiles
+// through Uploads. It logs each phase, the run's end, each report or
+// upload it sends again, a CPU profile it could not save and a log it
+// could not flush.
 //
 // # Dependencies
 //
 // It imports internal/agent/backend, client, handoff, runlog, vendors,
 // wire and workspace, internal/iac/plan and workflow, internal/kernel for
-// the objects' keys, and platform/mask and platform/seal. internal/agent/runner runs
-// it.
+// the objects' keys and names, platform/mask and platform/seal, and
+// github.com/google/pprof/profile to merge CPU profiles.
+// internal/agent/runner runs it.
 package exec

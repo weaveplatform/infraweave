@@ -75,7 +75,9 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			Source: workersapi.SpecSource{
 				Kind: workersapi.SourceGit, URL: "https://git.example.com/a.git", Narrowed: true,
 			},
-			Tool:  &workersapi.SpecTool{Name: "terraform", Version: "1.14.2", Download: true},
+			Tool: &workersapi.SpecTool{
+				Name: "tofu", Version: "1.11.2", Download: true, CPUProfiling: true,
+			},
 			Task:  &kernel.Task{Command: "make check", SkipInitialization: true},
 			Hooks: map[string][]string{"beforeInit": {"echo hi"}},
 			Environment: []workersapi.Variable{
@@ -133,7 +135,9 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		"source": map[string]any{
 			"kind": "git", "url": "https://git.example.com/a.git", "narrowed": true,
 		},
-		"tool":  map[string]any{"name": "terraform", "version": "1.14.2", "download": true},
+		"tool": map[string]any{
+			"name": "tofu", "version": "1.11.2", "download": true, "enableCPUProfiling": true,
+		},
 		"task":  map[string]any{"command": "make check", "skipInitialization": true},
 		"hooks": map[string]any{"beforeInit": []any{"echo hi"}},
 		"environment": []any{

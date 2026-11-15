@@ -568,6 +568,72 @@ func TestUnitLogsDownload(t *testing.T) {
 	}
 }
 
+// TestUnitLogsProfile checks where a state's CPU profile downloads from:
+// its signed URL once recorded, ongoing while the run is in the state and
+// has not recorded it, expired when the state wrote none or the run never
+// entered it, and deleted once the run's logs were deleted.
+func TestUnitLogsProfile(t *testing.T) {
+	w := newWorld()
+	profile := func(state kernel.RunState) logs.Download {
+		t.Helper()
+		d, err := w.svc.Profile(t.Context(), w.p, w.s.run.ID.String(), state)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	key := func(state kernel.RunState, v int64) string {
+		return kernel.RunObjectKey(w.s.run.Account, w.s.run.ID, state, v,
+			kernel.CPUProfileName(state))
+	}
+	for _, c := range []struct {
+		name  string
+		setup func()
+		state kernel.RunState
+		want  logs.Download
+	}{
+		{name: "never entered", state: kernel.RunStateDestroying, want: logs.Download{Expired: true}},
+		{name: "no profile", state: kernel.RunStatePlanning, want: logs.Download{Expired: true}},
+		{name: "in the state", state: kernel.RunStateApplying, want: logs.Download{Ongoing: true}},
+		{
+			name: "recorded", setup: func() { w.o.put(key(kernel.RunStatePlanning, 5), "pprof") },
+			state: kernel.RunStatePlanning,
+			want:  logs.Download{URL: "https://store.test/" + key(kernel.RunStatePlanning, 5)},
+		},
+		{
+			name: "recorded in the state", setup: func() { w.o.put(key(kernel.RunStateApplying, 7), "pprof") },
+			state: kernel.RunStateApplying,
+			want:  logs.Download{URL: "https://store.test/" + key(kernel.RunStateApplying, 7)},
+		},
+	} {
+		if c.setup != nil {
+			c.setup()
+		}
+		if got := profile(c.state); got != c.want {
+			t.Errorf("%s: %+v, want %+v", c.name, got, c.want)
+		}
+	}
+	if _, err := w.svc.Profile(t.Context(), w.p, "nope",
+		kernel.RunStatePlanning); !errors.Is(err, read.ErrNotFound) {
+		t.Errorf("Profile of no run: %v", err)
+	}
+	for _, c := range []struct{ store, objects string }{{store: "Entered"}, {objects: "SignGet"}} {
+		w.s.fail, w.o.fail = c.store, c.objects
+		if _, err := w.svc.Profile(t.Context(), w.p, w.s.run.ID.String(),
+			kernel.RunStatePlanning); !errors.Is(err, errDown) {
+			t.Errorf("Profile with %+v failing: %v", c, err)
+		}
+	}
+	w.s.fail, w.o.fail = "", ""
+	deleted := time.Unix(at, 0)
+	w.s.run.LogsDeletedAt = &deleted
+	if got := profile(
+		kernel.RunStatePlanning,
+	); got != (logs.Download{Expired: true, Deleted: true}) {
+		t.Errorf("deleted logs: %+v", got)
+	}
+}
+
 // compactJob is the job a transition out of state at version enqueues
 // for w's run.
 func (w *world) compactJob(t *testing.T, state kernel.RunState, version int64) queue.Job {

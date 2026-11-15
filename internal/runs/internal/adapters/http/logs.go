@@ -100,11 +100,34 @@ func (s Server) RunLogsDownloadURL(
 	if err != nil {
 		return nil, runError(err, "", req.RunId)
 	}
+	return api.RunLogsDownloadURL200JSONResponse{Body: downloadOf(d)}, nil
+}
+
+// RunCpuProfileDownloadURL answers where the CPU profile of a state of
+// one run of the caller's account downloads from. The route has decided
+// SPACE_READ on the run's stack's space.
+func (s Server) RunCpuProfileDownloadURL(
+	ctx context.Context,
+	req api.RunCpuProfileDownloadURLRequestObject,
+) (api.RunCpuProfileDownloadURLResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	d, err := s.logs.Profile(ctx, p, req.RunId, kernel.RunState(req.Params.State))
+	if err != nil {
+		return nil, runError(err, "", req.RunId)
+	}
+	return api.RunCpuProfileDownloadURL200JSONResponse{Body: downloadOf(d)}, nil
+}
+
+// downloadOf is d as the API answers where an object downloads from.
+func downloadOf(d logs.Download) api.LogsDownloadURL {
 	body := api.LogsDownloadURL{Deleted: d.Deleted, Expired: d.Expired, Ongoing: d.Ongoing}
 	if d.URL != "" {
 		body.Url = &d.URL
 	}
-	return api.RunLogsDownloadURL200JSONResponse{Body: body}, nil
+	return body
 }
 
 // RunLogRetentionDays answers how many days a run's logs are kept, which

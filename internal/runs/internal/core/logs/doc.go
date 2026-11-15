@@ -14,10 +14,14 @@
 // one object, report.LogKey, through blob_objects, and commits it with
 // the job, so running it again writes nothing. Service.Download signs a
 // GET of that object, or answers that the state is ongoing, its
-// compaction pending, or its log expired. Service.Delete deletes an ended
-// run's logs ahead of their retention: its chunks, each state's compacted
+// compaction pending, or its log expired. Service.Profile signs a GET of
+// the CPU profile the runner recorded for the latest execution of a
+// state in run-observability, or answers that the state is ongoing or
+// its profile expired. Service.Delete deletes an ended run's logs ahead
+// of their retention: its chunks, each state's compacted
 // log and its observability artifacts, with their records, and records
-// when, after which Page and Download answer that its logs were deleted.
+// when, after which Page, Download and Profile answer that its logs were
+// deleted.
 // Service.RetentionDays is how many days the run-logs store keeps a log,
 // which runLogRetentionDays answers.
 //
@@ -29,7 +33,7 @@
 // New takes the Store, the Objects of blob_objects, the queue a
 // compaction completes its job on, the stacks domain that finds a
 // deletion's stack, the database it commits on, and
-// objectstore.retention.run-logs. Page, Download and Delete answer
+// objectstore.retention.run-logs. Page, Download, Profile and Delete answer
 // read.ErrNotFound for a run the caller's account lacks, and Delete
 // ErrRunning for one that has not ended. Nothing is logged.
 //

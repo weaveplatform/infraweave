@@ -67,6 +67,8 @@ func TestUnitRunsRefusals(t *testing.T) {
 		"RunChangesV3":   second(s.RunChangesV3(bg, api.RunChangesV3RequestObject{})),
 		"RunLogsDownloadURL": second(s.RunLogsDownloadURL(bg,
 			api.RunLogsDownloadURLRequestObject{})),
+		"RunCpuProfileDownloadURL": second(s.RunCpuProfileDownloadURL(bg,
+			api.RunCpuProfileDownloadURLRequestObject{})),
 		"RunLogRetentionDays": second(s.RunLogRetentionDays(bg,
 			api.RunLogRetentionDaysRequestObject{})),
 	} {
