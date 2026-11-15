@@ -57,8 +57,8 @@ func insertRun(
 			`INSERT INTO stack_run_locks (account_id, stack_id, run_id) VALUES ($1, $3, $2)`,
 			`INSERT INTO stack_run_state (account_id, stack_id, tracked_run_id)
 				VALUES ($1, $3, $2)`,
-			`INSERT INTO stack_outputs (account_id, stack_id, name, run_id, value)
-				VALUES ($1, $3, 'url', $2, '"https://example.com"')`,
+			`INSERT INTO stack_outputs (account_id, stack_id, name, run_id, value_sealed)
+				VALUES ($1, $3, 'url', $2, decode('00', 'hex'))`,
 		)
 	}
 	for _, s := range stmts {

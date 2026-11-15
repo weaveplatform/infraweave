@@ -80,8 +80,10 @@ func (p *purgeSteps) holds(ctx context.Context, slug string) error {
 		SELECT account_id, stack_id, id FROM runs WHERE account_id = '%[2]s';
 		INSERT INTO stack_run_state (account_id, stack_id, tracked_run_id)
 		SELECT account_id, stack_id, id FROM runs WHERE account_id = '%[2]s';
-		INSERT INTO stack_outputs (account_id, stack_id, name, run_id, value)
-		SELECT account_id, stack_id, 'url', id, '"https://example.com"' FROM runs
+		-- Sensitive, so no read opens the placeholder that stands for its
+		-- sealed value.
+		INSERT INTO stack_outputs (account_id, stack_id, name, run_id, value_sealed, sensitive)
+		SELECT account_id, stack_id, 'url', id, decode('00', 'hex'), true FROM runs
 			WHERE account_id = '%[2]s';
 		INSERT INTO account_limits (organization_id, account_id, limit_name, value)
 		VALUES ('%[1]s', '%[2]s', 'seats', 1);`, ids[0], ids[1]))

@@ -73,6 +73,8 @@ Feature: Terraform and OpenTofu keep their state in infraweave
     And <tool> "output -raw token" of the run "run" exits 0
     And the last output of the run "run" is "plain-s3cret-0451"
     And no object in the scenario's bucket holds "plain-s3cret-0451", of at least 1 object
+    And <tool> "output -json" of the run "run" exits 0
+    And the worker records the last output of the run "run" as its outputs.json through B
     When the worker reports the run "run" succeeded in APPLYING through A
     Then the report's answer is to exit in FINISHED
     And token "h" eventually reads the run "run" in the state "FINISHED" through B

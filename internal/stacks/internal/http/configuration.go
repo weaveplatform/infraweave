@@ -9,8 +9,8 @@ import (
 )
 
 // unbound is the configuration and run status of a server whose
-// configuration and runs domains are not bound: no stack has a context or
-// a config element, no run blocks one, and no run exists.
+// configuration and runs domains are not bound: no stack has a context, a
+// config element or an output, no run blocks one, and no run exists.
 type unbound struct{}
 
 func (unbound) Blockers(
@@ -23,6 +23,14 @@ func (unbound) Blockers(
 
 func (unbound) RunStack(context.Context, kernel.AccountID, kernel.ULID) (kernel.ULID, error) {
 	return kernel.ULID{}, stacksapi.ErrNotFound
+}
+
+func (unbound) Outputs(
+	context.Context,
+	kernel.AccountID,
+	[]kernel.ULID,
+) (map[kernel.ULID][]stacksapi.Output, error) {
+	return map[kernel.ULID][]stacksapi.Output{}, nil
 }
 
 func (unbound) AttachedContexts(
@@ -69,6 +77,24 @@ func contextView(c stacksapi.AttachedContext) api.StackContextAttachment {
 		Priority:           c.Priority,
 		IsAutoattached:     c.Autoattached,
 	}
+}
+
+// outputViews are a stack's outputs as the API answers them, with no
+// value for a sensitive output, and each value the JSON of the tool's
+// output, as a string.
+func outputViews(outs []stacksapi.Output) []api.StackOutput {
+	out := make([]api.StackOutput, 0, len(outs))
+	for _, o := range outs {
+		v := api.StackOutput{Id: o.Name, Sensitive: o.Sensitive}
+		if o.Description != "" {
+			v.Description = new(o.Description)
+		}
+		if !o.Sensitive && o.Value != nil {
+			v.Value = new(string(o.Value))
+		}
+		out = append(out, v)
+	}
+	return out
 }
 
 // elementViews are config elements as the API answers them.
