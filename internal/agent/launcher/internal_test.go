@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
@@ -174,13 +175,24 @@ func TestUnitTruncate(t *testing.T) {
 
 func TestUnitLinesSplitsALongLine(t *testing.T) {
 	var log bytes.Buffer
-	w := &lines{log: slog.New(slog.NewJSONHandler(&log, nil))}
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	w := &lines{
+		log: slog.New(slog.NewJSONHandler(&log, nil)),
+		now: func() time.Time { return at },
+	}
 	w.named("run-1")
 	if _, err := w.Write(bytes.Repeat([]byte("x"), maxLine+1)); err != nil {
 		t.Fatal(err)
 	}
 	if n := strings.Count(log.String(), `"msg":"runner output"`); n != 1 {
 		t.Fatalf("%d lines logged of a line longer than maxLine", n)
+	}
+	if !w.last().Equal(at) {
+		t.Fatalf("last line at %s, want %s", w.last(), at)
+	}
+	w.mark(at.Add(-time.Minute))
+	if !w.last().Equal(at) {
+		t.Fatal("an earlier mark moved the last line back")
 	}
 	if len(w.buf) != 0 {
 		t.Fatalf("%d bytes held", len(w.buf))

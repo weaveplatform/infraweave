@@ -62,8 +62,10 @@ func (e AssignmentState) Valid() bool {
 const (
 	Exited      ContainerExitReason = "exited"
 	Killed      ContainerExitReason = "killed"
+	LogTimeout  ContainerExitReason = "log-timeout"
 	Missing     ContainerExitReason = "missing"
 	OutOfMemory ContainerExitReason = "out-of-memory"
+	RunTimeout  ContainerExitReason = "run-timeout"
 )
 
 // Valid indicates whether the value is a known member of the ContainerExitReason enum.
@@ -73,9 +75,13 @@ func (e ContainerExitReason) Valid() bool {
 		return true
 	case Killed:
 		return true
+	case LogTimeout:
+		return true
 	case Missing:
 		return true
 	case OutOfMemory:
+		return true
+	case RunTimeout:
 		return true
 	default:
 		return false
@@ -410,11 +416,11 @@ type ContainerExit struct {
 	// Code The exit code of the container's root process.
 	Code int32 `json:"code"`
 
-	// Reason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted.
+	// Reason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted; run-timeout when the launcher killed it for running longer than its run timeout; log-timeout when the launcher killed it for writing no output line for its log timeout.
 	Reason ContainerExitReason `json:"reason"`
 }
 
-// ContainerExitReason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted.
+// ContainerExitReason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted; run-timeout when the launcher killed it for running longer than its run timeout; log-timeout when the launcher killed it for writing no output line for its log timeout.
 type ContainerExitReason string
 
 // LogChunk An uploaded log chunk.

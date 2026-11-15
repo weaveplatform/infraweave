@@ -24,7 +24,9 @@
 // moved on within their pool's preparing timeout, with the note
 // "preparing timeout", oldest first, skipping rows another transaction
 // locks. A container the launcher killed on a kill signal fails its run
-// with the note "killed", or the kill's own, in the killer's name.
+// with the note "killed", or the kill's own, in the killer's name, and
+// one it killed on its run or no-log timeout with the note "run timeout"
+// or "no log output".
 // LivenessStore is its storage port.
 //
 // Signals is the domain's workersapi.Signals, through which a busy

@@ -18,8 +18,9 @@
 // a runner seals one to. Refuse makes calls fail with a status, Renew
 // hands a worker a new session token, and Lose forgets every worker.
 // Executor is a fake executor.Executor whose containers run until the
-// test ends them, or fails their wait, and which a restarted launcher
-// finds again.
+// test ends them, or fails their wait, print the lines the test gives
+// them to the output their launcher follows, refuse kills when told to,
+// and which a restarted launcher finds again.
 //
 // # Input and output
 //
