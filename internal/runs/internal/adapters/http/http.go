@@ -270,12 +270,18 @@ func input(body *api.RunTriggerRequest) (trigger.Input, error) {
 }
 
 // runError answers the refusals of the run operations; slug is the stack
-// the request names and run the run, if any. A *kernel.Invalid is
-// answered as it is.
+// the request names and run the run, if any. A stack another caller has
+// locked is resource-locked naming the holder, as the stacks domain
+// answers it, since no binding the caller could gain lifts it. A
+// *kernel.Invalid is answered as it is.
+//
+// ref: decision 0003 § "Problem types"
 func runError(err error, slug, run string) error {
 	if l, ok := errors.AsType[*lifecycle.Locked](err); ok {
-		return forbidden(accessapi.ActionRunTrigger,
-			fmt.Sprintf("The stack is locked by %s; only its holder triggers runs.", l.By))
+		p := problem.ResourceLocked.New(
+			fmt.Sprintf("The stack is locked by %s; only its holder creates runs on it.", l.By))
+		p.LockedBy = l.By
+		return &problem.Error{Problem: p}
 	}
 	if b, ok := errors.AsType[*control.Blocked](err); ok {
 		return forbidden(b.Action, fmt.Sprintf(

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -51,14 +52,16 @@ func TestUnitTriggerInput(t *testing.T) {
 }
 
 // TestUnitTriggerErrors answers each refusal of the run operations with
-// its problem and passes any other error through.
+// its problem, a stack another caller has locked as resource-locked
+// naming the holder, as the stacks domain answers it, and passes any
+// other error through.
 func TestUnitTriggerErrors(t *testing.T) {
 	for _, c := range []struct {
 		err    error
 		status int
 		slug   string
 	}{
-		{&lifecycle.Locked{By: "bob"}, http.StatusForbidden, "forbidden"},
+		{&lifecycle.Locked{By: "bob"}, http.StatusConflict, "resource-locked"},
 		{lifecycle.ErrDisabled, http.StatusConflict, "invalid-state"},
 		{lifecycle.ErrDeleting, http.StatusConflict, "invalid-state"},
 		{trigger.ErrNoCommit, http.StatusConflict, "invalid-state"},
@@ -84,6 +87,10 @@ func TestUnitTriggerErrors(t *testing.T) {
 		}
 	}
 	var p *problem.Error
+	if !errors.As(runError(fmt.Errorf("trigger: %w", &lifecycle.Locked{By: "bob"}), "infra",
+		""), &p) || p.Problem.LockedBy != "bob" || p.Problem.Action != "" {
+		t.Errorf("a locked stack = %+v", p)
+	}
 	if !errors.As(runError(&control.Blocked{Action: accessapi.ActionRunKillBlocking}, "infra",
 		""), &p) || p.Problem.Action != "RUN_KILL_BLOCKING" {
 		t.Errorf("a blocked kill names %q", p.Problem.Action)

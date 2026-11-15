@@ -230,6 +230,10 @@ func (s *Service) runnable(
 	case st.Deleting:
 		return refuse("Stack %q is being deleted.", st.Slug), nil
 	case st.Lock != nil && st.Lock.Holder != p.Caller():
+		// Not resource-locked, which the run operations of one stack
+		// answer: one problem names every entry a batch refuses, and a
+		// 409 carries one lockedBy.
+		// ref: decision 0003 § "API surfaces"
 		return refuse("Stack %q is locked by %s.", st.Slug, st.Lock.By), nil
 	}
 	var err error
