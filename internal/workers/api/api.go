@@ -391,13 +391,16 @@ type Reports interface {
 type ExitReason string
 
 // The exit reasons: the runner ended by itself, the launcher killed it on
-// a kill signal, the host killed it for its memory, or the container is
-// gone, such as after the host restarted.
+// a kill signal, the host killed it for its memory, the container is
+// gone, such as after the host restarted, or the launcher killed it on
+// its run timeout or its no-log timeout.
 const (
 	ExitExited      ExitReason = "exited"
 	ExitKilled      ExitReason = "killed"
 	ExitOutOfMemory ExitReason = "out-of-memory"
 	ExitMissing     ExitReason = "missing"
+	ExitRunTimeout  ExitReason = "run-timeout"
+	ExitLogTimeout  ExitReason = "log-timeout"
 )
 
 // Exit is how a run's container ended: its root process's exit code, and

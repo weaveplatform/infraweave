@@ -64,16 +64,19 @@ func (e *Executor) Start(_ context.Context, j executor.Job) (executor.Container,
 	}
 	j.Handoff = bytes.Clone(j.Handoff)
 	e.jobs = append(e.jobs, j)
-	c := &Container{e: e, worker: j.Worker, run: j.Run, ended: make(chan executor.Exit, 1)}
+	c := &Container{
+		e: e, worker: j.Worker, run: j.Run, ended: make(chan executor.Exit, 1), out: j.Output,
+	}
 	e.containers[j.Worker] = c
 	return c, nil
 }
 
-// Find answers worker's container.
+// Find answers worker's container, whose later output goes to out when
+// it is set, as a restarted launcher follows it again.
 func (e *Executor) Find(
 	_ context.Context,
 	worker string,
-	_ io.Writer,
+	out io.Writer,
 ) (executor.Container, bool, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -81,6 +84,11 @@ func (e *Executor) Find(
 		return nil, false, e.findErr
 	}
 	c, ok := e.containers[worker]
+	if ok && out != nil {
+		c.mu.Lock()
+		c.out = out
+		c.mu.Unlock()
+	}
 	return c, ok, nil
 }
 
@@ -92,13 +100,33 @@ type Container struct {
 	ended  chan executor.Exit
 
 	mu         sync.Mutex
+	out        io.Writer
 	stopped    int
 	killed     bool
+	killErr    error
 	removed    bool
 	handedBack int
 	handBack   func() error
 	exit       *executor.Exit
 	err        error
+}
+
+// Print writes line to the container's output, as its runner would.
+func (c *Container) Print(line string) {
+	c.mu.Lock()
+	out := c.out
+	c.mu.Unlock()
+	if out != nil {
+		_, _ = io.WriteString(out, line+"\n")
+	}
+}
+
+// FailKill makes every later Kill fail with err, leaving the container
+// running; nil kills again.
+func (c *Container) FailKill(err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.killErr = err
 }
 
 // End ends the container with exit; a container ends once.
@@ -199,9 +227,13 @@ func (c *Container) Stop(context.Context) error {
 	return nil
 }
 
-// Kill ends the container as killed.
+// Kill ends the container as killed, or answers FailKill's error.
 func (c *Container) Kill(context.Context) error {
 	c.mu.Lock()
+	if err := c.killErr; err != nil {
+		c.mu.Unlock()
+		return err
+	}
 	c.killed = true
 	c.mu.Unlock()
 	c.End(executor.Exit{Code: 137, Reason: wire.Killed})

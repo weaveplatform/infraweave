@@ -39,6 +39,8 @@ const (
 	NoteWorkerLost       = "worker lost"
 	NotePreparingTimeout = "preparing timeout"
 	NoteKilled           = "killed"
+	NoteRunTimeout       = "run timeout"
+	NoteLogTimeout       = "no log output"
 )
 
 // Liveness is the runs domain's workersapi.Liveness: the reap's lost
@@ -141,7 +143,8 @@ func (s *Liveness) fail(
 // exitNote is the note of a run whose container ended as e; a reason
 // the launcher did not learn names no cause. A container the launcher
 // killed on a kill signal is NoteKilled, which the kill's own note
-// replaces.
+// replaces, and one it killed on its run or no-log timeout is
+// NoteRunTimeout or NoteLogTimeout.
 func exitNote(e workersapi.Exit) string {
 	switch e.Reason {
 	case workersapi.ExitExited:
@@ -152,6 +155,10 @@ func exitNote(e workersapi.Exit) string {
 		return "container out of memory"
 	case workersapi.ExitMissing:
 		return "container missing"
+	case workersapi.ExitRunTimeout:
+		return NoteRunTimeout
+	case workersapi.ExitLogTimeout:
+		return NoteLogTimeout
 	}
 	return "container ended"
 }

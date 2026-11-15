@@ -112,10 +112,25 @@ type Launcher struct {
 	cycle   bool
 }
 
-// running is the run container the launcher waits on.
+// running is the run container the launcher waits on. Its run timeout
+// counts from started and its no-log timeout from out's last line;
+// timedOut is the timeout the launcher killed it on, empty until then.
 type running struct {
-	c    executor.Container
-	done chan waited
+	c        executor.Container
+	done     chan waited
+	out      *lines
+	started  time.Time
+	timedOut wire.ContainerExitReason
+}
+
+// expiry is when r's nearer timeout ends, and the reason a kill then
+// reports.
+func (r *running) expiry(c config.Launcher) (time.Time, wire.ContainerExitReason) {
+	run, quiet := r.started.Add(c.RunTimeout), r.out.last().Add(c.LogTimeout)
+	if quiet.Before(run) {
+		return quiet, wire.LogTimeout
+	}
+	return run, wire.RunTimeout
 }
 
 type waited struct {
@@ -266,7 +281,7 @@ func (l *Launcher) start(ctx context.Context) error {
 	if old != "" && old != l.st.Worker {
 		l.discard(ctx, old)
 	}
-	out := &lines{log: l.d.Log}
+	out := &lines{log: l.d.Log, now: l.d.Now}
 	c, ok, err := l.d.Executor.Find(ctx, l.st.Worker, out)
 	if err != nil {
 		return fmt.Errorf("launcher: find the worker's run: %w", err)
@@ -274,13 +289,17 @@ func (l *Launcher) start(ctx context.Context) error {
 	switch {
 	case ok:
 		out.named(c.Run())
+		if l.st.Run != c.Run() || l.st.Started.IsZero() {
+			l.st.Started = l.d.Now()
+		}
 		l.st.Run = c.Run()
-		l.cur = l.watch(ctx, c)
+		l.cur = l.watch(ctx, c, out, l.st.Started)
 		l.d.Log.InfoContext(ctx, "resumed run", "run", c.Run())
 	case l.st.Exit != nil:
 		l.ended = l.st.Exit
 	case l.st.Run != "":
 		l.ended = &wire.ContainerExit{Code: executor.MissingCode, Reason: wire.Missing}
+		l.st.Started = time.Time{}
 		l.dropWorkspace(ctx, l.st.Run, nil)
 	}
 	return l.save()
@@ -296,7 +315,7 @@ func (l *Launcher) discard(ctx context.Context, old string) {
 	} else {
 		l.dropWorkspace(ctx, l.st.Run, nil)
 	}
-	l.st.Run, l.st.Exit = "", nil
+	l.st.Run, l.st.Exit, l.st.Started = "", nil, time.Time{}
 }
 
 // lose kills c, the container of run, which the server no longer has, and
@@ -403,25 +422,59 @@ func (l *Launcher) poll(ctx context.Context) (wire.PollResult, error) {
 		r, err := l.api.Poll(pctx, l.session, req)
 		res <- polled{r, err}
 	}()
-	select {
-	case p := <-res:
-		if p.err == nil && reported != nil {
-			l.ended, l.st.Run, l.st.Exit = nil, "", nil
-			l.saveOrLog(ctx)
-		}
-		return p.r, p.err
-	case w := <-done:
-		cancel()
-		p := <-res
-		if ctx.Err() != nil {
-			return wire.PollResult{}, fmt.Errorf("launcher: poll: %w", context.Cause(ctx))
-		}
-		l.end(ctx, w)
-		if p.err != nil {
-			return wire.PollResult{}, nil
-		}
-		return p.r, nil
+	var expired <-chan time.Time
+	if l.cur != nil && l.cur.timedOut == "" {
+		at, _ := l.cur.expiry(l.d.Config)
+		t := time.NewTimer(at.Sub(l.d.Now()))
+		defer t.Stop()
+		expired = t.C
 	}
+	for {
+		select {
+		case p := <-res:
+			if p.err == nil && reported != nil {
+				l.ended, l.st.Run, l.st.Exit = nil, "", nil
+				l.saveOrLog(ctx)
+			}
+			return p.r, p.err
+		case w := <-done:
+			cancel()
+			p := <-res
+			if ctx.Err() != nil {
+				return wire.PollResult{}, fmt.Errorf("launcher: poll: %w", context.Cause(ctx))
+			}
+			l.end(ctx, w)
+			if p.err != nil {
+				return wire.PollResult{}, nil
+			}
+			return p.r, nil
+		case <-expired:
+			expired = l.expire(ctx)
+		}
+	}
+}
+
+// expire kills the current run's container once its nearer timeout has
+// ended, so that its end reports that timeout's reason, and otherwise
+// answers a timer for the nearer end, which each line on the output moves
+// for the no-log timeout. A kill that fails is tried again at the next
+// poll, not at once, so a host that refuses it is not asked in a loop.
+//
+// ref: decision 0008 § "Timeouts and timers"
+func (l *Launcher) expire(ctx context.Context) <-chan time.Time {
+	at, why := l.cur.expiry(l.d.Config)
+	if left := at.Sub(l.d.Now()); left > 0 {
+		return time.After(left)
+	}
+	run := l.cur.c.Run()
+	if err := l.cur.c.Kill(ctx); err != nil {
+		l.d.Log.ErrorContext(ctx, "kill the run on its timeout", "run", run, "reason", why,
+			"error", err)
+		return nil
+	}
+	l.cur.timedOut = why
+	l.d.Log.WarnContext(ctx, "killed the run on its timeout", "run", run, "reason", why)
+	return nil
 }
 
 // apply acts on a poll's result: a renewed session token, the drain flag,
@@ -472,7 +525,8 @@ func (l *Launcher) signal(ctx context.Context, s wire.Signal) {
 func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 	l.st.Run = a.Run
 	l.saveOrLog(ctx)
-	c, err := l.prepare(ctx, a)
+	out := &lines{log: l.d.Log, run: a.Run, now: l.d.Now}
+	c, err := l.prepare(ctx, a, out)
 	if err != nil {
 		l.d.Log.ErrorContext(ctx, "preparation failed", "run", a.Run, "error", err)
 		l.fail(ctx, a, err)
@@ -481,7 +535,9 @@ func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 		return
 	}
 	l.d.Log.InfoContext(ctx, "started run", "run", a.Run, "state", a.State)
-	l.cur = l.watch(ctx, c)
+	l.st.Started = l.d.Now()
+	l.saveOrLog(ctx)
+	l.cur = l.watch(ctx, c, out, l.st.Started)
 }
 
 // prepare fetches a's specification, opens its sealed part with the
@@ -490,7 +546,11 @@ func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 // workspace with it.
 //
 // ref: decision 0008 § "The launcher and the runner"
-func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Container, error) {
+func (l *Launcher) prepare(
+	ctx context.Context,
+	a wire.Assignment,
+	out *lines,
+) (executor.Container, error) {
 	cctx, cancel := context.WithTimeout(ctx, callTimeout)
 	spec, err := l.api.Spec(cctx, a.RunToken, a.Run)
 	cancel()
@@ -510,7 +570,7 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment) (executor.Con
 	if err != nil {
 		return nil, err
 	}
-	c, err := l.container(ctx, a, spec, secrets, ws)
+	c, err := l.container(ctx, a, spec, secrets, ws, out)
 	if err != nil && ws != "" {
 		l.dropWorkspace(ctx, a.Run, nil)
 	}
@@ -629,6 +689,7 @@ func (l *Launcher) container(
 	spec wire.RunSpec,
 	secrets wire.RunSpecSecrets,
 	ws string,
+	out *lines,
 ) (executor.Container, error) {
 	var mounts []executor.Mount
 	if t := spec.Tool; t != nil && t.Download {
@@ -657,7 +718,6 @@ func (l *Launcher) container(
 		return nil, err //nolint:wrapcheck // handoff names the write
 	}
 	defer clear(h.Bytes())
-	out := &lines{log: l.d.Log, run: a.Run}
 	c, err := l.d.Executor.Start(ctx, executor.Job{
 		Worker: l.st.Worker, Run: a.Run, Image: image, Workspace: ws, Mounts: mounts,
 		Handoff: h.Bytes(), Output: out,
@@ -682,9 +742,17 @@ func (l *Launcher) fail(ctx context.Context, a wire.Assignment, why error) {
 	}
 }
 
-// watch waits for c to end, until ctx ends.
-func (l *Launcher) watch(ctx context.Context, c executor.Container) *running {
-	r := &running{c: c, done: make(chan waited, 1)}
+// watch waits for c to end, until ctx ends. Its run timeout counts from
+// started, and its no-log timeout from its last line on out or from now,
+// whichever is later, so a resumed run's no-log timeout starts afresh.
+func (l *Launcher) watch(
+	ctx context.Context,
+	c executor.Container,
+	out *lines,
+	started time.Time,
+) *running {
+	out.mark(l.d.Now())
+	r := &running{c: c, done: make(chan waited, 1), out: out, started: started}
 	go func() {
 		exit, err := c.Wait(ctx)
 		r.done <- waited{exit, err}
@@ -700,6 +768,9 @@ func (l *Launcher) end(ctx context.Context, w waited) {
 	run := l.cur.c.Run()
 	code := int32(w.exit.Code) //nolint:gosec // exit codes are 0 to 255, or -1
 	exit := wire.ContainerExit{Code: code, Reason: w.exit.Reason}
+	if l.cur.timedOut != "" && exit.Reason == wire.Killed {
+		exit.Reason = l.cur.timedOut
+	}
 	if w.err != nil {
 		l.d.Log.ErrorContext(ctx, "wait for the run's container", "run", run, "error", w.err)
 		exit = wire.ContainerExit{Code: executor.MissingCode, Reason: wire.Missing}
@@ -710,7 +781,7 @@ func (l *Launcher) end(ctx context.Context, w waited) {
 	if err := l.cur.c.Remove(ctx); err != nil {
 		l.d.Log.WarnContext(ctx, "remove the run's container", "run", run, "error", err)
 	}
-	l.cur, l.ended, l.st.Exit = nil, &exit, &exit
+	l.cur, l.ended, l.st.Exit, l.st.Started = nil, &exit, &exit, time.Time{}
 	l.saveOrLog(ctx)
 }
 
@@ -776,12 +847,31 @@ func truncate(s string, n int) string {
 // logged in parts.
 const maxLine = 64 << 10
 
-// lines logs a run's output, a line at a time.
+// lines logs a run's output, a line at a time, and keeps when the last
+// line arrived.
 type lines struct {
 	log *slog.Logger
+	now func() time.Time
 	mu  sync.Mutex
 	run string
 	buf []byte
+	at  time.Time
+}
+
+// mark records t as the last line's arrival when no later line arrived.
+func (w *lines) mark(t time.Time) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if t.After(w.at) {
+		w.at = t
+	}
+}
+
+// last is when the last line arrived.
+func (w *lines) last() time.Time {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.at
 }
 
 // named sets the run the lines belong to, once a restarted launcher found
@@ -805,6 +895,7 @@ func (w *lines) Write(p []byte) (int, error) {
 			i = len(w.buf)
 		}
 		w.log.Info("runner output", "run", w.run, "line", string(w.buf[:i]))
+		w.at = w.now()
 		w.buf = w.buf[min(i+1, len(w.buf)):]
 	}
 }

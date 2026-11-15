@@ -59,6 +59,12 @@ type Launcher struct {
 	// StateLockTimeout is how long each command of a run that locks the
 	// state waits for the lock, which the handoff carries to the runner.
 	StateLockTimeout time.Duration `mapstructure:"state_lock_timeout"`
+	// RunTimeout is how long a run's container may run from its start
+	// before the launcher kills it and the run fails.
+	RunTimeout time.Duration `mapstructure:"run_timeout"`
+	// LogTimeout is how long a run's container may go without a line on
+	// its output before the launcher kills it and the run fails.
+	LogTimeout time.Duration `mapstructure:"log_timeout"`
 	// MaskEnvs names the run's variables whose values the runner masks in
 	// its log, whether or not they are secret, as SPACELIFT_MASK_ENVS
 	// does; the handoff carries the names.
@@ -124,6 +130,8 @@ func Defaults() Config {
 		DefaultRunnerImage: "ghcr.io/weaveplatform/infraweave-runner-terraform",
 		CacheDir:           filepath.Join(cache, "infraweave-launcher"),
 		StateLockTimeout:   5 * time.Minute,
+		RunTimeout:         70 * time.Minute,
+		LogTimeout:         7 * time.Minute,
 		AdminListen:        ":9091",
 		Log:                observe.LogDefaults(),
 	}}
@@ -160,6 +168,12 @@ func (c Launcher) Validate() error {
 	}
 	if c.StateLockTimeout < 0 {
 		bad("launcher.state_lock_timeout must not be negative, got %s", c.StateLockTimeout)
+	}
+	if c.RunTimeout <= 0 {
+		bad("launcher.run_timeout must be positive, got %s", c.RunTimeout)
+	}
+	if c.LogTimeout <= 0 {
+		bad("launcher.log_timeout must be positive, got %s", c.LogTimeout)
 	}
 	for _, name := range c.MaskEnvs {
 		if !envName.MatchString(name) {

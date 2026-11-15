@@ -57,6 +57,7 @@ func TestUnitLoadDefaults(t *testing.T) {
 	if l.Token != "token" || l.PrivateKey.Reveal() != keyPEM || l.PollTimeout != time.Minute ||
 		l.AdminListen != ":9091" || l.DefaultRunnerImage != d.DefaultRunnerImage || l.CacheDir != d.CacheDir ||
 		l.Log.Level != "info" || l.Metadata != nil || l.StateLockTimeout != 5*time.Minute ||
+		l.RunTimeout != 70*time.Minute || l.LogTimeout != 7*time.Minute ||
 		l.ToolMirror != "" || l.CAFile != "" {
 		t.Fatalf("defaults: %+v", l)
 	}
@@ -83,6 +84,8 @@ func TestUnitLoadPrecedence(t *testing.T) {
   admin_listen: ":7000"
   poll_timeout: 30s
   state_lock_timeout: 90s
+  run_timeout: 2h
+  log_timeout: 15m
   mask_envs: [AWS_SECRET_ACCESS_KEY, DB_PASSWORD]
   tool_mirror: https://mirror.example.com/releases
   ca_file: /etc/infraweave/ca.pem
@@ -100,6 +103,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
 		c.Launcher.Docker.Network != "runs" || c.Launcher.Metadata["zone"] != "a" ||
 		c.Launcher.Docker.RunnerBinary != "/opt/linux/infraweave" ||
 		c.Launcher.StateLockTimeout != 90*time.Second ||
+		c.Launcher.RunTimeout != 2*time.Hour || c.Launcher.LogTimeout != 15*time.Minute ||
 		!slices.Equal(c.Launcher.MaskEnvs, []string{"AWS_SECRET_ACCESS_KEY", "DB_PASSWORD"}) ||
 		c.Launcher.ToolMirror != "https://mirror.example.com/releases" ||
 		c.Launcher.CAFile != "/etc/infraweave/ca.pem" {
@@ -110,11 +114,13 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	t.Setenv("INFRAWEAVE_LAUNCHER_DOCKER_RUNTIME", "runsc")
 	t.Setenv(config.MetadataEnv+"Rack", "7")
 	t.Setenv("INFRAWEAVE_LAUNCHER_MASK_ENVS", "TOKEN,_KEY2")
+	t.Setenv("INFRAWEAVE_LAUNCHER_LOG_TIMEOUT", "20m")
 	c, err = load(t, "--config", f)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.Launcher.AdminListen != ":7001" || c.Launcher.Docker.Runtime != "runsc" ||
+		c.Launcher.LogTimeout != 20*time.Minute || c.Launcher.RunTimeout != 2*time.Hour ||
 		!slices.Equal(c.Launcher.MaskEnvs, []string{"TOKEN", "_KEY2"}) ||
 		c.Launcher.Metadata["zone"] != "a" || c.Launcher.Metadata["Rack"] != "7" {
 		t.Fatalf("environment over file: %+v", c.Launcher)
@@ -149,6 +155,8 @@ func TestUnitValidate(t *testing.T) {
 		"launcher.default_runner_image":  func(l *config.Launcher) { l.DefaultRunnerImage = "" },
 		"launcher.cache_dir":             func(l *config.Launcher) { l.CacheDir = "" },
 		"launcher.state_lock_timeout":    func(l *config.Launcher) { l.StateLockTimeout = -time.Second },
+		"launcher.run_timeout":           func(l *config.Launcher) { l.RunTimeout = 0 },
+		"launcher.log_timeout":           func(l *config.Launcher) { l.LogTimeout = -time.Minute },
 		"launcher.mask_envs \"A-B\"":     func(l *config.Launcher) { l.MaskEnvs = []string{"OK", "A-B"} },
 		"launcher.mask_envs \"9X\"":      func(l *config.Launcher) { l.MaskEnvs = []string{"9X"} },
 		"launcher.tool_mirror \"ftp:":    func(l *config.Launcher) { l.ToolMirror = "ftp://mirror" },

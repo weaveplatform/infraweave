@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
@@ -17,12 +18,14 @@ const stateFile = "worker.json"
 
 // state is what a restarted launcher resumes: the worker it registered
 // for the pool, the run it executes or whose container's end it has not
-// yet reported, and that end once the container is gone.
+// yet reported, when that run's container started, from which its run
+// timeout counts, and its end once the container is gone.
 type state struct {
-	Pool   string              `json:"pool"`
-	Worker string              `json:"worker"`
-	Run    string              `json:"run,omitempty"`
-	Exit   *wire.ContainerExit `json:"exit,omitempty"`
+	Pool    string              `json:"pool"`
+	Worker  string              `json:"worker"`
+	Run     string              `json:"run,omitempty"`
+	Started time.Time           `json:"started,omitzero"`
+	Exit    *wire.ContainerExit `json:"exit,omitempty"`
 }
 
 // load reads dir's state; the zero state when there is none or it cannot
