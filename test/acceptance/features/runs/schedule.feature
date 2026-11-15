@@ -6,11 +6,13 @@ Feature: A stack's queued runs are scheduled in one evaluation
   jobs, so the burst waits until a third server that runs them starts.
   The stack's state follows its tracked run: NONE while the run is queued,
   READY once it takes the lock; stack search filters and sorts by it.
-  The home key is space-admin on the account's top space.
+  The home key is space-admin on the account's top space. The expensive
+  budget, which the triggers and searches share, is raised so the
+  scenario reads every page it names.
 
   @op:runTrigger @op:searchStacks @case:success
   Scenario: A burst of runs on one stack is scheduled by one evaluation, and the stack's state follows its tracked run
-    Given two infraweave servers, A and B, on one database, that run no default-queue jobs
+    Given two infraweave servers, A and B, on one database, that run no default-queue jobs, whose expensive budget is 200 at 100 a second
     And the home key is exchanged through A for token "h"
     And a Gitea repository "infra" with the files:
       | main.tf | terraform {} |

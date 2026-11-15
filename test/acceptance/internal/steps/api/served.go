@@ -8,6 +8,7 @@ import (
 
 	"github.com/cucumber/godog"
 
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
@@ -37,6 +38,7 @@ func (s *servedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^"([A-Z]+) ([^"]+)" is sent (\d+) times on the API listener$`, s.sendTimes)
 	sc.Step(`^the response carries Retry-After and the rate-limit headers$`, s.rateLimitHeaders)
 	sc.Step(`^the response carries Retry-After$`, s.retryAfter)
+	sc.Step(`^the answer drew on the (standard|expensive) budget$`, s.drewOn)
 	sc.Step(`^the problem names the request in its instance$`, s.namesRequest)
 	s.registerReplicas(sc)
 }
@@ -144,6 +146,23 @@ func (s *servedSteps) rateLimitHeaders() error {
 			harness.ErrStep,
 			h.Get("X-RateLimit-Remaining"),
 		)
+	}
+	return nil
+}
+
+// drewOn checks the last answer's X-RateLimit-Limit against the default
+// burst of class, which the scenario's servers run unless a step sets
+// another. The default bursts differ, so the limit names the bucket the
+// request drew from.
+func (s *servedSteps) drewOn(class string) error {
+	d := ratelimit.Defaults()
+	want := d.Standard.Burst
+	if ratelimit.Class(class) == ratelimit.Expensive {
+		want = d.Expensive.Burst
+	}
+	if got := s.w.Last().Header.Get("X-RateLimit-Limit"); got != strconv.Itoa(want) {
+		return fmt.Errorf("%w: X-RateLimit-Limit %q, want the %s budget's %d",
+			harness.ErrStep, got, class, want)
 	}
 	return nil
 }

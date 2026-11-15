@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -29,8 +30,8 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's batch runs name "([^"]+)"$`, r.batch)
 	sc.Step(`^the answer's first run names "(\w+)"$`, r.first)
 	sc.Step(`^the answer's comment bodies are '([^']*)'$`, r.comments)
-	sc.Step(`^two infraweave servers, A and B, on one database, that run no default-queue jobs$`,
-		r.idle)
+	sc.Step(`^two infraweave servers, A and B, on one database, that run no default-queue jobs`+
+		`(?:, whose expensive budget is (\d+) at ([0-9.]+) a second)?$`, r.idle)
 	sc.Step(`^a third infraweave server runs the default queue's jobs$`, r.third)
 	sc.Step(`^two infraweave servers, A and B, on one database, keeping run logs for (\S+)$`,
 		r.keeping)
@@ -81,14 +82,32 @@ func (r *runSteps) unnamed(value string) error {
 
 // idle starts the scenario's two servers with no worker on the default
 // queue, so the run.schedule jobs a burst of triggers enqueues wait until
-// a server that runs them starts.
-func (r *runSteps) idle(ctx context.Context) error {
+// a server that runs them starts. A burst, when given, sets the expensive
+// budget, which run triggers and searches share.
+func (r *runSteps) idle(ctx context.Context, burst, rate string) error {
 	w := r.w
 	w.Settings["queue"] = map[string]any{
 		"queues": map[string]any{"default": map[string]any{"workers": 0}},
 	}
 	defer delete(w.Settings, "queue")
-	return r.w.TwoReplicas(ctx)
+	var limit map[string]any
+	if burst != "" {
+		b, err := strconv.Atoi(burst)
+		if err != nil {
+			return fmt.Errorf("%w: burst %q", harness.ErrStep, burst)
+		}
+		per, err := strconv.ParseFloat(rate, 64)
+		if err != nil {
+			return fmt.Errorf("%w: rate %q", harness.ErrStep, rate)
+		}
+		limit = map[string]any{"expensive": map[string]any{"rate": per, "burst": b}}
+	}
+	for range 2 {
+		if err := w.Start(ctx, limit); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // keeping starts the scenario's two servers with

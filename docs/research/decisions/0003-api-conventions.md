@@ -121,6 +121,7 @@ breaking change to retrofit once clients exist:
   | The state backend | Bounded bodies | A `POST` is bounded by `state.max_size` (512 MiB) and a `LockInfo` by 16 KiB, not by `server.max_body_bytes` | A state file exceeds any API body |
   | The state backend | Bounded connections | Once the credential verifies, a transfer's deadlines move to 30 seconds past each read of a `POST`'s body or write of a `GET`'s | A state transfer exceeds any fixed time, so it keeps its connection while it moves and loses it when it stalls, as the fs blobs do |
   | The state backend | Problem details | A `423` answers the holder's `LockInfo` | Terraform names the lock's holder from that body |
+  | `stackDelete` | Rate limits | `standard`, though `destroyResources=true` creates a destroy run | A class cannot depend on a parameter; the delete creates at most one run, of the one stack it deletes, and without the parameter it is an ordinary write |
   | `runTriggerBatch` | Problem details | A stack that another caller has locked refuses its entry as a `rule` at `/stacks/<i>/stack`, within one `422 validation-failed` | A batch creates every run or none, and one problem names every entry it refuses; a `409 resource-locked` would carry a single `lockedBy` |
   | The admin listener | All but bounded connections | A separate listener with no controls but the listener's timeouts, so a probe connection cannot be held open either | Probes and metrics must answer while the API sheds load; it is never routed through ingress, and deployments restrict it with network policy ([0017](0017-observability-and-health.md)) |
 
@@ -167,11 +168,15 @@ breaking change to retrofit once clients exist:
 - **Buckets.** Each caller has one token bucket per cost class. The rate and
   burst of each class are configuration, not part of this record.
   - `standard`: reads and ordinary writes.
-  - `expensive`: search, batch operations, run triggers and other fan-out
-    work, with a smaller budget.
+  - `expensive`: search, batch operations, every operation that creates
+    runs and other fan-out work, with a smaller budget.
 - **Classes in the spec.** Each operation names its class in
   `x-infraweave-cost`. A missing value means `standard`. The scaffolder marks
-  searches and `/batch` paths `expensive`; curators mark the rest.
+  searches and `/batch` paths `expensive`; curators mark the rest. The
+  server refuses to start on an operation whose action creates runs
+  (`RUN_TRIGGER`, `TASK_CREATE`, `RUN_PROPOSE_WITH_OVERRIDES`,
+  `RUN_PROPOSE_LOCAL_WORKSPACE`, `RUN_RETRY`, `RUN_PROMOTE` and
+  `RUN_TARGETED_REPLAN`) and that is not `expensive`.
 - **Response headers.** Every response carries the state of the bucket that
   the request drew from:
 

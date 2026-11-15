@@ -2,8 +2,9 @@
 // steps every area uses: sending the request a step names through a
 // replica, with a token or the browser, and checking the status, problem
 // or body it was answered. The api steps drive the served API itself: its
-// bundle and reference specification, problems, updates, rate limits and
-// disabled callers, and idempotent replays across two replicas.
+// bundle and reference specification, problems, updates, rate limits, the
+// budget an answer drew on and disabled callers, and idempotent replays
+// across two replicas.
 //
 // # Input and output
 //

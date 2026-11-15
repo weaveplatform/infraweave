@@ -41,6 +41,7 @@ Feature: A task runs a command in its stack's workspace
     Given the launcher "l" registers with the key of "csr" and the certificate "cert" through A
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json","skipInitialization":true}' through A
     Then it answers 201
+    And the answer drew on the expensive budget
     And the answer's type is '"TASK"'
     And the answer's state is '"QUEUED"'
     And the answer's command is '"terraform output -json"'
