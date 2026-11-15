@@ -392,6 +392,29 @@ func (s Server) RunDiscard(
 	return api.RunDiscard200JSONResponse{Body: runOf(v)}, nil
 }
 
+// RunTargetedReplan plans a tracked run of the stack that waits for
+// confirmation again against the request's resource addresses. The route
+// has decided RUN_TARGETED_REPLAN on the stack's space, and the
+// targeted-replan feature.
+func (s Server) RunTargetedReplan(
+	ctx context.Context,
+	req api.RunTargetedReplanRequestObject,
+) (api.RunTargetedReplanResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var targets []string
+	if req.Body != nil {
+		targets = req.Body.Targets
+	}
+	v, err := s.control.Replan(ctx, p, req.StackId, req.RunId, targets)
+	if err != nil {
+		return nil, runError(err, req.StackId, req.RunId)
+	}
+	return api.RunTargetedReplan200JSONResponse{Body: runOf(v)}, nil
+}
+
 // RunPrioritySet sets the priority of a run of the stack that has not
 // ended. The route has decided RUN_PRIORITIZE_SET on the stack's space.
 func (s Server) RunPrioritySet(

@@ -95,7 +95,10 @@ type Spec struct {
 	// vendor with none.
 	Tool *SpecTool
 	// Task is what a TASK run performs, nil for every other type.
-	Task        *kernel.Task
+	Task *kernel.Task
+	// Targets are the resource addresses a targeted replan plans, for a
+	// run claimed from REPLAN_REQUESTED alone; nil otherwise.
+	Targets     []string
 	Hooks       map[string][]string
 	Environment []Variable
 	Files       []File

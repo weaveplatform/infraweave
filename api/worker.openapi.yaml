@@ -855,6 +855,16 @@ components:
           $ref: '#/components/schemas/RunSpecTool'
         task:
           $ref: '#/components/schemas/RunSpecTask'
+        targets:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          description: >-
+            The resource addresses a targeted replan plans, each one -target of the plan command. Present for a run claimed from REPLAN_REQUESTED alone.
         hooks:
           type: object
           additionalProperties:

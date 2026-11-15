@@ -320,7 +320,6 @@
       "runReview",
       "runSearchEntityChanges",
       "runSearchEntityChangesSuggestions",
-      "runTargetedReplan",
       "runTraceSpans",
       "runWorkerMetrics"
     ],

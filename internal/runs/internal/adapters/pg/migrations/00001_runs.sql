@@ -36,6 +36,10 @@
 -- command and skip_initialization are a task's: the command it performs,
 -- and whether it performs it without initializing the tool first. A TASK
 -- run alone has a command.
+-- replan_targets are the resource addresses the last runTargetedReplan of
+-- a tracked run named, which the specification of the run claimed from
+-- REPLAN_REQUESTED carries; NULL until one did. kernel.MaxTargets bounds
+-- their number.
 -- stop_* and kill_* are a caller's request to stop or to kill the run:
 -- when it was made, the login that made it and its note, which the
 -- transition the signal ends the run with records, and when a poll
@@ -66,6 +70,7 @@ CREATE TABLE runs (
     env_overrides_sealed bytea,
     command          text,
     skip_initialization boolean NOT NULL DEFAULT false,
+    replan_targets   text[],
     stop_requested_at timestamptz,
     stop_requested_by text,
     stop_note        text,
@@ -82,6 +87,8 @@ CREATE TABLE runs (
     CHECK (priority_tier BETWEEN 1 AND 7),
     CHECK (force_apply_mode IN ('SINGLE', 'CASCADE')),
     CHECK ((type = 'TASK') = (command IS NOT NULL)),
+    CHECK (replan_targets IS NULL
+        OR type = 'TRACKED' AND cardinality(replan_targets) BETWEEN 1 AND 100),
     CHECK (kill_requested_at IS NULL OR stop_requested_at IS NOT NULL)
 );
 

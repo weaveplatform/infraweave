@@ -6940,6 +6940,12 @@ type RunStopRequest struct {
 	State *RunState `json:"state,omitempty"`
 }
 
+// RunTargetedReplanRequest The arguments of runTargetedReplan not carried in the path.
+type RunTargetedReplanRequest struct {
+	// Targets The resource addresses the run plans again, each passed to the tool as one -target: a resource or module address, such as aws_instance.web, data.aws_ami.base, module.app or module.app["a"].aws_instance.web[0].
+	Targets []string `json:"targets"`
+}
+
 // RunTile defines model for RunTile.
 type RunTile struct {
 	CreatedAt int32 `json:"createdAt"`
@@ -11749,6 +11755,12 @@ type RunStopParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// RunTargetedReplanParams defines parameters for RunTargetedReplan.
+type RunTargetedReplanParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // StackScheduledDeleteParams defines parameters for StackScheduledDelete.
 type StackScheduledDeleteParams struct {
 	Id string `form:"id" json:"id"`
@@ -12545,6 +12557,9 @@ type RunPrioritySetJSONRequestBody = RunPrioritySetRequest
 
 // RunStopJSONRequestBody defines body for RunStop for application/json ContentType.
 type RunStopJSONRequestBody = RunStopRequest
+
+// RunTargetedReplanJSONRequestBody defines body for RunTargetedReplan for application/json ContentType.
+type RunTargetedReplanJSONRequestBody = RunTargetedReplanRequest
 
 // StackScheduledDeleteCreateJSONRequestBody defines body for StackScheduledDeleteCreate for application/json ContentType.
 type StackScheduledDeleteCreateJSONRequestBody = ScheduledDeleteInput
@@ -17880,6 +17895,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
 	RunStop(ctx context.Context, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunTargetedReplanWithBody Targeted Replan
+	//
+	// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+	RunTargetedReplanWithBody(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunTargetedReplan Targeted Replan
+	//
+	// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+	RunTargetedReplan(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, body RunTargetedReplanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackScheduledDelete Stack scheduled delete
 	//
@@ -26093,6 +26126,44 @@ func (c *Client) RunStopWithBody(ctx context.Context, stackId string, runId stri
 // Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
 func (c *Client) RunStop(ctx context.Context, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunStopRequest(c.Server, stackId, runId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunTargetedReplanWithBody Targeted Replan
+//
+// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+func (c *Client) RunTargetedReplanWithBody(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunTargetedReplanRequestWithBody(c.Server, stackId, runId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunTargetedReplan Targeted Replan
+//
+// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+func (c *Client) RunTargetedReplan(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, body RunTargetedReplanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunTargetedReplanRequest(c.Server, stackId, runId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -42994,6 +43065,75 @@ func NewRunStopRequestWithBody(server string, stackId string, runId string, para
 	return req, nil
 }
 
+// NewRunTargetedReplanRequest calls the generic RunTargetedReplan builder with application/json body
+func NewRunTargetedReplanRequest(server string, stackId string, runId string, params *RunTargetedReplanParams, body RunTargetedReplanJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunTargetedReplanRequestWithBody(server, stackId, runId, params, "application/json", bodyReader)
+}
+
+// NewRunTargetedReplanRequestWithBody constructs an http.Request for the RunTargetedReplan method, with any body, and a specified content type
+func NewRunTargetedReplanRequestWithBody(server string, stackId string, runId string, params *RunTargetedReplanParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/%s/targeted-replan", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewStackScheduledDeleteRequest constructs an http.Request for the StackScheduledDelete method
 func NewStackScheduledDeleteRequest(server string, stackId string, params *StackScheduledDeleteParams) (*http.Request, error) {
 	var err error
@@ -51488,6 +51628,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/{runId}/stop (the `RunStop` operationId).
 	RunStopWithResponse(ctx context.Context, stackId string, runId string, params *RunStopParams, body RunStopJSONRequestBody, reqEditors ...RequestEditorFn) (*RunStopResponse, error)
+
+	// RunTargetedReplanWithBodyWithResponse Targeted Replan
+	//
+	// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+	RunTargetedReplanWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunTargetedReplanResponse, error)
+
+	// RunTargetedReplanWithResponse Targeted Replan
+	//
+	// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+	RunTargetedReplanWithResponse(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, body RunTargetedReplanJSONRequestBody, reqEditors ...RequestEditorFn) (*RunTargetedReplanResponse, error)
 
 	// StackScheduledDeleteWithResponse Stack scheduled delete
 	//
@@ -80686,6 +80844,115 @@ func (r RunStopResponse) ContentType() string {
 	return ""
 }
 
+// RunTargetedReplanResponse200Headers the declared response headers of an HTTP 200 response for RunTargetedReplan
+type RunTargetedReplanResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunTargetedReplanResponse429Headers the declared response headers of an HTTP 429 response for RunTargetedReplan
+type RunTargetedReplanResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunTargetedReplanResponse503Headers the declared response headers of an HTTP 503 response for RunTargetedReplan
+type RunTargetedReplanResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunTargetedReplanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunTargetedReplanResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunTargetedReplanResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunTargetedReplanResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunTargetedReplanResponse) GetJSON200() *Run {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunTargetedReplanResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunTargetedReplanResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunTargetedReplanResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunTargetedReplanResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunTargetedReplanResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunTargetedReplanResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunTargetedReplanResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunTargetedReplanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunTargetedReplanResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunTargetedReplanResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackScheduledDeleteResponse200Headers the declared response headers of an HTTP 200 response for StackScheduledDelete
 type StackScheduledDeleteResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -95157,6 +95424,36 @@ func (c *ClientWithResponses) RunStopWithResponse(ctx context.Context, stackId s
 		return nil, err
 	}
 	return ParseRunStopResponse(rsp)
+}
+
+// RunTargetedReplanWithBodyWithResponse Targeted Replan
+//
+// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+func (c *ClientWithResponses) RunTargetedReplanWithBodyWithResponse(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunTargetedReplanResponse, error) {
+	rsp, err := c.RunTargetedReplanWithBody(ctx, stackId, runId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunTargetedReplanResponse(rsp)
+}
+
+// RunTargetedReplanWithResponse Targeted Replan
+//
+// Plan a tracked Run that waits for confirmation again, against the resource addresses targets names: the run moves to REPLAN_REQUESTED, a worker restores the workspace its planning saved and plans again with one -target for each address, and the run then waits for confirmation again, or finishes when the new plan changes nothing. A run whose saved workspace cannot be restored fails. A run in any other state is refused with a 409 that names its state. The answer is the run.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/{runId}/targeted-replan (the `RunTargetedReplan` operationId).
+func (c *ClientWithResponses) RunTargetedReplanWithResponse(ctx context.Context, stackId string, runId string, params *RunTargetedReplanParams, body RunTargetedReplanJSONRequestBody, reqEditors ...RequestEditorFn) (*RunTargetedReplanResponse, error) {
+	rsp, err := c.RunTargetedReplan(ctx, stackId, runId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunTargetedReplanResponse(rsp)
 }
 
 // StackScheduledDeleteWithResponse Stack scheduled delete
@@ -132946,6 +133243,142 @@ func ParseRunStopResponse(rsp *http.Response) (*RunStopResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunStopResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunTargetedReplanResponse parses an HTTP response from a RunTargetedReplanWithResponse call
+func ParseRunTargetedReplanResponse(rsp *http.Response) (*RunTargetedReplanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunTargetedReplanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunTargetedReplanResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunTargetedReplanResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunTargetedReplanResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

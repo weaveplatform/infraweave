@@ -2,6 +2,7 @@ package pg_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -116,5 +117,74 @@ func TestAccConfirm(t *testing.T) {
 	w.db.Close()
 	if _, err := c.Discard(ctx, p, "network", "", ""); err == nil {
 		t.Error("Discard on a closed pool succeeded")
+	}
+}
+
+// TestAccReplan moves a run waiting for confirmation to REPLAN_REQUESTED,
+// keeping the stack's run lock and the replan's targets, which the next
+// replan's replace; and refuses targets that are not addresses, a run in
+// another state, a proposed run, whose type has no replan, and a run
+// that does not exist.
+func TestAccReplan(t *testing.T) {
+	w := newWorld(t)
+	a := w.access()
+	c := w.controller(a)
+	ctx, p := t.Context(), w.alice()
+	run := w.unconfirmed(t, "a")
+	targets := []string{"terraform_data.this", `module.app["a"]`}
+
+	v, err := c.Replan(ctx, p, "network", run.ID.String(), targets)
+	if err != nil || v.Run.State != kernel.RunStateReplanRequested ||
+		!slices.Equal(v.Run.ReplanTargets, targets) {
+		t.Fatalf("Replan = %+v, %v", v.Run, err)
+	}
+	if last := v.History[len(v.History)-1]; last.State != kernel.RunStateReplanRequested ||
+		last.Username == nil || *last.Username != p.Login {
+		t.Errorf("REPLAN_REQUESTED's transition = %+v", last)
+	}
+	if holder, held, err := w.store.Holder(ctx, w.acct, w.stack); err != nil || !held ||
+		holder != run.ID {
+		t.Errorf("the lock after the replan: %s held %v, %v", holder, held, err)
+	}
+	_, err = c.Replan(ctx, p, "network", run.ID.String(), targets)
+	refusedFor(t, "Replan of a run that replans", err,
+		"a targeted replan needs a tracked run that waits for confirmation")
+
+	run = v.Run
+	for _, m := range []struct {
+		to kernel.RunState
+		by machine.Driver
+	}{
+		{kernel.RunStatePreparingReplan, machine.DriverWorkerClaim},
+		{kernel.RunStatePlanning, machine.DriverWorkerReport},
+		{kernel.RunStateUnconfirmed, machine.DriverDecision},
+	} {
+		run = w.mustMove(t, run, m.to, m.by)
+	}
+	if !slices.Equal(run.ReplanTargets, targets) {
+		t.Errorf("the run's targets after its replan = %q", run.ReplanTargets)
+	}
+	again := []string{"data.aws_ami.base"}
+	if _, err := c.Replan(ctx, p, "network", run.ID.String(), again); err != nil {
+		t.Fatalf("a second Replan = %v", err)
+	}
+	if got, err := w.reader(a).Run(ctx, p, run.ID.String()); err != nil ||
+		!slices.Equal(got.Run.ReplanTargets, again) {
+		t.Errorf("the run's targets after a second replan = %q, %v", got.Run.ReplanTargets, err)
+	}
+
+	var invalid *kernel.Invalid
+	if _, err := c.Replan(ctx, p, "network", run.ID.String(),
+		[]string{"a.b", "not an address"}); !errors.As(err, &invalid) ||
+		len(invalid.Errors) != 1 || invalid.Errors[0].Pointer != "/targets/1" {
+		t.Errorf("Replan of a non-address = %v", err)
+	}
+	proposed := mustCreate(t, w, kernel.RunTypeProposed, "b")
+	_, err = c.Replan(ctx, p, "network", proposed.ID.String(), targets)
+	refusedFor(t, "Replan of a proposed run", err,
+		"a targeted replan needs a tracked run that waits for confirmation")
+	if _, err := c.Replan(ctx, p, "network", kernel.NewULID().String(), targets); !errors.Is(err,
+		read.ErrNotFound) {
+		t.Errorf("Replan of no run = %v", err)
 	}
 }

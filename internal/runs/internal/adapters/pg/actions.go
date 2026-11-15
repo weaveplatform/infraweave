@@ -27,6 +27,17 @@ func (s *Store) Comment(ctx context.Context, run lifecycle.Run, c read.Comment) 
 	return nil
 }
 
+// SetTargets writes run's replan_targets.
+func (s *Store) SetTargets(ctx context.Context, run lifecycle.Run, targets []string) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs SET replan_targets = $3
+		WHERE account_id = $1 AND id = $2`, run.Account, run.ID, targets)
+	if err != nil {
+		return fmt.Errorf("runs: set the replan targets of run %s: %w", run.ID,
+			sql.Unavailable(err))
+	}
+	return nil
+}
+
 // Comments reads the comments on acct's runs, oldest first.
 func (s *Store) Comments(
 	ctx context.Context,

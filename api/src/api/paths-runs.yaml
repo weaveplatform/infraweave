@@ -451,6 +451,27 @@ components:
           $ref: '#/components/schemas/RunState'
       type: object
       x-graphql-args-of: runStop
+    RunTargetedReplanRequest:
+      additionalProperties: false
+      description: The arguments of runTargetedReplan not carried in the path.
+      properties:
+        targets:
+          description: >-
+            The resource addresses the run plans again, each passed to the
+            tool as one -target: a resource or module address, such as
+            aws_instance.web, data.aws_ami.base, module.app or
+            module.app["a"].aws_instance.web[0].
+          items:
+            maxLength: 1024
+            minLength: 1
+            type: string
+          maxItems: 100
+          minItems: 1
+          type: array
+      required:
+        - targets
+      type: object
+      x-graphql-args-of: runTargetedReplan
     RunCommentRequest:
       additionalProperties: false
       description: The arguments of runComment not carried in the path.
@@ -2177,6 +2198,84 @@ paths:
         type: Mutation
       x-infraweave-action: RUN_STOP
       x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/targeted-replan:
+    post:
+      description: >-
+        Plan a tracked Run that waits for confirmation again, against the
+        resource addresses targets names: the run moves to
+        REPLAN_REQUESTED, a worker restores the workspace its planning saved
+        and plans again with one -target for each address, and the run then
+        waits for confirmation again, or finishes when the new plan changes
+        nothing. A run whose saved workspace cannot be restored fails. A run
+        in any other state is refused with a 409 that names its state. The
+        answer is the run.
+      operationId: runTargetedReplan
+      x-infraweave-feature: targeted-replan
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              targets:
+                - aws_instance.web
+                - aws_security_group.allow_tls
+            schema:
+              $ref: '#/components/schemas/RunTargetedReplanRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runTargetedReplan result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Targeted Replan
+      tags:
+        - Runs
+      x-bruno: Runs/Targeted Replan.bru
+      x-graphql:
+        field: runTargetedReplan
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_TARGETED_REPLAN
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit

@@ -133,8 +133,10 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // private pool when the run was created, nil for the public pool, and
 // Worker the worker that last claimed it. Delta is what its latest plan
 // changes, nil until it plans; the report service keeps it. Task is a
-// TASK run's command, nil for every other type. Stop and Kill are a
-// caller's requests to stop and to kill it, nil until one asks.
+// TASK run's command, nil for every other type. ReplanTargets are the
+// addresses its last targeted replan named, nil until one did. Stop and
+// Kill are a caller's requests to stop and to kill it, nil until one
+// asks.
 // LogsDeletedAt is when a caller deleted its logs ahead of their
 // retention, nil until one did.
 type Run struct {
@@ -156,6 +158,7 @@ type Run struct {
 	Worker         *kernel.ULID
 	Delta          *kernel.PlanDelta
 	Task           *kernel.Task
+	ReplanTargets  []string
 	Stop           *Signal
 	Kill           *Signal
 	LogsDeletedAt  *time.Time
