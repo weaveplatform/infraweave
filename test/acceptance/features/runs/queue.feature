@@ -6,8 +6,10 @@ Feature: Runs queue on their stack
   and commit, while the first has not ended, answers the first. A space
   writer triggers runs; a space reader is refused, and a stack the caller
   cannot read, or another account's, answers as one that does not exist.
-  A locked stack takes runs from its lock's holder alone; a disabled
-  stack, and one that tracks no commit yet, take none. A commit the
+  A locked stack takes runs from its lock's holder alone, and answers
+  any other caller's run, task or proposal as resource-locked, naming
+  the holder, as the stacks surface does; a disabled stack, and one that
+  tracks no commit yet, take none. A commit the
   repository lacks is refused at /commitSha. The home key is space-admin
   on the account's top space; the member key holds only the bindings a
   scenario gives it. Stack infra lives in legacy and stack hidden in team.
@@ -54,13 +56,20 @@ Feature: Runs queue on their stack
     And the answer's state is '"QUEUED"'
     And the answer's commits is '["{seed}"]'
 
-  @op:runTrigger @case:success
-  Scenario: A locked stack takes runs from its lock's holder alone
+  @op:runTrigger @op:taskCreate @op:proposeWithOverrides @case:success
+  Scenario: A locked stack takes runs from its lock's holder alone, and answers anyone else as resource-locked
     Given the member key is space-writer on the space "legacy"
     When token "h" sends "POST /api/v1/stacks/infra/lock" through A
     Then it answers 200
     When token "m" sends "POST /api/v1/stacks/infra/runs" with '{}' through B
-    Then it answers a 403 problem "forbidden"
+    Then it answers a 409 problem "resource-locked"
+    And the answer's lockedBy is '"01KACME0000000000000000003"'
+    When token "m" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output"}' through A
+    Then it answers a 409 problem "resource-locked"
+    And the answer's lockedBy is '"01KACME0000000000000000003"'
+    When token "m" sends "POST /api/v1/stacks/infra/proposed-runs" with '{"environmentVarsOverrides":[{"key":"LEVEL","value":"run"}]}' through B
+    Then it answers a 409 problem "resource-locked"
+    And the answer's lockedBy is '"01KACME0000000000000000003"'
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{}' through A
     Then it answers 200
     And the answer's state is '"QUEUED"'

@@ -97,7 +97,8 @@ breaking change to retrofit once clients exist:
   bounded too. Where both bound a value the two numbers match, and the
   domain's constant names the document's.
 - **Deviations by intent.** A route departs from a shared control only as
-  this table says, and the route table's entry for it says why in the code:
+  this table says, and the route table's entry for it, or the handler
+  that departs, says why in the code:
 
   | Routes | Control | Deviation | Why |
   |---|---|---|---|
@@ -120,6 +121,7 @@ breaking change to retrofit once clients exist:
   | The state backend | Bounded bodies | A `POST` is bounded by `state.max_size` (512 MiB) and a `LockInfo` by 16 KiB, not by `server.max_body_bytes` | A state file exceeds any API body |
   | The state backend | Bounded connections | Once the credential verifies, a transfer's deadlines move to 30 seconds past each read of a `POST`'s body or write of a `GET`'s | A state transfer exceeds any fixed time, so it keeps its connection while it moves and loses it when it stalls, as the fs blobs do |
   | The state backend | Problem details | A `423` answers the holder's `LockInfo` | Terraform names the lock's holder from that body |
+  | `runTriggerBatch` | Problem details | A stack that another caller has locked refuses its entry as a `rule` at `/stacks/<i>/stack`, within one `422 validation-failed` | A batch creates every run or none, and one problem names every entry it refuses; a `409 resource-locked` would carry a single `lockedBy` |
   | The admin listener | All but bounded connections | A separate listener with no controls but the listener's timeouts, so a probe connection cannot be held open either | Probes and metrics must answer while the API sheds load; it is never routed through ingress, and deployments restrict it with network policy ([0017](0017-observability-and-health.md)) |
 
   Each state backend row is one item, under its control's name, of the comment on the
@@ -227,6 +229,13 @@ status, title and meaning.
 
 A URN rather than a URL: RFC 9457 lets clients match on the `type` without
 dereferencing it, and infraweave has no documentation host to resolve one to.
+
+One condition has one type on every surface, so a client handles it once.
+A stack that another caller has locked is `409 resource-locked`, naming the
+holder in `lockedBy`, whether the request locks the stack, deletes it with
+its resources, or creates a run, task or proposal on it. It is not `403
+forbidden`: no binding the caller could gain lifts another caller's lock.
+`runTriggerBatch` is the one deviation, listed with the others above.
 
 ### Routes in the records
 
