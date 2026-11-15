@@ -749,7 +749,7 @@
         "owningReport": "[08](../research/reference/08-run-lifecycle.md)",
         "plan": "All; tasks paid [D]; targeted replan Business [D]; ignored triggers Starter+ [D]",
         "tierFeatures": "`TARGETED_REPLAN`",
-        "notes": "P9 delivers the tracked and proposed paths; P10 serves `taskCreate` and `runTriggerBatch`"
+        "notes": "P9 delivers the tracked and proposed paths; P10 serves `taskCreate`, `runTriggerBatch`, `runStop`, `runKill`, `runRetry`, `runPromote`, `runDiscardAll`, `runComment` and `runLogsDelete`"
       },
       "infraweave": {
         "feature": "`runs`, `tasks`, `targeted-replan`, `ignored-runs`",

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -47,6 +48,9 @@ type Gitea struct {
 	CAFile string
 	// Client calls Gitea's API as the administrator.
 	Client *http.Client
+
+	mu   sync.Mutex
+	last time.Time
 }
 
 // Gitea returns the shared Gitea, starting it on first use.
@@ -243,7 +247,11 @@ func (g *Gitea) Commit(
 	if err != nil {
 		return "", err
 	}
-	body := map[string]any{"message": message, "branch": branch}
+	at := g.dated()
+	body := map[string]any{
+		"message": message, "branch": branch,
+		"dates": map[string]string{"author": at, "committer": at},
+	}
 	// A new branch starts from main, so a file it changes exists there.
 	base := branch
 	if !exists {
@@ -281,6 +289,22 @@ func (g *Gitea) Commit(
 		return "", err
 	}
 	return resp.Commit.SHA, nil
+}
+
+// dated is the date of the next commit: now, or a second after the last
+// commit's when that is later. Gitea dates a commit to the second, so
+// without it two commits made within one second tie, and a reader that
+// orders commits by time, as a run's promotion does, cannot tell which
+// is newer.
+func (g *Gitea) dated() string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	at := time.Now().UTC().Truncate(time.Second)
+	if !at.After(g.last) {
+		at = g.last.Add(time.Second)
+	}
+	g.last = at
+	return at.Format(time.RFC3339)
 }
 
 // Head is the SHA of the head of branch of the repository name.

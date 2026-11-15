@@ -451,6 +451,19 @@ components:
           $ref: '#/components/schemas/RunState'
       type: object
       x-graphql-args-of: runStop
+    RunCommentRequest:
+      additionalProperties: false
+      description: The arguments of runComment not carried in the path.
+      properties:
+        body:
+          description: The comment, in Markdown.
+          maxLength: 10000
+          minLength: 1
+          type: string
+      required:
+        - body
+      type: object
+      x-graphql-args-of: runComment
     RunConfirmRequest:
       additionalProperties: false
       description: The arguments of runConfirm not carried in the path.
@@ -478,6 +491,34 @@ components:
         - node
       type: object
       x-graphql-type: RunConnection
+    RunDiscardAll:
+      description: The runs a runDiscardAll discarded, and those it could not.
+      properties:
+        discardedRuns:
+          items:
+            $ref: '#/components/schemas/RunRef'
+          type: array
+        failedDiscarding:
+          description: >-
+            The IDs of the runs another change moved on before they could be
+            discarded.
+          items:
+            type: string
+          type: array
+      required:
+        - discardedRuns
+        - failedDiscarding
+      type: object
+      x-graphql-type: RunDiscardAll
+    RunDiscardAllRequest:
+      additionalProperties: false
+      description: The arguments of runDiscardAll not carried in the path.
+      properties:
+        note:
+          nullable: true
+          type: string
+      type: object
+      x-graphql-args-of: runDiscardAll
     RunDiscardRequest:
       additionalProperties: false
       description: The arguments of runDiscard not carried in the path.
@@ -1390,6 +1431,71 @@ paths:
         - rate-limit
       x-infraweave-subject: path:stackId:stack
       x-rest-style: action
+  /stacks/{stackId}/runs/discard-all:
+    post:
+      description: >-
+        Discard every run of the stack that can be discarded: each queued or
+        ready run, and each run waiting for confirmation, each in a transition
+        of its own. The answer lists the runs discarded, and the IDs of those
+        another change moved on before they could be.
+      operationId: runDiscardAll
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              note: Discarding all queued runs
+            schema:
+              $ref: '#/components/schemas/RunDiscardAllRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunDiscardAll'
+          description: The runDiscardAll result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Discard All Runs
+      tags:
+        - Runs
+      x-bruno: Runs/Discard All Runs.bru
+      x-graphql:
+        field: runDiscardAll
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_DISCARD
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:stackId:stack
+      x-rest-style: action
   /stacks/{stackId}/runs/propose-local-workspace:
     post:
       description: >-
@@ -1528,6 +1634,77 @@ paths:
         - rate-limit
       x-infraweave-subject: path:runId:run
       x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/comment:
+    post:
+      description: >-
+        Comment on the run, in Markdown of at most 10000 characters. The
+        answer is the comment; the run's reads answer its comments, oldest
+        first.
+      operationId: runComment
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              body: This run looks good.
+            schema:
+              $ref: '#/components/schemas/RunCommentRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunComment'
+          description: The runComment result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Comment Run
+      tags:
+        - Runs
+      x-bruno: Runs/Comment Run.bru
+      x-graphql:
+        field: runComment
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_COMMENT
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: action
   /stacks/{stackId}/runs/{runId}/kill:
     post:
       description: >-
@@ -1602,6 +1779,70 @@ paths:
         - rate-limit
       x-infraweave-subject: path:runId:run
       x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/logs-delete:
+    post:
+      description: >-
+        Permanently delete the stored logs of a finished Run, ahead of the
+        account's log retention period, after which both log reads answer
+        deleted. Needs SPACE_ADMIN on the account's root space. Deleting the
+        logs of a run whose logs are already deleted answers the run as it is.
+      operationId: runLogsDelete
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runLogsDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Run Logs
+      tags:
+        - Runs
+      x-bruno: Danger Zone/Delete Run Logs.bru
+      x-graphql:
+        field: runLogsDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: account
+      x-rest-style: action
   /stacks/{stackId}/runs/{runId}/priority-set:
     post:
       description: |-
@@ -1671,6 +1912,137 @@ paths:
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
+      x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/promote:
+    post:
+      description: >-
+        Promote a proposed Run to a tracked one: a tracked run is queued on the
+        proposed run's commit, which becomes the stack's tracked commit. Valid
+        on a stack that allows promotion, for a proposed run on a commit newer
+        than the stack's tracked commit; canPromote and promoteBlocker say
+        whether and why not. The answer is the tracked run.
+      operationId: runPromote
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runPromote result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Promote Run
+      tags:
+        - Runs
+      x-bruno: Runs/Promote Run.bru
+      x-graphql:
+        field: runPromote
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_PROMOTE
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: action
+  /stacks/{stackId}/runs/{runId}/retry:
+    post:
+      description: >-
+        Retry a proposed or tracked Run that has ended: a run of its type is
+        queued on its commit, with its runtime configuration and environment
+        variable overrides. Retrying a tracked run also needs
+        RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not;
+        a run whose commit its stack's repository no longer has is refused.
+        The answer is the new run.
+      operationId: runRetry
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: run
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: The runRetry result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Retry Run
+      tags:
+        - Runs
+      x-bruno: Runs/Retry Run.bru
+      x-graphql:
+        field: runRetry
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: RUN_RETRY
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:runId:run
       x-rest-style: action
   /stacks/{stackId}/runs/{runId}/stop:
     post:

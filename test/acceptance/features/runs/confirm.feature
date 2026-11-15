@@ -5,7 +5,9 @@ Feature: A tracked run waiting for confirmation is confirmed or discarded
   A caller confirms it, after which the next poll of its pool's worker is
   assigned it to apply, or discards it, which ends it and releases the
   lock. Each names the run, or by default acts on the run that holds the
-  stack's lock. Here the scenario is the worker: it registers with the
+  stack's lock. Discarding all of a stack's runs discards each that waits,
+  the unconfirmed run and those queued behind it, oldest first, with the
+  note. Here the scenario is the worker: it registers with the
   pool's key, claims the run, opens its specification for the in-run API
   token, and reports its phases through the worker API. The in-run API
   token authenticates only while its run plans, applies or performs, and
@@ -53,12 +55,12 @@ Feature: A tracked run waiting for confirmation is confirmed or discarded
     And the answer's action is '"pause"'
     And the answer's state is '"UNCONFIRMED"'
     When token "h" sends "GET /api/v1/runs/{run}" through A
-    Then the answer's allowedActions is '["RUN_CONFIRM","RUN_DISCARD","RUN_TARGETED_REPLAN","RUN_PRIORITIZE_SET"]'
+    Then the answer's allowedActions is '["RUN_CONFIRM","RUN_DISCARD","RUN_TARGETED_REPLAN","RUN_PRIORITIZE_SET","RUN_COMMENT"]'
     When token "h" sends "POST /api/v1/stacks/infra/runs/confirm" with '{"note":"Looks good"}' through B
     Then it answers 200
     And the answer's id is '"{run}"'
     And the answer's state is '"CONFIRMED"'
-    And the answer's allowedActions is '["RUN_PRIORITIZE_SET"]'
+    And the answer's allowedActions is '["RUN_PRIORITIZE_SET","RUN_COMMENT"]'
     And the answer's last state transition's note is "Looks good"
     When token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through A
     Then the answer assigns the run "run", its run token kept as "apply"
@@ -72,11 +74,30 @@ Feature: A tracked run waiting for confirmation is confirmed or discarded
     When token "h" sends "POST /api/v1/stacks/infra/runs/discard" with '{"run":"{run}","note":"Not this one"}' through B
     Then it answers 200
     And the answer's state is '"DISCARDED"'
-    And the answer's allowedActions is '[]'
+    And the answer's allowedActions is '["RUN_RETRY_BLOCKING","RUN_COMMENT"]'
     And the answer's last state transition's note is "Not this one"
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "next"
     Then token "h" eventually reads the run "next" in the state "READY" through B
+
+  @op:runDiscardAll @case:success
+  Scenario: Discarding all discards the unconfirmed run and the run queued behind it, oldest first, with the note
+    When token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"PLANNING","stateVersion":5,"delta":{"add":0,"change":1,"delete":0,"import":0,"outputs":false}}' through A
+    Then the answer's state is '"UNCONFIRMED"'
+    Given a commit to "main" of "infra" changing "main.tf"
+    And the head of "main" of "infra" is kept as "pushed"
+    And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{pushed}"}' through B
+    And the answer's id names "queued"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/discard-all" with '{"note":"A clean slate"}' through A
+    Then it answers 200
+    And the answer's discardedRuns is '[{"id":"{run}"},{"id":"{queued}"}]'
+    And the answer's failedDiscarding is '[]'
+    When token "h" sends "GET /api/v1/runs/{queued}" through B
+    Then the answer's state is '"DISCARDED"'
+    And the answer's last state transition's note is "A clean slate"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/discard-all" through A
+    Then it answers 200
+    And the answer's discardedRuns is '[]'
 
   @op:runConfirm @op:runDiscard @case:denial
   Scenario: A space reader neither confirms nor discards the run

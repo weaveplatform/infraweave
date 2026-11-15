@@ -15,6 +15,7 @@ import (
 // batch.
 var purged = []struct{ table, key string }{
 	{"run_state_transitions", "run_id, sequence"},
+	{"run_comments", "run_id, id"},
 	{"stack_outputs", "stack_id, name"},
 	{"stack_run_state", "stack_id"},
 	{"stack_run_locks", "stack_id"},
@@ -22,8 +23,9 @@ var purged = []struct{ table, key string }{
 }
 
 // Purge deletes up to batch of the deleted account acct's rows from the
-// first of its transitions, outputs, tracked runs, run locks and runs that
-// has any, in one statement, and reports whether none is left. Each call
+// first of its transitions, comments, outputs, tracked runs, run locks
+// and runs that has any, in one statement, and reports whether none is
+// left. Each call
 // commits on its own unless ctx carries a transaction, so a purge stopped
 // between calls keeps what it deleted and resumes from there.
 func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -90,6 +91,18 @@ type Store interface {
 		kind workersapi.Signal,
 		sig lifecycle.Signal,
 	) error
+	// Overrides opens run's environment variable overrides, none for a run
+	// without.
+	Overrides(ctx context.Context, run lifecycle.Run) ([]lifecycle.Override, error)
+	// Comment records c on run.
+	Comment(ctx context.Context, run lifecycle.Run, c read.Comment) error
+	// Discardable reads acct's stack's runs in QUEUED, READY or
+	// UNCONFIRMED, oldest first.
+	Discardable(
+		ctx context.Context,
+		acct kernel.AccountID,
+		stack kernel.ULID,
+	) ([]lifecycle.Run, error)
 }
 
 // Deps are what the actions read and write through; Now is the clock,
@@ -105,14 +118,27 @@ type Deps struct {
 }
 
 // Service acts on runs at a caller's request.
-type Service struct{ d Deps }
+type Service struct {
+	d       Deps
+	mu      sync.RWMutex
+	sources stacksapi.StackSources
+}
 
-// New returns the service over d.
+// New returns the service over d. A retry is unavailable until
+// BindSources binds the vcs domain's resolution of a commit.
 func New(d Deps) *Service {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
 	return &Service{d: d}
+}
+
+// BindSources binds the vcs domain's resolution of a commit, which a
+// retry checks its run's commit with.
+func (s *Service) BindSources(src stacksapi.StackSources) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sources = src
 }
 
 // Cancel cancels p's run raw of stack slug, which has not started: T4
@@ -333,21 +359,42 @@ func (s *Service) signal(
 
 // act locks p's run raw of stack slug in one transaction, or the run that
 // holds the stack's run lock when raw is empty, hands it to f, and answers
-// what f leaves it as.
+// the run f answers: the run as f leaves it, or another f made.
 func (s *Service) act(
 	ctx context.Context,
 	p kernel.Principal,
 	slug, raw string,
 	f func(context.Context, stacksapi.Stack, lifecycle.Run) (lifecycle.Run, error),
 ) (read.View, error) {
+	var v read.View
+	err := s.in(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack,
+		r lifecycle.Run,
+	) error {
+		r, err := f(ctx, st, r)
+		if err != nil {
+			return err
+		}
+		v, err = s.d.Views.One(ctx, p, r)
+		return err //nolint:wrapcheck // the read names itself
+	})
+	return v, err
+}
+
+// in locks p's run raw of stack slug in one transaction, or the run that
+// holds the stack's run lock when raw is empty, and hands it to f.
+func (s *Service) in(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, raw string,
+	f func(context.Context, stacksapi.Stack, lifecycle.Run) error,
+) error {
 	var id kernel.ULID
 	if raw != "" {
 		var err error
 		if id, err = kernel.ParseULID(raw); err != nil {
-			return read.View{}, fmt.Errorf("%w: %q", read.ErrNotFound, raw)
+			return fmt.Errorf("%w: %q", read.ErrNotFound, raw)
 		}
 	}
-	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 		if err != nil {
@@ -370,11 +417,7 @@ func (s *Service) act(
 		if err != nil {
 			return err //nolint:wrapcheck // the store names the read
 		}
-		if r, err = f(ctx, st, r); err != nil {
-			return err
-		}
-		v, err = s.d.Views.One(ctx, p, r)
-		return err //nolint:wrapcheck // the read names itself
+		return f(ctx, st, r)
 	})
-	return v, err //nolint:wrapcheck // each step names itself
+	return err //nolint:wrapcheck // each step names itself
 }

@@ -1090,6 +1090,10 @@ func (UnimplementedStrict) RunDiscard(context.Context, RunDiscardRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "runDiscard", Route: "POST /stacks/{stackId}/runs/discard"}
 }
 
+func (UnimplementedStrict) RunDiscardAll(context.Context, RunDiscardAllRequestObject) (RunDiscardAllResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runDiscardAll", Route: "POST /stacks/{stackId}/runs/discard-all"}
+}
+
 func (UnimplementedStrict) RunProposeLocalWorkspace(context.Context, RunProposeLocalWorkspaceRequestObject) (RunProposeLocalWorkspaceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runProposeLocalWorkspace", Route: "POST /stacks/{stackId}/runs/propose-local-workspace"}
 }
@@ -1098,12 +1102,28 @@ func (UnimplementedStrict) RunCancel(context.Context, RunCancelRequestObject) (R
 	return nil, &problem.NotImplementedError{OperationID: "runCancel", Route: "POST /stacks/{stackId}/runs/{runId}/cancel"}
 }
 
+func (UnimplementedStrict) RunComment(context.Context, RunCommentRequestObject) (RunCommentResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runComment", Route: "POST /stacks/{stackId}/runs/{runId}/comment"}
+}
+
 func (UnimplementedStrict) RunKill(context.Context, RunKillRequestObject) (RunKillResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runKill", Route: "POST /stacks/{stackId}/runs/{runId}/kill"}
 }
 
+func (UnimplementedStrict) RunLogsDelete(context.Context, RunLogsDeleteRequestObject) (RunLogsDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runLogsDelete", Route: "POST /stacks/{stackId}/runs/{runId}/logs-delete"}
+}
+
 func (UnimplementedStrict) RunPrioritySet(context.Context, RunPrioritySetRequestObject) (RunPrioritySetResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runPrioritySet", Route: "POST /stacks/{stackId}/runs/{runId}/priority-set"}
+}
+
+func (UnimplementedStrict) RunPromote(context.Context, RunPromoteRequestObject) (RunPromoteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runPromote", Route: "POST /stacks/{stackId}/runs/{runId}/promote"}
+}
+
+func (UnimplementedStrict) RunRetry(context.Context, RunRetryRequestObject) (RunRetryResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runRetry", Route: "POST /stacks/{stackId}/runs/{runId}/retry"}
 }
 
 func (UnimplementedStrict) RunStop(context.Context, RunStopRequestObject) (RunStopResponseObject, error) {

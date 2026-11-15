@@ -177,7 +177,8 @@ func New(d Deps) *Domain {
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
 		}),
 		logs: logs.New(logs.Deps{
-			DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs, Retention: d.LogRetention,
+			DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs, Stacks: d.Stacks,
+			Retention: d.LogRetention, Now: d.Now,
 		}),
 		changes: changes.New(changes.Deps{Store: store, Objects: d.Objects, Stacks: d.Stacks}),
 		trigger: trigger.New(trigger.Deps{
@@ -290,12 +291,13 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 // BindSources binds the vcs domain's run sources and its resolution of a
 // stack's commits, back edges internal/app binds after it constructs that
 // domain; from then on a handover names the run's source and seals its
-// credential, every run that ends releases its credentials, and a trigger
-// may name a commit.
+// credential, every run that ends releases its credentials, a trigger
+// may name a commit, and a retry checks its run's commit.
 func (d *Domain) BindSources(s runsapi.RunSources, r stacksapi.StackSources) {
 	d.lifecycle.BindSources(s)
 	d.handover.BindSources(s)
 	d.trigger.BindSources(r)
+	d.control.BindSources(r)
 }
 
 // StackDestroyer creates the destroy run of a stack's delete with

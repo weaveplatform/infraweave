@@ -96,6 +96,12 @@ type Store interface {
 		acct kernel.AccountID,
 		runs []kernel.ULID,
 	) (map[kernel.ULID][]lifecycle.Step, error)
+	// Comments reads the comments on acct's runs, oldest first.
+	Comments(
+		ctx context.Context,
+		acct kernel.AccountID,
+		runs []kernel.ULID,
+	) (map[kernel.ULID][]Comment, error)
 	// Blockers reads the run that holds each of acct's stacks' run lock,
 	// with a stack no run holds absent.
 	Blockers(
@@ -146,12 +152,15 @@ type Service struct{ d Deps }
 func New(d Deps) *Service { return &Service{d: d} }
 
 // View is a run as the API answers it: the run, its stack, its
-// transitions, oldest first, and the actions the caller may take on it.
+// transitions and its comments, each oldest first, why it cannot be
+// retried or promoted, and the actions the caller may take on it.
 type View struct {
-	Run     lifecycle.Run
-	Stack   stacksapi.Stack
-	History []lifecycle.Step
-	Actions []accessapi.Action
+	Run      lifecycle.Run
+	Stack    stacksapi.Stack
+	History  []lifecycle.Step
+	Comments []Comment
+	Guards   Guards
+	Actions  []accessapi.Action
 }
 
 // Page is a page of views and whether a later page has runs.
@@ -382,7 +391,8 @@ func (s *Service) One(ctx context.Context, p kernel.Principal, r lifecycle.Run) 
 }
 
 // Views are runs as p reads them, in their order: each with its stack,
-// the stack's branch, its transitions and the actions p may take on it.
+// the stack's branch, its transitions, its comments, its guards and the
+// actions p may take on it.
 func (s *Service) Views(
 	ctx context.Context,
 	p kernel.Principal,
@@ -398,6 +408,10 @@ func (s *Service) Views(
 		}
 	}
 	histories, err := s.d.Store.Histories(ctx, acct, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
+	comments, err := s.d.Store.Comments(ctx, acct, ids)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
 	}
@@ -423,9 +437,10 @@ func (s *Service) Views(
 	for i, r := range runs {
 		st := settings[r.Stack]
 		blocker, ok := blockers[r.Stack]
+		g := Guards{Retry: RetryBlocker(r), Promote: PromoteBlocker(r, st)}
 		out[i] = View{
-			Run: r, Stack: st.Stack, History: histories[r.ID],
-			Actions: Allowed(r, ok && blocker.Run == r.ID, held[st.Space]),
+			Run: r, Stack: st.Stack, History: histories[r.ID], Comments: comments[r.ID],
+			Guards: g, Actions: Allowed(r, ok && blocker.Run == r.ID, held[st.Space], g),
 		}
 	}
 	return out, nil
@@ -433,11 +448,17 @@ func (s *Service) Views(
 
 // Allowed are the actions a caller holding held may take on r: one for
 // each edge its state allows next that a caller drives, stop until one is
-// asked of r, kill once one is and until a kill is, and
-// RUN_PRIORITIZE_SET until it ends. Cancel, stop and kill need their
-// blocking variants when r holds its stack's run lock. A run that has
-// ended allows none.
-func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action) []accessapi.Action {
+// asked of r, kill once one is and until a kill is, RUN_PRIORITIZE_SET
+// until it ends, a retry and a promotion while g has no blocker for
+// either, and a comment. Cancel, stop and kill need their blocking
+// variants when r holds its stack's run lock, and a retry of a tracked
+// run RUN_RETRY_BLOCKING.
+func Allowed(
+	r lifecycle.Run,
+	blocking bool,
+	held []accessapi.Action,
+	g Guards,
+) []accessapi.Action {
 	out := []accessapi.Action{}
 	add := func(a accessapi.Action) {
 		if slices.Contains(held, a) && !slices.Contains(out, a) {
@@ -476,5 +497,13 @@ func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action) []accessap
 	if !r.State.Terminal() {
 		add(accessapi.ActionRunPrioritizeSet)
 	}
+	if g.Retry == "" {
+		blocking = r.Type == kernel.RunTypeTracked
+		either(accessapi.ActionRunRetry, accessapi.ActionRunRetryBlocking)
+	}
+	if g.Promote == "" {
+		add(accessapi.ActionRunPromote)
+	}
+	add(accessapi.ActionRunComment)
 	return out
 }

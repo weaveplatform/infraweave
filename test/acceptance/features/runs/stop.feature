@@ -44,7 +44,7 @@ Feature: Stopping and killing a run through its worker's poll
     And token "h" eventually reads the run "run" in the state "PLANNING" through A
     When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/stop" with '{"note":"Stopping run","state":"PLANNING"}' through A
     Then it answers 200
-    And the answer's allowedActions is '["RUN_KILL_BLOCKING","RUN_PRIORITIZE_SET"]'
+    And the answer's allowedActions is '["RUN_KILL_BLOCKING","RUN_PRIORITIZE_SET","RUN_COMMENT"]'
     When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/stop" with '{"note":"Again"}' through B
     Then it answers 200
     And token "h" eventually reads the run "run" in the state "STOPPED" through A
@@ -65,7 +65,7 @@ Feature: Stopping and killing a run through its worker's poll
     Then it answers 200
     When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/kill" with '{"state":"PLANNING"}' through B
     Then it answers 200
-    And the answer's allowedActions is '["RUN_PRIORITIZE_SET"]'
+    And the answer's allowedActions is '["RUN_PRIORITIZE_SET","RUN_COMMENT"]'
     And token "h" eventually reads the run "run" in the state "FAILED" through A
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
     And the answer's last state transition's note is "killed"

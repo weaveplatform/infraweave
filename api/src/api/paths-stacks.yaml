@@ -2324,9 +2324,10 @@ components:
       properties:
         allowedActions:
           description: >-
-            The actions the caller may take on the run: those its state
-            allows next, that the caller holds on the stack's space. A run
-            that has ended allows none.
+            The actions the caller may perform on the run, from the rules
+            that enforce them: the moves its state allows next, a retry
+            and a promotion when canRetry and canPromote allow them, and a
+            comment, each that the caller holds on the stack's space.
           items:
             $ref: '#/components/schemas/Action'
           type: array
