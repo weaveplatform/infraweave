@@ -355,18 +355,28 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	}
 	r.initialized = true
 	var p plan.Plan
-	if state == wire.WorkerStatePLANNING {
+	switch state {
+	case wire.WorkerStatePLANNING:
 		if p, err = r.plan(); err != nil {
 			return fail("The plan's JSON could not be read: " + err.Error())
 		}
 		delta := deltaOf(p.Delta)
 		rep.Delta = &delta
+	case wire.WorkerStateAPPLYING:
+		if err := r.outputs(); err != nil {
+			return fail("The outputs' JSON could not be read: " + err.Error())
+		}
 	}
 	if d := r.steps(ctx, r.hooks("after_"+name)); d != "" || r.halted() {
 		return end(d)
 	}
-	if state == wire.WorkerStatePLANNING {
+	switch state {
+	case wire.WorkerStatePLANNING:
 		if d := r.save(ctx, version, p); d != "" {
+			return fail(d)
+		}
+	case wire.WorkerStateAPPLYING:
+		if d := r.saveOutputs(ctx, version); d != "" {
 			return fail(d)
 		}
 	}
@@ -471,6 +481,18 @@ func (r *run) plan() (plan.Plan, error) {
 	}
 	defer f.Close()
 	return plan.Parse(f) //nolint:wrapcheck // plan names the document
+}
+
+// outputs checks the outputs' JSON, which applying's commands wrote, so
+// the server reads what the runner records.
+func (r *run) outputs() error {
+	f, err := os.Open(r.options.OutputsJSON)
+	if err != nil {
+		return fmt.Errorf("open it: %w", err)
+	}
+	defer f.Close()
+	_, err = plan.ReadOutputs(f)
+	return err //nolint:wrapcheck // plan names the document
 }
 
 // deltaOf is d as the worker API reports it.

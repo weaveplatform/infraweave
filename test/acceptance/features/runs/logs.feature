@@ -11,8 +11,11 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
   answers. Here the scenario is the worker. The run's in-run API token
   reads neither its run nor its logs. The release indexes serve the
   recorded fixtures, so the run's specification names a Terraform release.
-  The home key is space-admin on the account's top space; the member key
-  holds no binding. Stack infra lives in legacy and runs on the pool.
+  An account's space admin deletes a run's logs ahead of their
+  retention once the run has ended, after which each state's log, read
+  or downloaded, answers deleted. The home key is space-admin on the
+  account's top space; the member key holds only the bindings a scenario
+  gives it. Stack infra lives in legacy and runs on the pool.
   ref: decision 0007
   ref: decision 0008
   ref: decision 0016
@@ -131,3 +134,42 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
     Then it answers a 400 problem "invalid-cursor"
     When token "h" sends "GET /api/v1/runs/{run}/logs?state=PLANNING&token=garbage" through A
     Then it answers a 400 problem "invalid-cursor"
+
+  @op:runLogsDelete @op:runDiscard @case:success
+  Scenario: Deleting an ended run's logs answers each state's log as deleted, and a second deletion as done
+    When token "rt" writes log chunk 0 of the run "run" in state version 5 at 1800000010 holding "Plan: 1 to add\n" through B
+    And token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"PLANNING","stateVersion":5,"delta":{"add":1,"change":0,"delete":0,"import":0,"outputs":false}}' through A
+    And token "h" sends "POST /api/v1/stacks/infra/runs/discard" with '{"run":"{run}"}' through B
+    Then the answer's state is '"DISCARDED"'
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/logs-delete" through A
+    Then it answers 200
+    And the answer's id is '"{run}"'
+    When token "h" sends "GET /api/v1/runs/{run}/logs?state=PLANNING" through B
+    Then it answers 200
+    And the answer's deleted is 'true'
+    And the answer's messages is '[]'
+    When token "h" sends "GET /api/v1/runs/{run}/logs-download-url?state=INITIALIZING" through A
+    Then it answers 200
+    And the answer's deleted is 'true'
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/logs-delete" through B
+    Then it answers 200
+
+  @op:runLogsDelete @case:denial
+  Scenario: Deleting a run's logs needs SPACE_ADMIN on the account, which a space admin below it lacks
+    When token "m" sends "POST /api/v1/stacks/infra/runs/{run}/logs-delete" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    Given the member key is space-admin on the space "legacy"
+    When token "m" sends "POST /api/v1/stacks/infra/runs/{run}/logs-delete" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+
+  @op:runLogsDelete @case:failure
+  Scenario: A run that has not ended keeps its logs, and an unknown run's are not deleted
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/logs-delete" through A
+    Then it answers a 409 problem "invalid-state"
+    And the answer's detail is '"The run has not ended; its logs are deleted once it has."'
+    When token "h" sends "POST /api/v1/stacks/infra/runs/01JBQ6Q4V2ZK5Y3W8N7M6P5R4T/logs-delete" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/runs/{run}/logs?state=INITIALIZING" through A
+    Then the answer's messages is '[{"message":"Initializing the backend...","timestamp":1800000000}]'

@@ -28,6 +28,7 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's (items|edges) are the runs "([^"]*)"$`, r.lists)
 	sc.Step(`^the answer's batch runs name "([^"]+)"$`, r.batch)
 	sc.Step(`^the answer's first run names "(\w+)"$`, r.first)
+	sc.Step(`^the answer's comment bodies are '([^']*)'$`, r.comments)
 	sc.Step(`^two infraweave servers, A and B, on one database, that run no default-queue jobs$`,
 		r.idle)
 	sc.Step(`^a third infraweave server runs the default queue's jobs$`, r.third)
@@ -35,6 +36,32 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 		r.keeping)
 	sc.Step(`^the "run.schedule" jobs are (\d+), (pending|succeeded)$`, r.scheduled)
 	sc.Step(`^neither the answer nor a server's log names "([^"]+)"$`, r.unnamed)
+}
+
+// comments checks the bodies of the last answer's comments, a run's,
+// oldest first, against want, a JSON array.
+func (r *runSteps) comments(want string) error {
+	var run struct {
+		Comments []struct {
+			Body string `json:"body"`
+		} `json:"comments"`
+	}
+	var bodies []string
+	last := r.w.Last()
+	if err := json.Unmarshal([]byte(want), &bodies); err != nil {
+		return fmt.Errorf("%w: %s is not a JSON array of strings", harness.ErrStep, want)
+	}
+	if err := json.Unmarshal(last.Body, &run); err != nil {
+		return fmt.Errorf("%w: no run in %d %s", harness.ErrStep, last.Status, last.Body)
+	}
+	got := make([]string, len(run.Comments))
+	for i, c := range run.Comments {
+		got[i] = c.Body
+	}
+	if !slices.Equal(got, bodies) {
+		return fmt.Errorf("%w: the comments are %q, want %q", harness.ErrStep, got, bodies)
+	}
+	return nil
 }
 
 // unnamed checks that neither the last answer nor any server's output

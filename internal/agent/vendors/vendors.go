@@ -25,11 +25,12 @@ type Command struct {
 }
 
 // Options are what a phase's commands take from the run: the run
-// parameters its templates read, and the file planning writes the plan's
-// JSON to.
+// parameters its templates read, the file planning writes the plan's
+// JSON to, and the file applying writes the outputs' JSON to.
 type Options struct {
-	Params   workflow.Params
-	PlanJSON string
+	Params      workflow.Params
+	PlanJSON    string
+	OutputsJSON string
 }
 
 // Errors of a workflow that cannot be had or used.
@@ -112,15 +113,16 @@ func New(t workflow.Templates, lines workflow.Lines) (*Workflow, error) {
 var phases = map[wire.WorkerState][]workflow.Key{
 	wire.WorkerStateINITIALIZING: {workflow.Init},
 	wire.WorkerStatePLANNING:     {workflow.Plan, workflow.ShowPlan},
-	wire.WorkerStateAPPLYING:     {workflow.Apply},
+	wire.WorkerStateAPPLYING:     {workflow.Apply, workflow.GetOutputs},
 	wire.WorkerStateDESTROYING:   {workflow.Destroy},
 }
 
 // Commands are the commands of state's phase, in the order they run,
 // each rendered with o's parameters when the phase runs: init for
 // INITIALIZING; plan, then showPlan with its output to o.PlanJSON, for
-// PLANNING; apply for APPLYING; and destroy for DESTROYING. A template
-// whose evaluation fails is an error naming its key.
+// PLANNING; apply, then getOutputs with its output to o.OutputsJSON, for
+// APPLYING; and destroy for DESTROYING. A template whose evaluation fails
+// is an error naming its key.
 func (w *Workflow) Commands(
 	ctx context.Context,
 	state wire.WorkerState,
@@ -143,8 +145,11 @@ func (w *Workflow) Commands(
 		}
 		line, _ := res.Value.(string)
 		out[i] = Command{Key: k, Line: line}
-		if k == workflow.ShowPlan {
+		switch k {
+		case workflow.ShowPlan:
 			out[i].Stdout = o.PlanJSON
+		case workflow.GetOutputs:
+			out[i].Stdout = o.OutputsJSON
 		}
 	}
 	return out, nil

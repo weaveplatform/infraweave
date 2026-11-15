@@ -133,6 +133,7 @@ func TestUnitExecDestroys(t *testing.T) {
 				"plan -input=false -lock-timeout=5m0s -lock=true -out=infraweave.plan",
 				"show -json infraweave.plan",
 				"apply -input=false -lock-timeout=5m0s infraweave.plan",
+				"output -json",
 				"before_destroy DESTROYING",
 				"destroy -auto-approve -input=false -lock-timeout=5m0s",
 				"after_destroy",

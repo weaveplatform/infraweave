@@ -110,8 +110,9 @@ func (c runCalls) upload(t *testing.T, v int64, kind, name string, body []byte) 
 // a stale report answers 409; a planning report without its delta, or
 // another with one, answers 400; with autodeploy on, the plan decision
 // moves the run to APPLYING, keeps its delta and answers its repeat
-// alike, and the apply finishes it; another run's token answers 401. The account's purge deletes the chunks and
-// records and marks their objects for deletion.
+// alike, and the apply, with its outputs.json recorded, finishes it;
+// another run's token answers 401. The account's purge deletes the
+// chunks and records and marks their objects for deletion.
 func TestAccRunReports(t *testing.T) {
 	w := newClaimWorld(t)
 	ctx := t.Context()
@@ -171,19 +172,8 @@ func TestAccRunReports(t *testing.T) {
 
 	plan := []byte(`{"resource_changes":[]}`)
 	planKey := prefix + "plan.json"
-	content, err := seal.ArtifactKey(artifactKey, planKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var sealed bytes.Buffer
-	sw, err := seal.NewWriter(&sealed, content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := sw.Write(plan); err != nil || sw.Close() != nil {
-		t.Fatal(err)
-	}
-	if got := calls.upload(t, v, "artifact", "plan.json", sealed.Bytes()); got != planKey {
+	if got := calls.upload(t, v, "artifact", "plan.json",
+		sealedAs(t, artifactKey, planKey, plan)); got != planKey {
 		t.Errorf("the artifact's key is %s", got)
 	}
 	workspace := []byte("an encrypted workspace")
@@ -261,6 +251,15 @@ func TestAccRunReports(t *testing.T) {
 		"stateVersion": v,
 		"state":        "APPLYING", "event": "failed",
 	}), http.StatusUnauthorized, "")
+	outputsKey := kernel.RunObjectKey(w.acct, run, kernel.RunStateApplying, v, "outputs.json")
+	calls.upload(t, v, "artifact", "outputs.json", sealedAs(t, artifactKey, outputsKey,
+		[]byte(`{"url":{"sensitive":false,"type":"string","value":"https://example.com"}}`)))
+	if rec := calls.post(t, "artifacts", map[string]any{
+		"stateVersion": v,
+		"artifacts":    []map[string]any{{"kind": "artifact", "name": "outputs.json"}},
+	}); rec.Code != http.StatusNoContent {
+		t.Fatalf("artifacts = %d %s", rec.Code, rec.Body)
+	}
 	calls.report(t, v, "APPLYING", "succeeded", workerapi.Exit, "FINISHED", v+1)
 	wantProblem(t, calls.post(t, "reports", map[string]any{
 		"stateVersion": v + 1,
@@ -274,12 +273,31 @@ func TestAccRunReports(t *testing.T) {
 	if err := w.q.QueryRow(ctx, `SELECT (SELECT count(*) FROM run_log_chunks) +
 		(SELECT count(*) FROM run_artifacts), (SELECT count(*) FROM blob_objects
 		WHERE state = 'deleting' AND key = ANY($1))`,
-		[]string{chunkKey, planKey, prefix + "ws"}).Scan(&rows, &deleting); err != nil {
+		[]string{chunkKey, planKey, prefix + "ws", outputsKey}).Scan(&rows, &deleting); err != nil {
 		t.Fatal(err)
 	}
-	if rows != 0 || deleting != 3 {
+	if rows != 0 || deleting != 4 {
 		t.Errorf("after the purge %d rows are left and %d objects are deleting", rows, deleting)
 	}
+}
+
+// sealedAs is body sealed under the run's artifact key for the object
+// key, as the runner uploads an artifact.
+func sealedAs(t *testing.T, artifactKey []byte, key string, body []byte) []byte {
+	t.Helper()
+	content, err := seal.ArtifactKey(artifactKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sealed bytes.Buffer
+	sw, err := seal.NewWriter(&sealed, content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sw.Write(body); err != nil || sw.Close() != nil {
+		t.Fatal(err)
+	}
+	return sealed.Bytes()
 }
 
 // openArtifactKey fetches the run's specification and opens its sealed

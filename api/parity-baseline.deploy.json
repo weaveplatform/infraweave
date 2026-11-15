@@ -312,17 +312,12 @@
       "searchManagedEntitiesGroupByTypes"
     ],
     "Runs": [
-      "runComment",
       "runCpuProfileDownloadURL",
-      "runDiscardAll",
       "runExternalDependencyMarkAsCompleted",
-      "runLogsDelete",
       "runMinutesUsage",
       "runPluginLogsDownloadURL",
       "runPolicyReceiptSample",
-      "runPromote",
       "runResourceCreate",
-      "runRetry",
       "runReview",
       "runSearchEntityChanges",
       "runSearchEntityChangesSuggestions",

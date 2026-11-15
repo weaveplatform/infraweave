@@ -1,5 +1,5 @@
--- Runs: each account's runs, the state transitions of each, the run that
--- holds each stack's run lock, each stack's tracked run, the outputs of
+-- Runs: each account's runs, the state transitions of each, the comments
+-- on each, the run that holds each stack's run lock, each stack's tracked run, the outputs of
 -- its last applied run, and the log chunks and other objects each run's
 -- worker uploaded.
 -- ref: decisions 0004, 0005 and 0008; report 08
@@ -41,6 +41,8 @@
 -- transition the signal ends the run with records, and when a poll
 -- delivered it to the run's worker, NULL until one did. A poll delivers
 -- each once, as a second SIGINT makes the tool exit mid-operation.
+-- logs_deleted_at is when a caller deleted the run's logs ahead of their
+-- retention, NULL until one did.
 CREATE TABLE runs (
     account_id       uuid        NOT NULL,
     id               uuid        NOT NULL,
@@ -72,6 +74,7 @@ CREATE TABLE runs (
     kill_requested_by text,
     kill_note        text,
     kill_delivered_at timestamptz,
+    logs_deleted_at  timestamptz,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, id),
@@ -132,6 +135,21 @@ CREATE TABLE run_state_transitions (
     FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
 );
 
+-- Each comment on a run: id is a ULID, so the comments read oldest first
+-- by it; username is the login that wrote it, and body its Markdown, at
+-- most as many characters as control.MaxComment.
+CREATE TABLE run_comments (
+    account_id uuid        NOT NULL,
+    run_id     uuid        NOT NULL,
+    id         uuid        NOT NULL,
+    username   text        NOT NULL,
+    body       text        NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, run_id, id),
+    FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE,
+    CHECK (char_length(body) BETWEEN 1 AND 10000)
+);
+
 -- The run that holds each stack's run lock, which one blocking run at a
 -- time takes; a stack without a row is unlocked. stack_id has no foreign
 -- key, as in runs.
@@ -160,15 +178,17 @@ CREATE TABLE stack_run_state (
 CREATE INDEX stack_run_state_run ON stack_run_state (account_id, tracked_run_id);
 
 -- The outputs of each stack's last applied run, by name, with the run that
--- wrote them. stack_id has no foreign key, as in runs.
+-- wrote them. stack_id has no foreign key, as in runs. value_sealed is the
+-- output's value as JSON, sealed to its row whether or not it is
+-- sensitive.
 CREATE TABLE stack_outputs (
-    account_id  uuid    NOT NULL,
-    stack_id    uuid    NOT NULL,
-    name        text    NOT NULL,
-    run_id      uuid    NOT NULL,
-    value       jsonb   NOT NULL,
-    sensitive   boolean NOT NULL DEFAULT false,
-    description text,
+    account_id   uuid    NOT NULL,
+    stack_id     uuid    NOT NULL,
+    name         text    NOT NULL,
+    run_id       uuid    NOT NULL,
+    value_sealed bytea   NOT NULL,
+    sensitive    boolean NOT NULL DEFAULT false,
+    description  text,
     PRIMARY KEY (account_id, stack_id, name),
     FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
 );

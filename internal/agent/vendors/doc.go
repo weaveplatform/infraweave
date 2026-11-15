@@ -6,9 +6,9 @@
 // before any command runs, a fault naming the key, its line in the file
 // and its range. Commands renders a worker state's phase with the run's
 // parameters when the phase runs: init; plan, then showPlan with its
-// output to the plan's JSON file; apply; and destroy. Every value a
-// template embeds is one shell word, so no workspace name or target
-// becomes shell syntax.
+// output to the plan's JSON file; apply, then getOutputs with its output
+// to the outputs' JSON file; and destroy. Every value a template embeds
+// is one shell word, so no workspace name or target becomes shell syntax.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 // ref: decision 0024 "Workflow command templates"

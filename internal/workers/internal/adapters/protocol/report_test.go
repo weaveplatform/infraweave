@@ -164,6 +164,7 @@ func TestUnitProtocolRunReports(t *testing.T) {
 		workersapi.ErrUploadExists:  {http.StatusConflict, "already-exists"},
 		workersapi.ErrNoWorkspace:   {http.StatusNotFound, "not-found"},
 		workersapi.ErrDeltaRefused:  {http.StatusBadRequest, "invalid-request"},
+		workersapi.ErrNoOutputs:     {http.StatusBadRequest, "invalid-request"},
 	} {
 		r.err = err
 		code, p := f.call(t, path+"/reports", token, report)

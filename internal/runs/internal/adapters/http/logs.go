@@ -65,8 +65,8 @@ func (s Server) RunLogs(
 		messages[i] = api.LogMessage{Message: l.Message, Timestamp: unix(l.At.Unix())}
 	}
 	body := api.LogsResponse{
-		Exists: pg.Exists, Expired: pg.Expired, Finished: pg.Finished(), HasMore: pg.HasMore,
-		Messages: messages, Ongoing: pg.Ongoing,
+		Deleted: pg.Deleted, Exists: pg.Exists, Expired: pg.Expired, Finished: pg.Finished(),
+		HasMore: pg.HasMore, Messages: messages, Ongoing: pg.Ongoing,
 	}
 	if pg.More() {
 		next, err := page.Encode(logsList, kernel.Cursor[position]{
@@ -100,7 +100,7 @@ func (s Server) RunLogsDownloadURL(
 	if err != nil {
 		return nil, runError(err, "", req.RunId)
 	}
-	body := api.LogsDownloadURL{Expired: d.Expired, Ongoing: d.Ongoing}
+	body := api.LogsDownloadURL{Deleted: d.Deleted, Expired: d.Expired, Ongoing: d.Ongoing}
 	if d.URL != "" {
 		body.Url = &d.URL
 	}

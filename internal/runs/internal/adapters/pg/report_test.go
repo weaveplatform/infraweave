@@ -19,10 +19,11 @@ import (
 // TestAccReportStore checks a run's state by state version, the plan's
 // delta kept on it and read back with the run, its log chunks indexed
 // once by state version and sequence number, its other uploads recorded
-// once by kind and name with the last workspace and the last changes
-// document of a planning state read back, and a deleted account's chunks
-// and records purged a batch at a time with their objects' stores and
-// keys and each state's compacted log, another account's kept.
+// once by kind and name with the last workspace, and the last changes
+// document and plan's JSON of a planning state, read back, and a deleted
+// account's chunks and records purged a batch at a time with their
+// objects' stores and keys and each state's compacted log, another
+// account's kept.
 func TestAccReportStore(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -127,6 +128,12 @@ func TestAccReportStore(t *testing.T) {
 	}
 	if key, ok, err := s.Changes(ctx, run); key != "changes-5" || !ok || err != nil {
 		t.Errorf("Changes = %q, %t, %v", key, ok, err)
+	}
+	if key, ok, err := s.Planned(ctx, run, "plan.json"); key != "plan" || !ok || err != nil {
+		t.Errorf("Planned = %q, %t, %v", key, ok, err)
+	}
+	if _, ok, err := s.Planned(ctx, run, "outputs.json"); ok || err != nil {
+		t.Errorf("Planned of none = %t, %v", ok, err)
 	}
 
 	otherRun, err := s.Handed(ctx, insertRun(t, db, other, kernel.NewULID(), false))
