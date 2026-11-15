@@ -215,6 +215,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		Vendor:                       st.Vendor,
 		VendorConfig:                 st.VendorConfig,
 		EnableWellKnownSecretMasking: st.EnableWellKnownSecretMasking,
+		EnableSensitiveOutputUpload:  st.EnableSensitiveOutputUpload,
 	}
 	tool, err := s.tool(ctx, st)
 	if err != nil {

@@ -11,14 +11,17 @@ import (
 )
 
 // TestUnitHandoffRoundTrip checks that Read reads what Write wrote,
-// with the specification's source, tool and masking flag and the source's
-// credential.
+// with the specification's source, tool and stack's flags, the
+// launcher's sensitive output upload and the source's credential.
 func TestUnitHandoffRoundTrip(t *testing.T) {
 	h := handoff.Handoff{
 		Endpoint: "https://iw.example.com/worker/v1", Run: "run-1", RunToken: "token",
 		Assigned: wire.AssignmentStatePREPARINGREPLAN, StateVersion: 9,
+		SensitiveOutputUpload: true,
 		Spec: wire.RunSpec{
-			Stack: wire.RunSpecStack{EnableWellKnownSecretMasking: true},
+			Stack: wire.RunSpecStack{
+				EnableWellKnownSecretMasking: true, EnableSensitiveOutputUpload: true,
+			},
 			Source: wire.RunSpecSource{
 				Kind: wire.Git, Url: "https://git.example.com/a.git", Narrowed: true,
 			},
@@ -42,7 +45,9 @@ func TestUnitHandoffRoundTrip(t *testing.T) {
 		t.Fatalf("Read: %+v", got)
 	}
 	if got.Spec.Source != h.Spec.Source || got.Spec.Tool == nil || *got.Spec.Tool != *h.Spec.Tool ||
-		!got.Spec.Stack.EnableWellKnownSecretMasking || got.Secrets.SourceCredential == nil ||
+		!got.Spec.Stack.EnableWellKnownSecretMasking ||
+		!got.Spec.Stack.EnableSensitiveOutputUpload || !got.SensitiveOutputUpload ||
+		got.Secrets.SourceCredential == nil ||
 		*got.Secrets.SourceCredential != *h.Secrets.SourceCredential {
 		t.Errorf("Read: spec %+v, secrets %+v", got.Spec, got.Secrets)
 	}

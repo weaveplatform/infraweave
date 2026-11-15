@@ -7140,7 +7140,7 @@
         {
           "file": "docs/research/decisions/0008-run-execution-and-worker-protocol.md",
           "present": [
-            "has an equivalent here except the transport selectors and four this record leaves open",
+            "has an equivalent here except the transport selectors and three this record leaves open",
             "`SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT`, whose deadline the pool's preparing timeout bounds"
           ]
         }

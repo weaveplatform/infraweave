@@ -80,13 +80,14 @@ type Commit struct {
 // TrackedCommitSetBy names who set TrackedCommit. ManagesState is
 // whether infraweave keeps the stack's state, which its creation decides
 // once. EnableWellKnownSecretMasking turns on the runner's well-known
-// secret patterns, and SkipVendorBinaryDownload runs the image's own
-// tool rather than the one the launcher mounts. LocalPreviewEnabled lets
-// runs be proposed on uploaded local workspaces, and GithubActionDeploy
-// lets a proposed run be promoted to a tracked one. Deleting marks a stack
-// whose delete waits for its destroy run, which no other run joins.
-// Version counts the stack's writes, which SetTracked and Destroyed are
-// not.
+// secret patterns, EnableSensitiveOutputUpload lets a run keep its
+// sensitive outputs' values where its worker pool allows it too, and
+// SkipVendorBinaryDownload runs the image's own tool rather than the one
+// the launcher mounts. LocalPreviewEnabled lets runs be proposed on
+// uploaded local workspaces, and GithubActionDeploy lets a proposed run
+// be promoted to a tracked one. Deleting marks a stack whose delete waits
+// for its destroy run, which no other run joins. Version counts the
+// stack's writes, which SetTracked and Destroyed are not.
 type Settings struct {
 	Stack
 	Repository                   string
@@ -106,6 +107,7 @@ type Settings struct {
 	TerraformVersion             *string
 	Hooks                        map[string][]string
 	EnableWellKnownSecretMasking bool
+	EnableSensitiveOutputUpload  bool
 	SkipVendorBinaryDownload     bool
 	Autodeploy                   bool
 	Autoretry                    bool

@@ -19,8 +19,10 @@
 // succeeded report of APPLYING first replaces its stack's outputs with
 // those in the outputs.json its apply recorded at that state version,
 // each with its description from the plan.json the run recorded last
-// while planning, none once retention removed it; a run that recorded no
-// outputs the server reads is refused with workersapi.ErrNoOutputs.
+// while planning, none once retention removed it, and a sensitive one
+// with no value unless the stack's EnableSensitiveOutputUpload allows
+// it; a run that recorded no outputs the server reads is refused with
+// workersapi.ErrNoOutputs.
 //
 // Uploads are keyed <account>/<run>/<state>-<stateVersion>/<name> in
 // their kind's store, recorded pending in blob_objects before their PUT

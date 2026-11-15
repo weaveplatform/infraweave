@@ -16,9 +16,11 @@ type Output struct {
 }
 
 // ReadOutputs reads r, the JSON of `terraform output -json` or `tofu
-// output -json`, into the root module's outputs by name. It refuses a
-// document past MaxSize as ErrTooLarge, and one that is not an object of
-// outputs each with a value as ErrMalformed.
+// output -json`, into the root module's outputs by name. A sensitive
+// output may have no value, as WithoutSensitiveValues writes it, and
+// reads with a nil Value. It refuses a document past MaxSize as
+// ErrTooLarge, and one that is not an object of outputs, each that is
+// not sensitive with a value, as ErrMalformed.
 func ReadOutputs(r io.Reader) (map[string]Output, error) {
 	raw, err := readAll(r)
 	if err != nil {
@@ -36,12 +38,46 @@ func ReadOutputs(r io.Reader) (map[string]Output, error) {
 	}
 	out := make(map[string]Output, len(doc))
 	for name, o := range doc {
-		if o.Value == nil {
+		if o.Value == nil && !o.Sensitive {
 			return nil, fmt.Errorf("%w: the output %q has no value", ErrMalformed, name)
 		}
 		out[name] = Output{Value: o.Value, Sensitive: o.Sensitive}
 	}
 	return out, nil
+}
+
+// WithoutSensitiveValues writes to w the JSON of `output -json` that r
+// reads, each sensitive output without its value and every other field
+// kept, so a value the run may not keep never leaves it. It refuses r as
+// ReadOutputs does, but for an output that has no value.
+func WithoutSensitiveValues(w io.Writer, r io.Reader) error {
+	raw, err := readAll(r)
+	if err != nil {
+		return err
+	}
+	var doc map[string]map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return fmt.Errorf("%w: %w", ErrMalformed, err)
+	}
+	if doc == nil {
+		return fmt.Errorf("%w: the outputs are not an object", ErrMalformed)
+	}
+	for name, o := range doc {
+		var sensitive bool
+		if s, ok := o["sensitive"]; ok {
+			if err := json.Unmarshal(s, &sensitive); err != nil {
+				return fmt.Errorf("%w: the output %q: %w", ErrMalformed, name, err)
+			}
+		}
+		if sensitive {
+			delete(o, "value")
+		}
+	}
+	// HTML escaping would rewrite a string value's <, > and &, which the
+	// stack's outputs then answer as written.
+	e := json.NewEncoder(w)
+	e.SetEscapeHTML(false)
+	return e.Encode(doc) //nolint:wrapcheck // the caller names the document
 }
 
 // Descriptions reads r, a plan's JSON as Parse reads it, for the

@@ -26,7 +26,8 @@ var outputValue = crypt.Column{
 }
 
 // ReplaceOutputs replaces the outputs of run's stack with outs, written
-// by run, each value sealed to its row, in the context's transaction.
+// by run, each value sealed to its row and a sensitive output with no
+// value kept with none, in the context's transaction.
 func (s *Store) ReplaceOutputs(
 	ctx context.Context,
 	run lifecycle.Run,
@@ -38,12 +39,16 @@ func (s *Store) ReplaceOutputs(
 	descriptions := make([]string, len(names))
 	for i, name := range names {
 		o := outs[name]
+		sensitive[i], descriptions[i] = o.Sensitive, o.Description
+		if o.Value == nil {
+			continue
+		}
 		v, err := s.seal.SealColumn(ctx, outputValue,
 			[]string{run.Account.UUID(), run.Stack.UUID(), name}, o.Value)
 		if err != nil {
 			return fmt.Errorf("runs: seal stack %s's output %s: %w", run.Stack, name, err)
 		}
-		sealed[i], sensitive[i], descriptions[i] = v, o.Sensitive, o.Description
+		sealed[i] = v
 	}
 	q := tx.Q(ctx, s.db)
 	if _, err := q.Exec(ctx, `DELETE FROM stack_outputs WHERE account_id = $1 AND stack_id = $2`,

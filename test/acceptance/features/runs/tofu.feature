@@ -9,7 +9,9 @@ Feature: Runs of an OpenTofu stack end to end
   UNCONFIRMED; once confirmed, a new container restores the workspace,
   initializes again and applies, and the run finishes, its outputs kept as
   the stack's, each with its description from the plan and a sensitive one
-  with no value. Its hooks run in one shell session per container, so a
+  with no value. The launcher does not keep sensitive outputs' values, so
+  a sensitive output is kept with no value where the stack enables
+  sensitive output upload too. Its hooks run in one shell session per container, so a
   variable a hook exports before initialization is set again after the
   restore. A write-only variable and a write-only mounted file reach the
   run, and the log masks each where a hook prints it; no object of the
@@ -187,11 +189,13 @@ Feature: Runs of an OpenTofu stack end to end
 
   @op:stackDelete @case:success
   Scenario: A stack deleted with its resources destroys them in a destroy run that leaves its state empty, and is deleted when the run finishes
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"opentofu":{}},"afterDestroy":["test -z \"$(tofu state list)\""]},"manageState":true}' through B
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"enableSensitiveOutputUpload":true,"vendorConfig":{"opentofu":{}},"afterDestroy":["test -z \"$(tofu state list)\""]},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "FINISHED" through B
     And the run "run" wrote 1 state version
+    And the run "run" kept its stack's output "name" with a sealed value
+    And the run "run" kept its stack's output "secret" with no sealed value
     When token "h" sends "DELETE /api/v1/stacks/infra?destroyResources=true" through A
     Then it answers 200
     And the answer's deleting is 'true'

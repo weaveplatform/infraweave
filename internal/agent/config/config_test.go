@@ -87,6 +87,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
   run_timeout: 2h
   log_timeout: 15m
   mask_envs: [AWS_SECRET_ACCESS_KEY, DB_PASSWORD]
+  sensitive_output_upload: true
   tool_mirror: https://mirror.example.com/releases
   ca_file: /etc/infraweave/ca.pem
   metadata:
@@ -106,7 +107,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
 		c.Launcher.RunTimeout != 2*time.Hour || c.Launcher.LogTimeout != 15*time.Minute ||
 		!slices.Equal(c.Launcher.MaskEnvs, []string{"AWS_SECRET_ACCESS_KEY", "DB_PASSWORD"}) ||
 		c.Launcher.ToolMirror != "https://mirror.example.com/releases" ||
-		c.Launcher.CAFile != "/etc/infraweave/ca.pem" {
+		c.Launcher.CAFile != "/etc/infraweave/ca.pem" || !c.Launcher.SensitiveOutputUpload {
 		t.Fatalf("file: %+v", c.Launcher)
 	}
 
@@ -115,6 +116,7 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	t.Setenv(config.MetadataEnv+"Rack", "7")
 	t.Setenv("INFRAWEAVE_LAUNCHER_MASK_ENVS", "TOKEN,_KEY2")
 	t.Setenv("INFRAWEAVE_LAUNCHER_LOG_TIMEOUT", "20m")
+	t.Setenv("INFRAWEAVE_LAUNCHER_SENSITIVE_OUTPUT_UPLOAD", "false")
 	c, err = load(t, "--config", f)
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +124,8 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	if c.Launcher.AdminListen != ":7001" || c.Launcher.Docker.Runtime != "runsc" ||
 		c.Launcher.LogTimeout != 20*time.Minute || c.Launcher.RunTimeout != 2*time.Hour ||
 		!slices.Equal(c.Launcher.MaskEnvs, []string{"TOKEN", "_KEY2"}) ||
-		c.Launcher.Metadata["zone"] != "a" || c.Launcher.Metadata["Rack"] != "7" {
+		c.Launcher.Metadata["zone"] != "a" || c.Launcher.Metadata["Rack"] != "7" ||
+		c.Launcher.SensitiveOutputUpload {
 		t.Fatalf("environment over file: %+v", c.Launcher)
 	}
 

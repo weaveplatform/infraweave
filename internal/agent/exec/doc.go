@@ -44,7 +44,9 @@
 // is not the tool's outputs; after its after_apply hooks it saves the
 // file as outputs.json, sealed and recorded as the plan's JSON is, before
 // its report, so the server keeps the stack's outputs in that report's
-// transaction.
+// transaction. Each sensitive output keeps its value there only when
+// both the handoff's SensitiveOutputUpload and the specification's
+// stack allow it, and otherwise has none.
 //
 // A run whose specification enables CPU profiling runs each tool command
 // with TOFU_CPU_PROFILE naming a fresh file of the temporary directory,

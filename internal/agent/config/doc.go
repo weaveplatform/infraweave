@@ -3,8 +3,9 @@
 // Config holds every launcher.* setting: the pool token and the pool's
 // private key, the poll's hold, the default runner image, the cache
 // directory, the state lock's wait, the run timeout and the no-log
-// timeout, the variables whose values runs mask, the worker's metadata,
-// the admin listener's address, the launcher.log.* settings of
+// timeout, the variables whose values runs mask, whether runs may keep
+// their sensitive outputs' values, the worker's metadata, the admin
+// listener's address, the launcher.log.* settings of
 // platform/observe, and the run containers' launcher.docker.* network,
 // runtime and runner binary. Defaults are what
 // an empty configuration means, Validate rejects a setting the launcher

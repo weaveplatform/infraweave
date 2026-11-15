@@ -32,8 +32,9 @@
 // artifact_key_sealed, opening it on every later read, and opens the
 // run's overrides. For a tracked run's apply it replaces its stack's
 // outputs, each value sealed to its row in value_sealed whether or not it
-// is sensitive, and the stack's read reads them, opening the value of
-// each that is not sensitive. SealedColumns names the three sealed
+// is sensitive, and NULL for a sensitive output with no value, and the
+// stack's read reads them, opening the value of each that is not
+// sensitive. SealedColumns names the three sealed
 // columns. For a stop or kill it records the request and notifies
 // infraweave_runs with the run's pool alone, and for a poll it reads and
 // locks the runs a worker holds with a request not yet delivered and

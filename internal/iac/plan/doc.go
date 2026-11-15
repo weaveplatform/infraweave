@@ -8,9 +8,10 @@
 // and whether an output changes. Both vendors register Parse, since
 // OpenTofu writes Terraform's format. EntityOf splits a change's address
 // into its module, resource type and name. ReadOutputs reads the JSON
-// that `output -json` writes into the root module's outputs, and
-// Descriptions reads a plan's JSON for its configuration's output
-// descriptions.
+// that `output -json` writes into the root module's outputs, a sensitive
+// one with no value among them, WithoutSensitiveValues writes that JSON
+// again with each sensitive output's value dropped, and Descriptions
+// reads a plan's JSON for its configuration's output descriptions.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 //
@@ -19,7 +20,8 @@
 // Parse takes a reader of a plan's JSON and answers a Plan, or
 // ErrTooLarge, ErrMalformed or ErrFormat. Write writes changes as the
 // changes document, version DocumentVersion, and Read reads one back,
-// refusing the same way. ReadOutputs answers Outputs by name and
+// refusing the same way. ReadOutputs answers Outputs by name,
+// WithoutSensitiveValues writes the outputs' JSON to a writer, and
 // Descriptions descriptions by name, refusing a document past MaxSize as
 // ErrTooLarge and one that is not theirs as ErrMalformed. Nothing it reads panics, which FuzzPlan holds it
 // to.
