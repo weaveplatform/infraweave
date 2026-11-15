@@ -19,7 +19,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
+
+// ErrRunning reports a log deletion of a run that has not ended.
+var ErrRunning = errors.New("runs: the run has not ended")
 
 // Store reads runs and their log index. Each method joins the transaction
 // its context carries.
@@ -43,6 +47,14 @@ type Store interface {
 	// transaction ends.
 	LockChunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID,
 		version int64) ([]int64, error)
+	// Lock reads acct's run id and locks its row FOR UPDATE;
+	// lifecycle.ErrNotFound when acct lacks it.
+	Lock(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error)
+	// DeleteLogs deletes run's log chunks and observability artifacts,
+	// records at as when its logs were deleted, and answers the objects
+	// they recorded, with each state's compacted log, which the caller
+	// deletes in the same transaction.
+	DeleteLogs(ctx context.Context, run lifecycle.Run, at time.Time) ([]report.Object, error)
 }
 
 // Objects reads, signs and writes objects of the run-logs store, as
@@ -64,15 +76,19 @@ type Jobs interface {
 }
 
 // Deps are what the logs read and write through: the database a
-// compaction commits on, the runs' storage, the objects and the queue;
-// and Retention, objectstore.retention.run-logs, how long the run-logs
-// store keeps an object, 0 until its record goes.
+// compaction and a deletion commit on, the runs' storage, the objects,
+// the queue and the stacks a deletion finds its run's stack in;
+// Retention, objectstore.retention.run-logs, how long the run-logs store
+// keeps an object, 0 until its record goes; and Now, the clock, time.Now
+// when nil.
 type Deps struct {
 	DB        tx.Beginner
 	Store     Store
 	Objects   Objects
 	Jobs      Jobs
+	Stacks    stacksapi.Stacks
 	Retention time.Duration
+	Now       func() time.Time
 }
 
 // Service reads a run's logs by state and compacts each state's log once
@@ -82,7 +98,12 @@ type Deps struct {
 type Service struct{ d Deps }
 
 // New returns the service over d.
-func New(d Deps) *Service { return &Service{d: d} }
+func New(d Deps) *Service {
+	if d.Now == nil {
+		d.Now = time.Now
+	}
+	return &Service{d: d}
+}
 
 // RetentionDays is how many days the run-logs store keeps a log, a part
 // of a day counting as a whole one, so a retention under a day answers 1
@@ -130,8 +151,9 @@ type Line struct {
 
 // Page is a page of a state's log. Exists reports whether the run entered
 // the state at Version; Ongoing whether it is still there; Expired
-// whether retention removed lines the page would hold; HasMore whether
-// more lines can be read now. Next is the chunk the next page reads from.
+// whether retention removed lines the page would hold, or a caller
+// deleted them, which Deleted reports; HasMore whether more lines can be
+// read now. Next is the chunk the next page reads from.
 type Page struct {
 	Lines   []Line
 	Version int64
@@ -139,6 +161,7 @@ type Page struct {
 	Exists  bool
 	Ongoing bool
 	Expired bool
+	Deleted bool
 	HasMore bool
 }
 
@@ -150,12 +173,14 @@ func (p Page) More() bool { return p.Ongoing || p.HasMore }
 
 // Download is where a state's whole log downloads from: URL once it is
 // compacted; otherwise Ongoing while the run is in the state or the
-// compaction is pending, and Expired when the state wrote no chunk or
-// retention removed them.
+// compaction is pending, and Expired when the state wrote no chunk,
+// retention removed them or a caller deleted them, which Deleted
+// reports.
 type Download struct {
 	URL     string
 	Ongoing bool
 	Expired bool
+	Deleted bool
 }
 
 // Page reads a page of p's run raw's log of q.State, the chunks of its
@@ -175,6 +200,10 @@ func (s *Service) Page(ctx context.Context, p kernel.Principal, raw string, q Qu
 	out.Version, out.Exists, err = s.version(ctx, run, q.State, q.Version)
 	if err != nil || !out.Exists {
 		return out, err
+	}
+	if run.LogsDeletedAt != nil {
+		out.Expired, out.Deleted = true, true
+		return out, nil
 	}
 	out.Ongoing = run.State == q.State && run.Version == out.Version
 	chunks, err := s.d.Store.Chunks(ctx, run.Account, run.ID, out.Version, q.From, pageChunks+1)
@@ -244,6 +273,9 @@ func (s *Service) Download(
 	if err != nil {
 		return Download{}, err
 	}
+	if run.LogsDeletedAt != nil {
+		return Download{Expired: true, Deleted: true}, nil
+	}
 	v, exists, err := s.version(ctx, run, state, version)
 	if err != nil || !exists {
 		return Download{Expired: true}, err
@@ -269,6 +301,57 @@ func (s *Service) Download(
 		return Download{}, err //nolint:wrapcheck // blobs names the object
 	}
 	return Download{Ongoing: live, Expired: !live}, nil
+}
+
+// Delete deletes the logs of p's run raw of stack slug ahead of their
+// retention, in one transaction: its log chunks, each state's compacted
+// log and its observability artifacts, with their records, the objects
+// going once it commits, and records when, after which Page and Download
+// answer Deleted. A run whose logs were deleted is answered as it is, and
+// one that has not ended is ErrRunning. The route has decided SPACE_ADMIN
+// on the account's top space.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func (s *Service) Delete(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, raw string,
+) (lifecycle.Run, error) {
+	id, err := kernel.ParseULID(raw)
+	if err != nil {
+		return lifecycle.Run{}, fmt.Errorf("%w: %q", read.ErrNotFound, raw)
+	}
+	var run lifecycle.Run
+	err = tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
+		if err != nil {
+			return err //nolint:wrapcheck // the stacks domain names the read
+		}
+		run, err = s.d.Store.Lock(ctx, p.AccountID, id)
+		switch {
+		case errors.Is(err, lifecycle.ErrNotFound) || err == nil && run.Stack != st.ID:
+			return fmt.Errorf("%w: %s on %s", read.ErrNotFound, raw, slug)
+		case err != nil:
+			return err //nolint:wrapcheck // the store names the read
+		case run.LogsDeletedAt != nil:
+			return nil
+		case !run.State.Terminal():
+			return fmt.Errorf("%w: %s is %s", ErrRunning, run.ID, run.State)
+		}
+		at := s.d.Now().UTC().Truncate(time.Microsecond)
+		objs, err := s.d.Store.DeleteLogs(ctx, run, at)
+		if err != nil {
+			return err //nolint:wrapcheck // the store names the write
+		}
+		for _, o := range objs {
+			if err := s.d.Objects.Delete(ctx, o.Store, o.Key); err != nil {
+				return err //nolint:wrapcheck // blobs names the object
+			}
+		}
+		run.LogsDeletedAt, run.UpdatedAt = &at, at
+		return nil
+	})
+	return run, err //nolint:wrapcheck // each step names itself
 }
 
 // get reads acct's run raw; read.ErrNotFound when raw is no run ID.
@@ -361,8 +444,9 @@ func (s *Service) Compact(ctx context.Context, j queue.Job) error {
 			return err //nolint:wrapcheck // the store names the read
 		}
 		if !slices.Equal(locked, seqs) {
-			// The account's purge or the run's deletion took chunks; the
-			// purge deletes the object too, and retention bounds it.
+			// The account's purge, the run's deletion or the deletion of
+			// its logs took chunks; the purge and the deletion of the logs
+			// delete the object too, and retention bounds it.
 			return s.d.Jobs.CompleteTx(ctx, j) //nolint:wrapcheck // the queue names the job
 		}
 		// The chunks' locks order this check after another attempt's

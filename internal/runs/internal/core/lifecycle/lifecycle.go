@@ -135,6 +135,8 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // changes, nil until it plans; the report service keeps it. Task is a
 // TASK run's command, nil for every other type. Stop and Kill are a
 // caller's requests to stop and to kill it, nil until one asks.
+// LogsDeletedAt is when a caller deleted its logs ahead of their
+// retention, nil until one did.
 type Run struct {
 	Account        kernel.AccountID
 	ID             kernel.ULID
@@ -156,6 +158,7 @@ type Run struct {
 	Task           *kernel.Task
 	Stop           *Signal
 	Kill           *Signal
+	LogsDeletedAt  *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

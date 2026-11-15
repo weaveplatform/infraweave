@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 var errDown = errors.New("down")
@@ -123,6 +124,51 @@ func (s *store) LockChunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
 		out = append(out, c.Seq)
 	}
 	return out, s.err("LockChunks")
+}
+
+func (s *store) Lock(_ context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run,
+	error,
+) {
+	if acct != s.run.Account || id != s.run.ID {
+		return lifecycle.Run{}, lifecycle.ErrNotFound
+	}
+	return s.run, s.err("Lock")
+}
+
+// DeleteLogs drops every chunk and answers its object and each state's
+// compacted log, as the store's does.
+func (s *store) DeleteLogs(_ context.Context, run lifecycle.Run, at time.Time) (
+	[]report.Object, error,
+) {
+	if err := s.err("DeleteLogs"); err != nil {
+		return nil, err
+	}
+	var out []report.Object
+	for v, cs := range s.chunks {
+		for _, c := range cs {
+			out = append(out, report.Object{Store: objectstore.RunLogs, Key: c.Key})
+		}
+		out = append(out, report.Object{
+			Store: objectstore.RunLogs, Key: report.LogKey(run.Account, run.ID, s.states[v], v),
+		})
+	}
+	s.chunks, s.run.LogsDeletedAt = map[int64][]report.Chunk{}, &at
+	return out, nil
+}
+
+// stacks has one stack, network, the run's.
+type stacks struct {
+	stacksapi.Stacks
+	id kernel.ULID
+}
+
+func (s stacks) BySlug(_ context.Context, _ kernel.AccountID, slug string) (stacksapi.Stack,
+	error,
+) {
+	if slug != "network" {
+		return stacksapi.Stack{}, stacksapi.ErrNotFound
+	}
+	return stacksapi.Stack{ID: s.id, Slug: slug}, nil
 }
 
 // objects holds each key's row state, pending (an unfinished write),
@@ -277,7 +323,8 @@ type world struct {
 func newWorld() *world {
 	acct := kernel.NewAccountID()
 	run := lifecycle.Run{
-		Account: acct, ID: kernel.NewULID(), State: kernel.RunStateApplying, Version: 7,
+		Account: acct, ID: kernel.NewULID(), Stack: kernel.NewULID(),
+		State: kernel.RunStateApplying, Version: 7,
 	}
 	w := &world{
 		p: kernel.Principal{Kind: kernel.PrincipalAPIKey, AccountID: acct},
@@ -288,7 +335,10 @@ func newWorld() *world {
 		o: newObjects(),
 		j: &jobs{},
 	}
-	w.svc = logs.New(logs.Deps{DB: db{}, Store: w.s, Objects: w.o, Jobs: w.j})
+	w.svc = logs.New(logs.Deps{
+		DB: db{}, Store: w.s, Objects: w.o, Jobs: w.j, Stacks: stacks{id: run.Stack},
+		Now: func() time.Time { return time.Unix(at, 123456789).UTC() },
+	})
 	return w
 }
 
@@ -645,5 +695,78 @@ func TestUnitLogsCompactFailures(t *testing.T) {
 	if err := w.svc.Compact(t.Context(), w.compactJob(t, kernel.RunStatePlanning,
 		5)); err != nil || w.j.completed != 1 || w.o.puts != 0 || w.o.rows[key] != "live" {
 		t.Errorf("an object committed meanwhile: %v, %d completions", err, w.j.completed)
+	}
+}
+
+// TestUnitLogsDelete checks that a run that has not ended keeps its logs;
+// that deleting an ended run's logs marks each chunk's object and each
+// state's compacted log deleting and records when, after which both reads
+// answer deleted; that a second deletion answers the run as it is; and
+// that a run of another stack or none, and each failing step, refuse it.
+func TestUnitLogsDelete(t *testing.T) {
+	w := newWorld()
+	w.chunk(5, 0, "plan", 0)
+	w.chunk(7, 0, "apply", 0)
+	raw := w.s.run.ID.String()
+	if _, err := w.svc.Delete(t.Context(), w.p, "network", raw); !errors.Is(err,
+		logs.ErrRunning) {
+		t.Fatalf("Delete of a run in APPLYING = %v", err)
+	}
+	w.s.run.State = kernel.RunStateFinished
+	compacted := report.LogKey(w.s.run.Account, w.s.run.ID, kernel.RunStatePlanning, 5)
+	w.o.put(compacted, "plan")
+	run, err := w.svc.Delete(t.Context(), w.p, "network", raw)
+	if want := time.Unix(at, 123456000).UTC(); err != nil || run.LogsDeletedAt == nil ||
+		!run.LogsDeletedAt.Equal(want) || !run.UpdatedAt.Equal(want) {
+		t.Fatalf("Delete = %+v, %v", run, err)
+	}
+	for key, state := range w.o.rows {
+		if state != "deleting" {
+			t.Errorf("%s is %s after the delete", key, state)
+		}
+	}
+	if len(w.o.rows) != 3 {
+		t.Errorf("objects: %v", w.o.rows)
+	}
+	if p := w.page(t, logs.Query{State: kernel.RunStatePlanning}); !p.Deleted || !p.Expired ||
+		len(p.Lines) != 0 || !p.Exists {
+		t.Errorf("Page after the delete = %+v", p)
+	}
+	d, err := w.svc.Download(t.Context(), w.p, raw, kernel.RunStatePlanning, nil)
+	if err != nil || d != (logs.Download{Expired: true, Deleted: true}) {
+		t.Errorf("Download after the delete = %+v, %v", d, err)
+	}
+	w.s.fail = "DeleteLogs"
+	if again, err := w.svc.Delete(t.Context(), w.p, "network", raw); err != nil ||
+		!again.LogsDeletedAt.Equal(*run.LogsDeletedAt) {
+		t.Errorf("a second Delete = %+v, %v", again, err)
+	}
+
+	for name, c := range map[string]struct {
+		slug, raw, fail, objects string
+		want                     error
+	}{
+		"no such run":     {slug: "network", raw: kernel.NewULID().String(), want: read.ErrNotFound},
+		"not a run ID":    {slug: "network", raw: "nope", want: read.ErrNotFound},
+		"no such stack":   {slug: "storage", want: stacksapi.ErrNotFound},
+		"a failed lock":   {slug: "network", fail: "Lock", want: errDown},
+		"a failed delete": {slug: "network", fail: "DeleteLogs", want: errDown},
+		"a failed object": {slug: "network", objects: "Delete", want: errDown},
+	} {
+		w := newWorld()
+		w.chunk(5, 0, "plan", 0)
+		w.s.run.State, w.s.fail, w.o.fail = kernel.RunStateFailed, c.fail, c.objects
+		if c.raw == "" {
+			c.raw = w.s.run.ID.String()
+		}
+		if _, err := w.svc.Delete(t.Context(), w.p, c.slug, c.raw); !errors.Is(err, c.want) {
+			t.Errorf("%s: Delete = %v, want %v", name, err, c.want)
+		}
+	}
+	w = newWorld()
+	w.s.run.State, w.s.run.Stack = kernel.RunStateFailed, kernel.NewULID()
+	if _, err := w.svc.Delete(t.Context(), w.p, "network", w.s.run.ID.String()); !errors.Is(err,
+		read.ErrNotFound) {
+		t.Errorf("Delete of another stack's run = %v", err)
 	}
 }

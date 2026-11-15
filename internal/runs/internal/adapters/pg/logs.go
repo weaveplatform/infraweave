@@ -3,12 +3,16 @@ package pg
 import (
 	"context"
 	"fmt"
+	"slices"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 )
@@ -83,4 +87,56 @@ func (s *Store) LockChunks(
 		return nil, fmt.Errorf("runs: lock run %s's log chunks: %w", run, sql.Unavailable(err))
 	}
 	return out, nil
+}
+
+// DeleteLogs deletes run's log chunks and observability artifacts,
+// records at as when its logs were deleted, and answers the objects they
+// recorded, with the compacted log of each state that had chunks.
+func (s *Store) DeleteLogs(
+	ctx context.Context,
+	run lifecycle.Run,
+	at time.Time,
+) ([]report.Object, error) {
+	q := tx.Q(ctx, s.db)
+	rows, err := q.Query(ctx, `DELETE FROM run_log_chunks WHERE account_id = $1 AND run_id = $2
+		RETURNING state, state_version, object_key`, run.Account, run.ID)
+	if err != nil {
+		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))
+	}
+	var compacted []report.Object
+	objs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Object, error) {
+		var (
+			state   kernel.RunState
+			version int64
+		)
+		o := report.Object{Store: objectstore.RunLogs}
+		err := r.Scan(&state, &version, &o.Key)
+		k := report.Object{
+			Store: objectstore.RunLogs, Key: report.LogKey(run.Account, run.ID, state, version),
+		}
+		if err == nil && !slices.Contains(compacted, k) {
+			compacted = append(compacted, k)
+		}
+		return o, err //nolint:wrapcheck // the delete names the read
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))
+	}
+	rows, err = q.Query(ctx, `DELETE FROM run_artifacts WHERE account_id = $1 AND run_id = $2
+		AND kind = 'observability' RETURNING object_key`, run.Account, run.ID)
+	if err != nil {
+		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))
+	}
+	observed, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Object, error) {
+		o := report.Object{Store: objectstore.RunObservability}
+		return o, r.Scan(&o.Key) //nolint:wrapcheck // the delete names the read
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))
+	}
+	if _, err := q.Exec(ctx, `UPDATE runs SET logs_deleted_at = $3, updated_at = $3
+		WHERE account_id = $1 AND id = $2`, run.Account, run.ID, at); err != nil {
+		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))
+	}
+	return append(append(objs, compacted...), observed...), nil
 }

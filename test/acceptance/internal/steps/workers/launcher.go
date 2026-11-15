@@ -409,7 +409,7 @@ func (l *launcherSteps) note(want string) error {
 	if err != nil {
 		return err
 	}
-	if last := h[len(h)-1]; last.Note == nil || *last.Note != want {
+	if last := h[len(h)-1]; last.Note == nil || *last.Note != l.w.Resolve(want) {
 		return fmt.Errorf("%w: the last transition is %+v", harness.ErrStep, last)
 	}
 	return nil

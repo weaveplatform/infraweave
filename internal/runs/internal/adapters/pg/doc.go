@@ -3,8 +3,9 @@
 // ULID, with the stack it runs on, its type, state, state_version and
 // commit; run_state_transitions holds each transition a run went through,
 // stack_run_locks the run that holds each stack's run lock,
-// stack_run_state each stack's tracked run and stack_outputs the outputs
-// of its last applied run. No table carries a foreign key to a stack,
+// stack_run_state each stack's tracked run, stack_outputs the outputs of
+// its last applied run and run_comments the comments on each run. No
+// table carries a foreign key to a stack,
 // since stacks belong to the stacks domain. Store reads the run that
 // holds each of some stacks' run lock, deletes a deleted stack's runs,
 // with their transitions, and its run lock, tracked run and outputs,
@@ -36,7 +37,9 @@
 // columns. For a stop or kill it records the request and notifies
 // infraweave_runs with the run's pool alone, and for a poll it reads and
 // locks the runs a worker holds with a request not yet delivered and
-// records each delivery. Held names the columns
+// records each delivery. For the run actions it records and reads a
+// run's comments, reads a stack's runs that wait, oldest first, and
+// deletes a run's logs, answering their objects. Held names the columns
 // that hold the access domain's accounts and the stacks domain's stacks,
 // and Keys declares the runs' key, which other domains' held columns name.
 // Every method joins the transaction its context carries.
@@ -49,9 +52,10 @@
 //
 // # Dependencies
 //
-// It imports pgx, stacksapi, workersapi, the domain's core, handover,
-// lifecycle, schedule and timers, internal/iac/plan, internal/kernel,
-// platform/crypt, platform/sql, platform/sql/integrity,
-// platform/sql/migrate, platform/sql/notify and platform/tx. The runs
-// domain's assembly constructs it over the platform's keyring.
+// It imports pgx, stacksapi, workersapi, the domain's core, changes,
+// control, handover, lifecycle, logs, read, report, schedule and timers,
+// internal/iac/plan, internal/kernel and kernel/search, platform/crypt,
+// platform/objectstore, platform/sql and its integrity, migrate, notify
+// and search, and platform/tx. The runs domain's assembly constructs it
+// over the platform's keyring.
 package pg

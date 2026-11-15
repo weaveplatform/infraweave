@@ -301,6 +301,10 @@ func runError(err error, slug, run string) error {
 	case errors.Is(err, read.ErrNotFound):
 		//nolint:wrapcheck // as above
 		return problem.NotFound.Error(fmt.Sprintf("No run %q in this account.", run))
+	case errors.Is(err, logs.ErrRunning):
+		//nolint:wrapcheck // as above
+		return problem.InvalidState.Error(
+			"The run has not ended; its logs are deleted once it has.")
 	case errors.Is(err, changes.ErrExpired):
 		//nolint:wrapcheck // as above
 		return problem.InvalidState.Error("The run's changes have expired with its artifacts.")
@@ -376,11 +380,17 @@ func runOf(v read.View) api.Run {
 	if r.Task != nil {
 		command = &r.Task.Command
 	}
+	comments := make([]api.RunComment, len(v.Comments))
+	for i, c := range v.Comments {
+		comments[i] = commentOf(c)
+	}
 	return api.Run{
 		AllowedActions: allowed,
 		Branch:         r.Commit.Branch,
+		CanPromote:     v.Guards.Promote == "",
+		CanRetry:       v.Guards.Retry == "",
 		Command:        command,
-		Comments:       []api.RunComment{},
+		Comments:       comments,
 		Commit: api.Commit{
 			Hash: r.Commit.Hash, Tag: r.Commit.Tag, Url: r.Commit.URL, Message: r.Commit.Message,
 			AuthorName: r.Commit.AuthorName, AuthorLogin: r.Commit.AuthorLogin,
@@ -401,6 +411,8 @@ func runOf(v read.View) api.Run {
 		PluginLogs:           []api.PluginLogsResponse{},
 		PolicyReceipts:       []api.RunPolicyReceipt{},
 		PriorityPreset:       api.RunPriorityPreset(r.Priority),
+		PromoteBlocker:       sentence(v.Guards.Promote),
+		RetryBlocker:         sentence(v.Guards.Retry),
 		Reviews:              []api.RunReview{},
 		StackId:              v.Stack.Slug,
 		State:                api.RunState(r.State),
