@@ -13819,7 +13819,7 @@ paths:
         field: proposeWithOverrides
         operation: mutation
         type: Mutation
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
@@ -14159,7 +14159,7 @@ paths:
         field: runTrigger
         operation: mutation
         type: Mutation
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
@@ -14477,7 +14477,7 @@ paths:
         operation: mutation
         type: Mutation
       x-infraweave-action: RUN_PROPOSE_LOCAL_WORKSPACE
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
@@ -14874,7 +14874,7 @@ paths:
         operation: mutation
         type: Mutation
       x-infraweave-action: RUN_PROMOTE
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
@@ -14935,7 +14935,7 @@ paths:
         operation: mutation
         type: Mutation
       x-infraweave-action: RUN_RETRY
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit
@@ -16697,7 +16697,7 @@ paths:
         field: taskCreate
         operation: mutation
         type: Mutation
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - idempotency-key
         - rate-limit

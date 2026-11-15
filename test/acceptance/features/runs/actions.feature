@@ -38,6 +38,7 @@ Feature: Runs are retried, promoted, discarded together and commented on
     And the answer's allowedActions is '["RUN_RETRY","RUN_COMMENT"]'
     When token "h" sends "POST /api/v1/stacks/infra/runs/{proposal}/retry" through A
     Then it answers 200
+    And the answer drew on the expensive budget
     And the answer's type is '"PROPOSED"'
     And the answer's state is '"QUEUED"'
     And the answer's commits is '["{seed}"]'
@@ -81,6 +82,7 @@ Feature: Runs are retried, promoted, discarded together and commented on
     And the answer's allowedActions is '["RUN_DISCARD","RUN_CANCEL","RUN_PRIORITIZE_SET","RUN_PROMOTE","RUN_COMMENT"]'
     When token "h" sends "POST /api/v1/stacks/infra/runs/{proposal}/promote" through B
     Then it answers 200
+    And the answer drew on the expensive budget
     And the answer's type is '"TRACKED"'
     And the answer's commits is '["{pushed}"]'
     And the answer's branch is '"main"'

@@ -47,6 +47,7 @@ Feature: A proposed run sets environment variables over its stack's
     Given the launcher "l" registers with the key of "csr" and the certificate "cert" through A
     When token "h" sends "POST /api/v1/stacks/infra/proposed-runs" with '{"environmentVarsOverrides":[{"key":"REGION","value":"us"},{"key":"TOKEN","value":"t0psecret"},{"key":"EXTRA","value":"pl41n-extra"}]}' through A
     Then it answers 201
+    And the answer drew on the expensive budget
     And the answer's type is '"PROPOSED"'
     And the answer's state is '"QUEUED"'
     And the answer's commits is '["{seed}"]'

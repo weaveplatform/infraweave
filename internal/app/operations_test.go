@@ -250,6 +250,36 @@ func TestUnitOperationsOf(t *testing.T) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
+	// An operation that creates runs is expensive; one that deletes a stack,
+	// whose destroy run a parameter asks for, is not held to it.
+	trigger := func(cost string) map[string]any {
+		ext := map[string]any{
+			"x-infraweave-action": "RUN_TRIGGER", "x-infraweave-subject": "path:stackId:stack",
+		}
+		if cost != "" {
+			ext["x-infraweave-cost"] = cost
+		}
+		return ext
+	}
+	for _, cost := range []string{"", "standard"} {
+		_, err := operationsOf(doc("/stacks/{stackId}/runs",
+			&openapi3.Operation{Extensions: trigger(cost)}), "", true)
+		if !errors.Is(err, errSpec) || !errors.Is(err, errRunCost) {
+			t.Errorf("a run trigger costing %q: %v", cost, err)
+		}
+	}
+	ops, err = operationsOf(doc("/stacks/{stackId}/runs",
+		&openapi3.Operation{Extensions: trigger("expensive")}), "", true)
+	if err != nil || ops["POST /stacks/{stackId}/runs"].Cost != ratelimit.Expensive {
+		t.Errorf("an expensive run trigger: %+v %v", ops, err)
+	}
+	if _, err := operationsOf(doc("/stacks/{stackId}", &openapi3.Operation{
+		Extensions: map[string]any{
+			"x-infraweave-action": "STACK_DELETE", "x-infraweave-subject": "path:stackId:stack",
+		},
+	}), "", true); err != nil {
+		t.Errorf("a standard stack deletion: %v", err)
+	}
 }
 
 // TestUnitOperationOptions checks that a body property's
