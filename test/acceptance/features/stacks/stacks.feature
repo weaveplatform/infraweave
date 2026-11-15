@@ -33,6 +33,7 @@ Feature: Stacks
     Then it answers 200
     And the answer's hooks is '{"beforeInit":[],"afterInit":[],"beforePlan":["make"],"afterPlan":[],"beforeApply":[],"afterApply":[],"beforeDestroy":[],"afterDestroy":[],"beforePerform":[],"afterPerform":[],"afterRun":[]}'
     And the answer's provider is '"GITHUB"'
+    And the answer's outputs is '[]'
     When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra Two","repository":"infra","branch":"dev","space":"{team}","description":"ours"}' through B
     Then it answers 200
     And the answer's id is '"infra"'

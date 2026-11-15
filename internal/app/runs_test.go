@@ -66,7 +66,8 @@ func TestAccRunsHoldRace(t *testing.T) {
 
 	// write writes, in the context's transaction, a tracked run of stack
 	// that holds its run lock, with a transition and an output, as the
-	// stack's applying state.
+	// stack's applying state. The output is sensitive, so the stack's
+	// view, which opens no sensitive value, reads it without a key.
 	write := func(ctx context.Context, stack kernel.ULID) (kernel.ULID, error) {
 		run := kernel.NewULID()
 		for _, s := range []string{
@@ -77,8 +78,8 @@ func TestAccRunsHoldRace(t *testing.T) {
 				WHERE account_id = $1 AND id = $2 AND stack_id = $3`,
 			`INSERT INTO stack_run_locks (account_id, stack_id, run_id) VALUES ($1, $3, $2)`,
 			`INSERT INTO stack_run_state (account_id, stack_id, tracked_run_id) VALUES ($1, $3, $2)`,
-			`INSERT INTO stack_outputs (account_id, stack_id, name, run_id, value)
-				VALUES ($1, $3, 'url', $2, '"https://example.com"')`,
+			`INSERT INTO stack_outputs (account_id, stack_id, name, run_id, value_sealed, sensitive)
+				VALUES ($1, $3, 'url', $2, decode('00', 'hex'), true)`,
 		} {
 			if _, err := tx.Q(ctx, q).Exec(ctx, s, acct, run, stack); err != nil {
 				return run, err //nolint:wrapcheck // the test reads it as it is

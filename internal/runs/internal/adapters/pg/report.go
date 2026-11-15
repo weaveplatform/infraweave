@@ -169,9 +169,15 @@ func (s *Store) Workspace(ctx context.Context, run lifecycle.Run) (string, bool,
 }
 
 // Changes reads the key of the changes document run recorded last while
-// planning, and false when it recorded none. The state a state version
-// is in is the transition that entered it.
+// planning, and false when it recorded none.
 func (s *Store) Changes(ctx context.Context, run lifecycle.Run) (string, bool, error) {
+	return s.Planned(ctx, run, changes.Document)
+}
+
+// Planned reads the key of the artifact name run recorded last while
+// planning, and false when it recorded none. The state a state version is
+// in is the transition that entered it.
+func (s *Store) Planned(ctx context.Context, run lifecycle.Run, name string) (string, bool, error) {
 	var key string
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT a.object_key FROM run_artifacts a
 		JOIN run_state_transitions t ON t.account_id = a.account_id AND t.run_id = a.run_id
@@ -179,12 +185,12 @@ func (s *Store) Changes(ctx context.Context, run lifecycle.Run) (string, bool, e
 		WHERE a.account_id = $1 AND a.run_id = $2 AND a.kind = 'artifact'
 			AND a.name = $3 AND t.state = $4
 		ORDER BY a.state_version DESC LIMIT 1`,
-		run.Account, run.ID, changes.Document, kernel.RunStatePlanning).Scan(&key)
+		run.Account, run.ID, name, kernel.RunStatePlanning).Scan(&key)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return "", false, nil
 	case err != nil:
-		return "", false, fmt.Errorf("runs: read run %s's changes: %w", run.ID,
+		return "", false, fmt.Errorf("runs: read run %s's %s: %w", run.ID, name,
 			sql.Unavailable(err))
 	}
 	return key, true, nil

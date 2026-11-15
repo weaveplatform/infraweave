@@ -590,16 +590,24 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   of the run's most recently recorded workspace, which the launcher
   downloads for `PREPARING_APPLY` and `PREPARING_REPLAN`, or `404`
   `not-found` when the run recorded none.
-- **Outputs.** After a successful `APPLYING`, the runner seals
-  `outputs.json`, the tool's `output -json` with each output's description
-  from the planned configuration in `plan.json`, and records it before the
-  phase's report. The server opens it in that report's transaction and
-  replaces the stack's `stack_outputs`, each value sealed in `value_sealed`
-  ([0013](0013-secrets-at-rest.md)) beside `sensitive` and `description`;
-  a failed apply leaves the previous outputs, and a `DESTROY` run's
-  `FINISHED` transition deletes them. The stack's read answers them through
-  `stacksapi.StackStatus`, which `runs` implements, with no value for a
-  sensitive output.
+- **Outputs.** `APPLYING` runs `apply`, then `getOutputs`, whose stdout
+  is the tool's `output -json`. The runner refuses a document that is not
+  one, runs the `after_apply` hooks, then seals it as `outputs.json` and
+  records it before the phase's report. The server opens it in that
+  report's transaction, before the run moves on. Each output's
+  description comes from the configuration in the `plan.json` the run
+  recorded last while planning, since an apply in a later container may
+  not hold the plan's JSON; there are none once retention has removed
+  it. The server then replaces the stack's `stack_outputs`, each value
+  sealed in `value_sealed` to its row ([0013](0013-secrets-at-rest.md)),
+  beside `sensitive` and `description`. A tracked run's succeeded
+  `APPLYING` report whose `outputs.json` is not recorded, or cannot be
+  read, is refused with `400` `invalid-request`. A failed apply leaves the
+  previous outputs. A `DESTROY` run's `FINISHED` transition deletes the
+  stack, and its outputs with it. The stack's read answers them through
+  `stacksapi.StackStatus`, which `runs` implements. A value is the JSON
+  of the tool's output, as a string, and a sensitive output's value is
+  never opened or answered.
 - **CPU profiles.** On a stack whose OpenTofu settings enable CPU
   profiling, with OpenTofu 1.11 or later, the runner points
   `TOFU_CPU_PROFILE` at a fresh file for each tool command, merges a

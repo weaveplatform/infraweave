@@ -32,6 +32,7 @@ import (
 const fakeTool = `#!/bin/sh
 printf '%s\n' "$*" >> "$TRACE"
 [ "$1" = show ] && cat "$PLAN"
+[ "$1" = output ] && cat "$OUTPUTS"
 [ "$1" = plan ] && echo binary-plan > infraweave.plan
 eval "exit \${EXIT_$1:-0}"
 `
@@ -41,6 +42,10 @@ const (
 	runID  = "01HZX4Y9Q2W8E5R7T3V6K1M0PA"
 	acctID = "01HZX4Y9Q2W8E5R7T3V6K1M0PB"
 )
+
+// outputsJSON is output -json of a configuration with two outputs.
+const outputsJSON = `{"name":{"sensitive":false,"type":"string","value":"web"},` +
+	`"password":{"sensitive":true,"type":"string","value":"hunter2"}}`
 
 // planJSON is show -json of a plan that adds one resource.
 const planJSON = `{"format_version":"1.2","resource_changes":[` +
@@ -241,6 +246,10 @@ func newWorld(t *testing.T) *world {
 	if err := os.WriteFile(plan, []byte(planJSON), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	outputs := filepath.Join(dir, "outputs.json")
+	if err := os.WriteFile(outputs, []byte(outputsJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	trace := filepath.Join(dir, "trace")
 	pool, err := ecdh.P256().GenerateKey(rand.Reader)
 	if err != nil {
@@ -251,6 +260,7 @@ func newWorld(t *testing.T) *world {
 		w: &worker{version: 3},
 		environ: []string{
 			"PATH=" + bin + ":/usr/bin:/bin", "TRACE=" + trace, "PLAN=" + plan,
+			"OUTPUTS=" + outputs,
 		},
 		h: handoff.Handoff{
 			Endpoint: "http://server.test/worker/v1", Run: runID, RunToken: "run-token",
@@ -405,7 +415,7 @@ func TestUnitExecAutodeploy(t *testing.T) {
 		"show -json infraweave.plan",
 		"after_plan from-init",
 		"before_apply APPLYING",
-		"apply -input=false -lock-timeout=5m0s infraweave.plan",
+		"apply -input=false -lock-timeout=5m0s infraweave.plan", "output -json",
 		"after_apply",
 		"after_run FINISHED from-init",
 	})
@@ -469,7 +479,9 @@ func TestUnitExecPausesAndResumes(t *testing.T) {
 	})
 	equal(t, "resumed trace", a.traced(), []string{
 		"init -input=false -lock-timeout=5m0s",
-		"apply -input=false -lock-timeout=5m0s infraweave.plan", "after_run FINISHED",
+		"apply -input=false -lock-timeout=5m0s infraweave.plan",
+		"output -json",
+		"after_run FINISHED",
 	})
 	if strings.Contains(a.out.String(), "working on commit") {
 		t.Errorf("a resumed run announced its commit: %s", a.out.String())
@@ -924,7 +936,7 @@ func TestUnitExecLog(t *testing.T) {
 		"log 4: " + init, "report INITIALIZING succeeded",
 		"artifacts 5: artifact plan.json, artifact changes.json, workspace workspace",
 		"log 5: " + plan + saved, "report PLANNING succeeded",
-		"log 6: no newline\n", "report APPLYING succeeded",
+		"artifacts 6: artifact outputs.json", "log 6: no newline\n", "report APPLYING succeeded",
 	})
 	if got, want := w.out.String(), init+plan+saved+"no newline\nafter *****\n"; got != want {
 		t.Errorf("standard output:\n got %q\nwant %q", got, want)

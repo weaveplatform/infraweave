@@ -58,12 +58,13 @@ func TestUnitVendorsCommands(t *testing.T) {
 			{state: wire.WorkerStateAPPLYING, p: params(), want: []vendors.Command{
 				{Key: workflow.Apply, Line: bin + " apply -input=false -lock-timeout='5m0s' " +
 					"'infraweave.plan'"},
+				{Key: workflow.GetOutputs, Line: bin + " output -json", Stdout: "/o"},
 			}},
 		} {
 			got, err := w.Commands(
 				t.Context(),
 				c.state,
-				vendors.Options{Params: c.p, PlanJSON: "/p"},
+				vendors.Options{Params: c.p, PlanJSON: "/p", OutputsJSON: "/o"},
 			)
 			if err != nil || !reflect.DeepEqual(got, c.want) {
 				t.Errorf("%s %s = %q, %v", tool, c.state, got, err)

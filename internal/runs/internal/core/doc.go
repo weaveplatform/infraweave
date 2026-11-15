@@ -1,6 +1,7 @@
 // Package core is the runs domain's core: Service, which answers the
 // stack view's stacksapi.StackStatus, the run that holds each stack's run
-// lock and the stack of a run, and is the domain's stacksapi.StackGuard,
+// lock, the stack of a run and each stack's outputs, with no value for a
+// sensitive one, and is the domain's stacksapi.StackGuard,
 // losing nothing on a stack's move and deleting a deleted stack's runs,
 // with their transitions, and its run lock, tracked run and outputs in the
 // delete's transaction. It is also the domain's runsapi.StateAccess,

@@ -3,11 +3,9 @@ package runs
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,7 +16,6 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
-	"github.com/weaveplatform/infraweave/internal/platform/seal"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
@@ -46,13 +43,10 @@ func (c *changeSteps) register(sc *godog.ScenarioContext) {
 
 // commit commits the changes of the recorded plan name of tool as the
 // run kept as run's changes.json in its PLANNING state at state version
-// version, with the run token kept as token. It builds the object's key
-// as a runner does, from the account kept as acct, which the run's
-// specification names, and seals the document under the content key
-// derived from it and the artifact key kept, in hex, as key. It declares
-// the document to upload-urls, checks that the answer names the same
-// object key, PUTs it, and commits it to artifacts. The commit's answer
-// is the last.
+// version, with the run token kept as token, through
+// harness.RecordArtifact: the account kept as acct is the one the run's
+// specification names, and key keeps the artifact key in hex. The
+// commit's answer is the last.
 func (c *changeSteps) commit(
 	ctx context.Context,
 	token, tool, name, key, run, acct string,
@@ -75,77 +69,8 @@ func (c *changeSteps) commit(
 	if err != nil {
 		return fmt.Errorf("%w: the run %q: %w", harness.ErrStep, run, err)
 	}
-	object := kernel.RunObjectKey(account, id, kernel.RunStatePlanning, version, "changes.json")
-	content, err := seal.ArtifactKey(artifact, object)
-	if err != nil {
-		return fmt.Errorf("%w: %w", harness.ErrStep, err)
-	}
-	var sealed bytes.Buffer
-	sw, err := seal.NewWriter(&sealed, content)
-	if err != nil {
-		return fmt.Errorf("%w: %w", harness.ErrStep, err)
-	}
-	if _, err := sw.Write(doc); err != nil {
-		return fmt.Errorf("%w: %w", harness.ErrStep, err)
-	}
-	if err := sw.Close(); err != nil {
-		return fmt.Errorf("%w: %w", harness.ErrStep, err)
-	}
-	sum := sha256.Sum256(sealed.Bytes())
-	path := "/worker/v1/runs/" + c.w.IDs[run]
-	r, err := c.w.Do(ctx, replica, token, http.MethodPost, path+"/upload-urls", map[string]any{
-		"stateVersion": version,
-		"uploads": []map[string]any{{
-			"kind": "artifact", "name": "changes.json", "size": sealed.Len(),
-			"sha256": hex.EncodeToString(sum[:]),
-		}},
-	})
-	if err != nil && r.Status == 0 {
-		return err //nolint:wrapcheck // names the request
-	}
-	var signed struct {
-		Uploads []struct {
-			Key     string            `json:"key"`
-			URL     string            `json:"url"`
-			Headers map[string]string `json:"headers"`
-		} `json:"uploads"`
-	}
-	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &signed) != nil ||
-		len(signed.Uploads) != 1 {
-		return fmt.Errorf("%w: upload-urls answered %d %s", harness.ErrStep, r.Status, r.Body)
-	}
-	if up := signed.Uploads[0]; up.Key != object {
-		return fmt.Errorf("%w: the upload's key is %s, want %s", harness.ErrStep, up.Key, object)
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, signed.Uploads[0].URL,
-		bytes.NewReader(sealed.Bytes()))
-	if err != nil {
-		return fmt.Errorf("%w: %w", harness.ErrStep, err)
-	}
-	for k, v := range signed.Uploads[0].Headers {
-		req.Header.Set(k, v)
-	}
-	resp, err := store.Do(req)
-	if err != nil {
-		return fmt.Errorf("%w: put the changes: %w", harness.ErrStep, err)
-	}
-	answer, _ := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("%w: the changes' PUT answered %d %s", harness.ErrStep,
-			resp.StatusCode, answer)
-	}
-	r, err = c.w.Do(ctx, replica, token, http.MethodPost, path+"/artifacts", map[string]any{
-		"stateVersion": version,
-		"artifacts":    []map[string]any{{"kind": "artifact", "name": "changes.json"}},
-	})
-	if err != nil && r.Status == 0 {
-		return err //nolint:wrapcheck // names the request
-	}
-	if r.Status != http.StatusNoContent {
-		return fmt.Errorf("%w: artifacts answered %d %s", harness.ErrStep, r.Status, r.Body)
-	}
-	return nil
+	return c.w.RecordArtifact(ctx, replica, token, account, id, kernel.RunStatePlanning, version,
+		"changes.json", artifact, doc)
 }
 
 // changesDocument is the changes document of the recorded plan name of

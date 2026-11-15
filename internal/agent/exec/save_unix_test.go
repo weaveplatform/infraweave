@@ -19,9 +19,16 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
 
-// opened is the artifact name a run recorded at version, opened with the
-// content key the server derives for it.
+// opened is the artifact name a run recorded while planning at version,
+// opened with the content key the server derives for it.
 func (w *world) opened(version int64, name string) []byte {
+	w.t.Helper()
+	return w.openedIn(kernel.RunStatePlanning, version, name)
+}
+
+// openedIn is the artifact name a run recorded in state at version,
+// opened with the content key the server derives for it.
+func (w *world) openedIn(state kernel.RunState, version int64, name string) []byte {
 	w.t.Helper()
 	acct, err := kernel.ParseAccountID(acctID)
 	if err != nil {
@@ -32,7 +39,7 @@ func (w *world) opened(version int64, name string) []byte {
 		w.t.Fatal(err)
 	}
 	key, err := seal.ArtifactKey(w.h.Secrets.ArtifactKey,
-		kernel.RunObjectKey(acct, run, kernel.RunStatePlanning, version, name))
+		kernel.RunObjectKey(acct, run, state, version, name))
 	if err != nil {
 		w.t.Fatal(err)
 	}
@@ -182,6 +189,80 @@ func TestUnitExecSaveFails(t *testing.T) {
 			}
 			if strings.Contains(strings.Join(events, "\n"), "ghs_ssss") {
 				t.Errorf("a report names the token: %q", events)
+			}
+		})
+	}
+}
+
+// applying is a world whose run resumes in a new container after its
+// plan's confirmation, at state version 8.
+func applying(t *testing.T) *world {
+	t.Helper()
+	w := newWorld(t)
+	w.h.Assigned, w.h.StateVersion, w.w.version = wire.AssignmentStatePREPARINGAPPLY, 8, 8
+	return w
+}
+
+// TestUnitExecSaveOutputs checks that applying saves the outputs' JSON,
+// which the server opens with the run's artifact key, before its
+// succeeded report, and that the sensitive value reaches no log.
+func TestUnitExecSaveOutputs(t *testing.T) {
+	w := applying(t)
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "reports", w.events(), []string{"APPLYING started 8", "APPLYING succeeded 9"})
+	equal(t, "taken", w.w.taken[len(w.w.taken)-2:], []string{
+		"artifacts 9: artifact outputs.json", "report APPLYING succeeded",
+	})
+	if got := string(w.openedIn(kernel.RunStateApplying, 9, exec.OutputsArtifact)); got !=
+		outputsJSON {
+		t.Errorf("outputs.json = %q", got)
+	}
+	if bytes.Contains(w.w.recorded[exec.OutputsArtifact], []byte("hunter2")) ||
+		strings.Contains(w.out.String(), "hunter2") {
+		t.Error("the sensitive output is in plaintext")
+	}
+}
+
+// TestUnitExecSaveOutputsFails checks that applying fails, with a note
+// that says why, when its outputs cannot be had or saved: a getOutputs
+// command that fails, outputs that are not the tool's JSON, a
+// specification with no account, and uploads the worker API refuses.
+func TestUnitExecSaveOutputsFails(t *testing.T) {
+	for name, c := range map[string]struct {
+		edit func(w *world)
+		want string
+	}{
+		"a failed command": {
+			edit: func(w *world) { w.environ = append(w.environ, "EXIT_output=4") },
+			want: "The getOutputs command failed with exit status 4.",
+		},
+		"not the tool's JSON": {
+			edit: func(w *world) {
+				w.environ = append(w.environ, "OUTPUTS=/dev/null")
+			},
+			want: "The outputs' JSON could not be read: plan: the document is malformed: ",
+		},
+		"no account": {
+			edit: func(w *world) { w.h.Spec.Run.Account = "" },
+			want: "The run's specification names no account: ",
+		},
+		"a refused upload": {
+			edit: func(w *world) { w.w.uploads = &client.Error{Op: "upload-urls", Status: 403} },
+			want: "The outputs could not be uploaded: ",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := applying(t)
+			c.edit(w)
+			if err := w.run(); err != nil {
+				t.Fatal(err)
+			}
+			events := w.events()
+			if last := events[len(events)-1]; !strings.HasPrefix(last, "APPLYING failed 9: ") ||
+				!strings.Contains(last, c.want) {
+				t.Errorf("the last report: %s, want %s", last, c.want)
 			}
 		})
 	}

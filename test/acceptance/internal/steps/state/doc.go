@@ -4,7 +4,8 @@
 // assigned, opening its sealed specification with the pool's key,
 // checking out its commit from Gitea and writing the backend file and
 // credentials infraweave's agent writes; it reports the run's phases over
-// the worker API; and it runs the pinned terraform or tofu in containers
+// the worker API, recording the apply's outputs before its report as a
+// runner does; and it runs the pinned terraform or tofu in containers
 // of harness.RunnerImage, which reach the server through the scenario's
 // relay. The relay records each call and each 423's body, and holds the
 // backend's UNLOCK calls on demand, so a lock stays held while another

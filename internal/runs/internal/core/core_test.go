@@ -10,10 +10,11 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// store answers blockers, runs' stacks and runs and records each read and
-// delete, failing with err.
+// store answers blockers, outputs, runs' stacks and runs and records each
+// read and delete, failing with err.
 type store struct {
 	blockers map[kernel.ULID]stacksapi.Blocker
+	outputs  map[kernel.ULID][]stacksapi.Output
 	stacks   map[kernel.ULID]kernel.ULID
 	runs     map[kernel.ULID]Run
 	err      error
@@ -44,19 +45,29 @@ func (s *store) Blockers(
 	return s.blockers, s.err
 }
 
+func (s *store) Outputs(
+	context.Context,
+	kernel.AccountID,
+	[]kernel.ULID,
+) (map[kernel.ULID][]stacksapi.Output, error) {
+	s.reads++
+	return s.outputs, s.err
+}
+
 func (s *store) DeleteStack(_ context.Context, _ kernel.AccountID, stack kernel.ULID) error {
 	s.deleted = append(s.deleted, stack)
 	return s.err
 }
 
-// TestUnitService checks that the service answers the store's blockers,
-// reading nothing for no stacks, and runs' stacks, that a move loses
-// nothing, and that a delete deletes the stack's runs.
+// TestUnitService checks that the service answers the store's blockers
+// and outputs, reading nothing for no stacks, and runs' stacks, that a
+// move loses nothing, and that a delete deletes the stack's runs.
 func TestUnitService(t *testing.T) {
 	ctx := t.Context()
 	stack, run := kernel.NewULID(), kernel.NewULID()
 	st := &store{
 		blockers: map[kernel.ULID]stacksapi.Blocker{stack: {Run: run}},
+		outputs:  map[kernel.ULID][]stacksapi.Output{stack: {{Name: "web"}}},
 		stacks:   map[kernel.ULID]kernel.ULID{run: stack},
 	}
 	s := New(st)
@@ -72,6 +83,15 @@ func TestUnitService(t *testing.T) {
 	); err != nil ||
 		got[stack].Run != run {
 		t.Errorf("Blockers = %v, %v", got, err)
+	}
+	reads := st.reads
+	if got, err := s.Outputs(ctx, acct, nil); err != nil || got == nil || len(got) != 0 ||
+		st.reads != reads {
+		t.Errorf("Outputs of no stacks = %v, %v after %d reads", got, err, st.reads-reads)
+	}
+	if got, err := s.Outputs(ctx, acct, []kernel.ULID{stack}); err != nil ||
+		len(got[stack]) != 1 || got[stack][0].Name != "web" {
+		t.Errorf("Outputs = %v, %v", got, err)
 	}
 	if got, err := s.RunStack(ctx, acct, run); err != nil || got != stack {
 		t.Errorf("RunStack = %v, %v", got, err)

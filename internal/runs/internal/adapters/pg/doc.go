@@ -30,29 +30,32 @@
 // run's handover it reads and locks a run by its ID alone, as a run token
 // names it, and makes the run's artifact key once, sealed to its row in
 // artifact_key_sealed, opening it on every later read, and opens the
-// run's overrides; SealedColumns names both columns. For a stop or kill it
-// records the request and notifies infraweave_runs with the run's pool
-// alone, and for a poll it reads and locks the runs a worker holds with a
-// request not yet delivered and records each delivery. For the run
-// actions it records and reads a run's comments, reads a stack's runs
-// that wait, oldest first, and deletes a run's logs, answering their
-// objects. Held names the columns that hold the access domain's accounts
-// and the stacks domain's stacks,
+// run's overrides. For a tracked run's apply it replaces its stack's
+// outputs, each value sealed to its row in value_sealed whether or not it
+// is sensitive, and the stack's read reads them, opening the value of
+// each that is not sensitive. SealedColumns names the three sealed
+// columns. For a stop or kill it records the request and notifies
+// infraweave_runs with the run's pool alone, and for a poll it reads and
+// locks the runs a worker holds with a request not yet delivered and
+// records each delivery. For the run actions it records and reads a
+// run's comments, reads a stack's runs that wait, oldest first, and
+// deletes a run's logs, answering their objects. Held names the columns
+// that hold the access domain's accounts and the stacks domain's stacks,
 // and Keys declares the runs' key, which other domains' held columns name.
 // Every method joins the transaction its context carries.
 //
 // # Input and output
 //
 // It reads and writes PostgreSQL through the querier it is given, and
-// seals and opens the artifact key and the overrides through the Sealer
-// it is given.
+// seals and opens the artifact key, the overrides and the outputs'
+// values through the Sealer it is given.
 //
 // # Dependencies
 //
 // It imports pgx, stacksapi, workersapi, the domain's core, changes,
 // control, handover, lifecycle, logs, read, report, schedule and timers,
-// internal/kernel and kernel/search, platform/crypt, platform/objectstore,
-// platform/sql and its integrity, migrate, notify and search, and
-// platform/tx. The runs domain's assembly constructs it over the
-// platform's keyring.
+// internal/iac/plan, internal/kernel and kernel/search, platform/crypt,
+// platform/objectstore, platform/sql and its integrity, migrate, notify
+// and search, and platform/tx. The runs domain's assembly constructs it
+// over the platform's keyring.
 package pg
