@@ -32,13 +32,14 @@ type Uploads interface {
 	Artifacts(ctx context.Context, token, run string, in wire.ArtifactsRequest) error
 }
 
-// The names planning's results are saved under, which the server reads
-// the plan's JSON and changes by.
+// The names planning's and applying's results are saved under, which the
+// server reads the plan's JSON, its changes and the stack's outputs by.
 //
 // ref: decision 0008 § "Logs and artifacts"
 const (
 	PlanArtifact    = "plan.json"
 	ChangesArtifact = "changes.json"
+	OutputsArtifact = "outputs.json"
 	WorkspaceName   = "workspace"
 )
 
@@ -65,16 +66,9 @@ type upload struct {
 // ref: decision 0008 § "Logs and artifacts"
 // ref: decision 0008 § "The run specification and its secrets"
 func (r *run) save(ctx context.Context, version int64, p plan.Plan) string {
-	acct, err := kernel.ParseAccountID(r.h.Spec.Run.Account)
-	if err != nil {
-		return fmt.Sprintf("The run's specification names no account: %v.", err)
-	}
-	id, err := kernel.ParseULID(r.h.Run)
-	if err != nil {
-		return fmt.Sprintf("The run's ID is not a ULID: %v.", err)
-	}
-	key := func(name string) string {
-		return kernel.RunObjectKey(acct, id, kernel.RunStatePlanning, version, name)
+	key, note := r.objectKeys(kernel.RunStatePlanning, version)
+	if note != "" {
+		return note
 	}
 	ups := make([]upload, 0, 3)
 	for _, a := range []struct {
@@ -102,6 +96,46 @@ func (r *run) save(ctx context.Context, version int64, p plan.Plan) string {
 		return fmt.Sprintf("The plan's results could not be uploaded: %v.", err)
 	}
 	return ""
+}
+
+// saveOutputs keeps applying's outputs at version before its succeeded
+// report: the outputs' JSON, sealed with the run's artifact key, which the
+// server opens and keeps as the stack's outputs. It answers the note of
+// what failed, empty when nothing did.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func (r *run) saveOutputs(ctx context.Context, version int64) string {
+	key, note := r.objectKeys(kernel.RunStateApplying, version)
+	if note != "" {
+		return note
+	}
+	u, err := r.sealArtifact(key(OutputsArtifact), OutputsArtifact, func(w io.Writer) error {
+		return copyFile(w, r.options.OutputsJSON)
+	})
+	if err != nil {
+		return fmt.Sprintf("The outputs could not be sealed: %v.", err)
+	}
+	if err := r.send(ctx, version, []upload{u}); err != nil {
+		return fmt.Sprintf("The outputs could not be uploaded: %v.", err)
+	}
+	return ""
+}
+
+// objectKeys answers the key of the run's object of each name in state
+// at state version version, or the note of why the run's specification
+// names none.
+func (r *run) objectKeys(state kernel.RunState, version int64) (func(string) string, string) {
+	acct, err := kernel.ParseAccountID(r.h.Spec.Run.Account)
+	if err != nil {
+		return nil, fmt.Sprintf("The run's specification names no account: %v.", err)
+	}
+	id, err := kernel.ParseULID(r.h.Run)
+	if err != nil {
+		return nil, fmt.Sprintf("The run's ID is not a ULID: %v.", err)
+	}
+	return func(name string) string {
+		return kernel.RunObjectKey(acct, id, state, version, name)
+	}, ""
 }
 
 // changes reports whether a plan with delta d changes anything, as the

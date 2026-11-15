@@ -14,8 +14,8 @@ import (
 
 // viewOf is st as the API answers it, in the space slug, with the
 // actions held there and whether the caller starred it, its state and
-// whether a run blocks it, and no contexts, config elements or blocker,
-// which views reads from the configuration and runs domains. The fields
+// whether a run blocks it, and no contexts, config elements, blocker or
+// outputs, which views reads from the configuration and runs domains. The fields
 // later phases own read their empty values: no other attachments, no
 // dependencies and no managed resources.
 func viewOf(

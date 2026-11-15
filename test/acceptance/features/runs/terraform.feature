@@ -2,30 +2,31 @@
 Feature: Runs of a Terraform stack end to end
   A real launcher of a private pool runs each run in a container of
   infraweave-runner-terraform:acceptance, with the newest Terraform the
-  version catalogue lists, which it downloads from the suite's tool
-  mirror and verifies against HashiCorp's signing key. A tracked run on a
-  stack without autodeploy is triggered on a Gitea commit, initializes
-  and plans, saves its workspace sealed to the pool's key, and waits in
+  version catalogue lists, which it downloads from the suite's tool mirror
+  and verifies against HashiCorp's signing key. A tracked run on a stack
+  without autodeploy is triggered on a Gitea commit, initializes and
+  plans, saves its workspace sealed to the pool's key, and waits in
   UNCONFIRMED; once confirmed, a new container restores the workspace,
-  initializes again and applies, and the run finishes. Its hooks run in
-  one shell session per container, so a variable a hook exports before
-  initialization is set again after the restore. A write-only variable
-  and a write-only mounted file reach the run, and the log masks each
-  where a hook prints it; no object of the store holds either in the
-  clear. A discarded run releases its stack's lock to the next run. A
-  local preview plans an uploaded workspace that holds uncommitted code.
-  In a run's environment a per-run override wins over the stack's
-  variable, which wins over an attached context's; a stack variable that
-  names a computed TF_VAR_infraweave_ variable replaces it; a ${{ … }}
-  template renders against the winning values and the stack's computed
-  fields; and a name keeps an ro_ prefix. Every run gets
-  INFRAWEAVE_API_TOKEN, on a stack with no role too, whose subject is the
-  stack's slug and the run's ID, and with which a hook reads its own stack
-  and space. The release indexes serve the recorded fixtures; the home key
-  is space-admin on the account's top space. Stacks live in legacy, keep
-  their state in infraweave and run on the pool; the repository's
-  configuration has terraform_data resources alone, so no provider is
-  downloaded.
+  initializes again and applies, and the run finishes, its outputs kept as
+  the stack's, each with its description from the plan and a sensitive one
+  with no value. Its hooks run in one shell session per container, so a
+  variable a hook exports before initialization is set again after the
+  restore. A write-only variable and a write-only mounted file reach the
+  run, and the log masks each where a hook prints it; no object of the
+  store holds either in the clear. A discarded run releases its stack's
+  lock to the next run. A local preview plans an uploaded workspace that
+  holds uncommitted code. In a run's environment a per-run override wins
+  over the stack's variable, which wins over an attached context's; a
+  stack variable that names a computed TF_VAR_infraweave_ variable
+  replaces it; a ${{ … }} template renders against the winning values and
+  the stack's computed fields; and a name keeps an ro_ prefix. Every run
+  gets INFRAWEAVE_API_TOKEN, on a stack with no role too, whose subject is
+  the stack's slug and the run's ID, and with which a hook reads its own
+  stack and space. The release indexes serve the recorded fixtures; the
+  home key is space-admin on the account's top space. Stacks live in
+  legacy, keep their state in infraweave and run on the pool; the
+  repository's configuration has terraform_data resources alone, so no
+  provider is downloaded.
   ref: decision 0006
   ref: decision 0008
   ref: decision 0010
@@ -39,7 +40,7 @@ Feature: Runs of a Terraform stack end to end
     And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
     And a certificate signing request for a P-256 key is kept as "csr"
     And a Gitea repository "infra" with the files:
-      | main.tf | variable "secret" {\n  type      = string\n  sensitive = true\n  default   = "none"\n}\n\nresource "terraform_data" "this" {\n  input = "one"\n}\n\nresource "terraform_data" "secret" {\n  input = var.secret\n}\n |
+      | main.tf | variable "secret" {\n  type      = string\n  sensitive = true\n  default   = "none"\n}\n\nresource "terraform_data" "this" {\n  input = "one"\n}\n\nresource "terraform_data" "secret" {\n  input = var.secret\n}\n\noutput "name" {\n  description = "The input of terraform_data.this"\n  value       = terraform_data.this.output\n}\n\noutput "secret" {\n  value     = var.secret\n  sensitive = true\n}\n |
     And the head of "main" of "infra" is kept as "seed"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "pool"
@@ -70,6 +71,8 @@ Feature: Runs of a Terraform stack end to end
     And token "h" reads the run "run"'s APPLYING log through B, which holds "Apply complete! Resources: 2 added, 0 changed, 0 destroyed." and not "f1le-s3cr3t"
     And the run "run" wrote 1 state version
     And the current state version is the run "run"'s, with the serial and lineage its APPLYING log names after "state pull: ", as token "h" reads it through A
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then the answer's outputs is '[{"id":"name","description":"The input of terraform_data.this","sensitive":false,"value":"\"one\""},{"id":"secret","sensitive":true}]'
     And token "h" eventually reads a download URL of the run "run"'s PLANNING log through B
     And the answer's url downloads a log that holds "secret: *****" and not "s3cr3t"
     And no object in the scenario's bucket holds "s3cr3t-pl4n", of at least 6 objects

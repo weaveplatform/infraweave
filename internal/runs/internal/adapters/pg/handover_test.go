@@ -105,9 +105,10 @@ func TestAccHandover(t *testing.T) {
 	if _, err := s.ArtifactKey(ctx, gone); !errors.Is(err, lifecycle.ErrNotFound) {
 		t.Errorf("ArtifactKey of no run = %v", err)
 	}
-	if cols := pg.SealedColumns(); len(cols) != 2 || cols[0].Table != "runs" ||
+	if cols := pg.SealedColumns(); len(cols) != 3 || cols[0].Table != "runs" ||
 		cols[0].Name != "artifact_key_sealed" || cols[1].Table != "runs" ||
-		cols[1].Name != "env_overrides_sealed" {
+		cols[1].Name != "env_overrides_sealed" || cols[2].Table != "stack_outputs" ||
+		cols[2].Name != "value_sealed" {
 		t.Errorf("SealedColumns = %+v", cols)
 	}
 }

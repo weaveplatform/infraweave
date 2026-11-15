@@ -15,7 +15,12 @@
 // report does; it takes the plan decision with no plan policy attached,
 // from the delta and the stack's autodeploy and lock, which the service
 // reads through Stacks: Decision moves the run to FINISHED, APPLYING or
-// UNCONFIRMED, and the delta is kept on the run.
+// UNCONFIRMED, and the delta is kept on the run. A tracked run's
+// succeeded report of APPLYING first replaces its stack's outputs with
+// those in the outputs.json its apply recorded at that state version,
+// each with its description from the plan.json the run recorded last
+// while planning, none once retention removed it; a run that recorded no
+// outputs the server reads is refused with workersapi.ErrNoOutputs.
 //
 // Uploads are keyed <account>/<run>/<state>-<stateVersion>/<name> in
 // their kind's store, recorded pending in blob_objects before their PUT
@@ -32,16 +37,17 @@
 //
 // # Input and output
 //
-// New takes the Store, the Objects of blob_objects, the lifecycle, the
-// Stacks the plan decision reads, and the database a purge opens
-// transactions on. Each call answers what
+// New takes the Store, the Objects of blob_objects, which also open the
+// run artifacts the outputs are read from, the lifecycle, the Stacks the
+// plan decision reads, and the database a purge opens transactions on. Each call answers what
 // workersapi.Reports says, with workersapi's refusals and a
 // *kernel.Invalid for a declaration or upload it refuses. Nothing is
 // logged.
 //
 // # Dependencies
 //
-// It imports the workers and stacks api packages, internal/kernel,
+// It imports the workers and stacks api packages, internal/iac/plan,
+// internal/kernel,
 // platform/crypt, platform/objectstore and its blobs, platform/seal,
 // platform/tx and the domain's lifecycle and machine packages. The
 // domain's assembly constructs it over the pg adapter and the stacks

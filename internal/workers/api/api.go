@@ -349,6 +349,11 @@ var (
 	ErrUploadExists = errors.New("workers: the upload's name is taken")
 	// ErrNoWorkspace reports a run that recorded no workspace.
 	ErrNoWorkspace = errors.New("workers: the run recorded no workspace")
+	// ErrNoOutputs reports a succeeded report of a tracked run's APPLYING
+	// whose state version recorded no outputs the server reads.
+	ErrNoOutputs = errors.New(
+		"workers: a succeeded report of APPLYING comes after its outputs are recorded",
+	)
 )
 
 // Reports is the runs domain's side of a claimed run's calls, a back edge

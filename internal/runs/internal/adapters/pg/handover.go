@@ -36,7 +36,7 @@ var overrides = crypt.Column{
 
 // SealedColumns are the runs stream's sealed columns, which internal/app
 // joins with the other streams' for Reseal.
-func SealedColumns() []crypt.Column { return []crypt.Column{artifactKey, overrides} }
+func SealedColumns() []crypt.Column { return []crypt.Column{artifactKey, overrides, outputValue} }
 
 // artifactKeySize is the artifact key's length: an AES-256 key.
 const artifactKeySize = 32

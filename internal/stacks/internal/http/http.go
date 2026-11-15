@@ -407,8 +407,9 @@ func (s Server) view(ctx context.Context, p kernel.Principal, st core.Stack) (ap
 }
 
 // views are all as p sees them: the actions p holds in each one's space,
-// whether p has starred it, its space by slug, and its attached contexts
-// and config elements, read for all at once.
+// whether p has starred it, its space by slug, its attached contexts and
+// config elements, the run blocking it and its outputs, read for all at
+// once.
 func (s Server) views(
 	ctx context.Context,
 	p kernel.Principal,
@@ -449,6 +450,10 @@ func (s Server) views(
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the runs domain names the read
 	}
+	outputs, err := s.edges.status.Outputs(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // as above
+	}
 	for _, st := range all {
 		v, err := viewOf(st, slugs[st.Space], held[st.Space], starred[st.ID])
 		if err != nil {
@@ -459,6 +464,7 @@ func (s Server) views(
 			v.AttachedContexts = append(v.AttachedContexts, contextView(c))
 		}
 		v.Config = elementViews(config[st.ID])
+		v.Outputs = outputViews(outputs[st.ID])
 		if b, ok := blockers[st.ID]; ok {
 			v.Blocker = &api.RunRef{Id: b.Run.String()}
 			v.Delta = apidelta.Of(b.Delta)
