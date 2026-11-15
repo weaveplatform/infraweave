@@ -23,9 +23,10 @@ func params() workflow.Params {
 
 // TestUnitVendorsCommands renders the built-in workflow of Terraform
 // and OpenTofu for each phase: init, then plan to PlanFile and its JSON
-// to the plan file, then apply of PlanFile, each that locks waiting the
-// lock timeout; planning without the lock, without refreshing and
-// against targets adds their flags.
+// to the plan file, then apply of PlanFile, and destroy with no prompt,
+// each that locks waiting the lock timeout; planning without the lock,
+// without refreshing and against targets adds their flags. PERFORMING,
+// whose command is the task's, has no workflow phase.
 func TestUnitVendorsCommands(t *testing.T) {
 	for _, tool := range []wire.RunSpecToolName{wire.Terraform, wire.Tofu} {
 		w, err := vendors.Defaults(tool)
@@ -59,6 +60,10 @@ func TestUnitVendorsCommands(t *testing.T) {
 				{Key: workflow.Apply, Line: bin + " apply -input=false -lock-timeout='5m0s' " +
 					"'infraweave.plan'"},
 				{Key: workflow.GetOutputs, Line: bin + " output -json", Stdout: "/o"},
+			}},
+			{state: wire.WorkerStateDESTROYING, p: params(), want: []vendors.Command{
+				{Key: workflow.Destroy, Line: bin + " destroy -auto-approve -input=false " +
+					"-lock-timeout='5m0s'"},
 			}},
 		} {
 			got, err := w.Commands(

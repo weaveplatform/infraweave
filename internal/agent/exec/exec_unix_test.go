@@ -55,7 +55,8 @@ const planJSON = `{"format_version":"1.2","resource_changes":[` +
 // that names the run's state version, answers a repeated report the step
 // it answered before, refuses any other with 409, refuses with 400 a
 // delta on any report but planning's success, as the server does, and
-// can lose answers.
+// can lose answers. After a success it executes the state then names for
+// the reported one, as the server does for the run's type.
 // It takes the run's log chunks and artifacts, and keeps the order in
 // which it took them and the reports; it refuses every declaration with
 // uploads, and signs other names than declared with rename.
@@ -63,6 +64,7 @@ type worker struct {
 	mu         sync.Mutex
 	version    int64
 	autodeploy bool
+	then       map[wire.WorkerState]string
 	lose       int
 	refuse     int
 	uploads    error
@@ -175,7 +177,8 @@ func (w *worker) Report(
 }
 
 // decide is the next step of r: the phase a start names, the next phase
-// after a success, and the run's end after a failure or a stop.
+// after a success, then's when it names one, and the run's end after a
+// failure or a stop.
 func (w *worker) decide(r wire.RunReport) wire.NextStep {
 	next := func(a wire.NextStepAction, state string) wire.NextStep {
 		return wire.NextStep{Action: a, State: state, StateVersion: r.StateVersion + 1}
@@ -187,6 +190,8 @@ func (w *worker) decide(r wire.RunReport) wire.NextStep {
 		return next(wire.Exit, "FAILED")
 	case r.Event == wire.Stopped:
 		return next(wire.Exit, "STOPPED")
+	case w.then[r.State] != "":
+		return next(wire.Execute, w.then[r.State])
 	case r.State == wire.WorkerStateINITIALIZING:
 		return next(wire.Execute, "PLANNING")
 	case r.State == wire.WorkerStatePLANNING && w.autodeploy:
@@ -824,30 +829,29 @@ func TestUnitExecUnknownAction(t *testing.T) {
 	}
 }
 
-// performing answers execute PERFORMING, which this runner has no
-// commands for.
-type performing struct{ reports []wire.RunReport }
+// preparing answers execute PREPARING, a state no phase runs in.
+type preparing struct{ reports []wire.RunReport }
 
-func (p *performing) Report(
+func (p *preparing) Report(
 	_ context.Context, _, _ string, r wire.RunReport,
 ) (wire.NextStep, error) {
 	p.reports = append(p.reports, r)
 	if r.Event == wire.Started {
-		return wire.NextStep{Action: wire.Execute, State: "PERFORMING", StateVersion: 4}, nil
+		return wire.NextStep{Action: wire.Execute, State: "PREPARING", StateVersion: 4}, nil
 	}
 	return wire.NextStep{Action: wire.Exit, State: "FAILED", StateVersion: 5}, nil
 }
 
 func TestUnitExecNoCommands(t *testing.T) {
 	w := newWorld(t)
-	p := &performing{}
+	p := &preparing{}
 	if err := exec.Run(t.Context(), w.h, exec.Deps{
 		Reports: p, Logs: w.w, Uploads: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
 		Workspace: w.workspace, Environ: w.environ,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(p.reports) != 2 || *p.reports[1].Details != "This runner executes no PERFORMING phase." {
+	if len(p.reports) != 2 || *p.reports[1].Details != "This runner executes no PREPARING phase." {
 		t.Fatalf("reports: %+v", p.reports)
 	}
 }

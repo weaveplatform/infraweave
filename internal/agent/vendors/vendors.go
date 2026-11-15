@@ -114,14 +114,15 @@ var phases = map[wire.WorkerState][]workflow.Key{
 	wire.WorkerStateINITIALIZING: {workflow.Init},
 	wire.WorkerStatePLANNING:     {workflow.Plan, workflow.ShowPlan},
 	wire.WorkerStateAPPLYING:     {workflow.Apply, workflow.GetOutputs},
+	wire.WorkerStateDESTROYING:   {workflow.Destroy},
 }
 
 // Commands are the commands of state's phase, in the order they run,
 // each rendered with o's parameters when the phase runs: init for
 // INITIALIZING; plan, then showPlan with its output to o.PlanJSON, for
-// PLANNING; and apply, then getOutputs with its output to o.OutputsJSON,
-// for APPLYING. A template whose evaluation fails is an error naming its
-// key.
+// PLANNING; apply, then getOutputs with its output to o.OutputsJSON, for
+// APPLYING; and destroy for DESTROYING. A template whose evaluation fails
+// is an error naming its key.
 func (w *Workflow) Commands(
 	ctx context.Context,
 	state wire.WorkerState,

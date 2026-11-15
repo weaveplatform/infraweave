@@ -15,18 +15,23 @@ Feature: Runs of an OpenTofu stack end to end
   run, and the log masks each where a hook prints it; no object of the
   store holds either in the clear. A discarded run releases its stack's
   lock to the next run. A local preview plans an uploaded workspace that
-  holds uncommitted code. In a run's environment a per-run override wins
-  over the stack's variable, which wins over an attached context's; a
-  stack variable that names a computed TF_VAR_infraweave_ variable
-  replaces it; a ${{ … }} template renders against the winning values and
-  the stack's computed fields; and a name keeps an ro_ prefix. Every run
-  gets INFRAWEAVE_API_TOKEN, on a stack with no role too, whose subject is
-  the stack's slug and the run's ID, and with which a hook reads its own
-  stack and space. The release indexes serve the recorded fixtures; the
-  home key is space-admin on the account's top space. Stacks live in
-  legacy, keep their state in infraweave and run on the pool; the
-  repository's configuration has terraform_data resources alone, so no
-  provider is downloaded.
+  holds uncommitted code. A task performs its command after
+  initialization, reading the state's output; one that fails fails in
+  PERFORMING, its output masked, and one that skips initialization runs
+  no init. A stack deleted with its resources destroys them in a destroy
+  run, whose after-destroy hook finds no resource left in the state, and
+  is deleted when that run finishes. In a run's environment a per-run
+  override wins over the stack's variable, which wins over an attached
+  context's; a stack variable that names a computed TF_VAR_infraweave_
+  variable replaces it; a ${{ … }} template renders against the winning
+  values and the stack's computed fields; and a name keeps an ro_ prefix.
+  Every run gets INFRAWEAVE_API_TOKEN, on a stack with no role too, whose
+  subject is the stack's slug and the run's ID, and with which a hook
+  reads its own stack and space. The release indexes serve the recorded
+  fixtures; the home key is space-admin on the account's top space.
+  Stacks live in legacy, keep their state in infraweave and run on the
+  pool; the repository's configuration has terraform_data resources and
+  outputs alone, so no provider is downloaded.
   ref: decision 0006
   ref: decision 0008
   ref: decision 0010
@@ -134,3 +139,41 @@ Feature: Runs of an OpenTofu stack end to end
     And token "h" eventually reads the run "run" in the state "FINISHED" through B
     And token "h" reads the run "run"'s PLANNING log through A, which holds "CTX_ONLY=context\nECHO=run of infra\nLEVEL=run\nSTACK_ONLY=stack\nTF_VAR_infraweave_run_type=stack\nTF_VAR_infraweave_stack_id=infra\nro_PLAIN=plain\napi token: set" and not "LEVEL=stack"
     And token "h" reads the run "run"'s PLANNING log through B, which holds "token sub: infra/{run}\nstack read: infra in legacy\nspace read: legacy" and not "LEVEL=context"
+
+  @op:taskCreate @op:runLogs @case:success
+  Scenario: A task performs its command on the stack's state, and a failing task fails in PERFORMING with its output masked
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"opentofu":{}},"beforePerform":["echo \"before perform: $TF_VAR_infraweave_run_type\""],"afterPerform":["echo \"after perform\""]},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"TF_VAR_secret","type":"ENVIRONMENT_VARIABLE","value":"s3cr3t-t4sk","writeOnly":true}' through A
+    And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FINISHED" through A
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"echo \"name: $(tofu output -raw name)\""}' through A
+    Then it answers 201
+    And the answer's id names "task"
+    And token "h" eventually reads the run "task" in the state "FINISHED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FINISHED"
+    And token "h" reads the run "task"'s PERFORMING log through A, which holds "before perform: TASK\nname: one\nafter perform" and not "s3cr3t"
+    And the run "task" wrote 0 state versions
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"echo \"secret: $TF_VAR_secret\"; exit 3","skipInitialization":true}' through B
+    Then it answers 201
+    And the answer's id names "failed"
+    And token "h" eventually reads the run "failed" in the state "FAILED" through A
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FAILED"
+    And the answer's last state transition's note is "The task's command failed with exit status 3."
+    And token "h" reads the run "failed"'s INITIALIZING log through B, which holds "infraweave: working on commit" and not "Initializing the backend"
+    And token "h" reads the run "failed"'s PERFORMING log through A, which holds "secret: *****" and not "s3cr3t"
+
+  @op:stackDelete @case:success
+  Scenario: A stack deleted with its resources destroys them in a destroy run that leaves its state empty, and is deleted when the run finishes
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"opentofu":{}},"afterDestroy":["test -z \"$(tofu state list)\""]},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And the run "run" wrote 1 state version
+    When token "h" sends "DELETE /api/v1/stacks/infra?destroyResources=true" through A
+    Then it answers 200
+    And the answer's deleting is 'true'
+    When token "h" sends "GET /api/v1/stacks/infra/runs" through B
+    Then the answer's first run names "destroy"
+    And token "h" eventually finds no stack "infra" through A
+    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, DESTROYING, FINISHED"

@@ -20,8 +20,13 @@
 // TF_VAR_infraweave_run_state, then runs its before-hooks, its workflow's
 // commands, rendered then with the run's parameters, and its after-hooks, each in a group of its own with no
 // standard input, stopping at the first that fails, whose exit status the
-// failed report's details name. Planning's succeeded report carries the
-// delta internal/iac/plan reads from the plan's JSON.
+// failed report's details name. Performing runs the task's command
+// through sh -c in place of a workflow's, so neither an exit nor a cd in
+// it ends or moves the session; a task that skips initialization runs
+// initialization's hooks alone; destroying runs the workflow's destroy,
+// for a destroy run after initialization and for a test run after
+// applying. Planning's succeeded report carries the delta internal/iac/plan
+// reads from the plan's JSON.
 //
 // Before that report, planning saves its results: the plan's JSON and its
 // changes, each sealed in platform/seal's object stream under the content

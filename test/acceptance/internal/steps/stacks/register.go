@@ -10,4 +10,5 @@ import (
 // World w.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&stackSearchSteps{w: w}).register(sc)
+	(&stackDeletionSteps{w: w}).register(sc)
 }
