@@ -784,6 +784,37 @@ func TestUnitHandoverLocalPreview(t *testing.T) {
 	}
 }
 
+// TestUnitHandoverCPUProfiling checks that a run profiles its tool's CPU
+// only on an OpenTofu stack whose settings enable it, at a release of
+// 1.11 or later.
+func TestUnitHandoverCPUProfiling(t *testing.T) {
+	w := newWorld(t)
+	w.sources.src = runsapi.Source{URL: "https://example.com/infra.git"}
+	constraint := ">= 1.0"
+	w.stacks.settings.TerraformVersion = &constraint
+	for _, c := range []struct {
+		vendor, settings, release string
+		want                      bool
+	}{
+		{"opentofu", `{"enableCPUProfiling":true}`, "1.11.0", true},
+		{"opentofu", `{"enableCPUProfiling":true}`, "1.12.3", true},
+		{"opentofu", `{"enableCPUProfiling":true}`, "1.10.7", false},
+		{"opentofu", `{"enableCPUProfiling":true}`, "1.11.0-beta1", false},
+		{"opentofu", `{"enableCPUProfiling":false}`, "1.11.0", false},
+		{"opentofu", `{}`, "1.11.0", false},
+		{"opentofu", `[`, "1.11.0", false},
+		{"terraform", `{"enableCPUProfiling":true}`, "1.14.2", false},
+	} {
+		w.stacks.settings.Vendor = c.vendor
+		w.stacks.settings.VendorConfig = json.RawMessage(c.settings)
+		w.catalog.effective = c.release
+		h, err := w.handover(t, w.run.ID)
+		if err != nil || h.Spec.Tool == nil || h.Spec.Tool.CPUProfiling != c.want {
+			t.Errorf("%s %s at %s: %+v, %v", c.vendor, c.settings, c.release, h.Spec.Tool, err)
+		}
+	}
+}
+
 // TestUnitHandoverSourceAndTool checks a raw Git source, with no
 // credential and not narrowed; an OpenTofu stack's tofu at the release
 // its terraformVersion resolves to, over its settings' version, run from

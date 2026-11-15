@@ -13,6 +13,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
+	"github.com/weaveplatform/infraweave/internal/iac/version"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
@@ -348,7 +349,33 @@ func (s *Service) tool(ctx context.Context, st stacksapi.Settings) (*workersapi.
 	}
 	return &workersapi.SpecTool{
 		Name: t.binary, Version: version, Download: !st.SkipVendorBinaryDownload,
+		CPUProfiling: profiles(st, t.vendor, version),
 	}, nil
+}
+
+// cpuProfiling is the first OpenTofu release that writes a CPU profile to
+// TOFU_CPU_PROFILE; an earlier one ignores it.
+var cpuProfiling = version.Version{Segments: []int64{1, 11, 0}}
+
+// profiles reports whether st's runs profile their tool commands' CPU at
+// release: an OpenTofu stack whose settings enable it, on a release that
+// writes a profile.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func profiles(st stacksapi.Settings, vendor vendorsapi.Vendor, release string) bool {
+	if vendor != vendorsapi.OpenTofu {
+		return false
+	}
+	var c struct {
+		EnableCPUProfiling bool `json:"enableCPUProfiling"` //nolint:tagliatelle // the settings name it so
+	}
+	// The stack's write checked its settings, so a document that does not
+	// decode enables nothing.
+	if json.Unmarshal(st.VendorConfig, &c) != nil || !c.EnableCPUProfiling {
+		return false
+	}
+	v, err := version.Parse(release)
+	return err == nil && v.Compare(cpuProfiling) >= 0
 }
 
 // constraint is st's version constraint and the pointer of the setting

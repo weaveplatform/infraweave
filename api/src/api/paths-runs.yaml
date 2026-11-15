@@ -918,6 +918,69 @@ paths:
         - rate-limit
       x-infraweave-subject: path:runId:run
       x-rest-style: field
+  /runs/{runId}/cpu-profile-download-url:
+    get:
+      description: >-
+        A pre-signed URL that downloads the CPU profile (.pprof) of one of
+        the run's states, which merges the profile of each OpenTofu command
+        the state ran; the infraweave.command sample label names the
+        workflow command each sample comes from. It is the profile of the
+        state's latest execution. A run profiles only on a stack whose
+        OpenTofu settings enable CPU profiling, at release 1.11 or later.
+        While the run is in the state and has not uploaded the profile,
+        ongoing is true; expired is true when the state wrote no profile or
+        retention removed it, and deleted once the run's logs were deleted.
+      operationId: runCpuProfileDownloadURL
+      x-infraweave-feature: runs
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - description: The state whose profile to download.
+          in: query
+          name: state
+          required: true
+          schema:
+            $ref: '#/components/schemas/RunState'
+          x-graphql-arg: state
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsDownloadURL'
+          description: The cpuProfileDownloadURL result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run cpu profile download URL
+      tags:
+        - Runs
+      x-graphql:
+        field: cpuProfileDownloadURL
+        operation: query
+        type: Run
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: field
   /runs/{runId}/logs:
     get:
       description: |-

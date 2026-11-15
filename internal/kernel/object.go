@@ -13,3 +13,12 @@ import "fmt"
 func RunObjectKey(acct AccountID, run ULID, state RunState, version int64, name string) string {
 	return fmt.Sprintf("%s/%s/%s-%d/%s", acct, run, state, version, name)
 }
+
+// CPUProfileName is the name of a run's CPU profile of state, the
+// observability object the runner uploads and the server signs, built
+// here so the two cannot disagree on it.
+//
+// ref: decision 0008 § "Logs and artifacts"
+func CPUProfileName(state RunState) string {
+	return "cpu-" + string(state) + ".pprof"
+}

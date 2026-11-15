@@ -312,7 +312,6 @@
       "searchManagedEntitiesGroupByTypes"
     ],
     "Runs": [
-      "runCpuProfileDownloadURL",
       "runExternalDependencyMarkAsCompleted",
       "runMinutesUsage",
       "runPluginLogsDownloadURL",

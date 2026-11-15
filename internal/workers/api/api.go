@@ -153,12 +153,14 @@ type SpecSource struct {
 }
 
 // SpecTool is the infrastructure tool a Spec's launcher mounts: Name, the
-// binary the runner calls, terraform or tofu; Version, the release; and
-// Download, false when the runner image's own binary runs instead.
+// binary the runner calls, terraform or tofu; Version, the release;
+// Download, false when the runner image's own binary runs instead; and
+// CPUProfiling, whether the runner profiles each tool command's CPU.
 type SpecTool struct {
-	Name     string
-	Version  string
-	Download bool
+	Name         string
+	Version      string
+	Download     bool
+	CPUProfiling bool
 }
 
 // StateBackend is a Spec's managed state backend: Path is where the

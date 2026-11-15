@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cucumber/godog"
+	"github.com/google/pprof/profile"
 
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 	"github.com/weaveplatform/infraweave/test/deps"
@@ -35,12 +37,16 @@ var store = &http.Client{Timeout: 30 * time.Second}
 func (l *logSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^token "(\w+)" writes log chunk (\d+) of the run "(\w+)" in state version (\d+) `+
 		`at (\d+) holding `+quoted+` through ([AB])$`, l.write)
+	sc.Step(`^token "(\w+)" uploads the observability object "([\w.-]+)" of the run "(\w+)" `+
+		`in state version (\d+) holding `+quoted+` through ([AB])$`, l.observe)
 	sc.Step(`^the answer's nextToken is kept as "(\w+)"$`, l.keep)
 	sc.Step(`^token "(\w+)" eventually reads a download URL of the run "(\w+)"'s ([A-Z_]+) log `+
 		`through ([AB])$`, l.eventually)
 	sc.Step(`^the answer's url downloads `+quoted+`$`, l.downloads)
 	sc.Step(`^the answer's url downloads a log that holds `+quoted+` and not `+quoted+`$`,
 		l.downloadsHolding)
+	sc.Step(`^the answer's url downloads a CPU profile whose samples each name one of the `+
+		`commands "([^"]+)"$`, l.downloadsProfile)
 	sc.Step(`^token "(\w+)" reads the run "(\w+)"'s ([A-Z_]+) log through ([AB]), which `+
 		`holds `+quoted+` and not `+quoted+`$`, l.holds)
 }
@@ -71,13 +77,79 @@ func (l *logSteps) write(
 	if err != nil {
 		return err
 	}
-	sum := sha256.Sum256([]byte(body))
 	path := "/worker/v1/runs/" + l.w.IDs[run]
+	err = l.put(ctx, token, path, version, "log-chunk", strconv.FormatInt(seq, 10), body, replica)
+	if err != nil {
+		return err
+	}
+	commit, err := json.Marshal(map[string]any{
+		"stateVersion": version,
+		"chunks":       []map[string]any{{"seq": seq, "firstAt": at, "lastAt": at}},
+	})
+	if err != nil {
+		return fmt.Errorf("%w: %w", harness.ErrStep, err)
+	}
+	r, err := l.w.Do(ctx, replica, token, http.MethodPost, path+"/log-chunks",
+		json.RawMessage(commit))
+	if err != nil && r.Status == 0 {
+		return err //nolint:wrapcheck // names the request
+	}
+	if r.Status != http.StatusNoContent {
+		return fmt.Errorf("%w: log-chunks answered %d %s", harness.ErrStep, r.Status, r.Body)
+	}
+	return nil
+}
+
+// observe uploads text as the observability object name of the run kept
+// as run, in state version version, with the run token kept as token, as
+// the runner uploads a CPU profile, and records it through artifacts. The
+// record's answer is the last.
+func (l *logSteps) observe(
+	ctx context.Context,
+	token, name, run string,
+	version int64,
+	text, replica string,
+) error {
+	body, err := unquote(text)
+	if err != nil {
+		return err
+	}
+	path := "/worker/v1/runs/" + l.w.IDs[run]
+	if err := l.put(ctx, token, path, version, "observability", name, body, replica); err != nil {
+		return err
+	}
+	record, err := json.Marshal(map[string]any{
+		"stateVersion": version,
+		"artifacts":    []map[string]any{{"kind": "observability", "name": name}},
+	})
+	if err != nil {
+		return fmt.Errorf("%w: %w", harness.ErrStep, err)
+	}
+	r, err := l.w.Do(ctx, replica, token, http.MethodPost, path+"/artifacts",
+		json.RawMessage(record))
+	if err != nil && r.Status == 0 {
+		return err //nolint:wrapcheck // names the request
+	}
+	if r.Status != http.StatusNoContent {
+		return fmt.Errorf("%w: artifacts answered %d %s", harness.ErrStep, r.Status, r.Body)
+	}
+	return nil
+}
+
+// put declares body as the upload of kind named name of the run at path
+// of the worker API, in state version version, with the run token kept as
+// token, and PUTs it to the signed URL with the headers the answer names.
+func (l *logSteps) put(
+	ctx context.Context,
+	token, path string,
+	version int64,
+	kind, name, body, replica string,
+) error {
+	sum := sha256.Sum256([]byte(body))
 	decl, err := json.Marshal(map[string]any{
 		"stateVersion": version,
 		"uploads": []map[string]any{{
-			"kind": "log-chunk", "name": strconv.FormatInt(seq, 10), "size": len(body),
-			"sha256": hex.EncodeToString(sum[:]),
+			"kind": kind, "name": name, "size": len(body), "sha256": hex.EncodeToString(sum[:]),
 		}},
 	})
 	if err != nil {
@@ -108,28 +180,13 @@ func (l *logSteps) write(
 	}
 	resp, err := store.Do(req)
 	if err != nil {
-		return fmt.Errorf("%w: put the chunk: %w", harness.ErrStep, err)
+		return fmt.Errorf("%w: put the %s %s: %w", harness.ErrStep, kind, name, err)
 	}
 	answer, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("%w: the chunk's PUT answered %d %s", harness.ErrStep, resp.StatusCode,
-			answer)
-	}
-	commit, err := json.Marshal(map[string]any{
-		"stateVersion": version,
-		"chunks":       []map[string]any{{"seq": seq, "firstAt": at, "lastAt": at}},
-	})
-	if err != nil {
-		return fmt.Errorf("%w: %w", harness.ErrStep, err)
-	}
-	r, err = l.w.Do(ctx, replica, token, http.MethodPost, path+"/log-chunks",
-		json.RawMessage(commit))
-	if err != nil && r.Status == 0 {
-		return err //nolint:wrapcheck // names the request
-	}
-	if r.Status != http.StatusNoContent {
-		return fmt.Errorf("%w: log-chunks answered %d %s", harness.ErrStep, r.Status, r.Body)
+		return fmt.Errorf("%w: the %s %s's PUT answered %d %s", harness.ErrStep, kind, name,
+			resp.StatusCode, answer)
 	}
 	return nil
 }
@@ -206,6 +263,31 @@ func (l *logSteps) downloadsHolding(ctx context.Context, want, unwanted string) 
 	if !strings.Contains(got, want) || strings.Contains(got, unwanted) {
 		return fmt.Errorf("%w: the download is %q, want %q and not %q", harness.ErrStep, got,
 			want, unwanted)
+	}
+	return nil
+}
+
+// downloadsProfile checks that the last answer's url serves, with no
+// credential, a pprof profile of at least one sample, each labelled
+// infraweave.command with one of commands, a comma-separated list.
+func (l *logSteps) downloadsProfile(ctx context.Context, commands string) error {
+	got, err := l.download(ctx)
+	if err != nil {
+		return err
+	}
+	p, err := profile.ParseData([]byte(got))
+	if err != nil {
+		return fmt.Errorf("%w: the download is no profile: %w", harness.ErrStep, err)
+	}
+	if len(p.Sample) == 0 {
+		return fmt.Errorf("%w: the profile holds no sample", harness.ErrStep)
+	}
+	allowed := strings.Split(commands, ", ")
+	for _, s := range p.Sample {
+		if c := s.Label["infraweave.command"]; len(c) != 1 || !slices.Contains(allowed, c[0]) {
+			return fmt.Errorf("%w: a sample is labelled %v, want one of %q", harness.ErrStep,
+				s.Label, allowed)
+		}
 	}
 	return nil
 }

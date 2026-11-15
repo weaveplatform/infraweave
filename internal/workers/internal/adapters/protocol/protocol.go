@@ -252,6 +252,9 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 		out.Tool = &gen.RunSpecTool{
 			Name: gen.RunSpecToolName(t.Name), Version: t.Version, Download: t.Download,
 		}
+		if t.CPUProfiling {
+			out.Tool.EnableCPUProfiling = &t.CPUProfiling
+		}
 	}
 	if t := spec.Task; t != nil {
 		out.Task = &gen.RunSpecTask{Command: t.Command, SkipInitialization: t.SkipInitialization}

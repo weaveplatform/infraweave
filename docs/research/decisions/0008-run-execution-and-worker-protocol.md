@@ -612,9 +612,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   profiling, with OpenTofu 1.11 or later, the runner points
   `TOFU_CPU_PROFILE` at a fresh file for each tool command, merges a
   state's files into one pprof whose samples carry the label
-  `infraweave.command`, and uploads it as the `observability` artifact
-  `cpu-<STATE>.pprof`. A profile that fails is logged and never fails the
-  run. `runCpuProfileDownloadURL` answers its pre-signed `GET` as
+  `infraweave.command`, the workflow command's key or `task` for a task's
+  command, and uploads it as the `observability` artifact
+  `cpu-<STATE>.pprof` before the state's report. A profile that fails is
+  logged and never fails the run. `runCpuProfileDownloadURL` answers the
+  pre-signed `GET` of the profile of the state's latest execution as
   `runLogsDownloadURL` answers a log, with `ongoing`, `expired` and
   `deleted`.
 - **Deleting logs.** `runLogsDelete`, decided as `SPACE_ADMIN` on the

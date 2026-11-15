@@ -778,6 +778,10 @@ func (UnimplementedStrict) RunChangesV3(context.Context, RunChangesV3RequestObje
 	return nil, &problem.NotImplementedError{OperationID: "runChangesV3", Route: "GET /runs/{runId}/changes-v3"}
 }
 
+func (UnimplementedStrict) RunCpuProfileDownloadURL(context.Context, RunCpuProfileDownloadURLRequestObject) (RunCpuProfileDownloadURLResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runCpuProfileDownloadURL", Route: "GET /runs/{runId}/cpu-profile-download-url"}
+}
+
 func (UnimplementedStrict) RunLogs(context.Context, RunLogsRequestObject) (RunLogsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runLogs", Route: "GET /runs/{runId}/logs"}
 }

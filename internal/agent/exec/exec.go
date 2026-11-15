@@ -157,6 +157,8 @@ type run struct {
 	options     vendors.Options
 	temp        string
 	shell       *session
+	profiled    []profiled
+	profiles    int
 	stop        stop
 }
 
@@ -287,12 +289,15 @@ func (r *run) report(ctx context.Context, rep wire.RunReport) (wire.NextStep, er
 // workspace, as when a run resumes in a new container to apply or replan
 // its saved workspace, runs initialization's hooks and commands first.
 // It answers the report of how the phase ended at version; planning's
-// success carries the plan's delta, once its results are saved.
+// success carries the plan's delta, once its results are saved. The
+// phase's CPU profile, when the run profiles, is uploaded before the
+// report whatever the phase's end.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) wire.RunReport {
 	r.begin(state)
 	defer r.finish()
+	defer r.saveProfile(ctx, state, version)
 	rep := wire.RunReport{StateVersion: version, State: state, Event: wire.Succeeded}
 	// A failed or stopped report carries no delta, even once the plan was
 	// read: the worker API refuses a delta on any report but planning's
@@ -409,7 +414,10 @@ func (r *run) commands(ctx context.Context, state wire.WorkerState) ([]step, err
 	case state == wire.WorkerStatePERFORMING && task == nil:
 		return nil, errNoTask
 	case state == wire.WorkerStatePERFORMING:
-		return []step{{text: Shell + " -c " + quote(task.Command), what: "The task's command"}}, nil
+		return []step{{
+			text: Shell + " -c " + quote(task.Command), what: "The task's command",
+			command: taskCommand,
+		}}, nil
 	case state == wire.WorkerStateINITIALIZING && task != nil && task.SkipInitialization:
 		return nil, nil
 	}
@@ -420,9 +428,10 @@ func (r *run) commands(ctx context.Context, state wire.WorkerState) ([]step, err
 	return commandSteps(commands), nil
 }
 
-// step is one hook or command and how a failure names it.
+// step is one hook or command, how a failure names it, and the tool
+// command a CPU profile labels its samples with, empty for a hook.
 type step struct {
-	text, what string
+	text, what, command string
 }
 
 // hooks are the steps of the specification's hooks of phase, in order.
@@ -445,7 +454,7 @@ func commandSteps(commands []vendors.Command) []step {
 		if c.Stdout != "" {
 			text = "{ " + text + "\n} >" + quote(c.Stdout)
 		}
-		out[i] = step{text: text, what: "The " + string(c.Key) + " command"}
+		out[i] = step{text: text, what: "The " + string(c.Key) + " command", command: string(c.Key)}
 	}
 	return out
 }
@@ -459,7 +468,7 @@ func (r *run) steps(ctx context.Context, lists ...[]step) string {
 			if r.halted() {
 				return ""
 			}
-			code, err := r.shell.run(ctx, s.text)
+			code, err := r.exec(ctx, s)
 			switch {
 			case errors.Is(err, ErrExited):
 				return fmt.Sprintf("%s ended the run's shell with exit status %d.", s.what, code)
