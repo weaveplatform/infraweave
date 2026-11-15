@@ -1134,6 +1134,10 @@ func (UnimplementedStrict) RunStop(context.Context, RunStopRequestObject) (RunSt
 	return nil, &problem.NotImplementedError{OperationID: "runStop", Route: "POST /stacks/{stackId}/runs/{runId}/stop"}
 }
 
+func (UnimplementedStrict) RunTargetedReplan(context.Context, RunTargetedReplanRequestObject) (RunTargetedReplanResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runTargetedReplan", Route: "POST /stacks/{stackId}/runs/{runId}/targeted-replan"}
+}
+
 func (UnimplementedStrict) StackScheduledDelete(context.Context, StackScheduledDeleteRequestObject) (StackScheduledDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackScheduledDelete", Route: "GET /stacks/{stackId}/scheduled-delete"}
 }

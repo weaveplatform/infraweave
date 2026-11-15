@@ -65,6 +65,7 @@ const (
 	needsPriority = "a priority needs a run that has not ended"
 	needsStop     = "a stop needs a run that initializes, or a proposed or tracked run that plans"
 	needsKill     = "a kill needs a run on a worker that a stop was asked of"
+	needsReplan   = "a targeted replan needs a tracked run that waits for confirmation"
 )
 
 // ErrNoHolder reports a confirm or discard that names no run, of a stack
@@ -96,6 +97,9 @@ type Store interface {
 	Overrides(ctx context.Context, run lifecycle.Run) ([]lifecycle.Override, error)
 	// Comment records c on run.
 	Comment(ctx context.Context, run lifecycle.Run, c read.Comment) error
+	// SetTargets records targets as the addresses of run's targeted
+	// replan.
+	SetTargets(ctx context.Context, run lifecycle.Run, targets []string) error
 	// Discardable reads acct's stack's runs in QUEUED, READY or
 	// UNCONFIRMED, oldest first.
 	Discardable(
@@ -211,6 +215,46 @@ func (s *Service) Discard(
 	slug, raw, note string,
 ) (read.View, error) {
 	return s.decide(ctx, p, slug, raw, note, kernel.RunStateDiscarded)
+}
+
+// Replan plans p's run raw of stack slug again against targets: T28 from
+// UNCONFIRMED to REPLAN_REQUESTED, which a worker's claim takes to
+// PREPARING_REPLAN with targets in the run's specification. The route has
+// decided RUN_TARGETED_REPLAN on the stack's space. Targets that
+// kernel.CheckTargets refuses are a *kernel.Invalid, and a run in another
+// state, or of another type, a *Refused. The move comes before the
+// targets' write, which runs' CHECK holds to a tracked run.
+//
+// ref: decision 0008 § "Who drives each transition"
+func (s *Service) Replan(
+	ctx context.Context,
+	p kernel.Principal,
+	slug, raw string,
+	targets []string,
+) (read.View, error) {
+	if errs := kernel.CheckTargets("/targets", targets); errs != nil {
+		return read.View{}, &kernel.Invalid{
+			Detail: "The replan's targets are refused.",
+			Errors: errs,
+		}
+	}
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (
+		lifecycle.Run, error,
+	) {
+		moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
+			Account: p.AccountID, Run: r.ID, Version: r.Version,
+			To: kernel.RunStateReplanRequested, Driver: machine.DriverAPI,
+			Actor: lifecycle.ActorOf(p),
+		})
+		if errors.Is(err, lifecycle.ErrRefused) {
+			return r, &Refused{Run: r.ID, State: r.State, Needs: needsReplan}
+		}
+		if err != nil {
+			return r, err //nolint:wrapcheck // the lifecycle names the move
+		}
+		moved.ReplanTargets = targets
+		return moved, s.d.Store.SetTargets(ctx, moved, targets) //nolint:wrapcheck // as above
+	})
 }
 
 // decide moves a run waiting for confirmation to to, the caller's

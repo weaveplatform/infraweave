@@ -38,8 +38,9 @@
 // infraweave_runs with the run's pool alone, and for a poll it reads and
 // locks the runs a worker holds with a request not yet delivered and
 // records each delivery. For the run actions it records and reads a
-// run's comments, reads a stack's runs that wait, oldest first, and
-// deletes a run's logs, answering their objects. Held names the columns
+// run's comments, records a targeted replan's addresses, reads a stack's
+// runs that wait, oldest first, and deletes a run's logs, answering their
+// objects. Held names the columns
 // that hold the access domain's accounts and the stacks domain's stacks,
 // and Keys declares the runs' key, which other domains' held columns name.
 // Every method joins the transaction its context carries.

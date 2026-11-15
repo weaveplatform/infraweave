@@ -1,7 +1,8 @@
 // Package http is the runs domain's HTTP adapter: Server, the domain's
 // partial of the API's strict server. It triggers runs through the
-// trigger service, answering a locked stack 403 forbidden and a disabled
-// stack or one with no commit to run 409 invalid-state; reads runs, a
+// trigger service, answering a stack another caller has locked 409
+// resource-locked and a disabled stack or one with no commit to run 409
+// invalid-state; reads runs, a
 // stack's lists of runs and a search of them through the read service,
 // each as the API's Run with its history oldest first, its comments, and
 // its guards as canRetry, canPromote and the sentences of their
@@ -14,7 +15,9 @@
 // operations answer 501, or answer from the stacks domain's partial
 // where it serves them empty. Its tests hold internal/kernel's run
 // states, run types, stack states and run priorities to the API's enums,
-// and RunCommentRequest.body's bounds to control.MaxComment.
+// RunCommentRequest.body's bounds to control.MaxComment and
+// RunTargetedReplanRequest.targets' to kernel.MaxTargets and
+// kernel.MaxTarget.
 //
 // # Input and output
 //

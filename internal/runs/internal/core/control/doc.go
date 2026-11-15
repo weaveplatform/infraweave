@@ -7,6 +7,9 @@
 // kill of one a stop was asked of while a worker holds it, which notifies
 // the run's pool so its worker's poll delivers it, each needing its
 // blocking variant for the run that holds its stack's run lock. It
+// replans a tracked run waiting for confirmation against the resource
+// addresses kernel.CheckTargets accepts, keeping them for the
+// specification of the run's next claim. It
 // retries a proposed or tracked run that has ended, on its commit, with
 // its overrides, needing RUN_RETRY_BLOCKING as well for a tracked run;
 // promotes a proposed run whose commit is newer than its stack's tracked

@@ -235,11 +235,11 @@ var errAction = errors.New("names no action of the catalogue")
 
 var errRunCost = errors.New("creates runs and is not x-infraweave-cost expensive")
 
-// createsRuns holds the actions of the operations that create runs, which
-// draw on the expensive budget as other fan-out work does. stackDelete
-// creates a destroy run only with destroyResources and decides
-// STACK_DELETE, so it costs standard: a class cannot depend on a
-// parameter.
+// createsRuns holds the actions of the operations that create runs, or
+// plan one again, which draw on the expensive budget as other fan-out
+// work does. stackDelete creates a destroy run only with destroyResources
+// and decides STACK_DELETE, so it costs standard: a class cannot depend on
+// a parameter.
 //
 // ref: decision 0003 § "Rate limits"
 var createsRuns = map[accessapi.Action]bool{

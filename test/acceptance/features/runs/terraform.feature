@@ -14,13 +14,15 @@ Feature: Runs of a Terraform stack end to end
   restore. A write-only variable and a write-only mounted file reach the
   run, and the log masks each where a hook prints it; no object of the
   store holds either in the clear. A discarded run releases its stack's
-  lock to the next run. A local preview plans an uploaded workspace that
-  holds uncommitted code. A task performs its command after
+  lock to the next run. A targeted replan of one of a run's two changes
+  restores its workspace in a new container and plans that change alone,
+  and its confirmation applies it alone. A local preview plans an uploaded
+  workspace that holds uncommitted code. A task performs its command after
   initialization, reading the state's output; one that fails fails in
-  PERFORMING, its output masked, and one that skips initialization runs
-  no init. A stack deleted with its resources destroys them in a destroy
-  run, whose after-destroy hook finds no resource left in the state, and
-  is deleted when that run finishes. In a run's environment a per-run
+  PERFORMING, its output masked, and one that skips initialization runs no
+  init. A stack deleted with its resources destroys them in a destroy run,
+  whose after-destroy hook finds no resource left in the state, and is
+  deleted when that run finishes. In a run's environment a per-run
   override wins over the stack's variable, which wins over an attached
   context's; a stack variable that names a computed TF_VAR_infraweave_
   variable replaces it; a ${{ … }} template renders against the winning
@@ -28,10 +30,10 @@ Feature: Runs of a Terraform stack end to end
   Every run gets INFRAWEAVE_API_TOKEN, on a stack with no role too, whose
   subject is the stack's slug and the run's ID, and with which a hook
   reads its own stack and space. The release indexes serve the recorded
-  fixtures; the home key is space-admin on the account's top space.
-  Stacks live in legacy, keep their state in infraweave and run on the
-  pool; the repository's configuration has terraform_data resources and
-  outputs alone, so no provider is downloaded.
+  fixtures; the home key is space-admin on the account's top space. Stacks
+  live in legacy, keep their state in infraweave and run on the pool; the
+  repository's configuration has terraform_data resources and outputs
+  alone, so no provider is downloaded.
   ref: decision 0006
   ref: decision 0008
   ref: decision 0010
@@ -101,6 +103,29 @@ Feature: Runs of a Terraform stack end to end
     And the answer's last state transition's note is "Not this one"
     And the outbox holds the run "first"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, UNCONFIRMED, DISCARDED"
     And the run "first" wrote 0 state versions
+
+  @op:runTargetedReplan @op:runConfirm @case:success
+  Scenario: A targeted replan plans one of the run's two changes again, and its confirmation applies that one alone
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "UNCONFIRMED" through A
+    And token "h" sends "GET /api/v1/runs/{run}/changes-v3?input=%7B%7D" through B
+    Then the answer's resources are the changes "terraform_data.secret ADD, terraform_data.this ADD"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/targeted-replan" with '{"targets":["terraform_data.this"]}' through A
+    Then it answers 200
+    And the answer drew on the expensive budget
+    And the answer's state is '"REPLAN_REQUESTED"'
+    And token "h" eventually reads the run "run" in the state "UNCONFIRMED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, UNCONFIRMED, REPLAN_REQUESTED, PREPARING_REPLAN, PLANNING, UNCONFIRMED"
+    When token "h" sends "GET /api/v1/runs/{run}/changes-v3?input=%7B%7D" through A
+    Then the answer's resources are the changes "terraform_data.this ADD"
+    When token "h" sends "GET /api/v1/runs/{run}" through B
+    Then the answer's delta is '{"addCount":1,"changeCount":0,"deleteCount":0,"importCount":0,"moveCount":0,"forgetCount":0,"resources":0,"okCount":0,"skipCount":0,"rescueCount":0,"ignoreCount":0,"unreachableCount":0,"failedCount":0}'
+    When token "h" sends "POST /api/v1/stacks/infra/runs/confirm" with '{"run":"{run}"}' through A
+    Then it answers 200
+    And token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And token "h" reads the run "run"'s APPLYING log through A, which holds "Apply complete! Resources: 1 added, 0 changed, 0 destroyed." and not "terraform_data.secret"
 
   @op:uploadLocalWorkspace @op:runProposeLocalWorkspace @case:success
   Scenario: A local preview plans the uncommitted code of an uploaded workspace, and finishes

@@ -12,6 +12,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	gen "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
@@ -78,8 +79,9 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			Tool: &workersapi.SpecTool{
 				Name: "tofu", Version: "1.11.2", Download: true, CPUProfiling: true,
 			},
-			Task:  &kernel.Task{Command: "make check", SkipInitialization: true},
-			Hooks: map[string][]string{"beforeInit": {"echo hi"}},
+			Task:    &kernel.Task{Command: "make check", SkipInitialization: true},
+			Targets: []string{"aws_instance.web", `module.app["a"]`},
+			Hooks:   map[string][]string{"beforeInit": {"echo hi"}},
 			Environment: []workersapi.Variable{
 				{Name: "REGION", Value: &value}, {Name: "TOKEN", WriteOnly: true},
 			},
@@ -138,8 +140,9 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		"tool": map[string]any{
 			"name": "tofu", "version": "1.11.2", "download": true, "enableCPUProfiling": true,
 		},
-		"task":  map[string]any{"command": "make check", "skipInitialization": true},
-		"hooks": map[string]any{"beforeInit": []any{"echo hi"}},
+		"task":    map[string]any{"command": "make check", "skipInitialization": true},
+		"targets": []any{"aws_instance.web", `module.app["a"]`},
+		"hooks":   map[string]any{"beforeInit": []any{"echo hi"}},
 		"environment": []any{
 			map[string]any{"name": "REGION", "value": "eu", "writeOnly": false},
 			map[string]any{"name": "TOKEN", "writeOnly": true},
@@ -205,5 +208,25 @@ func TestUnitProtocolRunSpecRefused(t *testing.T) {
 	if code, body := f.get(t, path, "run."+run.String()); code != http.StatusUnprocessableEntity ||
 		body["type"] != "urn:infraweave:problem:validation-failed" {
 		t.Errorf("a template that fails = %d %v", code, body)
+	}
+}
+
+// TestUnitProtocolTargetsBounds holds RunSpec.targets' bounds to the 1 to
+// kernel.MaxTargets addresses of 1 to kernel.MaxTarget characters a
+// targeted replan holds.
+func TestUnitProtocolTargetsBounds(t *testing.T) {
+	spec, err := gen.GetSpec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := spec.Components.Schemas["RunSpec"].Value.Properties["targets"].Value
+	if targets.MinItems != 1 || targets.MaxItems == nil || *targets.MaxItems != kernel.MaxTargets {
+		t.Errorf("targets holds %d to %v addresses, want 1 to %d", targets.MinItems,
+			targets.MaxItems, kernel.MaxTargets)
+	}
+	item := targets.Items.Value
+	if item.MinLength != 1 || item.MaxLength == nil || *item.MaxLength != kernel.MaxTarget {
+		t.Errorf("an address is %d to %v characters, want 1 to %d", item.MinLength,
+			item.MaxLength, kernel.MaxTarget)
 	}
 }
