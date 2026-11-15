@@ -54,6 +54,7 @@ Feature: A run previews an uploaded local workspace
     And the local workspace "ws" is put at the answer's uploadUrl
     When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"workspace":"{upload}"}' through B
     Then it answers 200
+    And the answer drew on the expensive budget
     And the answer's type is '"PROPOSED"'
     And the answer's state is '"QUEUED"'
     And the answer's commits is '["{seed}"]'

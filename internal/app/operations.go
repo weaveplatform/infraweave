@@ -126,7 +126,9 @@ var errSpec = errors.New("invalid operation in the API")
 // the catalogue holds as no capability, fails, so no operation goes
 // ungated. With authorized, every operation names its action and subject,
 // and one that lacks either or names an action the catalogue lacks fails,
-// so no operation goes undecided.
+// so no operation goes undecided; one whose action creates runs and that
+// is not expensive fails, so no run is created at the budget of an
+// ordinary write.
 //
 // ref: decisions 0003, 0007 and 0021
 func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, error) {
@@ -166,6 +168,9 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 			if authorized {
 				if required, err = requiredOf(op); err != nil {
 					return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, err)
+				}
+				if createsRuns[required.Action] && cost != ratelimit.Expensive {
+					return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, errRunCost)
 				}
 			}
 			ops[method+" "+base+path] = Operation{
@@ -227,6 +232,25 @@ func runToken(security *openapi3.SecurityRequirements) bool {
 }
 
 var errAction = errors.New("names no action of the catalogue")
+
+var errRunCost = errors.New("creates runs and is not x-infraweave-cost expensive")
+
+// createsRuns holds the actions of the operations that create runs, which
+// draw on the expensive budget as other fan-out work does. stackDelete
+// creates a destroy run only with destroyResources and decides
+// STACK_DELETE, so it costs standard: a class cannot depend on a
+// parameter.
+//
+// ref: decision 0003 § "Rate limits"
+var createsRuns = map[accessapi.Action]bool{
+	accessapi.ActionRunTrigger:               true,
+	accessapi.ActionTaskCreate:               true,
+	accessapi.ActionRunProposeWithOverrides:  true,
+	accessapi.ActionRunProposeLocalWorkspace: true,
+	accessapi.ActionRunRetry:                 true,
+	accessapi.ActionRunPromote:               true,
+	accessapi.ActionRunTargetedReplan:        true,
+}
 
 // requiredOf reads op's action and subject.
 func requiredOf(op *openapi3.Operation) (*accessapi.Required, error) {

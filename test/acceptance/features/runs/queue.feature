@@ -42,6 +42,7 @@ Feature: Runs queue on their stack
   Scenario: A trigger queues a tracked run on the tracked commit once, and a proposed run on a named commit
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{}' through A
     Then it answers 200
+    And the answer drew on the expensive budget
     And the answer's state is '"QUEUED"'
     And the answer's type is '"TRACKED"'
     And the answer's stackId is '"infra"'
