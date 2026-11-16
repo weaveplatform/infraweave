@@ -28,6 +28,9 @@ tags:
   - name: Stacks
     description: >-
       Tracked pieces of infrastructure, each bound to a repository, a branch and a project root, with their locks, state and scheduled work.
+  - name: Tofu Workspaces
+    description: >-
+      The separately locked states of each stack whose state infraweave manages, with who holds their locks, and the release of a lock a stopped or stuck run left behind.
 security:
   - bearerAuth: []
 paths:
@@ -16823,6 +16826,61 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: create
+  /stacks/{stackId}/tofu-workspaces/unlock:
+    post:
+      description: >-
+        Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
+      operationId: tofuWorkspaceUnlockAll
+      x-infraweave-feature: tofu-workspaces
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TofuWorkspaceUnlockAllResponse'
+          description: The tofuWorkspaceUnlockAll result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Unlock All Tofu Workspaces
+      tags:
+        - Tofu Workspaces
+      x-bruno: Tofu Workspaces/Unlock All Tofu Workspaces.bru
+      x-graphql:
+        field: tofuWorkspaceUnlockAll
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: STACK_WORKSPACE_UNLOCK
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:stackId:stack
+      x-rest-style: override
   /stacks/{stackId}/unlock:
     post:
       description: Unlock the stack.
@@ -17362,6 +17420,158 @@ paths:
         - cursor-pagination
         - rate-limit
       x-rest-style: read
+  /tofu-workspaces/search:
+    post:
+      description: >-
+        Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+      operationId: searchTofuWorkspaces
+      x-infraweave-feature: tofu-workspaces
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example:
+              first: 50
+            schema:
+              $ref: '#/components/schemas/SearchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchTofuWorkspacesOutput'
+          description: The searchTofuWorkspaces result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Tofu Workspaces
+      tags:
+        - Tofu Workspaces
+      x-bruno: Tofu Workspaces/Search Tofu Workspaces.bru
+      x-graphql:
+        field: searchTofuWorkspaces
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /tofu-workspaces/search/suggestions:
+    post:
+      description: >-
+        The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+      operationId: searchTofuWorkspacesSuggestions
+      x-infraweave-feature: tofu-workspaces
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchTofuWorkspacesSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Tofu Workspaces Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Tofu Workspaces Suggestions.bru
+      x-graphql:
+        field: searchTofuWorkspacesSuggestions
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: search
+  /tofu-workspaces/{tofuWorkspaceId}/unlock:
+    post:
+      description: >-
+        Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
+      operationId: tofuWorkspaceUnlock
+      x-infraweave-feature: tofu-workspaces
+      parameters:
+        - in: path
+          name: tofuWorkspaceId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TofuWorkspace'
+          description: The tofuWorkspaceUnlock result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Unlock Tofu Workspace
+      tags:
+        - Tofu Workspaces
+      x-bruno: Tofu Workspaces/Unlock Tofu Workspace.bru
+      x-graphql:
+        field: tofuWorkspaceUnlock
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: STACK_WORKSPACE_UNLOCK
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-subject: path:tofuWorkspaceId:tofu_workspace
+      x-rest-style: override
   /type:
     get:
       description: The type of the caller's account, always ORG.
@@ -28858,6 +29068,19 @@ components:
         - values
       type: object
       x-graphql-type: SearchSuggestionsPossibleValuesString
+    SearchTofuWorkspacesOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/TofuWorkspacesConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchTofuWorkspacesOutput
     SearchVCSIntegrationUsersOutput:
       properties:
         edges:
@@ -31928,6 +32151,61 @@ components:
       required:
         - items
       type: object
+    TofuWorkspace:
+      description: >-
+        A separately locked and versioned state of a stack whose state infraweave manages: its default workspace, which exists from the stack's creation, or a Terragrunt unit's, which the first lock a run takes on it creates.
+      properties:
+        createdAt:
+          description: Unix timestamp when the workspace was created.
+          format: int32
+          type: integer
+        id:
+          description: Unique identifier of the workspace.
+          type: string
+        isLocked:
+          description: Whether a run holds a lock on the workspace.
+          type: boolean
+        lockedBy:
+          description: >-
+            Who triggered the run that holds the workspace's lock, as the run's triggeredBy names them; the oldest holder's while planning runs share the lock. Null while the workspace is free.
+          nullable: true
+          type: string
+        name:
+          description: >-
+            Name of the workspace; the stack's default workspace is named default.
+          type: string
+      required:
+        - createdAt
+        - id
+        - isLocked
+        - name
+      type: object
+      x-graphql-type: TofuWorkspace
+    TofuWorkspaceUnlockAllResponse:
+      description: Response type for unlocking all Tofu workspaces in a stack.
+      properties:
+        unlockedWorkspaces:
+          description: >-
+            The workspaces this call unlocked, by name; a workspace that was already free is left out.
+          items:
+            $ref: '#/components/schemas/TofuWorkspace'
+          type: array
+      required:
+        - unlockedWorkspaces
+      type: object
+      x-go-name: TofuWorkspaceUnlockAllResult
+      x-graphql-type: TofuWorkspaceUnlockAllResponse
+    TofuWorkspacesConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/TofuWorkspace'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: TofuWorkspacesConnection
     User:
       description: The user, or the API key, a token acts as.
       properties:

@@ -276,6 +276,22 @@ type StackGuard interface {
 	Deleting(ctx context.Context, st Stack) error
 }
 
+// ManagedState is the state domain's part in creating a stack whose
+// state infraweave keeps, which that domain, constructed after stacks,
+// implements and internal/app binds. The stacks domain calls Created in
+// the creation's transaction, which the context carries, after it writes
+// the stack's row, so the state's rows commit with the stack and a
+// failure fails the create, leaving nothing created. It is the one port
+// a stack's creation reaches the state domain through. The stacks domain
+// declares it, so the back edge adds no import.
+//
+// ref: decision 0004
+// ref: decision 0010 § "Storage"
+type ManagedState interface {
+	// Created opens st's default workspace.
+	Created(ctx context.Context, st Stack) error
+}
+
 // StackMove is a proposed move of a stack from the space it lives in to
 // To.
 type StackMove struct {

@@ -260,7 +260,7 @@ type Refusal struct {
 }
 
 // The routes a relay holds calls of: a runner's reports, keyed by run,
-// and the state backend's UNLOCK, keyed by path.
+// and the state backend's UNLOCK and POST, keyed by path.
 const (
 	reportsPath = "/worker/v1/runs/{run}/reports"
 	statePath   = "/state/v1/*"
@@ -285,7 +285,9 @@ const maxRefusal = 64 << 10
 // each 423. While it holds reports, each runner's report waits until it
 // releases them or the report's caller gives up; while it holds unlocks,
 // each UNLOCK of the state backend waits the same way, so the lock it
-// would release stays held.
+// would release stays held; while it holds writes, each POST of a state
+// version waits the same way, so its tool holds its lock with the write
+// still to come.
 type Relay struct {
 	// URL is the relay's base URL; Port is its port.
 	URL, Port string
@@ -295,6 +297,7 @@ type Relay struct {
 	refusals  []Refusal
 	reports   *gate
 	unlocks   *gate
+	writes    *gate
 }
 
 // StartRelay starts a relay to the API listener at target, a host:port.
@@ -306,6 +309,7 @@ func StartRelay(ctx context.Context, target string) (*Relay, error) {
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 	r := &Relay{
 		URL: "http://" + ln.Addr().String(), Port: port, reports: newGate(), unlocks: newGate(),
+		writes: newGate(),
 	}
 	to := &url.URL{Scheme: "http", Host: target}
 	proxy := &httputil.ReverseProxy{
@@ -339,6 +343,11 @@ func StartRelay(ctx context.Context, target string) (*Relay, error) {
 				proxy.ServeHTTP(w, req)
 			}
 		}))
+	mux.Post(statePath, func(w http.ResponseWriter, req *http.Request) {
+		if r.writes.wait(req.Context(), req.URL.Path) {
+			proxy.ServeHTTP(w, req)
+		}
+	})
 	mux.Handle("/*", proxy)
 	r.srv = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() { _ = r.srv.Serve(ln) }()
@@ -377,6 +386,17 @@ func (r *Relay) ReleaseUnlocks() { r.unlocks.open() }
 // relay holds.
 func (r *Relay) HeldUnlocks(path string) int { return r.unlocks.count(path) }
 
+// HoldWrites makes the relay hold the state backend's POST calls from now
+// on.
+func (r *Relay) HoldWrites() { r.writes.shut() }
+
+// ReleaseWrites passes the held POST calls on, and later ones at once.
+func (r *Relay) ReleaseWrites() { r.writes.open() }
+
+// HeldWrites reports how many POST calls of the backend at path the relay
+// holds.
+func (r *Relay) HeldWrites(path string) int { return r.writes.count(path) }
+
 // Calls are the calls the relay passed on so far, in the order answered.
 func (r *Relay) Calls() []Call {
 	r.mu.Lock()
@@ -396,6 +416,7 @@ func (r *Relay) Refusals() []Refusal {
 func (r *Relay) Close(ctx context.Context) error {
 	r.reports.open()
 	r.unlocks.open()
+	r.writes.open()
 	if err := r.srv.Shutdown(ctx); err != nil {
 		return fmt.Errorf("relay: %w", err)
 	}

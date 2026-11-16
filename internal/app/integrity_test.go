@@ -118,13 +118,19 @@ func TestAccOrphans(t *testing.T) {
 	}
 
 	gone := kernel.NewULID()
-	if _, err := q.Exec(ctx, `INSERT INTO state_workspaces (account_id, stack_id, name)
-		VALUES ($1, $2, '')`, acct, gone); err != nil {
+	if _, err := q.Exec(ctx, `INSERT INTO state_workspaces (account_id, id, stack_id, name)
+		VALUES ($1, gen_random_uuid(), $2, '')`, acct, gone); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := q.Exec(ctx, `INSERT INTO state_locks
-		(account_id, stack_id, workspace, lock_id, mode, run_id, info)
-		VALUES ($1, $2, '', 'a', 'shared', $3, '{}')`, acct, gone, kernel.NewULID()); err != nil {
+		(account_id, stack_id, workspace, lock_id, mode, run_id, triggered_by, info)
+		VALUES ($1, $2, '', 'a', 'shared', $3, 'alice', '{}')`, acct, gone,
+		kernel.NewULID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.Exec(ctx, `INSERT INTO state_broken_locks
+		(account_id, stack_id, workspace, lock_id, run_id) VALUES ($1, $2, '', 'b', $3)`,
+		acct, gone, kernel.NewULID()); err != nil {
 		t.Fatal(err)
 	}
 	lines := run()
@@ -136,10 +142,12 @@ func TestAccOrphans(t *testing.T) {
 		"space stacks(account_id, space_id) 1",
 		"stack state_workspaces(account_id, stack_id) 1",
 		"stack state_locks(account_id, stack_id) 1",
+		"stack state_broken_locks(account_id, stack_id) 1",
 		"run state_locks(account_id, run_id) 1",
+		"run state_broken_locks(account_id, run_id) 1",
 	}
 	if strings.Join(state, "\n") != strings.Join(want, "\n") {
-		t.Errorf("with a workspace and lock of no stack or run:\n%s\nwant:\n%s",
+		t.Errorf("with a workspace, lock and broken lock of no stack or run:\n%s\nwant:\n%s",
 			strings.Join(state, "\n"), strings.Join(want, "\n"))
 	}
 	db.Close()

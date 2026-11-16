@@ -204,6 +204,7 @@ type Service struct {
 	sources      stacksapi.StackSources
 	integrations stacksapi.StackIntegrations
 	destroyer    stacksapi.StackDestroyer
+	state        stacksapi.ManagedState
 }
 
 // New returns the service over d.
@@ -256,6 +257,16 @@ func (s *Service) BindDestroyer(d stacksapi.StackDestroyer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.destroyer = d
+}
+
+// BindManagedState makes m what the creation of a stack whose state
+// infraweave keeps opens its default workspace through; until it runs,
+// such a stack is created with none. It runs during construction, before
+// the service serves a request.
+func (s *Service) BindManagedState(m stacksapi.ManagedState) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state = m
 }
 
 func (s *Service) registered() []stacksapi.StackGuard {
@@ -555,10 +566,11 @@ func (s *Service) Starred(ctx context.Context, p kernel.Principal, stacks []Stac
 // Create creates a stack of p's account from in, slugged slug when it is
 // not empty and from in's name otherwise, whose state infraweave keeps
 // when manageState is set, or, for a Terragrunt stack, when its
-// useStateManagement is set and manageState only when it is null. Either
-// is decided here alone: an update keeps the stack's state management as
-// it was created. The route has decided STACK_CREATE on in's space. Its
-// refusals point into stackCreate's body, where in is input.
+// useStateManagement is set and manageState only when it is null, with
+// its default workspace open from the start. Either is decided here
+// alone: an update keeps the stack's state management as it was created.
+// The route has decided STACK_CREATE on in's space. Its refusals point
+// into stackCreate's body, where in is input.
 //
 // ref: decision 0010 § "How a run reaches it"
 func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, manageState bool, in Input) (Stack, error) {
@@ -592,9 +604,27 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 		if err := s.store.Create(ctx, st); err != nil {
 			return err //nolint:wrapcheck // the store names the write
 		}
+		if err := s.openState(ctx, st); err != nil {
+			return err
+		}
 		return s.changed(ctx, st, stacksapi.ChangeCreated, true)
 	})
 	return st, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// openState opens the default workspace of st, written in the context's
+// transaction, through the bound state domain, when infraweave keeps its
+// state.
+//
+// ref: decision 0010 § "Storage"
+func (s *Service) openState(ctx context.Context, st Stack) error {
+	s.mu.RLock()
+	m := s.state
+	s.mu.RUnlock()
+	if !st.ManagesState || m == nil {
+		return nil
+	}
+	return m.Created(ctx, st.Stack) //nolint:wrapcheck // the state domain names the write
 }
 
 // Update replaces the settings of p's account's stack slug with in's,

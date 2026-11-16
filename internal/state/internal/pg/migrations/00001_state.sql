@@ -3,19 +3,26 @@
 -- ref: decisions 0004, 0005 and 0010; report 28 section 12.3
 
 -- A stack's workspaces, name empty for its default workspace, which its
--- http backend reaches. stack_id has no foreign key because stacks belong
--- to the stacks domain: a workspace holds its stack while it is written,
--- and deleting the stack deletes its workspaces through the domain's
--- StackGuard. current_version_id is the version a read answers, absent
--- until the first write; it has no foreign key, since a version names its
--- workspace and both cannot name the other at insert.
+-- http backend reaches. id is the ULID the Tofu Workspaces operations
+-- name a workspace by, set when the row is created: the default
+-- workspace's with a stack whose state infraweave keeps, any other by the
+-- first lock on it. Locks and versions name their workspace by its stack
+-- and name. stack_id has no
+-- foreign key because stacks belong to the stacks domain: a workspace
+-- holds its stack while it is written, and deleting the stack deletes its
+-- workspaces through the domain's StackGuard. current_version_id is the
+-- version a read answers, absent until the first write; it has no foreign
+-- key, since a version names its workspace and both cannot name the other
+-- at insert.
 CREATE TABLE state_workspaces (
     account_id         uuid        NOT NULL,
+    id                 uuid        NOT NULL,
     stack_id           uuid        NOT NULL,
     name               text        NOT NULL,
     current_version_id uuid,
     created_at         timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (account_id, stack_id, name),
+    PRIMARY KEY (account_id, id),
+    UNIQUE (account_id, stack_id, name),
     CHECK (octet_length(name) <= 512)
 );
 
@@ -24,16 +31,19 @@ CREATE TABLE state_workspaces (
 -- writes. info is the LockInfo as the client sent it, which a refused lock
 -- answers; json keeps its bytes. run_id is the run that holds it, which
 -- has no foreign key because runs belong to the runs domain: the run's
--- terminal run_updated deletes its locks.
+-- terminal run_updated deletes its locks. triggered_by is the login or
+-- trigger that created the run, as the runs domain records it, which a
+-- workspace's lockedBy answers.
 CREATE TABLE state_locks (
-    account_id uuid        NOT NULL,
-    stack_id   uuid        NOT NULL,
-    workspace  text        NOT NULL,
-    lock_id    text        NOT NULL,
-    mode       text        NOT NULL,
-    run_id     uuid        NOT NULL,
-    info       json        NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
+    account_id   uuid        NOT NULL,
+    stack_id     uuid        NOT NULL,
+    workspace    text        NOT NULL,
+    lock_id      text        NOT NULL,
+    mode         text        NOT NULL,
+    run_id       uuid        NOT NULL,
+    triggered_by text        NOT NULL,
+    info         json        NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, stack_id, workspace, lock_id),
     FOREIGN KEY (account_id, stack_id, workspace)
         REFERENCES state_workspaces (account_id, stack_id, name) ON DELETE CASCADE,
@@ -42,6 +52,26 @@ CREATE TABLE state_locks (
 );
 
 CREATE INDEX state_locks_run ON state_locks (account_id, run_id);
+
+-- The locks released from under the run that held them, by a person's
+-- workspace unlock or another run's force-unlock, by the LockInfo ID and
+-- the run, so that run's own UNLOCK of one answers 423, as its writes do,
+-- rather than the 200 of a lock no one held. run_id has no foreign key,
+-- as in state_locks: the run's terminal run_updated deletes its rows with
+-- its locks.
+CREATE TABLE state_broken_locks (
+    account_id uuid        NOT NULL,
+    stack_id   uuid        NOT NULL,
+    workspace  text        NOT NULL,
+    lock_id    text        NOT NULL,
+    run_id     uuid        NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, stack_id, workspace, lock_id, run_id),
+    FOREIGN KEY (account_id, stack_id, workspace)
+        REFERENCES state_workspaces (account_id, stack_id, name) ON DELETE CASCADE
+);
+
+CREATE INDEX state_broken_locks_run ON state_broken_locks (account_id, run_id);
 
 -- Each version written to a workspace, never overwritten. object_key is
 -- its sealed object's key in the states store,

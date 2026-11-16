@@ -28,14 +28,16 @@ const (
 const MaxLockInfo = 16 << 10
 
 // Lock is a lock held on a workspace: ID is its LockInfo's ID, Run the
-// run that took it, and Info the LockInfo as the client sent it, which a
-// conflict answers.
+// run that took it, TriggeredBy the login or trigger that created that
+// run, which the workspace's lockedBy answers, and Info the LockInfo as
+// the client sent it, which a conflict answers.
 type Lock struct {
-	ID        string
-	Mode      Mode
-	Run       kernel.ULID
-	Info      json.RawMessage
-	CreatedAt time.Time
+	ID          string
+	Mode        Mode
+	Run         kernel.ULID
+	TriggeredBy string
+	Info        json.RawMessage
+	CreatedAt   time.Time
 }
 
 // Conflict is a lock that cannot be taken or released, or a write that
@@ -116,12 +118,15 @@ type Unlock struct {
 // Unlock releases u's lock, or with an empty ID every lock on its
 // workspace. It answers ErrNoWorkspace for a workspace no lock was taken
 // on; a *Conflict naming the holder when another lock is held and none
-// has u's ID; and ErrBreak, releasing nothing, when u would release
+// has u's ID; a *Conflict naming no holder when none is held and u's lock
+// was released from under its run, which a repeated release of its own
+// lock is not; and ErrBreak, releasing nothing, when u would release
 // another run's lock without Break. Releasing another run's lock records
-// an audit entry naming the caller, the workspace and each LockInfo
-// released.
+// it as broken and an audit entry naming the caller, the workspace and
+// each LockInfo released.
 //
 // ref: decision 0010 § "Locks"
+// ref: decision 0010 § "Constraints"
 func (s *Service) Unlock(ctx context.Context, u Unlock) error {
 	//nolint:wrapcheck // each step in the transaction names itself
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
@@ -147,6 +152,9 @@ func (s *Service) Unlock(ctx context.Context, u Unlock) error {
 			if release == nil && len(held) > 0 {
 				return &Conflict{Holder: holder(held)}
 			}
+			if release == nil {
+				return s.unbroken(ctx, u)
+			}
 		}
 		ids, others := make([]string, 0, len(release)), make([]Lock, 0, len(release))
 		for _, l := range release {
@@ -167,8 +175,29 @@ func (s *Service) Unlock(ctx context.Context, u Unlock) error {
 		if len(others) == 0 {
 			return nil
 		}
+		if err := s.store.BreakLocks(ctx, u.Target, others); err != nil {
+			return err //nolint:wrapcheck // the store names the write
+		}
 		return s.store.Audit(ctx, broken(u, others)) //nolint:wrapcheck // the store names it
 	})
+}
+
+// noHolder is the conflict a write or a release answers when no lock is
+// held, whose LockInfo body is the empty object.
+func noHolder() *Conflict { return &Conflict{Holder: Lock{Info: json.RawMessage(`{}`)}} }
+
+// unbroken answers u, a release by ID of a lock no one holds: nil, so a
+// repeated release is idempotent, unless the lock was released from under
+// u's run, which then learns it no longer held it.
+func (s *Service) unbroken(ctx context.Context, u Unlock) error {
+	broken, err := s.store.Broken(ctx, u.Target, u.ID, u.Run)
+	switch {
+	case err != nil:
+		return err //nolint:wrapcheck // the store names the read
+	case broken:
+		return noHolder()
+	}
+	return nil
 }
 
 // RunEnded releases every lock run holds in acct once it reaches state,

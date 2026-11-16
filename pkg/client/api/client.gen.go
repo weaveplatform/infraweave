@@ -7705,6 +7705,12 @@ type SearchSuggestionsPossibleValuesString struct {
 	Values []string `json:"values"`
 }
 
+// SearchTofuWorkspacesOutput defines model for SearchTofuWorkspacesOutput.
+type SearchTofuWorkspacesOutput struct {
+	Edges    []TofuWorkspacesConnection `json:"edges"`
+	PageInfo PageInfo                   `json:"pageInfo"`
+}
+
 // SearchVCSIntegrationUsersOutput defines model for SearchVCSIntegrationUsersOutput.
 type SearchVCSIntegrationUsersOutput struct {
 	Edges    []VCSIntegrationUserConnection `json:"edges"`
@@ -9529,6 +9535,38 @@ type TierFeaturePage struct {
 
 	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
 	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// TofuWorkspace A separately locked and versioned state of a stack whose state infraweave manages: its default workspace, which exists from the stack's creation, or a Terragrunt unit's, which the first lock a run takes on it creates.
+type TofuWorkspace struct {
+	// CreatedAt Unix timestamp when the workspace was created.
+	CreatedAt int32 `json:"createdAt"`
+
+	// Id Unique identifier of the workspace.
+	Id string `json:"id"`
+
+	// IsLocked Whether a run holds a lock on the workspace.
+	IsLocked bool `json:"isLocked"`
+
+	// LockedBy Who triggered the run that holds the workspace's lock, as the run's triggeredBy names them; the oldest holder's while planning runs share the lock. Null while the workspace is free.
+	LockedBy *string `json:"lockedBy,omitempty"`
+
+	// Name Name of the workspace; the stack's default workspace is named default.
+	Name string `json:"name"`
+}
+
+// TofuWorkspaceUnlockAllResult Response type for unlocking all Tofu workspaces in a stack.
+type TofuWorkspaceUnlockAllResult struct {
+	// UnlockedWorkspaces The workspaces this call unlocked, by name; a workspace that was already free is left out.
+	UnlockedWorkspaces []TofuWorkspace `json:"unlockedWorkspaces"`
+}
+
+// TofuWorkspacesConnection defines model for TofuWorkspacesConnection.
+type TofuWorkspacesConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node A separately locked and versioned state of a stack whose state infraweave manages: its default workspace, which exists from the stack's creation, or a Terragrunt unit's, which the first lock a run takes on it creates.
+	Node TofuWorkspace `json:"node"`
 }
 
 // User The user, or the API key, a token acts as.
@@ -11925,6 +11963,12 @@ type TaskCreateParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// TofuWorkspaceUnlockAllParams defines parameters for TofuWorkspaceUnlockAll.
+type TofuWorkspaceUnlockAllParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // StackUnlockParams defines parameters for StackUnlock.
 type StackUnlockParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -11979,6 +12023,12 @@ type TierFeaturesParams struct {
 
 	// Limit Page size. Values outside 1–100 are clamped.
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// TofuWorkspaceUnlockParams defines parameters for TofuWorkspaceUnlock.
+type TofuWorkspaceUnlockParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // UserGroupRoleBindingBatchCreateParams defines parameters for UserGroupRoleBindingBatchCreate.
@@ -12600,6 +12650,12 @@ type WebhooksIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePat
 
 // WebhooksIntegrationUpdateJSONRequestBody defines body for WebhooksIntegrationUpdate for application/json ContentType.
 type WebhooksIntegrationUpdateJSONRequestBody = WebhooksIntegrationInput
+
+// SearchTofuWorkspacesJSONRequestBody defines body for SearchTofuWorkspaces for application/json ContentType.
+type SearchTofuWorkspacesJSONRequestBody = SearchInput
+
+// SearchTofuWorkspacesSuggestionsJSONRequestBody defines body for SearchTofuWorkspacesSuggestions for application/json ContentType.
+type SearchTofuWorkspacesSuggestionsJSONRequestBody = SearchSuggestionsInput
 
 // UserGroupRoleBindingBatchCreateJSONRequestBody defines body for UserGroupRoleBindingBatchCreate for application/json ContentType.
 type UserGroupRoleBindingBatchCreateJSONRequestBody = UserGroupRoleBindingBatchInput
@@ -18250,6 +18306,13 @@ type ClientInterface interface {
 	// Corresponds with POST /stacks/{stackId}/tasks (the `TaskCreate` operationId).
 	TaskCreate(ctx context.Context, stackId string, params *TaskCreateParams, body TaskCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// TofuWorkspaceUnlockAll Unlock All Tofu Workspaces
+	//
+	// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
+	//
+	// Corresponds with POST /stacks/{stackId}/tofu-workspaces/unlock (the `TofuWorkspaceUnlockAll` operationId).
+	TofuWorkspaceUnlockAll(ctx context.Context, stackId string, params *TofuWorkspaceUnlockAllParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// StackUnlock Unlock Stack
 	//
 	// Unlock the stack.
@@ -18352,6 +18415,49 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /tier-features (the `TierFeatures` operationId).
 	TierFeatures(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchTofuWorkspacesWithBody Search Tofu Workspaces
+	//
+	// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+	SearchTofuWorkspacesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchTofuWorkspaces Search Tofu Workspaces
+	//
+	// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+	SearchTofuWorkspaces(ctx context.Context, body SearchTofuWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchTofuWorkspacesSuggestionsWithBody Search Tofu Workspaces Suggestions
+	//
+	// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+	SearchTofuWorkspacesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchTofuWorkspacesSuggestions Search Tofu Workspaces Suggestions
+	//
+	// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+	SearchTofuWorkspacesSuggestions(ctx context.Context, body SearchTofuWorkspacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TofuWorkspaceUnlock Unlock Tofu Workspace
+	//
+	// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
+	//
+	// Corresponds with POST /tofu-workspaces/{tofuWorkspaceId}/unlock (the `TofuWorkspaceUnlock` operationId).
+	TofuWorkspaceUnlock(ctx context.Context, tofuWorkspaceId string, params *TofuWorkspaceUnlockParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Type Type
 	//
@@ -26920,6 +27026,23 @@ func (c *Client) TaskCreate(ctx context.Context, stackId string, params *TaskCre
 	return c.Client.Do(req)
 }
 
+// TofuWorkspaceUnlockAll Unlock All Tofu Workspaces
+//
+// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
+//
+// Corresponds with POST /stacks/{stackId}/tofu-workspaces/unlock (the `TofuWorkspaceUnlockAll` operationId).
+func (c *Client) TofuWorkspaceUnlockAll(ctx context.Context, stackId string, params *TofuWorkspaceUnlockAllParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTofuWorkspaceUnlockAllRequest(c.Server, stackId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // StackUnlock Unlock Stack
 //
 // Unlock the stack.
@@ -27143,6 +27266,99 @@ func (c *Client) Tier(ctx context.Context, reqEditors ...RequestEditorFn) (*http
 // Corresponds with GET /tier-features (the `TierFeatures` operationId).
 func (c *Client) TierFeatures(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTierFeaturesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchTofuWorkspacesWithBody Search Tofu Workspaces
+//
+// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+func (c *Client) SearchTofuWorkspacesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchTofuWorkspacesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchTofuWorkspaces Search Tofu Workspaces
+//
+// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+func (c *Client) SearchTofuWorkspaces(ctx context.Context, body SearchTofuWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchTofuWorkspacesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchTofuWorkspacesSuggestionsWithBody Search Tofu Workspaces Suggestions
+//
+// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+func (c *Client) SearchTofuWorkspacesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchTofuWorkspacesSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchTofuWorkspacesSuggestions Search Tofu Workspaces Suggestions
+//
+// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+func (c *Client) SearchTofuWorkspacesSuggestions(ctx context.Context, body SearchTofuWorkspacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchTofuWorkspacesSuggestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TofuWorkspaceUnlock Unlock Tofu Workspace
+//
+// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
+//
+// Corresponds with POST /tofu-workspaces/{tofuWorkspaceId}/unlock (the `TofuWorkspaceUnlock` operationId).
+func (c *Client) TofuWorkspaceUnlock(ctx context.Context, tofuWorkspaceId string, params *TofuWorkspaceUnlockParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTofuWorkspaceUnlockRequest(c.Server, tofuWorkspaceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -44835,6 +45051,55 @@ func NewTaskCreateRequestWithBody(server string, stackId string, params *TaskCre
 	return req, nil
 }
 
+// NewTofuWorkspaceUnlockAllRequest constructs an http.Request for the TofuWorkspaceUnlockAll method
+func NewTofuWorkspaceUnlockAllRequest(server string, stackId string, params *TofuWorkspaceUnlockAllParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/tofu-workspaces/unlock", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewStackUnlockRequest constructs an http.Request for the StackUnlock method
 func NewStackUnlockRequest(server string, stackId string, params *StackUnlockParams) (*http.Request, error) {
 	var err error
@@ -45382,6 +45647,135 @@ func NewTierFeaturesRequest(server string, params *TierFeaturesParams) (*http.Re
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSearchTofuWorkspacesRequest calls the generic SearchTofuWorkspaces builder with application/json body
+func NewSearchTofuWorkspacesRequest(server string, body SearchTofuWorkspacesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchTofuWorkspacesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchTofuWorkspacesRequestWithBody constructs an http.Request for the SearchTofuWorkspaces method, with any body, and a specified content type
+func NewSearchTofuWorkspacesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tofu-workspaces/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchTofuWorkspacesSuggestionsRequest calls the generic SearchTofuWorkspacesSuggestions builder with application/json body
+func NewSearchTofuWorkspacesSuggestionsRequest(server string, body SearchTofuWorkspacesSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchTofuWorkspacesSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchTofuWorkspacesSuggestionsRequestWithBody constructs an http.Request for the SearchTofuWorkspacesSuggestions method, with any body, and a specified content type
+func NewSearchTofuWorkspacesSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tofu-workspaces/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewTofuWorkspaceUnlockRequest constructs an http.Request for the TofuWorkspaceUnlock method
+func NewTofuWorkspaceUnlockRequest(server string, tofuWorkspaceId string, params *TofuWorkspaceUnlockParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "tofuWorkspaceId", tofuWorkspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tofu-workspaces/%s/unlock", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -51983,6 +52377,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /stacks/{stackId}/tasks (the `TaskCreate` operationId).
 	TaskCreateWithResponse(ctx context.Context, stackId string, params *TaskCreateParams, body TaskCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*TaskCreateResponse, error)
 
+	// TofuWorkspaceUnlockAllWithResponse Unlock All Tofu Workspaces
+	//
+	// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/tofu-workspaces/unlock (the `TofuWorkspaceUnlockAll` operationId).
+	TofuWorkspaceUnlockAllWithResponse(ctx context.Context, stackId string, params *TofuWorkspaceUnlockAllParams, reqEditors ...RequestEditorFn) (*TofuWorkspaceUnlockAllResponse, error)
+
 	// StackUnlockWithResponse Unlock Stack
 	//
 	// Unlock the stack.
@@ -52099,6 +52502,51 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /tier-features (the `TierFeatures` operationId).
 	TierFeaturesWithResponse(ctx context.Context, params *TierFeaturesParams, reqEditors ...RequestEditorFn) (*TierFeaturesResponse, error)
+
+	// SearchTofuWorkspacesWithBodyWithResponse Search Tofu Workspaces
+	//
+	// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+	SearchTofuWorkspacesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesResponse, error)
+
+	// SearchTofuWorkspacesWithResponse Search Tofu Workspaces
+	//
+	// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+	SearchTofuWorkspacesWithResponse(ctx context.Context, body SearchTofuWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesResponse, error)
+
+	// SearchTofuWorkspacesSuggestionsWithBodyWithResponse Search Tofu Workspaces Suggestions
+	//
+	// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+	SearchTofuWorkspacesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesSuggestionsResponse, error)
+
+	// SearchTofuWorkspacesSuggestionsWithResponse Search Tofu Workspaces Suggestions
+	//
+	// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+	SearchTofuWorkspacesSuggestionsWithResponse(ctx context.Context, body SearchTofuWorkspacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesSuggestionsResponse, error)
+
+	// TofuWorkspaceUnlockWithResponse Unlock Tofu Workspace
+	//
+	// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /tofu-workspaces/{tofuWorkspaceId}/unlock (the `TofuWorkspaceUnlock` operationId).
+	TofuWorkspaceUnlockWithResponse(ctx context.Context, tofuWorkspaceId string, params *TofuWorkspaceUnlockParams, reqEditors ...RequestEditorFn) (*TofuWorkspaceUnlockResponse, error)
 
 	// TypeWithResponse Type
 	//
@@ -83777,6 +84225,115 @@ func (r TaskCreateResponse) ContentType() string {
 	return ""
 }
 
+// TofuWorkspaceUnlockAllResponse200Headers the declared response headers of an HTTP 200 response for TofuWorkspaceUnlockAll
+type TofuWorkspaceUnlockAllResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TofuWorkspaceUnlockAllResponse429Headers the declared response headers of an HTTP 429 response for TofuWorkspaceUnlockAll
+type TofuWorkspaceUnlockAllResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TofuWorkspaceUnlockAllResponse503Headers the declared response headers of an HTTP 503 response for TofuWorkspaceUnlockAll
+type TofuWorkspaceUnlockAllResponse503Headers struct {
+	RetryAfter *int
+}
+
+type TofuWorkspaceUnlockAllResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TofuWorkspaceUnlockAllResult
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *TofuWorkspaceUnlockAllResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *TofuWorkspaceUnlockAllResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *TofuWorkspaceUnlockAllResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TofuWorkspaceUnlockAllResponse) GetJSON200() *TofuWorkspaceUnlockAllResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r TofuWorkspaceUnlockAllResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r TofuWorkspaceUnlockAllResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r TofuWorkspaceUnlockAllResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r TofuWorkspaceUnlockAllResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r TofuWorkspaceUnlockAllResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TofuWorkspaceUnlockAllResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TofuWorkspaceUnlockAllResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TofuWorkspaceUnlockAllResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TofuWorkspaceUnlockAllResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TofuWorkspaceUnlockAllResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackUnlockResponse200Headers the declared response headers of an HTTP 200 response for StackUnlock
 type StackUnlockResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -84765,6 +85322,291 @@ func (r TierFeaturesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r TierFeaturesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchTofuWorkspacesResponse200Headers the declared response headers of an HTTP 200 response for SearchTofuWorkspaces
+type SearchTofuWorkspacesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchTofuWorkspacesResponse429Headers the declared response headers of an HTTP 429 response for SearchTofuWorkspaces
+type SearchTofuWorkspacesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchTofuWorkspacesResponse503Headers the declared response headers of an HTTP 503 response for SearchTofuWorkspaces
+type SearchTofuWorkspacesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchTofuWorkspacesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchTofuWorkspacesOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchTofuWorkspacesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchTofuWorkspacesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchTofuWorkspacesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchTofuWorkspacesResponse) GetJSON200() *SearchTofuWorkspacesOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchTofuWorkspacesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchTofuWorkspacesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchTofuWorkspacesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchTofuWorkspacesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchTofuWorkspacesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchTofuWorkspacesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchTofuWorkspacesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchTofuWorkspacesSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchTofuWorkspacesSuggestions
+type SearchTofuWorkspacesSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchTofuWorkspacesSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchTofuWorkspacesSuggestions
+type SearchTofuWorkspacesSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchTofuWorkspacesSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchTofuWorkspacesSuggestions
+type SearchTofuWorkspacesSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchTofuWorkspacesSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchTofuWorkspacesSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchTofuWorkspacesSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchTofuWorkspacesSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchTofuWorkspacesSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchTofuWorkspacesSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchTofuWorkspacesSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchTofuWorkspacesSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchTofuWorkspacesSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchTofuWorkspacesSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchTofuWorkspacesSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchTofuWorkspacesSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// TofuWorkspaceUnlockResponse200Headers the declared response headers of an HTTP 200 response for TofuWorkspaceUnlock
+type TofuWorkspaceUnlockResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TofuWorkspaceUnlockResponse429Headers the declared response headers of an HTTP 429 response for TofuWorkspaceUnlock
+type TofuWorkspaceUnlockResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// TofuWorkspaceUnlockResponse503Headers the declared response headers of an HTTP 503 response for TofuWorkspaceUnlock
+type TofuWorkspaceUnlockResponse503Headers struct {
+	RetryAfter *int
+}
+
+type TofuWorkspaceUnlockResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *TofuWorkspace
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *TofuWorkspaceUnlockResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *TofuWorkspaceUnlockResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *TofuWorkspaceUnlockResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TofuWorkspaceUnlockResponse) GetJSON200() *TofuWorkspace {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r TofuWorkspaceUnlockResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r TofuWorkspaceUnlockResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r TofuWorkspaceUnlockResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r TofuWorkspaceUnlockResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r TofuWorkspaceUnlockResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r TofuWorkspaceUnlockResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r TofuWorkspaceUnlockResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TofuWorkspaceUnlockResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TofuWorkspaceUnlockResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TofuWorkspaceUnlockResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -96010,6 +96852,21 @@ func (c *ClientWithResponses) TaskCreateWithResponse(ctx context.Context, stackI
 	return ParseTaskCreateResponse(rsp)
 }
 
+// TofuWorkspaceUnlockAllWithResponse Unlock All Tofu Workspaces
+//
+// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/tofu-workspaces/unlock (the `TofuWorkspaceUnlockAll` operationId).
+func (c *ClientWithResponses) TofuWorkspaceUnlockAllWithResponse(ctx context.Context, stackId string, params *TofuWorkspaceUnlockAllParams, reqEditors ...RequestEditorFn) (*TofuWorkspaceUnlockAllResponse, error) {
+	rsp, err := c.TofuWorkspaceUnlockAll(ctx, stackId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTofuWorkspaceUnlockAllResponse(rsp)
+}
+
 // StackUnlockWithResponse Unlock Stack
 //
 // Unlock the stack.
@@ -96203,6 +97060,81 @@ func (c *ClientWithResponses) TierFeaturesWithResponse(ctx context.Context, para
 		return nil, err
 	}
 	return ParseTierFeaturesResponse(rsp)
+}
+
+// SearchTofuWorkspacesWithBodyWithResponse Search Tofu Workspaces
+//
+// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+func (c *ClientWithResponses) SearchTofuWorkspacesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesResponse, error) {
+	rsp, err := c.SearchTofuWorkspacesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchTofuWorkspacesResponse(rsp)
+}
+
+// SearchTofuWorkspacesWithResponse Search Tofu Workspaces
+//
+// Search the workspaces of the stacks in spaces the caller may read, filtering by name, stack and isLocked, ordered by name unless the search names an order. A stack's default workspace is named default.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /tofu-workspaces/search (the `SearchTofuWorkspaces` operationId).
+func (c *ClientWithResponses) SearchTofuWorkspacesWithResponse(ctx context.Context, body SearchTofuWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesResponse, error) {
+	rsp, err := c.SearchTofuWorkspaces(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchTofuWorkspacesResponse(rsp)
+}
+
+// SearchTofuWorkspacesSuggestionsWithBodyWithResponse Search Tofu Workspaces Suggestions
+//
+// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+func (c *ClientWithResponses) SearchTofuWorkspacesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesSuggestionsResponse, error) {
+	rsp, err := c.SearchTofuWorkspacesSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchTofuWorkspacesSuggestionsResponse(rsp)
+}
+
+// SearchTofuWorkspacesSuggestionsWithResponse Search Tofu Workspaces Suggestions
+//
+// The fields a workspace search filters and orders by, with the names and stacks the workspaces the predicates keep hold and how many hold each. Only workspaces of stacks in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /tofu-workspaces/search/suggestions (the `SearchTofuWorkspacesSuggestions` operationId).
+func (c *ClientWithResponses) SearchTofuWorkspacesSuggestionsWithResponse(ctx context.Context, body SearchTofuWorkspacesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchTofuWorkspacesSuggestionsResponse, error) {
+	rsp, err := c.SearchTofuWorkspacesSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchTofuWorkspacesSuggestionsResponse(rsp)
+}
+
+// TofuWorkspaceUnlockWithResponse Unlock Tofu Workspace
+//
+// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /tofu-workspaces/{tofuWorkspaceId}/unlock (the `TofuWorkspaceUnlock` operationId).
+func (c *ClientWithResponses) TofuWorkspaceUnlockWithResponse(ctx context.Context, tofuWorkspaceId string, params *TofuWorkspaceUnlockParams, reqEditors ...RequestEditorFn) (*TofuWorkspaceUnlockResponse, error) {
+	rsp, err := c.TofuWorkspaceUnlock(ctx, tofuWorkspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTofuWorkspaceUnlockResponse(rsp)
 }
 
 // TypeWithResponse Type
@@ -136980,6 +137912,142 @@ func ParseTaskCreateResponse(rsp *http.Response) (*TaskCreateResponse, error) {
 	return response, nil
 }
 
+// ParseTofuWorkspaceUnlockAllResponse parses an HTTP response from a TofuWorkspaceUnlockAllWithResponse call
+func ParseTofuWorkspaceUnlockAllResponse(rsp *http.Response) (*TofuWorkspaceUnlockAllResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TofuWorkspaceUnlockAllResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TofuWorkspaceUnlockAllResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers TofuWorkspaceUnlockAllResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers TofuWorkspaceUnlockAllResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers TofuWorkspaceUnlockAllResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseStackUnlockResponse parses an HTTP response from a StackUnlockWithResponse call
 func ParseStackUnlockResponse(rsp *http.Response) (*StackUnlockResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -138243,6 +139311,372 @@ func ParseTierFeaturesResponse(rsp *http.Response) (*TierFeaturesResponse, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers TierFeaturesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchTofuWorkspacesResponse parses an HTTP response from a SearchTofuWorkspacesWithResponse call
+func ParseSearchTofuWorkspacesResponse(rsp *http.Response) (*SearchTofuWorkspacesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchTofuWorkspacesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchTofuWorkspacesOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchTofuWorkspacesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchTofuWorkspacesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchTofuWorkspacesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchTofuWorkspacesSuggestionsResponse parses an HTTP response from a SearchTofuWorkspacesSuggestionsWithResponse call
+func ParseSearchTofuWorkspacesSuggestionsResponse(rsp *http.Response) (*SearchTofuWorkspacesSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchTofuWorkspacesSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchTofuWorkspacesSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchTofuWorkspacesSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchTofuWorkspacesSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseTofuWorkspaceUnlockResponse parses an HTTP response from a TofuWorkspaceUnlockWithResponse call
+func ParseTofuWorkspaceUnlockResponse(rsp *http.Response) (*TofuWorkspaceUnlockResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TofuWorkspaceUnlockResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TofuWorkspace
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers TofuWorkspaceUnlockResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers TofuWorkspaceUnlockResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers TofuWorkspaceUnlockResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

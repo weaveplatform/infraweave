@@ -9,9 +9,11 @@ import (
 	"unicode/utf8"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // MaxWorkspaceName is the longest workspace name in bytes; it matches the
@@ -31,8 +33,8 @@ var (
 // Store is the state domain's storage port. Each method joins the
 // transaction its context carries.
 type Store interface {
-	// OpenWorkspace makes acct's stack's workspace name exist, leaving one
-	// that exists as it is.
+	// OpenWorkspace makes acct's stack's workspace name exist under a new
+	// ID, leaving one that exists as it is.
 	OpenWorkspace(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, name string) error
 	// LockWorkspace locks t's workspace's row until the transaction ends,
 	// so takers and releasers of its locks go one at a time; false when
@@ -44,7 +46,14 @@ type Store interface {
 	AddLock(ctx context.Context, t Target, l Lock) error
 	// RemoveLocks deletes the locks on t's workspace whose IDs ids holds.
 	RemoveLocks(ctx context.Context, t Target, ids []string) error
-	// ReleaseRun deletes every lock run holds in acct.
+	// BreakLocks records each of locks, released on t's workspace from
+	// under its run, by its ID and run.
+	BreakLocks(ctx context.Context, t Target, locks []Lock) error
+	// Broken reports whether run's lock id on t's workspace was released
+	// from under it.
+	Broken(ctx context.Context, t Target, id string, run kernel.ULID) (bool, error)
+	// ReleaseRun deletes every lock run holds in acct, and the record of
+	// each lock released from under it.
 	ReleaseRun(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error
 	// Audit records e on its account's trail.
 	Audit(ctx context.Context, e kernel.AuditEntry) error
@@ -61,6 +70,19 @@ type Store interface {
 	// workspace goes before a row that names it. It answers the object
 	// keys of the versions it deleted, and true once none was left.
 	Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID, batch int) ([]string, bool, error)
+	// WorkspaceByID reads acct's workspace id with whether a lock is
+	// held on it and by whose run; false when acct lacks it.
+	WorkspaceByID(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Workspace, bool, error)
+	// LockStackWorkspaces reads acct's stack's workspaces by name,
+	// locking each row FOR UPDATE in that order until the transaction
+	// ends.
+	LockStackWorkspaces(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]Workspace, error)
+	// SearchWorkspaces reads a page of acct's workspaces in scope that in
+	// keeps, by Fields; an input they cannot answer is a *search.Invalid.
+	SearchWorkspaces(ctx context.Context, acct kernel.AccountID, in search.Input, scope WorkspaceScope) (search.Result[Workspace], error)
+	// SuggestWorkspaces lists the values acct's workspaces in scope that
+	// in keeps hold, of the fields in names.
+	SuggestWorkspaces(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope WorkspaceScope) (search.Suggestions, error)
 }
 
 // Stacks is what the state domain asks of the stacks domain;
@@ -70,6 +92,14 @@ type Stacks interface {
 	// ends, so the stack's delete waits for the caller to commit;
 	// stacksapi.ErrNotFound when acct lacks it.
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// Get reads acct's stack id; stacksapi.ErrNotFound when acct lacks
+	// it.
+	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error)
+	// BySlug reads acct's stack slug; stacksapi.ErrNotFound when acct
+	// lacks it.
+	BySlug(ctx context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error)
+	// InSpaces lists every stack of acct in spaces.
+	InSpaces(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID) ([]stacksapi.Stack, error)
 }
 
 // Objects are the objects of the states store, and the state files
@@ -99,13 +129,15 @@ type Jobs interface {
 }
 
 // Deps are what the service takes: DB, which it opens its transactions
-// on; Store; Stacks, which holds a stack while its workspace is written;
-// Objects, which hold each version's object; and Jobs, which enqueues a
-// deleted stack's purge.
+// on; Store; Stacks, which holds a stack while its workspace is written
+// and names the stacks a workspace search reads; Authz, which names the
+// spaces a caller may read; Objects, which hold each version's object;
+// and Jobs, which enqueues a deleted stack's purge.
 type Deps struct {
 	DB      tx.Beginner
 	Store   Store
 	Stacks  Stacks
+	Authz   Authorizer
 	Objects Objects
 	Jobs    Jobs
 }
@@ -115,13 +147,17 @@ type Service struct {
 	db      tx.Beginner
 	store   Store
 	stacks  Stacks
+	authz   Authorizer
 	objects Objects
 	jobs    Jobs
 }
 
 // New returns the service over d.
 func New(d Deps) *Service {
-	return &Service{db: d.DB, store: d.Store, stacks: d.Stacks, objects: d.Objects, jobs: d.Jobs}
+	return &Service{
+		db: d.DB, store: d.Store, stacks: d.Stacks, authz: d.Authz, objects: d.Objects,
+		jobs: d.Jobs,
+	}
 }
 
 // Workspace holds acct's stack and makes its workspace name exist, both
