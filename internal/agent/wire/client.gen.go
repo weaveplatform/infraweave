@@ -646,6 +646,9 @@ type RunSpec struct {
 	// StateBackend The stack's managed state backend, present only when infraweave keeps the stack's state. The runner points the infrastructure tool's HTTP backend at it, authenticating with the user name run and the run token as the password.
 	StateBackend *RunSpecStateBackend `json:"stateBackend,omitempty"`
 
+	// Targets The resource addresses a targeted replan plans, each one -target of the plan command. Present for a run claimed from REPLAN_REQUESTED alone.
+	Targets *[]string `json:"targets,omitempty"`
+
 	// Task What a TASK run performs in PERFORMING. Present for a TASK run alone.
 	Task *RunSpecTask `json:"task,omitempty"`
 

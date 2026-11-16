@@ -239,6 +239,9 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		Task:          r.Task,
 		Hooks:         resolved.Hooks,
 	}
+	if r.State == kernel.RunStatePreparingReplan {
+		spec.Targets = r.ReplanTargets
+	}
 	if st.ManagesState {
 		spec.StateBackend = &workersapi.StateBackend{Path: StatePath + r.Stack.String()}
 	}

@@ -260,6 +260,9 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 	if t := spec.Task; t != nil {
 		out.Task = &gen.RunSpecTask{Command: t.Command, SkipInitialization: t.SkipInitialization}
 	}
+	if len(spec.Targets) > 0 {
+		out.Targets = &spec.Targets
+	}
 	for _, v := range spec.Environment {
 		out.Environment = append(out.Environment,
 			gen.RunSpecVariable{Name: v.Name, Value: v.Value, WriteOnly: v.WriteOnly})

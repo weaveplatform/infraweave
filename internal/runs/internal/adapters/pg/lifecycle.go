@@ -25,7 +25,7 @@ var (
 const runColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config,
 	coalesce(force_apply_mode, ''), coalesce(local_workspace, ''), worker_pool_id, worker_id,
-	created_at, updated_at, delta, command, skip_initialization,
+	created_at, updated_at, delta, command, skip_initialization, replan_targets,
 	stop_requested_at, coalesce(stop_requested_by, ''), coalesce(stop_note, ''), stop_delivered_at,
 	kill_requested_at, coalesce(kill_requested_by, ''), coalesce(kill_note, ''), kill_delivered_at,
 	logs_deleted_at`
@@ -51,7 +51,7 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 	err := row.Scan(&r.Account, &r.ID, &r.Stack, &typ, &state, &r.Version, &r.StateChangedAt,
 		&commit, &r.TriggeredBy, &priority, &r.DriftDetection, &r.RuntimeConfig, &r.ForceApply,
 		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt, &d, &command,
-		&skipInit,
+		&skipInit, &r.ReplanTargets,
 		&stop.at, &stop.by, &stop.note, &stop.delivered,
 		&kill.at, &kill.by, &kill.note, &kill.delivered, &r.LogsDeletedAt)
 	if err != nil {

@@ -498,6 +498,47 @@ func TestUnitExecPausesAndResumes(t *testing.T) {
 	}
 }
 
+// TestUnitExecReplan checks that a run resumed to replan initializes its
+// restored workspace again and plans with one -target word for each of
+// its specification's targets, so neither a substitution nor a separator
+// in an address runs, and a run with no targets plans every resource.
+func TestUnitExecReplan(t *testing.T) {
+	targets := []string{
+		"terraform_data.this",
+		`module.app["a  b"].x`,
+		`x.y["$(touch pwned)"]`,
+		"x.y; touch pwned",
+	}
+	w := newWorld(t)
+	w.h.Assigned, w.h.StateVersion, w.w.version = wire.AssignmentStatePREPARINGREPLAN, 8, 8
+	w.h.Spec.Targets = &targets
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "reports", w.events(), []string{"PLANNING started 8", "PLANNING succeeded 9"})
+	equal(t, "trace", w.traced(), []string{
+		"init -input=false -lock-timeout=5m0s",
+		"plan -input=false -lock-timeout=5m0s -lock=true -out=infraweave.plan " +
+			`-target=terraform_data.this -target=module.app["a  b"].x ` +
+			`-target=x.y["$(touch pwned)"] -target=x.y; touch pwned`,
+		"show -json infraweave.plan",
+	})
+	if _, err := os.Stat(filepath.Join(w.workspace, "pwned")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("a target ran as a command: %v", err)
+	}
+
+	w = newWorld(t)
+	w.h.Assigned, w.h.StateVersion, w.w.version = wire.AssignmentStatePREPARINGREPLAN, 8, 8
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "untargeted trace", w.traced(), []string{
+		"init -input=false -lock-timeout=5m0s",
+		"plan -input=false -lock-timeout=5m0s -lock=true -out=infraweave.plan",
+		"show -json infraweave.plan",
+	})
+}
+
 // TestUnitExecWorkflowFile checks that a workflow file in the project
 // root replaces the built-in commands, each rendered when its phase runs
 // with every value one shell word, so a hostile workspace name is echoed

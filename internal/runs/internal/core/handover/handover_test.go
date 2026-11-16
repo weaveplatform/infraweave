@@ -649,6 +649,24 @@ func TestUnitHandoverTask(t *testing.T) {
 	}
 }
 
+// TestUnitHandoverTargets checks that the specification of a run claimed
+// from REPLAN_REQUESTED carries its replan's targets, and that of a run
+// in any other state none, though the run keeps them.
+func TestUnitHandoverTargets(t *testing.T) {
+	w := newWorld(t)
+	targets := []string{"terraform_data.this", `module.app["a"].aws_instance.web[0]`}
+	w.store.run.ReplanTargets = targets
+	h, err := w.handover(t, w.run.ID)
+	if err != nil || h.Spec.Targets != nil {
+		t.Errorf("a run in %s carries targets %q, %v", w.store.run.State, h.Spec.Targets, err)
+	}
+	w.store.run.State = kernel.RunStatePreparingReplan
+	h, err = w.handover(t, w.run.ID)
+	if err != nil || !slices.Equal(h.Spec.Targets, targets) {
+		t.Errorf("a replan's targets = %q, %v; want %q", h.Spec.Targets, err, targets)
+	}
+}
+
 // renderer fails every Check with check and every Evaluate with eval.
 type renderer struct{ check, eval error }
 

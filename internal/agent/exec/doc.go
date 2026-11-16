@@ -39,9 +39,11 @@
 // worker API or the store is unavailable; a save that fails fails the
 // phase. A run that resumes in a new container to apply or replan its
 // saved workspace runs the init hooks and command first, since the
-// workspace was saved without its providers. Applying runs getOutputs
-// after apply, its output the outputs file, and fails on a document that
-// is not the tool's outputs; after its after_apply hooks it saves the
+// workspace was saved without its providers; a replan's plan command
+// renders the specification's targets, each one -target word. Applying
+// runs getOutputs after apply, its output the outputs file, and fails on
+// a document that is not the tool's outputs; after its after_apply hooks
+// it saves the
 // file as outputs.json, sealed and recorded as the plan's JSON is, before
 // its report, so the server keeps the stack's outputs in that report's
 // transaction. Each sensitive output keeps its value there only when

@@ -173,8 +173,8 @@ breaking change to retrofit once clients exist:
 - **Classes in the spec.** Each operation names its class in
   `x-infraweave-cost`. A missing value means `standard`. The scaffolder marks
   searches and `/batch` paths `expensive`; curators mark the rest. The
-  server refuses to start on an operation whose action creates runs
-  (`RUN_TRIGGER`, `TASK_CREATE`, `RUN_PROPOSE_WITH_OVERRIDES`,
+  server refuses to start on an operation whose action creates runs, or
+  plans one again (`RUN_TRIGGER`, `TASK_CREATE`, `RUN_PROPOSE_WITH_OVERRIDES`,
   `RUN_PROPOSE_LOCAL_WORKSPACE`, `RUN_RETRY`, `RUN_PROMOTE` and
   `RUN_TARGETED_REPLAN`) and that is not `expensive`.
 - **Response headers.** Every response carries the state of the bucket that

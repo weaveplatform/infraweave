@@ -85,6 +85,10 @@ func (r *run) setUp(ctx context.Context) string {
 	if r.temp, err = os.MkdirTemp("", "infraweave-run-"); err != nil {
 		return fmt.Sprintf("The runner cannot make its temporary directory: %v.", err)
 	}
+	var targets []string
+	if t := r.h.Spec.Targets; t != nil {
+		targets = *t
+	}
 	r.options = vendors.Options{
 		Params: workflow.Params{
 			PlanFileName:  vendors.PlanFile,
@@ -92,6 +96,7 @@ func (r *run) setUp(ctx context.Context) string {
 			Refresh:       true,
 			WorkspaceName: r.workspaceName(),
 			LockTimeout:   r.h.StateLockTimeout,
+			Targets:       targets,
 		},
 		PlanJSON:    filepath.Join(r.temp, "plan.json"),
 		OutputsJSON: filepath.Join(r.temp, "outputs.json"),

@@ -395,9 +395,16 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 - **The run's work.** A `TASK` run's clear part carries
   `task: {command, skipInitialization}`, and a run claimed from
   `REPLAN_REQUESTED` carries `targets`, the resource addresses
-  `runTargetedReplan` keeps in `runs.replan_targets`. One constant bounds
-  their number and length in the document and the domain
-  ([0003](0003-api-conventions.md)). An OpenTofu stack's
+  `runTargetedReplan` keeps in `runs.replan_targets`. The domain's
+  constants bound them in both documents and the domain
+  ([0003](0003-api-conventions.md)): 1 to 100 addresses of up to 1024
+  characters. The domain also refuses, as `422` `validation-failed` at
+  `/targets/<i>`, an address that is not a resource or module address
+  as `-target` takes one, such as `aws_instance.web`, `data.aws_ami.base`
+  or `module.app["a"].aws_instance.web[0]`; the runner still quotes each
+  as one shell word, since a quoted key may hold any character. The
+  runner fills the workflow template's `targets` from them, so the
+  replan's plan command passes one `-target` for each. An OpenTofu stack's
   `enableCPUProfiling` is in the clear part beside the tool.
 - **The state backend.** For a stack that manages state, the clear part
   names `stateBackend.path`, `/state/v1/stacks/<stack ULID>`, and a stack
