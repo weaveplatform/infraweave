@@ -23,6 +23,7 @@ import (
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
+	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
@@ -56,6 +57,7 @@ type apiServer struct {
 	runsassembly.RunsAPI
 	vcsassembly.VCSAPI
 	expressionsassembly.ExpressionsAPI
+	stateassembly.StateAPI
 	unimplemented
 	queues QueueStats
 	blobs  *blobs.Objects
@@ -131,6 +133,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 			RunsAPI:          d.Runs.API(),
 			VCSAPI:           d.VCS.API(),
 			ExpressionsAPI:   d.Expressions.API(),
+			StateAPI:         d.State.API(),
 			queues:           p.Queues,
 			blobs:            b.Objects,
 		},
@@ -196,7 +199,9 @@ func withPollHold(ops Operations, poll time.Duration) Operations {
 // one under WorkerBaseURL with worker, one under stateapi.BaseURL with
 // state and every other with api; a nil one refuses every credential.
 // Every request under stateapi.BaseURL is a state route's, so a method no
-// route serves answers 405 to a run token and 401 to anything else.
+// route serves answers 405 to a run token and 401 to anything else; a
+// public route there, a state URL's, passes with no credential, as a
+// public route of api does.
 type byPrefix struct{ api, operator, worker, state accessapi.Authenticator }
 
 func (b byPrefix) Middleware(access func(*http.Request) accessapi.Access) func(http.Handler) http.Handler {
@@ -204,7 +209,10 @@ func (b byPrefix) Middleware(access func(*http.Request) accessapi.Access) func(h
 		api := orRefuse(b.api).Middleware(access)(next)
 		operator := orRefuse(b.operator).Middleware(access)(next)
 		worker := orRefuse(b.worker).Middleware(access)(next)
-		state := orRefuse(b.state).Middleware(func(*http.Request) accessapi.Access {
+		state := orRefuse(b.state).Middleware(func(r *http.Request) accessapi.Access {
+			if access(r) == accessapi.Public {
+				return accessapi.Public
+			}
 			return accessapi.State
 		})(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

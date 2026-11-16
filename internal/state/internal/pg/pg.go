@@ -162,6 +162,24 @@ func (s *Store) Current(ctx context.Context, t core.Target) (core.Version, bool,
 	return v, true, nil
 }
 
+// Version reads acct's version id; false when acct has none.
+func (s *Store) Version(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (core.Version, bool, error) {
+	v := core.Version{Version: stateapi.Version{ID: id}}
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT stack_id, workspace, object_key, size,
+		sha256, serial, lineage, client_encrypted, run_id, imported, rollback, created_at
+		FROM managed_state_versions WHERE account_id = $1 AND id = $2`,
+		acct, id).Scan(&v.Stack, &v.Workspace, &v.Key, &v.Size, &v.SHA256, &v.Serial,
+		&v.Lineage, &v.ClientEncrypted, &v.Run, &v.Imported, &v.Rollback, &v.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return core.Version{}, false, nil
+	}
+	if err != nil {
+		return core.Version{}, false, fmt.Errorf("state: read version %s: %w", id,
+			sql.Unavailable(err))
+	}
+	return v, true, nil
+}
+
 // AddVersion records v in acct's stack's workspace and points the
 // workspace at it, in one statement.
 func (s *Store) AddVersion(ctx context.Context, acct kernel.AccountID, v core.Version) error {

@@ -260,19 +260,24 @@ does (decision [0003](0003-api-conventions.md)).
   `crypt.DeriveKey("state-download-url")` for downloads, whose target is the stack and the
   version current when the URL was signed. A token verifies through `crypt.DerivedKey`,
   so one signed before a data key's rotation works until it expires, which is 15 minutes
-  after signing (`objectstore.signed_url_ttl`). A bad, expired or other-kind token
-  answers `403`, problem `forbidden`, as `/blobs/{token}` does.
+  after signing (`objectstore.signed_url_ttl`). A token is unpadded base64url, decoded
+  strictly so that it has one spelling: a lenient decoder ignores the unused bits of the
+  last character. A bad, expired or other-kind token answers `403`, problem `forbidden`,
+  as `/blobs/{token}` does. The two routes take no credential, since the token is one.
 - **`stateUploadUrl`** answers `objectId` (a ULID), `url` (`/state/v1/uploads/{token}`,
   absolute) and an empty `uploadHeaders`.
-  - The `PUT` declares its `Content-Length` and is at most 100 MiB (`413`,
-    `payload-too-large`); any `Content-Type` is accepted, since the Terraform provider
-    sends `application/json` and the body is checked at import.
-  - `state` seals the body under the account's data key as it streams, and hashes it, then
-    writes it to the `uploads` store, so a state's plaintext never rests in `uploads`,
-    which stays unsealed for local-preview archives sealed to their pool
-    ([0013](0013-secrets-at-rest.md)).
-  - A token takes one complete upload: a `PUT` after the object completed answers `409`,
-    `invalid-state`, and an upload cut short may be repeated until the token expires.
+  - The `PUT` declares its `Content-Length` (`400`, `invalid-request`, without one) and is
+    at most 100 MiB (`413`, `payload-too-large`); any `Content-Type` is accepted, since
+    the Terraform provider sends `application/json` and the body is checked at import.
+  - `state` seals the body as it streams, in the sealed-object format the `states` store
+    uses, and hashes it, then writes it to the `uploads` store under
+    `<account>/state/<object ID>/<sha256 of the subject>`, so a state's plaintext never
+    rests in `uploads`, which stays unsealed for local-preview archives sealed to their
+    pool ([0013](0013-secrets-at-rest.md)), and an import finds the upload only under
+    the principal that asked for it.
+  - A token takes one upload: a second `PUT` answers `409`, `invalid-state`, whether the
+    first completed or was cut short, since the object's key is taken when its upload
+    begins. A client whose upload failed asks for a new URL, which costs nothing.
   - An upload not imported within a day expires through `blob.expire`.
 - **Import** (`stackCreate` with `stackObjectID`, `stackManagedStateImport`) checks, in
   order:
@@ -306,14 +311,20 @@ does (decision [0003](0003-api-conventions.md)).
 - **`stateDownloadUrl`** needs `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` on the stack's
   space, managed state and external access on, and answers a signed
   `/state/v1/download/{token}` URL for the default workspace's current version.
-  - A `version` argument answers `422`, problem `validation-failed`, as Spacelift's schema
-    documents.
+  - It answers, in order: `422`, `validation-failed`, for a `version` argument, as
+    Spacelift's schema documents; `404`, `not-found`, for a stack the caller cannot read
+    or whose state infraweave does not keep; `403`, `forbidden`, naming
+    `STACK_STATE_READ`, which the handler decides since a route names one action;
+    `403`, `forbidden`, with external access off; and `404`, `not-found`, for a stack
+    with no state yet, since there is no version to sign.
   - The `GET` checks again that the stack exists, manages state and has external access
     on, but not the caller's actions, which the signature carries. It streams the signed
     version unsealed, or answers `404` when retention has deleted it.
 - **No idempotency key.** The two URL operations ignore `Idempotency-Key`: each call
   signs a new URL, and a replay would answer one that may have expired
-  ([0003](0003-api-conventions.md)).
+  ([0003](0003-api-conventions.md)). Each carries `x-infraweave-idempotency: ignored`,
+  which the route table reads, so the idempotency middleware passes it by and the
+  specification declares no `Idempotency-Key` and none of its conflicts.
 
 ### Rollback, searches and retention
 

@@ -127,6 +127,39 @@ func TestAccHandlers(t *testing.T) {
 	if err != nil || !ot.Concise || ot.WorkflowTool != api.OpenTofuWorkflowToolOPENTOFU {
 		t.Errorf("an OpenTofu stack's vendorConfig %+v, %v", ot, err)
 	}
+	external := func(at string, err error) {
+		t.Helper()
+		inv, ok := errors.AsType[*kernel.Invalid](err)
+		if !ok || len(inv.Errors) != 1 ||
+			inv.Errors[0].Pointer != at+"/vendorConfig/opentofu/externalStateAccessEnabled" ||
+			inv.Errors[0].Reason != kernel.ReasonRule {
+			t.Errorf("external state access without managed state = %v", err)
+		}
+	}
+	tofu.VendorConfig.Opentofu.ExternalStateAccessEnabled = new(true)
+	_, err = s.StackCreate(admin, api.StackCreateRequestObject{
+		Body: &api.StackCreateRequest{Input: tofu, Slug: new("tofu-external")},
+	})
+	external("/input", err)
+	_, err = s.StackUpdate(admin, api.StackUpdateRequestObject{StackId: "tofu", Body: &tofu})
+	external("", err)
+	tofu.VendorConfig.Opentofu.ExternalStateAccessEnabled = nil
+	tf.Terraform.ExternalStateAccessEnabled = new(true)
+	if _, err := s.StackUpdate(
+		admin,
+		api.StackUpdateRequestObject{StackId: "infra", Body: &in},
+	); err != nil {
+		t.Fatal(err)
+	}
+	infra, err := f.svc.BySlug(t.Context(), f.acct, "infra")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := f.svc.Settings(t.Context(), f.acct, infra.ID); err != nil ||
+		!got.ExternalStateAccess {
+		t.Errorf("a managed stack's external state access = %+v, %v", got.ExternalStateAccess, err)
+	}
+	tf.Terraform.ExternalStateAccessEnabled = nil
 
 	listed, err := s.Stacks(
 		reader,

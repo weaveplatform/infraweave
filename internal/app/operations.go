@@ -43,6 +43,13 @@ type Operation struct {
 	// Search marks a search, which changes nothing and so ignores
 	// Idempotency-Key.
 	Search bool
+	// Unkeyed marks an operation whose x-infraweave-idempotency is
+	// ignored, which ignores Idempotency-Key: each call signs something
+	// that expires, such as a URL, so a replay from the key store could
+	// answer one that has expired, and a retry is already safe.
+	//
+	// ref: decision 0003 § "API surfaces"
+	Unkeyed bool
 	// Worker marks an operation of the worker API, which a worker session
 	// token authenticates. It decides no account action and no feature,
 	// and ignores Idempotency-Key: its answers carry session tokens, which
@@ -167,6 +174,15 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				return nil, fmt.Errorf("%w: %s %s has x-infraweave-access %v",
 					errSpec, method, path, v)
 			}
+			var unkeyed bool
+			switch v, ok := op.Extensions["x-infraweave-idempotency"]; {
+			case !ok:
+			case v == "ignored":
+				unkeyed = true
+			default:
+				return nil, fmt.Errorf("%w: %s %s has x-infraweave-idempotency %v",
+					errSpec, method, path, v)
+			}
 			gate, err := gateOf(op, body)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, err)
@@ -183,6 +199,7 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 			ops[method+" "+base+path] = Operation{
 				Cost:              cost,
 				Search:            style == "search" || strings.HasSuffix(path, "/search"),
+				Unkeyed:           unkeyed,
 				Public:            op.Security != nil && len(*op.Security) == 0,
 				Organization:      org,
 				OrganizationAdmin: admin,
@@ -567,6 +584,17 @@ var apiOperations = sync.OnceValue(func() Operations {
 			ops[method+" "+pattern] = Operation{State: true, OwnBodyBound: true}
 		}
 	}
+	// The state URLs' routes carry their credential in the token, which
+	// the state domain verifies, as the fs driver's signed URLs do: a
+	// Basic check in front would answer 401 to every one. Each draws on
+	// the standard budget of the client's address and names no feature,
+	// since stateUploadUrl or stateDownloadUrl signed it under its gate. A
+	// PUT's body is bounded at core.MaxUpload by its handler, not by the
+	// API's bound, since a state file exceeds any API body, and once its
+	// token verifies each transfer's deadlines move as the backend's do.
+	// ref: decision 0003 § "API surfaces"; decision 0010
+	ops[http.MethodGet+" "+stateapi.DownloadPattern] = Operation{Public: true}
+	ops[http.MethodPut+" "+stateapi.UploadPattern] = Operation{Public: true, OwnBodyBound: true}
 	return ops
 })
 
@@ -676,7 +704,7 @@ func Guarded(log *slog.Logger, c config.Server, ops Operations, g Guards, auth a
 		idempotency.Middleware(g.Keys, caller,
 			func(req *http.Request) bool {
 				op, ok := resolve(req)
-				return ok && !op.Search && !op.Worker && !op.State
+				return ok && !op.Search && !op.Unkeyed && !op.Worker && !op.State
 			}, log),
 		strictPaths(func(req *http.Request) (openapi3.Parameters, map[string]string) {
 			pattern, rctx := find(req)

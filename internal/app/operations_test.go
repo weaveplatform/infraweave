@@ -89,6 +89,12 @@ func TestUnitAPIOperations(t *testing.T) {
 		"GET /blobs/{token}":                          {Public: true},
 		"PUT /blobs/{token}":                          {Public: true, OwnBodyBound: true},
 		"LOCK /state/v1/stacks/{stack}":               {State: true, OwnBodyBound: true},
+		"GET /state/v1/download/{token}":              {Public: true},
+		"PUT /state/v1/uploads/{token}":               {Public: true, OwnBodyBound: true},
+		"POST /api/v1/state/upload-url":               {Cost: ratelimit.Standard, Unkeyed: true, Gate: gate("stacks")},
+		"POST /api/v1/stacks/{stackId}/state/download-url": {
+			Cost: ratelimit.Standard, Unkeyed: true, Gate: gate("stacks"),
+		},
 		"POST /state/v1/stacks/{stack}/workspaces/{workspace}": {
 			State: true, OwnBodyBound: true,
 		},
@@ -99,16 +105,31 @@ func TestUnitAPIOperations(t *testing.T) {
 			t.Errorf("%s: %+v, want %+v", key, got, want)
 		}
 	}
-	// Only the blob PUT and the state backend depart from the body bound.
+	// Only the blob PUT, the state upload PUT and the state backend depart
+	// from the body bound; the state URLs' routes are public.
 	// ref: decision 0003 § "API surfaces"
+	signedState := map[string]bool{
+		http.MethodGet + " " + stateapi.DownloadPattern: true,
+		http.MethodPut + " " + stateapi.UploadPattern:   true,
+	}
 	for key, op := range ops {
-		state := strings.Contains(key, " "+stateapi.BaseURL+"/")
+		state := strings.Contains(key, " "+stateapi.BaseURL+"/") && !signedState[key]
 		if op.State != state {
 			t.Errorf("%s: State %v", key, op.State)
 		}
-		if op.OwnBodyBound != (key == http.MethodPut+" "+fs.Pattern || state) {
-			t.Errorf("%s: OwnBodyBound %v; only the blob PUT and the state backend bound "+
-				"their own bodies", key, op.OwnBodyBound)
+		ownBound := key == http.MethodPut+" "+fs.Pattern ||
+			key == http.MethodPut+" "+stateapi.UploadPattern || state
+		if op.OwnBodyBound != ownBound {
+			t.Errorf("%s: OwnBodyBound %v; only the blob PUT, the state upload PUT and the "+
+				"state backend bound their own bodies", key, op.OwnBodyBound)
+		}
+	}
+	// Only the state URL operations ignore Idempotency-Key by intent.
+	for key, op := range ops {
+		want := key == "POST "+BaseURL+"/state/upload-url" ||
+			key == "POST "+BaseURL+"/stacks/{stackId}/state/download-url"
+		if op.Unkeyed != want {
+			t.Errorf("%s: Unkeyed %v", key, op.Unkeyed)
 		}
 	}
 	// Every API operation names its action and subject; nothing else does.
@@ -125,7 +146,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		f, known := features.Lookup(op.Gate.Feature)
 		switch {
 		case strings.HasSuffix(key, " "+accessapi.LoginPattern),
-			strings.HasSuffix(key, " "+fs.Pattern),
+			strings.HasSuffix(key, " "+fs.Pattern), signedState[key],
 			strings.HasPrefix(key, "GET /.well-known/"), strings.Contains(key, " /oauth/"),
 			op.Worker, op.State:
 			if op.Gate.Feature != "" {
@@ -223,6 +244,20 @@ func TestUnitOperationsOf(t *testing.T) {
 		}), "", false)
 		if !errors.Is(err, errSpec) {
 			t.Errorf("x-infraweave-access %v: %v", bad, err)
+		}
+	}
+	ops, err = operationsOf(doc("/sign", &openapi3.Operation{
+		Extensions: map[string]any{"x-infraweave-idempotency": "ignored"},
+	}), "", false)
+	if err != nil || !ops["POST /sign"].Unkeyed {
+		t.Errorf("x-infraweave-idempotency ignored: %+v %v", ops, err)
+	}
+	for _, bad := range []any{"replayed", false} {
+		_, err := operationsOf(doc("/things", &openapi3.Operation{
+			Extensions: map[string]any{"x-infraweave-idempotency": bad},
+		}), "", false)
+		if !errors.Is(err, errSpec) {
+			t.Errorf("x-infraweave-idempotency %v: %v", bad, err)
 		}
 	}
 	for _, bad := range []any{"", "SCANS", "seats", "oidc-api-keys", 3} {

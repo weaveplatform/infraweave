@@ -12,6 +12,9 @@
 // process asks for it. A scenario can instead hand a run it took over to
 // this build's runner, started as a launcher starts it in the tool's
 // runner image, which executes the run's phases and reports them itself.
+// The steps of the signed state URLs keep the URL an answer names and
+// send it, with no credential, to either replica's listener in place of
+// server.public_url.
 //
 // ref: decision 0008
 // ref: decision 0010
@@ -24,7 +27,8 @@
 // daemon, reads the scenario's database through SQL and its bucket in
 // RustFS through S3, and writes each run's workspace under the
 // scenario's directory. A failed scenario leaves the relay's calls and
-// each tool's output beside the servers' evidence.
+// each tool's output beside the servers' evidence. It sends a signed
+// URL's request with net/http, recording its answer for the answer steps.
 //
 // # Dependencies
 //

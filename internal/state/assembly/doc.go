@@ -4,7 +4,12 @@
 // over the domain's pg adapter and Objects, and the backend Routes adds
 // to the API listener under /state/v1, which decides each request
 // through the runs domain's StateAccess and bounds a version by
-// Settings.MaxSize, state.max_size. Versions is what other domains read
+// Settings.MaxSize, state.max_size. API is the domain's partial of the
+// API's strict server, stateUploadUrl and stateDownloadUrl, which sign
+// URLs under the installation's keyring, absolute under
+// server.public_url and lasting objectstore.signed_url_ttl; Routes adds
+// the routes that verify them beside the backend's, and a nil domain's
+// routes answer 501. Versions is what other domains read
 // of a stack's managed state. Subscribe
 // subscribes LockRelease, which releases a run's locks once its
 // run_updated names a terminal state. StackGuard is the guard internal/app
@@ -23,7 +28,8 @@
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, stateapi, the domain's backend, core and pg
-// packages, chi, platform/outbox, platform/queue, platform/sql/integrity,
-// platform/sql/migrate and platform/tx. Only internal/app imports it.
+// It imports accessapi, runsapi, stacksapi, stateapi, the domain's
+// backend, core, pg, signed and urls packages, chi, platform/outbox,
+// platform/queue, platform/sql/integrity, platform/sql/migrate and
+// platform/tx. Only internal/app imports it.
 package assembly

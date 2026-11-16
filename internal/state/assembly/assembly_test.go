@@ -43,10 +43,16 @@ func TestUnitDomain(t *testing.T) {
 	if err := d.Subscribe(events); !errors.Is(err, outbox.ErrConsumer) {
 		t.Errorf("a second subscription = %v, want ErrConsumer", err)
 	}
+	if reflect.ValueOf(d.API()).IsZero() || !reflect.ValueOf((*Domain)(nil).API()).IsZero() {
+		t.Error("the domain's partial is the zero one, or a nil domain's is not")
+	}
 	for _, tc := range []struct {
-		d      *Domain
-		status int
-	}{{d, http.StatusUnauthorized}, {nil, http.StatusNotImplemented}} {
+		d              *Domain
+		status, signed int
+	}{
+		{d, http.StatusUnauthorized, http.StatusForbidden},
+		{nil, http.StatusNotImplemented, http.StatusNotImplemented},
+	} {
 		r := chi.NewRouter()
 		tc.d.Routes(r)
 		rec := httptest.NewRecorder()
@@ -54,6 +60,13 @@ func TestUnitDomain(t *testing.T) {
 			"/state/v1/stacks/one", nil))
 		if rec.Code != tc.status {
 			t.Errorf("a domain %v answered %d, want %d", tc.d != nil, rec.Code, tc.status)
+		}
+		rec = httptest.NewRecorder()
+		r.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+			"/state/v1/download/bad", nil))
+		if rec.Code != tc.signed {
+			t.Errorf("a domain %v answered a download %d, want %d", tc.d != nil, rec.Code,
+				tc.signed)
 		}
 	}
 }

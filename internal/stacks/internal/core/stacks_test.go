@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -17,6 +18,22 @@ func TestUnitErrors(t *testing.T) {
 	} {
 		if got := err.Error(); got != want {
 			t.Errorf("Error() = %q, want %q", got, want)
+		}
+	}
+}
+
+func TestUnitExternalAccess(t *testing.T) {
+	for _, c := range []struct {
+		vendor, config string
+		want           bool
+	}{
+		{"terraform", `{"externalStateAccessEnabled": true}`, true},
+		{"opentofu", `{"externalStateAccessEnabled": true}`, true},
+		{"opentofu", `{}`, false},
+		{"pulumi", `{"externalStateAccessEnabled": true}`, false},
+	} {
+		if got := core.ExternalAccess(c.vendor, json.RawMessage(c.config)); got != c.want {
+			t.Errorf("ExternalAccess(%s, %s) = %v", c.vendor, c.config, got)
 		}
 	}
 }

@@ -29,6 +29,10 @@ import (
 	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
 )
 
+// statePublic is the public URL of the state tests' servers, which the
+// signed state URLs are absolute under.
+const statePublic = "http://infraweave.test"
+
 // stateMax bounds the versions of the state tests' servers, past one
 // part of every driver, so a large state streams in parts.
 const stateMax = 8 << 20
@@ -74,12 +78,16 @@ func newStateServer(t *testing.T, w *claimWorld, driver string) stateServer {
 		t.Fatal(err)
 	}
 	st := stateassembly.New(stateassembly.Deps{
-		DB:       w.db.Primary(),
-		Stacks:   w.d.Stacks.Stacks(),
-		Access:   w.d.Runs.StateAccess(),
-		Objects:  blobs.New(w.q, queue.New(w.q), objectstore.WriterOnly(store), w.keys, c),
-		Jobs:     queue.New(w.q),
-		Settings: stateassembly.Settings{MaxSize: stateMax},
+		DB:        w.db.Primary(),
+		Stacks:    w.d.Stacks.Stacks(),
+		Access:    w.d.Runs.StateAccess(),
+		Authz:     w.d.Access.Authorizer(),
+		Objects:   blobs.New(w.q, queue.New(w.q), objectstore.WriterOnly(store), w.keys, c),
+		Jobs:      queue.New(w.q),
+		Keys:      w.keys,
+		PublicURL: statePublic,
+		URLTTL:    c.SignedURLTTL,
+		Settings:  stateassembly.Settings{MaxSize: stateMax},
 	})
 	d := w.d
 	d.State = st
