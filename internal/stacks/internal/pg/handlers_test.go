@@ -29,7 +29,7 @@ func problemOf(t *testing.T, err error) problem.Problem {
 // request it has authorized, and checks the view and each refusal.
 func TestAccHandlers(t *testing.T) {
 	f := newFixture(t)
-	s := http.New(f.svc, f.authz, f.spaces)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	admin := kernel.WithPrincipal(t.Context(), f.admin)
 	writer := kernel.WithPrincipal(t.Context(), f.writer)
 	reader := kernel.WithPrincipal(t.Context(), f.reader)
@@ -337,7 +337,7 @@ func TestAccHandlers(t *testing.T) {
 // as a missing stack, once the database is gone.
 func TestAccHandlersUnavailable(t *testing.T) {
 	f := newFixture(t)
-	s := http.New(f.svc, f.authz, f.spaces)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	ctx := kernel.WithPrincipal(t.Context(), f.admin)
 	in := api.StackInput{Name: "Infra", Repository: "infra", Branch: "main", Space: new("team")}
 	if _, err := s.StackCreate(ctx, api.StackCreateRequestObject{
@@ -392,5 +392,113 @@ func TestAccHandlersUnavailable(t *testing.T) {
 			ok && pe.Problem.Status == 404 {
 			t.Errorf("%s on a closed database = %v", name, err)
 		}
+	}
+}
+
+// TestAccHandlersTerragrunt reads a Terragrunt stack back as Terragrunt:
+// its settings, whether infraweave keeps its state as its create decided,
+// and the releases its runs would use, each vendor and constraint read
+// from the catalogue once a page and null where none is listed.
+func TestAccHandlersTerragrunt(t *testing.T) {
+	f := newFixture(t)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
+	admin := kernel.WithPrincipal(t.Context(), f.admin)
+	create := func(name string, top *string, tg api.StackConfigVendorTerragruntInput) api.Stack {
+		t.Helper()
+		res, err := s.StackCreate(admin, api.StackCreateRequestObject{
+			Body: &api.StackCreateRequest{ManageState: true, Input: api.StackInput{
+				Name: name, Repository: "infra", Branch: "main", Space: new("team"),
+				TerraformVersion: top,
+				VendorConfig:     &api.StackConfigVendorInput{Terragrunt: &tg},
+			}},
+		})
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		return res.(api.StackCreate201JSONResponse).Body
+	}
+	read := func(v api.Stack) api.StackConfigVendorTerragrunt {
+		t.Helper()
+		tg, err := v.VendorConfig.AsStackConfigVendorTerragrunt()
+		if err != nil || tg.Kind != api.StackConfigVendorTerragruntKindStackConfigVendorTerragrunt {
+			t.Fatalf("%s's vendorConfig %+v, %v", v.Id, tg, err)
+		}
+		return tg
+	}
+	versions := func(tg, tool *string, t api.TerragruntTool) api.EffectiveTerragruntVersionResult {
+		return api.EffectiveTerragruntVersionResult{
+			EffectiveTerragruntVersion: tg, EffectiveTerraformVersion: tool, Tool: t,
+		}
+	}
+
+	tofu := create("Tofu", nil, api.StackConfigVendorTerragruntInput{
+		Tool: new(api.TerragruntToolOPENTOFU), TerragruntVersion: new("~> 0.93.0"),
+		TerraformVersion: new("~> 1.10.0"), UseRunAll: true, UseStateManagement: new(false),
+	})
+	if tg := read(tofu); tofu.ManagesStateFile || tg.UseStateManagement ||
+		tg.Tool != api.TerragruntToolOPENTOFU || !tg.UseRunAll ||
+		*tg.TerragruntVersion != "~> 0.93.0" || *tg.TerraformVersion != "~> 1.10.0" ||
+		!reflect.DeepEqual(tg.EffectiveVersions,
+			versions(new("0.93.3"), new("1.10.7"), api.TerragruntToolOPENTOFU)) {
+		t.Errorf("an OpenTofu Terragrunt stack: %+v, managed %t", tg, tofu.ManagesStateFile)
+	}
+	plain := create("Plain", nil, api.StackConfigVendorTerragruntInput{})
+	if tg := read(plain); !plain.ManagesStateFile || !tg.UseStateManagement ||
+		tg.Tool != api.TerragruntToolTERRAFORMFOSS || tg.TerragruntVersion != nil ||
+		!reflect.DeepEqual(tg.EffectiveVersions,
+			versions(new("0.93.3"), new("1.14.0"), api.TerragruntToolTERRAFORMFOSS)) {
+		t.Errorf("a Terragrunt stack with no settings: %+v", tg)
+	}
+	pinned := create("Pinned", new("1.13.4"), api.StackConfigVendorTerragruntInput{
+		TerragruntVersion: new("0.92.1"), TerraformVersion: new("~> 1.14.0"),
+	})
+	if tg := read(pinned); !reflect.DeepEqual(tg.EffectiveVersions,
+		versions(new("0.92.1"), new("1.13.4"), api.TerragruntToolTERRAFORMFOSS)) {
+		t.Errorf("terraformVersion takes precedence: %+v", tg.EffectiveVersions)
+	}
+	unmet := create("Unmet", nil, api.StackConfigVendorTerragruntInput{
+		Tool: new(api.TerragruntToolOPENTOFU), TerragruntVersion: new("~> 0.50.0"),
+		TerraformVersion: new(">= 2.0"),
+	})
+	if tg := read(unmet); !reflect.DeepEqual(tg.EffectiveVersions,
+		versions(nil, nil, api.TerragruntToolOPENTOFU)) {
+		t.Errorf("constraints no release meets: %+v", tg.EffectiveVersions)
+	}
+
+	// An update keeps the state management the create decided.
+	updated, err := s.StackUpdate(admin, api.StackUpdateRequestObject{
+		StackId: "tofu", Body: &api.StackInput{
+			Name: "Tofu", Repository: "infra", Branch: "main", Space: new("team"),
+			VendorConfig: &api.StackConfigVendorInput{Terragrunt: &api.StackConfigVendorTerragruntInput{
+				UseStateManagement: new(true),
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := updated.(api.StackUpdate200JSONResponse).Body; v.ManagesStateFile ||
+		read(v).UseStateManagement {
+		t.Errorf("the update turned state management on: %+v", read(v))
+	}
+
+	// A page reads each vendor and constraint once: five stacks name six,
+	// the updated first and the last the same two as the second.
+	create("Again", nil, api.StackConfigVendorTerragruntInput{})
+	f.catalog.reads = 0
+	page, err := s.Stacks(admin, api.StacksRequestObject{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(page.(api.Stacks200JSONResponse).Body.Items); n != 5 || f.catalog.reads != 6 {
+		t.Errorf("a page of %d stacks read the catalogue %d times, want 6", n, f.catalog.reads)
+	}
+	f.catalog.err = errors.New("catalogue down")
+	if _, err := s.Stacks(admin, api.StacksRequestObject{}); !errors.Is(err, f.catalog.err) {
+		t.Errorf("a page while the catalogue fails = %v", err)
+	}
+	if _, err := s.Stack(admin, api.StackRequestObject{StackId: "pinned"}); !errors.Is(err,
+		f.catalog.err) {
+		t.Errorf("a read while the catalogue fails = %v", err)
 	}
 }

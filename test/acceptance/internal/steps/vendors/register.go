@@ -10,4 +10,5 @@ import (
 // scenario's World w.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&catalogSteps{w: w}).register(sc)
+	(&terragruntSteps{w: w}).register(sc)
 }

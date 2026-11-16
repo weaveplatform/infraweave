@@ -89,6 +89,10 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		w.tool,
 	)
 	sc.Step(
+		`^the specification mounts terragrunt "([^"]+)" driving (terraform|tofu) "([^"]+)", (not )?downloaded, with(out)? a state backend$`,
+		w.terragrunt,
+	)
+	sc.Step(
 		`^the specification's sealed part opens with the key of "(\w+)" to no source credential$`,
 		w.noCredential,
 	)

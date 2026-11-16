@@ -22,8 +22,11 @@
 // request's If-Match and check it against the version they read under
 // the row's lock, so a stale one changes nothing. Input's settings are
 // checked, with each refusal's pointer, before anything is read; labels
-// follow kernel.CheckLabels, and Terraform and OpenTofu settings are
-// checked by internal/iac. Service is also the domain's
+// follow kernel.CheckLabels, and Terraform, OpenTofu and Terragrunt
+// settings are checked by internal/iac, whose vendor decides at a create
+// alone whether infraweave keeps the stack's state: manageState, or a
+// Terragrunt stack's useStateManagement when it is set. Service is also
+// the domain's
 // accessapi.SpaceGuard, refusing deleting a space a stack lives in, and
 // the accessapi.SpaceOf of the entity "stack". It refuses no space move,
 // since a stack keeps its space through one. Find lists the stacks in

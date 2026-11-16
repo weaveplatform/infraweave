@@ -57,6 +57,30 @@ func hashicorp(all []map[string]any) http.Handler {
 	return r
 }
 
+// github pages tags, newest first, as GitHub's REST API does: two
+// releases a page, each page's Link naming the next and the last.
+func github(tags ...string) http.Handler {
+	r := chi.NewRouter()
+	r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
+		page, _ := strconv.Atoi(req.URL.Query().Get("page"))
+		page = max(page, 1)
+		out := []map[string]any{}
+		for i := (page - 1) * 2; i < min(page*2, len(tags)); i++ {
+			out = append(out, map[string]any{
+				"tag_name": tags[i], "body": "notes", "author": map[string]any{"login": "x"},
+				"assets": []string{"SHA256SUMS"}, "draft": false,
+			})
+		}
+		if page*2 < len(tags) {
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s%s?per_page=100&page=%d>; rel="next", `+
+				`<http://%s%s?page=9>; rel="last"`, req.Host, req.URL.Path, page+1, req.Host,
+				req.URL.Path))
+		}
+		_ = json.NewEncoder(w).Encode(out)
+	})
+	return r
+}
+
 func serve(t *testing.T, h http.Handler) string {
 	t.Helper()
 	srv := httptest.NewServer(h)
@@ -81,6 +105,12 @@ func TestUnitRun(t *testing.T) {
 				_, _ = w.Write([]byte(tofu))
 			})),
 			Keep: regexp.MustCompile(`^1\.6\.`),
+		},
+		{
+			Name: "terragrunt", Format: vendorsfixtures.GitHub,
+			URL: serve(t, github("v2.0.0-rc1", "alpha-20240101", "v1.0.3", "v1.0.2", "v1.0.1",
+				"v1.0.0", "v0.9.0")) + "/repos/gruntwork-io/terragrunt/releases",
+			Keep: regexp.MustCompile(`^(1\.0\.[01]|alpha)`),
 		},
 	}
 	dir := t.TempDir()
@@ -143,6 +173,25 @@ func TestUnitRun(t *testing.T) {
 		len(idx.Versions[0].Files) != 2 {
 		t.Errorf("opentofu fixture %+v", idx)
 	}
+	var tg []map[string]any
+	read("terragrunt", &tg)
+	got = make([]string, 0, len(tg))
+	for _, r := range tg {
+		got = append(got, r["tag_name"].(string))
+		for _, dropped := range []string{"body", "author", "assets"} {
+			if _, ok := r[dropped]; ok {
+				t.Errorf("%s keeps its %s", r["tag_name"], dropped)
+			}
+		}
+		if _, ok := r["draft"]; !ok {
+			t.Errorf("%s lost its draft flag", r["tag_name"])
+		}
+	}
+	if want := []string{
+		"v2.0.0-rc1", "alpha-20240101", "v1.0.3", "v1.0.1", "v1.0.0",
+	}; !slices.Equal(got, want) {
+		t.Errorf("terragrunt fixture %v, want %v", got, want)
+	}
 }
 
 // TestUnitRunFails names the source it could not record.
@@ -158,6 +207,10 @@ func TestUnitRunFails(t *testing.T) {
 		full[i] = `{"version":"1.0.0"}`
 	}
 	ok := answer(http.StatusOK, `{"versions":[]}`)
+	endless := serve(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Link", fmt.Sprintf(`<http://%s/again>; rel="next"`, req.Host))
+		_, _ = w.Write([]byte(`[]`))
+	}))
 	for name, c := range map[string]struct {
 		s    vendorsfixtures.Source
 		dir  string
@@ -172,6 +225,9 @@ func TestUnitRunFails(t *testing.T) {
 		"a bad URL":         {vendorsfixtures.Source{Format: vendorsfixtures.HashiCorp, URL: "http://[::1"}, "", "missing ']'"},
 		"a bad request":     {vendorsfixtures.Source{Format: vendorsfixtures.OpenTofu, URL: "http://a b"}, "", "invalid character"},
 		"no directory":      {vendorsfixtures.Source{Name: "x", Format: vendorsfixtures.OpenTofu, URL: ok}, "/nonexistent/dir", "x.json"},
+		"a GitHub page":     {vendorsfixtures.Source{Format: vendorsfixtures.GitHub, URL: answer(http.StatusOK, "{}")}, "", "cannot unmarshal"},
+		"a bad GitHub URL":  {vendorsfixtures.Source{Format: vendorsfixtures.GitHub, URL: "http://[::1"}, "", "missing ']'"},
+		"endless pages":     {vendorsfixtures.Source{Format: vendorsfixtures.GitHub, URL: endless}, "", "more than 500 pages"},
 	} {
 		if c.s.Keep == nil {
 			c.s.Keep = regexp.MustCompile(`^$`)

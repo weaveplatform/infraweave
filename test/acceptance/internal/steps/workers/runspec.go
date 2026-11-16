@@ -115,6 +115,29 @@ func (w *workerSteps) tool(name, version, notDownloaded, masking string) error {
 	return nil
 }
 
+// terragrunt checks that the last answer, a run's specification, mounts
+// Terragrunt at version driving the tool name at toolVersion, their
+// {name}s resolved, both downloaded unless notDownloaded is set, and
+// names a state backend unless without is set.
+func (w *workerSteps) terragrunt(version, name, toolVersion, notDownloaded, without string) error {
+	s, err := w.spec()
+	if err != nil {
+		return err
+	}
+	tool := wire.RunSpecTool{
+		Name: wire.RunSpecToolName(name), Version: w.w.Resolve(toolVersion),
+		Download: notDownloaded == "",
+	}
+	tg := wire.RunSpecTerragrunt{Version: w.w.Resolve(version), Download: notDownloaded == ""}
+	if s.Tool == nil || *s.Tool != tool || s.Terragrunt == nil || *s.Terragrunt != tg ||
+		(s.StateBackend == nil) != (without != "") {
+		return fmt.Errorf("%w: the tool is %+v, Terragrunt %+v and the state backend %+v; "+
+			"want %+v, %+v and one unless without", harness.ErrStep, s.Tool, s.Terragrunt,
+			s.StateBackend, tool, tg)
+	}
+	return nil
+}
+
 // noCredential checks that the sealed part, opened with the key of csr,
 // holds no source credential.
 func (w *workerSteps) noCredential(csr string) error {

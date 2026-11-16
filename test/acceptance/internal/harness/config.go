@@ -62,8 +62,9 @@ func ServerConfig(dsn, objects string, settings map[string]any) ([]byte, error) 
 // acceptance run reaches the vendors' real indexes, and a refresh that
 // cannot read them keeps the empty catalogue.
 var offlineIndexes = map[string]any{
-	"terraform_index": "http://127.0.0.1:1/terraform",
-	"opentofu_index":  "http://127.0.0.1:1/opentofu",
+	"terraform_index":  "http://127.0.0.1:1/terraform",
+	"opentofu_index":   "http://127.0.0.1:1/opentofu",
+	"terragrunt_index": "http://127.0.0.1:1/terragrunt",
 }
 
 // withSection is config with its top-level key set to section.

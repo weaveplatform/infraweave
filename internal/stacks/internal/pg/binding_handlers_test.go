@@ -16,7 +16,7 @@ import (
 // hands it a request it has authorized, and checks each view and refusal.
 func TestAccBindingHandlers(t *testing.T) {
 	f := bindingFixture(t)
-	s := http.New(f.svc, f.authz, f.spaces)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	admin := kernel.WithPrincipal(t.Context(), f.admin)
 	writer := kernel.WithPrincipal(t.Context(), f.writer)
 
@@ -222,7 +222,7 @@ func TestAccBindingHandlers(t *testing.T) {
 // operation refuses a request that carries no principal.
 func TestAccBindingHandlersUnauthenticated(t *testing.T) {
 	f := newFixture(t)
-	s := http.New(f.svc, f.authz, f.spaces)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	ctx := context.Background()
 	for name, call := range map[string]func() error{
 		"read": func() error {

@@ -863,6 +863,8 @@ components:
           $ref: '#/components/schemas/RunSpecSource'
         tool:
           $ref: '#/components/schemas/RunSpecTool'
+        terragrunt:
+          $ref: '#/components/schemas/RunSpecTerragrunt'
         task:
           $ref: '#/components/schemas/RunSpecTask'
         targets:
@@ -1137,9 +1139,23 @@ components:
           type: boolean
           description: >-
             Whether the run performs the command without running the tool's init first; INITIALIZING then runs its hooks alone.
+    RunSpecTerragrunt:
+      description: >-
+        The Terragrunt the launcher mounts beside the tool, present for a Terragrunt stack's run alone. The runner runs each phase's tool commands through it across the stack's units, and such a run records no plan, changes or outputs documents, so the server expects none.
+      type: object
+      required: [version, download]
+      properties:
+        version:
+          type: string
+          description: >-
+            The release: the newest stable Terragrunt release the version catalogue lists that meets the stack's terragruntVersion, or the newest it lists when the stack sets none.
+        download:
+          type: boolean
+          description: >-
+            Whether the launcher mounts the release; false when the stack runs the runner image's own binaries instead.
     RunSpecTool:
       description: >-
-        The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none.
+        The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none. A Terragrunt stack's run mounts the tool its Terragrunt drives, tofu for OPEN_TOFU and terraform for TERRAFORM_FOSS, whose version constraint is the stack's terraformVersion, else its Terragrunt settings' terraformVersion.
       type: object
       required: [name, version, download]
       properties:

@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/http"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
+	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -35,12 +36,13 @@ const (
 	BindingEntity = "stack_role_binding"
 )
 
-// Deps are what the stacks domain takes from the platform and the access
-// and workers domains: the database, the spaces a stack lives in and
-// holds, the authorizer that decides the checks beyond each route's and a
-// stack's allowedActions, the stacks' role bindings and the grants that
-// reach a space for them, the worker pools a stack names, and the outbox
-// its writes append StackChanged to.
+// Deps are what the stacks domain takes from the platform and the access,
+// workers and vendors domains: the database, the spaces a stack lives in
+// and holds, the authorizer that decides the checks beyond each route's
+// and a stack's allowedActions, the stacks' role bindings and the grants
+// that reach a space for them, the worker pools a stack names, the
+// outbox its writes append StackChanged to, and the version catalogue a
+// Terragrunt stack's effective versions are read from.
 type Deps struct {
 	DB       pg.DB
 	Spaces   accessapi.Spaces
@@ -49,6 +51,7 @@ type Deps struct {
 	Grants   accessapi.Grants
 	Pools    workersapi.Pools
 	Events   *outbox.Outbox
+	Catalog  vendorsapi.Catalog
 	Now      func() time.Time
 }
 
@@ -66,7 +69,7 @@ func New(d Deps) *Domain {
 		Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Bindings: d.Bindings,
 		Grants: d.Grants, Pools: d.Pools, Events: d.Events, Now: d.Now,
 	})
-	return &Domain{stacks: svc, store: store, api: http.New(svc, d.Authz, d.Spaces)}
+	return &Domain{stacks: svc, store: store, api: http.New(svc, d.Authz, d.Spaces, d.Catalog)}
 }
 
 // PurgeBatch is how many stacks one statement of Purge deletes, so no

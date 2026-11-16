@@ -31,12 +31,19 @@ func TestMain(m *testing.M) {
 func TestUnitSettings(t *testing.T) {
 	d := DefaultSettings()
 	if err := d.Validate(); err != nil || d.TerraformIndex != index.DefaultTerraformURL ||
-		d.OpenTofuIndex != index.DefaultOpenTofuURL {
+		d.OpenTofuIndex != index.DefaultOpenTofuURL ||
+		d.TerragruntIndex != index.DefaultTerragruntURL {
 		t.Errorf("defaults %+v: %v", d, err)
 	}
+	with := func(f func(*Settings)) Settings {
+		s := d
+		f(&s)
+		return s
+	}
 	for key, s := range map[string]Settings{
-		"vendors.terraform_index": {TerraformIndex: "ftp://mirror/terraform", OpenTofuIndex: d.OpenTofuIndex},
-		"vendors.opentofu_index":  {TerraformIndex: d.TerraformIndex, OpenTofuIndex: "mirror"},
+		"vendors.terraform_index":  with(func(s *Settings) { s.TerraformIndex = "ftp://mirror/terraform" }),
+		"vendors.opentofu_index":   with(func(s *Settings) { s.OpenTofuIndex = "mirror" }),
+		"vendors.terragrunt_index": with(func(s *Settings) { s.TerragruntIndex = "https://" }),
 	} {
 		if err := s.Validate(); !errors.Is(err, ErrConfig) ||
 			!strings.Contains(err.Error(), key) {
@@ -100,6 +107,11 @@ func TestAccRefresh(t *testing.T) {
 			"opentofu",
 			func(b []byte) http.Handler { return indextest.OpenTofu(b) },
 		),
+		TerragruntIndex: fixture(
+			t,
+			"terragrunt",
+			func(b []byte) http.Handler { return indextest.GitHub(b) },
+		) + "/repos/gruntwork-io/terragrunt/releases",
 	}
 	d := New(Deps{DB: db, Settings: settings})
 	if err := d.Cron(slog.Default())[0].Handler(ctx, queue.Job{}); err != nil {
@@ -107,8 +119,9 @@ func TestAccRefresh(t *testing.T) {
 	}
 	c := d.Catalog()
 	for kind, facts := range map[vendorsapi.Vendor]indextest.Facts{
-		vendorsapi.Terraform: indextest.TerraformFacts,
-		vendorsapi.OpenTofu:  indextest.OpenTofuFacts,
+		vendorsapi.Terraform:  indextest.TerraformFacts,
+		vendorsapi.OpenTofu:   indextest.OpenTofuFacts,
+		vendorsapi.Terragrunt: indextest.TerragruntFacts,
 	} {
 		versions, err := c.Versions(ctx, kind)
 		if err != nil || len(versions) == 0 {
@@ -125,6 +138,7 @@ func TestAccRefresh(t *testing.T) {
 	var logs bytes.Buffer
 	gone := New(Deps{DB: db, Settings: Settings{
 		TerraformIndex: "http://127.0.0.1:1/terraform", OpenTofuIndex: settings.OpenTofuIndex,
+		TerragruntIndex: settings.TerragruntIndex,
 	}})
 	if err := gone.Cron(slog.New(slog.NewTextHandler(&logs, nil)))[0].Handler(
 		ctx,
