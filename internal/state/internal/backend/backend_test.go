@@ -488,10 +488,11 @@ func TestUnitBackend(t *testing.T) {
 
 // TestUnitLockModes checks that a lock is taken for the run on the
 // workspace its path names, unescaped, shared or exclusive as the run's
-// grant says, with the LockInfo as sent; and that a conflict answers the
-// holder's LockInfo as it was sent.
+// grant says, naming who triggered the run, with the LockInfo as sent;
+// and that a conflict answers the holder's LockInfo as it was sent.
 func TestUnitLockModes(t *testing.T) {
 	w := newWorld()
+	w.grant.TriggeredBy = "alice"
 	if rec := w.serve(t, "LOCK", "/state/v1/stacks/one/workspaces/a%2Fb", lockBody,
 		nil); rec.Code != http.StatusOK {
 		t.Fatalf("a shared lock = %d %s", rec.Code, rec.Body)
@@ -504,11 +505,17 @@ func TestUnitLockModes(t *testing.T) {
 	want := []locked{
 		{
 			core.Target{Account: w.acct, Stack: w.stack.ID, Workspace: "a/b"},
-			core.Lock{ID: "l1", Mode: core.Shared, Run: w.run, Info: json.RawMessage(lockBody)},
+			core.Lock{
+				ID: "l1", Mode: core.Shared, Run: w.run, TriggeredBy: "alice",
+				Info: json.RawMessage(lockBody),
+			},
 		},
 		{
 			core.Target{Account: w.acct, Stack: w.stack.ID},
-			core.Lock{ID: "l1", Mode: core.Exclusive, Run: w.run, Info: json.RawMessage(lockBody)},
+			core.Lock{
+				ID: "l1", Mode: core.Exclusive, Run: w.run, TriggeredBy: "alice",
+				Info: json.RawMessage(lockBody),
+			},
 		},
 	}
 	if !reflect.DeepEqual(w.locked, want) {

@@ -7,8 +7,8 @@
 // delete's transaction. It is also the domain's runsapi.StateAccess,
 // granting a run reads and a shared lock on its stack's state while it
 // plans, and writes under an exclusive lock while it applies, destroys or
-// performs a task, from the state it reads the run in on each call. Store
-// is its storage port.
+// performs a task, from the state it reads the run in on each call, each
+// lock it grants naming who triggered the run. Store is its storage port.
 //
 // # Input and output
 //

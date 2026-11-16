@@ -55,6 +55,23 @@ type Authenticator interface {
 	Middleware(access func(*http.Request) Access) func(http.Handler) http.Handler
 }
 
+type clientAddrKey struct{}
+
+// WithClientAddr is ctx carrying addr, the address of the client whose
+// request Authenticator's middleware admitted, which another domain's
+// handler records as an audit entry's remote IP through ClientAddr, as
+// the access domain's own do.
+func WithClientAddr(ctx context.Context, addr string) context.Context {
+	return context.WithValue(ctx, clientAddrKey{}, addr)
+}
+
+// ClientAddr is the address WithClientAddr put on ctx, empty when there
+// is none.
+func ClientAddr(ctx context.Context) string {
+	addr, _ := ctx.Value(clientAddrKey{}).(string)
+	return addr
+}
+
 // Required is what an API operation requires before its handler runs: its
 // x-infraweave-action, decided in the space its x-infraweave-subject
 // finds, with the path parameters the router matched, which a path

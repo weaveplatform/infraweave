@@ -33,6 +33,20 @@ func (s *Service) LostOnMove(context.Context, stacksapi.StackMove) ([]string, er
 	return nil, nil
 }
 
+// Created opens st's default workspace, whose stored name is empty, in
+// the creation's transaction, which the context carries, under the ID it
+// keeps, so a stack whose state infraweave keeps lists it before any run
+// locks it. It answers ErrNoTransaction outside a transaction.
+//
+// ref: decision 0010 § "Storage"
+func (s *Service) Created(ctx context.Context, st stacksapi.Stack) error {
+	if !tx.In(ctx) {
+		return ErrNoTransaction
+	}
+	//nolint:wrapcheck // the store names the write
+	return s.store.OpenWorkspace(ctx, st.Account, st.ID, "")
+}
+
 // Deleting enqueues PurgeKind for st in the delete's transaction, so the
 // purge runs once the delete commits and never when it rolls back. A
 // write under the stack's hold commits before the delete locks the stack,

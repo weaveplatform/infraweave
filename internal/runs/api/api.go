@@ -75,15 +75,19 @@ const (
 // slug by Account, so no part of a request's URL chooses the account it
 // reaches. On another stack's state a run may at most read, as its stack's
 // bindings and the stack's external access, which the state domain
-// decides, allow.
+// decides, allow. TriggeredBy is the login or trigger that created the
+// run, which the state domain records with each lock the run takes and
+// answers as the workspace's lockedBy.
 //
 // ref: decision 0010 § "Who may call what"
+// ref: decision 0010 § "Storage"
 type StateGrant struct {
-	Account kernel.AccountID
-	Stack   kernel.ULID
-	Read    bool
-	Lock    StateLock
-	Write   bool
+	Account     kernel.AccountID
+	Stack       kernel.ULID
+	Read        bool
+	Lock        StateLock
+	Write       bool
+	TriggeredBy string
 }
 
 // StateAccess decides a run's access to a stack's managed state, a

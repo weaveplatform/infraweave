@@ -21,8 +21,9 @@ type Store interface {
 	Outputs(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.Output, error)
 	// StackOf reads the stack of acct's run, false when acct lacks it.
 	StackOf(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, bool, error)
-	// RunOf reads run's account, stack and state, whichever account has
-	// it, without locking its row; false when no account does.
+	// RunOf reads run's account, stack, state and trigger, whichever
+	// account has it, without locking its row; false when no account
+	// does.
 	RunOf(ctx context.Context, run kernel.ULID) (Run, bool, error)
 	// DeleteStack deletes acct's stack's runs with their transitions,
 	// and its run lock, tracked run and outputs, in the context's
@@ -30,11 +31,13 @@ type Store interface {
 	DeleteStack(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error
 }
 
-// Run is a run as Access reads it.
+// Run is a run as Access reads it: TriggeredBy is the login or trigger
+// that created it.
 type Run struct {
-	Account kernel.AccountID
-	Stack   kernel.ULID
-	State   kernel.RunState
+	Account     kernel.AccountID
+	Stack       kernel.ULID
+	State       kernel.RunState
+	TriggeredBy string
 }
 
 // Service is the runs domain's core: the stacksapi.StackStatus the stack
@@ -110,7 +113,8 @@ var grants = map[kernel.RunState]runsapi.StateGrant{
 // Access answers run's grant on stack's state from the state it reads the
 // run in: the zero grant when no account has the run, grants' entry for
 // its state on its own stack, and that entry's Read alone on another,
-// each naming the run's account and stack.
+// each naming the run's account and stack, and one with a lock naming who
+// triggered the run.
 func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.StateGrant, error) {
 	r, ok, err := s.store.RunOf(ctx, run)
 	if err != nil || !ok {
@@ -121,5 +125,8 @@ func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.S
 		g = runsapi.StateGrant{Read: g.Read}
 	}
 	g.Account, g.Stack = r.Account, r.Stack
+	if g.Lock != runsapi.StateLockNone {
+		g.TriggeredBy = r.TriggeredBy
+	}
 	return g, nil
 }

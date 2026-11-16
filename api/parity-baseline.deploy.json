@@ -388,8 +388,7 @@
       "searchRepoCommitsSuggestions",
       "searchRepoFilesSuggestions",
       "searchReposSuggestions",
-      "searchSpacePoliciesSuggestions",
-      "searchTofuWorkspacesSuggestions"
+      "searchSpacePoliciesSuggestions"
     ],
     "Sessions and Security Keys": [
       "securityKeyDelete",
@@ -446,11 +445,6 @@
       "terraformProviderVersionUploadDocs",
       "terraformProviderVersionVerify",
       "terraformProviders"
-    ],
-    "Tofu Workspaces": [
-      "searchTofuWorkspaces",
-      "tofuWorkspaceUnlock",
-      "tofuWorkspaceUnlockAll"
     ],
     "UI State": [
       "uiConfigGet",

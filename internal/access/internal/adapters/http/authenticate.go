@@ -151,9 +151,10 @@ func (a Authenticator) Middleware(access func(*http.Request) accessapi.Access) f
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rec := request{addr: ratelimit.ClientAddr(r)}
+			base := accessapi.WithClientAddr(r.Context(), rec.addr)
 			acc := access(r)
 			if acc == accessapi.Public {
-				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestKey{}, rec)))
+				next.ServeHTTP(w, r.WithContext(context.WithValue(base, requestKey{}, rec)))
 				return
 			}
 			if (acc == accessapi.Worker || acc == accessapi.Runner) != a.worker ||
@@ -193,7 +194,7 @@ func (a Authenticator) Middleware(access func(*http.Request) accessapi.Access) f
 				problem.Failure(w, err)
 				return
 			}
-			ctx := kernel.WithPrincipal(context.WithValue(r.Context(), requestKey{}, rec), p)
+			ctx := kernel.WithPrincipal(context.WithValue(base, requestKey{}, rec), p)
 			if a.worker {
 				ctx = accessapi.WithBearer(
 					ctx,

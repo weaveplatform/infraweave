@@ -41,3 +41,8 @@ tags:
     description: >-
       Tracked pieces of infrastructure, each bound to a repository, a branch
       and a project root, with their locks, state and scheduled work.
+  - name: Tofu Workspaces
+    description: >-
+      The separately locked states of each stack whose state infraweave
+      manages, with who holds their locks, and the release of a lock a
+      stopped or stuck run left behind.

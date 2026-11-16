@@ -317,8 +317,9 @@ func TestUnitStateWriteDown(t *testing.T) {
 	}
 }
 
-// notFound is a Stacks whose every stack is gone.
-type notFound struct{}
+// notFound is a Stacks whose every stack is gone; a write holds a stack
+// and calls no other method.
+type notFound struct{ Stacks }
 
 func (notFound) Hold(context.Context, kernel.AccountID, kernel.ULID) error {
 	return stacksapi.ErrNotFound

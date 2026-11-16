@@ -16,7 +16,7 @@
 // tool's process (RunTool) in a container of one; RunnerContract holds a
 // runner image to deploy/images/contract.sh. A Relay is the worker API and
 // state backend as those containers reach them, recording each call and
-// holding reports or UNLOCK calls on demand. Stress is what EnvStress
+// holding reports, UNLOCK calls or state writes on demand. Stress is what EnvStress
 // puts a run under: an @objectstore scenario's StoreRelay holds each
 // object store request for a latency and refuses a share of signed
 // uploads and of the launcher's signed reads as a skewed store does,

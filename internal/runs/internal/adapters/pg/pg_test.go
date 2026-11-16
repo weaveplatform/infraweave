@@ -145,12 +145,12 @@ func TestAccStore(t *testing.T) {
 	}
 }
 
-// TestAccStoreStateAccess reads a run of every type by its ID alone, none
-// for an unknown run, and answers the core's access from the state each
-// Transition moves a tracked run to: a shared lock while it plans, writes
-// under an exclusive lock while it applies, and nothing but its account
-// once it finishes; another account's applying run never reaches the
-// stack.
+// TestAccStoreStateAccess reads a run of every type by its ID alone, with
+// who triggered it, none for an unknown run, and answers the core's access
+// from the state each Transition moves a tracked run to: a shared lock
+// while it plans, writes under an exclusive lock while it applies, each
+// naming the run's trigger, and nothing but its account once it finishes;
+// another account's applying run never reaches the stack.
 func TestAccStoreStateAccess(t *testing.T) {
 	ctx := t.Context()
 	w := newWorld(t)
@@ -162,7 +162,9 @@ func TestAccStoreStateAccess(t *testing.T) {
 			w.acct, run, w.stack, typ); err != nil {
 			t.Fatal(err)
 		}
-		want := core.Run{Account: w.acct, Stack: w.stack, State: kernel.RunStatePlanning}
+		want := core.Run{
+			Account: w.acct, Stack: w.stack, State: kernel.RunStatePlanning, TriggeredBy: "alice",
+		}
 		if got, ok, err := w.store.RunOf(ctx, run); err != nil || !ok || got != want {
 			t.Errorf("RunOf a %s run = %+v, %t, %v", typ, got, ok, err)
 		}
@@ -212,6 +214,7 @@ func TestAccStoreStateAccess(t *testing.T) {
 	}
 	shared := runsapi.StateGrant{
 		Account: w.acct, Stack: w.stack, Read: true, Lock: runsapi.StateLockShared,
+		TriggeredBy: "alice",
 	}
 	if g := grant(run.ID); g != shared {
 		t.Errorf("PLANNING grants %+v, want %+v", g, shared)
@@ -232,7 +235,7 @@ func TestAccStoreStateAccess(t *testing.T) {
 	}
 	exclusive := runsapi.StateGrant{
 		Account: w.acct, Stack: w.stack, Read: true, Lock: runsapi.StateLockExclusive,
-		Write: true,
+		Write: true, TriggeredBy: "alice",
 	}
 	if g := grant(run.ID); g != exclusive {
 		t.Errorf("APPLYING grants %+v, want %+v", g, exclusive)
