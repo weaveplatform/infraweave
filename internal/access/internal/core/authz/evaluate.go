@@ -66,14 +66,25 @@ var runDenied = []accessapi.Action{
 	accessapi.ActionStackStateRead, accessapi.ActionStackStateDownload, accessapi.ActionTaskCreate,
 }
 
+// stateReads are the actions a read of a stack's state needs, in the
+// order StateRead decides them: seeing the stack's space first, so a
+// caller that cannot is told nothing of the stack.
+var stateReads = []accessapi.Action{
+	accessapi.ActionSpaceRead, accessapi.ActionStackStateRead, accessapi.ActionStackStateDownload,
+}
+
 // runRead are the subjects whose reads a run's token never makes.
 var runRead = []string{"run", "task", "log"}
 
 // RunDenied reports whether a run's token is refused action on subject,
 // whatever its stack holds: the state reads, every RUN_ action,
-// TASK_CREATE, and SPACE_READ of a run, a task or a log.
+// TASK_CREATE, and SPACE_READ of a run, a task or a log. The one
+// exception is a read of another stack's state, which StateRead decides
+// as the run's stack; Authorize, deciding an action without its subject,
+// keeps both state reads refused.
 //
 // ref: decision 0007 § "Evaluation"
+// ref: decision 0010 § "Who may call what"
 func RunDenied(action accessapi.Action, subject string) bool {
 	return slices.Contains(runDenied, action) || strings.HasPrefix(string(action), "RUN_") ||
 		action == accessapi.ActionSpaceRead && slices.Contains(runRead, subject)
@@ -231,12 +242,37 @@ func (s *Snapshot) Holders(space kernel.ULID, kinds ...binding.ActorKind) []Hold
 // role's, which no account grants. Another account's space, or one the
 // snapshot lacks, is refused.
 func (s *Snapshot) Authorize(w Who, action accessapi.Action, space kernel.ULID) bool {
+	return s.authorize(w, action, space, false)
+}
+
+// StateRead is the first of SPACE_READ, STACK_STATE_READ and
+// STACK_STATE_DOWNLOAD w may not perform in space for a read of stack's
+// state from outside its own runs, or none when it may perform all three.
+// A run reads another stack's state as its stack, through its stack's
+// bindings, the exception RunDenied makes; its own stack's state is the
+// runs domain's to grant, so here it holds neither state read.
+//
+// ref: decision 0010 § "Who may call what"
+func (s *Snapshot) StateRead(w Who, stack, space kernel.ULID) (accessapi.Action, bool) {
+	other := w.Kind == kernel.PrincipalRun && stack != w.Stack
+	for _, a := range stateReads {
+		if !s.authorize(w, a, space, other) {
+			return a, false
+		}
+	}
+	return "", true
+}
+
+// authorize is Authorize, lifting RunDenied's refusal of the state reads
+// when stateRead is set.
+func (s *Snapshot) authorize(w Who, action accessapi.Action, space kernel.ULID, stateRead bool) bool {
 	if _, ok := s.parent[space]; !ok || !s.in(w) {
 		return false
 	}
 	switch {
 	case action == accessapi.ActionOrganizationAdmin,
-		w.Kind == kernel.PrincipalRun && RunDenied(action, ""):
+		w.Kind == kernel.PrincipalRun && RunDenied(action, "") &&
+			(!stateRead || !slices.Contains(stateReads, action)):
 		return false
 	case action == accessapi.ActionAuthenticated:
 		return true

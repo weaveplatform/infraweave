@@ -4,8 +4,9 @@
 // it names when a timer moved the run; RunSources, what a run's end
 // asks of the vcs domain, a back edge that domain implements; and
 // StateAccess, which decides from a run's current state its StateGrant on
-// its stack's managed state, the read, lock and write the state domain
-// allows the run's token.
+// a stack's managed state, the read, lock and write the state domain
+// allows the run on its own stack, and the read alone on another's, which
+// the access domain then decides as the run's stack.
 //
 // # Input and output
 //

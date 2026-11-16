@@ -174,7 +174,8 @@ func TestAccStoreStateAccess(t *testing.T) {
 
 	access := core.New(w.store)
 	otherAcct := kernel.NewAccountID()
-	other := insertRun(t, w.db, otherAcct, kernel.NewULID(), false)
+	otherStack := kernel.NewULID()
+	other := insertRun(t, w.db, otherAcct, otherStack, false)
 	grant := func(run kernel.ULID) runsapi.StateGrant {
 		t.Helper()
 		g, err := access.Access(ctx, run, w.stack)
@@ -182,12 +183,12 @@ func TestAccStoreStateAccess(t *testing.T) {
 			t.Fatal(err)
 		}
 		if g, err := access.Access(ctx, other, w.stack); err != nil ||
-			g != (runsapi.StateGrant{Account: otherAcct}) {
-			t.Errorf("another account's applying run = %+v, %v", g, err)
+			g != (runsapi.StateGrant{Account: otherAcct, Stack: otherStack, Read: true}) {
+			t.Errorf("another stack's applying run = %+v, %v", g, err)
 		}
 		return g
 	}
-	none := runsapi.StateGrant{Account: w.acct}
+	none := runsapi.StateGrant{Account: w.acct, Stack: w.stack}
 	run, _, err := w.create(t, kernel.RunTypeTracked, "abc123")
 	if err != nil {
 		t.Fatal(err)
@@ -209,7 +210,9 @@ func TestAccStoreStateAccess(t *testing.T) {
 	} {
 		run = w.mustMove(t, run, m.to, m.by)
 	}
-	shared := runsapi.StateGrant{Account: w.acct, Read: true, Lock: runsapi.StateLockShared}
+	shared := runsapi.StateGrant{
+		Account: w.acct, Stack: w.stack, Read: true, Lock: runsapi.StateLockShared,
+	}
 	if g := grant(run.ID); g != shared {
 		t.Errorf("PLANNING grants %+v, want %+v", g, shared)
 	}
@@ -228,7 +231,8 @@ func TestAccStoreStateAccess(t *testing.T) {
 		run = w.mustMove(t, run, m.to, m.by)
 	}
 	exclusive := runsapi.StateGrant{
-		Account: w.acct, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
+		Account: w.acct, Stack: w.stack, Read: true, Lock: runsapi.StateLockExclusive,
+		Write: true,
 	}
 	if g := grant(run.ID); g != exclusive {
 		t.Errorf("APPLYING grants %+v, want %+v", g, exclusive)

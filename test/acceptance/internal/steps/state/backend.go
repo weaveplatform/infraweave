@@ -104,19 +104,21 @@ func (b *backendSteps) register(sc *godog.ScenarioContext) {
 		`^the worker records the last output of the run "(\w+)" as its outputs.json through ([AB])$`,
 		b.recordOutputs,
 	)
-	sc.Step(`^(terraform|tofu) "([^"]+)" of the run "(\w+)" exits (\d+)$`, b.exits)
+	sc.Step(`^(terraform|tofu) "([^"]+)" of the (?:run|workspace) "(\w+)" exits (\d+)$`, b.exits)
 	sc.Step(`^(terraform|tofu) "([^"]+)" of the run "(\w+)" starts as "(\w+)"$`, b.starts)
 	sc.Step(`^the process "(\w+)" exits (\d+)$`, b.processExits)
-	sc.Step(`^the last output of the run "(\w+)" is "([^"]*)"$`, b.output)
+	sc.Step(`^the last output of the (?:run|workspace) "(\w+)" is "([^"]*)"$`, b.output)
 	b.registerChecks(sc)
 	b.registerRunner(sc)
+	b.registerExternal(sc)
 }
 
-// run is the run the scenario took over as name.
+// run is the run the scenario took over as name, or the workspace of
+// its own it wrote as name.
 func (b *backendSteps) run(name string) (*takenRun, error) {
 	tr, ok := b.runs[name]
 	if !ok {
-		return nil, fmt.Errorf("%w: the worker took over no run %q", harness.ErrStep, name)
+		return nil, fmt.Errorf("%w: no run or workspace %q", harness.ErrStep, name)
 	}
 	return tr, nil
 }

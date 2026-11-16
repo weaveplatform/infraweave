@@ -82,6 +82,7 @@ type Deps struct {
 	Stacks    stacksapi.Stacks
 	Access    runsapi.StateAccess
 	Authz     accessapi.Authorizer
+	Reader    accessapi.StateReader
 	Objects   Objects
 	Jobs      core.Jobs
 	Keys      signed.Keys
@@ -104,7 +105,7 @@ func New(d Deps) *Domain {
 	})
 	return &Domain{
 		state:   svc,
-		backend: backend.New(d.Access, d.Stacks, svc, d.Settings.MaxSize),
+		backend: backend.New(d.Access, d.Reader, d.Stacks, svc, d.Settings.MaxSize),
 		urls: urls.New(urls.Deps{
 			State: svc, Stacks: d.Stacks, Authz: d.Authz,
 			Signer: signed.New(d.Keys, time.Now), Public: d.PublicURL, TTL: d.URLTTL,

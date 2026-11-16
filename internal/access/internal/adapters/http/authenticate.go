@@ -21,13 +21,17 @@ import (
 // API's, which accepts a bearer token or a browser session's cookie, the
 // operator API's, which accepts operator tokens alone, the worker API's,
 // which accepts worker session tokens on its worker routes and run tokens
-// on its runner routes, or the state backend's, which accepts run tokens
-// as HTTP Basic passwords, and nothing else.
+// on its runner routes, or the state backend's, which accepts run tokens,
+// API keys and the API's bearer tokens as HTTP Basic passwords, and
+// nothing else.
 type Authenticator struct {
 	token func(ctx context.Context, raw string, reach authn.Reach) (kernel.Principal, token.Claims, error)
 	// runner authenticates a runner route's run token, on the worker API's
 	// authenticator alone.
-	runner  func(ctx context.Context, raw string) (kernel.Principal, token.Claims, error)
+	runner func(ctx context.Context, raw string) (kernel.Principal, token.Claims, error)
+	// apiKey authenticates an API key's ID and secret through the token
+	// it is exchanged for, on the state backend's authenticator alone.
+	apiKey  func(ctx context.Context, id, secret, ip string) (kernel.Principal, token.Claims, error)
 	browser func(
 		ctx context.Context,
 		secret string,
@@ -81,20 +85,31 @@ func NewWorkerAuthenticator(auth *authn.Service) Authenticator {
 }
 
 // StateUser is the user name of the state backend's HTTP Basic
-// credentials, whose password is a run token.
+// credentials whose password is a run token.
 //
 // ref: decision 0010 § "Who may call what"
 const StateUser = "run"
+
+// StateAPIUser is the user name of the state backend's HTTP Basic
+// credentials whose password is an API key's <id>:<secret> or a token
+// the API accepts as a bearer.
+//
+// ref: decision 0010 § "Who may call what"
+const StateAPIUser = "api"
 
 // StateRealm is the realm of the state backend's challenge.
 const StateRealm = "infraweave-state"
 
 // NewStateAuthenticator returns the state backend's middleware source
-// over auth: it admits a run token as the password of HTTP Basic
-// credentials whose user name is StateUser, which Terraform's and
-// OpenTofu's http backend send, and challenges anything else with Basic.
-func NewStateAuthenticator(auth *authn.Service) Authenticator {
-	return Authenticator{runner: auth.AuthenticateRunner, state: true}
+// over auth, which Terraform's and OpenTofu's http backend send HTTP Basic
+// credentials to: a run token under StateUser, and under StateAPIUser an
+// API key, exchanged through keys, or a token the API admits on an
+// account's route. Anything else is challenged with Basic.
+func NewStateAuthenticator(auth *authn.Service, keys *authn.Exchanges) Authenticator {
+	return Authenticator{
+		token: auth.Authenticate, runner: auth.AuthenticateRunner,
+		apiKey: keys.Authenticate, state: true,
+	}
 }
 
 // Origin is u's origin, <scheme>://<host>, as a browser sends it in an
@@ -153,12 +168,8 @@ func (a Authenticator) Middleware(access func(*http.Request) accessapi.Access) f
 			)
 			if a.state {
 				var c token.Claims
-				if user, raw, ok := r.BasicAuth(); ok && user == StateUser && raw != "" {
-					p, c, err = a.runner(r.Context(), raw)
-					rec.token, rec.expiry = raw, c.Expiry
-				} else {
-					err = authn.ErrUnauthenticated
-				}
+				p, c, err = a.basic(r, rec.addr)
+				rec.expiry = c.Expiry
 			} else if raw, ok := bearer(r); ok {
 				var c token.Claims
 				if acc == accessapi.Runner {
@@ -192,6 +203,24 @@ func (a Authenticator) Middleware(access func(*http.Request) accessapi.Access) f
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// basic authenticates the state backend's HTTP Basic credentials sent
+// from addr. A password under StateAPIUser holding a colon is an API key,
+// since no token holds one.
+func (a Authenticator) basic(r *http.Request, addr string) (kernel.Principal, token.Claims, error) {
+	user, raw, ok := r.BasicAuth()
+	switch {
+	case !ok || raw == "":
+	case user == StateUser:
+		return a.runner(r.Context(), raw)
+	case user == StateAPIUser:
+		if id, secret, key := strings.Cut(raw, ":"); key {
+			return a.apiKey(r.Context(), id, secret, addr)
+		}
+		return a.token(r.Context(), raw, authn.ReachAccount)
+	}
+	return kernel.Principal{}, token.Claims{}, authn.ErrUnauthenticated
 }
 
 // reaches is the sessions each access admits.

@@ -330,6 +330,62 @@ func TestUnitRunDenied(t *testing.T) {
 	}
 }
 
+// TestUnitStateRead checks the reads of a stack's state from outside its
+// own runs: a member needs both state actions on the stack's space, and a
+// run reads another stack's state as its stack, through its stack's
+// bindings, the one state read RunDenied lets through, but never its own
+// stack's, nor anything Authorize decides.
+func TestUnitStateRead(t *testing.T) {
+	x := newAccount()
+	writer, reader := kernel.NewMemberID(), kernel.NewMemberID()
+	x.bind(binding.ActorUser, writer.ULID, role.SpaceWriter, "a")
+	x.bind(binding.ActorUser, reader.ULID, role.SpaceReader, "a")
+	own, other, bare := kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
+	x.bind(binding.ActorStack, own, role.SpaceWriter, "a")
+	x.bind(binding.ActorStack, bare, role.SpaceReader, "a")
+	snap := authz.Build(x.data)
+	run := func(stack kernel.ULID) authz.Who {
+		return authz.Who{
+			Account: x.id, Kind: kernel.PrincipalRun, Actor: kernel.NewULID(),
+			Stack: stack, StackHome: x.spaces["legacy"],
+		}
+	}
+	for _, c := range []struct {
+		name    string
+		who     authz.Who
+		stack   kernel.ULID
+		space   string
+		missing accessapi.Action
+	}{
+		{"a writer", x.user(writer), other, "a1", ""},
+		{"a reader", x.user(reader), other, "a1", accessapi.ActionStackStateRead},
+		{"a writer elsewhere", x.user(writer), other, "legacy", accessapi.ActionSpaceRead},
+		{"a run of a writing stack on another stack", run(own), other, "a1", ""},
+		{"a run of a writing stack on its own", run(own), own, "a1", accessapi.ActionStackStateRead},
+		{"a run of a reading stack", run(bare), other, "a1", accessapi.ActionStackStateRead},
+		{
+			"a run of an unbound stack in its home space", run(kernel.NewULID()), other, "legacy",
+			accessapi.ActionStackStateRead,
+		},
+		{"another account's member", authz.Who{
+			Account: kernel.NewAccountID(), Kind: kernel.PrincipalUser, Actor: writer.ULID,
+			Member: writer,
+		}, other, "a1", accessapi.ActionSpaceRead},
+	} {
+		missing, ok := snap.StateRead(c.who, c.stack, x.spaces[c.space])
+		if missing != c.missing || ok != (c.missing == "") {
+			t.Errorf("%s: StateRead = %q, %t, want %q", c.name, missing, ok, c.missing)
+		}
+	}
+	for _, a := range []accessapi.Action{
+		accessapi.ActionStackStateRead, accessapi.ActionStackStateDownload,
+	} {
+		if snap.Authorize(run(own), a, x.spaces["a1"]) {
+			t.Errorf("Authorize lets a run perform %s", a)
+		}
+	}
+}
+
 // TestUnitBuildSkipsDangling checks that a binding naming a role or space
 // the rows lack is left out rather than granting.
 func TestUnitBuildSkipsDangling(t *testing.T) {

@@ -14,7 +14,12 @@
 // runner image, which executes the run's phases and reports them itself.
 // The steps of the signed state URLs keep the URL an answer names and
 // send it, with no credential, to either replica's listener in place of
-// server.public_url.
+// server.public_url. The steps of external access send the backend's
+// requests with a tenant's API key, a kept token or a run token as HTTP
+// Basic credentials, write a terraform_remote_state of another stack into
+// a run's workspace or a user's workspace of its own, whose credential
+// reaches the tool only in its environment, and check that no Terraform
+// Cloud API is discovered.
 //
 // ref: decision 0008
 // ref: decision 0010
@@ -28,7 +33,8 @@
 // RustFS through S3, and writes each run's workspace under the
 // scenario's directory. A failed scenario leaves the relay's calls and
 // each tool's output beside the servers' evidence. It sends a signed
-// URL's request with net/http, recording its answer for the answer steps.
+// URL's request and a backend request of its own with net/http,
+// recording its answer for the answer steps.
 //
 // # Dependencies
 //

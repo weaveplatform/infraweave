@@ -131,23 +131,26 @@ type Deps struct {
 
 // Domain is the access domain, constructed once per process.
 type Domain struct {
-	store    *pg.Store
-	tokens   *token.Service
-	authn    *authn.Service
-	authz    *authz.Service
-	subjects *http.Subjects
-	keys     *apikey.Service
-	orgs     *operator.Service
-	orgAdmin *orgadmin.Service
-	settings *settings.Service
-	users    *user.Service
-	groups   *group.Service
-	roles    *role.Service
-	bindings *binding.Service
-	holders  *holder.Service
-	oauth    *oauth.Service
-	spaces   *space.Service
-	manual   bool
+	store  *pg.Store
+	tokens *token.Service
+	authn  *authn.Service
+	// exchanges keeps the tokens of API keys the state backend's clients
+	// send with every request.
+	exchanges *authn.Exchanges
+	authz     *authz.Service
+	subjects  *http.Subjects
+	keys      *apikey.Service
+	orgs      *operator.Service
+	orgAdmin  *orgadmin.Service
+	settings  *settings.Service
+	users     *user.Service
+	groups    *group.Service
+	roles     *role.Service
+	bindings  *binding.Service
+	holders   *holder.Service
+	oauth     *oauth.Service
+	spaces    *space.Service
+	manual    bool
 	// publicURL is server.public_url, whose origin a browser session's
 	// write must carry.
 	publicURL string
@@ -249,13 +252,14 @@ func New(d Deps) (*Domain, error) {
 		subjects.Register(entity, bindingSpace(store, kind))
 	}
 	return &Domain{
-		store:    store,
-		tokens:   tokens,
-		authn:    auth,
-		authz:    decide,
-		subjects: subjects,
-		keys:     keys,
-		orgs:     orgs,
+		store:     store,
+		tokens:    tokens,
+		authn:     auth,
+		exchanges: authn.NewExchanges(auth),
+		authz:     decide,
+		subjects:  subjects,
+		keys:      keys,
+		orgs:      orgs,
 		orgAdmin: orgadmin.NewService(orgadmin.Deps{
 			Store: store, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
 		}),
@@ -361,9 +365,10 @@ func (d *Domain) WorkerAuthenticator() accessapi.Authenticator {
 }
 
 // StateAuthenticator is the middleware that authenticates the state
-// backend's requests, accepting run tokens as HTTP Basic passwords alone.
+// backend's requests, accepting run tokens, API keys and the API's bearer
+// tokens as HTTP Basic passwords alone.
 func (d *Domain) StateAuthenticator() accessapi.Authenticator {
-	return http.NewStateAuthenticator(d.authn)
+	return http.NewStateAuthenticator(d.authn, d.exchanges)
 }
 
 // WatchSessions keeps the replica's session cache in step with
@@ -391,6 +396,10 @@ func (d *Domain) WatchSessions(ctx context.Context, sub *notify.Subscription) {
 //
 // ref: decision 0007
 func (d *Domain) Authorizer() accessapi.Authorizer { return d.authz }
+
+// StateReader decides a read of a stack's state by any caller but a run
+// on its own stack, for the state backend.
+func (d *Domain) StateReader() accessapi.StateReader { return d.authz }
 
 // Requirer is the middleware internal/app puts after authentication in
 // front of every API operation, deciding its action on its subject.

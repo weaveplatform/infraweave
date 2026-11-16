@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
@@ -34,24 +35,27 @@ type State interface {
 // Stacks is what the backend reads of the stacks domain; stacksapi.Stacks
 // is one.
 type Stacks interface {
+	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error)
 	BySlug(ctx context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error)
 	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error)
 }
 
-// Handler serves the state backend's routes for the run each request's
-// run token names, which the state authenticator has put on its context.
+// Handler serves the state backend's routes for the principal the state
+// authenticator has put on each request's context: a run's, from its run
+// token or in-run token, or an API key's or token's.
 type Handler struct {
 	access  runsapi.StateAccess
+	reader  accessapi.StateReader
 	stacks  Stacks
 	state   State
 	maxSize int64
 }
 
-// New returns the backend over the runs domain's access decisions, the
-// stacks it reads and the core, writing versions of at most maxSize
-// bytes.
-func New(access runsapi.StateAccess, stacks Stacks, state State, maxSize int64) *Handler {
-	return &Handler{access: access, stacks: stacks, state: state, maxSize: maxSize}
+// New returns the backend over the runs domain's grants to runs, the
+// access domain's decisions on every other read, the stacks it reads and
+// the core, writing versions of at most maxSize bytes.
+func New(access runsapi.StateAccess, reader accessapi.StateReader, stacks Stacks, state State, maxSize int64) *Handler {
+	return &Handler{access: access, reader: reader, stacks: stacks, state: state, maxSize: maxSize}
 }
 
 // Routes adds GET, POST, LOCK and UNLOCK on stateapi.StackPattern and
@@ -219,17 +223,20 @@ func may(w http.ResponseWriter, r *http.Request, allowed bool) bool {
 	return true
 }
 
-// target is the workspace r names, the grant of the run r authenticates
-// as on its stack, and the run. A stack no account of the run's has, one
-// whose state infraweave does not keep, and a run no account has answer
-// 404, so a run learns nothing of another account's stacks.
+// target is the workspace r names, what its caller may do there, and the
+// run it acts for. A run token on its own stack holds what the runs
+// domain grants the run's state and acts for its run; any other caller,
+// as external decides, may at most read, and acts for no run. A stack
+// the caller's account does not have, one whose state infraweave does not
+// keep, and a run no account has answer 404, so a caller learns nothing
+// of another account's stacks.
 //
 // ref: decision 0010 § "Who may call what"
 func (h *Handler) target(w http.ResponseWriter, r *http.Request) (core.Target, runsapi.StateGrant, kernel.ULID, bool) {
 	ctx := r.Context()
 	p, ok := kernel.PrincipalFrom(ctx)
-	if !ok || p.Kind != kernel.PrincipalRunner {
-		problem.Write(w, problem.Unauthenticated.New("A run token is required."))
+	if !ok {
+		problem.Write(w, problem.Unauthenticated.New("A credential is required."))
 		return core.Target{}, runsapi.StateGrant{}, kernel.ULID{}, false
 	}
 	seg, okStack := param(r, "stack")
@@ -238,34 +245,61 @@ func (h *Handler) target(w http.ResponseWriter, r *http.Request) (core.Target, r
 		problem.Write(w, problem.NotFound.New("No such stack or workspace."))
 		return core.Target{}, runsapi.StateGrant{}, kernel.ULID{}, false
 	}
-	g, id, err := h.grant(ctx, p.ActorID, seg)
+	g, id, err := h.grant(ctx, p, seg)
+	var st stacksapi.Settings
 	if err == nil {
-		var st stacksapi.Settings
 		if st, err = h.stacks.Settings(ctx, g.Account, id); err == nil && !st.ManagesState {
 			err = stacksapi.ErrNotFound
 		}
 	}
+	if !found(w, err, seg) {
+		return core.Target{}, runsapi.StateGrant{}, kernel.ULID{}, false
+	}
+	t := core.Target{Account: g.Account, Stack: id, Workspace: ws}
+	if p.Kind == kernel.PrincipalRunner && id == g.Stack {
+		return t, g, p.ActorID, true
+	}
+	if !h.external(w, r, p, g, st) {
+		return core.Target{}, runsapi.StateGrant{}, kernel.ULID{}, false
+	}
+	return t, runsapi.StateGrant{Account: g.Account, Read: true}, kernel.ULID{}, true
+}
+
+// found answers err, a stack's lookup by seg: 404 for one the caller's
+// account does not have or whose state infraweave does not keep, and the
+// failure of any other; true when there is none.
+func found(w http.ResponseWriter, err error, seg string) bool {
 	switch {
 	case errors.Is(err, stacksapi.ErrNotFound):
 		problem.Write(w, problem.NotFound.New("No stack whose state infraweave keeps is named "+
 			seg+"."))
-		return core.Target{}, runsapi.StateGrant{}, kernel.ULID{}, false
+		return false
 	case err != nil:
 		problem.Failure(w, err)
-		return core.Target{}, runsapi.StateGrant{}, kernel.ULID{}, false
+		return false
 	}
-	return core.Target{Account: g.Account, Stack: id, Workspace: ws}, g, p.ActorID, true
+	return true
 }
 
-// grant is run's grant on the stack seg names, its canonical ULID or else
-// its slug in the run's account, and the stack's ID: stacksapi.ErrNotFound
-// when no account has the run or the run's account no stack of that slug.
-func (h *Handler) grant(ctx context.Context, run kernel.ULID, seg string) (runsapi.StateGrant, kernel.ULID, error) {
+// isRun reports whether p acts for a run: through its run token, or its
+// in-run token, whose ActorID is the run too.
+func isRun(p kernel.Principal) bool {
+	return p.Kind == kernel.PrincipalRunner || p.Kind == kernel.PrincipalRun
+}
+
+// grant is the grant on the stack seg names of the run p acts for, or
+// for any other caller one naming p's account alone, and the stack's ID:
+// its canonical ULID, or else its slug in that account.
+// stacksapi.ErrNotFound when no account has the run, or the account no
+// stack of that slug.
+func (h *Handler) grant(ctx context.Context, p kernel.Principal, seg string) (runsapi.StateGrant, kernel.ULID, error) {
+	g := runsapi.StateGrant{Account: p.AccountID}
 	id, err := kernel.ParseULID(seg)
 	if err != nil || id.String() != seg {
-		g, err := h.access.Access(ctx, run, kernel.ULID{})
-		if err != nil || g.Account.IsZero() {
-			return runsapi.StateGrant{}, kernel.ULID{}, orNotFound(err)
+		if isRun(p) {
+			if g, err = h.access.Access(ctx, p.ActorID, kernel.ULID{}); err != nil || g.Account.IsZero() {
+				return runsapi.StateGrant{}, kernel.ULID{}, orNotFound(err)
+			}
 		}
 		st, err := h.stacks.BySlug(ctx, g.Account, seg)
 		if err != nil {
@@ -273,11 +307,66 @@ func (h *Handler) grant(ctx context.Context, run kernel.ULID, seg string) (runsa
 		}
 		id = st.ID
 	}
-	g, err := h.access.Access(ctx, run, id)
+	if !isRun(p) {
+		return g, id, nil
+	}
+	g, err = h.access.Access(ctx, p.ActorID, id)
 	if err != nil || g.Account.IsZero() {
 		return runsapi.StateGrant{}, kernel.ULID{}, orNotFound(err)
 	}
 	return g, id, nil
+}
+
+// external decides a read of st's state by any caller but a run token on
+// its own stack, and answers its refusal, in order: 404 when the caller
+// cannot see the stack; then 403 for an in-run token on its own stack,
+// for any method but GET, for a stack with external access off, for a
+// caller lacking STACK_STATE_READ or STACK_STATE_DOWNLOAD on the stack's
+// space, and for a run whose state allows it no read. A run, by either
+// of its tokens, decides as its stack, g's, through the stack's bindings
+// and its read of its home space.
+//
+// ref: decision 0010 § "Who may call what"
+func (h *Handler) external(w http.ResponseWriter, r *http.Request, p kernel.Principal, g runsapi.StateGrant, st stacksapi.Settings) bool {
+	ctx := r.Context()
+	run := isRun(p)
+	if p.Kind == kernel.PrincipalRunner {
+		own, err := h.stacks.Get(ctx, g.Account, g.Stack)
+		if !found(w, err, g.Stack.String()) {
+			return false
+		}
+		p = kernel.Principal{
+			Kind: kernel.PrincipalRun, AccountID: g.Account, ActorID: p.ActorID,
+			StackID: g.Stack, StackSpaceID: own.Space,
+		}
+	}
+	missing, err := h.reader.StateRead(ctx, p, st.ID, st.Space)
+	if err != nil {
+		problem.Failure(w, err)
+		return false
+	}
+	var refusal problem.Problem
+	switch {
+	case missing == accessapi.ActionSpaceRead:
+		return found(w, stacksapi.ErrNotFound, chi.URLParam(r, "stack"))
+	case run && st.ID == g.Stack:
+		refusal = problem.Forbidden.New("An in-run token does not reach its own stack's state; " +
+			"the run token does.")
+	case r.Method != http.MethodGet:
+		refusal = problem.Forbidden.New("Only the stack's own runs may " + verbs[r.Method] +
+			" its state; any other caller may only read it.")
+	case !st.ExternalStateAccess:
+		refusal = problem.Forbidden.New("The stack's external state access is off.")
+	case missing != "":
+		refusal = problem.Forbidden.New(fmt.Sprintf("You may not perform %s here.", missing))
+		refusal.Action = string(missing)
+	case run && !g.Read:
+		return may(w, r, false)
+	default:
+		return true
+	}
+	problem.Write(w, refusal)
+	return false
 }
 
 // orNotFound is err, or stacksapi.ErrNotFound when there is none: a grant

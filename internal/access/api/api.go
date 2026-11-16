@@ -122,6 +122,20 @@ type Authorizer interface {
 	Actions(ctx context.Context, p kernel.Principal, space kernel.ULID) ([]Action, error)
 }
 
+// StateReader decides a read of a stack's state through the state
+// backend by any caller but a run on its own stack, whose state the runs
+// domain grants. StateRead is the first of SPACE_READ, STACK_STATE_READ
+// and STACK_STATE_DOWNLOAD p may not perform in space, which holds stack,
+// or empty when it may perform all three: without SPACE_READ the caller
+// cannot see the stack. A run's principal on another stack holds them as
+// its stack does, through the stack's bindings, the one state read a run
+// makes.
+//
+// ref: decision 0010 § "Who may call what"
+type StateReader interface {
+	StateRead(ctx context.Context, p kernel.Principal, stack, space kernel.ULID) (Action, error)
+}
+
 // SpaceGuard is a domain's say in changes to an account's space tree: a
 // domain whose rows name spaces registers one, and the tree refuses a
 // delete or a move it objects to. Both methods run inside the change's

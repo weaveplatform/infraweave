@@ -86,9 +86,13 @@ carries:
 
 - **`run`**: a run token (decision [0006](0006-authentication-and-tokens.md)).
 - **`api`**: an API key as `<id>:<secret>`, or a bearer token decision 0006 accepts on the
-  API: an API, CLI, Terraform CLI or in-run token. An API key is exchanged for a token as
-  the registry exchanges one (decision 0014), and the token is cached in memory until
-  30 seconds before it expires, so a revoked key stops reading within 30 seconds.
+  API: an API, CLI, Terraform CLI or in-run token. A password holding a colon is an API
+  key, since no token holds one. An API key is exchanged for a token as the registry
+  exchanges one (decision 0014), and the replica keeps the token in memory, by the key's
+  ID and the SHA-256 of its secret, never the secret, until 30 seconds before it expires,
+  so a client's requests share one session. Disabling or deleting the key revokes that
+  session, so a revoked key stops reading as any revoked token does: at once on every
+  replica, and within 60 seconds if a notification is lost (decision 0006).
 
 Any other username, or a password that is neither, answers `401`.
 
@@ -118,8 +122,10 @@ Any other username, or a password that is neither, answers `401`.
   or writes another stack's state.
 - **Answers to every caller but a run on its own stack**, in order: `401` for a missing or
   invalid credential or another username; `404` for a stack the caller cannot see
-  (decision 0007) or one without managed state; `403` when external access is off or
-  either action is missing.
+  (decision 0007) or one without managed state; then `403`, for an in-run token on its
+  own stack, any method but `GET`, external access off, either action missing, and a run
+  whose state allows it no read, in that order. A `403` for a missing action names it, as
+  the API's do.
 - The same rules hold on a Terragrunt unit's workspace path.
 
 ### Locks

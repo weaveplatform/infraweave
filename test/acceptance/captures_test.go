@@ -70,6 +70,7 @@ var awaited = map[string]string{
 	"C103": "runs/terraform.feature",
 	"C104": "runs/terraform.feature",
 	"C105": "state/backend.feature",
+	"C106": "state/external_access.feature",
 	"C111": "state/backend.feature",
 }
 

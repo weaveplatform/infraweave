@@ -549,12 +549,17 @@ var apiOperations = sync.OnceValue(func() Operations {
 	ops[http.MethodPut+" "+fs.Pattern] = Operation{Public: true, OwnBodyBound: true}
 	// The state backend speaks Terraform's and OpenTofu's http backend
 	// protocol, so each shared control it departs from does so here:
-	//   - Authentication: HTTP Basic with the user name run and a run token
-	//     as the password, challenged with Basic realm="infraweave-state",
-	//     since the http backend sends Basic credentials alone.
-	//   - Authorization: no account action decides a route; the runs
-	//     domain's StateAccess grants what the run's current state allows,
-	//     so the run is its own subject and loses access as it moves on.
+	//   - Authentication: HTTP Basic, challenged with Basic
+	//     realm="infraweave-state", since the http backend sends Basic
+	//     credentials alone: the user name run with a run token, or api with
+	//     an API key's <id>:<secret> or a token the API admits.
+	//   - Authorization: no account action decides a run token's route on
+	//     its own stack; the runs domain's StateAccess grants what the run's
+	//     current state allows, so the run is its own subject and loses
+	//     access as it moves on. Every other caller, another stack's run
+	//     included, may only read, as STACK_STATE_READ and
+	//     STACK_STATE_DOWNLOAD on the stack's space and the stack's external
+	//     access decide.
 	//   - Feature gates: none; the operation that created the run was
 	//     gated, and gating state would strand an apply part way.
 	//   - Idempotency keys: ignored (State); Terraform sends none, an
@@ -567,15 +572,15 @@ var apiOperations = sync.OnceValue(func() Operations {
 	//     apply the API's body bound at 16 KiB, a LockInfo's largest, and
 	//     POST refuses a Content-Length over state.max_size before it
 	//     streams, since a state exceeds any API body.
-	//   - Bounded connections: once the run token verifies, a POST's
+	//   - Bounded connections: once the credential verifies, a POST's
 	//     deadlines move to moving.Stall past each read of its body and a
 	//     GET's past each write of its answer, since a state exceeds any
 	//     fixed time; LOCK and UNLOCK keep the listener's timeouts.
 	//   - Problem details: a 423 answers the holder's LockInfo, from which
 	//     Terraform names the lock's holder, or {} for a write when no lock
 	//     is held.
-	// Each draws on the standard budget of its run, the same as the worker
-	// API's calls of the run.
+	// Each draws on the standard budget of its caller: a run's, the same as
+	// the worker API's calls of the run, or an API key's or token's own.
 	// ref: decision 0003 § "API surfaces"; decision 0010
 	for _, pattern := range []string{stateapi.StackPattern, stateapi.WorkspacePattern} {
 		for _, method := range []string{
