@@ -9533,7 +9533,7 @@ type TierFeaturePage struct {
 	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
-// TofuWorkspace A separately locked and versioned state of a stack whose state infraweave manages, which the first lock a run takes on it creates.
+// TofuWorkspace A separately locked and versioned state of a stack whose state infraweave manages: its default workspace, which exists from the stack's creation, or a Terragrunt unit's, which the first lock a run takes on it creates.
 type TofuWorkspace struct {
 	// CreatedAt Unix timestamp when the workspace was created.
 	CreatedAt int32 `json:"createdAt"`
@@ -9561,7 +9561,7 @@ type TofuWorkspaceUnlockAllResult struct {
 type TofuWorkspacesConnection struct {
 	Cursor string `json:"cursor"`
 
-	// Node A separately locked and versioned state of a stack whose state infraweave manages, which the first lock a run takes on it creates.
+	// Node A separately locked and versioned state of a stack whose state infraweave manages: its default workspace, which exists from the stack's creation, or a Terragrunt unit's, which the first lock a run takes on it creates.
 	Node TofuWorkspace `json:"node"`
 }
 

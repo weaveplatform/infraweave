@@ -243,7 +243,7 @@ Where a run's Terraform or OpenTofu reads, locks and writes its stack's managed 
 _Avoid_: state server
 
 **Workspace**:
-One separately locked and versioned state of a stack: its default state, or one Terragrunt unit's. The API names it a Tofu workspace.
+One separately locked and versioned state of a stack: its default state, which a stack with managed state has from its creation, or one Terragrunt unit's. The API names it a Tofu workspace.
 _Avoid_: Terraform workspace, which is a CLI feature infraweave does not use
 
 **State version**:

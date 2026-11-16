@@ -82,6 +82,32 @@ func TestUnitDeleting(t *testing.T) {
 	}
 }
 
+// TestUnitCreated checks that a stack's creation opens its default
+// workspace in the creation's transaction, that a failing store fails it,
+// and that outside a transaction nothing is opened.
+//
+// ref: decision 0010 § "Storage"
+func TestUnitCreated(t *testing.T) {
+	m := newMem()
+	s := New(Deps{DB: db{}, Store: m, Stacks: m})
+	st := stacksapi.Stack{ID: kernel.NewULID(), Account: kernel.NewAccountID()}
+	at := Target{Account: st.Account, Stack: st.ID}
+	if err := s.Created(t.Context(), st); !errors.Is(err, ErrNoTransaction) || m.workspaces[at] {
+		t.Errorf("outside a transaction = %v, opened %v", err, m.workspaces[at])
+	}
+	if err := inTransaction(t, func(ctx context.Context) error {
+		return s.Created(ctx, st)
+	}); err != nil || !m.workspaces[at] || len(m.workspaces) != 1 {
+		t.Errorf("Created = %v, opened %v", err, m.workspaces)
+	}
+	m.fail = "OpenWorkspace"
+	if err := inTransaction(t, func(ctx context.Context) error {
+		return s.Created(ctx, st)
+	}); !errors.Is(err, errDown) {
+		t.Errorf("a failing store = %v", err)
+	}
+}
+
 // TestUnitPurge checks that a purge deletes batch after batch, each in a
 // transaction that hands the batch's version objects of the states store
 // on, until the store has none left; that the job purges its stack and

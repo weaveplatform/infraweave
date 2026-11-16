@@ -179,7 +179,9 @@ Any other username, or a password that is neither, answers `401`.
 
 ### Storage
 
-- **Table `state_workspaces`**: `id` (ULID, set when the first `LOCK` creates the row);
+- **Table `state_workspaces`**: `id` (ULID, set when the stack is created with managed
+  state, in the creation's transaction, or when a Terragrunt unit's first `LOCK` creates
+  its row);
   `(account_id, stack_id, name)` unique, `name` empty for the stack's default workspace;
   `current_version_id`; `created_at`. It is the `TofuWorkspace` entity:
   - the default workspace answers the name `default`;
@@ -287,10 +289,12 @@ does (decision [0003](0003-api-conventions.md)).
   | It is at most 100 MiB | `422`, reason `maximum` | `422`, reason `maximum` |
   | It is a JSON state with `version` 4, or a client-encrypted envelope | `422`, reason `rule` | `422`, reason `rule` |
 
-  - **At creation**, `stacksapi` declares a state-import port, which `state` implements
-    and the assembly wires in, as `stacksapi.StackGuard` is
-    ([0004](0004-repository-architecture.md)). `stackCreate` calls it inside the
-    creation's transaction, so a failed check fails the create and nothing is created.
+  - **At creation**, the checks run through `stacksapi.ManagedState`, the one port through
+    which `stackCreate` reaches `state`, and which opens the default workspace
+    (§ "Storage"). `state` implements it and the assembly wires it in, as
+    `stacksapi.StackGuard` is ([0004](0004-repository-architecture.md)). `stackCreate`
+    calls it inside the creation's transaction, so a failed check fails the create and
+    nothing is created.
   - **Later**, the checks and the version's insert run in one transaction that holds the
     stack's row `FOR UPDATE`, which waits for `stacksapi.Hold` and keeps a run from being
     created until the import commits. The idle check reads `runsapi`'s list of a stack's
@@ -481,7 +485,8 @@ unlock) are ordinary REST operations and answer the problem details of decision
   counts as a pending run for import and rollback (C109); that `stackObjectID` and external
   access need managed state (C107); the URLs' 15 minutes and the upload's day (C108);
   rollback past retention and when `isStateRollback` clears (C110); that the backend's
-  locks are the Tofu workspaces' and every stack lists its default workspace (C111); a
+  locks are the Tofu workspaces', that every stack with managed state lists its default
+  workspace from its creation, and that a stack without it lists none (C111); a
   Terragrunt stack's `useStateManagement` deciding over `manageState` (C113); and state
   management fixed at creation whatever a run's runtime configuration says (C114). The
   scenarios assert these until the captures are recorded.

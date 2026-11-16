@@ -10,9 +10,10 @@
 // relay. The relay records each call and each 423's body, and holds the
 // backend's UNLOCK calls on demand, so a lock stays held while another
 // process asks for it, or its writes, so a tool holds its lock with its
-// write still to come. The scenario reads the Tofu workspaces those locks
-// make through the API, as a search's, a release's or one workspace's
-// answer, and the releases the home account's audit trail records. A
+// write still to come. The scenario reads the stack's Tofu workspaces,
+// whose locks those are, through the API, as a search's, a release's or
+// one workspace's answer, and the releases the home account's audit
+// trail records. A
 // scenario can instead hand a run it took over to
 // this build's runner, started as a launcher starts it in the tool's
 // runner image, which executes the run's phases and reports them itself.

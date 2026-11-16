@@ -17,7 +17,7 @@ Feature: Terraform and OpenTofu keep their state in infraweave
   write still to come. A run that initializes or plans holds a shared
   lock, a run that applies the exclusive one, and a run that ended holds
   none and is refused. The backend's locks are the stack's Tofu
-  workspaces', which the first lock a run takes on one creates: an
+  workspaces', its default one there from the stack's creation: an
   operator searches them and releases a stuck one, and the run whose lock
   goes is refused its next write. The servers keep their objects in the scenario's
   RustFS bucket, each state version sealed. Stack infra keeps its state
@@ -146,7 +146,10 @@ Feature: Terraform and OpenTofu keep their state in infraweave
       | tofu |
 
   @case:success @op:searchTofuWorkspaces @op:searchTofuWorkspacesSuggestions @op:tofuWorkspaceUnlock
-  Scenario Outline: An apply's lock is its stack's default Tofu workspace's, and an operator's release of it refuses the apply's write
+  Scenario Outline: A new stack lists its default Tofu workspace, an apply's lock is that workspace's, and an operator's release of it refuses the apply's write
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"stack","constraint":{"stringEquals":["infra"]}}]}' through A
+    Then the answer's Tofu workspaces are "default"
+    And the answer's Tofu workspace "default" names "ws"
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "READY" through A
@@ -167,7 +170,6 @@ Feature: Terraform and OpenTofu keep their state in infraweave
     And the relay holds 1 write of the state of the run "run"
     And token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"isLocked","constraint":{"booleanEquals":[true]}}]}' through A
     Then the answer's Tofu workspaces are "default locked by the home key"
-    And the answer's Tofu workspace "default" names "ws"
     And the state of the run "run" is held by the exclusive locks of the runs "run"
     When token "h" sends "POST /api/v1/tofu-workspaces/search/suggestions" with '{"fields":["name","stack"]}' through B
     Then the answer suggests the name values "default:1" of 1 Tofu workspace

@@ -17,7 +17,9 @@
 // and StackStatus what it reads of the runs domain, the run blocking each
 // stack. StackDestroyer is what a delete with destroyResources creates its
 // destroy run through, another back edge the runs domain implements, with
-// Undestroyable for a stack that cannot run one. StackSources is what the stack's commit operations resolve refs
+// Undestroyable for a stack that cannot run one. ManagedState is what a
+// stack's creation opens its default workspace through when infraweave
+// keeps its state, a back edge the state domain implements. StackSources is what the stack's commit operations resolve refs
 // through, a back edge the vcs domain implements, with ErrRefNotFound for
 // a ref the repository lacks, and StackIntegrations what a stack's write
 // checks the VCS integration it names with, another, with
@@ -36,7 +38,7 @@
 // domains above
 // stacks in the declared graph import it; the stacks domain's assembly
 // implements Stacks, those domains StackGuard, the configuration domain
-// StackConfiguration, the runs domain StackStatus and StackDestroyer, and
-// the vcs domain
+// StackConfiguration, the runs domain StackStatus and StackDestroyer, the
+// state domain ManagedState, and the vcs domain
 // StackSources and StackIntegrations.
 package api

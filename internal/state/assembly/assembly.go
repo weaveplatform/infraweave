@@ -141,6 +141,11 @@ func (d *Domain) Routes(r chi.Router) {
 // domain.
 func (d *Domain) StackGuard() stacksapi.StackGuard { return d.state }
 
+// ManagedState is the domain's part in a stack's creation, which
+// internal/app binds to the stacks domain, so a stack whose state
+// infraweave keeps lists its default workspace from its creation.
+func (d *Domain) ManagedState() stacksapi.ManagedState { return d.state }
+
 // StackPurge is the job that purges a deleted stack's state.
 var StackPurge = core.PurgeKind
 

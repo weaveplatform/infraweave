@@ -38,8 +38,8 @@ func TestUnitDomain(t *testing.T) {
 		t.Errorf("stream %q, held %v", Stream().Name, Held())
 	}
 	if jobs := d.Jobs(); len(jobs) != 1 || jobs[0].Kind.Name != "state.purge" ||
-		jobs[0].Handler == nil || d.StackGuard() == nil {
-		t.Errorf("Jobs = %+v, guard %v", jobs, d.StackGuard())
+		jobs[0].Handler == nil || d.StackGuard() == nil || d.ManagedState() == nil {
+		t.Errorf("Jobs = %+v, guard %v, managed state %v", jobs, d.StackGuard(), d.ManagedState())
 	}
 	events := outbox.New(nil, nil, outbox.NewKinds())
 	if err := d.Subscribe(events); err != nil {

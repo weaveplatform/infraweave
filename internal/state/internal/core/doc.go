@@ -20,7 +20,8 @@
 // current, unless its SHA-256 is the current version's. Read, Latest and
 // Outputs read the current version, its metadata and its outputs. As the
 // stacks domain's StackGuard, a stack's
-// delete enqueues PurgeKind in its transaction; Purge deletes a stack's or
+// delete enqueues PurgeKind in its transaction; as its ManagedState, a
+// stack's creation opens its default workspace in its transaction; Purge deletes a stack's or
 // a deleted account's state PurgeBatch rows at a time, handing each
 // version's object to Objects. Store is its storage port.
 //

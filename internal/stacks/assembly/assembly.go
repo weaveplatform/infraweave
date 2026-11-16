@@ -115,6 +115,12 @@ func (d *Domain) BindIntegrations(in stacksapi.StackIntegrations) {
 // until then a delete with destroyResources is refused.
 func (d *Domain) BindDestroyer(x stacksapi.StackDestroyer) { d.stacks.BindDestroyer(x) }
 
+// BindManagedState binds the state domain's opening of a new stack's
+// default workspace, a back edge internal/app binds after it constructs
+// that domain; until then a stack whose state infraweave keeps is created
+// with none.
+func (d *Domain) BindManagedState(m stacksapi.ManagedState) { d.stacks.BindManagedState(m) }
+
 // BindConfiguration binds the configuration domain's reader of a stack's
 // contexts and config elements, a back edge internal/app binds after it
 // constructs that domain; until then a stack has neither.
