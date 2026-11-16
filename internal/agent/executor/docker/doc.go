@@ -12,7 +12,9 @@
 // opened specification never reaches the container's configuration on
 // the host's disk, and copies the runner's output to the job's writer.
 // Find lists a worker's containers by label after a restart and follows
-// the newest one's output. A container's Wait answers its exit code with
+// what the newest one writes from then on, from the daemon's end of its
+// output, so no difference between the daemon's clock and the launcher's
+// drops a line. A container's Wait answers its exit code with
 // killed after Kill, out-of-memory when the kernel ended it, and missing
 // when it is gone; Stop sends SIGINT and Kill SIGKILL; HandBack runs the
 // binary as runner hand-back in a container of the ended one's image,

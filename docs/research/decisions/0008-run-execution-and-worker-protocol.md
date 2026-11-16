@@ -846,7 +846,8 @@ has failed":
 - **Resuming.** `worker.json` in `launcher.cache_dir` keeps the pool, the
   worker, the run it executes and the exit of a container whose end the
   server has not acknowledged. A restarted launcher registers naming that
-  worker, finds the run's container by its labels and follows its output, or
+  worker, finds the run's container by its labels and follows what it writes
+  from then on, or
   reports the stored exit, or reports the run `missing` when its container is
   gone. An answer naming another worker means the server lost the old one
   and failed its run, so the launcher removes that container. A launcher

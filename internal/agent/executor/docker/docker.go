@@ -9,9 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"sync/atomic"
-	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/pkg/stdcopy"
@@ -224,7 +222,10 @@ func (e *Executor) image(ctx context.Context, ref string) error {
 }
 
 // Find answers worker's newest container, running or ended, copying what
-// it writes from now on to out.
+// it writes from now on to out. It follows from the daemon's current end
+// of the container's output rather than from a time: a time comes from
+// this clock, and the daemon drops each line it stamped earlier by its
+// own, which can trail this one.
 func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (executor.Container, bool, error) {
 	list, err := e.cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true, Filters: client.Filters{}.Add("label", LabelWorker+"="+worker),
@@ -240,8 +241,7 @@ func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (exec
 	})
 	c := &run{e: e, id: newest.ID, run: newest.Labels[LabelRun]}
 	logs, err := e.cli.ContainerLogs(context.WithoutCancel(ctx), c.id, client.ContainerLogsOptions{
-		ShowStdout: true, ShowStderr: true, Follow: true,
-		Since: strconv.FormatInt(time.Now().Unix(), 10),
+		ShowStdout: true, ShowStderr: true, Follow: true, Tail: "0",
 	})
 	if err != nil {
 		return nil, false, fmt.Errorf("docker: follow run %s's output: %w", c.run, err)

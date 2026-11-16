@@ -22,21 +22,23 @@ import (
 )
 
 // daemon is a fake Docker daemon: errs fails the call it names, missing
-// makes the image absent, and the rest shape what a container's wait and
-// inspect answer.
+// makes the image absent, followed records the options of the last
+// output follow, and the rest shape what a container's wait and inspect
+// answer.
 type daemon struct {
-	mu      sync.Mutex
-	errs    map[string]error
-	missing bool
-	oom     bool
-	wait    container.WaitResponse
-	waitErr error
-	logs    io.ReadCloser
-	items   []container.Summary
-	created container.Config
-	host    container.HostConfig
-	removed int
-	stdin   net.Conn
+	mu       sync.Mutex
+	errs     map[string]error
+	missing  bool
+	oom      bool
+	wait     container.WaitResponse
+	waitErr  error
+	logs     io.ReadCloser
+	items    []container.Summary
+	created  container.Config
+	host     container.HostConfig
+	removed  int
+	stdin    net.Conn
+	followed client.ContainerLogsOptions
 }
 
 func (d *daemon) err(call string) error {
@@ -101,10 +103,13 @@ func (d *daemon) ContainerList(context.Context, client.ContainerListOptions) (cl
 	return client.ContainerListResult{Items: d.items}, d.err("list")
 }
 
-func (d *daemon) ContainerLogs(context.Context, string, client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+func (d *daemon) ContainerLogs(_ context.Context, _ string, o client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
 	if err := d.err("logs"); err != nil {
 		return nil, err
 	}
+	d.mu.Lock()
+	d.followed = o
+	d.mu.Unlock()
 	if d.logs != nil {
 		return d.logs, nil
 	}
@@ -339,9 +344,11 @@ func TestUnitDockerExecutorHandBack(t *testing.T) {
 }
 
 // TestUnitDockerExecutorFind checks Find and Ping on a fake daemon: the
-// newest of a worker's containers is found with its run, a refused list
-// or log follow fails, a wait whose output is still being copied ends with
-// its context, and a daemon that does not answer fails the ping.
+// newest of a worker's containers is found with its run, its output
+// followed from the daemon's current end with no time from this clock, a
+// refused list or log follow fails, a wait whose output is still being
+// copied ends with its context, and a daemon that does not answer fails
+// the ping.
 func TestUnitDockerExecutorFind(t *testing.T) {
 	ctx := t.Context()
 	items := []container.Summary{
@@ -354,6 +361,10 @@ func TestUnitDockerExecutorFind(t *testing.T) {
 	c, ok, err := e.Find(ctx, "w", nil)
 	if err != nil || !ok || c.Run() != "r2" {
 		t.Fatalf("Find = %v, %v, %v", c, ok, err)
+	}
+	want := client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Tail: "0"}
+	if d.followed != want {
+		t.Errorf("Find follows with %+v, want %+v", d.followed, want)
 	}
 	cut, cancel := context.WithCancel(ctx)
 	cancel()
