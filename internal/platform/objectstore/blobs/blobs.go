@@ -253,6 +253,20 @@ const uploaded = `UPDATE blob_objects SET sha256 = $3 WHERE store = $1 AND key =
 // that fails leaves the pending row and whatever the driver kept for
 // blob.expire, since serve cannot delete.
 func (o *Objects) Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error) {
+	return o.put(ctx, store, key, r, size, store.Sealed())
+}
+
+// PutSealed is Put, sealed under a content key of its own whatever the
+// store, for a secret kept for a while in a store that is not sealed,
+// such as a state file uploaded to uploads for import. Open unseals it as
+// it does any sealed object.
+//
+// ref: decision 0013 § "Sealed objects"
+func (o *Objects) PutSealed(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error) {
+	return o.put(ctx, store, key, r, size, true)
+}
+
+func (o *Objects) put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64, sealed bool) (objectstore.Object, error) {
 	if err := check(store, key); err != nil {
 		return objectstore.Object{}, err
 	}
@@ -260,7 +274,7 @@ func (o *Objects) Put(ctx context.Context, store objectstore.Name, key string, r
 		obj objectstore.Object
 		err error
 	)
-	if store.Sealed() {
+	if sealed {
 		obj, err = o.putSealed(ctx, store, key, r, size)
 	} else if err = o.begin(ctx, store, key, size, nil, nil); err == nil {
 		obj, err = o.w.Put(ctx, store, key, r, size)

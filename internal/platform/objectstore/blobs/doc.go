@@ -10,17 +10,17 @@
 // sealed under a content key the server derives too. SignPut and SignGet
 // sign the URLs, a GET only for a live object. Put records a row and
 // writes the object itself, sealing a sealed store's object under a
-// content key of its own. Each sealed content key goes into
-// content_key_sealed with associated data
-// blob_objects.content_key_sealed:<store>/<key>. Begin, BeginSealed and
-// Put insert on the pool outside the caller's transaction, so a rollback
-// leaves the row for blob.expire. Commit and CommitUpload run in the
-// caller's transaction: CommitUpload checks the size with Head and, on gcs
-// and azureblob, whose URLs bind no SHA-256, reads the object back to
-// compare, and answers the size and SHA-256; a mismatch leaves the row
-// pending. Open reads a live object, opening a sealed one, and Live
-// reports whether an object is live.
-// Delete marks the row deleting and enqueues blob.delete in the caller's
+// content key of its own; PutSealed seals it whatever the store, for an
+// object a store that is not sealed holds, such as an uploaded state
+// file. Each sealed content key goes into content_key_sealed with
+// associated data blob_objects.content_key_sealed:<store>/<key>. Begin,
+// BeginSealed, Put and PutSealed insert on the pool outside the caller's
+// transaction, so a rollback leaves the row for blob.expire. Commit and
+// CommitUpload run in the caller's transaction: CommitUpload checks the
+// size with Head and, on gcs and azureblob, whose URLs bind no SHA-256,
+// reads the object back to compare, and answers the size and SHA-256; a
+// mismatch leaves the row pending. Open reads a live object, opening a
+// sealed one, and Live reports whether an object is live. Delete marks the row deleting and enqueues blob.delete in the caller's
 // transaction. Reaper is the scheduler's side, over the full Store:
 // blob.delete removes the object and then the row, and blob.expire marks
 // live rows past expires_at and pending rows older than a day deleting,

@@ -24,6 +24,7 @@ type mem struct {
 	locks      map[Target][]Lock
 	broken     map[Target][]Lock
 	current    map[Target]Version
+	versions   map[kernel.ULID]Version
 	named      map[kernel.ULID]Target
 	stacks     []stacksapi.Stack
 	audits     []kernel.AuditEntry
@@ -42,6 +43,7 @@ func newMem() *mem {
 		locks:      map[Target][]Lock{},
 		broken:     map[Target][]Lock{},
 		current:    map[Target]Version{},
+		versions:   map[kernel.ULID]Version{},
 		named:      map[kernel.ULID]Target{},
 	}
 }
@@ -139,7 +141,13 @@ func (m *mem) AddVersion(_ context.Context, acct kernel.AccountID, v Version) er
 		return err
 	}
 	m.current[Target{Account: acct, Stack: v.Stack, Workspace: v.Workspace}] = v
+	m.versions[v.ID] = v
 	return nil
+}
+
+func (m *mem) Version(_ context.Context, _ kernel.AccountID, id kernel.ULID) (Version, bool, error) {
+	v, ok := m.versions[id]
+	return v, ok, m.failing("Version")
 }
 
 func (m *mem) Purge(context.Context, kernel.AccountID, *kernel.ULID, int) ([]string, bool, error) {

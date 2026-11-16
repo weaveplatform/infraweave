@@ -432,6 +432,9 @@ func TestAccStoreUnavailable(t *testing.T) {
 	if err := s.AddVersion(ctx, at.Account, core.Version{}); err == nil {
 		t.Error("AddVersion on a closed pool succeeded")
 	}
+	if _, _, err := s.Version(ctx, at.Account, kernel.NewULID()); err == nil {
+		t.Error("Version on a closed pool succeeded")
+	}
 	if _, _, err := s.WorkspaceByID(ctx, at.Account, kernel.NewULID()); err == nil {
 		t.Error("WorkspaceByID on a closed pool succeeded")
 	}
@@ -450,9 +453,10 @@ func TestAccStoreUnavailable(t *testing.T) {
 
 // TestAccStoreVersions adds versions to a workspace and reads back the
 // current one with each column: a run's plain state, then a
-// client-encrypted one without serial, lineage or run. A workspace with
-// no version, or none at all, has no current version, and a version of
-// a workspace that does not exist is refused.
+// client-encrypted one without serial, lineage or run. Each reads back
+// by its ID too, which no other account finds. A workspace with no
+// version, or none at all, has no current version, and a version of a
+// workspace that does not exist is refused.
 func TestAccStoreVersions(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -489,6 +493,14 @@ func TestAccStoreVersions(t *testing.T) {
 		got.CreatedAt = time.Time{}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Current %+v, want %+v", got, want)
+		}
+		byID, ok, err := s.Version(ctx, at.Account, want.ID)
+		byID.CreatedAt = time.Time{}
+		if err != nil || !ok || !reflect.DeepEqual(byID, want) {
+			t.Errorf("Version %+v, %v, %v, want %+v", byID, ok, err, want)
+		}
+		if _, ok, err := s.Version(ctx, kernel.NewAccountID(), want.ID); ok || err != nil {
+			t.Errorf("another account's Version: %v, %v", ok, err)
 		}
 	}
 	if n := count(t, db, "managed_state_versions", at.Account); n != 2 {

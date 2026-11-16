@@ -11936,12 +11936,6 @@ type StackSetCurrentCommitParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
-// StateDownloadUrlParams defines parameters for StateDownloadUrl.
-type StateDownloadUrlParams struct {
-	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
-	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-}
-
 // StackSyncCommitParams defines parameters for StackSyncCommit.
 type StackSyncCommitParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -12002,12 +11996,6 @@ type WebhooksIntegrationPatchParams struct {
 type WebhooksIntegrationUpdateParams struct {
 	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
-}
-
-// StateUploadUrlParams defines parameters for StateUploadUrl.
-type StateUploadUrlParams struct {
-	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
-	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // TerraformEffectiveVersionParams defines parameters for TerraformEffectiveVersion.
@@ -18270,7 +18258,7 @@ type ClientInterface interface {
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-	StateDownloadUrlWithBody(ctx context.Context, stackId string, params *StateDownloadUrlParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StateDownloadUrlWithBody(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StateDownloadUrl Get State Download URL
 	//
@@ -18280,7 +18268,7 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	//
 	// Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-	StateDownloadUrl(ctx context.Context, stackId string, params *StateDownloadUrlParams, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StateDownloadUrl(ctx context.Context, stackId string, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackSyncCommit Sync Commit
 	//
@@ -18394,7 +18382,7 @@ type ClientInterface interface {
 	// Generate pre-signed state upload URL.
 	//
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
-	StateUploadUrl(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StateUploadUrl(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TerraformEffectiveVersion Get Terraform Effective Version
 	//
@@ -26930,8 +26918,8 @@ func (c *Client) StarSet(ctx context.Context, stackId string, body StarSetJSONRe
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-func (c *Client) StateDownloadUrlWithBody(ctx context.Context, stackId string, params *StateDownloadUrlParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateDownloadUrlRequestWithBody(c.Server, stackId, params, contentType, body)
+func (c *Client) StateDownloadUrlWithBody(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStateDownloadUrlRequestWithBody(c.Server, stackId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -26950,8 +26938,8 @@ func (c *Client) StateDownloadUrlWithBody(ctx context.Context, stackId string, p
 // Takes a body of the `application/json` content type.
 //
 // Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-func (c *Client) StateDownloadUrl(ctx context.Context, stackId string, params *StateDownloadUrlParams, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateDownloadUrlRequest(c.Server, stackId, params, body)
+func (c *Client) StateDownloadUrl(ctx context.Context, stackId string, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStateDownloadUrlRequest(c.Server, stackId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -27204,8 +27192,8 @@ func (c *Client) WebhooksIntegrationUpdate(ctx context.Context, stackId string, 
 // Generate pre-signed state upload URL.
 //
 // Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
-func (c *Client) StateUploadUrl(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateUploadUrlRequest(c.Server, params)
+func (c *Client) StateUploadUrl(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStateUploadUrlRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -44817,18 +44805,18 @@ func NewStarSetRequestWithBody(server string, stackId string, contentType string
 }
 
 // NewStateDownloadUrlRequest calls the generic StateDownloadUrl builder with application/json body
-func NewStateDownloadUrlRequest(server string, stackId string, params *StateDownloadUrlParams, body StateDownloadUrlJSONRequestBody) (*http.Request, error) {
+func NewStateDownloadUrlRequest(server string, stackId string, body StateDownloadUrlJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewStateDownloadUrlRequestWithBody(server, stackId, params, "application/json", bodyReader)
+	return NewStateDownloadUrlRequestWithBody(server, stackId, "application/json", bodyReader)
 }
 
 // NewStateDownloadUrlRequestWithBody constructs an http.Request for the StateDownloadUrl method, with any body, and a specified content type
-func NewStateDownloadUrlRequestWithBody(server string, stackId string, params *StateDownloadUrlParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewStateDownloadUrlRequestWithBody(server string, stackId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -44859,21 +44847,6 @@ func NewStateDownloadUrlRequestWithBody(server string, stackId string, params *S
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		if params.IdempotencyKey != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("Idempotency-Key", headerParam0)
-		}
-
-	}
 
 	return req, nil
 }
@@ -45440,7 +45413,7 @@ func NewWebhooksIntegrationUpdateRequestWithBody(server string, stackId string, 
 }
 
 // NewStateUploadUrlRequest constructs an http.Request for the StateUploadUrl method
-func NewStateUploadUrlRequest(server string, params *StateUploadUrlParams) (*http.Request, error) {
+func NewStateUploadUrlRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -45461,21 +45434,6 @@ func NewStateUploadUrlRequest(server string, params *StateUploadUrlParams) (*htt
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-
-		if params.IdempotencyKey != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("Idempotency-Key", headerParam0)
-		}
-
 	}
 
 	return req, nil
@@ -52367,7 +52325,7 @@ type ClientWithResponsesInterface interface {
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-	StateDownloadUrlWithBodyWithResponse(ctx context.Context, stackId string, params *StateDownloadUrlParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error)
+	StateDownloadUrlWithBodyWithResponse(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error)
 
 	// StateDownloadUrlWithResponse Get State Download URL
 	//
@@ -52377,7 +52335,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-	StateDownloadUrlWithResponse(ctx context.Context, stackId string, params *StateDownloadUrlParams, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error)
+	StateDownloadUrlWithResponse(ctx context.Context, stackId string, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error)
 
 	// StackSyncCommitWithResponse Sync Commit
 	//
@@ -52503,7 +52461,7 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
-	StateUploadUrlWithResponse(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error)
+	StateUploadUrlWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error)
 
 	// TerraformEffectiveVersionWithResponse Get Terraform Effective Version
 	//
@@ -83875,10 +83833,6 @@ type StateDownloadUrlResponse struct {
 	JSON200 *StateDownloadUrl
 	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
 	ApplicationproblemJSON404 *NotFound
-	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
-	ApplicationproblemJSON409 *IdempotencyConflict
-	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
-	ApplicationproblemJSON422 *IdempotencyMismatch
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -83901,16 +83855,6 @@ func (r StateDownloadUrlResponse) GetJSON200() *StateDownloadUrl {
 // GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
 func (r StateDownloadUrlResponse) GetApplicationproblemJSON404() *NotFound {
 	return r.ApplicationproblemJSON404
-}
-
-// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
-func (r StateDownloadUrlResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
-	return r.ApplicationproblemJSON409
-}
-
-// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
-func (r StateDownloadUrlResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
-	return r.ApplicationproblemJSON422
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -84951,10 +84895,6 @@ type StateUploadUrlResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *StateUploadUrl
-	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
-	ApplicationproblemJSON409 *IdempotencyConflict
-	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
-	ApplicationproblemJSON422 *IdempotencyMismatch
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -84972,16 +84912,6 @@ type StateUploadUrlResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r StateUploadUrlResponse) GetJSON200() *StateUploadUrl {
 	return r.JSON200
-}
-
-// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
-func (r StateUploadUrlResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
-	return r.ApplicationproblemJSON409
-}
-
-// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
-func (r StateUploadUrlResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
-	return r.ApplicationproblemJSON422
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -96834,8 +96764,8 @@ func (c *ClientWithResponses) StarSetWithResponse(ctx context.Context, stackId s
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-func (c *ClientWithResponses) StateDownloadUrlWithBodyWithResponse(ctx context.Context, stackId string, params *StateDownloadUrlParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error) {
-	rsp, err := c.StateDownloadUrlWithBody(ctx, stackId, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) StateDownloadUrlWithBodyWithResponse(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error) {
+	rsp, err := c.StateDownloadUrlWithBody(ctx, stackId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -96850,8 +96780,8 @@ func (c *ClientWithResponses) StateDownloadUrlWithBodyWithResponse(ctx context.C
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /stacks/{stackId}/state/download-url (the `StateDownloadUrl` operationId).
-func (c *ClientWithResponses) StateDownloadUrlWithResponse(ctx context.Context, stackId string, params *StateDownloadUrlParams, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error) {
-	rsp, err := c.StateDownloadUrl(ctx, stackId, params, body, reqEditors...)
+func (c *ClientWithResponses) StateDownloadUrlWithResponse(ctx context.Context, stackId string, body StateDownloadUrlJSONRequestBody, reqEditors ...RequestEditorFn) (*StateDownloadUrlResponse, error) {
+	rsp, err := c.StateDownloadUrl(ctx, stackId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -97060,8 +96990,8 @@ func (c *ClientWithResponses) WebhooksIntegrationUpdateWithResponse(ctx context.
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /state/upload-url (the `StateUploadUrl` operationId).
-func (c *ClientWithResponses) StateUploadUrlWithResponse(ctx context.Context, params *StateUploadUrlParams, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error) {
-	rsp, err := c.StateUploadUrl(ctx, params, reqEditors...)
+func (c *ClientWithResponses) StateUploadUrlWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StateUploadUrlResponse, error) {
+	rsp, err := c.StateUploadUrl(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -137483,20 +137413,6 @@ func ParseStateDownloadUrlResponse(rsp *http.Response) (*StateDownloadUrlRespons
 		}
 		response.ApplicationproblemJSON404 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest IdempotencyConflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest IdempotencyMismatch
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON422 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -138835,20 +138751,6 @@ func ParseStateUploadUrlResponse(rsp *http.Response) (*StateUploadUrlResponse, e
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest IdempotencyConflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest IdempotencyMismatch
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests

@@ -79,7 +79,10 @@ type Commit struct {
 // TrackedCommit are nil until the vcs domain resolves the branch, and
 // TrackedCommitSetBy names who set TrackedCommit. ManagesState is
 // whether infraweave keeps the stack's state, which its creation decides
-// once. EnableWellKnownSecretMasking turns on the runner's well-known
+// once. ExternalStateAccess is the Terraform or OpenTofu vendor's
+// externalStateAccessEnabled, whether callers other than the stack's own
+// runs may read its managed state, and false for every other vendor.
+// EnableWellKnownSecretMasking turns on the runner's well-known
 // secret patterns, EnableSensitiveOutputUpload lets a run keep its
 // sensitive outputs' values where its worker pool allows it too, and
 // SkipVendorBinaryDownload runs the image's own tool rather than the one
@@ -119,6 +122,7 @@ type Settings struct {
 	TrackedCommit                *Commit
 	TrackedCommitSetBy           string
 	ManagesState                 bool
+	ExternalStateAccess          bool
 	Deleting                     bool
 	Version                      int64
 }

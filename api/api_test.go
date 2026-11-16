@@ -686,3 +686,43 @@ func TestUnitAPIUpdateRoutes(t *testing.T) {
 		t.Errorf("%d update routes, want every served one", updates)
 	}
 }
+
+// TestUnitAPIIgnoredIdempotency fails unless an operation whose
+// x-infraweave-idempotency is ignored takes no Idempotency-Key, answers
+// none of its conflicts, and records no idempotency-key divergence, so
+// its documentation says what the route table does.
+//
+// ref: decision 0003 § "API surfaces"
+func TestUnitAPIIgnoredIdempotency(t *testing.T) {
+	doc := loadServed(t)
+	var ignored []string
+	for path, item := range doc.Paths.Map() {
+		for method, op := range item.Operations() {
+			if op.Extensions["x-infraweave-idempotency"] == nil {
+				continue
+			}
+			ignored = append(ignored, op.OperationID)
+			if v := op.Extensions["x-infraweave-idempotency"]; v != "ignored" {
+				t.Errorf("%s %s: x-infraweave-idempotency %v", method, path, v)
+			}
+			for _, p := range op.Parameters {
+				if p.Value != nil && p.Value.Name == "Idempotency-Key" {
+					t.Errorf("%s %s takes an Idempotency-Key it ignores", method, path)
+				}
+			}
+			for _, r := range op.Responses.Map() {
+				if strings.Contains(r.Ref, "Idempotency") {
+					t.Errorf("%s %s answers %s", method, path, r.Ref)
+				}
+			}
+			raw, _ := op.Extensions["x-infraweave-divergence"].([]any)
+			if slices.ContainsFunc(raw, func(d any) bool { return d == "idempotency-key" }) {
+				t.Errorf("%s %s records an idempotency-key divergence", method, path)
+			}
+		}
+	}
+	slices.Sort(ignored)
+	if want := []string{"stateDownloadUrl", "stateUploadUrl"}; !slices.Equal(ignored, want) {
+		t.Errorf("x-infraweave-idempotency on %v, want %v", ignored, want)
+	}
+}

@@ -590,6 +590,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 		st.ManagesState = manageState
 		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
 		apply(&st, space, in)
+		if err := checkExternal("/input", &st); err != nil {
+			return err
+		}
 		if err := s.bind(ctx, p.AccountID, &st, in, "/input"); err != nil {
 			return err
 		}
@@ -651,6 +654,9 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, slug string, e
 				}
 			}
 			apply(st, space, in)
+			if err := checkExternal("", st); err != nil {
+				return err
+			}
 			return s.bind(ctx, p.AccountID, st, in, "")
 		},
 	)

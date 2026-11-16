@@ -14,10 +14,14 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
+	workspaces "github.com/weaveplatform/infraweave/internal/state/internal/http"
 	"github.com/weaveplatform/infraweave/internal/state/internal/pg"
+	"github.com/weaveplatform/infraweave/internal/state/internal/urls"
 )
 
 // TestUnitDomain checks that the domain constructs its core and backend,
@@ -28,8 +32,12 @@ import (
 func TestUnitDomain(t *testing.T) {
 	d := New(Deps{})
 	if d == nil || d.state == nil || d.backend == nil || d.Versions() == nil ||
-		d.SpaceOf() == nil || reflect.ValueOf(d.API()).IsZero() {
-		t.Fatal("the domain has no core, backend, versions, resolver or API")
+		d.SpaceOf() == nil {
+		t.Fatal("the domain has no core, backend, versions or resolver")
+	}
+	if partial := d.API(); reflect.ValueOf(partial.urls).IsZero() ||
+		reflect.ValueOf(partial.workspaces).IsZero() {
+		t.Errorf("the domain's partial lacks the signed URLs' or the workspaces': %+v", partial)
 	}
 	if !reflect.ValueOf((*Domain)(nil).API()).IsZero() {
 		t.Error("a nil domain's API is not the zero partial")
@@ -49,9 +57,12 @@ func TestUnitDomain(t *testing.T) {
 		t.Errorf("a second subscription = %v, want ErrConsumer", err)
 	}
 	for _, tc := range []struct {
-		d      *Domain
-		status int
-	}{{d, http.StatusUnauthorized}, {nil, http.StatusNotImplemented}} {
+		d              *Domain
+		status, signed int
+	}{
+		{d, http.StatusUnauthorized, http.StatusForbidden},
+		{nil, http.StatusNotImplemented, http.StatusNotImplemented},
+	} {
 		r := chi.NewRouter()
 		tc.d.Routes(r)
 		rec := httptest.NewRecorder()
@@ -60,7 +71,61 @@ func TestUnitDomain(t *testing.T) {
 		if rec.Code != tc.status {
 			t.Errorf("a domain %v answered %d, want %d", tc.d != nil, rec.Code, tc.status)
 		}
+		rec = httptest.NewRecorder()
+		r.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+			"/state/v1/download/bad", nil))
+		if rec.Code != tc.signed {
+			t.Errorf("a domain %v answered a download %d, want %d", tc.d != nil, rec.Code,
+				tc.signed)
+		}
 	}
+}
+
+// TestUnitStateAPI checks that the partial forwards every operation of
+// the API's strict server that either adapter serves, so none is left at
+// its 501 stub, and that each forwarded operation reaches its adapter: on
+// a caller with no principal, each answers 401.
+func TestUnitStateAPI(t *testing.T) {
+	strict := reflect.TypeFor[api.StrictServerInterface]()
+	partial := reflect.TypeFor[StateAPI]()
+	forwarded := 0
+	for _, adapter := range []reflect.Type{reflect.TypeFor[urls.Server](), reflect.TypeFor[workspaces.Server]()} {
+		for m := range adapter.Methods() {
+			if _, ok := strict.MethodByName(m.Name); !ok {
+				continue
+			}
+			forwarded++
+			if _, ok := partial.MethodByName(m.Name); !ok {
+				t.Errorf("StateAPI does not forward %s", m.Name)
+			}
+		}
+	}
+	if forwarded != partial.NumMethod() {
+		t.Errorf("StateAPI has %d methods, the adapters serve %d operations",
+			partial.NumMethod(), forwarded)
+	}
+	d := New(Deps{})
+	s := reflect.ValueOf(d.API())
+	for i := range partial.NumMethod() {
+		m := partial.Method(i)
+		req := reflect.New(m.Type.In(2)).Elem()
+		if body := req.FieldByName("Body"); body.IsValid() && body.Kind() == reflect.Pointer {
+			body.Set(reflect.New(body.Type().Elem()))
+		}
+		out := s.Method(i).Call([]reflect.Value{reflect.ValueOf(t.Context()), req})
+		p, ok := errors.AsType[*problem.Error](errOf(out[1]))
+		if !ok || p.Problem.Status != http.StatusUnauthorized {
+			t.Errorf("%s without a principal = %v, %v", m.Name, out[0], out[1])
+		}
+	}
+}
+
+// errOf is the error v holds, nil when it holds none.
+func errOf(v reflect.Value) error {
+	if v.IsNil() {
+		return nil
+	}
+	return v.Interface().(error) //nolint:forcetypeassert // the method answers an error
 }
 
 // TestUnitSettings checks that a state version is bounded at 512 MiB by

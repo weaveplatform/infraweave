@@ -388,6 +388,32 @@ WHERE key = 'acct/b'`)
 		t.Error("a content key copied to another row opened")
 	}
 
+	obj, err := h.o.PutSealed(
+		t.Context(),
+		objectstore.Uploads,
+		"acct/upload",
+		bytes.NewReader(body),
+		int64(len(body)),
+	)
+	if err != nil || obj.Size != int64(len(body)) || obj.SHA256 != sha256.Sum256(body) {
+		t.Fatalf("PutSealed to uploads = %+v, %v", obj, err)
+	}
+	if err := tx.Do(t.Context(), h.pool, tx.Options{}, func(ctx context.Context) error {
+		return h.o.Commit(ctx, objectstore.Uploads, "acct/upload")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = h.store.Get(t.Context(), objectstore.Uploads, "acct/upload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sealed, _ = io.ReadAll(raw)
+	raw.Close()
+	if bytes.Contains(sealed, []byte("terraform-state-marker")) ||
+		!bytes.Equal(h.read(t, objectstore.Uploads, "acct/upload"), body) {
+		t.Error("a sealed upload holds plaintext or did not read back")
+	}
+
 	for name, src := range map[string]io.Reader{
 		"short": bytes.NewReader(random(5)),
 		"long":  bytes.NewReader(random(15)),

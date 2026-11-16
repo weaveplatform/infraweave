@@ -125,6 +125,7 @@ func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 		}
 	}
 	st.VendorConfig = config
+	st.ExternalStateAccess = core.ExternalAccess(st.Vendor, config)
 	if err := json.Unmarshal(hooks, &st.Hooks); err != nil {
 		return core.Stack{}, fmt.Errorf("stacks: hooks of %s: %w", st.Slug, err)
 	}

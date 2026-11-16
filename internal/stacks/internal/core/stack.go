@@ -120,6 +120,38 @@ func vendorOf(raw json.RawMessage) (string, json.RawMessage) {
 	return string(iac.Terraform), json.RawMessage(`{}`)
 }
 
+// ExternalAccess is whether vendor's settings config turn on
+// externalStateAccessEnabled, which only Terraform's and OpenTofu's carry.
+func ExternalAccess(vendor string, config json.RawMessage) bool {
+	switch iac.Kind(vendor) {
+	case iac.Terraform, iac.OpenTofu:
+	default:
+		return false
+	}
+	var c struct {
+		On bool `json:"externalStateAccessEnabled"`
+	}
+	_ = json.Unmarshal(config, &c) // check has refused a setting that is not a boolean
+	return c.On
+}
+
+// checkExternal refuses external state access on st when it keeps no
+// managed state, the only state external access reads, pointing at the
+// setting under at.
+//
+// ref: decision 0010 § "Who may call what"
+func checkExternal(at string, st *Stack) error {
+	if !st.ExternalStateAccess || st.ManagesState {
+		return nil
+	}
+	return &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
+		Pointer: at + "/vendorConfig/" + st.Vendor + "/externalStateAccessEnabled",
+		Reason:  kernel.ReasonRule,
+		Message: "External state access reads the state infraweave manages, " +
+			"which this stack does not.",
+	}}}
+}
+
 // apply sets st's settings from in, the space's ID already resolved, as
 // a PUT replaces them: a setting in leaves out takes its default.
 func apply(st *Stack, space kernel.ULID, in Input) {
@@ -140,6 +172,7 @@ func apply(st *Stack, space kernel.ULID, in Input) {
 	st.GitSparseCheckoutPaths = in.GitSparseCheckoutPaths
 	st.WorkerPool, st.VCSIntegration = nil, nil
 	st.Vendor, st.VendorConfig = vendorOf(in.VendorConfig)
+	st.ExternalStateAccess = ExternalAccess(st.Vendor, st.VendorConfig)
 	st.TerraformVersion = in.TerraformVersion
 	st.Hooks = map[string][]string{}
 	for _, phase := range stacksapi.HookPhases {

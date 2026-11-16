@@ -176,13 +176,16 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	configuration.BindExpressions(registry)
 	runs.BindExpressions(registry)
 	state := stateassembly.New(stateassembly.Deps{
-		DB:       db.Primary(),
-		Stacks:   stacks.Stacks(),
-		Authz:    access.Authorizer(),
-		Access:   runs.StateAccess(),
-		Objects:  objects,
-		Jobs:     queue.New(db.Primary()),
-		Settings: c.State,
+		DB:        db.Primary(),
+		Stacks:    stacks.Stacks(),
+		Access:    runs.StateAccess(),
+		Authz:     access.Authorizer(),
+		Objects:   objects,
+		Jobs:      queue.New(db.Primary()),
+		Keys:      keys,
+		PublicURL: c.Server.PublicURL,
+		URLTTL:    c.ObjectStore.SignedURLTTL,
+		Settings:  c.State,
 	})
 	stacks.GuardStacks(state.StackGuard())
 	stacks.BindManagedState(state.ManagedState())

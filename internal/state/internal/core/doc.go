@@ -21,7 +21,11 @@
 // from a client-encrypted state, into its own sealed object, and one
 // transaction makes the object live, records the version and makes it
 // current, unless its SHA-256 is the current version's. Read, Latest and
-// Outputs read the current version, its metadata and its outputs. As the
+// Outputs read the current version, its metadata and its outputs. Upload
+// stores a state file for import, sealed, in the uploads store under its
+// account, object ID and the subject that asked, once: a second upload
+// answers ErrUploaded. Download opens a version of a stack by ID, or
+// answers ErrGone. As the
 // stacks domain's StackGuard, a stack's
 // delete enqueues PurgeKind in its transaction; as its ManagedState, a
 // stack's creation opens its default workspace in its transaction; Purge deletes a stack's or

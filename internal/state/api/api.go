@@ -16,13 +16,17 @@ const DefaultWorkspace = ""
 // StackPattern and WorkspacePattern the chi patterns of a stack's default
 // workspace and of a named one under it, which internal/app's route table
 // names. {stack} is a stack's ULID, or its slug when the segment is no
-// canonical ULID; {workspace} is URL-encoded.
+// canonical ULID; {workspace} is URL-encoded. UploadPattern and
+// DownloadPattern are the routes of the signed state URLs, whose {token}
+// is their only credential.
 //
 // ref: decision 0010 § "Endpoints"
 const (
 	BaseURL          = "/state/v1"
 	StackPattern     = BaseURL + "/stacks/{stack}"
 	WorkspacePattern = StackPattern + "/workspaces/{workspace}"
+	UploadPattern    = BaseURL + "/uploads/{token}"
+	DownloadPattern  = BaseURL + "/download/{token}"
 )
 
 // MethodLock and MethodUnlock are the methods Terraform's and OpenTofu's

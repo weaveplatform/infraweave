@@ -37,7 +37,7 @@ Feature: Observability and health
 
   Scenario: SIGTERM drains a request in flight
     Given a running infraweave server whose shutdown ready delay is 3s
-    And "POST /api/v1/state/upload-url" with an Idempotency-Key is in flight with half its body
+    And "POST /api/v1/stack-dependencies/batch" with an Idempotency-Key is in flight with half its body
     When the server receives SIGTERM
     Then "GET /readyz" on the admin listener eventually answers 503
     And the API listener eventually refuses connections
@@ -61,14 +61,14 @@ Feature: Observability and health
   Scenario: A request answers 503 while PostgreSQL is down and succeeds once it is back
     Given a running infraweave server on a PostgreSQL of its own
     When its PostgreSQL stops
-    Then "POST /api/v1/state/upload-url" with an Idempotency-Key answers a 503 problem "service-unavailable" with Retry-After
+    Then "POST /api/v1/stack-dependencies/batch" with an Idempotency-Key answers a 503 problem "service-unavailable" with Retry-After
     When its PostgreSQL starts again
-    Then "POST /api/v1/state/upload-url" with an Idempotency-Key eventually answers a 501 problem "not-implemented"
+    Then "POST /api/v1/stack-dependencies/batch" with an Idempotency-Key eventually answers a 501 problem "not-implemented"
 
   Scenario: pkg/sdk's default retries ride out a short PostgreSQL outage
     Given a running infraweave server on a PostgreSQL of its own
     When its PostgreSQL stops
-    And "POST /api/v1/state/upload-url" with an Idempotency-Key is sent with the SDK's default retries
+    And "POST /api/v1/stack-dependencies/batch" with an Idempotency-Key is sent with the SDK's default retries
     And the server logs a 503 for a POST
     And its PostgreSQL starts again
     Then the request sent with the default retries is answered a 501 problem "not-implemented"

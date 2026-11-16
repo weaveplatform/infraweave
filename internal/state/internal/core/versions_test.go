@@ -16,6 +16,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
+	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -54,6 +55,14 @@ func (b *bucket) Put(_ context.Context, store objectstore.Name, key string, r io
 		b.onPut()
 	}
 	return objectstore.Object{Size: size, SHA256: sha256.Sum256(data)}, nil
+}
+
+// PutSealed is Put, refusing a key that has an object as blobs does.
+func (b *bucket) PutSealed(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error) {
+	if _, ok := b.states[string(store)+"/"+key]; ok {
+		return objectstore.Object{}, blobs.ErrKeyInUse
+	}
+	return b.Put(ctx, store, key, r, size)
 }
 
 func (b *bucket) Commit(ctx context.Context, store objectstore.Name, key string) error {
