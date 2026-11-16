@@ -31,12 +31,7 @@ func newStore(acct kernel.AccountID) *store {
 	return s
 }
 
-func (s *store) Roles(
-	_ context.Context,
-	_ kernel.AccountID,
-	after string,
-	limit int,
-) ([]role.Role, error) {
+func (s *store) Roles(_ context.Context, _ kernel.AccountID, after string, limit int) ([]role.Role, error) {
 	var out []role.Role
 	for _, r := range s.roles {
 		if r.Slug > after {
@@ -63,12 +58,7 @@ func (s *store) CreateRole(_ context.Context, r role.Role) error {
 	return s.err
 }
 
-func (s *store) UpdateRole(
-	_ context.Context,
-	_ kernel.AccountID,
-	slug string,
-	edit func(role.Role) (role.Role, error),
-) (role.Role, error) {
+func (s *store) UpdateRole(_ context.Context, _ kernel.AccountID, slug string, edit func(role.Role) (role.Role, error)) (role.Role, error) {
 	r, ok := s.roles[slug]
 	if !ok {
 		return role.Role{}, port.ErrNotFound
@@ -82,12 +72,7 @@ func (s *store) UpdateRole(
 	return r, s.err
 }
 
-func (s *store) DeleteRole(
-	_ context.Context,
-	_ kernel.AccountID,
-	slug string,
-	check func(role.Role) error,
-) (role.Role, error) {
+func (s *store) DeleteRole(_ context.Context, _ kernel.AccountID, slug string, check func(role.Role) error) (role.Role, error) {
 	r, ok := s.roles[slug]
 	if !ok {
 		return role.Role{}, port.ErrNotFound
@@ -102,11 +87,7 @@ func (s *store) DeleteRole(
 	return r, s.err
 }
 
-func (s *store) RoleBindings(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) ([]binding.Listed, error) {
+func (s *store) RoleBindings(context.Context, kernel.AccountID, kernel.ULID) ([]binding.Listed, error) {
 	return []binding.Listed{{Space: "top"}}, s.err
 }
 

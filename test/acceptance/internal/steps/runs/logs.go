@@ -65,14 +65,7 @@ func unquote(s string) (string, error) {
 // chunk to upload-urls, PUTs it to the signed URL with the headers the
 // answer names, and commits it to log-chunks as written at at, in Unix
 // seconds. The commit's answer is the last.
-func (l *logSteps) write(
-	ctx context.Context,
-	token string,
-	seq int64,
-	run string,
-	version, at int64,
-	text, replica string,
-) error {
+func (l *logSteps) write(ctx context.Context, token string, seq int64, run string, version, at int64, text, replica string) error {
 	body, err := unquote(text)
 	if err != nil {
 		return err
@@ -104,12 +97,7 @@ func (l *logSteps) write(
 // as run, in state version version, with the run token kept as token, as
 // the runner uploads a CPU profile, and records it through artifacts. The
 // record's answer is the last.
-func (l *logSteps) observe(
-	ctx context.Context,
-	token, name, run string,
-	version int64,
-	text, replica string,
-) error {
+func (l *logSteps) observe(ctx context.Context, token, name, run string, version int64, text, replica string) error {
 	body, err := unquote(text)
 	if err != nil {
 		return err
@@ -139,12 +127,7 @@ func (l *logSteps) observe(
 // put declares body as the upload of kind named name of the run at path
 // of the worker API, in state version version, with the run token kept as
 // token, and PUTs it to the signed URL with the headers the answer names.
-func (l *logSteps) put(
-	ctx context.Context,
-	token, path string,
-	version int64,
-	kind, name, body, replica string,
-) error {
+func (l *logSteps) put(ctx context.Context, token, path string, version int64, kind, name, body, replica string) error {
 	sum := sha256.Sum256([]byte(body))
 	decl, err := json.Marshal(map[string]any{
 		"stateVersion": version,
@@ -324,9 +307,7 @@ const maxPages = 100
 // holds checks that the run kept as run's log of state, as logText reads
 // it with token through replica, holds want and not unwanted, each with
 // the scenario's keys resolved.
-func (l *logSteps) holds(ctx context.Context, token, run, state, replica, want,
-	unwanted string,
-) error {
+func (l *logSteps) holds(ctx context.Context, token, run, state, replica, want, unwanted string) error {
 	want, err := unquote(l.w.Resolve(want))
 	if err != nil {
 		return err
@@ -348,9 +329,7 @@ func (l *logSteps) holds(ctx context.Context, token, run, state, replica, want,
 // logText reads every line of the run kept as run's log of state, its
 // latest execution, with token through replica, page by page until the
 // page that finishes it, and answers the lines joined by newlines.
-func logText(ctx context.Context, w *harness.World, token, run, state, replica string) (string,
-	error,
-) {
+func logText(ctx context.Context, w *harness.World, token, run, state, replica string) (string, error) {
 	var lines []string
 	next := ""
 	for range maxPages {

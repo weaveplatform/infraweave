@@ -22,13 +22,7 @@ type LivenessStore interface {
 	// changed before now less their pool's preparing timeout, the one
 	// timeouts names or else fallback, oldest first, among the rows no
 	// other transaction locks, and locks them FOR UPDATE.
-	Overdue(
-		ctx context.Context,
-		now time.Time,
-		timeouts []workersapi.PoolTimeout,
-		fallback time.Duration,
-		batch int,
-	) ([]lifecycle.Run, error)
+	Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) ([]lifecycle.Run, error)
 }
 
 // The notes of the runs the liveness fails.
@@ -76,11 +70,7 @@ func (s *Liveness) Lost(ctx context.Context, worker kernel.ULID) (int, error) {
 }
 
 // Ended fails run when worker holds it, as workersapi.Liveness says.
-func (s *Liveness) Ended(
-	ctx context.Context,
-	worker, run kernel.ULID,
-	exit workersapi.Exit,
-) (bool, error) {
+func (s *Liveness) Ended(ctx context.Context, worker, run kernel.ULID, exit workersapi.Exit) (bool, error) {
 	if !tx.In(ctx) {
 		return false, lifecycle.ErrNoTransaction
 	}
@@ -103,13 +93,7 @@ func (s *Liveness) Ended(
 
 // Overdue fails the runs left in preparation too long, as
 // workersapi.Liveness says.
-func (s *Liveness) Overdue(
-	ctx context.Context,
-	now time.Time,
-	timeouts []workersapi.PoolTimeout,
-	fallback time.Duration,
-	batch int,
-) (int, error) {
+func (s *Liveness) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) (int, error) {
 	if !tx.In(ctx) {
 		return 0, lifecycle.ErrNoTransaction
 	}
@@ -127,12 +111,7 @@ func (s *Liveness) Overdue(
 
 // fail moves r to FAILED through the liveness edge out of its state,
 // which every state on a worker has, recording actor and note.
-func (s *Liveness) fail(
-	ctx context.Context,
-	r lifecycle.Run,
-	actor lifecycle.Actor,
-	note string,
-) error {
+func (s *Liveness) fail(ctx context.Context, r lifecycle.Run, actor lifecycle.Actor, note string) error {
 	_, err := s.lifecycle.Transition(ctx, lifecycle.Request{
 		Account: r.Account, Run: r.ID, Version: r.Version, To: kernel.RunStateFailed,
 		Driver: machine.DriverLiveness, Actor: actor, Note: note,

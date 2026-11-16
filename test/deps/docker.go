@@ -161,11 +161,7 @@ func (o *ObjectStore) Bucket(ctx context.Context, name string) error {
 
 // Containing reads every object in bucket and answers the keys of those
 // whose bytes hold needle, and how many objects it read.
-func (o *ObjectStore) Containing(
-	ctx context.Context,
-	bucket string,
-	needle []byte,
-) ([]string, int, error) {
+func (o *ObjectStore) Containing(ctx context.Context, bucket string, needle []byte) ([]string, int, error) {
 	c := o.client()
 	var keys []string
 	n := 0
@@ -284,10 +280,7 @@ func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
 // runPostgres starts a PostgreSQL container of the run's image and returns
 // the DSN of its default database. The container is returned whenever one
 // was created, even with an error, for the caller to terminate.
-func runPostgres(
-	ctx context.Context,
-	opts ...testcontainers.ContainerCustomizer,
-) (*postgres.PostgresContainer, string, error) {
+func runPostgres(ctx context.Context, opts ...testcontainers.ContainerCustomizer) (*postgres.PostgresContainer, string, error) {
 	img, err := Postgres()
 	if err != nil {
 		return nil, "", fmt.Errorf("@postgres: %w", err)
@@ -296,11 +289,7 @@ func runPostgres(
 }
 
 // runImage is runPostgres with the image img.
-func runImage(
-	ctx context.Context,
-	img string,
-	opts ...testcontainers.ContainerCustomizer,
-) (*postgres.PostgresContainer, string, error) {
+func runImage(ctx context.Context, img string, opts ...testcontainers.ContainerCustomizer) (*postgres.PostgresContainer, string, error) {
 	c, err := postgres.Run(ctx, img, append([]testcontainers.ContainerCustomizer{
 		postgres.WithDatabase(pgDatabase),
 		postgres.WithUsername(pgUser),
@@ -431,10 +420,7 @@ func (p *OwnPostgres) Terminate(ctx context.Context) error {
 	return p.c.Terminate(ctx) //nolint:wrapcheck // testcontainers names the container
 }
 
-func (p *OwnPostgres) docker(
-	ctx context.Context,
-	f func(*testcontainers.DockerClient) error,
-) error {
+func (p *OwnPostgres) docker(ctx context.Context, f func(*testcontainers.DockerClient) error) error {
 	cli, err := testcontainers.NewDockerClientWithOpts(ctx)
 	if err != nil {
 		return fmt.Errorf("docker: %w", err)

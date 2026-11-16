@@ -34,12 +34,7 @@ func (s *store) CreatePersonalAPIKey(_ context.Context, k apikey.Key) (apikey.Ke
 	return k, nil
 }
 
-func (s *store) AccountPersonalAPIKeys(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.Key, error) {
+func (s *store) AccountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]apikey.Key, error) {
 	all, err := s.AccountAPIKeys(ctx, acct, after, len(s.keys))
 	var out []apikey.Key
 	for _, k := range all {
@@ -61,23 +56,14 @@ func (s *store) CountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID)
 	return n, err
 }
 
-func (s *store) DisablePersonalAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	reason string,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *store) DisablePersonalAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (apikey.Key, []kernel.ULID, error) {
 	if k, ok := s.keys[id]; ok && !k.Personal() {
 		return apikey.Key{}, nil, port.ErrNotFound
 	}
 	return s.DisableAPIKey(ctx, acct, id, reason)
 }
 
-func (s *store) PersonalCreatable(
-	_ context.Context,
-	_ kernel.AccountID,
-	member kernel.MemberID,
-) error {
+func (s *store) PersonalCreatable(_ context.Context, _ kernel.AccountID, member kernel.MemberID) error {
 	if _, ok := s.owners[member]; !ok {
 		return apikey.ErrNoOwner
 	}
@@ -87,12 +73,7 @@ func (s *store) PersonalCreatable(
 	return s.err()
 }
 
-func (s *store) KeysOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	login string,
-	member kernel.MemberID,
-) ([]kernel.ULID, []kernel.ULID, error) {
+func (s *store) KeysOf(ctx context.Context, acct kernel.AccountID, login string, member kernel.MemberID) ([]kernel.ULID, []kernel.ULID, error) {
 	keys, err := s.AccountAPIKeys(ctx, acct, kernel.ULID{}, len(s.keys))
 	var created, owned []kernel.ULID
 	for _, k := range keys {
@@ -106,11 +87,7 @@ func (s *store) KeysOf(
 	return created, owned, err
 }
 
-func (s *store) KeyOwner(
-	_ context.Context,
-	_ kernel.AccountID,
-	member kernel.MemberID,
-) (apikey.Owner, error) {
+func (s *store) KeyOwner(_ context.Context, _ kernel.AccountID, member kernel.MemberID) (apikey.Owner, error) {
 	o, ok := s.owners[member]
 	if !ok {
 		return apikey.Owner{}, port.ErrNotFound

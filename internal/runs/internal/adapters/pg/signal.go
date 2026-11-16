@@ -31,12 +31,7 @@ var requests = map[workersapi.Signal]string{
 // Request records sig as run's request of kind, and notifies the held
 // polls of run's pool with the pool's ID alone, which wakes every one, as
 // the poll to wake is the busy worker's, not an idle one's.
-func (s *Store) Request(
-	ctx context.Context,
-	run lifecycle.Run,
-	kind workersapi.Signal,
-	sig lifecycle.Signal,
-) error {
+func (s *Store) Request(ctx context.Context, run lifecycle.Run, kind workersapi.Signal, sig lifecycle.Signal) error {
 	q := tx.Q(ctx, s.db)
 	if _, err := q.Exec(ctx, requests[kind], run.Account, run.ID, sig.At, sig.By,
 		sig.Note); err != nil {
@@ -85,12 +80,7 @@ var deliveries = map[workersapi.Signal]string{
 }
 
 // Delivered records the delivery of run's request of kind at at.
-func (s *Store) Delivered(
-	ctx context.Context,
-	run lifecycle.Run,
-	kind workersapi.Signal,
-	at time.Time,
-) error {
+func (s *Store) Delivered(ctx context.Context, run lifecycle.Run, kind workersapi.Signal, at time.Time) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx, deliveries[kind], run.Account, run.ID,
 		at); err != nil {
 		return fmt.Errorf("runs: record the delivery of run %s's %s: %w", run.ID, kind,

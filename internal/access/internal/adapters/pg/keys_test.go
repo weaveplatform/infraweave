@@ -181,12 +181,7 @@ func (failingSealer) SealColumn(context.Context, crypt.Column, []string, []byte)
 	return nil, errSeal
 }
 
-func (failingSealer) OpenColumn(
-	context.Context,
-	crypt.Column,
-	[]string,
-	[]byte,
-) (crypt.Value, error) {
+func (failingSealer) OpenColumn(context.Context, crypt.Column, []string, []byte) (crypt.Value, error) {
 	return crypt.Value{}, errSeal
 }
 

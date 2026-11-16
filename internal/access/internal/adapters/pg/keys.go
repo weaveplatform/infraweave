@@ -142,11 +142,7 @@ func (s *SigningKeys) Signer(ctx context.Context, id kernel.ULID) (signer.Signer
 // write but not with reads, so concurrent rotations, the first key's
 // creation among them, queue behind each other while verifiers keep
 // reading; the second sees what the first committed.
-func (s *SigningKeys) Rotate(
-	ctx context.Context,
-	purpose token.Purpose,
-	plan func([]token.Key) []token.Step,
-) error {
+func (s *SigningKeys) Rotate(ctx context.Context, purpose token.Purpose, plan func([]token.Key) []token.Step) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		if _, err := tx.Q(ctx, s.db).Exec(ctx,
 			`LOCK TABLE signing_keys IN SHARE ROW EXCLUSIVE MODE`); err != nil {

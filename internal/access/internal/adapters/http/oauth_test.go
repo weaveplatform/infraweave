@@ -82,11 +82,7 @@ func (g *grants) RedirectHosts(_ context.Context, acct kernel.AccountID) ([]stri
 	return g.hosts[acct], nil
 }
 
-func (g *grants) Redeem(
-	_ context.Context,
-	hash []byte,
-	grant func(oauth.Request, oauth.Owner) (session.Session, error),
-) (session.Session, error) {
+func (g *grants) Redeem(_ context.Context, hash []byte, grant func(oauth.Request, oauth.Owner) (session.Session, error)) (session.Session, error) {
 	for _, r := range g.requests {
 		if string(r.CodeHash) == string(hash) {
 			ss, err := grant(*r, oauth.Owner{Login: "alice", Name: "Alice"})
@@ -100,11 +96,7 @@ func (g *grants) Redeem(
 	return session.Session{}, port.ErrNotFound
 }
 
-func (g *grants) Refresh(
-	_ context.Context,
-	hash []byte,
-	rotate func(session.Session, oauth.Owner) (session.Session, error),
-) (session.Session, error) {
+func (g *grants) Refresh(_ context.Context, hash []byte, rotate func(session.Session, oauth.Owner) (session.Session, error)) (session.Session, error) {
 	ss, ok := g.sessions[string(hash)]
 	if !ok {
 		return session.Session{}, port.ErrNotFound
@@ -120,13 +112,7 @@ func (g *grants) Refresh(
 func (g *grants) ExpireOAuth(context.Context, time.Time, time.Time) error { return nil }
 
 // oauthError checks rec is the JSON error of RFC 6749 with status and code.
-func oauthError(
-	t *testing.T,
-	what string,
-	rec *httptest.ResponseRecorder,
-	status int,
-	code string,
-) {
+func oauthError(t *testing.T, what string, rec *httptest.ResponseRecorder, status int, code string) {
 	t.Helper()
 	body := decode[map[string]string](t, rec)
 	if rec.Code != status || body["error"] != code || body["error_description"] == "" ||
@@ -145,13 +131,7 @@ func (w *world) form(t *testing.T, target string, v url.Values) *httptest.Respon
 const verifier = "a-verifier-of-at-least-forty-three-characters"
 
 // refusedAs checks rec is the problem slug with code, naming what.
-func refusedAs(
-	t *testing.T,
-	what string,
-	rec *httptest.ResponseRecorder,
-	code int,
-	slug string,
-) {
+func refusedAs(t *testing.T, what string, rec *httptest.ResponseRecorder, code int, slug string) {
 	t.Helper()
 	if rec.Code != code {
 		t.Errorf("%s: %d %s", what, rec.Code, rec.Body)

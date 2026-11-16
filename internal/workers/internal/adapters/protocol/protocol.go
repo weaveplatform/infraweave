@@ -98,10 +98,7 @@ func (s Server) answer(ctx context.Context, err error) error {
 }
 
 // WorkerRegister registers the worker the signed registration describes.
-func (s Server) WorkerRegister(
-	ctx context.Context,
-	req gen.WorkerRegisterRequestObject,
-) (gen.WorkerRegisterResponseObject, error) {
+func (s Server) WorkerRegister(ctx context.Context, req gen.WorkerRegisterRequestObject) (gen.WorkerRegisterResponseObject, error) {
 	reg, err := s.svc.Register(ctx, req.Body.Registration)
 	if err != nil {
 		return nil, s.answer(ctx, err)
@@ -114,10 +111,7 @@ func (s Server) WorkerRegister(
 
 // WorkerPoll reports the session's worker's state and answers what the
 // server has to say to it, holding the request while it has nothing.
-func (s Server) WorkerPoll(
-	ctx context.Context,
-	req gen.WorkerPollRequestObject,
-) (gen.WorkerPollResponseObject, error) {
+func (s Server) WorkerPoll(ctx context.Context, req gen.WorkerPollRequestObject) (gen.WorkerPollResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err
@@ -167,10 +161,7 @@ func (s Server) WorkerPoll(
 }
 
 // WorkerDeregister removes the session's worker.
-func (s Server) WorkerDeregister(
-	ctx context.Context,
-	_ gen.WorkerDeregisterRequestObject,
-) (gen.WorkerDeregisterResponseObject, error) {
+func (s Server) WorkerDeregister(ctx context.Context, _ gen.WorkerDeregisterRequestObject) (gen.WorkerDeregisterResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err
@@ -185,10 +176,7 @@ func (s Server) WorkerDeregister(
 // its secrets sealed to the run's pool's key.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func (s Server) WorkerRunSpec(
-	ctx context.Context,
-	req gen.WorkerRunSpecRequestObject,
-) (gen.WorkerRunSpecResponseObject, error) {
+func (s Server) WorkerRunSpec(ctx context.Context, req gen.WorkerRunSpecRequestObject) (gen.WorkerRunSpecResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err

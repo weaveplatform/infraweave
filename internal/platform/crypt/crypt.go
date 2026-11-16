@@ -203,12 +203,7 @@ func (k *Keyring) Open(_ context.Context, aad, sealed []byte) (Value, error) {
 
 // SealColumn seals plaintext for column c of the row whose primary key
 // parts are pk, so it opens in no other row or column.
-func (k *Keyring) SealColumn(
-	ctx context.Context,
-	c Column,
-	pk []string,
-	plaintext []byte,
-) ([]byte, error) {
+func (k *Keyring) SealColumn(ctx context.Context, c Column, pk []string, plaintext []byte) ([]byte, error) {
 	aad, err := c.AAD(pk)
 	if err != nil {
 		return nil, err
@@ -217,12 +212,7 @@ func (k *Keyring) SealColumn(
 }
 
 // OpenColumn opens a value SealColumn sealed for the same column and row.
-func (k *Keyring) OpenColumn(
-	ctx context.Context,
-	c Column,
-	pk []string,
-	sealed []byte,
-) (Value, error) {
+func (k *Keyring) OpenColumn(ctx context.Context, c Column, pk []string, sealed []byte) (Value, error) {
 	aad, err := c.AAD(pk)
 	if err != nil {
 		return Value{}, err
@@ -260,11 +250,7 @@ func derive(key []byte, purpose string) ([]byte, error) {
 // SealObject returns a writer that seals an object to w under a fresh
 // content key, and that key sealed under the keyring with aad, which the
 // caller stores beside the object.
-func (k *Keyring) SealObject(
-	ctx context.Context,
-	w io.Writer,
-	aad []byte,
-) (*seal.Writer, []byte, error) {
+func (k *Keyring) SealObject(ctx context.Context, w io.Writer, aad []byte) (*seal.Writer, []byte, error) {
 	content := make([]byte, seal.KeySize)
 	_, _ = rand.Read(content)
 	sealedKey, err := k.Seal(ctx, aad, content)
@@ -280,11 +266,7 @@ func (k *Keyring) SealObject(
 
 // OpenObject opens the content key SealObject returned and returns a
 // reader of the object r holds.
-func (k *Keyring) OpenObject(
-	ctx context.Context,
-	r io.Reader,
-	aad, sealedKey []byte,
-) (*seal.Reader, error) {
+func (k *Keyring) OpenObject(ctx context.Context, r io.Reader, aad, sealedKey []byte) (*seal.Reader, error) {
 	content, err := k.Open(ctx, aad, sealedKey)
 	if err != nil {
 		return nil, err

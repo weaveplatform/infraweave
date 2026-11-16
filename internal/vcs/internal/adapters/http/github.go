@@ -15,10 +15,7 @@ import (
 
 // GithubIntegration answers the operator's GitHub App integration with the
 // caller's account's check options.
-func (s Server) GithubIntegration(
-	ctx context.Context,
-	_ api.GithubIntegrationRequestObject,
-) (api.GithubIntegrationResponseObject, error) {
+func (s Server) GithubIntegration(ctx context.Context, _ api.GithubIntegrationRequestObject) (api.GithubIntegrationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -32,10 +29,7 @@ func (s Server) GithubIntegration(
 
 // GithubIntegrationUpdate sets the caller's account's check options of the
 // operator's GitHub App integration.
-func (s Server) GithubIntegrationUpdate(
-	ctx context.Context,
-	req api.GithubIntegrationUpdateRequestObject,
-) (api.GithubIntegrationUpdateResponseObject, error) {
+func (s Server) GithubIntegrationUpdate(ctx context.Context, req api.GithubIntegrationUpdateRequestObject) (api.GithubIntegrationUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -98,10 +92,7 @@ func (s Server) GithubEnterpriseIntegrationCreate(
 
 // GithubEnterpriseIntegration answers one GitHub Enterprise integration,
 // with its webhook secret and URL when the caller administers its space.
-func (s Server) GithubEnterpriseIntegration(
-	ctx context.Context,
-	req api.GithubEnterpriseIntegrationRequestObject,
-) (api.GithubEnterpriseIntegrationResponseObject, error) {
+func (s Server) GithubEnterpriseIntegration(ctx context.Context, req api.GithubEnterpriseIntegrationRequestObject) (api.GithubEnterpriseIntegrationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -204,10 +195,7 @@ func (s Server) GithubEnterpriseIntegrationTest(
 
 // GithubAppGenerateManifest opens a GitHub App manifest form. An
 // organization's App names its owner.
-func (s Server) GithubAppGenerateManifest(
-	ctx context.Context,
-	req api.GithubAppGenerateManifestRequestObject,
-) (api.GithubAppGenerateManifestResponseObject, error) {
+func (s Server) GithubAppGenerateManifest(ctx context.Context, req api.GithubAppGenerateManifestRequestObject) (api.GithubAppGenerateManifestResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -237,10 +225,7 @@ func (s Server) GithubAppGenerateManifest(
 
 // GithubAppCreateFromManifest creates a GitHub Enterprise integration from
 // the App a manifest form created.
-func (s Server) GithubAppCreateFromManifest(
-	ctx context.Context,
-	req api.GithubAppCreateFromManifestRequestObject,
-) (api.GithubAppCreateFromManifestResponseObject, error) {
+func (s Server) GithubAppCreateFromManifest(ctx context.Context, req api.GithubAppCreateFromManifestRequestObject) (api.GithubAppCreateFromManifestResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -259,12 +244,7 @@ func (s Server) GithubAppCreateFromManifest(
 // enterprise is in as the GitHub Enterprise operations answer it, with
 // its App as its host reports it now, and its webhook secret and URL when
 // admin is set.
-func (s Server) enterprise(
-	ctx context.Context,
-	p kernel.Principal,
-	in integration.Integration,
-	admin bool,
-) (api.GithubEnterpriseIntegration, error) {
+func (s Server) enterprise(ctx context.Context, p kernel.Principal, in integration.Integration, admin bool) (api.GithubEnterpriseIntegration, error) {
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return api.GithubEnterpriseIntegration{}, err //nolint:wrapcheck // the access domain names the read
@@ -279,12 +259,7 @@ func (s Server) enterprise(
 // enterpriseView is in as the GitHub Enterprise operations answer it, its
 // space named by its slug in slugs, with d's App when d has one, and d's
 // webhook secret and URL when admin is set.
-func enterpriseView(
-	in integration.Integration,
-	slugs map[kernel.ULID]string,
-	d *integration.Details,
-	admin bool,
-) api.GithubEnterpriseIntegration {
+func enterpriseView(in integration.Integration, slugs map[kernel.ULID]string, d *integration.Details, admin bool) api.GithubEnterpriseIntegration {
 	labels := in.Labels
 	if labels == nil {
 		labels = []string{}

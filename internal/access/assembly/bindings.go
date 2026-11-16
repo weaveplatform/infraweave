@@ -41,13 +41,7 @@ func (d *Domain) Bindings() accessapi.Bindings { return bindings{d.bindings} }
 // bindings is accessapi.Bindings over the binding service.
 type bindings struct{ svc *binding.Service }
 
-func (b bindings) Bind(
-	ctx context.Context,
-	p kernel.Principal,
-	actor string,
-	pointer string,
-	reqs []accessapi.BindingRequest,
-) ([]accessapi.RoleBinding, error) {
+func (b bindings) Bind(ctx context.Context, p kernel.Principal, actor string, pointer string, reqs []accessapi.BindingRequest) ([]accessapi.RoleBinding, error) {
 	rs := make([]binding.Request, 0, len(reqs))
 	for _, r := range reqs {
 		rs = append(rs, binding.Request{Role: r.Role, Space: r.Space})
@@ -78,12 +72,7 @@ func (b bindings) Bind(
 	return roleBindings(ls), nil
 }
 
-func (b bindings) Binding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	actor string,
-	id kernel.ULID,
-) (accessapi.RoleBinding, error) {
+func (b bindings) Binding(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) (accessapi.RoleBinding, error) {
 	l, err := b.svc.Binding(ctx, acct, binding.ActorKind(actor), id.String())
 	if err != nil {
 		return accessapi.RoleBinding{}, noBinding(err, id)
@@ -144,21 +133,11 @@ func noBinding(err error, id kernel.ULID) error {
 	return err
 }
 
-func (b bindings) UnbindActor(
-	ctx context.Context,
-	acct kernel.AccountID,
-	actor string,
-	id kernel.ULID,
-) error {
+func (b bindings) UnbindActor(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) error {
 	return b.svc.Unbind(ctx, acct, binding.ActorKind(actor), id) //nolint:wrapcheck // as above
 }
 
-func (b bindings) ByActor(
-	ctx context.Context,
-	acct kernel.AccountID,
-	actor string,
-	id kernel.ULID,
-) ([]accessapi.RoleBinding, error) {
+func (b bindings) ByActor(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) ([]accessapi.RoleBinding, error) {
 	ls, err := b.svc.Held(ctx, acct, binding.ActorKind(actor), id)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
@@ -166,11 +145,7 @@ func (b bindings) ByActor(
 	return roleBindings(ls), nil
 }
 
-func (b bindings) BySpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) ([]accessapi.RoleBinding, error) {
+func (b bindings) BySpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) ([]accessapi.RoleBinding, error) {
 	ls, err := b.svc.InSpace(ctx, acct, space)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above

@@ -91,13 +91,7 @@ type Objects struct {
 // New records objects in db, the primary pool, writing them through w and
 // sealing a sealed store's under keys. c gives the retention and the
 // driver.
-func New(
-	db tx.Querier,
-	q *queue.Queue,
-	w objectstore.Writer,
-	keys *crypt.Keyring,
-	c objectstore.Config,
-) *Objects {
+func New(db tx.Querier, q *queue.Queue, w objectstore.Writer, keys *crypt.Keyring, c objectstore.Config) *Objects {
 	return &Objects{
 		db:        db,
 		q:         q,
@@ -133,13 +127,7 @@ const redeclared = `
 SELECT EXISTS (SELECT 1 FROM blob_objects
 WHERE store = $1 AND key = $2 AND state = 'pending' AND size = $3 AND sha256 = $4)`
 
-func (o *Objects) begin(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	size int64,
-	sum, sealed []byte,
-) error {
+func (o *Objects) begin(ctx context.Context, store objectstore.Name, key string, size int64, sum, sealed []byte) error {
 	var expires *time.Duration
 	if d := o.retention.Of(store); d > 0 {
 		expires = &d
@@ -188,13 +176,7 @@ func declared(store objectstore.Name, key string, size int64, sum []byte) error 
 // signed PUT URL for it is issued. CommitUpload makes it live. A key
 // already pending with the same size and SHA-256 is no error, so a
 // caller whose first answer was lost signs the URL again.
-func (o *Objects) Begin(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	size int64,
-	sum []byte,
-) error {
+func (o *Objects) Begin(ctx context.Context, store objectstore.Name, key string, size int64, sum []byte) error {
 	if err := declared(store, key, size, sum); err != nil {
 		return err
 	}
@@ -211,13 +193,7 @@ func (o *Objects) Begin(
 // Open reads the object as it reads one Put sealed.
 //
 // ref: decision 0013 § "Sealed objects"
-func (o *Objects) BeginSealed(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	size int64,
-	sum, content []byte,
-) error {
+func (o *Objects) BeginSealed(ctx context.Context, store objectstore.Name, key string, size int64, sum, content []byte) error {
 	if err := declared(store, key, size, sum); err != nil {
 		return err
 	}
@@ -241,13 +217,7 @@ func (o *Objects) BeginSealed(
 
 // SignPut signs a PUT URL for a pending object, bound to its declared
 // size and SHA-256 as far as the driver binds them.
-func (o *Objects) SignPut(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	size int64,
-	sum []byte,
-) (objectstore.Signed, error) {
+func (o *Objects) SignPut(ctx context.Context, store objectstore.Name, key string, size int64, sum []byte) (objectstore.Signed, error) {
 	//nolint:wrapcheck // the drivers' errors name the key
 	return o.w.SignURL(ctx, http.MethodPut, store, key, 0,
 		objectstore.Constraints{Size: size, SHA256: sum})
@@ -256,11 +226,7 @@ func (o *Objects) SignPut(
 // SignGet signs a GET URL for a live object, or answers
 // objectstore.ErrNotFound. The URL hands out the bytes as stored, sealed
 // when the store is.
-func (o *Objects) SignGet(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-) (objectstore.Signed, error) {
+func (o *Objects) SignGet(ctx context.Context, store objectstore.Name, key string) (objectstore.Signed, error) {
 	var sealed []byte
 	if err := tx.Q(ctx, o.db).QueryRow(ctx, live, store, key).Scan(&sealed); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -282,13 +248,7 @@ const uploaded = `UPDATE blob_objects SET sha256 = $3 WHERE store = $1 AND key =
 // returns the plaintext's size and SHA-256. Commit makes it live. A write
 // that fails leaves the pending row and whatever the driver kept for
 // blob.expire, since serve cannot delete.
-func (o *Objects) Put(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (o *Objects) Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	if err := check(store, key); err != nil {
 		return objectstore.Object{}, err
 	}
@@ -318,13 +278,7 @@ func (o *Objects) Put(
 // putSealed seals r into a pipe the driver reads, declaring the sealed
 // size up front. The header SealObject writes waits in a buffer, so the
 // content key is sealed and recorded before the upload starts.
-func (o *Objects) putSealed(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (o *Objects) putSealed(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	aad, err := contentKey.AAD([]string{string(store), key})
 	if err != nil {
 		return objectstore.Object{}, err //nolint:wrapcheck // cannot fail: two parts
@@ -408,11 +362,7 @@ FOR UPDATE`
 // azureblob, whose URLs bind no SHA-256, the object read back matches the
 // declared SHA-256, and returns that size and SHA-256. A mismatch leaves
 // the row pending for blob.expire.
-func (o *Objects) CommitUpload(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-) (objectstore.Object, error) {
+func (o *Objects) CommitUpload(ctx context.Context, store objectstore.Name, key string) (objectstore.Object, error) {
 	var (
 		obj objectstore.Object
 		sum []byte
@@ -449,12 +399,7 @@ func (o *Objects) CommitUpload(
 	return obj, o.Commit(ctx, store, key)
 }
 
-func (o *Objects) compare(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-	sum []byte,
-) error {
+func (o *Objects) compare(ctx context.Context, store objectstore.Name, key string, sum []byte) error {
 	r, err := o.w.Get(ctx, store, key)
 	if err != nil {
 		return err //nolint:wrapcheck // the driver's errors name the key
@@ -474,11 +419,7 @@ const live = `SELECT content_key_sealed FROM blob_objects WHERE store = $1 AND k
 
 // Open streams a live object, opening a sealed store's object under its
 // content key. A key with no live row is objectstore.ErrNotFound.
-func (o *Objects) Open(
-	ctx context.Context,
-	store objectstore.Name,
-	key string,
-) (io.ReadCloser, error) {
+func (o *Objects) Open(ctx context.Context, store objectstore.Name, key string) (io.ReadCloser, error) {
 	var sealed []byte
 	if err := tx.Q(ctx, o.db).QueryRow(ctx, live, store, key).Scan(&sealed); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

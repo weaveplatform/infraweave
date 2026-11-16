@@ -30,12 +30,7 @@ func (s *store) CreateAPIKey(_ context.Context, k apikey.Key) error {
 	return nil
 }
 
-func (s *store) AccountAPIKeys(
-	_ context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.Key, error) {
+func (s *store) AccountAPIKeys(_ context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]apikey.Key, error) {
 	var out []apikey.Key
 	for _, k := range s.keys {
 		if k.AccountID == acct && k.DeletedAt.IsZero() &&
@@ -50,11 +45,7 @@ func (s *store) AccountAPIKeys(
 	return out[:min(len(out), limit)], s.err()
 }
 
-func (s *store) AccountAPIKey(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (apikey.Key, error) {
+func (s *store) AccountAPIKey(_ context.Context, acct kernel.AccountID, id kernel.ULID) (apikey.Key, error) {
 	if err := s.err(); err != nil {
 		return apikey.Key{}, err
 	}
@@ -65,13 +56,7 @@ func (s *store) AccountAPIKey(
 	return k, nil
 }
 
-func (s *store) UpdateAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	c apikey.Change,
-) (apikey.Key, error) {
+func (s *store) UpdateAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, c apikey.Change) (apikey.Key, error) {
 	k, _, err := s.change(ctx, acct, id, expect, func(k *apikey.Key) {
 		if c.Name != nil {
 			k.Name = *c.Name
@@ -91,14 +76,7 @@ func (s *store) UpdateAPIKey(
 
 // change applies f to the key, raising its version, unless expect does
 // not accept it.
-func (s *store) change(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	f func(*apikey.Key),
-	revoke bool,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *store) change(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, f func(*apikey.Key), revoke bool) (apikey.Key, []kernel.ULID, error) {
 	k, err := s.AccountAPIKey(ctx, acct, id)
 	if err != nil {
 		return apikey.Key{}, nil, err
@@ -120,12 +98,7 @@ func (s *store) change(
 	return k, ids, nil
 }
 
-func (s *store) ResetAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	hash []byte,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *store) ResetAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, hash []byte) (apikey.Key, []kernel.ULID, error) {
 	return s.change(
 		ctx,
 		acct,
@@ -136,31 +109,17 @@ func (s *store) ResetAPIKey(
 	)
 }
 
-func (s *store) DisableAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	reason string,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *store) DisableAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (apikey.Key, []kernel.ULID, error) {
 	return s.change(ctx, acct, id, kernel.Expect{}, func(k *apikey.Key) {
 		k.DisabledAt, k.DisabledReason = t0, reason
 	}, true)
 }
 
-func (s *store) DeleteAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *store) DeleteAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect) (apikey.Key, []kernel.ULID, error) {
 	return s.change(ctx, acct, id, expect, func(k *apikey.Key) { k.DeletedAt = t0 }, true)
 }
 
-func (s *store) SetNonAdminManagers(
-	context.Context,
-	kernel.AccountID,
-	bool,
-) error {
+func (s *store) SetNonAdminManagers(context.Context, kernel.AccountID, bool) error {
 	return s.err()
 }
 

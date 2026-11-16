@@ -57,21 +57,11 @@ func (s *store) PoolByID(_ context.Context, id kernel.ULID) (pool.Pool, error) {
 
 func (s *store) CA(context.Context) ([]byte, error) { return s.ca, nil }
 
-func (*store) Nonce(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	string,
-	time.Time,
-) (bool, error) {
+func (*store) Nonce(context.Context, kernel.AccountID, kernel.ULID, string, time.Time) (bool, error) {
 	return true, nil
 }
 
-func (s *store) Count(
-	context.Context,
-	kernel.OrganizationID,
-	kernel.AccountID,
-) (featuresapi.Usage, error) {
+func (s *store) Count(context.Context, kernel.OrganizationID, kernel.AccountID) (featuresapi.Usage, error) {
 	return featuresapi.Usage{Organization: int64(len(s.workers))}, nil
 }
 
@@ -95,12 +85,7 @@ func (s *store) Resume(_ context.Context, w worker.Worker) error {
 	return nil
 }
 
-func (s *store) Seen(
-	ctx context.Context,
-	id kernel.ULID,
-	busy bool,
-	_ time.Time,
-) (worker.Worker, int64, error) {
+func (s *store) Seen(ctx context.Context, id kernel.ULID, busy bool, _ time.Time) (worker.Worker, int64, error) {
 	w, serial, err := s.Worker(ctx, id, false)
 	w.Busy = busy
 	return w, serial, err
@@ -170,13 +155,7 @@ func (t *tokens) VerifyWorker(_ context.Context, raw string) (accessapi.Bearer, 
 // limits allows max workers in all.
 type limits struct{ max int64 }
 
-func (l limits) CheckLimit(
-	ctx context.Context,
-	_ kernel.OrganizationID,
-	_ kernel.AccountID,
-	limit string,
-	count func(context.Context) (featuresapi.Usage, error),
-) error {
+func (l limits) CheckLimit(ctx context.Context, _ kernel.OrganizationID, _ kernel.AccountID, limit string, count func(context.Context) (featuresapi.Usage, error)) error {
 	u, err := count(ctx)
 	if err != nil {
 		return err
@@ -410,10 +389,7 @@ func (s *scheduler) Handover(context.Context, kernel.ULID) (workersapi.Handover,
 	return s.handover, s.err
 }
 
-func (s *scheduler) Claim(
-	context.Context,
-	workersapi.Claim,
-) (workersapi.Assignment, bool, error) {
+func (s *scheduler) Claim(context.Context, workersapi.Claim) (workersapi.Assignment, bool, error) {
 	if s.run == nil {
 		return workersapi.Assignment{}, false, nil
 	}
@@ -459,11 +435,7 @@ type ended struct {
 	exits []workersapi.Exit
 }
 
-func (e *ended) Ended(
-	_ context.Context,
-	_, run kernel.ULID,
-	exit workersapi.Exit,
-) (bool, error) {
+func (e *ended) Ended(_ context.Context, _, run kernel.ULID, exit workersapi.Exit) (bool, error) {
 	e.runs, e.exits = append(e.runs, run), append(e.exits, exit)
 	return true, nil
 }

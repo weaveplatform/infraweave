@@ -40,12 +40,7 @@ func (s *signedURLSteps) register(sc *godog.ScenarioContext) {
 // The URL serve signs names objectstore.fs.url, which no client of the
 // scenario resolves, so the step signs for the listener instead; the
 // token is the same, as the URL's base is no part of it.
-func (s *signedURLSteps) signURL(
-	ctx context.Context,
-	name, method, key string,
-	ttl time.Duration,
-	size int64,
-) (string, error) {
+func (s *signedURLSteps) signURL(ctx context.Context, name, method, key string, ttl time.Duration, size int64) (string, error) {
 	keys, pool, err := s.w.Keyring(ctx)
 	if err != nil {
 		return "", err
@@ -75,10 +70,7 @@ func (s *signedURLSteps) server(name string) *harness.Server {
 
 // sendBare sends a request with no Authorization header, as any client
 // holding a signed URL does, and records the answer.
-func (s *signedURLSteps) sendBare(
-	ctx context.Context,
-	method, url, body string,
-) (harness.Response, error) {
+func (s *signedURLSteps) sendBare(ctx context.Context, method, url, body string) (harness.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, strings.NewReader(body))
 	if err != nil {
 		return harness.Response{}, fmt.Errorf("request: %w", err)
@@ -148,10 +140,7 @@ func (s *signedURLSteps) getSigned(ctx context.Context, key, name, want string) 
 
 // badSigned sends a URL whose token does not verify: one character of the
 // token changed, or an expiry already past.
-func (s *signedURLSteps) badSigned(
-	ctx context.Context,
-	how, method, key, name, code, slug string,
-) error {
+func (s *signedURLSteps) badSigned(ctx context.Context, how, method, key, name, code, slug string) error {
 	ttl := time.Minute
 	if how == "expired" {
 		ttl = -time.Minute

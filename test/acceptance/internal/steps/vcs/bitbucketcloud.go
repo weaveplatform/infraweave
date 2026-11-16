@@ -48,10 +48,7 @@ func (b *bitbucketCloudSteps) apiHost() string { return b.srv.APIHost }
 // VCS starts the fake for a @bitbucket-cloud scenario on first use, and returns the
 // vcs settings and certificate every server of the scenario needs while
 // it runs.
-func (b *bitbucketCloudSteps) VCS(
-	_ context.Context,
-	w *harness.World,
-) (map[string]any, []byte, error) {
+func (b *bitbucketCloudSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
 	var ca []byte
 	if slices.Contains(w.Tags, "@bitbucket-cloud") && b.srv == nil {
 		ca = b.start()

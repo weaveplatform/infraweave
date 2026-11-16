@@ -102,10 +102,7 @@ var (
 // Authority reads the pool CA, creating it with mint when there is none,
 // and takes its next serial, which locks the CA's row until ctx's
 // transaction ends. Replicas that create it together keep the first.
-func (s *Store) Authority(
-	ctx context.Context,
-	mint func() (pool.Authority, error),
-) (pool.Authority, error) {
+func (s *Store) Authority(ctx context.Context, mint func() (pool.Authority, error)) (pool.Authority, error) {
 	var out pool.Authority
 	var sealed []byte
 	take := func() error {
@@ -234,12 +231,7 @@ func (s *Store) Write(ctx context.Context, p pool.Pool) error {
 }
 
 // Get reads acct's pool id.
-func (s *Store) Get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	lock bool,
-) (pool.Pool, error) {
+func (s *Store) Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (pool.Pool, error) {
 	query := `SELECT ` + columns + ` FROM worker_pools p WHERE p.account_id = $1 AND p.id = $2`
 	if lock {
 		query += ` FOR UPDATE`
@@ -255,11 +247,7 @@ func (s *Store) Get(
 }
 
 // Share reads the space of acct's pool id, locked FOR SHARE.
-func (s *Store) Share(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (kernel.ULID, error) {
+func (s *Store) Share(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (kernel.ULID, error) {
 	var space kernel.ULID
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT space_id FROM worker_pools
 		WHERE account_id = $1 AND id = $2 FOR SHARE`, acct, id).Scan(&space)
@@ -286,11 +274,7 @@ func (s *Store) RunnerImages(ctx context.Context, acct kernel.AccountID) (images
 }
 
 // SetRunnerImages writes acct's default runner images.
-func (s *Store) SetRunnerImages(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in images.Images,
-) error {
+func (s *Store) SetRunnerImages(ctx context.Context, acct kernel.AccountID, in images.Images) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO worker_runner_images
 		(account_id, private_image, public_image) VALUES ($1, $2, $3)
 		ON CONFLICT (account_id) DO UPDATE SET private_image = $2, public_image = $3,
@@ -317,11 +301,7 @@ func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 }
 
 // InSpace reports whether a pool of acct lives in space.
-func (s *Store) InSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (s *Store) InSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	var in bool
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM worker_pools
 		WHERE account_id = $1 AND space_id = $2)`, acct, space).Scan(&in)
@@ -397,12 +377,7 @@ func searchScope(acct kernel.AccountID, scope pool.Scope) sqlsearch.Scope {
 }
 
 // Search reads a page of acct's pools in the scope that in keeps.
-func (s *Store) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	scope pool.Scope,
-) (search.Result[pool.Pool], error) {
+func (s *Store) Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope pool.Scope) (search.Result[pool.Pool], error) {
 	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), poolSearch, searchScope(acct, scope), in, scan)
 	if err != nil {
 		return out, fmt.Errorf("workers: %w", err)
@@ -411,12 +386,7 @@ func (s *Store) Search(
 }
 
 // Suggest lists the values acct's pools in the scope that in keeps hold.
-func (s *Store) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	scope pool.Scope,
-) (search.Suggestions, error) {
+func (s *Store) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope pool.Scope) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), poolSearch, searchScope(acct, scope), in)
 	if err != nil {
 		return out, fmt.Errorf("workers: %w", err)

@@ -48,13 +48,7 @@ var apiKeys = featuresapi.Gate{
 
 // serve runs body through Middleware with g as every request's gate, and
 // returns the response and the body the handler read.
-func serve(
-	t *testing.T,
-	a Allower,
-	g featuresapi.Gate,
-	gated bool,
-	body io.Reader,
-) (*httptest.ResponseRecorder, string) {
+func serve(t *testing.T, a Allower, g featuresapi.Gate, gated bool, body io.Reader) (*httptest.ResponseRecorder, string) {
 	t.Helper()
 	var read string
 	h := Middleware(a, func(*nethttp.Request) (featuresapi.Gate, bool) { return g, gated })(

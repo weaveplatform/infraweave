@@ -39,10 +39,7 @@ func NewOperatorServer(svc *core.Service, orgs Organizations) OperatorServer {
 }
 
 // Tiers lists the installation's tiers by name.
-func (s OperatorServer) Tiers(
-	ctx context.Context,
-	req opapi.TiersRequestObject,
-) (opapi.TiersResponseObject, error) {
+func (s OperatorServer) Tiers(ctx context.Context, req opapi.TiersRequestObject) (opapi.TiersResponseObject, error) {
 	after := ""
 	if req.Params.Cursor != nil {
 		c, err := page.Decode[string](tiersList, *req.Params.Cursor)
@@ -73,10 +70,7 @@ func (s OperatorServer) Tiers(
 }
 
 // TierCreate creates a tier.
-func (s OperatorServer) TierCreate(
-	ctx context.Context,
-	req opapi.TierCreateRequestObject,
-) (opapi.TierCreateResponseObject, error) {
+func (s OperatorServer) TierCreate(ctx context.Context, req opapi.TierCreateRequestObject) (opapi.TierCreateResponseObject, error) {
 	h, err := s.svc.CreateTier(ctx, features.Tier{
 		Name: req.Body.Name, Features: req.Body.Features, Limits: req.Body.Limits,
 	})
@@ -87,10 +81,7 @@ func (s OperatorServer) TierCreate(
 }
 
 // Tier reads a tier.
-func (s OperatorServer) Tier(
-	ctx context.Context,
-	req opapi.TierRequestObject,
-) (opapi.TierResponseObject, error) {
+func (s OperatorServer) Tier(ctx context.Context, req opapi.TierRequestObject) (opapi.TierResponseObject, error) {
 	h, err := s.svc.Tier(ctx, req.Tier)
 	if err != nil {
 		return nil, operatorError(err)
@@ -99,10 +90,7 @@ func (s OperatorServer) Tier(
 }
 
 // TierUpdate replaces a tier's content.
-func (s OperatorServer) TierUpdate(
-	ctx context.Context,
-	req opapi.TierUpdateRequestObject,
-) (opapi.TierUpdateResponseObject, error) {
+func (s OperatorServer) TierUpdate(ctx context.Context, req opapi.TierUpdateRequestObject) (opapi.TierUpdateResponseObject, error) {
 	h, err := s.svc.ReplaceTier(ctx, features.Tier{
 		Name: req.Tier, Features: req.Body.Features, Limits: req.Body.Limits,
 	})
@@ -113,10 +101,7 @@ func (s OperatorServer) TierUpdate(
 }
 
 // TierDelete deletes a tier and answers it as it was.
-func (s OperatorServer) TierDelete(
-	ctx context.Context,
-	req opapi.TierDeleteRequestObject,
-) (opapi.TierDeleteResponseObject, error) {
+func (s OperatorServer) TierDelete(ctx context.Context, req opapi.TierDeleteRequestObject) (opapi.TierDeleteResponseObject, error) {
 	h, err := s.svc.DeleteTier(ctx, req.Tier)
 	if err != nil {
 		return nil, operatorError(err)
@@ -125,10 +110,7 @@ func (s OperatorServer) TierDelete(
 }
 
 // Billing reads the billing switch and the default tier.
-func (s OperatorServer) Billing(
-	ctx context.Context,
-	_ opapi.BillingRequestObject,
-) (opapi.BillingResponseObject, error) {
+func (s OperatorServer) Billing(ctx context.Context, _ opapi.BillingRequestObject) (opapi.BillingResponseObject, error) {
 	b, err := s.svc.BillingState(ctx)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store marks an unreachable database
@@ -138,10 +120,7 @@ func (s OperatorServer) Billing(
 
 // BillingSet sets the billing switch and, when the body names one, the
 // default tier.
-func (s OperatorServer) BillingSet(
-	ctx context.Context,
-	req opapi.BillingSetRequestObject,
-) (opapi.BillingSetResponseObject, error) {
+func (s OperatorServer) BillingSet(ctx context.Context, req opapi.BillingSetRequestObject) (opapi.BillingSetResponseObject, error) {
 	b, err := s.svc.SetBilling(ctx, req.Body.Enabled, req.Body.DefaultTier)
 	if err != nil {
 		return nil, operatorError(err)
@@ -151,10 +130,7 @@ func (s OperatorServer) BillingSet(
 
 // OrganizationEntitlement reads an organization's tier, grants and
 // entitlement.
-func (s OperatorServer) OrganizationEntitlement(
-	ctx context.Context,
-	req opapi.OrganizationEntitlementRequestObject,
-) (opapi.OrganizationEntitlementResponseObject, error) {
+func (s OperatorServer) OrganizationEntitlement(ctx context.Context, req opapi.OrganizationEntitlementRequestObject) (opapi.OrganizationEntitlementResponseObject, error) {
 	e, err := s.entitlement(
 		ctx,
 		req.Organization,
@@ -169,10 +145,7 @@ func (s OperatorServer) OrganizationEntitlement(
 }
 
 // OrganizationTierSet moves an organization to another tier.
-func (s OperatorServer) OrganizationTierSet(
-	ctx context.Context,
-	req opapi.OrganizationTierSetRequestObject,
-) (opapi.OrganizationTierSetResponseObject, error) {
+func (s OperatorServer) OrganizationTierSet(ctx context.Context, req opapi.OrganizationTierSetRequestObject) (opapi.OrganizationTierSetResponseObject, error) {
 	e, err := s.entitlement(
 		ctx,
 		req.Organization,
@@ -187,10 +160,7 @@ func (s OperatorServer) OrganizationTierSet(
 }
 
 // OrganizationFeatureGrant grants an organization a feature.
-func (s OperatorServer) OrganizationFeatureGrant(
-	ctx context.Context,
-	req opapi.OrganizationFeatureGrantRequestObject,
-) (opapi.OrganizationFeatureGrantResponseObject, error) {
+func (s OperatorServer) OrganizationFeatureGrant(ctx context.Context, req opapi.OrganizationFeatureGrantRequestObject) (opapi.OrganizationFeatureGrantResponseObject, error) {
 	e, err := s.entitlement(
 		ctx,
 		req.Organization,
@@ -205,10 +175,7 @@ func (s OperatorServer) OrganizationFeatureGrant(
 }
 
 // OrganizationFeatureRevoke removes an organization's grant of a feature.
-func (s OperatorServer) OrganizationFeatureRevoke(
-	ctx context.Context,
-	req opapi.OrganizationFeatureRevokeRequestObject,
-) (opapi.OrganizationFeatureRevokeResponseObject, error) {
+func (s OperatorServer) OrganizationFeatureRevoke(ctx context.Context, req opapi.OrganizationFeatureRevokeRequestObject) (opapi.OrganizationFeatureRevokeResponseObject, error) {
 	e, err := s.entitlement(
 		ctx,
 		req.Organization,
@@ -223,10 +190,7 @@ func (s OperatorServer) OrganizationFeatureRevoke(
 }
 
 // OrganizationLimitGrant sets an organization's value of a limit.
-func (s OperatorServer) OrganizationLimitGrant(
-	ctx context.Context,
-	req opapi.OrganizationLimitGrantRequestObject,
-) (opapi.OrganizationLimitGrantResponseObject, error) {
+func (s OperatorServer) OrganizationLimitGrant(ctx context.Context, req opapi.OrganizationLimitGrantRequestObject) (opapi.OrganizationLimitGrantResponseObject, error) {
 	e, err := s.entitlement(
 		ctx,
 		req.Organization,
@@ -241,10 +205,7 @@ func (s OperatorServer) OrganizationLimitGrant(
 }
 
 // OrganizationLimitRevoke removes an organization's grant of a limit.
-func (s OperatorServer) OrganizationLimitRevoke(
-	ctx context.Context,
-	req opapi.OrganizationLimitRevokeRequestObject,
-) (opapi.OrganizationLimitRevokeResponseObject, error) {
+func (s OperatorServer) OrganizationLimitRevoke(ctx context.Context, req opapi.OrganizationLimitRevokeRequestObject) (opapi.OrganizationLimitRevokeResponseObject, error) {
 	e, err := s.entitlement(
 		ctx,
 		req.Organization,
@@ -260,11 +221,7 @@ func (s OperatorServer) OrganizationLimitRevoke(
 
 // entitlement resolves slug and answers fn's entitlement of it, a slug no
 // organization has answering 404.
-func (s OperatorServer) entitlement(
-	ctx context.Context,
-	slug string,
-	fn func(kernel.OrganizationID) (core.Operated, error),
-) (opapi.Entitlement, error) {
+func (s OperatorServer) entitlement(ctx context.Context, slug string, fn func(kernel.OrganizationID) (core.Operated, error)) (opapi.Entitlement, error) {
 	org, ok, err := s.orgs(ctx, slug)
 	switch {
 	case err != nil:

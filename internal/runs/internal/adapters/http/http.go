@@ -34,22 +34,13 @@ type Server struct {
 
 // New returns the partial over the trigger, read, control, logs and
 // changes services.
-func New(
-	t *trigger.Service,
-	r *read.Service,
-	c *control.Service,
-	l *logs.Service,
-	ch *changes.Service,
-) Server {
+func New(t *trigger.Service, r *read.Service, c *control.Service, l *logs.Service, ch *changes.Service) Server {
 	return Server{trigger: t, read: r, control: c, logs: l, changes: ch}
 }
 
 // RunTrigger creates a run on the stack, or answers the one of the same
 // stack, type and commit that has not ended.
-func (s Server) RunTrigger(
-	ctx context.Context,
-	req api.RunTriggerRequestObject,
-) (api.RunTriggerResponseObject, error) {
+func (s Server) RunTrigger(ctx context.Context, req api.RunTriggerRequestObject) (api.RunTriggerResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -69,10 +60,7 @@ func (s Server) RunTrigger(
 // all or none, and answers the runs in the body's order. The route has
 // decided RUN_TRIGGER in some space of the account; the trigger decides
 // it in each stack's.
-func (s Server) RunTriggerBatch(
-	ctx context.Context,
-	req api.RunTriggerBatchRequestObject,
-) (api.RunTriggerBatchResponseObject, error) {
+func (s Server) RunTriggerBatch(ctx context.Context, req api.RunTriggerBatchRequestObject) (api.RunTriggerBatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -105,10 +93,7 @@ func (s Server) RunTriggerBatch(
 // UploadLocalWorkspace starts the upload of a local workspace for a run
 // proposed on the stack to preview. The route has decided
 // STACK_UPLOAD_LOCAL_WORKSPACE on the stack's space.
-func (s Server) UploadLocalWorkspace(
-	ctx context.Context,
-	req api.UploadLocalWorkspaceRequestObject,
-) (api.UploadLocalWorkspaceResponseObject, error) {
+func (s Server) UploadLocalWorkspace(ctx context.Context, req api.UploadLocalWorkspaceRequestObject) (api.UploadLocalWorkspaceResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -138,10 +123,7 @@ func (s Server) UploadLocalWorkspace(
 // RunProposeLocalWorkspace creates a proposed run on an uploaded local
 // workspace of the stack, or answers the one on it that has not ended.
 // The route has decided RUN_PROPOSE_LOCAL_WORKSPACE on the stack's space.
-func (s Server) RunProposeLocalWorkspace(
-	ctx context.Context,
-	req api.RunProposeLocalWorkspaceRequestObject,
-) (api.RunProposeLocalWorkspaceResponseObject, error) {
+func (s Server) RunProposeLocalWorkspace(ctx context.Context, req api.RunProposeLocalWorkspaceRequestObject) (api.RunProposeLocalWorkspaceResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -164,10 +146,7 @@ func (s Server) RunProposeLocalWorkspace(
 // environment overrides the body names, or, with none, answers the
 // proposed run of the same commit that has not ended. The route has
 // decided RUN_PROPOSE_WITH_OVERRIDES on the stack's space.
-func (s Server) ProposeWithOverrides(
-	ctx context.Context,
-	req api.ProposeWithOverridesRequestObject,
-) (api.ProposeWithOverridesResponseObject, error) {
+func (s Server) ProposeWithOverrides(ctx context.Context, req api.ProposeWithOverridesRequestObject) (api.ProposeWithOverridesResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -189,10 +168,7 @@ func (s Server) ProposeWithOverrides(
 // TaskCreate creates a task on the stack: a TASK run of the command the
 // body names, on the stack's tracked commit. The route has decided
 // TASK_CREATE on the stack's space, with the tasks feature.
-func (s Server) TaskCreate(
-	ctx context.Context,
-	req api.TaskCreateRequestObject,
-) (api.TaskCreateResponseObject, error) {
+func (s Server) TaskCreate(ctx context.Context, req api.TaskCreateRequestObject) (api.TaskCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

@@ -150,12 +150,7 @@ func (s *Store) Write(ctx context.Context, c core.Context) error {
 }
 
 // BySlug reads acct's context slug.
-func (s *Store) BySlug(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	lock core.Lock,
-) (core.Context, error) {
+func (s *Store) BySlug(ctx context.Context, acct kernel.AccountID, slug string, lock core.Lock) (core.Context, error) {
 	q := `SELECT ` + columns + ` FROM contexts c WHERE c.account_id = $1 AND c.slug = $2`
 	if lock == core.Update {
 		q += ` FOR UPDATE`
@@ -175,11 +170,7 @@ func (s *Store) BySlug(
 }
 
 // ByIDs reads those of acct's contexts ids that it has, keyed by ID.
-func (s *Store) ByIDs(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID]core.Context, error) {
+func (s *Store) ByIDs(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]core.Context, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+columns+` FROM contexts c
 		WHERE c.account_id = $1 AND c.id = ANY($2)`, acct, ids)
 	if err != nil {
@@ -200,12 +191,7 @@ func (s *Store) ByIDs(
 
 // Labelled reads acct's contexts in spaces that carry any of labels, by
 // name, through the labels' GIN index.
-func (s *Store) Labelled(
-	ctx context.Context,
-	acct kernel.AccountID,
-	spaces []kernel.ULID,
-	labels []string,
-) ([]core.Context, error) {
+func (s *Store) Labelled(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]core.Context, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+columns+` FROM contexts c
 		WHERE c.account_id = $1 AND c.space_id = ANY($2) AND c.labels && $3::text[]
 		ORDER BY c.name COLLATE "C", c.slug`, acct, spaces, labels)
@@ -232,11 +218,7 @@ func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 }
 
 // InSpace reports whether a context of acct lives in space.
-func (s *Store) InSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (s *Store) InSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	var used bool
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM contexts
 		WHERE account_id = $1 AND space_id = $2)`, acct, space).Scan(&used); err != nil {
@@ -312,11 +294,7 @@ func owners(all []core.Owner) (contexts, stacks []kernel.ULID) {
 
 // Elements reads the elements of each of owners, by name, keyed by the
 // owner's ID.
-func (s *Store) Elements(
-	ctx context.Context,
-	acct kernel.AccountID,
-	all []core.Owner,
-) (map[kernel.ULID][]core.Element, error) {
+func (s *Store) Elements(ctx context.Context, acct kernel.AccountID, all []core.Owner) (map[kernel.ULID][]core.Element, error) {
 	contexts, stacks := owners(all)
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+elementColumns+` FROM config_elements e
 		WHERE e.account_id = $1 AND (e.context_id = ANY($2) OR e.stack_id = ANY($3))
@@ -346,11 +324,7 @@ func (s *Store) Elements(
 // Opened reads the elements of each of owners with every value opened,
 // by name, keyed by the owner's ID: a run's spec is the one reader of a
 // write-only value.
-func (s *Store) Opened(
-	ctx context.Context,
-	acct kernel.AccountID,
-	all []core.Owner,
-) (map[kernel.ULID][]core.Opened, error) {
+func (s *Store) Opened(ctx context.Context, acct kernel.AccountID, all []core.Owner) (map[kernel.ULID][]core.Opened, error) {
 	contexts, stacks := owners(all)
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+openedColumns+` FROM config_elements e
 		WHERE e.account_id = $1 AND (e.context_id = ANY($2) OR e.stack_id = ANY($3))
@@ -386,12 +360,7 @@ func ownerWhere(o core.Owner) (string, kernel.ULID) {
 }
 
 // Element reads owner's element name.
-func (s *Store) Element(
-	ctx context.Context,
-	acct kernel.AccountID,
-	owner core.Owner,
-	name string,
-) (core.Element, error) {
+func (s *Store) Element(ctx context.Context, acct kernel.AccountID, owner core.Owner, name string) (core.Element, error) {
 	where, id := ownerWhere(owner)
 	e, err := s.scanElement(ctx, tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+elementColumns+`
 		FROM config_elements e WHERE e.account_id = $1 AND `+where+` AND e.element = $3`,
@@ -473,12 +442,7 @@ func (s *Store) LockElements(ctx context.Context, acct kernel.AccountID, owner c
 
 // DeleteElements deletes owner's elements names, every one when names is
 // nil.
-func (s *Store) DeleteElements(
-	ctx context.Context,
-	acct kernel.AccountID,
-	owner core.Owner,
-	names []string,
-) error {
+func (s *Store) DeleteElements(ctx context.Context, acct kernel.AccountID, owner core.Owner, names []string) error {
 	where, id := ownerWhere(owner)
 	q := `DELETE FROM config_elements e WHERE e.account_id = $1 AND ` + where +
 		` AND ($3::text[] IS NULL OR e.element = ANY($3))`
@@ -547,11 +511,7 @@ func (s *Store) LockAutoattach(ctx context.Context, acct kernel.AccountID) error
 }
 
 // Attachment reads acct's attachment id.
-func (s *Store) Attachment(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (core.Attachment, error) {
+func (s *Store) Attachment(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (core.Attachment, error) {
 	a, err := scanAttachment(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+attachmentColumns+`
 		FROM context_attachments WHERE account_id = $1 AND id = $2`, acct, id))
 	switch {
@@ -575,12 +535,7 @@ func (s *Store) Detach(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 
 // Attachments reads the attachments of contexts ids, or of stacks ids
 // when byStack is set, keyed by that ID.
-func (s *Store) Attachments(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-	byStack bool,
-) (map[kernel.ULID][]core.Attachment, error) {
+func (s *Store) Attachments(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID, byStack bool) (map[kernel.ULID][]core.Attachment, error) {
 	by := "context_id"
 	if byStack {
 		by = "stack_id"
@@ -704,12 +659,7 @@ func searchScope(acct kernel.AccountID, scope core.Scope) sqlsearch.Scope {
 }
 
 // Search reads a page of acct's contexts in the scope that in keeps.
-func (s *Store) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	scope core.Scope,
-) (search.Result[core.Context], error) {
+func (s *Store) Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope core.Scope) (search.Result[core.Context], error) {
 	out, err := sqlsearch.Find(
 		ctx,
 		tx.Q(ctx, s.db),
@@ -726,12 +676,7 @@ func (s *Store) Search(
 
 // Suggest lists the values acct's contexts in the scope that in keeps
 // hold.
-func (s *Store) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	scope core.Scope,
-) (search.Suggestions, error) {
+func (s *Store) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope core.Scope) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), contextSearch, searchScope(acct, scope), in)
 	if err != nil {
 		return out, fmt.Errorf("configuration: %w", err)

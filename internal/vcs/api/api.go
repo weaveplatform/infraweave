@@ -36,29 +36,15 @@ type Sources interface {
 	// Resolve resolves ref, a branch, a tag or a full commit SHA, on the
 	// repository of acct's stack id; ErrRefNotFound when the repository
 	// lacks it.
-	Resolve(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack kernel.ULID,
-		ref string,
-	) (Commit, error)
+	Resolve(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, ref string) (Commit, error)
 	// SourceURL is the HTTPS Git URL a worker fetches commit of acct's
 	// stack id from, with Credential's answer as Basic auth; the server
 	// never proxies a source.
-	SourceURL(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack kernel.ULID,
-		commit string,
-	) (string, error)
+	SourceURL(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, commit string) (string, error)
 	// Credential is the credential acct's run fetches the source of
 	// stack with, minted for the run alone where the provider narrows
 	// one; nil for a repository reached with none, as raw Git's is.
-	Credential(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack, run kernel.ULID,
-	) (*Credential, error)
+	Credential(ctx context.Context, acct kernel.AccountID, stack, run kernel.ULID) (*Credential, error)
 	// Release revokes the credentials minted for acct's run, in a job the
 	// transaction ctx carries enqueues once per run, so the caller calls
 	// it in the transaction that ends the run.

@@ -62,9 +62,7 @@ type stacks struct {
 	err      error
 }
 
-func (s *stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings,
-	error,
-) {
+func (s *stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	return s.settings, s.err
 }
 
@@ -85,9 +83,7 @@ func (s *store) Handed(_ context.Context, id kernel.ULID) (lifecycle.Run, error)
 	return s.run, nil
 }
 
-func (s *store) StateAt(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
-	v int64,
-) (kernel.RunState, error) {
+func (s *store) StateAt(_ context.Context, _ kernel.AccountID, _ kernel.ULID, v int64) (kernel.RunState, error) {
 	return s.states[v], s.err("StateAt")
 }
 
@@ -116,9 +112,7 @@ func (s *store) CountChunks(_ context.Context, _ lifecycle.Run, version, n int64
 	return nil
 }
 
-func (s *store) Recorded(_ context.Context, _ lifecycle.Run, _ int64, kind workersapi.UploadKind,
-	name string,
-) (bool, error) {
+func (s *store) Recorded(_ context.Context, _ lifecycle.Run, _ int64, kind workersapi.UploadKind, name string) (bool, error) {
 	_, ok := s.recorded[string(kind)+"/"+name]
 	return ok, s.err("Recorded")
 }
@@ -140,9 +134,7 @@ func (s *store) Planned(context.Context, lifecycle.Run, string) (string, bool, e
 	return s.plan, s.plan != "", s.err("Planned")
 }
 
-func (s *store) ReplaceOutputs(_ context.Context, _ lifecycle.Run,
-	outs map[string]plan.Output,
-) error {
+func (s *store) ReplaceOutputs(_ context.Context, _ lifecycle.Run, outs map[string]plan.Output) error {
 	if err := s.err("ReplaceOutputs"); err != nil {
 		return err
 	}
@@ -200,9 +192,7 @@ func (o *objects) Begin(_ context.Context, s objectstore.Name, k string, _ int64
 	return nil
 }
 
-func (o *objects) BeginSealed(_ context.Context, s objectstore.Name, k string, _ int64,
-	_, content []byte,
-) error {
+func (o *objects) BeginSealed(_ context.Context, s objectstore.Name, k string, _ int64, _, content []byte) error {
 	if err := o.err("BeginSealed"); err != nil {
 		return err
 	}
@@ -210,24 +200,18 @@ func (o *objects) BeginSealed(_ context.Context, s objectstore.Name, k string, _
 	return nil
 }
 
-func (o *objects) SignPut(_ context.Context, s objectstore.Name, k string, _ int64,
-	_ []byte,
-) (objectstore.Signed, error) {
+func (o *objects) SignPut(_ context.Context, s objectstore.Name, k string, _ int64, _ []byte) (objectstore.Signed, error) {
 	h := http.Header{}
 	h.Set("X-Amz-Checksum-Sha256", "sum")
 	return objectstore.Signed{URL: "https://store.test/" + string(s) + "/" + k, Header: h},
 		o.err("SignPut")
 }
 
-func (o *objects) SignGet(_ context.Context, s objectstore.Name,
-	k string,
-) (objectstore.Signed, error) {
+func (o *objects) SignGet(_ context.Context, s objectstore.Name, k string) (objectstore.Signed, error) {
 	return objectstore.Signed{URL: "https://store.test/" + string(s) + "/" + k}, o.err("SignGet")
 }
 
-func (o *objects) CommitUpload(_ context.Context, s objectstore.Name,
-	k string,
-) (objectstore.Object, error) {
+func (o *objects) CommitUpload(_ context.Context, s objectstore.Name, k string) (objectstore.Object, error) {
 	if err := o.err("CommitUpload"); err != nil {
 		return objectstore.Object{}, err
 	}
@@ -317,9 +301,7 @@ func in(t *testing.T, fn func(ctx context.Context) error) error {
 	return tx.Do(t.Context(), db{}, tx.Options{}, fn)
 }
 
-func (w *world) report(t *testing.T, v int64, state kernel.RunState,
-	ev workersapi.ReportEvent,
-) (workersapi.Step, error) {
+func (w *world) report(t *testing.T, v int64, state kernel.RunState, ev workersapi.ReportEvent) (workersapi.Step, error) {
 	t.Helper()
 	return w.send(t, workersapi.Report{
 		StateVersion: v, State: state, Event: ev, Details: "exit code 0",
@@ -338,9 +320,7 @@ func (w *world) send(t *testing.T, r workersapi.Report) (workersapi.Step, error)
 	return out, err
 }
 
-func want(t *testing.T, got workersapi.Step, err error, a workersapi.Action,
-	s kernel.RunState, v int64,
-) {
+func want(t *testing.T, got workersapi.Step, err error, a workersapi.Action, s kernel.RunState, v int64) {
 	t.Helper()
 	if err != nil || got != (workersapi.Step{Action: a, State: s, StateVersion: v}) {
 		t.Errorf("step %+v, %v, want %s %s at %d", got, err, a, s, v)
@@ -414,9 +394,7 @@ func TestUnitReport(t *testing.T) {
 func TestUnitReportCountsChunks(t *testing.T) {
 	w := newWorld(kernel.RunTypeTracked, kernel.RunStateInitializing)
 	n := func(v int64) *int64 { return &v }
-	report := func(v int64, state kernel.RunState, ev workersapi.ReportEvent, chunks int64) (
-		workersapi.Step, error,
-	) {
+	report := func(v int64, state kernel.RunState, ev workersapi.ReportEvent, chunks int64) (workersapi.Step, error) {
 		return w.send(t, workersapi.Report{
 			StateVersion: v, State: state, Event: ev, LogChunks: n(chunks),
 		})
@@ -877,9 +855,7 @@ func TestUnitReportRefused(t *testing.T) {
 func sum(b byte) []byte { return bytes.Repeat([]byte{b}, sha256.Size) }
 
 // uploads signs ups at version v.
-func (w *world) uploads(t *testing.T, v int64,
-	ups ...workersapi.Upload,
-) ([]workersapi.SignedUpload, error) {
+func (w *world) uploads(t *testing.T, v int64, ups ...workersapi.Upload) ([]workersapi.SignedUpload, error) {
 	t.Helper()
 	var out []workersapi.SignedUpload
 	err := in(t, func(ctx context.Context) error {

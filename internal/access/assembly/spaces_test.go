@@ -34,12 +34,7 @@ func (squatter) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.Lo
 // everything is a space.Authorizer allowing every action.
 type everything struct{}
 
-func (everything) Authorize(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
-	kernel.ULID,
-) (bool, error) {
+func (everything) Authorize(context.Context, kernel.Principal, accessapi.Action, kernel.ULID) (bool, error) {
 	return true, nil
 }
 

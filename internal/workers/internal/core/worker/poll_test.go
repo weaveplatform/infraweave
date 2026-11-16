@@ -402,10 +402,7 @@ func (s *scheduler) Handover(_ context.Context, run kernel.ULID) (workersapi.Han
 	return s.handover, s.handErr
 }
 
-func (s *scheduler) Claim(
-	_ context.Context,
-	c workersapi.Claim,
-) (workersapi.Assignment, bool, error) {
+func (s *scheduler) Claim(_ context.Context, c workersapi.Claim) (workersapi.Assignment, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.claims = append(s.claims, c)

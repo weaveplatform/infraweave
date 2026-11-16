@@ -120,11 +120,7 @@ func managedGroup(g group.Group, held []binding.Listed) api.ManagedUserGroup {
 
 // userViews are managedUser of each of us with the actions the caller
 // holds on a managed user and its bindings.
-func (s Server) userViews(
-	ctx context.Context,
-	p kernel.Principal,
-	us []managed.User,
-) ([]api.ManagedUser, error) {
+func (s Server) userViews(ctx context.Context, p kernel.Principal, us []managed.User) ([]api.ManagedUser, error) {
 	acts, err := s.actionsOn(ctx, p, entityManagedUser)
 	if err != nil {
 		return nil, err
@@ -141,11 +137,7 @@ func (s Server) userViews(
 }
 
 // userView is userViews of u alone.
-func (s Server) userView(
-	ctx context.Context,
-	p kernel.Principal,
-	u managed.User,
-) (api.ManagedUser, error) {
+func (s Server) userView(ctx context.Context, p kernel.Principal, u managed.User) (api.ManagedUser, error) {
 	vs, err := s.userViews(ctx, p, []managed.User{u})
 	if err != nil {
 		return api.ManagedUser{}, err
@@ -154,11 +146,7 @@ func (s Server) userView(
 }
 
 // groupView is managedGroup of g with its bindings.
-func (s Server) groupView(
-	ctx context.Context,
-	p kernel.Principal,
-	g group.Group,
-) (api.ManagedUserGroup, error) {
+func (s Server) groupView(ctx context.Context, p kernel.Principal, g group.Group) (api.ManagedUserGroup, error) {
 	held, err := s.bindings.Held(ctx, p.AccountID, binding.ActorGroup, g.ID)
 	if err != nil {
 		return api.ManagedUserGroup{}, err //nolint:wrapcheck // the store names the read
@@ -173,10 +161,7 @@ func parseULID(s string) (kernel.ULID, error) {
 }
 
 // ManagedUsers lists the account's managed users, oldest member first.
-func (s Server) ManagedUsers(
-	ctx context.Context,
-	req api.ManagedUsersRequestObject,
-) (api.ManagedUsersResponseObject, error) {
+func (s Server) ManagedUsers(ctx context.Context, req api.ManagedUsersRequestObject) (api.ManagedUsersResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -199,10 +184,7 @@ func (s Server) ManagedUsers(
 
 // ManagedUser reads one of the account's managed users, tagged with its
 // version.
-func (s Server) ManagedUser(
-	ctx context.Context,
-	req api.ManagedUserRequestObject,
-) (api.ManagedUserResponseObject, error) {
+func (s Server) ManagedUser(ctx context.Context, req api.ManagedUserRequestObject) (api.ManagedUserResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -222,10 +204,7 @@ func (s Server) ManagedUser(
 
 // ManagedUserInviteV2 invites a person to the account with the role
 // bindings the invitation names, all or none.
-func (s Server) ManagedUserInviteV2(
-	ctx context.Context,
-	req api.ManagedUserInviteV2RequestObject,
-) (api.ManagedUserInviteV2ResponseObject, error) {
+func (s Server) ManagedUserInviteV2(ctx context.Context, req api.ManagedUserInviteV2RequestObject) (api.ManagedUserInviteV2ResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -266,10 +245,7 @@ func (s Server) ManagedUserInviteV2(
 
 // ManagedUserUpdate sets a managed user's Slack member, when its
 // If-Match, if any, names the managed user's version.
-func (s Server) ManagedUserUpdate(
-	ctx context.Context,
-	req api.ManagedUserUpdateRequestObject,
-) (api.ManagedUserUpdateResponseObject, error) {
+func (s Server) ManagedUserUpdate(ctx context.Context, req api.ManagedUserUpdateRequestObject) (api.ManagedUserUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -291,10 +267,7 @@ func (s Server) ManagedUserUpdate(
 
 // ManagedUserPatch changes the members its merge patch names and keeps
 // the rest, writing the result as ManagedUserUpdate writes its body.
-func (s Server) ManagedUserPatch(
-	ctx context.Context,
-	req api.ManagedUserPatchRequestObject,
-) (api.ManagedUserPatchResponseObject, error) {
+func (s Server) ManagedUserPatch(ctx context.Context, req api.ManagedUserPatchRequestObject) (api.ManagedUserPatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -333,13 +306,7 @@ func (s Server) ManagedUserPatch(
 // updateUser writes in to the managed user id, as ManagedUserUpdate and
 // ManagedUserPatch do, when expect accepts its version: its Slack member,
 // and its access rules in place of those it holds, all or none.
-func (s Server) updateUser(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	expect kernel.Expect,
-	in api.ManagedUserUpdateInputBody,
-) (managed.User, error) {
+func (s Server) updateUser(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, in api.ManagedUserUpdateInputBody) (managed.User, error) {
 	cur, err := s.users.User(ctx, p, id)
 	if err != nil {
 		return managed.User{}, managedError(err, "managed user")
@@ -380,10 +347,7 @@ func userInput(u managed.User, held []binding.Listed) api.ManagedUserUpdateInput
 // ManagedUserDelete removes a managed user from the account, when its
 // If-Match, if any, names the managed user's version, and answers them as
 // they were.
-func (s Server) ManagedUserDelete(
-	ctx context.Context,
-	req api.ManagedUserDeleteRequestObject,
-) (api.ManagedUserDeleteResponseObject, error) {
+func (s Server) ManagedUserDelete(ctx context.Context, req api.ManagedUserDeleteRequestObject) (api.ManagedUserDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -401,10 +365,7 @@ func (s Server) ManagedUserDelete(
 }
 
 // ManagedUserResendInvite restarts a pending managed user's invitation.
-func (s Server) ManagedUserResendInvite(
-	ctx context.Context,
-	req api.ManagedUserResendInviteRequestObject,
-) (api.ManagedUserResendInviteResponseObject, error) {
+func (s Server) ManagedUserResendInvite(ctx context.Context, req api.ManagedUserResendInviteRequestObject) (api.ManagedUserResendInviteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -422,10 +383,7 @@ func (s Server) ManagedUserResendInvite(
 
 // ManagedUserRequestInvite records a request that the account's admins
 // invite a person.
-func (s Server) ManagedUserRequestInvite(
-	ctx context.Context,
-	req api.ManagedUserRequestInviteRequestObject,
-) (api.ManagedUserRequestInviteResponseObject, error) {
+func (s Server) ManagedUserRequestInvite(ctx context.Context, req api.ManagedUserRequestInviteRequestObject) (api.ManagedUserRequestInviteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -439,10 +397,7 @@ func (s Server) ManagedUserRequestInvite(
 
 // ManagedUserRequestRoleChange records the caller's request for an access
 // level on a space.
-func (s Server) ManagedUserRequestRoleChange(
-	ctx context.Context,
-	req api.ManagedUserRequestRoleChangeRequestObject,
-) (api.ManagedUserRequestRoleChangeResponseObject, error) {
+func (s Server) ManagedUserRequestRoleChange(ctx context.Context, req api.ManagedUserRequestRoleChangeRequestObject) (api.ManagedUserRequestRoleChangeResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -458,10 +413,7 @@ func (s Server) ManagedUserRequestRoleChange(
 // the account, oldest first.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ManagedUserPersonalApiKeys(
-	ctx context.Context,
-	req api.ManagedUserPersonalApiKeysRequestObject,
-) (api.ManagedUserPersonalApiKeysResponseObject, error) {
+func (s Server) ManagedUserPersonalApiKeys(ctx context.Context, req api.ManagedUserPersonalApiKeysRequestObject) (api.ManagedUserPersonalApiKeysResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -489,10 +441,7 @@ func (s Server) ManagedUserPersonalApiKeys(
 }
 
 // ManagedUserGroups lists the account's managed user groups, oldest first.
-func (s Server) ManagedUserGroups(
-	ctx context.Context,
-	req api.ManagedUserGroupsRequestObject,
-) (api.ManagedUserGroupsResponseObject, error) {
+func (s Server) ManagedUserGroups(ctx context.Context, req api.ManagedUserGroupsRequestObject) (api.ManagedUserGroupsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -520,10 +469,7 @@ func (s Server) ManagedUserGroups(
 
 // ManagedUserGroup reads one of the account's managed user groups, tagged
 // with its version.
-func (s Server) ManagedUserGroup(
-	ctx context.Context,
-	req api.ManagedUserGroupRequestObject,
-) (api.ManagedUserGroupResponseObject, error) {
+func (s Server) ManagedUserGroup(ctx context.Context, req api.ManagedUserGroupRequestObject) (api.ManagedUserGroupResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -544,10 +490,7 @@ func (s Server) ManagedUserGroup(
 
 // ManagedUserGroupCreateV2 creates a managed user group of the account
 // with the role bindings its input names, all or none.
-func (s Server) ManagedUserGroupCreateV2(
-	ctx context.Context,
-	req api.ManagedUserGroupCreateV2RequestObject,
-) (api.ManagedUserGroupCreateV2ResponseObject, error) {
+func (s Server) ManagedUserGroupCreateV2(ctx context.Context, req api.ManagedUserGroupCreateV2RequestObject) (api.ManagedUserGroupCreateV2ResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -581,10 +524,7 @@ func (s Server) ManagedUserGroupCreateV2(
 
 // ManagedUserGroupUpdateV2 sets a managed user group's description, when
 // its If-Match, if any, names the group's version; none clears it.
-func (s Server) ManagedUserGroupUpdateV2(
-	ctx context.Context,
-	req api.ManagedUserGroupUpdateV2RequestObject,
-) (api.ManagedUserGroupUpdateV2ResponseObject, error) {
+func (s Server) ManagedUserGroupUpdateV2(ctx context.Context, req api.ManagedUserGroupUpdateV2RequestObject) (api.ManagedUserGroupUpdateV2ResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -607,10 +547,7 @@ func (s Server) ManagedUserGroupUpdateV2(
 // ManagedUserGroupPatch changes the members its merge patch names and
 // keeps the rest, writing the result as ManagedUserGroupUpdateV2 writes
 // its body.
-func (s Server) ManagedUserGroupPatch(
-	ctx context.Context,
-	req api.ManagedUserGroupPatchRequestObject,
-) (api.ManagedUserGroupPatchResponseObject, error) {
+func (s Server) ManagedUserGroupPatch(ctx context.Context, req api.ManagedUserGroupPatchRequestObject) (api.ManagedUserGroupPatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -627,10 +564,7 @@ func (s Server) ManagedUserGroupPatch(
 		}
 		return api.ManagedUserGroupUpdateInputV2Body{Description: &g.Description}, g.Version, nil
 	}
-	write := func(
-		in api.ManagedUserGroupUpdateInputV2Body,
-		expect kernel.Expect,
-	) (group.Group, error) {
+	write := func(in api.ManagedUserGroupUpdateInputV2Body, expect kernel.Expect) (group.Group, error) {
 		return s.updateGroup(ctx, p, req.ManagedUserGroupId, expect, in)
 	}
 	g, err := strict.Apply(strict.IfMatch(req.Params.IfMatch), patch, read, write)
@@ -650,13 +584,7 @@ func (s Server) ManagedUserGroupPatch(
 // updateGroup writes in to the managed user group id, as
 // ManagedUserGroupUpdateV2 and ManagedUserGroupPatch do, when expect
 // accepts its version.
-func (s Server) updateGroup(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	expect kernel.Expect,
-	in api.ManagedUserGroupUpdateInputV2Body,
-) (group.Group, error) {
+func (s Server) updateGroup(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, in api.ManagedUserGroupUpdateInputV2Body) (group.Group, error) {
 	g, err := s.groups.Update(ctx, p, from(ctx).addr, id, expect, deref(in.Description))
 	if err != nil {
 		return group.Group{}, managedError(err, "managed user group")
@@ -666,10 +594,7 @@ func (s Server) updateGroup(
 
 // ManagedUserGroupDelete deletes a managed user group, when its If-Match,
 // if any, names the group's version, and answers it as it was.
-func (s Server) ManagedUserGroupDelete(
-	ctx context.Context,
-	req api.ManagedUserGroupDeleteRequestObject,
-) (api.ManagedUserGroupDeleteResponseObject, error) {
+func (s Server) ManagedUserGroupDelete(ctx context.Context, req api.ManagedUserGroupDeleteRequestObject) (api.ManagedUserGroupDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -683,10 +608,7 @@ func (s Server) ManagedUserGroupDelete(
 }
 
 // ManagedUserGroupManagedUsers lists a managed user group's members.
-func (s Server) ManagedUserGroupManagedUsers(
-	ctx context.Context,
-	req api.ManagedUserGroupManagedUsersRequestObject,
-) (api.ManagedUserGroupManagedUsersResponseObject, error) {
+func (s Server) ManagedUserGroupManagedUsers(ctx context.Context, req api.ManagedUserGroupManagedUsersRequestObject) (api.ManagedUserGroupManagedUsersResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -709,10 +631,7 @@ func (s Server) ManagedUserGroupManagedUsers(
 
 // AvailableUserGroups lists the group names the account's managed users'
 // latest sign-ins reported.
-func (s Server) AvailableUserGroups(
-	ctx context.Context,
-	req api.AvailableUserGroupsRequestObject,
-) (api.AvailableUserGroupsResponseObject, error) {
+func (s Server) AvailableUserGroups(ctx context.Context, req api.AvailableUserGroupsRequestObject) (api.AvailableUserGroupsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

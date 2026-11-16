@@ -31,13 +31,7 @@ func (nowhere) Get(context.Context, string) (io.ReadCloser, error) {
 func (nowhere) Head(context.Context, string) (int64, error) { return 0, objectstore.ErrNotFound }
 func (nowhere) Delete(context.Context, string) error        { return nil }
 
-func (nowhere) SignURL(
-	context.Context,
-	string,
-	string,
-	time.Duration,
-	objectstore.Constraints,
-) (objectstore.Signed, error) {
+func (nowhere) SignURL(context.Context, string, string, time.Duration, objectstore.Constraints) (objectstore.Signed, error) {
 	return objectstore.Signed{}, nil
 }
 

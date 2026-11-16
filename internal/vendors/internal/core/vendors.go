@@ -89,11 +89,7 @@ func (s *Service) Versions(ctx context.Context, kind vendorsapi.Vendor) ([]strin
 const constraintsPointer = "#/query/constraints"
 
 // Effective is the newest stored release of kind that constraints allow.
-func (s *Service) Effective(
-	ctx context.Context,
-	kind vendorsapi.Vendor,
-	constraints string,
-) (string, error) {
+func (s *Service) Effective(ctx context.Context, kind vendorsapi.Vendor, constraints string) (string, error) {
 	cs, err := version.ParseConstraints(constraints)
 	if err != nil {
 		return "", &kernel.Invalid{

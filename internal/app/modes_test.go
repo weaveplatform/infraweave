@@ -88,9 +88,7 @@ func testKeyring(t testing.TB, db crypt.Querier) *crypt.Keyring {
 // per address.
 type byAddress struct{}
 
-func (byAddress) Middleware(
-	access func(*http.Request) accessapi.Access,
-) func(http.Handler) http.Handler {
+func (byAddress) Middleware(access func(*http.Request) accessapi.Access) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if access(r) == accessapi.Public {

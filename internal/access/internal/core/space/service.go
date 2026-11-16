@@ -57,43 +57,23 @@ type Store interface {
 	HoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 	// DeleteSpace deletes the account's space slug. check sees it first
 	// and may refuse; a space with children is a *Refusal.
-	DeleteSpace(
-		ctx context.Context,
-		acct kernel.AccountID,
-		slug string,
-		check func(ctx context.Context, s Space) error,
-	) error
+	DeleteSpace(ctx context.Context, acct kernel.AccountID, slug string, check func(ctx context.Context, s Space) error) error
 	// NonAdminCreation reads the account's allowNonAdminSpaceCreation.
 	NonAdminCreation(ctx context.Context, acct kernel.AccountID) (bool, error)
 	// ToggleNonAdminCreation flips it and answers the new value.
 	ToggleNonAdminCreation(ctx context.Context, acct kernel.AccountID) (bool, error)
 	// Search reads a page of the account's spaces among reachable that in
 	// keeps, by Fields; an input they cannot answer is a *search.Invalid.
-	Search(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.Input,
-		reachable []kernel.ULID,
-	) (search.Result[Space], error)
+	Search(ctx context.Context, acct kernel.AccountID, in search.Input, reachable []kernel.ULID) (search.Result[Space], error)
 	// Suggest lists the values Fields hold among the account's spaces in
 	// reachable that in keeps.
-	Suggest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.SuggestionsInput,
-		reachable []kernel.ULID,
-	) (search.Suggestions, error)
+	Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, reachable []kernel.ULID) (search.Suggestions, error)
 }
 
 // Authorizer decides whether a principal may perform an action in a
 // space; accessapi.Authorizer is one.
 type Authorizer interface {
-	Authorize(
-		ctx context.Context,
-		p kernel.Principal,
-		action accessapi.Action,
-		space kernel.ULID,
-	) (bool, error)
+	Authorize(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error)
 }
 
 // Denied is a change the caller may not make, though it may read the
@@ -167,11 +147,7 @@ var _ accessapi.Spaces = (*Service)(nil)
 
 // Find is the ID of acct's space slug; accessapi.ErrNoSpace when acct
 // lacks it.
-func (s *Service) Find(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (kernel.ULID, error) {
+func (s *Service) Find(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
 	sp, err := s.store.Space(ctx, acct, slug)
 	if errors.Is(err, port.ErrNotFound) {
 		return kernel.ULID{}, fmt.Errorf("%w: %s", accessapi.ErrNoSpace, slug)
@@ -180,10 +156,7 @@ func (s *Service) Find(
 }
 
 // Slugs names each of acct's spaces by its slug.
-func (s *Service) Slugs(
-	ctx context.Context,
-	acct kernel.AccountID,
-) (map[kernel.ULID]string, error) {
+func (s *Service) Slugs(ctx context.Context, acct kernel.AccountID) (map[kernel.ULID]string, error) {
 	all, err := s.store.Spaces(ctx, acct)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
@@ -221,23 +194,13 @@ func (s *Service) Spaces(ctx context.Context, acct kernel.AccountID) ([]Space, e
 
 // Search reads a page of acct's spaces among reachable, the spaces the
 // caller may read, that in keeps.
-func (s *Service) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	reachable []kernel.ULID,
-) (search.Result[Space], error) {
+func (s *Service) Search(ctx context.Context, acct kernel.AccountID, in search.Input, reachable []kernel.ULID) (search.Result[Space], error) {
 	return s.store.Search(ctx, acct, in, reachable) //nolint:wrapcheck // the store names the read
 }
 
 // Suggest lists the values of acct's spaces among reachable that in
 // keeps.
-func (s *Service) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	reachable []kernel.ULID,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, reachable []kernel.ULID) (search.Suggestions, error) {
 	return s.store.Suggest(ctx, acct, in, reachable) //nolint:wrapcheck // the store names the read
 }
 
@@ -302,12 +265,7 @@ func (s *Service) administers(ctx context.Context, p kernel.Principal, r rights,
 // Create creates in below the space parent of p's account. Its slug is
 // SlugOf the name and a new ULID. Labels keep the order given; one that
 // breaks the label rule is a *kernel.Invalid.
-func (s *Service) Create(
-	ctx context.Context,
-	p kernel.Principal,
-	parent string,
-	in Space,
-) (Space, error) {
+func (s *Service) Create(ctx context.Context, p kernel.Principal, parent string, in Space) (Space, error) {
 	if err := checkInput(in); err != nil {
 		return Space{}, err
 	}
@@ -344,13 +302,7 @@ func (s *Service) Create(
 // space below it needs a parent. Each registered guard may refuse a move.
 // A space whose version expect does not accept, read under the tree's
 // lock, is kernel.ErrStale and is not changed.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, parent string,
-	expect kernel.Expect,
-	in Space,
-) (Space, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, slug, parent string, expect kernel.Expect, in Space) (Space, error) {
 	if err := checkInput(in); err != nil {
 		return Space{}, err
 	}
@@ -393,14 +345,7 @@ func (s *Service) Update(
 // labels: a move, which needs SPACE_ADMIN on the new parent too, and a
 // change of inheritance, which an admin below the top space makes only
 // to start inheriting.
-func (s *Service) reshape(
-	ctx context.Context,
-	p kernel.Principal,
-	r rights,
-	cur, pa Space,
-	m *accessapi.SpaceMove,
-	in Space,
-) error {
+func (s *Service) reshape(ctx context.Context, p kernel.Principal, r rights, cur, pa Space, m *accessapi.SpaceMove, in Space) error {
 	inherit := in.InheritEntities != cur.InheritEntities
 	if m == nil && !inherit {
 		return nil
@@ -436,12 +381,7 @@ func topKept(cur, pa, in Space) error {
 
 // lostOnMove asks each guard what moving cur cuts off, refusing with
 // every loss.
-func lostOnMove(
-	ctx context.Context,
-	guards []accessapi.SpaceGuard,
-	cur Space,
-	m accessapi.SpaceMove,
-) error {
+func lostOnMove(ctx context.Context, guards []accessapi.SpaceGuard, cur Space, m accessapi.SpaceMove) error {
 	var r Refusal
 	for _, g := range guards {
 		lost, err := g.LostOnMove(ctx, m)
@@ -463,12 +403,7 @@ func lostOnMove(
 // top space and legacy are never deleted, and a space a registered guard
 // says is in use is refused. A space whose version expect does not
 // accept is kernel.ErrStale and is kept.
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-) (Space, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect) (Space, error) {
 	r, err := s.rightsOf(ctx, p)
 	if err != nil {
 		return Space{}, err

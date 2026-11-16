@@ -163,12 +163,7 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	return db, nil
 }
 
-func open(
-	ctx context.Context,
-	key, url string,
-	c Config,
-	tokens tokenSource,
-) (*pgxpool.Pool, error) {
+func open(ctx context.Context, key, url string, c Config, tokens tokenSource) (*pgxpool.Pool, error) {
 	pc, err := poolConfig(key, url, c, tokens)
 	if err != nil {
 		return nil, err

@@ -39,12 +39,7 @@ func (s *store) group(acct kernel.AccountID, id kernel.ULID) (group.Group, error
 	return g, nil
 }
 
-func (s *store) Groups(
-	_ context.Context,
-	acct kernel.AccountID,
-	_ kernel.ULID,
-	_ int,
-) ([]group.Group, error) {
+func (s *store) Groups(_ context.Context, acct kernel.AccountID, _ kernel.ULID, _ int) ([]group.Group, error) {
 	if s.fail {
 		return nil, errDown
 	}
@@ -57,19 +52,11 @@ func (s *store) Groups(
 	return out, nil
 }
 
-func (s *store) Group(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (group.Group, error) {
+func (s *store) Group(_ context.Context, acct kernel.AccountID, id kernel.ULID) (group.Group, error) {
 	return s.group(acct, id)
 }
 
-func (s *store) CreateGroup(
-	_ context.Context,
-	g group.Group,
-	e kernel.AuditEntry,
-) (group.Group, error) {
+func (s *store) CreateGroup(_ context.Context, g group.Group, e kernel.AuditEntry) (group.Group, error) {
 	if s.fail {
 		return group.Group{}, errDown
 	}
@@ -83,14 +70,7 @@ func (s *store) CreateGroup(
 	return g, nil
 }
 
-func (s *store) SetDescription(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	description string,
-	e kernel.AuditEntry,
-) (group.Group, error) {
+func (s *store) SetDescription(_ context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, description string, e kernel.AuditEntry) (group.Group, error) {
 	g, err := s.group(acct, id)
 	if err != nil {
 		return g, err
@@ -104,13 +84,7 @@ func (s *store) SetDescription(
 	return g, nil
 }
 
-func (s *store) DeleteGroup(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	e kernel.AuditEntry,
-) error {
+func (s *store) DeleteGroup(_ context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, e kernel.AuditEntry) error {
 	g, err := s.group(acct, id)
 	if err != nil {
 		return err
@@ -123,25 +97,14 @@ func (s *store) DeleteGroup(
 	return nil
 }
 
-func (s *store) GroupUsers(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	_ kernel.MemberID,
-	_ int,
-) ([]user.User, error) {
+func (s *store) GroupUsers(_ context.Context, acct kernel.AccountID, id kernel.ULID, _ kernel.MemberID, _ int) ([]user.User, error) {
 	if _, err := s.group(acct, id); err != nil {
 		return nil, err
 	}
 	return []user.User{{AccountID: acct}}, nil
 }
 
-func (s *store) AvailableGroups(
-	_ context.Context,
-	_ kernel.AccountID,
-	after string,
-	_ int,
-) ([]string, error) {
+func (s *store) AvailableGroups(_ context.Context, _ kernel.AccountID, after string, _ int) ([]string, error) {
 	if s.fail {
 		return nil, errDown
 	}
@@ -154,13 +117,7 @@ func (s *store) AvailableGroups(
 // deleteFails answers DeleteGroup with errDown after a read that succeeds.
 type deleteFails struct{ *store }
 
-func (deleteFails) DeleteGroup(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	kernel.Expect,
-	kernel.AuditEntry,
-) error {
+func (deleteFails) DeleteGroup(context.Context, kernel.AccountID, kernel.ULID, kernel.Expect, kernel.AuditEntry) error {
 	return errDown
 }
 

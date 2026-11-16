@@ -110,11 +110,7 @@ func (keeper) ReadFile(_ context.Context, _ port.Repository, _, path string) ([]
 	return repo.Content, nil
 }
 
-func (keeper) AffectedFiles(
-	_ context.Context,
-	_ port.Repository,
-	base, _ string,
-) ([]string, error) {
+func (keeper) AffectedFiles(_ context.Context, _ port.Repository, base, _ string) ([]string, error) {
 	if base != repo.Base {
 		return nil, port.ErrNotFound
 	}

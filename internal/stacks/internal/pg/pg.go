@@ -141,11 +141,7 @@ func scan(row pgx.Row, extra ...any) (core.Stack, error) {
 }
 
 // Get reads acct's stack id.
-func (s *Store) Get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Stack, error) {
+func (s *Store) Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error) {
 	st, err := scanRef(acct, tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+refColumns+` FROM stacks
 		WHERE account_id = $1 AND id = $2`, acct, id))
 	switch {
@@ -176,11 +172,7 @@ func refs(acct kernel.AccountID, rows pgx.Rows) ([]stacksapi.Stack, error) {
 }
 
 // ByIDs reads those of acct's stacks ids that it has, keyed by ID.
-func (s *Store) ByIDs(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID]stacksapi.Stack, error) {
+func (s *Store) ByIDs(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]stacksapi.Stack, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+refColumns+` FROM stacks
 		WHERE account_id = $1 AND id = ANY($2)`, acct, ids)
 	if err != nil {
@@ -198,32 +190,16 @@ func (s *Store) ByIDs(
 }
 
 // Read reads acct's stack id whole.
-func (s *Store) Read(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	lock bool,
-) (core.Stack, error) {
+func (s *Store) Read(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (core.Stack, error) {
 	return s.one(ctx, "s.id = $2", acct, id, lock)
 }
 
 // BySlug reads acct's stack slug whole.
-func (s *Store) BySlug(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	lock bool,
-) (core.Stack, error) {
+func (s *Store) BySlug(ctx context.Context, acct kernel.AccountID, slug string, lock bool) (core.Stack, error) {
 	return s.one(ctx, "s.slug = $2", acct, slug, lock)
 }
 
-func (s *Store) one(
-	ctx context.Context,
-	where string,
-	acct kernel.AccountID,
-	key any,
-	lock bool,
-) (core.Stack, error) {
+func (s *Store) one(ctx context.Context, where string, acct kernel.AccountID, key any, lock bool) (core.Stack, error) {
 	q := `SELECT ` + columns + ` FROM stacks s WHERE s.account_id = $1 AND ` + where
 	if lock {
 		q += ` FOR UPDATE OF s`
@@ -240,12 +216,7 @@ func (s *Store) one(
 
 // ByRepository lists acct's stacks that track branch of repository
 // through integration.
-func (s *Store) ByRepository(
-	ctx context.Context,
-	acct kernel.AccountID,
-	integration *kernel.ULID,
-	repository, branch string,
-) ([]stacksapi.Stack, error) {
+func (s *Store) ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]stacksapi.Stack, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+refColumns+` FROM stacks
 		WHERE account_id = $1 AND repository = $2 AND branch = $3
 			AND vcs_integration_id IS NOT DISTINCT FROM $4
@@ -282,13 +253,7 @@ func (s *Store) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID)
 // SetRunState writes acct's stack id's state and blocked. The update
 // changes no key, so its FOR NO KEY UPDATE lock never waits on a Hold's
 // FOR KEY SHARE.
-func (s *Store) SetRunState(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	state kernel.StackState,
-	blocked bool,
-) error {
+func (s *Store) SetRunState(ctx context.Context, acct kernel.AccountID, id kernel.ULID, state kernel.StackState, blocked bool) error {
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET state = $3, blocked = $4
 		WHERE account_id = $1 AND id = $2`, acct, id, state, blocked)
 	switch {
@@ -302,12 +267,7 @@ func (s *Store) SetRunState(
 
 // SetDeleting marks acct's stack id deleting, or clears the mark. The
 // update changes no version, as SetRunState's does not.
-func (s *Store) SetDeleting(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	on bool,
-) error {
+func (s *Store) SetDeleting(ctx context.Context, acct kernel.AccountID, id kernel.ULID, on bool) error {
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET deleting = $3
 		WHERE account_id = $1 AND id = $2`, acct, id, on)
 	switch {
@@ -320,12 +280,7 @@ func (s *Store) SetDeleting(
 }
 
 // Find lists acct's stacks in spaces that carry any of labels, by slug.
-func (s *Store) Find(
-	ctx context.Context,
-	acct kernel.AccountID,
-	spaces []kernel.ULID,
-	labels []string,
-) ([]stacksapi.Stack, error) {
+func (s *Store) Find(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]stacksapi.Stack, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT s.id, s.slug, s.name, s.space_id FROM stacks s
 		WHERE s.account_id = $1 AND s.space_id = ANY($2) AND EXISTS (
 			SELECT 1 FROM stack_labels l
@@ -342,11 +297,7 @@ func (s *Store) Find(
 }
 
 // InSpaces lists acct's stacks in spaces, by slug.
-func (s *Store) InSpaces(
-	ctx context.Context,
-	acct kernel.AccountID,
-	spaces []kernel.ULID,
-) ([]stacksapi.Stack, error) {
+func (s *Store) InSpaces(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID) ([]stacksapi.Stack, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+refColumns+` FROM stacks
 		WHERE account_id = $1 AND space_id = ANY($2)
 		ORDER BY slug`, acct, spaces)
@@ -362,11 +313,7 @@ func (s *Store) InSpaces(
 
 // Labels reads the labels of acct's stacks ids, sorted, keyed by ID; a
 // stack with none is left out.
-func (s *Store) Labels(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID][]string, error) {
+func (s *Store) Labels(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID][]string, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT stack_id, label FROM stack_labels
 		WHERE account_id = $1 AND stack_id = ANY($2)
 		ORDER BY stack_id, label COLLATE "C"`, acct, ids)
@@ -391,13 +338,7 @@ func (s *Store) Labels(
 
 // SetTracked sets acct's stack id's branch head and tracked commit,
 // leaving either unchanged when nil, and its version as it is.
-func (s *Store) SetTracked(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	head, commit *stacksapi.Commit,
-	setBy string,
-) error {
+func (s *Store) SetTracked(ctx context.Context, acct kernel.AccountID, id kernel.ULID, head, commit *stacksapi.Commit, setBy string) error {
 	docs := make([][]byte, 2)
 	for i, c := range []*stacksapi.Commit{head, commit} {
 		if c != nil {
@@ -423,11 +364,7 @@ func (s *Store) SetTracked(
 
 // DetachVCS detaches acct's stacks bound to integration, leaving their
 // versions as they are.
-func (s *Store) DetachVCS(
-	ctx context.Context,
-	acct kernel.AccountID,
-	integration kernel.ULID,
-) error {
+func (s *Store) DetachVCS(ctx context.Context, acct kernel.AccountID, integration kernel.ULID) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET vcs_detached = true,
 			vcs_integration_id = NULL
 		WHERE account_id = $1 AND vcs_integration_id = $2`, acct, integration)
@@ -574,13 +511,7 @@ func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bo
 }
 
 // SetStar stars or unstars acct's stack id for actor.
-func (s *Store) SetStar(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	actor core.Actor,
-	on bool,
-) error {
+func (s *Store) SetStar(ctx context.Context, acct kernel.AccountID, id kernel.ULID, actor core.Actor, on bool) error {
 	q := `DELETE FROM stack_stars
 		WHERE account_id = $1 AND stack_id = $2 AND actor_kind = $3 AND actor_id = $4`
 	if on {
@@ -594,12 +525,7 @@ func (s *Store) SetStar(
 }
 
 // Starred is which of acct's stacks ids actor has starred.
-func (s *Store) Starred(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-	actor core.Actor,
-) (map[kernel.ULID]bool, error) {
+func (s *Store) Starred(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID, actor core.Actor) (map[kernel.ULID]bool, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT stack_id FROM stack_stars
 		WHERE account_id = $1 AND stack_id = ANY($2) AND actor_kind = $3 AND actor_id = $4`,
 		acct, ids, string(actor.Kind), actor.ID)
@@ -618,11 +544,7 @@ func (s *Store) Starred(
 }
 
 // PoolInUse lists acct's stacks that name the worker pool id, by slug.
-func (s *Store) PoolInUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) ([]workersapi.PoolUse, error) {
+func (s *Store) PoolInUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]workersapi.PoolUse, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT slug, space_id FROM stacks
 		WHERE account_id = $1 AND worker_pool_id = $2 ORDER BY slug`, acct, id)
 	if err != nil {
@@ -647,11 +569,7 @@ func (s *Store) PoolInUse(
 }
 
 // SpaceInUse reports whether a stack of acct lives in space.
-func (s *Store) SpaceInUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (s *Store) SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	var used bool
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM stacks
 		WHERE account_id = $1 AND space_id = $2)`, acct, space).Scan(&used); err != nil {
@@ -731,12 +649,7 @@ func searchScope(acct kernel.AccountID, scope core.Scope) sqlsearch.Scope {
 }
 
 // Search reads a page of acct's stacks in the scope that in keeps.
-func (s *Store) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	scope core.Scope,
-) (search.Result[core.Stack], error) {
+func (s *Store) Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope core.Scope) (search.Result[core.Stack], error) {
 	out, err := sqlsearch.Find(
 		ctx,
 		tx.Q(ctx, s.db),
@@ -752,12 +665,7 @@ func (s *Store) Search(
 }
 
 // Suggest lists the values acct's stacks in the scope that in keeps hold.
-func (s *Store) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	scope core.Scope,
-) (search.Suggestions, error) {
+func (s *Store) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope core.Scope) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), stackSearch, searchScope(acct, scope), in)
 	if err != nil {
 		return out, fmt.Errorf("stacks: %w", err)

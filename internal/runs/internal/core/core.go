@@ -14,19 +14,11 @@ type Store interface {
 	// Blockers reads which run holds the run lock of each of acct's
 	// stacks, keyed by stack ID, with its delta while it waits in
 	// UNCONFIRMED; a stack whose lock no run holds is absent.
-	Blockers(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stacks []kernel.ULID,
-	) (map[kernel.ULID]stacksapi.Blocker, error)
+	Blockers(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error)
 	// Outputs reads the outputs of each of acct's stacks, by name, keyed
 	// by stack ID, with the value of each that is not sensitive; a stack
 	// with none is absent.
-	Outputs(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stacks []kernel.ULID,
-	) (map[kernel.ULID][]stacksapi.Output, error)
+	Outputs(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.Output, error)
 	// StackOf reads the stack of acct's run, false when acct lacks it.
 	StackOf(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, bool, error)
 	// RunOf reads run's account, stack and state, whichever account has
@@ -55,11 +47,7 @@ func New(store Store) *Service { return &Service{store: store} }
 
 // Blockers answers the run that holds each of acct's stacks' run lock,
 // the run blocking it.
-func (s *Service) Blockers(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stacks []kernel.ULID,
-) (map[kernel.ULID]stacksapi.Blocker, error) {
+func (s *Service) Blockers(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error) {
 	if len(stacks) == 0 {
 		return map[kernel.ULID]stacksapi.Blocker{}, nil
 	}
@@ -70,11 +58,7 @@ func (s *Service) Blockers(
 // run, with no value for a sensitive output.
 //
 // ref: decision 0008 § "Logs and artifacts"
-func (s *Service) Outputs(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stacks []kernel.ULID,
-) (map[kernel.ULID][]stacksapi.Output, error) {
+func (s *Service) Outputs(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.Output, error) {
 	if len(stacks) == 0 {
 		return map[kernel.ULID][]stacksapi.Output{}, nil
 	}
@@ -83,11 +67,7 @@ func (s *Service) Outputs(
 
 // RunStack answers the stack of acct's run; stacksapi.ErrNotFound when
 // acct lacks the run.
-func (s *Service) RunStack(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-) (kernel.ULID, error) {
+func (s *Service) RunStack(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, error) {
 	stack, ok, err := s.store.StackOf(ctx, acct, run)
 	if err != nil {
 		return kernel.ULID{}, err //nolint:wrapcheck // the store names the read

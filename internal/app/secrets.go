@@ -54,13 +54,7 @@ type keysDB interface {
 // rotation never commits without the job that retires the old key. It
 // answers the new active key's ID, read in that transaction, or 0 when it
 // did not rotate.
-func rotateKeys(
-	ctx context.Context,
-	db keysDB,
-	q *queue.Queue,
-	p kek.Provider,
-	olderThan time.Duration,
-) (uint32, error) {
+func rotateKeys(ctx context.Context, db keysDB, q *queue.Queue, p kek.Provider, olderThan time.Duration) (uint32, error) {
 	var active uint32
 	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
 		rotated, err := crypt.Rotate(ctx, tx.Q(ctx, db), p, olderThan)
@@ -83,13 +77,7 @@ func rotateKeys(
 // secretsTasks are the periodic secrets.rotate, which rotates nothing
 // while secrets.rotation_interval is 0 or a rotation is under way, and the
 // handler of the secrets.reseal it enqueues.
-func secretsTasks(
-	c config.Config,
-	db keysDB,
-	q *queue.Queue,
-	p kek.Provider,
-	log *slog.Logger,
-) (rotate cron.Task, reseal queue.Handler) {
+func secretsTasks(c config.Config, db keysDB, q *queue.Queue, p kek.Provider, log *slog.Logger) (rotate cron.Task, reseal queue.Handler) {
 	rotate = cron.Task{
 		Kind:  RotateKeys,
 		Every: RotateEvery,

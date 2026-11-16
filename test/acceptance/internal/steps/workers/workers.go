@@ -236,10 +236,7 @@ func (w *workerSteps) wire(replica string) (*wire.ClientWithResponses, error) {
 // certificate kept as cert, naming the worker kept as named when set, and
 // sends it through replica. A registration answered 200 keeps its worker
 // as launcher and its session token as the token launcher.
-func (w *workerSteps) registerLauncher(
-	ctx context.Context,
-	launcher, key, cert, named, replica string,
-) error {
+func (w *workerSteps) registerLauncher(ctx context.Context, launcher, key, cert, named, replica string) error {
 	pc, ok := w.certs[cert]
 	if !ok || w.w.Keys[key] == nil {
 		return fmt.Errorf("%w: no certificate %q or key %q", harness.ErrStep, cert, key)

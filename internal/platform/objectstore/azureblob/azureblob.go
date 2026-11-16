@@ -59,12 +59,7 @@ type Options struct {
 
 // New returns container, or c.Container when container is "". Writes
 // above partSize go up as blocks of partSize.
-func New(
-	c objectstore.AzureBlobConfig,
-	containerName string,
-	partSize int64,
-	o Options,
-) (*Bucket, error) {
+func New(c objectstore.AzureBlobConfig, containerName string, partSize int64, o Options) (*Bucket, error) {
 	if containerName == "" {
 		containerName = c.Container
 	}
@@ -118,12 +113,7 @@ func blockID(n int) string {
 // bytes. Each request carries a CRC64 the service checks. A failed write
 // leaves only uncommitted blocks, which are unreadable and which Azure
 // discards after seven days.
-func (b *Bucket) Put(
-	ctx context.Context,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *Bucket) Put(ctx context.Context, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	bb := b.container.NewBlockBlobClient(key)
 	if size <= b.partSize {
 		body, err := objectstore.ReadPart(r, make([]byte, size), size)
@@ -223,10 +213,7 @@ func (b *Bucket) Delete(ctx context.Context, key string) error {
 
 // delegation returns a user delegation key that lasts until at least
 // until, fetching a new one when the cached key ends sooner.
-func (b *Bucket) delegation(
-	ctx context.Context,
-	until time.Time,
-) (*service.UserDelegationCredential, error) {
+func (b *Bucket) delegation(ctx context.Context, until time.Time) (*service.UserDelegationCredential, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.key != nil && !b.keyEnds.Before(until) {
@@ -248,12 +235,7 @@ func (b *Bucket) delegation(
 // A SAS binds neither the size nor a checksum, so Commit's Head refuses
 // another size and Commit reads the object back to compare its SHA-256.
 // A PUT sends x-ms-blob-type, which Put Blob requires.
-func (b *Bucket) SignURL(
-	ctx context.Context,
-	method, key string,
-	ttl time.Duration,
-	_ objectstore.Constraints,
-) (objectstore.Signed, error) {
+func (b *Bucket) SignURL(ctx context.Context, method, key string, ttl time.Duration, _ objectstore.Constraints) (objectstore.Signed, error) {
 	var perm sas.BlobPermissions
 	h := http.Header{}
 	switch method {

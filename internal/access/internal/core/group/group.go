@@ -45,49 +45,20 @@ type Group struct {
 type Store interface {
 	// Groups are up to limit of acct's groups in ID order from the first
 	// after after.
-	Groups(
-		ctx context.Context,
-		acct kernel.AccountID,
-		after kernel.ULID,
-		limit int,
-	) ([]Group, error)
+	Groups(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]Group, error)
 	Group(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Group, error)
 	// CreateGroup creates g and records e; a name another group of the
 	// account holds is port.ErrSlugTaken.
 	CreateGroup(ctx context.Context, g Group, e kernel.AuditEntry) (Group, error)
-	SetDescription(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		expect kernel.Expect,
-		description string,
-		e kernel.AuditEntry,
-	) (Group, error)
-	DeleteGroup(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		expect kernel.Expect,
-		e kernel.AuditEntry,
-	) error
+	SetDescription(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, description string, e kernel.AuditEntry) (Group, error)
+	DeleteGroup(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, e kernel.AuditEntry) error
 	// GroupUsers are up to limit of the group's members in member ID order
 	// from the first after after.
-	GroupUsers(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		after kernel.MemberID,
-		limit int,
-	) ([]user.User, error)
+	GroupUsers(ctx context.Context, acct kernel.AccountID, id kernel.ULID, after kernel.MemberID, limit int) ([]user.User, error)
 	// AvailableGroups are up to limit of the group names the account's
 	// managed users' latest sign-ins reported, in name order from the
 	// first after after.
-	AvailableGroups(
-		ctx context.Context,
-		acct kernel.AccountID,
-		after string,
-		limit int,
-	) ([]string, error)
+	AvailableGroups(ctx context.Context, acct kernel.AccountID, after string, limit int) ([]string, error)
 }
 
 // Deps are what the service needs.
@@ -104,12 +75,7 @@ func NewService(d Deps) *Service { return &Service{d: d} }
 
 // Groups are up to limit of p's account's groups from the first after
 // after.
-func (s *Service) Groups(
-	ctx context.Context,
-	p kernel.Principal,
-	after kernel.ULID,
-	limit int,
-) ([]Group, error) {
+func (s *Service) Groups(ctx context.Context, p kernel.Principal, after kernel.ULID, limit int) ([]Group, error) {
 	//nolint:wrapcheck // the store names the read
 	return s.d.Store.Groups(ctx, p.AccountID, after, limit)
 }
@@ -125,11 +91,7 @@ func (s *Service) Group(ctx context.Context, p kernel.Principal, id string) (Gro
 }
 
 // Create creates a group of p's account.
-func (s *Service) Create(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, name, description string,
-) (Group, error) {
+func (s *Service) Create(ctx context.Context, p kernel.Principal, remoteIP, name, description string) (Group, error) {
 	if err := organization.CheckName("groupName", name); err != nil {
 		return Group{}, err //nolint:wrapcheck // a FieldError, answered as it is
 	}
@@ -145,13 +107,7 @@ func (s *Service) Create(
 
 // Update sets the description of the group id names. A group whose
 // version expect does not accept is kernel.ErrStale and is not changed.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, id string,
-	expect kernel.Expect,
-	description string,
-) (Group, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, remoteIP, id string, expect kernel.Expect, description string) (Group, error) {
 	g, err := parse(id)
 	if err != nil {
 		return Group{}, err
@@ -165,12 +121,7 @@ func (s *Service) Update(
 // Delete deletes the group id names and answers it as it was. Its members
 // stay managed users of the account. A group whose version expect does
 // not accept is kernel.ErrStale and is kept.
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, id string,
-	expect kernel.Expect,
-) (Group, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, remoteIP, id string, expect kernel.Expect) (Group, error) {
 	g, err := s.Group(ctx, p, id)
 	if err != nil {
 		return Group{}, err
@@ -184,13 +135,7 @@ func (s *Service) Delete(
 }
 
 // Users are up to limit of the group's members from the first after after.
-func (s *Service) Users(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	after kernel.MemberID,
-	limit int,
-) ([]user.User, error) {
+func (s *Service) Users(ctx context.Context, p kernel.Principal, id string, after kernel.MemberID, limit int) ([]user.User, error) {
 	g, err := s.Group(ctx, p, id)
 	if err != nil {
 		return nil, err
@@ -201,22 +146,12 @@ func (s *Service) Users(
 
 // Available are up to limit of the group names p's account's managed
 // users' latest sign-ins reported, from the first after after.
-func (s *Service) Available(
-	ctx context.Context,
-	p kernel.Principal,
-	after string,
-	limit int,
-) ([]string, error) {
+func (s *Service) Available(ctx context.Context, p kernel.Principal, after string, limit int) ([]string, error) {
 	return s.d.Store.AvailableGroups(ctx, p.AccountID, after, limit) //nolint:wrapcheck // as above
 }
 
 // entry is an audit entry of p's account at the service's clock.
-func (s *Service) entry(
-	p kernel.Principal,
-	remoteIP, action, eventType string,
-	id kernel.ULID,
-	body map[string]any,
-) kernel.AuditEntry {
+func (s *Service) entry(p kernel.Principal, remoteIP, action, eventType string, id kernel.ULID, body map[string]any) kernel.AuditEntry {
 	e := kernel.AuditEntry{
 		AccountID:        p.AccountID.ULID,
 		Actor:            kernel.AuditActor{Username: p.Login},

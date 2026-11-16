@@ -61,12 +61,7 @@ func SealedColumns() []crypt.Column {
 // database.migrate auto applies pending migrations, and check refuses to
 // start while any are pending. Either refuses a schema this binary must not
 // run on (migrate.ErrRefused).
-func openDatabase(
-	ctx context.Context,
-	c sql.Config,
-	log *slog.Logger,
-	streams []migrate.Stream,
-) (*sql.DB, error) {
+func openDatabase(ctx context.Context, c sql.Config, log *slog.Logger, streams []migrate.Stream) (*sql.DB, error) {
 	db, cc, err := openWithSession(ctx, c)
 	if err != nil {
 		return nil, err
@@ -127,12 +122,7 @@ func MigrateStatus(ctx context.Context, c config.Config, w io.Writer) error {
 	return migrateStatus(ctx, c, w, Streams())
 }
 
-func migrateStatus(
-	ctx context.Context,
-	c config.Config,
-	w io.Writer,
-	streams []migrate.Stream,
-) error {
+func migrateStatus(ctx context.Context, c config.Config, w io.Writer, streams []migrate.Stream) error {
 	db, cc, err := openWithSession(ctx, c.Database)
 	if err != nil {
 		return err

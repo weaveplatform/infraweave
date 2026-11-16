@@ -46,39 +46,13 @@ type Store interface {
 	CreateAPIKey(ctx context.Context, k Key) error
 	// AccountAPIKeys are up to limit of the account's keys, in ID order,
 	// from the first after after; a zero after starts at the first.
-	AccountAPIKeys(
-		ctx context.Context,
-		acct kernel.AccountID,
-		after kernel.ULID,
-		limit int,
-	) ([]Key, error)
+	AccountAPIKeys(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]Key, error)
 	AccountAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Key, error)
-	UpdateAPIKey(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		expect kernel.Expect,
-		c Change,
-	) (Key, error)
+	UpdateAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, c Change) (Key, error)
 	// ResetAPIKey replaces a secret key's hash.
-	ResetAPIKey(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		hash []byte,
-	) (Key, []kernel.ULID, error)
-	DisableAPIKey(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		reason string,
-	) (Key, []kernel.ULID, error)
-	DeleteAPIKey(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		expect kernel.Expect,
-	) (Key, []kernel.ULID, error)
+	ResetAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, hash []byte) (Key, []kernel.ULID, error)
+	DisableAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (Key, []kernel.ULID, error)
+	DeleteAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect) (Key, []kernel.ULID, error)
 	// SetNonAdminManagers records the account's
 	// apiKeyEnableNonAdminManagers setting.
 	SetNonAdminManagers(ctx context.Context, acct kernel.AccountID, enable bool) error
@@ -100,42 +74,22 @@ type Store interface {
 	PersonalCreatable(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) error
 	// KeysOf are the IDs of the account's keys that are not deleted, in
 	// ID order: those login created, and the personal keys member owns.
-	KeysOf(
-		ctx context.Context,
-		acct kernel.AccountID,
-		login string,
-		member kernel.MemberID,
-	) ([]kernel.ULID, []kernel.ULID, error)
+	KeysOf(ctx context.Context, acct kernel.AccountID, login string, member kernel.MemberID) ([]kernel.ULID, []kernel.ULID, error)
 	// AccountPersonalAPIKeys are up to limit of the account's personal
 	// keys that are not deleted, in ID order, from the first after after.
-	AccountPersonalAPIKeys(
-		ctx context.Context,
-		acct kernel.AccountID,
-		after kernel.ULID,
-		limit int,
-	) ([]Key, error)
+	AccountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]Key, error)
 	// CountPersonalAPIKeys counts the account's personal keys that are
 	// neither disabled nor deleted.
 	CountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID) (int, error)
 	// DisablePersonalAPIKey is DisableAPIKey of a personal key; a key of
 	// the account's own is the store's not found error.
-	DisablePersonalAPIKey(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		reason string,
-	) (Key, []kernel.ULID, error)
+	DisablePersonalAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (Key, []kernel.ULID, error)
 }
 
 // Authorizer decides the caller's actions; the access domain's
 // authz.Service is one.
 type Authorizer interface {
-	Authorize(
-		ctx context.Context,
-		p kernel.Principal,
-		action accessapi.Action,
-		space kernel.ULID,
-	) (bool, error)
+	Authorize(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error)
 	Holds(ctx context.Context, p kernel.Principal, action accessapi.Action) (bool, error)
 }
 
@@ -220,12 +174,7 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Key
 
 // List is up to limit of the keys of p's account, from the first after
 // after.
-func (s *Service) List(
-	ctx context.Context,
-	p kernel.Principal,
-	after kernel.ULID,
-	limit int,
-) ([]Key, error) {
+func (s *Service) List(ctx context.Context, p kernel.Principal, after kernel.ULID, limit int) ([]Key, error) {
 	return s.d.Store.AccountAPIKeys(ctx, p.AccountID, after, limit) //nolint:wrapcheck // as above
 }
 
@@ -237,13 +186,7 @@ func (s *Service) Get(ctx context.Context, p kernel.Principal, id kernel.ULID) (
 // Update applies c to the key id of p's account. A claim mapping applies
 // to an OIDC key only. A key whose version expect does not accept is
 // kernel.ErrStale and is not changed.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-	expect kernel.Expect,
-	c Change,
-) (Key, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, id kernel.ULID, expect kernel.Expect, c Change) (Key, error) {
 	if err := s.may(ctx, p, accessapi.ActionApiKeyUpdate); err != nil {
 		return Key{}, err
 	}
@@ -284,11 +227,7 @@ func (s *Service) Update(
 // every session of the key, so the old secret and every token it was
 // exchanged for stop working. It returns the key and its new secret. An
 // OIDC key has no secret to reset.
-func (s *Service) Reset(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-) (Key, string, error) {
+func (s *Service) Reset(ctx context.Context, p kernel.Principal, id kernel.ULID) (Key, string, error) {
 	if err := s.may(ctx, p, accessapi.ActionApiKeyReset); err != nil {
 		return Key{}, "", err
 	}
@@ -318,12 +257,7 @@ func (s *Service) Disable(ctx context.Context, p kernel.Principal, id kernel.ULI
 // the key. The row stays, deleted, while sessions and audit name it. A
 // key whose version expect does not accept is kernel.ErrStale and is
 // kept.
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-	expect kernel.Expect,
-) (Key, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, id kernel.ULID, expect kernel.Expect) (Key, error) {
 	if err := s.may(ctx, p, accessapi.ActionApiKeyDelete); err != nil {
 		return Key{}, err
 	}
@@ -333,11 +267,7 @@ func (s *Service) Delete(
 
 // SetNonAdminManagers records whether admins of spaces below p's
 // account's top space may manage API keys, and returns the setting.
-func (s *Service) SetNonAdminManagers(
-	ctx context.Context,
-	p kernel.Principal,
-	enable bool,
-) (bool, error) {
+func (s *Service) SetNonAdminManagers(ctx context.Context, p kernel.Principal, enable bool) (bool, error) {
 	if err := s.manages(ctx, p); err != nil {
 		return false, err
 	}

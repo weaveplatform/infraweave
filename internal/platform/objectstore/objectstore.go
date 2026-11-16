@@ -98,12 +98,7 @@ type Bucket interface {
 	Delete(ctx context.Context, key string) error
 	// SignURL returns a request that allows method on key until ttl
 	// passes.
-	SignURL(
-		ctx context.Context,
-		method, key string,
-		ttl time.Duration,
-		c Constraints,
-	) (Signed, error)
+	SignURL(ctx context.Context, method, key string, ttl time.Duration, c Constraints) (Signed, error)
 }
 
 // Writer is the store without Delete, as serve holds it: the identity
@@ -113,14 +108,7 @@ type Writer interface {
 	Get(ctx context.Context, store Name, key string) (io.ReadCloser, error)
 	Head(ctx context.Context, store Name, key string) (int64, error)
 	// SignURL takes Config's signed_url_ttl when ttl is 0.
-	SignURL(
-		ctx context.Context,
-		method string,
-		store Name,
-		key string,
-		ttl time.Duration,
-		c Constraints,
-	) (Signed, error)
+	SignURL(ctx context.Context, method string, store Name, key string, ttl time.Duration, c Constraints) (Signed, error)
 }
 
 // Store is the whole store, which only the scheduler holds, for
@@ -186,13 +174,7 @@ func CheckKey(key string) error {
 	return nil
 }
 
-func (r *router) Put(
-	ctx context.Context,
-	store Name,
-	key string,
-	rd io.Reader,
-	size int64,
-) (Object, error) {
+func (r *router) Put(ctx context.Context, store Name, key string, rd io.Reader, size int64) (Object, error) {
 	b, k, err := r.object(store, key)
 	if err != nil {
 		return Object{}, err
@@ -224,14 +206,7 @@ func (r *router) Delete(ctx context.Context, store Name, key string) error {
 	return b.Delete(ctx, k) //nolint:wrapcheck // as above
 }
 
-func (r *router) SignURL(
-	ctx context.Context,
-	method string,
-	store Name,
-	key string,
-	ttl time.Duration,
-	c Constraints,
-) (Signed, error) {
+func (r *router) SignURL(ctx context.Context, method string, store Name, key string, ttl time.Duration, c Constraints) (Signed, error) {
 	if method != http.MethodGet && method != http.MethodPut {
 		return Signed{}, fmt.Errorf("%w: %s", ErrMethod, method)
 	}
@@ -251,13 +226,7 @@ func WriterOnly(s Store) Writer { return writerOnly{s} }
 
 type writerOnly struct{ s Store }
 
-func (w writerOnly) Put(
-	ctx context.Context,
-	store Name,
-	key string,
-	r io.Reader,
-	size int64,
-) (Object, error) {
+func (w writerOnly) Put(ctx context.Context, store Name, key string, r io.Reader, size int64) (Object, error) {
 	return w.s.Put(ctx, store, key, r, size) //nolint:wrapcheck // as above
 }
 
@@ -269,13 +238,6 @@ func (w writerOnly) Head(ctx context.Context, store Name, key string) (int64, er
 	return w.s.Head(ctx, store, key) //nolint:wrapcheck // as above
 }
 
-func (w writerOnly) SignURL(
-	ctx context.Context,
-	method string,
-	store Name,
-	key string,
-	ttl time.Duration,
-	c Constraints,
-) (Signed, error) {
+func (w writerOnly) SignURL(ctx context.Context, method string, store Name, key string, ttl time.Duration, c Constraints) (Signed, error) {
 	return w.s.SignURL(ctx, method, store, key, ttl, c) //nolint:wrapcheck // as above
 }

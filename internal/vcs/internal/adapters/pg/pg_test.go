@@ -68,20 +68,11 @@ type authz struct {
 	grants map[string]map[kernel.ULID][]accessapi.Action
 }
 
-func (a authz) Authorize(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (a authz) Authorize(_ context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error) {
 	return slices.Contains(a.grants[p.Login][space], action), nil
 }
 
-func (a authz) Reachable(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-) ([]kernel.ULID, error) {
+func (a authz) Reachable(_ context.Context, p kernel.Principal, action accessapi.Action) ([]kernel.ULID, error) {
 	var out []kernel.ULID
 	for space, actions := range a.grants[p.Login] {
 		if slices.Contains(actions, action) {

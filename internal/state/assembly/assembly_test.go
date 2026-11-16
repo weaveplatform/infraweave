@@ -82,12 +82,7 @@ func TestUnitRunUpdated(t *testing.T) {
 		state kernel.RunState
 	}
 	var got []ended
-	h := runUpdated(func(
-		_ context.Context,
-		acct kernel.AccountID,
-		run kernel.ULID,
-		st kernel.RunState,
-	) error {
+	h := runUpdated(func(_ context.Context, acct kernel.AccountID, run kernel.ULID, st kernel.RunState) error {
 		got = append(got, ended{acct, run, st})
 		return nil
 	})

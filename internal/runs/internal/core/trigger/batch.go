@@ -54,12 +54,7 @@ type entry struct {
 //
 // ref: decision 0008 § "Who drives each transition"
 // ref: decision 0022
-func (s *Service) Batch(
-	ctx context.Context,
-	p kernel.Principal,
-	stacks []BatchStack,
-	forceApply string,
-) ([]read.View, error) {
+func (s *Service) Batch(ctx context.Context, p kernel.Principal, stacks []BatchStack, forceApply string) ([]read.View, error) {
 	if len(stacks) == 0 || len(stacks) > MaxBatch {
 		reason := kernel.ReasonMaxLength
 		if len(stacks) == 0 {
@@ -111,11 +106,7 @@ func (s *Service) Batch(
 // entries reads and checks each of stacks for p in the transaction ctx
 // carries, locking the stacks' rows in ID order, and answers each
 // entry's refusals beside the entries.
-func (s *Service) entries(
-	ctx context.Context,
-	p kernel.Principal,
-	stacks []BatchStack,
-) ([]entry, []kernel.FieldError, error) {
+func (s *Service) entries(ctx context.Context, p kernel.Principal, stacks []BatchStack) ([]entry, []kernel.FieldError, error) {
 	entries := make([]entry, len(stacks))
 	var errs []kernel.FieldError
 	seen := make(map[string]bool, len(stacks))
@@ -165,12 +156,7 @@ func (s *Service) entries(
 // triggerable reads p's stack slug into st, answering the refusal at at
 // of a stack p cannot read, as one the account lacks, and of one whose
 // space p may not trigger runs in.
-func (s *Service) triggerable(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, at string,
-	st *stacksapi.Stack,
-) ([]kernel.FieldError, error) {
+func (s *Service) triggerable(ctx context.Context, p kernel.Principal, slug, at string, st *stacksapi.Stack) ([]kernel.FieldError, error) {
 	var err error
 	*st, err = s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 	if err != nil && !errors.Is(err, stacksapi.ErrNotFound) {
@@ -211,13 +197,7 @@ func (s *Service) triggerable(
 // locked settings: a disabled stack, a deleting one, one another caller
 // locked, and one with no commit, at its stack, and a commit sha its repository lacks, at
 // its commitSha. It sets e's commit.
-func (s *Service) runnable(
-	ctx context.Context,
-	p kernel.Principal,
-	e *entry,
-	sha string,
-	i int,
-) ([]kernel.FieldError, error) {
+func (s *Service) runnable(ctx context.Context, p kernel.Principal, e *entry, sha string, i int) ([]kernel.FieldError, error) {
 	at := fmt.Sprintf("/stacks/%d/stack", i)
 	refuse := func(format string, args ...any) []kernel.FieldError {
 		return []kernel.FieldError{{

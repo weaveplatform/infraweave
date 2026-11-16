@@ -85,12 +85,7 @@ func (i *idp) roots() []byte {
 }
 
 // mint signs claims with the issuer's key of alg, under kid.
-func (i *idp) mint(
-	t *testing.T,
-	alg jose.SignatureAlgorithm,
-	kid string,
-	claims map[string]any,
-) string {
+func (i *idp) mint(t *testing.T, alg jose.SignatureAlgorithm, kid string, claims map[string]any) string {
 	t.Helper()
 	var key any = i.rsa
 	if alg == jose.ES256 {

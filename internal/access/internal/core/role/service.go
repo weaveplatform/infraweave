@@ -33,28 +33,14 @@ type Store interface {
 	// UpdateRole locks the account's role slug, has edit answer it as it is
 	// to be, and writes its name, description and actions, raising its
 	// version.
-	UpdateRole(
-		ctx context.Context,
-		acct kernel.AccountID,
-		slug string,
-		edit func(Role) (Role, error),
-	) (Role, error)
+	UpdateRole(ctx context.Context, acct kernel.AccountID, slug string, edit func(Role) (Role, error)) (Role, error)
 	// DeleteRole locks the account's role slug, has check refuse it or
 	// not, and deletes it with its actions; a role with bindings is
 	// ErrInUse.
-	DeleteRole(
-		ctx context.Context,
-		acct kernel.AccountID,
-		slug string,
-		check func(Role) error,
-	) (Role, error)
+	DeleteRole(ctx context.Context, acct kernel.AccountID, slug string, check func(Role) error) (Role, error)
 	// RoleBindings reads the bindings of the account's role id to users,
 	// groups and API keys, oldest first.
-	RoleBindings(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-	) ([]binding.Listed, error)
+	RoleBindings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]binding.Listed, error)
 }
 
 // Input is a custom role as created; a nil Description is empty.
@@ -88,12 +74,7 @@ type Deps struct {
 func NewService(d Deps) *Service { return &Service{store: d.Store} }
 
 // Roles lists up to limit of acct's roles after the slug after, by slug.
-func (s *Service) Roles(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after string,
-	limit int,
-) ([]Role, error) {
+func (s *Service) Roles(ctx context.Context, acct kernel.AccountID, after string, limit int) ([]Role, error) {
 	rs, err := s.store.Roles(ctx, acct, after, limit)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
@@ -116,11 +97,7 @@ func (s *Service) Role(ctx context.Context, acct kernel.AccountID, slug string) 
 // Bindings reads the bindings of acct's role r to users, groups and API
 // keys. A stack's binding arrives with the stack role bindings, which
 // list it with the stack's name from the stacks domain.
-func (s *Service) Bindings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	r Role,
-) ([]binding.Listed, error) {
+func (s *Service) Bindings(ctx context.Context, acct kernel.AccountID, r Role) ([]binding.Listed, error) {
 	return s.store.RoleBindings(ctx, acct, r.ID) //nolint:wrapcheck // the store names the read
 }
 
@@ -156,13 +133,7 @@ func (s *Service) Create(ctx context.Context, acct kernel.AccountID, in Input) (
 // slug, when expect accepts its version. A system role is ErrSystem; a
 // name with no letter or digit, or an action no role may hold, is a
 // *kernel.Invalid; a role whose version expect refuses is kernel.ErrStale.
-func (s *Service) Update(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	expect kernel.Expect,
-	c Change,
-) (Role, error) {
+func (s *Service) Update(ctx context.Context, acct kernel.AccountID, slug string, expect kernel.Expect, c Change) (Role, error) {
 	r, err := s.store.UpdateRole(ctx, acct, slug, func(r Role) (Role, error) {
 		if r.System {
 			return Role{}, fmt.Errorf("%w: %s", ErrSystem, r.Slug)
@@ -197,12 +168,7 @@ func (s *Service) Update(
 // Delete deletes acct's custom role slug when expect accepts its version,
 // and answers it as it was. A system role is ErrSystem, one with bindings
 // ErrInUse, and one whose version expect refuses kernel.ErrStale.
-func (s *Service) Delete(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	expect kernel.Expect,
-) (Role, error) {
+func (s *Service) Delete(ctx context.Context, acct kernel.AccountID, slug string, expect kernel.Expect) (Role, error) {
 	r, err := s.store.DeleteRole(ctx, acct, slug, func(r Role) error {
 		if r.System {
 			return fmt.Errorf("%w: %s", ErrSystem, r.Slug)
@@ -242,11 +208,7 @@ func inCatalogueOrder(actions []accessapi.Action) []accessapi.Action {
 // lacks, and one it marks disabled or deprecated, which grants nothing.
 //
 // ref: DV-022
-func assignable(
-	pointer string,
-	actions []accessapi.Action,
-	errs []kernel.FieldError,
-) ([]accessapi.Action, []kernel.FieldError) {
+func assignable(pointer string, actions []accessapi.Action, errs []kernel.FieldError) ([]accessapi.Action, []kernel.FieldError) {
 	for i, a := range actions {
 		info, ok := accessapi.ActionOf(a)
 		var why string

@@ -24,19 +24,11 @@ func (status) RunStack(context.Context, kernel.AccountID, kernel.ULID) (kernel.U
 	return kernel.ULID{}, stacksapi.ErrNotFound
 }
 
-func (s status) Blockers(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID]stacksapi.Blocker, error) {
+func (s status) Blockers(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error) {
 	return s.blockers, s.err
 }
 
-func (s status) Outputs(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID][]stacksapi.Output, error) {
+func (s status) Outputs(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]stacksapi.Output, error) {
 	return s.outputs, s.err
 }
 

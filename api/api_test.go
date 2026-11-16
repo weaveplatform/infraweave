@@ -176,13 +176,7 @@ func TestUnitAPIProblemTypes(t *testing.T) {
 
 // checkProblemExamples checks each problem example of doc's responses
 // against the register listed, and records each slug it uses in used.
-func checkProblemExamples(
-	t *testing.T,
-	file string,
-	doc *openapi3.T,
-	listed map[string]problem,
-	used map[string]bool,
-) {
+func checkProblemExamples(t *testing.T, file string, doc *openapi3.T, listed map[string]problem, used map[string]bool) {
 	t.Helper()
 	for name, r := range doc.Components.Responses {
 		name = file + " " + name

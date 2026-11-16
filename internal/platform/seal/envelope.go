@@ -55,12 +55,7 @@ func envelopeKey(shared, ephemeral, pool []byte) ([]byte, error) {
 // SealEnvelope seals plaintext to a worker pool's P-256 public key, for
 // run runID at stateVersion, in the pool envelope
 // 0x01 | ephemeral public key (65) | nonce | ciphertext and tag.
-func SealEnvelope(
-	pool *ecdh.PublicKey,
-	runID string,
-	stateVersion int64,
-	plaintext []byte,
-) ([]byte, error) {
+func SealEnvelope(pool *ecdh.PublicKey, runID string, stateVersion int64, plaintext []byte) ([]byte, error) {
 	if pool.Curve() != ecdh.P256() {
 		return nil, ErrPoolKey
 	}
@@ -99,12 +94,7 @@ func SealEnvelope(
 
 // OpenEnvelope opens an envelope SealEnvelope sealed to pool's public key
 // for the same run and state version.
-func OpenEnvelope(
-	pool *ecdh.PrivateKey,
-	runID string,
-	stateVersion int64,
-	sealed []byte,
-) ([]byte, error) {
+func OpenEnvelope(pool *ecdh.PrivateKey, runID string, stateVersion int64, sealed []byte) ([]byte, error) {
 	if pool.Curve() != ecdh.P256() {
 		return nil, ErrPoolKey
 	}

@@ -29,11 +29,7 @@ type Store interface {
 	// SetPersonalAPIKeys records enabled and, when disable is true,
 	// disables every personal key of the account and revokes their
 	// sessions, which it returns.
-	SetPersonalAPIKeys(
-		ctx context.Context,
-		acct kernel.AccountID,
-		enabled, disable bool,
-	) ([]kernel.ULID, error)
+	SetPersonalAPIKeys(ctx context.Context, acct kernel.AccountID, enabled, disable bool) ([]kernel.ULID, error)
 	// ToggleNonHumanKeyManagers flips the setting and returns its new value.
 	ToggleNonHumanKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error)
 	SetSecurityEmail(ctx context.Context, acct kernel.AccountID, email string) error
@@ -50,11 +46,7 @@ type Store interface {
 	// is the organization's last is ErrInvalidState, so two deletions
 	// cannot leave an organization with none. It revokes the account's
 	// live sessions first and returns them.
-	DeleteAccount(
-		ctx context.Context,
-		acct kernel.AccountID,
-		e kernel.OrganizationAuditEntry,
-	) ([]kernel.ULID, error)
+	DeleteAccount(ctx context.Context, acct kernel.AccountID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error)
 }
 
 // Deps are what the service needs.
@@ -82,11 +74,7 @@ func (s *Service) Get(ctx context.Context, p kernel.Principal) (Settings, error)
 // SetPersonalAPIKeys allows or refuses personal key creation in p's
 // account, disabling the account's personal keys when asked to while
 // refusing.
-func (s *Service) SetPersonalAPIKeys(
-	ctx context.Context,
-	p kernel.Principal,
-	enabled, disableExisting bool,
-) (bool, error) {
+func (s *Service) SetPersonalAPIKeys(ctx context.Context, p kernel.Principal, enabled, disableExisting bool) (bool, error) {
 	revoked, err := s.d.Store.SetPersonalAPIKeys(ctx, p.AccountID, enabled,
 		!enabled && disableExisting)
 	if err != nil {
@@ -98,11 +86,7 @@ func (s *Service) SetPersonalAPIKeys(
 
 // RequestPersonalAPIKeys records p's request that the account's admins
 // enable personal API keys. Nothing is delivered; the trail holds it.
-func (s *Service) RequestPersonalAPIKeys(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP string,
-) error {
+func (s *Service) RequestPersonalAPIKeys(ctx context.Context, p kernel.Principal, remoteIP string) error {
 	//nolint:wrapcheck // the store names the write
 	return s.d.Store.RequestPersonalAPIKeys(ctx, kernel.AuditEntry{
 		AccountID:        p.AccountID.ULID,
@@ -118,10 +102,7 @@ func (s *Service) RequestPersonalAPIKeys(
 // ToggleNonHumanKeyManagers flips whether API keys may manage API keys. A
 // key or a run is ErrNotHuman: one that could flip it could grant itself
 // what the setting withholds.
-func (s *Service) ToggleNonHumanKeyManagers(
-	ctx context.Context,
-	p kernel.Principal,
-) (bool, error) {
+func (s *Service) ToggleNonHumanKeyManagers(ctx context.Context, p kernel.Principal) (bool, error) {
 	if !p.Human() {
 		return false, ErrNotHuman
 	}
@@ -129,11 +110,7 @@ func (s *Service) ToggleNonHumanKeyManagers(
 }
 
 // SetSecurityEmail sets the security contact of p's account.
-func (s *Service) SetSecurityEmail(
-	ctx context.Context,
-	p kernel.Principal,
-	email string,
-) (string, error) {
+func (s *Service) SetSecurityEmail(ctx context.Context, p kernel.Principal, email string) (string, error) {
 	if err := CheckSecurityEmail(email); err != nil {
 		return "", err
 	}
@@ -144,11 +121,7 @@ func (s *Service) SetSecurityEmail(
 }
 
 // SetRedirectHosts replaces the OAuth redirect allowlist of p's account.
-func (s *Service) SetRedirectHosts(
-	ctx context.Context,
-	p kernel.Principal,
-	hosts []string,
-) ([]string, error) {
+func (s *Service) SetRedirectHosts(ctx context.Context, p kernel.Principal, hosts []string) ([]string, error) {
 	hosts, err := CheckRedirectHosts(hosts)
 	if err != nil {
 		return nil, err
@@ -169,11 +142,7 @@ func (s *Service) SetSurvey(ctx context.Context, p kernel.Principal, sv Survey) 
 
 // ToggleDeletionMark marks p's account for deletion, with reason and
 // description, or clears its mark, and reports whether it is now marked.
-func (s *Service) ToggleDeletionMark(
-	ctx context.Context,
-	p kernel.Principal,
-	reason, description *string,
-) (bool, error) {
+func (s *Service) ToggleDeletionMark(ctx context.Context, p kernel.Principal, reason, description *string) (bool, error) {
 	//nolint:wrapcheck // as above
 	return s.d.Store.ToggleDeletionMark(ctx, p.AccountID, Mark{
 		At: s.d.Now(), Reason: reason, Description: description,

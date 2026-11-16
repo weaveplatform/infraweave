@@ -36,11 +36,7 @@ type store struct {
 	err   error
 }
 
-func (s *store) Due(
-	_ context.Context,
-	cutoffs []timers.Cutoff,
-	batch int,
-) ([]lifecycle.Run, error) {
+func (s *store) Due(_ context.Context, cutoffs []timers.Cutoff, batch int) ([]lifecycle.Run, error) {
 	s.reads++
 	if s.err != nil {
 		return nil, s.err
@@ -104,11 +100,7 @@ func newWorld() *world {
 
 // run adds a run of typ in state, created ago created and changed ago
 // changed.
-func (w *world) run(
-	typ kernel.RunType,
-	state kernel.RunState,
-	created, changed time.Duration,
-) kernel.ULID {
+func (w *world) run(typ kernel.RunType, state kernel.RunState, created, changed time.Duration) kernel.ULID {
 	id := kernel.NewULID()
 	w.store.runs[id] = &lifecycle.Run{
 		ID: id, Type: typ, State: state, Version: 3,
@@ -142,13 +134,7 @@ func TestUnitRunTimers(t *testing.T) {
 	cases, twins := map[kernel.ULID]want{}, map[kernel.ULID]want{}
 	// add adds a run due on wt's rule, and with twin one a minute short of
 	// it on both clocks, which falls due on the same rule a minute on.
-	add := func(
-		typ kernel.RunType,
-		state kernel.RunState,
-		created, changed time.Duration,
-		wt want,
-		twin bool,
-	) {
+	add := func(typ kernel.RunType, state kernel.RunState, created, changed time.Duration, wt want, twin bool) {
 		cases[w.run(typ, state, created, changed)] = wt
 		if twin {
 			twins[w.run(typ, state, created-time.Minute, changed-time.Minute)] = wt

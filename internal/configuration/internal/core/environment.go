@@ -76,11 +76,7 @@ func (s *Service) Surface() expr.Surface {
 // p, who must read its space: sample values of the variables it resolves
 // to, a write-only variable's masked as a run's log masks it, and of the
 // stack, env closed to the names it resolves to. A stack p cannot read is expr.ErrNoContext, as a missing one is.
-func (s *Service) surfaceContext(
-	ctx context.Context,
-	p kernel.Principal,
-	ref string,
-) (expr.Context, error) {
+func (s *Service) surfaceContext(ctx context.Context, p kernel.Principal, ref string) (expr.Context, error) {
 	st, err := s.stack(ctx, p.AccountID, ref)
 	if _, ok := errors.AsType[*Missing](err); ok {
 		return expr.Context{}, fmt.Errorf("%w: %w", expr.ErrNoContext, err)
@@ -247,11 +243,7 @@ func resolve(stack source, attached []source) configapi.Resolved {
 // opening every value: the one place a write-only value is opened.
 //
 // ref: decision 0013 "Delivery to runs"
-func (s *Service) Resolve(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (configapi.Resolved, error) {
+func (s *Service) Resolve(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (configapi.Resolved, error) {
 	sources, _, err := s.sources(ctx, acct, id, true)
 	if err != nil {
 		return configapi.Resolved{}, err
@@ -262,12 +254,7 @@ func (s *Service) Resolve(
 // sources are acct's stack id's sources, the stack's first, with its
 // settings; with open, each element's value opened, write-only or not,
 // and otherwise only a readable one, as Value.
-func (s *Service) sources(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	open bool,
-) ([]source, stacksapi.Settings, error) {
+func (s *Service) sources(ctx context.Context, acct kernel.AccountID, id kernel.ULID, open bool) ([]source, stacksapi.Settings, error) {
 	settings, err := s.stacks.Settings(ctx, acct, id)
 	if errors.Is(err, stacksapi.ErrNotFound) {
 		return nil, settings, fmt.Errorf("%w: %s", configapi.ErrNoStack, id)
@@ -316,11 +303,7 @@ func (s *Service) sources(
 
 // readElements are owners' elements as a read answers them, a write-only
 // value left out.
-func (s *Service) readElements(
-	ctx context.Context,
-	acct kernel.AccountID,
-	owners []Owner,
-) (map[kernel.ULID][]Opened, error) {
+func (s *Service) readElements(ctx context.Context, acct kernel.AccountID, owners []Owner) (map[kernel.ULID][]Opened, error) {
 	all, err := s.store.Elements(ctx, acct, owners)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
@@ -340,12 +323,7 @@ func (s *Service) readElements(
 // write-only too. A refusal points at /value.
 //
 // ref: decision 0024 "Type-checking at save"
-func (s *Service) template(
-	ctx context.Context,
-	acct kernel.AccountID,
-	owner Owner,
-	in ElementInput,
-) (bool, error) {
+func (s *Service) template(ctx context.Context, acct kernel.AccountID, owner Owner, in ElementInput) (bool, error) {
 	if in.FileMount || in.Value == nil || !strings.Contains(*in.Value, "${{") {
 		return false, nil
 	}

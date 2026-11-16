@@ -40,11 +40,7 @@ type Owner struct {
 // returns it with its secret, which is never readable again. Only a
 // member's own session creates one: a key minted by a key or a run would
 // act as a person who never chose it.
-func (s *Service) CreatePersonal(
-	ctx context.Context,
-	p kernel.Principal,
-	in PersonalInput,
-) (Key, string, error) {
+func (s *Service) CreatePersonal(ctx context.Context, p kernel.Principal, in PersonalInput) (Key, string, error) {
 	if err := creator(p); err != nil {
 		return Key{}, "", err
 	}
@@ -124,12 +120,7 @@ func creator(p kernel.Principal) error {
 
 // Personal is up to limit of the personal keys of p's account, from the
 // first after after.
-func (s *Service) Personal(
-	ctx context.Context,
-	p kernel.Principal,
-	after kernel.ULID,
-	limit int,
-) ([]Key, error) {
+func (s *Service) Personal(ctx context.Context, p kernel.Principal, after kernel.ULID, limit int) ([]Key, error) {
 	//nolint:wrapcheck // the store names the read
 	return s.d.Store.AccountPersonalAPIKeys(ctx, p.AccountID, after, limit)
 }
@@ -141,11 +132,7 @@ func (s *Service) PersonalCount(ctx context.Context, p kernel.Principal) (int, e
 
 // DisablePersonal disables the personal key id of p's account and revokes
 // every session of it, as Disable does a key of the account's.
-func (s *Service) DisablePersonal(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-) (Key, error) {
+func (s *Service) DisablePersonal(ctx context.Context, p kernel.Principal, id kernel.ULID) (Key, error) {
 	if err := s.manages(ctx, p); err != nil {
 		return Key{}, err
 	}

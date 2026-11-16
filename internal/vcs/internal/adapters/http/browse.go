@@ -22,10 +22,7 @@ const (
 
 // Repositories lists the repositories an integration reaches, by
 // namespace/name path.
-func (s Server) Repositories(
-	ctx context.Context,
-	req api.RepositoriesRequestObject,
-) (api.RepositoriesResponseObject, error) {
+func (s Server) Repositories(ctx context.Context, req api.RepositoriesRequestObject) (api.RepositoriesResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -49,10 +46,7 @@ func (s Server) Repositories(
 }
 
 // Branches lists a repository's branches, by name.
-func (s Server) Branches(
-	ctx context.Context,
-	req api.BranchesRequestObject,
-) (api.BranchesResponseObject, error) {
+func (s Server) Branches(ctx context.Context, req api.BranchesRequestObject) (api.BranchesResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -74,10 +68,7 @@ func (s Server) Branches(
 }
 
 // VcsIntegrationSearchUsers searches the stacks that use an integration.
-func (s Server) VcsIntegrationSearchUsers(
-	ctx context.Context,
-	req api.VcsIntegrationSearchUsersRequestObject,
-) (api.VcsIntegrationSearchUsersResponseObject, error) {
+func (s Server) VcsIntegrationSearchUsers(ctx context.Context, req api.VcsIntegrationSearchUsersRequestObject) (api.VcsIntegrationSearchUsersResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -130,13 +121,7 @@ func (s Server) VcsIntegrationSearchUsersSuggestions(
 // answers its whole list in one read, so the page is cut here; the cursor
 // holds the last key served, which stays a position while the list
 // changes between pages.
-func pageOf[T any](
-	list string,
-	all []T,
-	key func(T) string,
-	cursor *api.Cursor,
-	limit *api.Limit,
-) ([]T, *string, error) {
+func pageOf[T any](list string, all []T, key func(T) string, cursor *api.Cursor, limit *api.Limit) ([]T, *string, error) {
 	slices.SortFunc(all, func(a, b T) int { return strings.Compare(key(a), key(b)) })
 	if cursor != nil {
 		c, err := cursors.Decode[string](list, *cursor)

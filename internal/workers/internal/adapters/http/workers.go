@@ -10,10 +10,7 @@ import (
 )
 
 // WorkerDrainSet drains or undrains a worker of a pool and answers it.
-func (s Server) WorkerDrainSet(
-	ctx context.Context,
-	req api.WorkerDrainSetRequestObject,
-) (api.WorkerDrainSetResponseObject, error) {
+func (s Server) WorkerDrainSet(ctx context.Context, req api.WorkerDrainSetRequestObject) (api.WorkerDrainSetResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -27,10 +24,7 @@ func (s Server) WorkerDrainSet(
 
 // WorkerPoolCycle asks every worker of a pool to exit, each when it is
 // idle.
-func (s Server) WorkerPoolCycle(
-	ctx context.Context,
-	req api.WorkerPoolCycleRequestObject,
-) (api.WorkerPoolCycleResponseObject, error) {
+func (s Server) WorkerPoolCycle(ctx context.Context, req api.WorkerPoolCycleRequestObject) (api.WorkerPoolCycleResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -42,10 +36,7 @@ func (s Server) WorkerPoolCycle(
 }
 
 // WorkerPoolSearchWorkers searches a pool's workers.
-func (s Server) WorkerPoolSearchWorkers(
-	ctx context.Context,
-	req api.WorkerPoolSearchWorkersRequestObject,
-) (api.WorkerPoolSearchWorkersResponseObject, error) {
+func (s Server) WorkerPoolSearchWorkers(ctx context.Context, req api.WorkerPoolSearchWorkersRequestObject) (api.WorkerPoolSearchWorkersResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

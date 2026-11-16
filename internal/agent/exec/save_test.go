@@ -39,9 +39,7 @@ func (s *stalling) next(call string) error {
 	return nil
 }
 
-func (s *stalling) UploadURLs(
-	_ context.Context, _, _ string, in wire.UploadURLsRequest,
-) ([]wire.SignedUpload, error) {
+func (s *stalling) UploadURLs(_ context.Context, _, _ string, in wire.UploadURLsRequest) ([]wire.SignedUpload, error) {
 	if err := s.next("urls"); err != nil {
 		return nil, err
 	}

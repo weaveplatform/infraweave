@@ -24,9 +24,7 @@ type mirror struct {
 // it as it would from the vendor, against the vendor's signing key, so
 // the suite fetches each release from the internet once, not each
 // launcher's cache.
-func (l *Launchers) Mirror(ctx context.Context, d *deps.Dependencies, t deps.Tool) (string,
-	error,
-) {
+func (l *Launchers) Mirror(ctx context.Context, d *deps.Dependencies, t deps.Tool) (string, error) {
 	files, err := d.Release(ctx, t, l.Arch)
 	if err != nil {
 		return "", err //nolint:wrapcheck // names the release

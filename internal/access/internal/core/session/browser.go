@@ -50,17 +50,8 @@ type Admitted struct {
 // ref: decision 0007
 type Admission interface {
 	// Accounts are the accounts of org that admit member, in slug order.
-	Accounts(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		member kernel.MemberID,
-	) ([]Admitted, error)
+	Accounts(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID) ([]Admitted, error)
 	// Admits reports whether acct, an account of org, admits member; an
 	// account of another organization admits no one.
-	Admits(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		member kernel.MemberID,
-		acct kernel.AccountID,
-	) (Admitted, bool, error)
+	Admits(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID, acct kernel.AccountID) (Admitted, bool, error)
 }

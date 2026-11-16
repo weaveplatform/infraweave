@@ -43,12 +43,7 @@ func (m *mem) Hold(context.Context, kernel.AccountID, kernel.ULID) error {
 	return m.failing("Hold")
 }
 
-func (m *mem) OpenWorkspace(
-	_ context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	name string,
-) error {
+func (m *mem) OpenWorkspace(_ context.Context, acct kernel.AccountID, stack kernel.ULID, name string) error {
 	m.workspaces[Target{Account: acct, Stack: stack, Workspace: name}] = true
 	return m.failing("OpenWorkspace")
 }

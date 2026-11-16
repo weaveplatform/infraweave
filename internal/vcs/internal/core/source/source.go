@@ -18,12 +18,7 @@ import (
 // opened: its own, id, or its provider's default when id is nil; false
 // when it names none and the provider has no default.
 type Integrations interface {
-	Use(
-		ctx context.Context,
-		acct kernel.AccountID,
-		provider string,
-		id *kernel.ULID,
-	) (port.Integration, bool, error)
+	Use(ctx context.Context, acct kernel.AccountID, provider string, id *kernel.ULID) (port.Integration, bool, error)
 }
 
 // Service implements vcsapi.Sources over the provider of each stack's
@@ -64,12 +59,7 @@ func New(d Deps) *Service {
 }
 
 // Resolve implements vcsapi.Sources.
-func (s *Service) Resolve(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	ref string,
-) (vcsapi.Commit, error) {
+func (s *Service) Resolve(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, ref string) (vcsapi.Commit, error) {
 	src, repo, err := s.source(ctx, acct, stack)
 	if err != nil {
 		return vcsapi.Commit{}, err
@@ -112,12 +102,7 @@ func (s *Service) Resolver() stacksapi.StackSources { return resolver{s} }
 type resolver struct{ s *Service }
 
 // Resolve implements stacksapi.StackSources.
-func (r resolver) Resolve(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	ref string,
-) (stacksapi.Commit, error) {
+func (r resolver) Resolve(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, ref string) (stacksapi.Commit, error) {
 	c, err := r.s.Resolve(ctx, acct, stack, ref)
 	if errors.Is(err, vcsapi.ErrRefNotFound) {
 		return stacksapi.Commit{}, fmt.Errorf("%w: %w", stacksapi.ErrRefNotFound, err)
@@ -166,12 +151,7 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 }
 
 // SourceURL implements vcsapi.Sources.
-func (s *Service) SourceURL(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	commit string,
-) (string, error) {
+func (s *Service) SourceURL(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, commit string) (string, error) {
 	src, repo, err := s.source(ctx, acct, stack)
 	if err != nil {
 		return "", err
@@ -181,11 +161,7 @@ func (s *Service) SourceURL(
 
 // source is the Source of the provider acct's stack id names, and the
 // stack's repository as it reaches it.
-func (s *Service) source(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-) (port.Source, port.Repository, error) {
+func (s *Service) source(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) (port.Source, port.Repository, error) {
 	st, err := s.stacks.Settings(ctx, acct, stack)
 	if err != nil {
 		return nil, port.Repository{}, err //nolint:wrapcheck // stacks names the read

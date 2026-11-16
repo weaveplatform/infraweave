@@ -38,10 +38,7 @@ type Platform struct {
 const deadJobsList = "dead-jobs"
 
 // DeadJobs lists every organization's dead jobs, oldest first.
-func (s operatorServer) DeadJobs(
-	ctx context.Context,
-	req operatorapi.DeadJobsRequestObject,
-) (operatorapi.DeadJobsResponseObject, error) {
+func (s operatorServer) DeadJobs(ctx context.Context, req operatorapi.DeadJobsRequestObject) (operatorapi.DeadJobsResponseObject, error) {
 	var after int64
 	if req.Params.Cursor != nil {
 		c, err := page.Decode[int64](deadJobsList, *req.Params.Cursor)
@@ -73,10 +70,7 @@ func (s operatorServer) DeadJobs(
 }
 
 // DeadJob reads a dead job.
-func (s operatorServer) DeadJob(
-	ctx context.Context,
-	req operatorapi.DeadJobRequestObject,
-) (operatorapi.DeadJobResponseObject, error) {
+func (s operatorServer) DeadJob(ctx context.Context, req operatorapi.DeadJobRequestObject) (operatorapi.DeadJobResponseObject, error) {
 	d, err := s.platform.Dead.ReadDead(ctx, req.Id)
 	if err != nil {
 		return nil, deadError(err, req.Id)
@@ -85,10 +79,7 @@ func (s operatorServer) DeadJob(
 }
 
 // DeadJobRetry makes a dead job pending again and answers it as it was.
-func (s operatorServer) DeadJobRetry(
-	ctx context.Context,
-	req operatorapi.DeadJobRetryRequestObject,
-) (operatorapi.DeadJobRetryResponseObject, error) {
+func (s operatorServer) DeadJobRetry(ctx context.Context, req operatorapi.DeadJobRetryRequestObject) (operatorapi.DeadJobRetryResponseObject, error) {
 	d, err := s.platform.Dead.ReadDead(ctx, req.Id)
 	if err == nil {
 		err = s.platform.Dead.Retry(ctx, req.Id)
@@ -101,10 +92,7 @@ func (s operatorServer) DeadJobRetry(
 
 // DeadJobDiscard cancels a dead job, which pruning then deletes, and
 // answers it as it was.
-func (s operatorServer) DeadJobDiscard(
-	ctx context.Context,
-	req operatorapi.DeadJobDiscardRequestObject,
-) (operatorapi.DeadJobDiscardResponseObject, error) {
+func (s operatorServer) DeadJobDiscard(ctx context.Context, req operatorapi.DeadJobDiscardRequestObject) (operatorapi.DeadJobDiscardResponseObject, error) {
 	d, err := s.platform.Dead.ReadDead(ctx, req.Id)
 	if err == nil {
 		err = s.platform.Dead.Discard(ctx, req.Id)
@@ -155,10 +143,7 @@ func deadView(d queue.Dead) operatorapi.DeadJob {
 // SecretsRotate rotates the data key now, as infraweave secrets rotate
 // does, and answers the new active key's ID. A rotation whose old key is
 // still retiring answers 409.
-func (s operatorServer) SecretsRotate(
-	ctx context.Context,
-	_ operatorapi.SecretsRotateRequestObject,
-) (operatorapi.SecretsRotateResponseObject, error) {
+func (s operatorServer) SecretsRotate(ctx context.Context, _ operatorapi.SecretsRotateRequestObject) (operatorapi.SecretsRotateResponseObject, error) {
 	active, err := s.platform.RotateKey(ctx)
 	if errors.Is(err, crypt.ErrRotating) {
 		return nil, problem.InvalidState.Error( //nolint:wrapcheck // a problem

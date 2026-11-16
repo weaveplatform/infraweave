@@ -205,14 +205,7 @@ func archive(tw *tar.Writer, dir string, banned [][]byte) ([]string, error) {
 
 // entry writes p's header and, for a regular file, its content, which
 // must hold none of banned.
-func entry(
-	tw *tar.Writer,
-	root *os.Root,
-	p string,
-	info fs.FileInfo,
-	link string,
-	banned [][]byte,
-) error {
+func entry(tw *tar.Writer, root *os.Root, p string, info fs.FileInfo, link string, banned [][]byte) error {
 	h, err := tar.FileInfoHeader(info, link)
 	if err != nil {
 		return err //nolint:wrapcheck // names the path

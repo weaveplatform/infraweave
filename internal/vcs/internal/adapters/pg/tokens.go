@@ -35,11 +35,7 @@ func (s Tokens) Add(ctx context.Context, t source.Token) error {
 }
 
 // List lists acct's run's tokens, oldest first.
-func (s Tokens) List(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-) ([]source.Token, error) {
+func (s Tokens) List(ctx context.Context, acct kernel.AccountID, run kernel.ULID) ([]source.Token, error) {
 	rows, _ := tx.Q(ctx, s.db).Query(ctx, `SELECT account_id, run_id, token_id, stack_id,
 			integration_id, provider, namespace, repository, expires_at
 		FROM vcs_run_tokens WHERE account_id = $1 AND run_id = $2
@@ -59,12 +55,7 @@ func (s Tokens) List(
 
 // Remove forgets acct's run's token id; forgetting it again changes
 // nothing.
-func (s Tokens) Remove(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-	id string,
-) error {
+func (s Tokens) Remove(ctx context.Context, acct kernel.AccountID, run kernel.ULID, id string) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM vcs_run_tokens
 		WHERE account_id = $1 AND run_id = $2 AND token_id = $3`, acct, run, id)
 	if err != nil {

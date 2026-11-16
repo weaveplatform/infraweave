@@ -16,12 +16,7 @@ type Runs struct{ *Service }
 // minting the run's token where the provider narrows one.
 //
 // ref: decision 0012 § "Source access for runs"
-func (r Runs) Source(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack, run kernel.ULID,
-	commit string,
-) (runsapi.Source, error) {
+func (r Runs) Source(ctx context.Context, acct kernel.AccountID, stack, run kernel.ULID, commit string) (runsapi.Source, error) {
 	url, err := r.SourceURL(ctx, acct, stack, commit)
 	if err != nil {
 		return runsapi.Source{}, err

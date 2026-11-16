@@ -17,14 +17,7 @@ import (
 
 // bindingOf is a binding of x's account of the actor of kind id to the
 // role slug in the space slug, made as origin.
-func bindingOf(
-	t *testing.T,
-	x seeded,
-	kind binding.ActorKind,
-	id kernel.ULID,
-	slug, space string,
-	origin binding.Origin,
-) binding.Binding {
+func bindingOf(t *testing.T, x seeded, kind binding.ActorKind, id kernel.ULID, slug, space string, origin binding.Origin) binding.Binding {
 	t.Helper()
 	ctx := t.Context()
 	r, err := x.s.RoleID(ctx, x.acct, slug)

@@ -30,27 +30,12 @@ type Store interface {
 	// SpaceID is the ID of the account's space slug.
 	SpaceID(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error)
 	// HasActor reports whether the account holds the actor of kind id.
-	HasActor(
-		ctx context.Context,
-		acct kernel.AccountID,
-		kind ActorKind,
-		id kernel.ULID,
-	) (bool, error)
+	HasActor(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID) (bool, error)
 	// Binding reads the account's binding id of an actor of kind.
-	Binding(
-		ctx context.Context,
-		acct kernel.AccountID,
-		kind ActorKind,
-		id kernel.ULID,
-	) (Listed, error)
+	Binding(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID) (Listed, error)
 	// ActorBindings reads the bindings of the actor of kind id, oldest
 	// first.
-	ActorBindings(
-		ctx context.Context,
-		acct kernel.AccountID,
-		kind ActorKind,
-		id kernel.ULID,
-	) ([]Listed, error)
+	ActorBindings(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID) ([]Listed, error)
 	// SpaceBindings reads the bindings in the account's space id, oldest
 	// first.
 	SpaceBindings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]Listed, error)
@@ -61,38 +46,15 @@ type Store interface {
 	// has edit answer it as it is to be, and writes its role and space,
 	// raising its version; a role and space the actor holds already is a
 	// *Duplicate.
-	UpdateBinding(
-		ctx context.Context,
-		acct kernel.AccountID,
-		kind ActorKind,
-		id kernel.ULID,
-		edit func(Listed) (Binding, error),
-	) (Listed, error)
+	UpdateBinding(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID, edit func(Listed) (Binding, error)) (Listed, error)
 	// DeleteBinding locks the account's binding id of an actor of kind,
 	// has check refuse it or not, and deletes it.
-	DeleteBinding(
-		ctx context.Context,
-		acct kernel.AccountID,
-		kind ActorKind,
-		id kernel.ULID,
-		check func(Listed) error,
-	) (Listed, error)
+	DeleteBinding(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID, check func(Listed) error) (Listed, error)
 	// ReplaceAccessRules replaces the access_rule bindings of the actor of
 	// kind id with bs.
-	ReplaceAccessRules(
-		ctx context.Context,
-		acct kernel.AccountID,
-		kind ActorKind,
-		id kernel.ULID,
-		bs []Binding,
-	) error
+	ReplaceAccessRules(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID, bs []Binding) error
 	// DeleteActorBindings deletes every binding of the actor of kind id.
-	DeleteActorBindings(
-		ctx context.Context,
-		acct kernel.AccountID,
-		kind ActorKind,
-		id kernel.ULID,
-	) error
+	DeleteActorBindings(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID) error
 }
 
 // Request is a binding as an input names it: its actor's ID, empty when
@@ -137,15 +99,7 @@ func NewService(d Deps) *Service { return &Service{store: d.Store, authz: d.Auth
 // actor, role or space p's account lacks, or whose space p does not
 // administer, at pointer/<index>/<field>. A space p cannot read is
 // refused as one the account lacks, so no refusal names it.
-func (s *Service) Prepare(
-	ctx context.Context,
-	p kernel.Principal,
-	kind ActorKind,
-	origin Origin,
-	pointer string,
-	f Fields,
-	reqs []Request,
-) ([]Binding, error) {
+func (s *Service) Prepare(ctx context.Context, p kernel.Principal, kind ActorKind, origin Origin, pointer string, f Fields, reqs []Request) ([]Binding, error) {
 	out := make([]Binding, 0, len(reqs))
 	var errs []kernel.FieldError
 	for i, r := range reqs {
@@ -196,12 +150,7 @@ func (s *Service) Prepare(
 // administered sets b's space to the account's space slug, answering the
 // refusal when p's account lacks it, p cannot read it or does not
 // administer it, and no refusal otherwise.
-func (s *Service) administered(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	b *Binding,
-) ([]kernel.FieldError, error) {
+func (s *Service) administered(ctx context.Context, p kernel.Principal, slug string, b *Binding) ([]kernel.FieldError, error) {
 	id, err := s.store.SpaceID(ctx, p.AccountID, slug)
 	if err != nil && !errors.Is(err, port.ErrNotFound) {
 		return nil, err //nolint:wrapcheck // the store names the read
@@ -237,12 +186,7 @@ func missing(pointer, what, id string) kernel.FieldError {
 }
 
 // actor is the ID of the account's actor of kind raw names.
-func (s *Service) actor(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	raw string,
-) (kernel.ULID, error) {
+func (s *Service) actor(ctx context.Context, acct kernel.AccountID, kind ActorKind, raw string) (kernel.ULID, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return kernel.ULID{}, fmt.Errorf("%w: %s %q", port.ErrNotFound, kind, raw)
@@ -260,14 +204,7 @@ func (s *Service) actor(
 // Create records the bindings reqs name at pointer, all or none, as p.
 // An empty pointer names an input of one binding, whose refusals point at
 // its fields.
-func (s *Service) Create(
-	ctx context.Context,
-	p kernel.Principal,
-	kind ActorKind,
-	pointer string,
-	f Fields,
-	reqs []Request,
-) ([]Listed, error) {
+func (s *Service) Create(ctx context.Context, p kernel.Principal, kind ActorKind, pointer string, f Fields, reqs []Request) ([]Listed, error) {
 	bs, err := s.Prepare(ctx, p, kind, OriginBinding, pointer, f, reqs)
 	if err != nil && pointer == "" {
 		return nil, Unprefixed(err, "The binding is refused.")
@@ -284,13 +221,7 @@ func (s *Service) Create(
 
 // Bind records bs, which Prepare made, for the actor of kind id, in the
 // transaction ctx carries when the actor is created with them.
-func (s *Service) Bind(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	id kernel.ULID,
-	bs []Binding,
-) ([]Listed, error) {
+func (s *Service) Bind(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID, bs []Binding) ([]Listed, error) {
 	if len(bs) == 0 {
 		return []Listed{}, nil
 	}
@@ -302,11 +233,7 @@ func (s *Service) Bind(
 
 // Record records bs, which Prepare made and whose actors are set, all or
 // none, in the transaction ctx carries when there is one.
-func (s *Service) Record(
-	ctx context.Context,
-	acct kernel.AccountID,
-	bs []Binding,
-) ([]Listed, error) {
+func (s *Service) Record(ctx context.Context, acct kernel.AccountID, bs []Binding) ([]Listed, error) {
 	if len(bs) == 0 {
 		return []Listed{}, nil
 	}
@@ -319,13 +246,7 @@ func (s *Service) Record(
 
 // ReplaceRules replaces the access_rule bindings of the actor of kind id
 // with bs, which Prepare made.
-func (s *Service) ReplaceRules(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	id kernel.ULID,
-	bs []Binding,
-) error {
+func (s *Service) ReplaceRules(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID, bs []Binding) error {
 	for i := range bs {
 		bs[i].ActorKind, bs[i].ActorID = kind, id
 	}
@@ -339,14 +260,7 @@ func (s *Service) ReplaceRules(
 // account's actor of kind id that keep omits in a space p does not
 // administer, so replacing an actor's access rules never removes one p
 // could not have made.
-func (s *Service) Releasable(
-	ctx context.Context,
-	p kernel.Principal,
-	kind ActorKind,
-	id kernel.ULID,
-	pointer string,
-	keep []Binding,
-) error {
+func (s *Service) Releasable(ctx context.Context, p kernel.Principal, kind ActorKind, id kernel.ULID, pointer string, keep []Binding) error {
 	held, err := s.store.ActorBindings(ctx, p.AccountID, kind, id)
 	if err != nil {
 		return err //nolint:wrapcheck // the store names the read
@@ -382,12 +296,7 @@ func (s *Service) Releasable(
 }
 
 // Binding reads acct's binding raw names of an actor of kind.
-func (s *Service) Binding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	raw string,
-) (Listed, error) {
+func (s *Service) Binding(ctx context.Context, acct kernel.AccountID, kind ActorKind, raw string) (Listed, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return Listed{}, fmt.Errorf("%w: binding %q", port.ErrNotFound, raw)
@@ -396,32 +305,18 @@ func (s *Service) Binding(
 }
 
 // Held reads the bindings of acct's actor of kind id, oldest first.
-func (s *Service) Held(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	id kernel.ULID,
-) ([]Listed, error) {
+func (s *Service) Held(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID) ([]Listed, error) {
 	return s.store.ActorBindings(ctx, acct, kind, id) //nolint:wrapcheck // the store names the read
 }
 
 // InSpace reads the bindings in acct's space id, oldest first.
-func (s *Service) InSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) ([]Listed, error) {
+func (s *Service) InSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]Listed, error) {
 	return s.store.SpaceBindings(ctx, acct, id) //nolint:wrapcheck // the store names the read
 }
 
 // Unbind deletes every binding of acct's actor of kind id, as removing
 // an actor another domain keeps does.
-func (s *Service) Unbind(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	id kernel.ULID,
-) error {
+func (s *Service) Unbind(ctx context.Context, acct kernel.AccountID, kind ActorKind, id kernel.ULID) error {
 	if err := s.store.DeleteActorBindings(ctx, acct, kind, id); err != nil {
 		return err //nolint:wrapcheck // the store names the write
 	}
@@ -430,12 +325,7 @@ func (s *Service) Unbind(
 
 // Of reads the bindings of acct's actor of kind raw names, oldest first;
 // an actor the account lacks is port.ErrNotFound.
-func (s *Service) Of(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	raw string,
-) ([]Listed, error) {
+func (s *Service) Of(ctx context.Context, acct kernel.AccountID, kind ActorKind, raw string) ([]Listed, error) {
 	id, err := s.actor(ctx, acct, kind, raw)
 	if err != nil {
 		return nil, err
@@ -447,16 +337,7 @@ func (s *Service) Of(
 // names, when expect accepts its version and check, nil for none, accepts
 // the binding as it is under its lock. Its actor never changes, and the
 // new space needs SPACE_ADMIN as the old one does.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	kind ActorKind,
-	raw string,
-	expect kernel.Expect,
-	f Fields,
-	r Request,
-	check func(Listed) error,
-) (Listed, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, kind ActorKind, raw string, expect kernel.Expect, f Fields, r Request, check func(Listed) error) (Listed, error) {
 	cur, err := s.Binding(ctx, p.AccountID, kind, raw)
 	if err != nil {
 		return Listed{}, err
@@ -520,14 +401,7 @@ func Unprefixed(err error, detail string) error {
 // Delete deletes p's account's binding raw names, when expect accepts
 // its version and check, nil for none, accepts it as it is under its
 // lock, and answers it as it was.
-func (s *Service) Delete(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind ActorKind,
-	raw string,
-	expect kernel.Expect,
-	check func(Listed) error,
-) (Listed, error) {
+func (s *Service) Delete(ctx context.Context, acct kernel.AccountID, kind ActorKind, raw string, expect kernel.Expect, check func(Listed) error) (Listed, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return Listed{}, fmt.Errorf("%w: binding %q", port.ErrNotFound, raw)

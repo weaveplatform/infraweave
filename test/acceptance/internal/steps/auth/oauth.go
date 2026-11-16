@@ -200,10 +200,7 @@ func secret() string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-func (s *oauthSteps) authorize(
-	ctx context.Context,
-	replica, scope, resource, method, redirect string,
-) error {
+func (s *oauthSteps) authorize(ctx context.Context, replica, scope, resource, method, redirect string) error {
 	if s.client == "" {
 		return fmt.Errorf("%w: no client registered", harness.ErrStep)
 	}
@@ -363,9 +360,7 @@ func (s *oauthSteps) redeem(ctx context.Context, replica string) error {
 	})
 }
 
-func (s *oauthSteps) refreshWith(
-	token func(*oauthSteps) string,
-) func(context.Context, string) error {
+func (s *oauthSteps) refreshWith(token func(*oauthSteps) string) func(context.Context, string) error {
 	return func(ctx context.Context, replica string) error {
 		return s.token(ctx, replica, url.Values{
 			"grant_type": {"refresh_token"}, "client_id": {s.client},

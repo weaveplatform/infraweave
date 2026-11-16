@@ -37,26 +37,13 @@ type Sessions interface {
 	// Sessions are up to limit of the account's sessions that are neither
 	// revoked nor past their end, in ID order, which is creation order,
 	// from the first after after; a zero after starts at the first.
-	Sessions(
-		ctx context.Context,
-		acct kernel.AccountID,
-		after kernel.ULID,
-		limit int,
-	) ([]session.Session, error)
+	Sessions(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]session.Session, error)
 	// RevokeSession revokes the account's session id and returns it; a
 	// session of another account is ErrNotFound.
-	RevokeSession(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-	) (session.Session, error)
+	RevokeSession(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (session.Session, error)
 	// RevokeSessionsExcept revokes every live session of the account but
 	// except, and returns them.
-	RevokeSessionsExcept(
-		ctx context.Context,
-		acct kernel.AccountID,
-		except kernel.ULID,
-	) ([]session.Session, error)
+	RevokeSessionsExcept(ctx context.Context, acct kernel.AccountID, except kernel.ULID) ([]session.Session, error)
 	// ExpireSessions deletes the sessions that ended before before, and
 	// reports how many.
 	ExpireSessions(ctx context.Context, before time.Time) (int64, error)
@@ -75,10 +62,7 @@ type Sessions interface {
 type BreakGlass interface {
 	// BreakGlassCredential reads the organization slug names and its
 	// credential, nil when it has none.
-	BreakGlassCredential(
-		ctx context.Context,
-		slug kernel.Slug,
-	) (organization.Organization, *breakglass.Credential, error)
+	BreakGlassCredential(ctx context.Context, slug kernel.Slug) (organization.Organization, *breakglass.Credential, error)
 	// SignIn records s, a break-glass session, and e, its trail entry, in
 	// one transaction.
 	SignIn(ctx context.Context, s session.Session, e kernel.OrganizationAuditEntry) error
@@ -108,11 +92,7 @@ type APIKeys interface {
 	// KeyOwner reads member as acct admits them, for a personal key's
 	// session; ErrNotFound unless acct admits member and member is
 	// active.
-	KeyOwner(
-		ctx context.Context,
-		acct kernel.AccountID,
-		member kernel.MemberID,
-	) (apikey.Owner, error)
+	KeyOwner(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) (apikey.Owner, error)
 }
 
 // OrganizationKeys reads organization keys for the exchange.

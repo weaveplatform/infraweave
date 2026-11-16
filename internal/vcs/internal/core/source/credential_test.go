@@ -31,12 +31,7 @@ type minter struct {
 	named     *string
 }
 
-func (m minter) Mint(
-	_ context.Context,
-	_ port.Repository,
-	name string,
-	expires time.Time,
-) (port.Credential, error) {
+func (m minter) Mint(_ context.Context, _ port.Repository, name string, expires time.Time) (port.Credential, error) {
 	if m.named != nil {
 		*m.named = name
 	}
@@ -97,12 +92,7 @@ type jobs struct {
 	payload *any
 }
 
-func (j jobs) EnqueueTx(
-	_ context.Context,
-	k queue.Kind,
-	payload any,
-	_ ...queue.Option,
-) (int64, error) {
+func (j jobs) EnqueueTx(_ context.Context, k queue.Kind, payload any, _ ...queue.Option) (int64, error) {
 	*j.kinds = append(*j.kinds, k.Name)
 	*j.payload = payload
 	return 1, nil
@@ -121,10 +111,7 @@ type credentialFixture struct {
 	in      port.Integration
 }
 
-func newCredentialFixture(
-	t *testing.T,
-	src func(f *credentialFixture) port.Source,
-) *credentialFixture {
+func newCredentialFixture(t *testing.T, src func(f *credentialFixture) port.Source) *credentialFixture {
 	t.Helper()
 	f := &credentialFixture{
 		acct: kernel.NewAccountID(), stack: kernel.NewULID(), run: kernel.NewULID(),

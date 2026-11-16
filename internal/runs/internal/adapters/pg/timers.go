@@ -18,11 +18,7 @@ var _ timers.Store = (*Store)(nil)
 
 // Due reads up to batch runs that one of cutoffs times out, as
 // timers.Store says. The index runs_waiting serves the states' scan.
-func (s *Store) Due(
-	ctx context.Context,
-	cutoffs []timers.Cutoff,
-	batch int,
-) ([]lifecycle.Run, error) {
+func (s *Store) Due(ctx context.Context, cutoffs []timers.Cutoff, batch int) ([]lifecycle.Run, error) {
 	n := len(cutoffs)
 	var states []string
 	cutStates, types := make([]string, 0, n), make([]string, 0, n)

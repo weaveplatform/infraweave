@@ -75,9 +75,7 @@ func NewRequire(authz accessapi.Authorizer, subjects *Subjects) Require {
 //     domain serves its operations.
 //
 // A request with no principal passes, as only a public route has none.
-func (q Require) Middleware(
-	require func(*http.Request) (accessapi.Required, bool),
-) func(http.Handler) http.Handler {
+func (q Require) Middleware(require func(*http.Request) (accessapi.Required, bool)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			req, ok := require(r)
@@ -100,12 +98,7 @@ func (q Require) Middleware(
 
 // decide reports whether p may make r, or answers r itself, reporting
 // answered, for a subject that is missing or hidden or a failed check.
-func (q Require) decide(
-	w http.ResponseWriter,
-	r *http.Request,
-	p kernel.Principal,
-	req accessapi.Required,
-) (allowed, answered bool) {
+func (q Require) decide(w http.ResponseWriter, r *http.Request, p kernel.Principal, req accessapi.Required) (allowed, answered bool) {
 	ctx := r.Context()
 	var err error
 	switch req.Subject.Kind {
@@ -128,12 +121,7 @@ func (q Require) decide(
 // decideEntity decides a path, body or query subject. A query subject
 // whose parameter is absent decides on the top space, as a body subject
 // without its field does.
-func (q Require) decideEntity(
-	w http.ResponseWriter,
-	r *http.Request,
-	p kernel.Principal,
-	req accessapi.Required,
-) (allowed, answered bool) {
+func (q Require) decideEntity(w http.ResponseWriter, r *http.Request, p kernel.Principal, req accessapi.Required) (allowed, answered bool) {
 	ctx := r.Context()
 	s := req.Subject
 	lookup, ok := q.subjects.of(s.Entity)

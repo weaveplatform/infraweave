@@ -127,13 +127,7 @@ func (s *Store) DeleteOrganization(ctx context.Context, org kernel.OrganizationI
 }
 
 // SetAccountLimit sets acct's limit on limit.
-func (s *Store) SetAccountLimit(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	limit string,
-	value int64,
-) error {
+func (s *Store) SetAccountLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, value int64) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `
 		INSERT INTO account_limits (organization_id, account_id, limit_name, value)
 		VALUES ($1, $2, $3, $4)
@@ -153,10 +147,7 @@ func (s *Store) ClearAccountLimit(ctx context.Context, acct kernel.AccountID, li
 }
 
 // AccountLimits reads acct's limits by limit name.
-func (s *Store) AccountLimits(
-	ctx context.Context,
-	acct kernel.AccountID,
-) (map[string]int64, error) {
+func (s *Store) AccountLimits(ctx context.Context, acct kernel.AccountID) (map[string]int64, error) {
 	out := map[string]int64{}
 	if err := tx.Q(ctx, s.db).
 		QueryRow(ctx, `SELECT coalesce(jsonb_object_agg(limit_name, value), '{}')
@@ -196,11 +187,7 @@ FROM organization_entitlements e WHERE e.organization_id = $1`
 
 // Entitlement reads org's entitlement, locking its row until ctx's
 // transaction ends when lock is set.
-func (s *Store) Entitlement(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	lock bool,
-) (featuresapi.Entitlement, error) {
+func (s *Store) Entitlement(ctx context.Context, org kernel.OrganizationID, lock bool) (featuresapi.Entitlement, error) {
 	query := entitlement
 	if lock {
 		query += ` FOR UPDATE OF e`
@@ -218,11 +205,7 @@ func (s *Store) Entitlement(
 }
 
 // AccountLimit reads acct's limit on limit; ok is false when it has none.
-func (s *Store) AccountLimit(
-	ctx context.Context,
-	acct kernel.AccountID,
-	limit string,
-) (value int64, ok bool, err error) {
+func (s *Store) AccountLimit(ctx context.Context, acct kernel.AccountID, limit string) (value int64, ok bool, err error) {
 	err = tx.Q(ctx, s.db).QueryRow(ctx,
 		`SELECT value FROM account_limits WHERE account_id = $1 AND limit_name = $2`,
 		acct, limit).Scan(&value)
@@ -312,11 +295,7 @@ func (s *Store) Seed(ctx context.Context, seeds []features.Tier) error {
 
 // seed applies one seeded tier, given every tier's current content, and
 // reports whether it wrote one whose content differs from what was there.
-func (s *Store) seed(
-	ctx context.Context,
-	seed features.Tier,
-	current []features.Tier,
-) (bool, error) {
+func (s *Store) seed(ctx context.Context, seed features.Tier, current []features.Tier) (bool, error) {
 	q := tx.Q(ctx, s.db)
 	var last features.Tier
 	err := q.QueryRow(ctx, `SELECT features, limits FROM tier_seeds WHERE tier = $1`, seed.Name).

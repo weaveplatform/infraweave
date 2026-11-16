@@ -222,11 +222,7 @@ var ErrGitea = errors.New("gitea refused the call")
 
 // CreateRepository creates the administrator's repository name with files
 // committed to main in one commit, and returns that commit's SHA.
-func (g *Gitea) CreateRepository(
-	ctx context.Context,
-	name string,
-	files map[string]string,
-) (string, error) {
+func (g *Gitea) CreateRepository(ctx context.Context, name string, files map[string]string) (string, error) {
 	if err := g.call(ctx, http.MethodPost, "/user/repos",
 		map[string]any{"name": name, "private": false, "default_branch": "main"}, nil); err != nil {
 		return "", err
@@ -237,12 +233,7 @@ func (g *Gitea) CreateRepository(
 // Commit writes files to branch of the repository name in one commit,
 // creating each file or replacing it, and creating the branch from main
 // when it does not exist, and returns the commit's SHA.
-func (g *Gitea) Commit(
-	ctx context.Context,
-	name, branch string,
-	files map[string]string,
-	message string,
-) (string, error) {
+func (g *Gitea) Commit(ctx context.Context, name, branch string, files map[string]string, message string) (string, error) {
 	exists, err := g.branchExists(ctx, name, branch)
 	if err != nil {
 		return "", err

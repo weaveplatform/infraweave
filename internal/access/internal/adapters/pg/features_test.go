@@ -156,13 +156,7 @@ type seats struct {
 	refuse error
 }
 
-func (f *seats) CheckLimit(
-	ctx context.Context,
-	_ kernel.OrganizationID,
-	_ kernel.AccountID,
-	limit string,
-	count func(context.Context) (featuresapi.Usage, error),
-) error {
+func (f *seats) CheckLimit(ctx context.Context, _ kernel.OrganizationID, _ kernel.AccountID, limit string, count func(context.Context) (featuresapi.Usage, error)) error {
 	if limit != featuresapi.Seats {
 		return errors.New("checked " + limit)
 	}
@@ -327,13 +321,7 @@ type failingCount struct {
 	db *pgxpool.Pool
 }
 
-func (f failingCount) CheckLimit(
-	ctx context.Context,
-	_ kernel.OrganizationID,
-	_ kernel.AccountID,
-	_ string,
-	count func(context.Context) (featuresapi.Usage, error),
-) error {
+func (f failingCount) CheckLimit(ctx context.Context, _ kernel.OrganizationID, _ kernel.AccountID, _ string, count func(context.Context) (featuresapi.Usage, error)) error {
 	_, _ = tx.Q(ctx, f.db).Exec(ctx, `SELECT 1/0`)
 	_, err := count(ctx)
 	return err

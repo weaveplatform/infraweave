@@ -13,10 +13,7 @@ import (
 // RunRetry queues a run of a proposed or tracked run's type on its
 // commit, once it has ended. The route has decided RUN_RETRY on the
 // stack's space.
-func (s Server) RunRetry(
-	ctx context.Context,
-	req api.RunRetryRequestObject,
-) (api.RunRetryResponseObject, error) {
+func (s Server) RunRetry(ctx context.Context, req api.RunRetryRequestObject) (api.RunRetryResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -31,10 +28,7 @@ func (s Server) RunRetry(
 // RunPromote queues a tracked run on a proposed run's commit, which
 // becomes the stack's tracked commit. The route has decided RUN_PROMOTE
 // on the stack's space.
-func (s Server) RunPromote(
-	ctx context.Context,
-	req api.RunPromoteRequestObject,
-) (api.RunPromoteResponseObject, error) {
+func (s Server) RunPromote(ctx context.Context, req api.RunPromoteRequestObject) (api.RunPromoteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -48,10 +42,7 @@ func (s Server) RunPromote(
 
 // RunDiscardAll discards each of the stack's runs that waits. The route
 // has decided RUN_DISCARD on the stack's space.
-func (s Server) RunDiscardAll(
-	ctx context.Context,
-	req api.RunDiscardAllRequestObject,
-) (api.RunDiscardAllResponseObject, error) {
+func (s Server) RunDiscardAll(ctx context.Context, req api.RunDiscardAllRequestObject) (api.RunDiscardAllResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -82,10 +73,7 @@ func (s Server) RunDiscardAll(
 
 // RunComment comments on a run of the stack. The route has decided
 // RUN_COMMENT on the stack's space.
-func (s Server) RunComment(
-	ctx context.Context,
-	req api.RunCommentRequestObject,
-) (api.RunCommentResponseObject, error) {
+func (s Server) RunComment(ctx context.Context, req api.RunCommentRequestObject) (api.RunCommentResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -100,10 +88,7 @@ func (s Server) RunComment(
 // RunLogsDelete deletes a run's logs ahead of their retention, once it
 // has ended. The route has decided SPACE_ADMIN on the account's top
 // space.
-func (s Server) RunLogsDelete(
-	ctx context.Context,
-	req api.RunLogsDeleteRequestObject,
-) (api.RunLogsDeleteResponseObject, error) {
+func (s Server) RunLogsDelete(ctx context.Context, req api.RunLogsDeleteRequestObject) (api.RunLogsDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

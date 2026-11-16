@@ -145,10 +145,7 @@ func (s *store) EndSession(_ context.Context, id kernel.ULID) (session.Session, 
 	return ss, nil
 }
 
-func (s *store) BreakGlassCredential(
-	_ context.Context,
-	slug kernel.Slug,
-) (organization.Organization, *breakglass.Credential, error) {
+func (s *store) BreakGlassCredential(_ context.Context, slug kernel.Slug) (organization.Organization, *breakglass.Credential, error) {
 	if err := s.err(); err != nil {
 		return organization.Organization{}, nil, err
 	}
@@ -159,11 +156,7 @@ func (s *store) BreakGlassCredential(
 	return o, s.creds[slug], nil
 }
 
-func (s *store) SignIn(
-	ctx context.Context,
-	ss session.Session,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *store) SignIn(ctx context.Context, ss session.Session, e kernel.OrganizationAuditEntry) error {
 	s.trail = append(s.trail, e)
 	return s.CreateSession(ctx, ss)
 }
@@ -173,20 +166,11 @@ func (s *store) RefuseSignIn(_ context.Context, e kernel.OrganizationAuditEntry)
 	return s.err()
 }
 
-func (s *store) Accounts(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	member kernel.MemberID,
-) ([]session.Admitted, error) {
+func (s *store) Accounts(_ context.Context, _ kernel.OrganizationID, member kernel.MemberID) ([]session.Admitted, error) {
 	return s.admits[member], s.err()
 }
 
-func (s *store) Admits(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	member kernel.MemberID,
-	acct kernel.AccountID,
-) (session.Admitted, bool, error) {
+func (s *store) Admits(_ context.Context, _ kernel.OrganizationID, member kernel.MemberID, acct kernel.AccountID) (session.Admitted, bool, error) {
 	if err := s.err(); err != nil {
 		return session.Admitted{}, false, err
 	}
@@ -223,12 +207,7 @@ func (s *store) live(acct kernel.AccountID) []session.Session {
 	return out
 }
 
-func (s *store) Sessions(
-	_ context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]session.Session, error) {
+func (s *store) Sessions(_ context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]session.Session, error) {
 	var out []session.Session
 	for _, ss := range s.live(acct) {
 		if ss.ID.String() > after.String() || after.IsZero() {
@@ -238,11 +217,7 @@ func (s *store) Sessions(
 	return out[:min(len(out), limit)], s.err()
 }
 
-func (s *store) RevokeSession(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (session.Session, error) {
+func (s *store) RevokeSession(_ context.Context, acct kernel.AccountID, id kernel.ULID) (session.Session, error) {
 	if err := s.err(); err != nil {
 		return session.Session{}, err
 	}
@@ -255,11 +230,7 @@ func (s *store) RevokeSession(
 	return ss, nil
 }
 
-func (s *store) RevokeSessionsExcept(
-	_ context.Context,
-	acct kernel.AccountID,
-	except kernel.ULID,
-) ([]session.Session, error) {
+func (s *store) RevokeSessionsExcept(_ context.Context, acct kernel.AccountID, except kernel.ULID) ([]session.Session, error) {
 	if err := s.err(); err != nil {
 		return nil, err
 	}
@@ -449,10 +420,7 @@ func (w *world) do(t *testing.T, method, target, bearer, body string) *httptest.
 
 // browse sends a JSON request with the session cookie secret and, when
 // it is not empty, the Origin header origin.
-func (w *world) browse(
-	t *testing.T,
-	method, target, secret, origin, body string,
-) *httptest.ResponseRecorder {
+func (w *world) browse(t *testing.T, method, target, secret, origin, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	return w.send(t, method, target, body, func(req *http.Request) {
 		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: secret})
@@ -462,11 +430,7 @@ func (w *world) browse(
 	})
 }
 
-func (w *world) send(
-	t *testing.T,
-	method, target, body string,
-	set func(*http.Request),
-) *httptest.ResponseRecorder {
+func (w *world) send(t *testing.T, method, target, body string, set func(*http.Request)) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), method, target, strings.NewReader(body))
 	req.RemoteAddr = "192.0.2.9:4000"

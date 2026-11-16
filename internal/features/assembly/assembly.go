@@ -130,12 +130,7 @@ func (d *Domain) Entitlements() featuresapi.Entitlements { return d.entitlements
 // limits, or, when its organization org went with it, the organization's
 // entitlement, grants and every account's limits. internal/app runs it for
 // each accessapi.Deleted; a purge that runs again finds nothing left.
-func (d *Domain) Purge(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	whole bool,
-) error {
+func (d *Domain) Purge(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, whole bool) error {
 	if whole {
 		return d.entitlements.DeleteOrganization(ctx, org) //nolint:wrapcheck // names the delete
 	}
@@ -152,20 +147,14 @@ func (d *Domain) Seed(ctx context.Context) error {
 // Middleware is the chi middleware that refuses a request for a feature
 // the installation switched off or, with billing on, the caller's
 // organization lacks; gate resolves each request's Gate.
-func (d *Domain) Middleware(
-	gate func(*nethttp.Request) (featuresapi.Gate, bool),
-) func(nethttp.Handler) nethttp.Handler {
+func (d *Domain) Middleware(gate func(*nethttp.Request) (featuresapi.Gate, bool)) func(nethttp.Handler) nethttp.Handler {
 	return http.Middleware(d.entitlements, gate)
 }
 
 // Allowed reports whether org's work may use feature outside a request,
 // as a queued job does at dequeue: false when the installation switched
 // it off or, with billing on, org's entitlement lacks it.
-func (d *Domain) Allowed(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	feature string,
-) (bool, error) {
+func (d *Domain) Allowed(ctx context.Context, org kernel.OrganizationID, feature string) (bool, error) {
 	err := d.entitlements.AllowOrganization(ctx, org, feature)
 	if _, refused := errors.AsType[*entitlement.Refusal](err); refused {
 		return false, nil

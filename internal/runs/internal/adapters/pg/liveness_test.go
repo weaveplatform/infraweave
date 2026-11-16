@@ -15,14 +15,7 @@ import (
 
 // working inserts a run of w's stack of typ in state, of pool, held by
 // worker, its state changed at changed.
-func (w *world) working(
-	t *testing.T,
-	typ kernel.RunType,
-	state kernel.RunState,
-	pool *kernel.ULID,
-	worker kernel.ULID,
-	changed time.Time,
-) kernel.ULID {
+func (w *world) working(t *testing.T, typ kernel.RunType, state kernel.RunState, pool *kernel.ULID, worker kernel.ULID, changed time.Time) kernel.ULID {
 	t.Helper()
 	id := kernel.NewULID()
 	if _, err := w.db.Exec(t.Context(), `INSERT INTO runs (account_id, id, stack_id, type,
@@ -244,13 +237,7 @@ func (f failingLiveness) Held(ctx context.Context, worker kernel.ULID) ([]lifecy
 	return f.LivenessStore.Held(ctx, worker)
 }
 
-func (f failingLiveness) Overdue(
-	ctx context.Context,
-	now time.Time,
-	timeouts []workersapi.PoolTimeout,
-	fallback time.Duration,
-	batch int,
-) ([]lifecycle.Run, error) {
+func (f failingLiveness) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) ([]lifecycle.Run, error) {
 	if f.fail == "Overdue" {
 		return nil, errInjected
 	}

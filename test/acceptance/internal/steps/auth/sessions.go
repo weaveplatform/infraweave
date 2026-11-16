@@ -281,11 +281,7 @@ type listedSession struct {
 }
 
 // list is every session the named token lists, following the cursor.
-func listSessions(
-	ctx context.Context,
-	w *harness.World,
-	replica, name string,
-) ([]listedSession, error) {
+func listSessions(ctx context.Context, w *harness.World, replica, name string) ([]listedSession, error) {
 	var out []listedSession
 	path := "/api/v1/sessions?limit=2"
 	for {
@@ -365,10 +361,7 @@ func (a *authSteps) deleteSession(ctx context.Context, victim, replica, name str
 	return nil
 }
 
-func (a *authSteps) deleteRefused(
-	ctx context.Context,
-	victim, replica, name, code, slug string,
-) error {
+func (a *authSteps) deleteRefused(ctx context.Context, victim, replica, name, code, slug string) error {
 	id, err := a.session(victim)
 	if err != nil {
 		return err
@@ -422,10 +415,7 @@ func (a *authSteps) viewerAnswers(ctx context.Context, replica, name string, cod
 	return nil
 }
 
-func (a *authSteps) answersProblem(
-	ctx context.Context,
-	method, path, replica, name, code, slug string,
-) error {
+func (a *authSteps) answersProblem(ctx context.Context, method, path, replica, name, code, slug string) error {
 	r, err := a.w.Do(ctx, replica, name, method, path, nil)
 	if err != nil {
 		return err

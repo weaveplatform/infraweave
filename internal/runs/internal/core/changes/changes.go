@@ -51,8 +51,7 @@ type Objects interface {
 
 // Stacks reads a stack's settings; stacksapi.Stacks is one.
 type Stacks interface {
-	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings,
-		error)
+	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error)
 }
 
 // Deps are what the changes are read through.
@@ -87,9 +86,7 @@ type Set struct {
 
 // Entities reads p's run raw's changes of q. The route has decided
 // SPACE_READ on the run's stack's space.
-func (s *Service) Entities(ctx context.Context, p kernel.Principal, raw string, q Query) (Set,
-	error,
-) {
+func (s *Service) Entities(ctx context.Context, p kernel.Principal, raw string, q Query) (Set, error) {
 	run, err := s.get(ctx, p.AccountID, raw)
 	if err != nil {
 		return Set{}, err
@@ -100,9 +97,7 @@ func (s *Service) Entities(ctx context.Context, p kernel.Principal, raw string, 
 // Resources reads p's run raw's changes of q, as Entities does, of a
 // stack of the Terraform family only: another vendor's run is a
 // *kernel.Invalid.
-func (s *Service) Resources(ctx context.Context, p kernel.Principal, raw string, q Query) (Set,
-	error,
-) {
+func (s *Service) Resources(ctx context.Context, p kernel.Principal, raw string, q Query) (Set, error) {
 	run, err := s.get(ctx, p.AccountID, raw)
 	if err != nil {
 		return Set{}, err
@@ -151,9 +146,7 @@ func (s *Service) read(ctx context.Context, run lifecycle.Run, q Query) (Set, er
 }
 
 // get reads acct's run raw; read.ErrNotFound when raw is no run ID.
-func (s *Service) get(ctx context.Context, acct kernel.AccountID, raw string) (lifecycle.Run,
-	error,
-) {
+func (s *Service) get(ctx context.Context, acct kernel.AccountID, raw string) (lifecycle.Run, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return lifecycle.Run{}, fmt.Errorf("%w: %q", read.ErrNotFound, raw)

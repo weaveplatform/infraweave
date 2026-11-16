@@ -79,10 +79,7 @@ func (s *servedSteps) adminAnswers(ctx context.Context, method, path, code strin
 	return nil
 }
 
-func (s *servedSteps) answersProblem(
-	ctx context.Context,
-	method, path, listener, code, slug string,
-) error {
+func (s *servedSteps) answersProblem(ctx context.Context, method, path, listener, code, slug string) error {
 	resp, err := s.w.Send(ctx, method, listener, path)
 	if err != nil {
 		return err

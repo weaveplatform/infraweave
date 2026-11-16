@@ -72,11 +72,7 @@ func (r Retry) do(req *http.Request, doer Doer) (*http.Response, error) {
 // wait reports how long to wait before retrying resp, whether that is the
 // policy's own backoff rather than a wait the server named, and whether to
 // retry at all. Only the policy's own wait doubles for the next attempt.
-func (r Retry) wait(
-	resp *http.Response,
-	keyed bool,
-	backoff time.Duration,
-) (wait time.Duration, own, ok bool) {
+func (r Retry) wait(resp *http.Response, keyed bool, backoff time.Duration) (wait time.Duration, own, ok bool) {
 	after, named := retryAfter(resp.Header.Get("Retry-After"))
 	switch {
 	case resp.StatusCode == http.StatusTooManyRequests && named,

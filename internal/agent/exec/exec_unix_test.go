@@ -81,9 +81,7 @@ type worker struct {
 	taken      []string
 }
 
-func (w *worker) UploadURLs(
-	_ context.Context, _, _ string, in wire.UploadURLsRequest,
-) ([]wire.SignedUpload, error) {
+func (w *worker) UploadURLs(_ context.Context, _, _ string, in wire.UploadURLsRequest) ([]wire.SignedUpload, error) {
 	if w.uploads != nil {
 		return nil, w.uploads
 	}
@@ -150,11 +148,7 @@ func (w *worker) LogChunks(_ context.Context, _, _ string, in wire.LogChunksRequ
 
 var errLost = errors.New("the answer was lost")
 
-func (w *worker) Report(
-	_ context.Context,
-	token, run string,
-	r wire.RunReport,
-) (wire.NextStep, error) {
+func (w *worker) Report(_ context.Context, token, run string, r wire.RunReport) (wire.NextStep, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.reports = append(w.reports, r)
@@ -895,9 +889,7 @@ func TestUnitExecUnknownAction(t *testing.T) {
 // preparing answers execute PREPARING, a state no phase runs in.
 type preparing struct{ reports []wire.RunReport }
 
-func (p *preparing) Report(
-	_ context.Context, _, _ string, r wire.RunReport,
-) (wire.NextStep, error) {
+func (p *preparing) Report(_ context.Context, _, _ string, r wire.RunReport) (wire.NextStep, error) {
 	p.reports = append(p.reports, r)
 	if r.Event == wire.Started {
 		return wire.NextStep{Action: wire.Execute, State: "PREPARING", StateVersion: 4}, nil

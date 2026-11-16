@@ -59,12 +59,7 @@ func New(db tx.Querier) *Store { return &Store{db: db} }
 
 // OpenWorkspace makes acct's stack's workspace name exist, in the
 // context's transaction, leaving one that exists as it is.
-func (s *Store) OpenWorkspace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	name string,
-) error {
+func (s *Store) OpenWorkspace(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, name string) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO state_workspaces
 		(account_id, stack_id, name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
 		acct, stack, name); err != nil {
@@ -203,12 +198,7 @@ var purged = []struct{ table, key, returning string }{
 // Purge deletes up to batch of acct's rows, of stack alone when it is
 // set, from the first table of purged that holds any, and answers the
 // object keys of the versions it deleted; true once none holds any.
-func (s *Store) Purge(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack *kernel.ULID,
-	batch int,
-) ([]string, bool, error) {
+func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID, batch int) ([]string, bool, error) {
 	for _, p := range purged {
 		rows, err := tx.Q(ctx, s.db).Query(ctx, `DELETE FROM `+p.table+
 			` WHERE account_id = $1 AND (`+p.key+`) IN (

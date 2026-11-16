@@ -24,12 +24,7 @@ type grantsOf struct {
 	err error
 }
 
-func (g grantsOf) Authorize(
-	_ context.Context,
-	_ kernel.Principal,
-	a accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (g grantsOf) Authorize(_ context.Context, _ kernel.Principal, a accessapi.Action, space kernel.ULID) (bool, error) {
 	for _, held := range g.on[space] {
 		if held == a {
 			return true, g.err
@@ -38,11 +33,7 @@ func (g grantsOf) Authorize(
 	return false, g.err
 }
 
-func (g grantsOf) Reachable(
-	_ context.Context,
-	_ kernel.Principal,
-	a accessapi.Action,
-) ([]kernel.ULID, error) {
+func (g grantsOf) Reachable(_ context.Context, _ kernel.Principal, a accessapi.Action) ([]kernel.ULID, error) {
 	var out []kernel.ULID
 	for space, held := range g.on {
 		if slices.Contains(held, a) {
@@ -61,11 +52,7 @@ func (g grantsOf) Holds(ctx context.Context, p kernel.Principal, a accessapi.Act
 	return false, g.err
 }
 
-func (g grantsOf) Actions(
-	_ context.Context,
-	_ kernel.Principal,
-	space kernel.ULID,
-) ([]accessapi.Action, error) {
+func (g grantsOf) Actions(_ context.Context, _ kernel.Principal, space kernel.ULID) ([]accessapi.Action, error) {
 	return g.on[space], g.err
 }
 

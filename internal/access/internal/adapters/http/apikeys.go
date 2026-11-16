@@ -22,10 +22,7 @@ const apiKeysList = "api-keys"
 // ApiKeys lists the API keys of the caller's account, oldest first.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeys(
-	ctx context.Context,
-	req api.ApiKeysRequestObject,
-) (api.ApiKeysResponseObject, error) {
+func (s Server) ApiKeys(ctx context.Context, req api.ApiKeysRequestObject) (api.ApiKeysResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -74,10 +71,7 @@ func (s Server) ApiKeys(
 // with its secret, the only time the secret is readable.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeyCreate(
-	ctx context.Context,
-	req api.ApiKeyCreateRequestObject,
-) (api.ApiKeyCreateResponseObject, error) {
+func (s Server) ApiKeyCreate(ctx context.Context, req api.ApiKeyCreateRequestObject) (api.ApiKeyCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -130,10 +124,7 @@ func (s Server) ApiKeyCreate(
 // version; any other answers 404.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKey(
-	ctx context.Context,
-	req api.ApiKeyRequestObject,
-) (api.ApiKeyResponseObject, error) {
+func (s Server) ApiKey(ctx context.Context, req api.ApiKeyRequestObject) (api.ApiKeyResponseObject, error) {
 	k, err := s.onKey(ctx, req.ApiKeyId, s.keys.Get)
 	if err != nil {
 		return nil, err
@@ -151,10 +142,7 @@ func (s Server) ApiKey(
 // caller's account, when its If-Match, if any, names the key's version.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeyUpdate(
-	ctx context.Context,
-	req api.ApiKeyUpdateRequestObject,
-) (api.ApiKeyUpdateResponseObject, error) {
+func (s Server) ApiKeyUpdate(ctx context.Context, req api.ApiKeyUpdateRequestObject) (api.ApiKeyUpdateResponseObject, error) {
 	k, err := s.updateKey(ctx, req.ApiKeyId, strict.IfMatch(req.Params.IfMatch), *req.Body)
 	if err != nil {
 		return nil, err
@@ -174,10 +162,7 @@ func (s Server) ApiKeyUpdate(
 // leaves out.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeyPatch(
-	ctx context.Context,
-	req api.ApiKeyPatchRequestObject,
-) (api.ApiKeyPatchResponseObject, error) {
+func (s Server) ApiKeyPatch(ctx context.Context, req api.ApiKeyPatchRequestObject) (api.ApiKeyPatchResponseObject, error) {
 	var patch map[string]any
 	if req.Body != nil {
 		patch = *req.Body
@@ -204,12 +189,7 @@ func (s Server) ApiKeyPatch(
 
 // updateKey applies in to the key raw names in the caller's account, as
 // ApiKeyUpdate and ApiKeyPatch do, when expect accepts its version.
-func (s Server) updateKey(
-	ctx context.Context,
-	raw string,
-	expect kernel.Expect,
-	in api.ApiKeyUpdateInput,
-) (apikey.Key, error) {
+func (s Server) updateKey(ctx context.Context, raw string, expect kernel.Expect, in api.ApiKeyUpdateInput) (apikey.Key, error) {
 	c := apikey.Change{Name: in.Name, Description: in.Description, Teams: in.Teams}
 	if in.OidcClaimMappings != nil {
 		m := claimMapping(in.OidcClaimMappings)
@@ -244,10 +224,7 @@ func keyInput(k apikey.Key) api.ApiKeyUpdateInput {
 // secret.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeyReset(
-	ctx context.Context,
-	req api.ApiKeyResetRequestObject,
-) (api.ApiKeyResetResponseObject, error) {
+func (s Server) ApiKeyReset(ctx context.Context, req api.ApiKeyResetRequestObject) (api.ApiKeyResetResponseObject, error) {
 	var secret string
 	k, err := s.onKey(ctx, req.ApiKeyId,
 		func(ctx context.Context, p kernel.Principal, id kernel.ULID) (apikey.Key, error) {
@@ -270,10 +247,7 @@ func (s Server) ApiKeyReset(
 // the key.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeyDelete(
-	ctx context.Context,
-	req api.ApiKeyDeleteRequestObject,
-) (api.ApiKeyDeleteResponseObject, error) {
+func (s Server) ApiKeyDelete(ctx context.Context, req api.ApiKeyDeleteRequestObject) (api.ApiKeyDeleteResponseObject, error) {
 	expect := strict.IfMatch(req.Params.IfMatch)
 	k, err := s.onKey(ctx, req.ApiKeyId,
 		func(ctx context.Context, p kernel.Principal, id kernel.ULID) (apikey.Key, error) {
@@ -293,10 +267,7 @@ func (s Server) ApiKeyDelete(
 // account's top space may manage API keys, and answers the setting.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeyEnableNonAdminManagers(
-	ctx context.Context,
-	req api.ApiKeyEnableNonAdminManagersRequestObject,
-) (api.ApiKeyEnableNonAdminManagersResponseObject, error) {
+func (s Server) ApiKeyEnableNonAdminManagers(ctx context.Context, req api.ApiKeyEnableNonAdminManagersRequestObject) (api.ApiKeyEnableNonAdminManagersResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -313,11 +284,7 @@ func (s Server) ApiKeyEnableNonAdminManagers(
 // hidden and missing are the same, so the API never reveals what exists.
 //
 // ref: decision 0022
-func (s Server) onKey(
-	ctx context.Context,
-	raw string,
-	do func(context.Context, kernel.Principal, kernel.ULID) (apikey.Key, error),
-) (apikey.Key, error) {
+func (s Server) onKey(ctx context.Context, raw string, do func(context.Context, kernel.Principal, kernel.ULID) (apikey.Key, error)) (apikey.Key, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return apikey.Key{}, err
@@ -383,12 +350,7 @@ func (s Server) keyView(ctx context.Context, k apikey.Key, secret string) (api.A
 }
 
 // keyOf is apiKey of k with acts and its bindings.
-func (s Server) keyOf(
-	ctx context.Context,
-	k apikey.Key,
-	secret string,
-	acts []api.Action,
-) (api.ApiKey, error) {
+func (s Server) keyOf(ctx context.Context, k apikey.Key, secret string, acts []api.Action) (api.ApiKey, error) {
 	held, err := s.bindings.Held(ctx, k.AccountID, binding.ActorAPIKey, k.ID)
 	if err != nil {
 		return api.ApiKey{}, err //nolint:wrapcheck // the store names the read

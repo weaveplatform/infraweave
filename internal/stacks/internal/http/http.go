@@ -43,10 +43,7 @@ func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces)
 
 // Stacks lists the stacks of the caller's account in the spaces it may
 // read, by slug.
-func (s Server) Stacks(
-	ctx context.Context,
-	req api.StacksRequestObject,
-) (api.StacksResponseObject, error) {
+func (s Server) Stacks(ctx context.Context, req api.StacksRequestObject) (api.StacksResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -76,10 +73,7 @@ func (s Server) Stacks(
 
 // SearchStacks searches the stacks of the caller's account in the spaces
 // it may read.
-func (s Server) SearchStacks(
-	ctx context.Context,
-	req api.SearchStacksRequestObject,
-) (api.SearchStacksResponseObject, error) {
+func (s Server) SearchStacks(ctx context.Context, req api.SearchStacksRequestObject) (api.SearchStacksResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -101,10 +95,7 @@ func (s Server) SearchStacks(
 
 // SearchStacksSuggestions lists the values the stacks of the caller's
 // account in the spaces it may read hold.
-func (s Server) SearchStacksSuggestions(
-	ctx context.Context,
-	req api.SearchStacksSuggestionsRequestObject,
-) (api.SearchStacksSuggestionsResponseObject, error) {
+func (s Server) SearchStacksSuggestions(ctx context.Context, req api.SearchStacksSuggestionsRequestObject) (api.SearchStacksSuggestionsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -117,10 +108,7 @@ func (s Server) SearchStacksSuggestions(
 }
 
 // Stack answers one stack of the caller's account.
-func (s Server) Stack(
-	ctx context.Context,
-	req api.StackRequestObject,
-) (api.StackResponseObject, error) {
+func (s Server) Stack(ctx context.Context, req api.StackRequestObject) (api.StackResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -139,10 +127,7 @@ func (s Server) Stack(
 }
 
 // StackCreate creates a stack in the space its input names.
-func (s Server) StackCreate(
-	ctx context.Context,
-	req api.StackCreateRequestObject,
-) (api.StackCreateResponseObject, error) {
+func (s Server) StackCreate(ctx context.Context, req api.StackCreateRequestObject) (api.StackCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -167,10 +152,7 @@ func (s Server) StackCreate(
 }
 
 // StackUpdate replaces a stack's settings with its input's.
-func (s Server) StackUpdate(
-	ctx context.Context,
-	req api.StackUpdateRequestObject,
-) (api.StackUpdateResponseObject, error) {
+func (s Server) StackUpdate(ctx context.Context, req api.StackUpdateRequestObject) (api.StackUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -194,10 +176,7 @@ func (s Server) StackUpdate(
 
 // StackPatch changes the settings its merge patch names and keeps the
 // rest, writing the result as StackUpdate writes its input.
-func (s Server) StackPatch(
-	ctx context.Context,
-	req api.StackPatchRequestObject,
-) (api.StackPatchResponseObject, error) {
+func (s Server) StackPatch(ctx context.Context, req api.StackPatchRequestObject) (api.StackPatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -241,10 +220,7 @@ func (s Server) StackPatch(
 // StackDelete deletes a stack at once and answers it as it was, with the
 // caller's access to it then. With destroyResources, the stack stays,
 // deleting, until its destroy run finishes, and the answer shows it so.
-func (s Server) StackDelete(
-	ctx context.Context,
-	req api.StackDeleteRequestObject,
-) (api.StackDeleteResponseObject, error) {
+func (s Server) StackDelete(ctx context.Context, req api.StackDeleteRequestObject) (api.StackDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -263,10 +239,7 @@ func (s Server) StackDelete(
 }
 
 // StackReslug gives a stack the slug its name derives.
-func (s Server) StackReslug(
-	ctx context.Context,
-	req api.StackReslugRequestObject,
-) (api.StackReslugResponseObject, error) {
+func (s Server) StackReslug(ctx context.Context, req api.StackReslugRequestObject) (api.StackReslugResponseObject, error) {
 	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.Reslug(ctx, p, req.StackId)
 	})
@@ -277,10 +250,7 @@ func (s Server) StackReslug(
 }
 
 // StackDisable disables a stack.
-func (s Server) StackDisable(
-	ctx context.Context,
-	req api.StackDisableRequestObject,
-) (api.StackDisableResponseObject, error) {
+func (s Server) StackDisable(ctx context.Context, req api.StackDisableRequestObject) (api.StackDisableResponseObject, error) {
 	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SetDisabled(ctx, p, req.StackId, true)
 	})
@@ -291,10 +261,7 @@ func (s Server) StackDisable(
 }
 
 // StackEnable enables a stack.
-func (s Server) StackEnable(
-	ctx context.Context,
-	req api.StackEnableRequestObject,
-) (api.StackEnableResponseObject, error) {
+func (s Server) StackEnable(ctx context.Context, req api.StackEnableRequestObject) (api.StackEnableResponseObject, error) {
 	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SetDisabled(ctx, p, req.StackId, false)
 	})
@@ -305,10 +272,7 @@ func (s Server) StackEnable(
 }
 
 // StackLock locks a stack for the caller.
-func (s Server) StackLock(
-	ctx context.Context,
-	req api.StackLockRequestObject,
-) (api.StackLockResponseObject, error) {
+func (s Server) StackLock(ctx context.Context, req api.StackLockRequestObject) (api.StackLockResponseObject, error) {
 	note := ""
 	if req.Body != nil && req.Body.Note != nil {
 		note = *req.Body.Note
@@ -324,10 +288,7 @@ func (s Server) StackLock(
 
 // StackSyncCommit sets a stack's branch head and tracked commit to its
 // branch's head.
-func (s Server) StackSyncCommit(
-	ctx context.Context,
-	req api.StackSyncCommitRequestObject,
-) (api.StackSyncCommitResponseObject, error) {
+func (s Server) StackSyncCommit(ctx context.Context, req api.StackSyncCommitRequestObject) (api.StackSyncCommitResponseObject, error) {
 	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SyncCommit(ctx, p, req.StackId)
 	})
@@ -339,10 +300,7 @@ func (s Server) StackSyncCommit(
 
 // StackSetCurrentCommit sets a stack's tracked commit to a commit of its
 // repository.
-func (s Server) StackSetCurrentCommit(
-	ctx context.Context,
-	req api.StackSetCurrentCommitRequestObject,
-) (api.StackSetCurrentCommitResponseObject, error) {
+func (s Server) StackSetCurrentCommit(ctx context.Context, req api.StackSetCurrentCommitRequestObject) (api.StackSetCurrentCommitResponseObject, error) {
 	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SetCurrentCommit(ctx, p, req.StackId, req.Body.Sha)
 	})
@@ -353,10 +311,7 @@ func (s Server) StackSetCurrentCommit(
 }
 
 // StackUnlock unlocks a stack.
-func (s Server) StackUnlock(
-	ctx context.Context,
-	req api.StackUnlockRequestObject,
-) (api.StackUnlockResponseObject, error) {
+func (s Server) StackUnlock(ctx context.Context, req api.StackUnlockRequestObject) (api.StackUnlockResponseObject, error) {
 	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.Unlock(ctx, p, req.StackId)
 	})
@@ -367,10 +322,7 @@ func (s Server) StackUnlock(
 }
 
 // StarSet stars or unstars a stack for the caller alone.
-func (s Server) StarSet(
-	ctx context.Context,
-	req api.StarSetRequestObject,
-) (api.StarSetResponseObject, error) {
+func (s Server) StarSet(ctx context.Context, req api.StarSetRequestObject) (api.StarSetResponseObject, error) {
 	st, err := s.change(ctx, req.StackId, func(p kernel.Principal) (core.Stack, error) {
 		return s.stacks.SetStar(ctx, p, req.StackId, req.Body.Star)
 	})
@@ -382,11 +334,7 @@ func (s Server) StarSet(
 
 // change runs one of the service's changes to the stack slug for the
 // caller and answers the stack after it.
-func (s Server) change(
-	ctx context.Context,
-	slug string,
-	f func(p kernel.Principal) (core.Stack, error),
-) (api.Stack, error) {
+func (s Server) change(ctx context.Context, slug string, f func(p kernel.Principal) (core.Stack, error)) (api.Stack, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return api.Stack{}, err
@@ -410,11 +358,7 @@ func (s Server) view(ctx context.Context, p kernel.Principal, st core.Stack) (ap
 // whether p has starred it, its space by slug, its attached contexts and
 // config elements, the run blocking it and its outputs, read for all at
 // once.
-func (s Server) views(
-	ctx context.Context,
-	p kernel.Principal,
-	all ...core.Stack,
-) ([]api.Stack, error) {
+func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack) ([]api.Stack, error) {
 	out := make([]api.Stack, 0, len(all))
 	if len(all) == 0 {
 		return out, nil

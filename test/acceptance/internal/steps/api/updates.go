@@ -39,10 +39,7 @@ func (u *updateSteps) keep(name string) error {
 
 // send sends the request with the named token and an If-Match of the kept
 // ETag tag.
-func (u *updateSteps) send(
-	ctx context.Context,
-	token, method, path, raw, tag, replica string,
-) error {
+func (u *updateSteps) send(ctx context.Context, token, method, path, raw, tag, replica string) error {
 	etag, ok := u.etags[tag]
 	if !ok {
 		return fmt.Errorf("%w: no ETag kept as %q", harness.ErrStep, tag)

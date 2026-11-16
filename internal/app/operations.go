@@ -311,12 +311,7 @@ var pointerEscape = strings.NewReplacer("~", "~0", "/", "~1")
 // pointers start with at, and of the objects below them. open holds the
 // schemas being walked, so a schema that contains itself is walked once
 // on each path, while one that two properties share is walked under both.
-func optionsOf(
-	at string,
-	s *openapi3.Schema,
-	open map[*openapi3.Schema]bool,
-	out []featuresapi.OptionGate,
-) ([]featuresapi.OptionGate, error) {
+func optionsOf(at string, s *openapi3.Schema, open map[*openapi3.Schema]bool, out []featuresapi.OptionGate) ([]featuresapi.OptionGate, error) {
 	if open[s] {
 		return out, nil
 	}
@@ -617,15 +612,7 @@ type Gated func(gate func(*http.Request) (featuresapi.Gate, bool)) func(http.Han
 // either.
 //
 // ref: decisions 0003, 0006, 0007 and 0021
-func Guarded(
-	log *slog.Logger,
-	c config.Server,
-	ops Operations,
-	g Guards,
-	auth accessapi.Authenticator,
-	require accessapi.Requirer,
-	gated Gated,
-) *chi.Mux {
+func Guarded(log *slog.Logger, c config.Server, ops Operations, g Guards, auth accessapi.Authenticator, require accessapi.Requirer, gated Gated) *chi.Mux {
 	var r *chi.Mux
 	find := func(req *http.Request) (string, *chi.Context) {
 		rctx := chi.NewRouteContext()
@@ -726,11 +713,7 @@ func Guarded(
 // the body within it, and net/http clears it once a body is read whole. A
 // connection whose deadline cannot move keeps the listener's, and the
 // failure is logged, since its holds would end early.
-func extendHeld(
-	log *slog.Logger,
-	write time.Duration,
-	hold func(*http.Request) time.Duration,
-) func(http.Handler) http.Handler {
+func extendHeld(log *slog.Logger, write time.Duration, hold func(*http.Request) time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if d := hold(r); d > 0 {
@@ -807,9 +790,7 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 // answers the same on every surface.
 //
 // ref: decision 0022
-func strictPaths(
-	path func(*http.Request) (openapi3.Parameters, map[string]string),
-) func(http.Handler) http.Handler {
+func strictPaths(path func(*http.Request) (openapi3.Parameters, map[string]string)) func(http.Handler) http.Handler {
 	opts := &openapi3filter.Options{SkipSettingDefaults: true}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -848,9 +829,7 @@ func strictPaths(
 // and the parameter's name.
 //
 // ref: decision 0022
-func strictQueries(
-	query func(*http.Request) openapi3.Parameters,
-) func(http.Handler) http.Handler {
+func strictQueries(query func(*http.Request) openapi3.Parameters) func(http.Handler) http.Handler {
 	opts := &openapi3filter.Options{SkipSettingDefaults: true}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1029,9 +1008,7 @@ func unlisted(listed func(*http.Request) bool) func(http.Handler) http.Handler {
 // other controls: it decides nothing.
 type passAll struct{}
 
-func (passAll) Middleware(
-	func(*http.Request) (accessapi.Required, bool),
-) func(http.Handler) http.Handler {
+func (passAll) Middleware(func(*http.Request) (accessapi.Required, bool)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler { return next }
 }
 
@@ -1039,9 +1016,7 @@ func (passAll) Middleware(
 // that needs a credential answers 401.
 type refuseAll struct{}
 
-func (refuseAll) Middleware(
-	access func(*http.Request) accessapi.Access,
-) func(http.Handler) http.Handler {
+func (refuseAll) Middleware(access func(*http.Request) accessapi.Access) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if access(r) == accessapi.Public {

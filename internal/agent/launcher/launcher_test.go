@@ -117,12 +117,7 @@ func (f *fakeSources) next() error {
 	return f.err
 }
 
-func (f *fakeSources) Fetch(
-	_ context.Context,
-	dir string,
-	_ wire.RunSpec,
-	cred *wire.RunSpecSourceCredential,
-) error {
+func (f *fakeSources) Fetch(_ context.Context, dir string, _ wire.RunSpec, cred *wire.RunSpecSourceCredential) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.dirs, f.creds = append(f.dirs, dir), append(f.creds, cred)
@@ -135,13 +130,7 @@ func (f *fakeSources) Fetch(
 	return f.next()
 }
 
-func (f *fakeSources) Restore(
-	_ context.Context,
-	dir, src string,
-	pool *ecdh.PrivateKey,
-	_ string,
-	_ wire.RunSpec,
-) error {
+func (f *fakeSources) Restore(_ context.Context, dir, src string, pool *ecdh.PrivateKey, _ string, _ wire.RunSpec) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if pool == nil {
@@ -232,13 +221,7 @@ func (w *world) assign(t *testing.T, run string, state wire.AssignmentState, ima
 
 // assignTool assigns as assign does, of a run whose specification names
 // tool.
-func (w *world) assignTool(
-	t *testing.T,
-	run string,
-	state wire.AssignmentState,
-	image string,
-	tool *wire.RunSpecTool,
-) {
+func (w *world) assignTool(t *testing.T, run string, state wire.AssignmentState, image string, tool *wire.RunSpecTool) {
 	t.Helper()
 	r := newRun(run, state, image)
 	r.Spec.Tool = tool

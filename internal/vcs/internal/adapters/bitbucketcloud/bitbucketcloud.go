@@ -162,11 +162,7 @@ func repoPath(repo port.Repository) (string, error) {
 
 // get sends a GET of rawURL as in's account and answers a 2xx response,
 // classifying any other.
-func (p *Provider) get(
-	ctx context.Context,
-	in port.Integration,
-	rawURL, what string,
-) (*http.Response, error) {
+func (p *Provider) get(ctx context.Context, in port.Integration, rawURL, what string) (*http.Response, error) {
 	if p.host != nil {
 		return nil, p.host
 	}
@@ -194,12 +190,7 @@ func (p *Provider) get(
 }
 
 // decode GETs rawURL into v.
-func (p *Provider) decode(
-	ctx context.Context,
-	in port.Integration,
-	rawURL, what string,
-	v any,
-) error {
+func (p *Provider) decode(ctx context.Context, in port.Integration, rawURL, what string, v any) error {
 	resp, err := p.get(ctx, in, rawURL, what)
 	if err != nil {
 		return err
@@ -220,14 +211,7 @@ type page[T any] struct {
 // all collects every page of the list at rel, an escaped path under the
 // API's base with its query, following each page's next link, which must
 // stay under the API's base.
-func all[T any](
-	ctx context.Context,
-	p *Provider,
-	in port.Integration,
-	rel string,
-	q url.Values,
-	what string,
-) ([]T, error) {
+func all[T any](ctx context.Context, p *Provider, in port.Integration, rel string, q url.Values, what string) ([]T, error) {
 	q.Set("pagelen", pagelen)
 	next := p.api + rel + "?" + q.Encode()
 	var out []T
@@ -287,21 +271,13 @@ func (p *Provider) out(repo port.Repository, c commit) vcsapi.Commit {
 // ResolveRef resolves ref of repo to its commit: a branch, then a tag,
 // which it names, then a SHA or its prefix, as Bitbucket's commit route
 // resolves one.
-func (p *Provider) ResolveRef(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-) (vcsapi.Commit, error) {
+func (p *Provider) ResolveRef(ctx context.Context, repo port.Repository, name string) (vcsapi.Commit, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	return p.resolve(ctx, repo, name)
 }
 
-func (p *Provider) resolve(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-) (vcsapi.Commit, error) {
+func (p *Provider) resolve(ctx context.Context, repo port.Repository, name string) (vcsapi.Commit, error) {
 	rp, err := repoPath(repo)
 	if err != nil {
 		return vcsapi.Commit{}, err
@@ -341,11 +317,7 @@ func (p *Provider) resolve(
 
 // ReadFile reads path at ref of repo, resolving a ref that is not a full
 // SHA first, so a branch with a slash in its name never reads as a path.
-func (p *Provider) ReadFile(
-	ctx context.Context,
-	repo port.Repository,
-	name, file string,
-) ([]byte, error) {
+func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, name, file string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
@@ -379,11 +351,7 @@ func (p *Provider) ReadFile(
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a renamed file under both its names, from
 // Bitbucket's diffstat, which names head first.
-func (p *Provider) AffectedFiles(
-	ctx context.Context,
-	repo port.Repository,
-	base, head string,
-) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
@@ -452,11 +420,7 @@ func (p *Provider) workspaces(ctx context.Context, in port.Integration) ([]strin
 
 // repositories lists, sorted, the repositories in's account holds role
 // on, member or admin, in every workspace it reaches.
-func (p *Provider) repositories(
-	ctx context.Context,
-	in port.Integration,
-	role string,
-) ([]port.Listed, error) {
+func (p *Provider) repositories(ctx context.Context, in port.Integration, role string) ([]port.Listed, error) {
 	ws, err := p.workspaces(ctx, in)
 	if err != nil {
 		return nil, err

@@ -26,13 +26,7 @@ var _ operator.Store = (*Store)(nil)
 // through the features domain, its first account, its break-glass
 // credential when bg is not nil, and e, in one transaction or none of
 // them.
-func (s *Store) CreateOrganization(
-	ctx context.Context,
-	org organization.Organization,
-	first account.Account,
-	bg *breakglass.Credential,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *Store) CreateOrganization(ctx context.Context, org organization.Organization, first account.Account, bg *breakglass.Credential, e kernel.OrganizationAuditEntry) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
 		if _, err := q.Exec(ctx,
@@ -82,11 +76,7 @@ const orgColumns = `o.id, o.slug, o.name, o.created_at, bg.login, bg.updated_at
 
 // Organizations are up to limit organizations in ID order from the first
 // after after, with their accounts and break-glass logins.
-func (s *Store) Organizations(
-	ctx context.Context,
-	after kernel.OrganizationID,
-	limit int,
-) ([]operator.Organization, error) {
+func (s *Store) Organizations(ctx context.Context, after kernel.OrganizationID, limit int) ([]operator.Organization, error) {
 	q := tx.Q(ctx, s.db)
 	rows, err := q.Query(ctx, `SELECT `+orgColumns+`
 		WHERE $1::uuid IS NULL OR o.id > $1 ORDER BY o.id LIMIT $2`, after, limit)
@@ -107,10 +97,7 @@ func (s *Store) Organizations(
 
 // OrganizationBySlug reads the organization slug, with its accounts and
 // break-glass login.
-func (s *Store) OrganizationBySlug(
-	ctx context.Context,
-	slug kernel.Slug,
-) (operator.Organization, error) {
+func (s *Store) OrganizationBySlug(ctx context.Context, slug kernel.Slug) (operator.Organization, error) {
 	o, err := scanOrganization(tx.Q(ctx, s.db).QueryRow(ctx,
 		`SELECT `+orgColumns+` WHERE o.slug = $1`, slug))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -215,11 +202,7 @@ var deleteOrganization = []string{
 // break-glass credential, and records e, in one transaction. Each of its
 // live sessions is revoked first, so every replica drops it from its
 // cache, and returned.
-func (s *Store) DeleteOrganization(
-	ctx context.Context,
-	id kernel.OrganizationID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (s *Store) DeleteOrganization(ctx context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -265,12 +248,7 @@ func (s *Store) DeleteOrganization(
 
 // SetBreakGlass sets or replaces the break-glass credential of the
 // organization id and records e.
-func (s *Store) SetBreakGlass(
-	ctx context.Context,
-	id kernel.OrganizationID,
-	c breakglass.Credential,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *Store) SetBreakGlass(ctx context.Context, id kernel.OrganizationID, c breakglass.Credential, e kernel.OrganizationAuditEntry) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		if err := setBreakGlass(ctx, tx.Q(ctx, s.db), id, c); err != nil {
 			return err
@@ -284,12 +262,7 @@ func (s *Store) SetBreakGlass(
 	return nil
 }
 
-func setBreakGlass(
-	ctx context.Context,
-	q tx.Querier,
-	id kernel.OrganizationID,
-	c breakglass.Credential,
-) error {
+func setBreakGlass(ctx context.Context, q tx.Querier, id kernel.OrganizationID, c breakglass.Credential) error {
 	_, err := q.Exec(ctx, `INSERT INTO organization_break_glass (organization_id, login,
 		password_hash, updated_at) VALUES ($1, $2, $3, $4)
 		ON CONFLICT (organization_id) DO UPDATE SET login = EXCLUDED.login,
@@ -306,11 +279,7 @@ func setBreakGlass(
 
 // DeleteBreakGlass removes the break-glass credential of the organization
 // id, if it has one, and records e.
-func (s *Store) DeleteBreakGlass(
-	ctx context.Context,
-	id kernel.OrganizationID,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *Store) DeleteBreakGlass(ctx context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		if _, err := tx.Q(ctx, s.db).Exec(ctx,
 			`DELETE FROM organization_break_glass WHERE organization_id = $1`, id); err != nil {

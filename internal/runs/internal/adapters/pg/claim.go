@@ -47,11 +47,7 @@ func (s *Store) Announce(ctx context.Context, run lifecycle.Run) error {
 
 // Holding reports whether acct's worker holds a run: one it claimed last
 // that is in a state on a worker.
-func (s *Store) Holding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	worker kernel.ULID,
-) (bool, error) {
+func (s *Store) Holding(ctx context.Context, acct kernel.AccountID, worker kernel.ULID) (bool, error) {
 	var holds bool
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM runs
 		WHERE account_id = $1 AND worker_id = $2 AND state = ANY($3))`,
@@ -68,11 +64,7 @@ func (s *Store) Holding(
 
 // Drifting counts acct's pool's drift detection runs in a state on a
 // worker.
-func (s *Store) Drifting(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-) (int, error) {
+func (s *Store) Drifting(ctx context.Context, acct kernel.AccountID, pool kernel.ULID) (int, error) {
 	var n int
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT count(*) FROM runs
 		WHERE account_id = $1 AND worker_pool_id = $2 AND drift_detection AND state = ANY($3)`,
@@ -98,13 +90,7 @@ func (s *Store) TakeDrift(ctx context.Context, acct kernel.AccountID, pool kerne
 
 // Next reads and locks the run of acct's pool a worker takes next. The
 // partial index runs_claimable serves its order.
-func (s *Store) Next(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-	states []kernel.RunState,
-	last int,
-) (lifecycle.Run, bool, error) {
+func (s *Store) Next(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND worker_pool_id = $2 AND state = ANY($3)
 			AND priority_tier <= $4
@@ -133,10 +119,7 @@ func (s *Store) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULI
 
 // Waiting counts the runs in one of states of each private pool. The
 // partial index runs_claimable serves it for the claimable states.
-func (s *Store) Waiting(
-	ctx context.Context,
-	states []kernel.RunState,
-) (map[kernel.ULID]int, error) {
+func (s *Store) Waiting(ctx context.Context, states []kernel.RunState) (map[kernel.ULID]int, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT worker_pool_id, count(*) FROM runs
 		WHERE state = ANY($1) AND worker_pool_id IS NOT NULL
 		GROUP BY worker_pool_id`, names(states))
@@ -189,13 +172,7 @@ var preparing = []string{
 
 // Overdue reads and locks the runs left in preparation past their pool's
 // preparing timeout. The partial index runs_preparing serves it.
-func (s *Store) Overdue(
-	ctx context.Context,
-	now time.Time,
-	timeouts []workersapi.PoolTimeout,
-	fallback time.Duration,
-	batch int,
-) ([]lifecycle.Run, error) {
+func (s *Store) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) ([]lifecycle.Run, error) {
 	pools := make([]kernel.ULID, 0, len(timeouts))
 	micros := make([]int64, 0, len(timeouts))
 	for _, t := range timeouts {

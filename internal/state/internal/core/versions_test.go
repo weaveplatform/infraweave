@@ -37,13 +37,7 @@ func newBucket() *bucket {
 	return &bucket{objects: map[string][]byte{}, states: map[string]string{}}
 }
 
-func (b *bucket) Put(
-	_ context.Context,
-	store objectstore.Name,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *bucket) Put(_ context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	if b.broken == "Put" {
 		return objectstore.Object{}, errDown
 	}
@@ -73,11 +67,7 @@ func (b *bucket) Commit(ctx context.Context, store objectstore.Name, key string)
 	return nil
 }
 
-func (b *bucket) Open(
-	_ context.Context,
-	store objectstore.Name,
-	key string,
-) (io.ReadCloser, error) {
+func (b *bucket) Open(_ context.Context, store objectstore.Name, key string) (io.ReadCloser, error) {
 	k := string(store) + "/" + key
 	switch {
 	case b.broken == "Open":

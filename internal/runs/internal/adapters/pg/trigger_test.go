@@ -260,35 +260,19 @@ func newUploads() *uploads {
 	}
 }
 
-func (u *uploads) Begin(
-	_ context.Context,
-	_ objectstore.Name,
-	key string,
-	size int64,
-	_ []byte,
-) error {
+func (u *uploads) Begin(_ context.Context, _ objectstore.Name, key string, size int64, _ []byte) error {
 	u.declared[key] = size
 	return u.err["Begin"]
 }
 
-func (u *uploads) SignPut(
-	_ context.Context,
-	_ objectstore.Name,
-	key string,
-	size int64,
-	_ []byte,
-) (objectstore.Signed, error) {
+func (u *uploads) SignPut(_ context.Context, _ objectstore.Name, key string, size int64, _ []byte) (objectstore.Signed, error) {
 	return objectstore.Signed{
 		URL:    "https://store.test/uploads/" + key,
 		Header: http.Header{"Content-Length": {strconv.FormatInt(size, 10)}},
 	}, u.err["SignPut"]
 }
 
-func (u *uploads) CommitUpload(
-	_ context.Context,
-	_ objectstore.Name,
-	key string,
-) (objectstore.Object, error) {
+func (u *uploads) CommitUpload(_ context.Context, _ objectstore.Name, key string) (objectstore.Object, error) {
 	size, pending := u.declared[key]
 	stored, put := u.stored[key]
 	switch {

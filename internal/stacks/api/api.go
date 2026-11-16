@@ -131,23 +131,14 @@ type Stacks interface {
 	// BySlug reads acct's stack slug; ErrNotFound when acct lacks it.
 	BySlug(ctx context.Context, acct kernel.AccountID, slug string) (Stack, error)
 	// ByIDs reads those of acct's stacks ids that it has, keyed by ID.
-	ByIDs(
-		ctx context.Context,
-		acct kernel.AccountID,
-		ids []kernel.ULID,
-	) (map[kernel.ULID]Stack, error)
+	ByIDs(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]Stack, error)
 	// Settings reads acct's stack id's settings; ErrNotFound when acct
 	// lacks it.
 	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Settings, error)
 	// ByRepository lists acct's stacks that track branch of repository
 	// through integration, nil for the stacks that name no VCS
 	// integration, by slug.
-	ByRepository(
-		ctx context.Context,
-		acct kernel.AccountID,
-		integration *kernel.ULID,
-		repository, branch string,
-	) ([]Stack, error)
+	ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]Stack, error)
 	// LockForRun reads acct's stack id's settings and locks its row FOR
 	// UPDATE in the context's transaction, so no write changes them
 	// before a run created in that transaction commits; ErrNotFound when
@@ -163,41 +154,20 @@ type Stacks interface {
 	// in the context's transaction: state, its tracked run's state, and
 	// blocked, whether a run blocks it. The stack's settings and version
 	// stay as they are. ErrNotFound when acct lacks it.
-	SetRunState(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		state kernel.StackState,
-		blocked bool,
-	) error
+	SetRunState(ctx context.Context, acct kernel.AccountID, id kernel.ULID, state kernel.StackState, blocked bool) error
 	// Find lists acct's stacks in spaces that carry any of labels, by
 	// slug.
-	Find(
-		ctx context.Context,
-		acct kernel.AccountID,
-		spaces []kernel.ULID,
-		labels []string,
-	) ([]Stack, error)
+	Find(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]Stack, error)
 	// InSpaces lists every stack of acct in spaces, by slug.
 	InSpaces(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID) ([]Stack, error)
 	// Labels reads the labels of those of acct's stacks ids that it has,
 	// sorted, keyed by ID.
-	Labels(
-		ctx context.Context,
-		acct kernel.AccountID,
-		ids []kernel.ULID,
-	) (map[kernel.ULID][]string, error)
+	Labels(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID][]string, error)
 	// SetTracked sets acct's stack id's branch head to head and its
 	// tracked commit to commit, set by setBy, leaving either unchanged
 	// when nil. It changes neither the stack's version nor its events;
 	// ErrNotFound when acct lacks it.
-	SetTracked(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		head, commit *Commit,
-		setBy string,
-	) error
+	SetTracked(ctx context.Context, acct kernel.AccountID, id kernel.ULID, head, commit *Commit, setBy string) error
 	// Destroyed ends the deletion of acct's stack id once its destroy run
 	// ends, in the context's transaction: a finished run deletes the stack
 	// as a delete does, and any other end leaves it, no longer deleting.
@@ -215,20 +185,10 @@ type Stacks interface {
 	// p may read that use u, which the query leaves the others out of; an
 	// input the stacks' search fields cannot answer is a
 	// *search.Invalid.
-	SearchUsers(
-		ctx context.Context,
-		p kernel.Principal,
-		u Use,
-		in search.Input,
-	) (search.Result[Stack], error)
+	SearchUsers(ctx context.Context, p kernel.Principal, u Use, in search.Input) (search.Result[Stack], error)
 	// SuggestUsers lists the values those stacks hold under in's
 	// predicates, and counts them.
-	SuggestUsers(
-		ctx context.Context,
-		p kernel.Principal,
-		u Use,
-		in search.SuggestionsInput,
-	) (search.Suggestions, error)
+	SuggestUsers(ctx context.Context, p kernel.Principal, u Use, in search.SuggestionsInput) (search.Suggestions, error)
 }
 
 // Use names the stacks that use a VCS integration: those bound to
@@ -252,13 +212,7 @@ var ErrNoIntegration = errors.New("stacks: no such VCS integration")
 //
 // ref: decisions 0004 and 0012
 type StackIntegrations interface {
-	Bindable(
-		ctx context.Context,
-		acct kernel.AccountID,
-		space kernel.ULID,
-		provider string,
-		id kernel.ULID,
-	) error
+	Bindable(ctx context.Context, acct kernel.AccountID, space kernel.ULID, provider string, id kernel.ULID) error
 }
 
 // ErrRefNotFound reports a branch or commit a stack's repository lacks.
@@ -334,16 +288,8 @@ type StackMove struct {
 //
 // ref: decision 0004
 type StackConfiguration interface {
-	AttachedContexts(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stacks []kernel.ULID,
-	) (map[kernel.ULID][]AttachedContext, error)
-	Config(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stacks []kernel.ULID,
-	) (map[kernel.ULID][]ConfigElement, error)
+	AttachedContexts(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]AttachedContext, error)
+	Config(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]ConfigElement, error)
 }
 
 // StackStatus is what the stack view reads of the runs domain, which is
@@ -356,21 +302,13 @@ type StackConfiguration interface {
 //
 // ref: decisions 0004 and 0008
 type StackStatus interface {
-	Blockers(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stacks []kernel.ULID,
-	) (map[kernel.ULID]Blocker, error)
+	Blockers(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]Blocker, error)
 	// RunStack is the stack of acct's run, which runStack answers;
 	// ErrNotFound when acct lacks the run.
 	RunStack(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, error)
 	// Outputs are the outputs of each of acct's stacks, by name, keyed by
 	// stack ID, with a stack that has none absent.
-	Outputs(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stacks []kernel.ULID,
-	) (map[kernel.ULID][]Output, error)
+	Outputs(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]Output, error)
 }
 
 // Output is one of a stack's outputs as its last applied run left it:

@@ -140,9 +140,7 @@ func (d *Domain) Subscribe(events *outbox.Outbox) error {
 // runUpdated is the outbox handler that decodes a runsapi.Updated and
 // runs end on its run and state; a document that does not decode never
 // will, so its job dies at once.
-func runUpdated(
-	end func(ctx context.Context, acct kernel.AccountID, run kernel.ULID, st kernel.RunState) error,
-) outbox.Handler {
+func runUpdated(end func(ctx context.Context, acct kernel.AccountID, run kernel.ULID, st kernel.RunState) error) outbox.Handler {
 	return func(ctx context.Context, ev outbox.Event, _ queue.Job) error {
 		var u runsapi.Updated
 		if err := json.Unmarshal(ev.Document, &u); err != nil {

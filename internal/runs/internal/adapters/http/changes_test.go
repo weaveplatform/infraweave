@@ -45,9 +45,7 @@ func (p *planned) Open(context.Context, objectstore.Name, string) (io.ReadCloser
 	return io.NopCloser(bytes.NewReader(p.doc)), nil
 }
 
-func (p *planned) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings,
-	error,
-) {
+func (p *planned) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	return stacksapi.Settings{Vendor: p.vendor}, nil
 }
 

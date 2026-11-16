@@ -347,12 +347,7 @@ func (e env) send(t *testing.T, method string, s objectstore.Signed, body []byte
 
 func ok(status int) bool { return status >= 200 && status < 300 }
 
-func (e env) sign(
-	t *testing.T,
-	method, key string,
-	ttl time.Duration,
-	c objectstore.Constraints,
-) objectstore.Signed {
+func (e env) sign(t *testing.T, method, key string, ttl time.Duration, c objectstore.Constraints) objectstore.Signed {
 	t.Helper()
 	s, err := e.b.SignURL(t.Context(), method, key, ttl, c)
 	if err != nil {

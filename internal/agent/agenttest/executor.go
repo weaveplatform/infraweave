@@ -73,11 +73,7 @@ func (e *Executor) Start(_ context.Context, j executor.Job) (executor.Container,
 
 // Find answers worker's container, whose later output goes to out when
 // it is set, as a restarted launcher follows it again.
-func (e *Executor) Find(
-	_ context.Context,
-	worker string,
-	out io.Writer,
-) (executor.Container, bool, error) {
+func (e *Executor) Find(_ context.Context, worker string, out io.Writer) (executor.Container, bool, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.findErr != nil {

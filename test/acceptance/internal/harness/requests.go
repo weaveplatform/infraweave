@@ -73,12 +73,7 @@ func (w *World) replica(name string) *sdk.Client {
 }
 
 // SendThrough sends a request through the named replica's API listener.
-func (w *World) SendThrough(
-	ctx context.Context,
-	name, method, path string,
-	body any,
-	headers ...sdk.Header,
-) (Response, error) {
+func (w *World) SendThrough(ctx context.Context, name, method, path string, body any, headers ...sdk.Header) (Response, error) {
 	resp, err := w.replica(name).Do(ctx, method, path, body, headers...)
 	if resp == nil {
 		return Response{}, err
@@ -107,12 +102,7 @@ func (w *World) Client(replica, token string) (*sdk.Client, error) {
 }
 
 // Do sends a request through replica with the named token.
-func (w *World) Do(
-	ctx context.Context,
-	replica, name, method, path string,
-	body any,
-	headers ...sdk.Header,
-) (Response, error) {
+func (w *World) Do(ctx context.Context, replica, name, method, path string, body any, headers ...sdk.Header) (Response, error) {
 	tok, ok := w.Tokens[name]
 	if !ok && name != "" {
 		return Response{}, fmt.Errorf("%w: no token %q", ErrStep, name)
@@ -151,11 +141,7 @@ func (w *World) browserClient(replica string) (*sdk.Client, error) {
 
 // BrowserDo sends a request through the browser, with origin when it is
 // not empty.
-func (w *World) BrowserDo(
-	ctx context.Context,
-	replica, method, path, origin string,
-	body any,
-) (Response, error) {
+func (w *World) BrowserDo(ctx context.Context, replica, method, path, origin string, body any) (Response, error) {
 	c, err := w.browserClient(replica)
 	if err != nil {
 		return Response{}, err
@@ -382,9 +368,7 @@ func (w *World) TwoInstances(ctx context.Context, lease int) error {
 // Keyring is the keyring of the scenario's database, loaded as a server
 // loads it, under the KEK the servers run with, with the pool it reads
 // through, which the caller closes.
-func (w *World) Keyring(
-	ctx context.Context,
-) (keys *crypt.Keyring, pool *pgxpool.Pool, err error) {
+func (w *World) Keyring(ctx context.Context) (keys *crypt.Keyring, pool *pgxpool.Pool, err error) {
 	db, err := w.Database(ctx)
 	if err != nil {
 		return nil, nil, err

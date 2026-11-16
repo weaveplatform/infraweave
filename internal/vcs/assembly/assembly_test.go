@@ -16,11 +16,7 @@ type stacks struct {
 	provider string
 }
 
-func (s stacks) Settings(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	u := "http://git.example/acme/infra.git"
 	return stacksapi.Settings{Provider: s.provider, RepositoryURL: &u}, nil
 }

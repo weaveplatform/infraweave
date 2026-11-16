@@ -129,10 +129,7 @@ type entry struct {
 }
 
 // NewCache returns a cache that reads through load on the clock now.
-func NewCache(
-	load func(context.Context, kernel.ULID) (Session, error),
-	now func() time.Time,
-) *Cache {
+func NewCache(load func(context.Context, kernel.ULID) (Session, error), now func() time.Time) *Cache {
 	return &Cache{load: load, now: now, entries: map[kernel.ULID]entry{}}
 }
 

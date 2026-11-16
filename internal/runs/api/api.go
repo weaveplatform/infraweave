@@ -15,12 +15,7 @@ type RunSources interface {
 	// credential it fetches with, minted for the run alone where the
 	// provider narrows one. It joins the transaction ctx carries, so a
 	// handover that fails keeps no record of a minted token.
-	Source(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack, run kernel.ULID,
-		commit string,
-	) (Source, error)
+	Source(ctx context.Context, acct kernel.AccountID, stack, run kernel.ULID, commit string) (Source, error)
 	// Release revokes the credentials minted for acct's run, in a job the
 	// transaction ctx carries enqueues once per run.
 	Release(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error

@@ -83,12 +83,7 @@ func whoOf(p kernel.Principal) Who {
 
 // decide is f of p's account's snapshot, or the zero T, which every check
 // reads as refused, for a principal with no account.
-func decide[T any](
-	ctx context.Context,
-	s *Service,
-	p kernel.Principal,
-	f func(*Snapshot, Who) T,
-) (T, error) {
+func decide[T any](ctx context.Context, s *Service, p kernel.Principal, f func(*Snapshot, Who) T) (T, error) {
 	var zero T
 	if p.AccountID.IsZero() {
 		return zero, nil
@@ -106,13 +101,7 @@ func decide[T any](
 // space or another did and its message has not arrived, so it is rebuilt
 // before f reads it; otherwise a caller that has just created a space
 // would see none of it until the message arrived.
-func decideIn[T any](
-	ctx context.Context,
-	s *Service,
-	p kernel.Principal,
-	space kernel.ULID,
-	f func(*Snapshot, Who) T,
-) (T, error) {
+func decideIn[T any](ctx context.Context, s *Service, p kernel.Principal, space kernel.ULID, f func(*Snapshot, Who) T) (T, error) {
 	var zero T
 	if p.AccountID.IsZero() {
 		return zero, nil
@@ -138,12 +127,7 @@ func decideIn[T any](
 // compared, so a revocation applies on its message or at Refresh; a
 // refusal costs one read of the version and rebuilds nothing while the
 // version stands.
-func check(
-	ctx context.Context,
-	s *Service,
-	p kernel.Principal,
-	f func(*Snapshot, Who) bool,
-) (bool, error) {
+func check(ctx context.Context, s *Service, p kernel.Principal, f func(*Snapshot, Who) bool) (bool, error) {
 	if p.AccountID.IsZero() {
 		return false, nil
 	}
@@ -164,11 +148,7 @@ func check(
 // recheck compares snap, acct's snapshot, with the account's
 // authz_version, and answers it rebuilt when the version has moved or the
 // account is gone, and whether it was.
-func (s *Service) recheck(
-	ctx context.Context,
-	acct kernel.AccountID,
-	snap *Snapshot,
-) (*Snapshot, bool, error) {
+func (s *Service) recheck(ctx context.Context, acct kernel.AccountID, snap *Snapshot) (*Snapshot, bool, error) {
 	versions, err := s.store.AuthzVersions(ctx, []kernel.AccountID{acct})
 	if err != nil {
 		return nil, false, fmt.Errorf("authorization version of account %s: %w", acct, err)
@@ -184,34 +164,21 @@ func (s *Service) recheck(
 }
 
 // Authorize decides whether p may perform action in space.
-func (s *Service) Authorize(
-	ctx context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (s *Service) Authorize(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error) {
 	return check(ctx, s, p, func(snap *Snapshot, w Who) bool {
 		return snap.Authorize(w, action, space)
 	})
 }
 
 // Reachable is every space of p's account in which p may perform action.
-func (s *Service) Reachable(
-	ctx context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-) ([]kernel.ULID, error) {
+func (s *Service) Reachable(ctx context.Context, p kernel.Principal, action accessapi.Action) ([]kernel.ULID, error) {
 	return decide(ctx, s, p, func(snap *Snapshot, w Who) []kernel.ULID {
 		return snap.Reachable(w, action)
 	})
 }
 
 // Explain is every grant that reaches space for p.
-func (s *Service) Explain(
-	ctx context.Context,
-	p kernel.Principal,
-	space kernel.ULID,
-) ([]Grant, error) {
+func (s *Service) Explain(ctx context.Context, p kernel.Principal, space kernel.ULID) ([]Grant, error) {
 	return decideIn(ctx, s, p, space, func(snap *Snapshot, w Who) []Grant {
 		return snap.Explain(w, space)
 	})
@@ -219,12 +186,7 @@ func (s *Service) Explain(
 
 // Holders is each actor of the kinds whose own bindings reach acct's
 // space.
-func (s *Service) Holders(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	kinds ...binding.ActorKind,
-) ([]Holder, error) {
+func (s *Service) Holders(ctx context.Context, acct kernel.AccountID, space kernel.ULID, kinds ...binding.ActorKind) ([]Holder, error) {
 	return decideIn(
 		ctx,
 		s,
@@ -239,12 +201,7 @@ func (s *Service) Holders(
 // ExplainEach is, for each of whos, every grant that reaches acct's space,
 // for the grant views of principals other than the caller. Each Who's
 // Account is acct's.
-func (s *Service) ExplainEach(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	whos []Who,
-) ([][]Grant, error) {
+func (s *Service) ExplainEach(ctx context.Context, acct kernel.AccountID, space kernel.ULID, whos []Who) ([][]Grant, error) {
 	return decideIn(
 		ctx,
 		s,
@@ -263,20 +220,12 @@ func (s *Service) ExplainEach(
 
 // Holds reports whether p may perform action in at least one space of
 // its account.
-func (s *Service) Holds(
-	ctx context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-) (bool, error) {
+func (s *Service) Holds(ctx context.Context, p kernel.Principal, action accessapi.Action) (bool, error) {
 	return check(ctx, s, p, func(snap *Snapshot, w Who) bool { return snap.Holds(w, action) })
 }
 
 // Actions is every assignable action p may perform in space.
-func (s *Service) Actions(
-	ctx context.Context,
-	p kernel.Principal,
-	space kernel.ULID,
-) ([]accessapi.Action, error) {
+func (s *Service) Actions(ctx context.Context, p kernel.Principal, space kernel.ULID) ([]accessapi.Action, error) {
 	return decideIn(ctx, s, p, space, func(snap *Snapshot, w Who) []accessapi.Action {
 		return snap.Actions(w, space)
 	})

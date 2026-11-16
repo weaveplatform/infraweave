@@ -103,14 +103,7 @@ var _ api.StrictServerInterface = apiServer{}
 // its own authenticator, so none accepts another's tokens. It serves no
 // probe; those are the admin listener's alone, and are never
 // rate-limited.
-func API(
-	log *slog.Logger,
-	c config.Server,
-	g Guards,
-	d Domains,
-	p Platform,
-	b Blobs,
-) http.Handler {
+func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b Blobs) http.Handler {
 	var gated Gated
 	if d.Features != nil {
 		gated = d.Features.Middleware
@@ -206,9 +199,7 @@ func withPollHold(ops Operations, poll time.Duration) Operations {
 // route serves answers 405 to a run token and 401 to anything else.
 type byPrefix struct{ api, operator, worker, state accessapi.Authenticator }
 
-func (b byPrefix) Middleware(
-	access func(*http.Request) accessapi.Access,
-) func(http.Handler) http.Handler {
+func (b byPrefix) Middleware(access func(*http.Request) accessapi.Access) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		api := orRefuse(b.api).Middleware(access)(next)
 		operator := orRefuse(b.operator).Middleware(access)(next)

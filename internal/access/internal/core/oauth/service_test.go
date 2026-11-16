@@ -123,11 +123,7 @@ func (s *store) revoke(id kernel.ULID) session.Session {
 	return ss
 }
 
-func (s *store) Redeem(
-	_ context.Context,
-	hash []byte,
-	grant func(oauth.Request, oauth.Owner) (session.Session, error),
-) (session.Session, error) {
+func (s *store) Redeem(_ context.Context, hash []byte, grant func(oauth.Request, oauth.Owner) (session.Session, error)) (session.Session, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var r *oauth.Request
@@ -155,11 +151,7 @@ func (s *store) Redeem(
 	return ss, nil
 }
 
-func (s *store) Refresh(
-	_ context.Context,
-	hash []byte,
-	rotate func(session.Session, oauth.Owner) (session.Session, error),
-) (session.Session, error) {
+func (s *store) Refresh(_ context.Context, hash []byte, rotate func(session.Session, oauth.Owner) (session.Session, error)) (session.Session, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	key := hex.EncodeToString(hash)
@@ -212,20 +204,11 @@ func (i issuer) Issue(_ context.Context, r token.Request) (string, token.Claims,
 // admission admits by the store's owners.
 type admission struct{ s *store }
 
-func (a admission) Accounts(
-	context.Context,
-	kernel.OrganizationID,
-	kernel.MemberID,
-) ([]session.Admitted, error) {
+func (a admission) Accounts(context.Context, kernel.OrganizationID, kernel.MemberID) ([]session.Admitted, error) {
 	return nil, nil
 }
 
-func (a admission) Admits(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	m kernel.MemberID,
-	acct kernel.AccountID,
-) (session.Admitted, bool, error) {
+func (a admission) Admits(_ context.Context, _ kernel.OrganizationID, m kernel.MemberID, acct kernel.AccountID) (session.Admitted, bool, error) {
 	a.s.mu.Lock()
 	defer a.s.mu.Unlock()
 	_, ok := a.s.owner(acct, m)

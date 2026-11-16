@@ -107,12 +107,7 @@ func views[I, V any](k bindingKind[I, V], ls []binding.Listed) []V {
 
 // readBinding answers the binding id of k's actors in the caller's
 // account, and its entity tag.
-func readBinding[I, V any](
-	ctx context.Context,
-	s Server,
-	k bindingKind[I, V],
-	id string,
-) (V, *string, error) {
+func readBinding[I, V any](ctx context.Context, s Server, k bindingKind[I, V], id string) (V, *string, error) {
 	var zero V
 	p, err := principal(ctx)
 	if err != nil {
@@ -127,13 +122,7 @@ func readBinding[I, V any](
 
 // createBindings records ins, the bindings an input names at pointer,
 // all or none; an empty pointer names an input of one.
-func createBindings[I, V any](
-	ctx context.Context,
-	s Server,
-	k bindingKind[I, V],
-	pointer string,
-	ins []I,
-) ([]V, error) {
+func createBindings[I, V any](ctx context.Context, s Server, k bindingKind[I, V], pointer string, ins []I) ([]V, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -151,14 +140,7 @@ func createBindings[I, V any](
 
 // updateBinding moves the binding id of k's actors to in's role and
 // space, when expect accepts its version.
-func updateBinding[I, V any](
-	ctx context.Context,
-	s Server,
-	k bindingKind[I, V],
-	id string,
-	expect kernel.Expect,
-	in I,
-) (V, *string, error) {
+func updateBinding[I, V any](ctx context.Context, s Server, k bindingKind[I, V], id string, expect kernel.Expect, in I) (V, *string, error) {
 	var zero V
 	p, err := principal(ctx)
 	if err != nil {
@@ -173,14 +155,7 @@ func updateBinding[I, V any](
 
 // patchBinding merges patch into the binding id's input and writes the
 // result as updateBinding does.
-func patchBinding[I, V any](
-	ctx context.Context,
-	s Server,
-	k bindingKind[I, V],
-	id string,
-	ifMatch *string,
-	body *api.MergePatch,
-) (V, *string, error) {
+func patchBinding[I, V any](ctx context.Context, s Server, k bindingKind[I, V], id string, ifMatch *string, body *api.MergePatch) (V, *string, error) {
 	var zero V
 	p, err := principal(ctx)
 	if err != nil {
@@ -215,13 +190,7 @@ func patchBinding[I, V any](
 
 // deleteBinding deletes the binding id of k's actors, when its If-Match,
 // if any, names its version, and answers it as it was.
-func deleteBinding[I, V any](
-	ctx context.Context,
-	s Server,
-	k bindingKind[I, V],
-	id string,
-	ifMatch *string,
-) (V, error) {
+func deleteBinding[I, V any](ctx context.Context, s Server, k bindingKind[I, V], id string, ifMatch *string) (V, error) {
 	var zero V
 	p, err := principal(ctx)
 	if err != nil {
@@ -235,12 +204,7 @@ func deleteBinding[I, V any](
 }
 
 // actorBindings answers the bindings of the actor of k's kind id names.
-func actorBindings[I, V any](
-	ctx context.Context,
-	s Server,
-	k bindingKind[I, V],
-	id string,
-) ([]V, error) {
+func actorBindings[I, V any](ctx context.Context, s Server, k bindingKind[I, V], id string) ([]V, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -353,12 +317,7 @@ type prepared struct {
 
 // prepare checks in's bindings of an actor of kind as p's, refusing each
 // at /accessRules/<index> or /roleBindings/<index>.
-func (s Server) prepare(
-	ctx context.Context,
-	p kernel.Principal,
-	kind binding.ActorKind,
-	in legacy,
-) (prepared, error) {
+func (s Server) prepare(ctx context.Context, p kernel.Principal, kind binding.ActorKind, in legacy) (prepared, error) {
 	var out prepared
 	var errs []error
 	var err error
@@ -400,22 +359,13 @@ func joinInvalid(errs []error) error {
 
 // bind records b's bindings for the actor of kind id, in the transaction
 // ctx carries.
-func (s Server) bind(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-	b prepared,
-) error {
+func (s Server) bind(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID, b prepared) error {
 	_, err := s.bindings.Bind(ctx, acct, kind, id, append(b.rules, b.bindings...))
 	return err //nolint:wrapcheck // the store names the write
 }
 
 // UserRoleBinding answers one of the account's user role bindings.
-func (s Server) UserRoleBinding(
-	ctx context.Context,
-	req api.UserRoleBindingRequestObject,
-) (api.UserRoleBindingResponseObject, error) {
+func (s Server) UserRoleBinding(ctx context.Context, req api.UserRoleBindingRequestObject) (api.UserRoleBindingResponseObject, error) {
 	v, tag, err := readBinding(ctx, s, userBindings, req.UserRoleBindingId)
 	if err != nil {
 		return nil, err
@@ -427,10 +377,7 @@ func (s Server) UserRoleBinding(
 }
 
 // UserRoleBindingCreate binds a managed user to a role in a space.
-func (s Server) UserRoleBindingCreate(
-	ctx context.Context,
-	req api.UserRoleBindingCreateRequestObject,
-) (api.UserRoleBindingCreateResponseObject, error) {
+func (s Server) UserRoleBindingCreate(ctx context.Context, req api.UserRoleBindingCreateRequestObject) (api.UserRoleBindingCreateResponseObject, error) {
 	vs, err := createBindings(ctx, s, userBindings, "", []api.UserRoleBindingInput{*req.Body})
 	if err != nil {
 		return nil, err
@@ -440,10 +387,7 @@ func (s Server) UserRoleBindingCreate(
 
 // UserRoleBindingBatchCreate binds managed users to roles in spaces, all
 // or none.
-func (s Server) UserRoleBindingBatchCreate(
-	ctx context.Context,
-	req api.UserRoleBindingBatchCreateRequestObject,
-) (api.UserRoleBindingBatchCreateResponseObject, error) {
+func (s Server) UserRoleBindingBatchCreate(ctx context.Context, req api.UserRoleBindingBatchCreateRequestObject) (api.UserRoleBindingBatchCreateResponseObject, error) {
 	vs, err := createBindings(ctx, s, userBindings, "/bindings", req.Body.Bindings)
 	if err != nil {
 		return nil, err
@@ -453,10 +397,7 @@ func (s Server) UserRoleBindingBatchCreate(
 
 // UserRoleBindingUpdate moves a user role binding to another role or
 // space.
-func (s Server) UserRoleBindingUpdate(
-	ctx context.Context,
-	req api.UserRoleBindingUpdateRequestObject,
-) (api.UserRoleBindingUpdateResponseObject, error) {
+func (s Server) UserRoleBindingUpdate(ctx context.Context, req api.UserRoleBindingUpdateRequestObject) (api.UserRoleBindingUpdateResponseObject, error) {
 	v, tag, err := updateBinding(ctx, s, userBindings, req.UserRoleBindingId,
 		strict.IfMatch(req.Params.IfMatch), *req.Body)
 	if err != nil {
@@ -468,10 +409,7 @@ func (s Server) UserRoleBindingUpdate(
 }
 
 // UserRoleBindingPatch merges a patch into a user role binding.
-func (s Server) UserRoleBindingPatch(
-	ctx context.Context,
-	req api.UserRoleBindingPatchRequestObject,
-) (api.UserRoleBindingPatchResponseObject, error) {
+func (s Server) UserRoleBindingPatch(ctx context.Context, req api.UserRoleBindingPatchRequestObject) (api.UserRoleBindingPatchResponseObject, error) {
 	v, tag, err := patchBinding(ctx, s, userBindings, req.UserRoleBindingId, req.Params.IfMatch,
 		req.Body)
 	if err != nil {
@@ -483,10 +421,7 @@ func (s Server) UserRoleBindingPatch(
 }
 
 // UserRoleBindingDelete deletes a user role binding.
-func (s Server) UserRoleBindingDelete(
-	ctx context.Context,
-	req api.UserRoleBindingDeleteRequestObject,
-) (api.UserRoleBindingDeleteResponseObject, error) {
+func (s Server) UserRoleBindingDelete(ctx context.Context, req api.UserRoleBindingDeleteRequestObject) (api.UserRoleBindingDeleteResponseObject, error) {
 	v, err := deleteBinding(ctx, s, userBindings, req.UserRoleBindingId, req.Params.IfMatch)
 	if err != nil {
 		return nil, err
@@ -495,10 +430,7 @@ func (s Server) UserRoleBindingDelete(
 }
 
 // ManagedUserUserRoleBindings lists a managed user's bindings.
-func (s Server) ManagedUserUserRoleBindings(
-	ctx context.Context,
-	req api.ManagedUserUserRoleBindingsRequestObject,
-) (api.ManagedUserUserRoleBindingsResponseObject, error) {
+func (s Server) ManagedUserUserRoleBindings(ctx context.Context, req api.ManagedUserUserRoleBindingsRequestObject) (api.ManagedUserUserRoleBindingsResponseObject, error) {
 	vs, err := actorBindings(ctx, s, userBindings, req.ManagedUserId)
 	if err != nil {
 		return nil, err
@@ -507,10 +439,7 @@ func (s Server) ManagedUserUserRoleBindings(
 }
 
 // UserGroupRoleBinding answers one of the account's group role bindings.
-func (s Server) UserGroupRoleBinding(
-	ctx context.Context,
-	req api.UserGroupRoleBindingRequestObject,
-) (api.UserGroupRoleBindingResponseObject, error) {
+func (s Server) UserGroupRoleBinding(ctx context.Context, req api.UserGroupRoleBindingRequestObject) (api.UserGroupRoleBindingResponseObject, error) {
 	v, tag, err := readBinding(ctx, s, groupBindings, req.UserGroupRoleBindingId)
 	if err != nil {
 		return nil, err
@@ -522,10 +451,7 @@ func (s Server) UserGroupRoleBinding(
 
 // UserGroupRoleBindingCreate binds a managed user group to a role in a
 // space.
-func (s Server) UserGroupRoleBindingCreate(
-	ctx context.Context,
-	req api.UserGroupRoleBindingCreateRequestObject,
-) (api.UserGroupRoleBindingCreateResponseObject, error) {
+func (s Server) UserGroupRoleBindingCreate(ctx context.Context, req api.UserGroupRoleBindingCreateRequestObject) (api.UserGroupRoleBindingCreateResponseObject, error) {
 	vs, err := createBindings(ctx, s, groupBindings, "", []api.UserGroupRoleBindingInput{*req.Body})
 	if err != nil {
 		return nil, err
@@ -548,10 +474,7 @@ func (s Server) UserGroupRoleBindingBatchCreate(
 
 // UserGroupRoleBindingUpdate moves a group role binding to another role
 // or space.
-func (s Server) UserGroupRoleBindingUpdate(
-	ctx context.Context,
-	req api.UserGroupRoleBindingUpdateRequestObject,
-) (api.UserGroupRoleBindingUpdateResponseObject, error) {
+func (s Server) UserGroupRoleBindingUpdate(ctx context.Context, req api.UserGroupRoleBindingUpdateRequestObject) (api.UserGroupRoleBindingUpdateResponseObject, error) {
 	v, tag, err := updateBinding(ctx, s, groupBindings, req.UserGroupRoleBindingId,
 		strict.IfMatch(req.Params.IfMatch), *req.Body)
 	if err != nil {
@@ -563,10 +486,7 @@ func (s Server) UserGroupRoleBindingUpdate(
 }
 
 // UserGroupRoleBindingPatch merges a patch into a group role binding.
-func (s Server) UserGroupRoleBindingPatch(
-	ctx context.Context,
-	req api.UserGroupRoleBindingPatchRequestObject,
-) (api.UserGroupRoleBindingPatchResponseObject, error) {
+func (s Server) UserGroupRoleBindingPatch(ctx context.Context, req api.UserGroupRoleBindingPatchRequestObject) (api.UserGroupRoleBindingPatchResponseObject, error) {
 	v, tag, err := patchBinding(ctx, s, groupBindings, req.UserGroupRoleBindingId,
 		req.Params.IfMatch, req.Body)
 	if err != nil {
@@ -578,10 +498,7 @@ func (s Server) UserGroupRoleBindingPatch(
 }
 
 // UserGroupRoleBindingDelete deletes a group role binding.
-func (s Server) UserGroupRoleBindingDelete(
-	ctx context.Context,
-	req api.UserGroupRoleBindingDeleteRequestObject,
-) (api.UserGroupRoleBindingDeleteResponseObject, error) {
+func (s Server) UserGroupRoleBindingDelete(ctx context.Context, req api.UserGroupRoleBindingDeleteRequestObject) (api.UserGroupRoleBindingDeleteResponseObject, error) {
 	v, err := deleteBinding(ctx, s, groupBindings, req.UserGroupRoleBindingId, req.Params.IfMatch)
 	if err != nil {
 		return nil, err
@@ -602,10 +519,7 @@ func (s Server) ManagedUserGroupUserRoleBindings(
 }
 
 // ApiKeyRoleBinding answers one of the account's API key role bindings.
-func (s Server) ApiKeyRoleBinding(
-	ctx context.Context,
-	req api.ApiKeyRoleBindingRequestObject,
-) (api.ApiKeyRoleBindingResponseObject, error) {
+func (s Server) ApiKeyRoleBinding(ctx context.Context, req api.ApiKeyRoleBindingRequestObject) (api.ApiKeyRoleBindingResponseObject, error) {
 	v, tag, err := readBinding(ctx, s, keyBindings, req.ApiKeyRoleBindingId)
 	if err != nil {
 		return nil, err
@@ -616,10 +530,7 @@ func (s Server) ApiKeyRoleBinding(
 }
 
 // ApiKeyRoleBindingCreate binds an API key to a role in a space.
-func (s Server) ApiKeyRoleBindingCreate(
-	ctx context.Context,
-	req api.ApiKeyRoleBindingCreateRequestObject,
-) (api.ApiKeyRoleBindingCreateResponseObject, error) {
+func (s Server) ApiKeyRoleBindingCreate(ctx context.Context, req api.ApiKeyRoleBindingCreateRequestObject) (api.ApiKeyRoleBindingCreateResponseObject, error) {
 	vs, err := createBindings(ctx, s, keyBindings, "", []api.ApiKeyRoleBindingInput{*req.Body})
 	if err != nil {
 		return nil, err
@@ -629,10 +540,7 @@ func (s Server) ApiKeyRoleBindingCreate(
 
 // ApiKeyRoleBindingBatchCreate binds API keys to roles in spaces, all or
 // none.
-func (s Server) ApiKeyRoleBindingBatchCreate(
-	ctx context.Context,
-	req api.ApiKeyRoleBindingBatchCreateRequestObject,
-) (api.ApiKeyRoleBindingBatchCreateResponseObject, error) {
+func (s Server) ApiKeyRoleBindingBatchCreate(ctx context.Context, req api.ApiKeyRoleBindingBatchCreateRequestObject) (api.ApiKeyRoleBindingBatchCreateResponseObject, error) {
 	vs, err := createBindings(ctx, s, keyBindings, "/bindings", req.Body.Bindings)
 	if err != nil {
 		return nil, err
@@ -642,10 +550,7 @@ func (s Server) ApiKeyRoleBindingBatchCreate(
 
 // ApiKeyRoleBindingUpdate moves an API key role binding to another role
 // or space.
-func (s Server) ApiKeyRoleBindingUpdate(
-	ctx context.Context,
-	req api.ApiKeyRoleBindingUpdateRequestObject,
-) (api.ApiKeyRoleBindingUpdateResponseObject, error) {
+func (s Server) ApiKeyRoleBindingUpdate(ctx context.Context, req api.ApiKeyRoleBindingUpdateRequestObject) (api.ApiKeyRoleBindingUpdateResponseObject, error) {
 	v, tag, err := updateBinding(ctx, s, keyBindings, req.ApiKeyRoleBindingId,
 		strict.IfMatch(req.Params.IfMatch), *req.Body)
 	if err != nil {
@@ -657,10 +562,7 @@ func (s Server) ApiKeyRoleBindingUpdate(
 }
 
 // ApiKeyRoleBindingPatch merges a patch into an API key role binding.
-func (s Server) ApiKeyRoleBindingPatch(
-	ctx context.Context,
-	req api.ApiKeyRoleBindingPatchRequestObject,
-) (api.ApiKeyRoleBindingPatchResponseObject, error) {
+func (s Server) ApiKeyRoleBindingPatch(ctx context.Context, req api.ApiKeyRoleBindingPatchRequestObject) (api.ApiKeyRoleBindingPatchResponseObject, error) {
 	v, tag, err := patchBinding(ctx, s, keyBindings, req.ApiKeyRoleBindingId, req.Params.IfMatch,
 		req.Body)
 	if err != nil {
@@ -672,10 +574,7 @@ func (s Server) ApiKeyRoleBindingPatch(
 }
 
 // ApiKeyRoleBindingDelete deletes an API key role binding.
-func (s Server) ApiKeyRoleBindingDelete(
-	ctx context.Context,
-	req api.ApiKeyRoleBindingDeleteRequestObject,
-) (api.ApiKeyRoleBindingDeleteResponseObject, error) {
+func (s Server) ApiKeyRoleBindingDelete(ctx context.Context, req api.ApiKeyRoleBindingDeleteRequestObject) (api.ApiKeyRoleBindingDeleteResponseObject, error) {
 	v, err := deleteBinding(ctx, s, keyBindings, req.ApiKeyRoleBindingId, req.Params.IfMatch)
 	if err != nil {
 		return nil, err
@@ -684,10 +583,7 @@ func (s Server) ApiKeyRoleBindingDelete(
 }
 
 // ApiKeyApiKeyRoleBindings lists an API key's bindings.
-func (s Server) ApiKeyApiKeyRoleBindings(
-	ctx context.Context,
-	req api.ApiKeyApiKeyRoleBindingsRequestObject,
-) (api.ApiKeyApiKeyRoleBindingsResponseObject, error) {
+func (s Server) ApiKeyApiKeyRoleBindings(ctx context.Context, req api.ApiKeyApiKeyRoleBindingsRequestObject) (api.ApiKeyApiKeyRoleBindingsResponseObject, error) {
 	vs, err := actorBindings(ctx, s, keyBindings, req.ApiKeyId)
 	if err != nil {
 		return nil, err

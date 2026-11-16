@@ -17,11 +17,7 @@ import (
 // half, so a key infraweave cannot sign with fails the start, naming its
 // reference, rather than the first token. The vault keys reach the Vault
 // of secrets.kek.vault. It returns what closes them.
-func openSigners(
-	ctx context.Context,
-	s accessassembly.SigningSettings,
-	v kek.VaultConfig,
-) ([]signer.KMS, func(), error) {
+func openSigners(ctx context.Context, s accessassembly.SigningSettings, v kek.VaultConfig) ([]signer.KMS, func(), error) {
 	var closers []io.Closer
 	closeAll := func() {
 		for _, c := range closers {

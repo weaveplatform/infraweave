@@ -135,11 +135,7 @@ func (c *Client) Register(ctx context.Context, jws string) (wire.Registration, e
 }
 
 // Poll polls as the worker whose session token is session.
-func (c *Client) Poll(
-	ctx context.Context,
-	session string,
-	in wire.PollRequest,
-) (wire.PollResult, error) {
+func (c *Client) Poll(ctx context.Context, session string, in wire.PollRequest) (wire.PollResult, error) {
 	res, err := c.c.WorkerPollWithResponse(ctx, in, bearer(session))
 	if err != nil {
 		return wire.PollResult{}, fmt.Errorf("poll: %w", err)
@@ -175,11 +171,7 @@ func (c *Client) Spec(ctx context.Context, token, run string) (wire.RunSpec, err
 }
 
 // Report reports r of run with its run token and answers the next step.
-func (c *Client) Report(
-	ctx context.Context,
-	token, run string,
-	r wire.RunReport,
-) (wire.NextStep, error) {
+func (c *Client) Report(ctx context.Context, token, run string, r wire.RunReport) (wire.NextStep, error) {
 	op := fmt.Sprintf("report %s %s", r.State, r.Event)
 	res, err := c.c.WorkerRunReportWithResponse(ctx, run, r, bearer(token))
 	if err != nil {
@@ -194,11 +186,7 @@ func (c *Client) Report(
 // UploadURLs declares the uploads of run's state version in.StateVersion
 // with its run token, and answers where to PUT each, in the order
 // declared. A declaration repeated as it was answers the same object.
-func (c *Client) UploadURLs(
-	ctx context.Context,
-	token, run string,
-	in wire.UploadURLsRequest,
-) ([]wire.SignedUpload, error) {
+func (c *Client) UploadURLs(ctx context.Context, token, run string, in wire.UploadURLsRequest) ([]wire.SignedUpload, error) {
 	const op = "declare uploads"
 	res, err := c.c.WorkerRunUploadURLsWithResponse(ctx, run, in, bearer(token))
 	if err != nil {

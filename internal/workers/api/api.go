@@ -446,13 +446,7 @@ type Liveness interface {
 	// now less their pool's preparing timeout, the one timeouts names or
 	// else fallback, with the note "preparing timeout", skipping runs
 	// another transaction holds, and answers how many it failed.
-	Overdue(
-		ctx context.Context,
-		now time.Time,
-		timeouts []PoolTimeout,
-		fallback time.Duration,
-		batch int,
-	) (int, error)
+	Overdue(ctx context.Context, now time.Time, timeouts []PoolTimeout, fallback time.Duration, batch int) (int, error)
 }
 
 // Signal is what a caller asks of a run's worker through its poll.
@@ -497,10 +491,5 @@ type Samples interface {
 	// not including, to, oldest first. Samples older than
 	// worker.samples.retention are gone, so a window reaching further back
 	// answers only what is kept.
-	SamplesBetween(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pool kernel.ULID,
-		from, to time.Time,
-	) ([]Sample, error)
+	SamplesBetween(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, from, to time.Time) ([]Sample, error)
 }

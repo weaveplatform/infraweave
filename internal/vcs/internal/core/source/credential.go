@@ -70,11 +70,7 @@ type revocation struct {
 // revoke it; otherwise the integration's own token, where its provider
 // is a port.Lender. A repository reached through no integration needs
 // none.
-func (s *Service) Credential(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack, run kernel.ULID,
-) (*vcsapi.Credential, error) {
+func (s *Service) Credential(ctx context.Context, acct kernel.AccountID, stack, run kernel.ULID) (*vcsapi.Credential, error) {
 	src, repo, err := s.source(ctx, acct, stack)
 	if err != nil {
 		return nil, err
@@ -104,13 +100,7 @@ func (s *Service) Credential(
 // mint mints run's token on repo through m and keeps one that Revoke
 // must revoke; a token it cannot keep is revoked at once, so no token
 // outlives what the Tokens know of.
-func (s *Service) mint(
-	ctx context.Context,
-	m port.Minter,
-	acct kernel.AccountID,
-	stack, run kernel.ULID,
-	repo port.Repository,
-) (*vcsapi.Credential, error) {
+func (s *Service) mint(ctx context.Context, m port.Minter, acct kernel.AccountID, stack, run kernel.ULID, repo port.Repository) (*vcsapi.Credential, error) {
 	c, err := m.Mint(ctx, repo, "infraweave-run-"+run.String(), s.now().Add(TokenLife))
 	if err != nil {
 		return nil, fmt.Errorf("vcs: mint run %s's token: %w", run, err)

@@ -92,20 +92,11 @@ func (s *spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode,
 // authz allows each caller the actions it lists in each space.
 type authz map[string]map[kernel.ULID][]accessapi.Action
 
-func (a authz) Authorize(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (a authz) Authorize(_ context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error) {
 	return slices.Contains(a[p.Caller()][space], action), nil
 }
 
-func (a authz) Reachable(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-) ([]kernel.ULID, error) {
+func (a authz) Reachable(_ context.Context, p kernel.Principal, action accessapi.Action) ([]kernel.ULID, error) {
 	var out []kernel.ULID
 	for space, as := range a[p.Caller()] {
 		if slices.Contains(as, action) {
@@ -119,11 +110,7 @@ func (a authz) Holds(context.Context, kernel.Principal, accessapi.Action) (bool,
 	return false, nil
 }
 
-func (a authz) Actions(
-	_ context.Context,
-	p kernel.Principal,
-	space kernel.ULID,
-) ([]accessapi.Action, error) {
+func (a authz) Actions(_ context.Context, p kernel.Principal, space kernel.ULID) ([]accessapi.Action, error) {
 	return a[p.Caller()][space], nil
 }
 
@@ -732,12 +719,7 @@ type sources struct {
 	err   error
 }
 
-func (s sources) Resolve(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ kernel.ULID,
-	ref string,
-) (stacksapi.Commit, error) {
+func (s sources) Resolve(_ context.Context, _ kernel.AccountID, _ kernel.ULID, ref string) (stacksapi.Commit, error) {
 	if s.err != nil {
 		return stacksapi.Commit{}, s.err
 	}
@@ -850,13 +832,7 @@ type integrations struct {
 	err   error
 }
 
-func (i integrations) Bindable(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ kernel.ULID,
-	provider string,
-	id kernel.ULID,
-) error {
+func (i integrations) Bindable(_ context.Context, _ kernel.AccountID, _ kernel.ULID, provider string, id kernel.ULID) error {
 	switch {
 	case i.err != nil:
 		return i.err

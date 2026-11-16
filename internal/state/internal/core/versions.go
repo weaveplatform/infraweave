@@ -197,12 +197,7 @@ func (s *Service) Read(ctx context.Context, t Target) (Version, io.ReadCloser, b
 
 // Latest reads the metadata of the current version of acct's stack's
 // workspace, false when the workspace has none.
-func (s *Service) Latest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	workspace string,
-) (stateapi.Version, bool, error) {
+func (s *Service) Latest(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, workspace string) (stateapi.Version, bool, error) {
 	v, ok, err := s.store.Current(ctx, Target{Account: acct, Stack: stack, Workspace: workspace})
 	return v.Version, ok, err //nolint:wrapcheck // the store names the read
 }
@@ -210,11 +205,7 @@ func (s *Service) Latest(
 // Outputs reads the root module outputs of the current version of acct's
 // stack's default workspace, by name: none when it has no version or the
 // version is client-encrypted, whose body the server never parses.
-func (s *Service) Outputs(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-) ([]stateapi.Output, error) {
+func (s *Service) Outputs(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]stateapi.Output, error) {
 	t := Target{Account: acct, Stack: stack, Workspace: stateapi.DefaultWorkspace}
 	v, ok, err := s.store.Current(ctx, t)
 	if err != nil || !ok || v.ClientEncrypted {

@@ -35,12 +35,7 @@ var _ interface {
 } = (*ledger)(nil)
 
 // refusals are r's refusals as p, at pointer.
-func (l *ledger) refusals(
-	ctx context.Context,
-	p kernel.Principal,
-	pointer string,
-	r accessapi.BindingRequest,
-) ([]kernel.FieldError, kernel.ULID) {
+func (l *ledger) refusals(ctx context.Context, p kernel.Principal, pointer string, r accessapi.BindingRequest) ([]kernel.FieldError, kernel.ULID) {
 	var errs []kernel.FieldError
 	if !slices.Contains([]string{"space-reader", "space-writer", "space-admin"}, r.Role) {
 		errs = append(
@@ -72,13 +67,7 @@ func (l *ledger) held(actor kernel.ULID, role string, space kernel.ULID, but ker
 	return false
 }
 
-func (l *ledger) Bind(
-	ctx context.Context,
-	p kernel.Principal,
-	actor string,
-	pointer string,
-	reqs []accessapi.BindingRequest,
-) ([]accessapi.RoleBinding, error) {
+func (l *ledger) Bind(ctx context.Context, p kernel.Principal, actor string, pointer string, reqs []accessapi.BindingRequest) ([]accessapi.RoleBinding, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.fail != nil {
@@ -124,12 +113,7 @@ func (l *ledger) one(actor string, id kernel.ULID) (accessapi.RoleBinding, error
 	return b, nil
 }
 
-func (l *ledger) Binding(
-	_ context.Context,
-	_ kernel.AccountID,
-	actor string,
-	id kernel.ULID,
-) (accessapi.RoleBinding, error) {
+func (l *ledger) Binding(_ context.Context, _ kernel.AccountID, actor string, id kernel.ULID) (accessapi.RoleBinding, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.one(actor, id)
@@ -193,12 +177,7 @@ func (l *ledger) Unbind(
 	return b, nil
 }
 
-func (l *ledger) UnbindActor(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ string,
-	id kernel.ULID,
-) error {
+func (l *ledger) UnbindActor(_ context.Context, _ kernel.AccountID, _ string, id kernel.ULID) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.fail != nil {
@@ -228,29 +207,15 @@ func (l *ledger) list(keep func(accessapi.RoleBinding) bool) ([]accessapi.RoleBi
 	return out, nil
 }
 
-func (l *ledger) ByActor(
-	_ context.Context,
-	_ kernel.AccountID,
-	actor string,
-	id kernel.ULID,
-) ([]accessapi.RoleBinding, error) {
+func (l *ledger) ByActor(_ context.Context, _ kernel.AccountID, actor string, id kernel.ULID) ([]accessapi.RoleBinding, error) {
 	return l.list(func(b accessapi.RoleBinding) bool { return b.Actor == actor && b.ActorID == id })
 }
 
-func (l *ledger) BySpace(
-	_ context.Context,
-	_ kernel.AccountID,
-	space kernel.ULID,
-) ([]accessapi.RoleBinding, error) {
+func (l *ledger) BySpace(_ context.Context, _ kernel.AccountID, space kernel.ULID) ([]accessapi.RoleBinding, error) {
 	return l.list(func(b accessapi.RoleBinding) bool { return b.SpaceID == space })
 }
 
-func (l *ledger) Stacks(
-	_ context.Context,
-	_ kernel.AccountID,
-	space kernel.ULID,
-	stacks []accessapi.StackHome,
-) ([][]accessapi.StackGrant, error) {
+func (l *ledger) Stacks(_ context.Context, _ kernel.AccountID, space kernel.ULID, stacks []accessapi.StackHome) ([][]accessapi.StackGrant, error) {
 	bound, err := l.list(func(b accessapi.RoleBinding) bool { return b.SpaceID == space })
 	if err != nil {
 		return nil, err

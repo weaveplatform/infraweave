@@ -91,50 +91,22 @@ type Store interface {
 	// Get reads acct's run id; ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error)
 	// Histories reads the transitions of acct's runs, oldest first.
-	Histories(
-		ctx context.Context,
-		acct kernel.AccountID,
-		runs []kernel.ULID,
-	) (map[kernel.ULID][]lifecycle.Step, error)
+	Histories(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) (map[kernel.ULID][]lifecycle.Step, error)
 	// Comments reads the comments on acct's runs, oldest first.
-	Comments(
-		ctx context.Context,
-		acct kernel.AccountID,
-		runs []kernel.ULID,
-	) (map[kernel.ULID][]Comment, error)
+	Comments(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) (map[kernel.ULID][]Comment, error)
 	// Blockers reads the run that holds each of acct's stacks' run lock,
 	// with a stack no run holds absent.
-	Blockers(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stacks []kernel.ULID,
-	) (map[kernel.ULID]stacksapi.Blocker, error)
+	Blockers(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error)
 	// List reads up to q.Limit+1 of acct's stack's runs of types, as q
 	// pages them.
-	List(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack kernel.ULID,
-		types []kernel.RunType,
-		q Query,
-	) ([]lifecycle.Run, error)
+	List(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, types []kernel.RunType, q Query) ([]lifecycle.Run, error)
 	// Search reads a page of acct's runs in scope that in keeps, by
 	// Fields; an input they cannot answer is a *search.Invalid.
-	Search(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.Input,
-		scope Scope,
-	) (search.Result[lifecycle.Run], error)
+	Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope Scope) (search.Result[lifecycle.Run], error)
 	// Count counts acct's runs in scope that in keeps.
 	Count(ctx context.Context, acct kernel.AccountID, in search.Input, scope Scope) (int, error)
 	// Suggest lists the values acct's runs in scope that in keeps hold.
-	Suggest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.SuggestionsInput,
-		scope Scope,
-	) (search.Suggestions, error)
+	Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope Scope) (search.Suggestions, error)
 }
 
 // Deps are what the reads read through.
@@ -195,11 +167,7 @@ func (s *Service) Run(ctx context.Context, p kernel.Principal, raw string) (View
 // StackRun reads p's run raw of stack slug; ErrNotFound when it is
 // another stack's. The route has decided SPACE_READ on the stack's
 // space.
-func (s *Service) StackRun(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw string,
-) (View, error) {
+func (s *Service) StackRun(ctx context.Context, p kernel.Principal, slug, raw string) (View, error) {
 	st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 	if err != nil {
 		return View{}, err //nolint:wrapcheck // the stacks domain names the read
@@ -215,11 +183,7 @@ func (s *Service) StackRun(
 }
 
 // get reads acct's run raw; ErrNotFound when raw is no run ID.
-func (s *Service) get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	raw string,
-) (lifecycle.Run, error) {
+func (s *Service) get(ctx context.Context, acct kernel.AccountID, raw string) (lifecycle.Run, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return lifecycle.Run{}, fmt.Errorf("%w: %q", ErrNotFound, raw)
@@ -229,11 +193,7 @@ func (s *Service) get(
 
 // SpaceOf is the space of acct's run raw's stack, for the route to decide
 // an action on; accessapi.ErrNoSubject when acct lacks the run.
-func (s *Service) SpaceOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	raw string,
-) (kernel.ULID, error) {
+func (s *Service) SpaceOf(ctx context.Context, acct kernel.AccountID, raw string) (kernel.ULID, error) {
 	r, err := s.get(ctx, acct, raw)
 	if errors.Is(err, ErrNotFound) {
 		return kernel.ULID{}, accessapi.ErrNoSubject
@@ -260,11 +220,7 @@ var live = []kernel.RunState{
 // is live, for its in-run API token's authentication, which reads it on
 // every request; accessapi.ErrNoSubject when acct lacks the run or its
 // stack.
-func (s *Service) RunAccess(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-) (accessapi.RunAccess, error) {
+func (s *Service) RunAccess(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (accessapi.RunAccess, error) {
 	r, err := s.d.Store.Get(ctx, acct, run)
 	if errors.Is(err, ErrNotFound) {
 		return accessapi.RunAccess{}, accessapi.ErrNoSubject
@@ -285,24 +241,14 @@ func (s *Service) RunAccess(
 }
 
 // StackOf is the stack of acct's run id; ErrNotFound when acct lacks it.
-func (s *Service) StackOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (kernel.ULID, error) {
+func (s *Service) StackOf(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (kernel.ULID, error) {
 	r, err := s.d.Store.Get(ctx, acct, id)
 	return r.Stack, err //nolint:wrapcheck // the store names the read
 }
 
 // StackRuns reads a page of p's stack slug's list l. The route has
 // decided SPACE_READ on the stack's space.
-func (s *Service) StackRuns(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	l List,
-	q Query,
-) (Page, error) {
+func (s *Service) StackRuns(ctx context.Context, p kernel.Principal, slug string, l List, q Query) (Page, error) {
 	st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 	if err != nil {
 		return Page{}, err //nolint:wrapcheck // the stacks domain names the read
@@ -351,11 +297,7 @@ func (s *Service) Search(ctx context.Context, p kernel.Principal, in search.Inpu
 // Suggest lists the values the runs of p's account's stacks in the spaces
 // it may read hold, under in's predicates, so no value or count names a
 // run p cannot read.
-func (s *Service) Suggest(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, p kernel.Principal, in search.SuggestionsInput) (search.Suggestions, error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -393,11 +335,7 @@ func (s *Service) One(ctx context.Context, p kernel.Principal, r lifecycle.Run) 
 // Views are runs as p reads them, in their order: each with its stack,
 // the stack's branch, its transitions, its comments, its guards and the
 // actions p may take on it.
-func (s *Service) Views(
-	ctx context.Context,
-	p kernel.Principal,
-	runs ...lifecycle.Run,
-) ([]View, error) {
+func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecycle.Run) ([]View, error) {
 	acct := p.AccountID
 	ids := make([]kernel.ULID, len(runs))
 	var stackIDs []kernel.ULID
@@ -453,12 +391,7 @@ func (s *Service) Views(
 // either, and a comment. Cancel, stop and kill need their blocking
 // variants when r holds its stack's run lock, and a retry of a tracked
 // run RUN_RETRY_BLOCKING.
-func Allowed(
-	r lifecycle.Run,
-	blocking bool,
-	held []accessapi.Action,
-	g Guards,
-) []accessapi.Action {
+func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action, g Guards) []accessapi.Action {
 	out := []accessapi.Action{}
 	add := func(a accessapi.Action) {
 		if slices.Contains(held, a) && !slices.Contains(out, a) {

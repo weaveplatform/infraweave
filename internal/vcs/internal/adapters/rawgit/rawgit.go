@@ -66,11 +66,7 @@ func New(o Options) *Source {
 
 // ResolveRef implements port.Source: a full commit SHA as it is, otherwise
 // the branch ref names, then the tag, peeled to its commit.
-func (s *Source) ResolveRef(
-	ctx context.Context,
-	repo port.Repository,
-	ref string,
-) (vcsapi.Commit, error) {
+func (s *Source) ResolveRef(ctx context.Context, repo port.Repository, ref string) (vcsapi.Commit, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	f, err := s.fetch(ctx, repo, ref)
@@ -117,11 +113,7 @@ func (s *Source) Branches(ctx context.Context, repo port.Repository) ([]string, 
 }
 
 // ReadFile implements port.Source.
-func (s *Source) ReadFile(
-	ctx context.Context,
-	repo port.Repository,
-	ref, path string,
-) ([]byte, error) {
+func (s *Source) ReadFile(ctx context.Context, repo port.Repository, ref, path string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	f, err := s.fetch(ctx, repo, ref)
@@ -147,11 +139,7 @@ func (s *Source) ReadFile(
 // AffectedFiles implements port.Source: every path added, removed or
 // changed between the two commits' trees, sorted, a rename as both its
 // paths.
-func (s *Source) AffectedFiles(
-	ctx context.Context,
-	repo port.Repository,
-	base, head string,
-) ([]string, error) {
+func (s *Source) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	f, err := s.fetch(ctx, repo, base, head)
@@ -266,12 +254,7 @@ func commitOf(store *memory.Storage, h plumbing.Hash) (*object.Commit, error) {
 }
 
 // upload fetches req's pack from sess into store.
-func upload(
-	ctx context.Context,
-	sess transport.UploadPackSession,
-	req *packp.UploadPackRequest,
-	store *memory.Storage,
-) error {
+func upload(ctx context.Context, sess transport.UploadPackSession, req *packp.UploadPackRequest, store *memory.Storage) error {
 	resp, err := sess.UploadPack(ctx, req)
 	if err != nil {
 		return err //nolint:wrapcheck // classify wraps it
