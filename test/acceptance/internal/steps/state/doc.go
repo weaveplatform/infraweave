@@ -19,9 +19,14 @@
 // runner image, which executes the run's phases and reports them itself.
 // The steps of the signed state URLs keep the URL an answer names and
 // send it, with no credential, to either replica's listener in place of
-// server.public_url. The import steps put the state a run's tool pulled
-// at an upload URL, keep the object ID the URL's answer names for a
-// stack's creation or import to name, and check the imported version a
+// server.public_url. The steps of external access send the backend's
+// requests with a tenant's API key, a kept token or a run token as HTTP
+// Basic credentials, write a terraform_remote_state of another stack into
+// a run's workspace or a user's workspace of its own, whose credential
+// reaches the tool only in its environment, and check that no Terraform
+// Cloud API is discovered. The import steps put the state a run's tool
+// pulled at an upload URL, keep the object ID the URL's answer names for
+// a stack's creation or import to name, and check the imported version a
 // stack's default workspace holds, the upload the import consumed and the
 // import the audit trail records.
 //
@@ -36,9 +41,10 @@
 // daemon, reads the scenario's database through SQL and its bucket in
 // RustFS through S3, and writes each run's workspace under the
 // scenario's directory; the import steps read the versions, uploads and
-// audit trail entries an import writes through SQL. A failed scenario leaves the relay's calls and
-// each tool's output beside the servers' evidence. It sends a signed
-// URL's request with net/http, recording its answer for the answer steps.
+// audit trail entries an import writes through SQL. A failed scenario
+// leaves the relay's calls and each tool's output beside the servers'
+// evidence. It sends a signed URL's request and a backend request of its
+// own with net/http, recording its answer for the answer steps.
 //
 // # Dependencies
 //

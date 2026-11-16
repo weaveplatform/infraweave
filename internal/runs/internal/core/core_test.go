@@ -128,13 +128,14 @@ func TestUnitStateAccessTable(t *testing.T) {
 	ctx := t.Context()
 	acct, stack := kernel.NewAccountID(), kernel.NewULID()
 	shared := runsapi.StateGrant{
-		Account: acct, Read: true, Lock: runsapi.StateLockShared, TriggeredBy: "alice",
-	}
-	exclusive := runsapi.StateGrant{
-		Account: acct, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
+		Account: acct, Stack: stack, Read: true, Lock: runsapi.StateLockShared,
 		TriggeredBy: "alice",
 	}
-	none := runsapi.StateGrant{Account: acct}
+	exclusive := runsapi.StateGrant{
+		Account: acct, Stack: stack, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
+		TriggeredBy: "alice",
+	}
+	none := runsapi.StateGrant{Account: acct, Stack: stack}
 	want := map[kernel.RunState]runsapi.StateGrant{
 		kernel.RunStateInitializing: shared,
 		kernel.RunStatePlanning:     shared,
@@ -157,8 +158,10 @@ func TestUnitStateAccessTable(t *testing.T) {
 		if state.Terminal() && w != none {
 			t.Errorf("terminal %s grants %+v", state, w)
 		}
-		if got, err := s.Access(ctx, run, kernel.NewULID()); err != nil || got != none {
-			t.Errorf("Access in %s to another stack = %+v, %v", state, got, err)
+		read := none
+		read.Read = w.Read
+		if got, err := s.Access(ctx, run, kernel.NewULID()); err != nil || got != read {
+			t.Errorf("Access in %s to another stack = %+v, %v; want %+v", state, got, err, read)
 		}
 	}
 	if got, err := s.Access(ctx, kernel.NewULID(), stack); err != nil ||

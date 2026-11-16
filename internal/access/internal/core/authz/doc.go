@@ -13,7 +13,10 @@
 // inherits, each inherited grant contributing space-reader's actions
 // only. RunDenied refuses a run principal the state, run, task and log
 // actions whatever it holds, Authorize applying it without a subject and
-// the API's Requirer with the entity it reads; ORGANIZATION_ADMIN is never an account's to
+// the API's Requirer with the entity it reads; its one exception is
+// StateRead, the first of SPACE_READ, STACK_STATE_READ and
+// STACK_STATE_DOWNLOAD a caller lacks for a read of a stack's state, which
+// lets a run read another stack's state as its stack, never its own; ORGANIZATION_ADMIN is never an account's to
 // grant and AUTHENTICATED is any principal of the account. Reachable is
 // every space where Authorize allows an action, for list filters, and
 // Explain every grant reaching a space with its source and binding.

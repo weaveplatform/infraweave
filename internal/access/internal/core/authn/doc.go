@@ -27,7 +27,12 @@
 // AuthenticateWorker for the worker API, admitting worker session tokens
 // alone as a principal of kind worker, and AuthenticateRunner for the
 // worker API's calls of a claimed run, admitting run tokens alone as a
-// principal of kind runner.
+// principal of kind runner. Exchanges authenticates an API key sent with
+// every request, as the state backend's clients send one, through the
+// token Exchange trades it for, kept by the key's ID and the SHA-256 of
+// its secret until ExchangeMargin before it expires, and traded again
+// once its session ends; operator and organization keys are refused
+// before any exchange.
 // AuthenticateGrant does so for an MCP surface: it admits an OAuth access
 // token only when its session is an OAuth grant for that resource whose
 // scopes include the token's, and the principal holds the token's scopes.

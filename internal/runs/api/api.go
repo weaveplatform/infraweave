@@ -68,32 +68,37 @@ const (
 	StateLockExclusive
 )
 
-// StateGrant is what a run may do with its stack's managed state in the
+// StateGrant is what a run may do with a stack's managed state in the
 // run's current state; one with Read, Lock and Write unset grants nothing.
-// Account is the run's account whenever some account has the run, which
-// the state domain scopes its rows and a stack's slug by, so no part of a
-// request's URL chooses the account it reaches. TriggeredBy is the login
-// or trigger that created the run, which the state domain records with
-// each lock the run takes and answers as the workspace's lockedBy.
+// Account and Stack are the run's account and its own stack whenever some
+// account has the run; the state domain scopes its rows and a stack's
+// slug by Account, so no part of a request's URL chooses the account it
+// reaches. On another stack's state a run may at most read, as its stack's
+// bindings and the stack's external access, which the state domain
+// decides, allow. TriggeredBy is the login or trigger that created the
+// run, which the state domain records with each lock the run takes and
+// answers as the workspace's lockedBy.
 //
 // ref: decision 0010 § "Who may call what"
 // ref: decision 0010 § "Storage"
 type StateGrant struct {
 	Account     kernel.AccountID
+	Stack       kernel.ULID
 	Read        bool
 	Lock        StateLock
 	Write       bool
 	TriggeredBy string
 }
 
-// StateAccess decides a run token's access to a stack's managed state, a
+// StateAccess decides a run's access to a stack's managed state, a
 // forward edge internal/app hands the state domain.
 type StateAccess interface {
 	// Access answers run's grant on stack's state: the zero StateGrant
-	// when no account has the run, and one granting nothing but naming the
-	// run's account when it is another stack's or its state grants
-	// nothing. It reads the run on every call, so a run that ends or stops
-	// loses its access at once, whatever its token's expiry.
+	// when no account has the run, one granting what the run's state
+	// allows on its own stack, and on another stack Read alone, when the
+	// run's state allows it a read. It reads the run on every call, so a
+	// run that ends or stops loses its access at once, whatever its
+	// token's expiry.
 	Access(ctx context.Context, run, stack kernel.ULID) (StateGrant, error)
 }
 

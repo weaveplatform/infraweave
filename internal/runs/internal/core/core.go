@@ -114,9 +114,10 @@ var grants = map[kernel.RunState]runsapi.StateGrant{
 }
 
 // Access answers run's grant on stack's state from the state it reads the
-// run in, with who triggered it: the zero grant when no account has the
-// run, and the run's account alone when it is another stack's or grants
-// holds no entry for its state.
+// run in: the zero grant when no account has the run, grants' entry for
+// its state on its own stack, and that entry's Read alone on another,
+// each naming the run's account and stack, and one with a lock naming who
+// triggered the run.
 func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.StateGrant, error) {
 	r, ok, err := s.store.RunOf(ctx, run)
 	if err != nil || !ok {
@@ -124,9 +125,9 @@ func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.S
 	}
 	g := grants[r.State]
 	if r.Stack != stack {
-		g = runsapi.StateGrant{}
+		g = runsapi.StateGrant{Read: g.Read}
 	}
-	g.Account = r.Account
+	g.Account, g.Stack = r.Account, r.Stack
 	if g.Lock != runsapi.StateLockNone {
 		g.TriggeredBy = r.TriggeredBy
 	}

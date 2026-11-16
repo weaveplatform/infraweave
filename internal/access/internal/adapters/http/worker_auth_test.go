@@ -9,6 +9,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -30,6 +31,20 @@ func (subjects) Verify(_ context.Context, raw, aud string) (token.Claims, error)
 	}
 	return token.Claims{Kind: token.Kind(parts[0]), Subject: parts[1], Expiry: t0.Add(time.Hour)},
 		nil
+}
+
+// colonless is the store's tokens with their audience's colons escaped,
+// since a JWT never holds one and the state backend reads a password that
+// does as an API key.
+type colonless struct{ *store }
+
+func (c colonless) Issue(ctx context.Context, r token.Request) (string, token.Claims, error) {
+	raw, claims, err := c.store.Issue(ctx, r)
+	return strings.ReplaceAll(raw, ":", "%3A"), claims, err
+}
+
+func (c colonless) Verify(ctx context.Context, raw, aud string) (token.Claims, error) {
+	return c.store.Verify(ctx, strings.ReplaceAll(raw, "%3A", ":"), aud) //nolint:wrapcheck // the store's own
 }
 
 // TestUnitWorkerAuthenticator checks that the worker API's authenticator
@@ -118,10 +133,12 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 
 // TestUnitStateAuthenticator checks that the state backend's
 // authenticator admits a run token as the password of Basic credentials
-// named run, putting the run's principal on the context, and refuses with
-// the Basic challenge another user name, a worker session token, an API
-// token, a bearer header and no credential; that it refuses any other
-// route; and that no other authenticator admits a state route.
+// named run, and an API key's <id>:<secret> or an API token as that of
+// ones named api, putting the caller's principal on the context, and
+// refuses with the Basic challenge another user name, a worker session
+// token, an API token named run, a run token named api, a wrong secret, a
+// bearer header and no credential; that it refuses any other route; and
+// that no other authenticator admits a state route.
 func TestUnitStateAuthenticator(t *testing.T) {
 	base := newWorld(t)
 	auth := authn.New(authn.Deps{
@@ -156,10 +173,37 @@ func TestUnitStateAuthenticator(t *testing.T) {
 	basic := func(user, pass string) func(*http.Request) {
 		return func(r *http.Request) { r.SetBasicAuth(user, pass) }
 	}
-	state := NewStateAuthenticator(auth)
+	state := NewStateAuthenticator(auth, authn.NewExchanges(auth))
 	if rec := send(state, accessapi.State, basic("run", runTok.Raw)); rec.Code !=
 		http.StatusNoContent || got.Kind != kernel.PrincipalRunner || got.ActorID != run {
 		t.Errorf("a run token = %d, %+v", rec.Code, got)
+	}
+	// The API's tokens name their session, which the run tokens' issuer
+	// above does not keep.
+	api := authn.New(authn.Deps{
+		Keys: base.st, Sessions: base.st, Tokens: colonless{base.st}, Audience: audience,
+		TTL: 10 * time.Hour, Admission: base.st, Now: func() time.Time { return t0 },
+	})
+	apiState := NewStateAuthenticator(api, authn.NewExchanges(api))
+	key := basic("api", base.key.String()+":"+base.secret)
+	for range 2 {
+		if rec := send(apiState, accessapi.State, key); rec.Code != http.StatusNoContent ||
+			got.Kind != kernel.PrincipalAPIKey || got.ActorID != base.key {
+			t.Errorf("an API key = %d, %+v", rec.Code, got)
+		}
+	}
+	if len(base.st.sessions) != 2 {
+		t.Errorf("two requests of one key opened %d sessions beside the member's",
+			len(base.st.sessions)-1)
+	}
+	g, err := api.Exchange(t.Context(), base.key.String(), base.secret, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := send(apiState, accessapi.State, basic("api", g.Token)); rec.Code !=
+		http.StatusNoContent || got.Kind != kernel.PrincipalAPIKey ||
+		got.SessionID != g.Claims.Session {
+		t.Errorf("an API token = %d, %+v", rec.Code, got)
 	}
 	challenge := `Basic realm="infraweave-state"`
 	for name, set := range map[string]func(*http.Request){
@@ -168,6 +212,9 @@ func TestUnitStateAuthenticator(t *testing.T) {
 		"an empty password":      basic("run", ""),
 		"a worker session token": basic("run", workerTok.Raw),
 		"an API token":           basic("run", apiTok),
+		"a run token as api":     basic("api", runTok.Raw),
+		"an empty api password":  basic("api", ""),
+		"a wrong secret":         basic("api", base.key.String()+":"+apikey.NewSecret()),
 		"a bearer header": func(r *http.Request) {
 			r.Header.Set("Authorization", "Bearer "+runTok.Raw)
 		},

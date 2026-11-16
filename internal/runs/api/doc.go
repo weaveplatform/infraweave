@@ -4,10 +4,12 @@
 // it names when a timer moved the run; RunSources, what a run's end
 // asks of the vcs domain, a back edge that domain implements; and
 // StateAccess, which decides from a run's current state its StateGrant on
-// its stack's managed state, the read, lock and write the state domain
-// allows the run's token, with who triggered the run; and StackRuns,
-// which lists a stack's runs that have not ended, each an UnendedRun with
-// its type, for a domain that changes the stack only while it is idle.
+// a stack's managed state, the read, lock and write the state domain
+// allows the run on its own stack, with who triggered the run, and the
+// read alone on another's, which the access domain then decides as the
+// run's stack; and StackRuns, which lists a stack's runs that have not
+// ended, each an UnendedRun with its type, for a domain that changes the
+// stack only while it is idle.
 //
 // # Input and output
 //

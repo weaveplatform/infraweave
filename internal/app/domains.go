@@ -182,6 +182,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Access:    runs.StateAccess(),
 		Runs:      runs.StackRuns(),
 		Authz:     access.Authorizer(),
+		Reader:    access.StateReader(),
 		Objects:   objects,
 		Jobs:      queue.New(db.Primary()),
 		Keys:      keys,

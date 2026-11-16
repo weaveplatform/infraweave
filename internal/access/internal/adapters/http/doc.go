@@ -128,7 +128,11 @@
 // alone, and NewWorkerAuthenticator's worker session tokens on
 // accessapi.Worker routes and run tokens on accessapi.Runner routes, and
 // those routes alone, putting the token's accessapi.Bearer on the
-// request's context. Login serves the
+// request's context. NewStateAuthenticator's admits HTTP Basic
+// credentials on accessapi.State routes alone: a run token under the user
+// name run, and under api an API key's <id>:<secret>, through the tokens
+// authn.Exchanges keeps, or a token the API admits on an account's route;
+// anything else is challenged with Basic realm="infraweave-state". Login serves the
 // break-glass login's form and sign-in at accessapi.LoginPattern, which
 // sets the session's __Host- cookie and answers 303 to the console.
 // Require is accessapi.Requirer: it decides an operation's action on the

@@ -11,6 +11,10 @@
 // Authorizer decides the authorization checks for every domain: whether a
 // principal may perform an action in a space, the spaces in which it may,
 // whether it holds an action in any, and the actions it holds in one.
+// StateReader decides a read of a stack's state through the state backend
+// by any caller but a run on its own stack: the first of SPACE_READ,
+// STACK_STATE_READ and STACK_STATE_DOWNLOAD it lacks on the stack's
+// space, a run holding them as its stack does.
 // Requirer is the middleware internal/app puts after authentication,
 // deciding each operation's Required: its action on its Subject, which
 // ParseSubject reads from x-infraweave-subject, naming the space through
