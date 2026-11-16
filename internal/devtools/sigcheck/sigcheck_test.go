@@ -150,17 +150,24 @@ func TestUnitWalk(t *testing.T) {
 	if err != nil || len(found) != 1 || found[0].File != "a/a.go" || found[0].Line != 3 {
 		t.Fatalf("Walk = %+v, %v", found, err)
 	}
-	if got, _ := os.ReadFile(filepath.Join(root, "a", "a.go")); string(got) != wrapped {
+	path := filepath.Join(root, "a", "a.go")
+	if got, _ := os.ReadFile(path); string(got) != wrapped {
 		t.Fatalf("a check wrote %q", got)
+	}
+	// Windows keeps no Unix permission bits, so the mode is compared with
+	// the file's own before the write rather than with 0o640.
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
 	}
 	if found, err := Walk(root, limit, true); err != nil || len(found) != 1 {
 		t.Fatalf("Walk -w = %+v, %v", found, err)
 	}
-	path := filepath.Join(root, "a", "a.go")
 	got, _ := os.ReadFile(path)
-	info, _ := os.Stat(path)
-	if string(got) != "package p\n\nfunc f(a int) {\n}\n" || info.Mode().Perm() != 0o640 {
-		t.Fatalf("joined %q, mode %v", got, info.Mode().Perm())
+	after, err := os.Stat(path)
+	if err != nil || string(got) != "package p\n\nfunc f(a int) {\n}\n" ||
+		after.Mode().Perm() != before.Mode().Perm() {
+		t.Fatalf("joined %q, mode %v, was %v, %v", got, after.Mode().Perm(), before.Mode().Perm(), err)
 	}
 	if found, err := Walk(root, limit, false); err != nil || len(found) != 0 {
 		t.Fatalf("Walk after joining = %+v, %v", found, err)
