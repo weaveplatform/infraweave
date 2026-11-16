@@ -52,9 +52,10 @@ func (r *rows) AuthzVersions(
 }
 
 // TestUnitWatchAuthorization runs the watcher in virtual time: a binding
-// whose message is lost is decided within refreshEvery, a message decides
-// it at once, a Resync drops every snapshot, and a failed comparison is
-// logged.
+// whose message is lost holds at once, as a refusal compares the version;
+// an unbinding whose message is lost holds within refreshEvery, as an
+// allowed check compares nothing; a message, and a Resync, decide an
+// unbinding at once; and a failed comparison is logged.
 func TestUnitWatchAuthorization(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
@@ -113,28 +114,41 @@ func TestUnitWatchAuthorization(t *testing.T) {
 		}
 		// The binding's message is lost.
 		write(true)
+		if !create() {
+			t.Fatal("a lost message's binding is refused")
+		}
+		// The unbinding's message is lost.
+		write(false)
 		<-time.After(refreshEvery - time.Millisecond)
 		synctest.Wait()
-		if create() {
-			t.Fatal("decided before any comparison")
+		if !create() {
+			t.Fatal("an unbinding decided before any comparison")
 		}
 		<-time.After(time.Millisecond)
 		synctest.Wait()
-		if !create() {
-			t.Fatal("a lost message's binding is undecided after a comparison")
+		if create() {
+			t.Fatal("a lost message's unbinding is undecided after a comparison")
 		}
 
+		write(true)
+		if !create() {
+			t.Fatal("a binding is refused")
+		}
 		write(false)
 		msgs <- notify.Message{Payload: authz.Key(acct)}
 		synctest.Wait()
 		if create() {
 			t.Error("a message left the unbinding undecided")
 		}
-		msgs <- notify.Message{Payload: "session:" + kernel.NewULID().String()}
 		write(true)
+		if !create() {
+			t.Fatal("a binding is refused")
+		}
+		msgs <- notify.Message{Payload: "session:" + kernel.NewULID().String()}
+		write(false)
 		msgs <- notify.Message{Resync: true}
 		synctest.Wait()
-		if !create() {
+		if create() {
 			t.Error("a Resync kept a snapshot")
 		}
 

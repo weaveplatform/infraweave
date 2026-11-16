@@ -78,7 +78,8 @@ const expireEvery = time.Hour
 
 // refreshEvery is how often a replica compares its authorization
 // snapshots' versions with the accounts': the bound on how long a lost
-// authz:<account> message delays a change.
+// authz:<account> message delays a revocation. A grant does not wait for
+// it, since a refusal compares the version at once.
 //
 // ref: decision 0007 § "Snapshots and caching"
 const refreshEvery = 5 * time.Second

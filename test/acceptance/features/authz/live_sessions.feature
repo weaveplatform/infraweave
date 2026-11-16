@@ -4,12 +4,14 @@ Feature: Live sessions follow changes of their grants
   the account's authorization snapshot, which every replica rebuilds when
   a change of the account's spaces, roles, bindings, groups or admissions
   commits. So a binding removed, a role's actions changed or a group
-  deleted through one replica reaches a member's live session on the
-  other within a second, with no new sign-in. An ACTIVE managed user with
-  no binding signs in with empty grants: the session is valid and reads
-  the viewer and the account, and every space answers 404. The home
-  account's member, alice, has a browser session; the member key's
-  sessions report the group "acceptance".
+  deleted through one replica reaches a member's live session on the other
+  within a second, with no new sign-in. A replica compares a refusal with
+  the account's authorization version before it stands, so a grant reaches
+  the member's next request on either replica even when its message never
+  arrives. An ACTIVE managed user with no binding signs in with empty
+  grants: the session is valid and reads the viewer and the account, and
+  every space answers 404. The home account's member, alice, has a browser
+  session; the member key's sessions report the group "acceptance".
 
   ref: decisions 0005 and 0007, DV-023
 
@@ -52,6 +54,25 @@ Feature: Live sessions follow changes of their grants
     Then it answers 200
     And token "m"'s read of the space "legacy" through B is not found
     And token "m"'s read of the space "legacy" through A is not found
+
+  @op:space @op:stackLock @case:success
+  Scenario: A grant committed with no message reaches the member's next request on either replica
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    When token "m" sends "GET /api/v1/spaces/legacy" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/spaces/legacy" through B
+    Then it answers a 404 problem "not-found"
+    Given the member key is space-reader on the space "legacy", with no message
+    When token "m" sends "GET /api/v1/spaces/legacy" through A
+    Then it answers 200
+    When token "m" sends "GET /api/v1/spaces/legacy" through B
+    Then it answers 200
+    When token "m" sends "POST /api/v1/stacks/infra/lock" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"STACK_LOCK"'
+    Given the member key is space-writer on the space "legacy", with no message
+    When token "m" sends "POST /api/v1/stacks/infra/lock" through B
+    Then it answers 200
 
   @op:viewer @op:managedUser @op:spaces @op:space @case:success
   Scenario: An ACTIVE managed user with no binding signs in with empty grants and sees no space

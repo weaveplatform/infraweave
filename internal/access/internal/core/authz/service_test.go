@@ -12,11 +12,12 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// store serves one account's rows, counting loads; during, when set, runs
-// inside a load, as a concurrent drop would.
+// store serves one account's rows, counting loads and version reads;
+// during, when set, runs inside a load, as a concurrent drop would.
 type store struct {
 	x       *account
 	loads   int
+	reads   int
 	err     error
 	verErr  error
 	gone    bool
@@ -44,6 +45,7 @@ func (s *store) AuthzVersions(
 	_ context.Context,
 	accts []kernel.AccountID,
 ) (map[kernel.AccountID]int64, error) {
+	s.reads++
 	if s.verErr != nil {
 		return nil, s.verErr
 	}
@@ -73,10 +75,9 @@ func TestUnitService(t *testing.T) {
 		ok {
 		t.Fatalf("an unbound member reads = %t, %v", ok, err)
 	}
-	// A binding the store holds is decided only after the snapshot is
-	// dropped or found stale.
+	// A binding the store holds at the snapshot's version is decided only
+	// after the snapshot is dropped or found stale.
 	x.bind(binding.ActorUser, m.ULID, role.SpaceAdmin, "top")
-	f.version = 1
 	if ok, _ := svc.Admin(ctx, p); ok || f.loads != 1 {
 		t.Fatalf("a held snapshot reloaded: admin %t after %d loads", ok, f.loads)
 	}
@@ -211,6 +212,87 @@ func TestUnitService(t *testing.T) {
 		f.err,
 	) {
 		t.Errorf("Authorize on a failing store = %v", err)
+	}
+}
+
+// TestUnitServiceRefusal checks that a refusal is decided again on a
+// rebuilt snapshot once the account's version has moved, as when a grant
+// was committed on another replica whose message has not arrived: a
+// space the member could not read, an action it could not perform there,
+// a held action and account admin; that a refusal at the snapshot's
+// version, however often, rebuilds nothing; that an allowed decision
+// reads no version, so a revocation waits for its message or Refresh;
+// and that a version that cannot be read fails the refusal.
+func TestUnitServiceRefusal(t *testing.T) {
+	ctx := t.Context()
+	x := newAccount()
+	m := kernel.NewMemberID()
+	f := &store{x: x}
+	svc := authz.NewService(f)
+	p := kernel.Principal{Kind: kernel.PrincipalUser, AccountID: x.id, ActorID: m.ULID, MemberID: m}
+	authorize := func(action accessapi.Action) bool {
+		t.Helper()
+		ok, err := svc.Authorize(ctx, p, action, x.spaces["a"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+
+	if authorize(accessapi.ActionSpaceRead) || f.loads != 1 || f.reads != 1 {
+		t.Fatalf("an unbound member: %d loads, %d reads", f.loads, f.reads)
+	}
+	x.bind(binding.ActorUser, m.ULID, role.SpaceReader, "a")
+	for i := range 3 {
+		if authorize(accessapi.ActionSpaceRead) || f.loads != 1 || f.reads != i+2 {
+			t.Fatalf("a refusal at the snapshot's version: %d loads, %d reads", f.loads, f.reads)
+		}
+	}
+	f.version = 1
+	if !authorize(accessapi.ActionSpaceRead) || f.loads != 2 {
+		t.Fatalf("a space granted since the snapshot: %d loads", f.loads)
+	}
+
+	x.bind(binding.ActorUser, m.ULID, role.SpaceWriter, "a")
+	if authorize(accessapi.ActionStackLock) || f.loads != 2 {
+		t.Fatalf("an action at the snapshot's version: %d loads", f.loads)
+	}
+	f.version = 2
+	if !authorize(accessapi.ActionStackLock) || f.loads != 3 {
+		t.Fatalf("an action granted since the snapshot: %d loads", f.loads)
+	}
+
+	x.bind(binding.ActorUser, m.ULID, role.SpaceAdmin, "top")
+	f.version = 3
+	if ok, err := svc.Holds(ctx, p, accessapi.ActionApiKeyDelete); err != nil || !ok ||
+		f.loads != 4 {
+		t.Fatalf("a held action granted since the snapshot = %t, %v after %d loads", ok, err,
+			f.loads)
+	}
+	x.data.Bindings = nil
+	f.version = 4
+	reads := f.reads
+	if ok, err := svc.Admin(ctx, p); err != nil || !ok || f.loads != 4 || f.reads != reads {
+		t.Fatalf("an allowed decision compared the version: admin %t, %v, %d loads, %d reads",
+			ok, err, f.loads, f.reads-reads)
+	}
+	if err := svc.Refresh(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := svc.Admin(ctx, p); err != nil || ok || f.loads != 5 {
+		t.Fatalf("a revocation after Refresh: admin %t, %v after %d loads", ok, err, f.loads)
+	}
+
+	x.bind(binding.ActorUser, m.ULID, role.SpaceAdmin, "top")
+	f.version = 5
+	if ok, err := svc.Admin(ctx, p); err != nil || !ok || f.loads != 6 {
+		t.Fatalf("admin granted since the snapshot = %t, %v after %d loads", ok, err, f.loads)
+	}
+
+	f.verErr = errors.New("database down")
+	if _, err := svc.Authorize(ctx, p, accessapi.ActionSpaceRead, kernel.NewULID()); !errors.Is(
+		err, f.verErr) {
+		t.Errorf("a refusal with the version unread = %v", err)
 	}
 }
 

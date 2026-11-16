@@ -30,7 +30,7 @@ func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 		s.lists,
 	)
 	sc.Step(
-		`^the member key is ([a-z0-9-]+) on the space "([^"]+)"$`,
+		`^the member key is ([a-z0-9-]+) on the space "([^"]+)"(, with no message)?$`,
 		s.bind,
 	)
 	sc.Step(
@@ -97,8 +97,13 @@ func (s *spaceSteps) lists(want string) error {
 }
 
 // bind binds the member key to role on the space slug, as a binding
-// operation will, and marks the account's authorization changed.
-func (s *spaceSteps) bind(ctx context.Context, role, slug string) error {
+// operation will, and marks the account's authorization changed, with no
+// message when quiet is not empty.
+func (s *spaceSteps) bind(ctx context.Context, role, slug, quiet string) error {
+	changed := harness.AuthzChanged
+	if quiet != "" {
+		changed = harness.AuthzMoved
+	}
 	acct := harness.UUIDOf(harness.Member.Account)
 	_, err := s.w.Query(ctx, fmt.Sprintf(
 		`
@@ -112,7 +117,7 @@ func (s *spaceSteps) bind(ctx context.Context, role, slug string) error {
 		harness.UUIDOf(harness.Member.Key),
 		harness.Literal(role),
 		harness.Literal(s.w.Resolve(slug)),
-		harness.AuthzChanged(harness.Member.Account),
+		changed(harness.Member.Account),
 	))
 	return err
 }

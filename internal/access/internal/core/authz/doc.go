@@ -28,11 +28,12 @@
 // its authz:<account> message, Flush forgets them all after a Resync,
 // and Refresh drops each one whose account's version moved, for a lost
 // message; a load that a drop overtakes is used once and not kept. A
-// check of a space the snapshot lacks reads the account's version first
-// and rebuilds the snapshot when it has moved, as the space is newer than
-// the snapshot. A run
-// principal holds no grant until its stack and home space reach the
-// principal.
+// refusal of Authorize, Holds or Admin, and a view of a space the
+// snapshot lacks, read the account's version first and rebuild the
+// snapshot when it has moved, as the grant or space it misses may have
+// been committed on another replica whose message has not arrived; an
+// allowed decision reads no version. A run principal holds no grant until
+// its stack and home space reach the principal.
 //
 // ref: decision 0007
 //
