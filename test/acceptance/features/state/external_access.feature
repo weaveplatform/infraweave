@@ -18,8 +18,8 @@ Feature: Callers from outside a stack's runs read its state, read only
   Stack infra keeps its state with external state access on, deploys
   automatically and runs on the pool; reader keeps its state and runs on
   the pool; closed keeps its state with access off; plain does not keep
-  it. The home key is space-admin on the account's
-  top space; the member key holds only the bindings a scenario gives it.
+  it. The home key is space-admin on the account's top space; the member
+  key holds only the bindings a scenario gives it.
   ref: decision 0010
   ref: decision 0016
 
