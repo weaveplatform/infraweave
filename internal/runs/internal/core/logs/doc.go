@@ -8,13 +8,17 @@
 // began its chunk, and Sanitize strips its ANSI escape sequences on
 // request. While the run is in the state a page ends before a sequence
 // number not yet indexed; a chunk whose object retention removed is
-// skipped and the page marked expired.
+// skipped and the page marked expired. A chunk the worker committed as
+// lost reads as one line, Missing, and once the run has left the state so
+// does each sequence number below the state's Extent not indexed, which
+// counts the chunks the state's report named.
 //
 // Compact, lifecycle.CompactKind's handler, writes a state's chunks to
-// one object, report.LogKey, through blob_objects, and commits it with
-// the job, so running it again writes nothing. Service.Download signs a
-// GET of that object, or answers that the state is ongoing, its
-// compaction pending, or its log expired. Service.Profile signs a GET of
+// one object, report.LogKey, through blob_objects, with Missing's line in
+// place of each chunk that holds none, and commits it with the job, so
+// running it again writes nothing. Service.Download signs a GET of that
+// object, or answers that the state is ongoing, its compaction pending,
+// or its log expired. Service.Profile signs a GET of
 // the CPU profile the runner recorded for the latest execution of a
 // state in run-observability, or answers that the state is ongoing or
 // its profile expired. Service.Delete deletes an ended run's logs ahead

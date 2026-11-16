@@ -941,8 +941,8 @@ func logChunk(e string) (string, string, bool) {
 // file, a variable launcher.mask_envs names, an ::add-mask word, the run's
 // tokens and a well-known token in standard output and in every chunk,
 // leaves a value under 4 bytes visible, and commits each phase's lines
-// before its report; the after_run hooks' output goes to standard output
-// alone.
+// before its report, which names how many chunks the phase cut; the
+// after_run hooks' output goes to standard output alone.
 func TestUnitExecLog(t *testing.T) {
 	w := newWorld(t)
 	w.w.autodeploy = true
@@ -991,4 +991,14 @@ func TestUnitExecLog(t *testing.T) {
 	if got, want := w.out.String(), init+plan+saved+"no newline\nafter *****\n"; got != want {
 		t.Errorf("standard output:\n got %q\nwant %q", got, want)
 	}
+	counts := make([]string, 0, len(w.w.reports))
+	for _, r := range w.w.reports {
+		n := "none"
+		if r.LogChunks != nil {
+			n = strconv.FormatInt(*r.LogChunks, 10)
+		}
+		counts = append(counts, string(r.Event)+" "+n)
+	}
+	equal(t, "chunks reported", counts,
+		[]string{"started none", "succeeded 1", "succeeded 1", "succeeded 1"})
 }

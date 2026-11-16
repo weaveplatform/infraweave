@@ -109,6 +109,12 @@ func TestUnitProtocolRunReports(t *testing.T) {
 	}) {
 		t.Errorf("a delta that moves and forgets = %d, reported %+v", code, r.report)
 	}
+	code, _ = f.call(t, path+"/reports", token, map[string]any{
+		"stateVersion": 4, "state": "APPLYING", "event": "succeeded", "logChunks": 3,
+	})
+	if code != http.StatusOK || r.report.LogChunks == nil || *r.report.LogChunks != 3 {
+		t.Errorf("a report naming its log chunks = %d, reported %+v", code, r.report)
+	}
 
 	code, signed := f.call(t, path+"/upload-urls", token, map[string]any{
 		"stateVersion": 4,
@@ -131,10 +137,12 @@ func TestUnitProtocolRunReports(t *testing.T) {
 		"stateVersion": 4,
 		"chunks": []map[string]any{
 			{"seq": 0, "firstAt": 1_800_000_000, "lastAt": 1_800_000_002},
+			{"seq": 1, "firstAt": 1_800_000_003, "lastAt": 1_800_000_003, "lost": true},
 		},
 	})
-	if code != http.StatusNoContent || len(r.chunks) != 1 ||
-		!r.chunks[0].LastAt.Equal(time.Unix(1_800_000_002, 0)) {
+	if code != http.StatusNoContent || len(r.chunks) != 2 ||
+		!r.chunks[0].LastAt.Equal(time.Unix(1_800_000_002, 0)) || r.chunks[0].Lost ||
+		!r.chunks[1].Lost {
 		t.Errorf("log-chunks = %d, given %+v", code, r.chunks)
 	}
 	code, _ = f.call(t, path+"/artifacts", token, map[string]any{

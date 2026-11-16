@@ -126,7 +126,9 @@ CREATE INDEX runs_waiting ON runs (state, state_changed_at, id);
 -- Each transition a run went through, sequence being the state_version it
 -- moved the run to. until is when a timed state ends; username is who
 -- moved it, absent for the server; terminal is whether the state ends the
--- run, and has_logs whether the state wrote logs.
+-- run, has_logs whether the state wrote logs, and log_chunks how many log
+-- chunks the worker's report of the state's end says it cut, absent until
+-- that report.
 CREATE TABLE run_state_transitions (
     account_id uuid        NOT NULL,
     run_id     uuid        NOT NULL,
@@ -138,6 +140,7 @@ CREATE TABLE run_state_transitions (
     note       text,
     terminal   boolean     NOT NULL,
     has_logs   boolean     NOT NULL DEFAULT false,
+    log_chunks bigint      CHECK (log_chunks >= 0),
     PRIMARY KEY (account_id, run_id, sequence),
     FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
 );
@@ -210,22 +213,26 @@ CREATE INDEX stack_outputs_run ON stack_outputs (account_id, run_id);
 -- readers tail. state is the state of that state version; object_key is
 -- the chunk's key in the run-logs store,
 -- <account>/<run>/<state>-<state_version>/<seq>; bytes is its size, and
--- first_at and last_at when its first and last lines were written. An
--- account's purge deletes each chunk's object with its row; a run deleted
--- with its stack leaves its objects to the store's retention.
+-- first_at and last_at when its first and last lines were written. A lost
+-- chunk is one the worker gave up uploading: it has no object, and
+-- readers find a line in its place. An account's purge deletes each
+-- chunk's object with its row; a run deleted with its stack leaves its
+-- objects to the store's retention.
 CREATE TABLE run_log_chunks (
     account_id    uuid        NOT NULL,
     run_id        uuid        NOT NULL,
     state_version bigint      NOT NULL,
     seq           bigint      NOT NULL,
     state         text        NOT NULL,
-    object_key    text        NOT NULL,
+    object_key    text,
     bytes         bigint      NOT NULL,
     first_at      timestamptz NOT NULL,
     last_at       timestamptz NOT NULL,
+    lost          boolean     NOT NULL DEFAULT false,
     PRIMARY KEY (account_id, run_id, state_version, seq),
     FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE,
-    CHECK (seq >= 0 AND bytes >= 0 AND last_at >= first_at)
+    CHECK (seq >= 0 AND bytes >= 0 AND last_at >= first_at),
+    CHECK ((object_key IS NULL) = lost)
 );
 
 -- The other objects each run's worker uploaded and recorded, by the state

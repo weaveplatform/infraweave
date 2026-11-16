@@ -42,6 +42,12 @@ type Store interface {
 	// version, from sequence number from on, in sequence order.
 	Chunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version, from int64,
 		limit int) ([]report.Chunk, error)
+	// Extent reads what the index holds of acct's run's log of state
+	// version version, its line before chunk from being the last line of
+	// the chunk indexed before it; lifecycle.ErrNotFound when the run has
+	// no transition to version.
+	Extent(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version,
+		from int64) (Extent, error)
 	// LockChunks reads the sequence numbers of acct's run's log chunks of
 	// state version version, in order, and locks their rows until the
 	// transaction ends.
@@ -132,6 +138,26 @@ const (
 // object to be removed before writing its own.
 const retryAfter = time.Minute
 
+// Extent is what the index holds of a state version's log. Chunks is how
+// many chunks the worker cut it into: the count its report of the state's
+// end named, or one more than the highest sequence number indexed when
+// that is more or no report came. Stored is the key of the first chunk
+// stored, empty when none is; Before when the line before a chunk was
+// written, or when the run entered the state if no chunk is indexed
+// before it; Entered when the run entered the state.
+type Extent struct {
+	Chunks  int64
+	Stored  string
+	Before  time.Time
+	Entered time.Time
+}
+
+// Missing is the line a reader finds in place of each chunk of a state the
+// run has left that holds no lines: one the worker committed as lost, or
+// one below Extent.Chunks it never committed. The server writes it, so it
+// carries no value of the run's.
+const Missing = "infraweave: part of this log could not be stored."
+
 // Query is a page of a run's log: the state, the state version, nil for
 // the latest at which the run entered the state, the chunk to read from,
 // and whether to strip each line's ANSI escape sequences.
@@ -184,11 +210,14 @@ type Download struct {
 }
 
 // Page reads a page of p's run raw's log of q.State, the chunks of its
-// state version from q.From on in sequence order. While the run is in the
-// state, the page ends before a sequence number not yet indexed, so a
-// chunk indexed out of order is read in its place. A state the run never
-// entered at that version answers an empty page with Exists false. The
-// route has decided SPACE_READ on the run's stack's space.
+// state version from q.From on in sequence order, a lost chunk read as
+// Missing. While the run is in the state, the page ends before a sequence
+// number not yet indexed, so a chunk indexed out of order is read in its
+// place; once the run has left it, each sequence number below
+// Extent.Chunks not indexed is read as Missing, stamped with when the line
+// before it was written. A state the run never entered at that version
+// answers an empty page with Exists false. The route has decided
+// SPACE_READ on the run's stack's space.
 func (s *Service) Page(ctx context.Context, p kernel.Principal, raw string, q Query) (Page,
 	error,
 ) {
@@ -210,13 +239,28 @@ func (s *Service) Page(ctx context.Context, p kernel.Principal, raw string, q Qu
 	if err != nil {
 		return Page{}, err //nolint:wrapcheck // the store names the read
 	}
+	// While the run is in the state, a sequence number not indexed is
+	// still to come, so the page ends there rather than at an extent.
+	ext := Extent{Chunks: math.MaxInt64}
+	if !out.Ongoing {
+		if ext, err = s.d.Store.Extent(ctx, run.Account, run.ID, out.Version, q.From); err != nil {
+			return Page{}, err //nolint:wrapcheck // the store names the read
+		}
+	}
 	var size int64
-	i := 0
-	for ; i < len(chunks) && i < pageChunks; i++ {
-		c := chunks[i]
-		if out.Ongoing && c.Seq != out.Next || size > 0 && size+c.Bytes > pageBytes {
+	before, i := ext.Before, 0
+	for range pageChunks {
+		indexed := i < len(chunks) && chunks[i].Seq == out.Next
+		if !indexed && (out.Ongoing || out.Next >= ext.Chunks) ||
+			indexed && size > 0 && size+chunks[i].Bytes > pageBytes {
 			break
 		}
+		if !indexed {
+			out.Lines = append(out.Lines, Line{Message: Missing, At: before})
+			out.Next++
+			continue
+		}
+		c := chunks[i]
 		lines, err := s.lines(ctx, c, q.Sanitize)
 		switch {
 		case errors.Is(err, objectstore.ErrNotFound):
@@ -226,15 +270,24 @@ func (s *Service) Page(ctx context.Context, p kernel.Principal, raw string, q Qu
 		}
 		out.Lines = append(out.Lines, lines...)
 		size += c.Bytes
-		out.Next = c.Seq + 1
+		before = c.LastAt
+		out.Next, i = c.Seq+1, i+1
 	}
-	out.HasMore = i < len(chunks) && (!out.Ongoing || chunks[i].Seq == out.Next)
+	if out.Ongoing {
+		out.HasMore = i < len(chunks) && chunks[i].Seq == out.Next
+	} else {
+		out.HasMore = out.Next < ext.Chunks
+	}
 	return out, nil
 }
 
 // lines reads chunk c's lines, each stamped with when its first was
-// written, stripping their ANSI escape sequences when sanitize is set.
+// written, stripping their ANSI escape sequences when sanitize is set; a
+// lost chunk's line is Missing.
 func (s *Service) lines(ctx context.Context, c report.Chunk, sanitize bool) ([]Line, error) {
+	if c.Lost {
+		return []Line{{Message: Missing, At: c.FirstAt}}, nil
+	}
 	r, err := s.d.Objects.Open(ctx, objectstore.RunLogs, c.Key)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // blobs names the object
@@ -290,13 +343,20 @@ func (s *Service) Download(
 	case run.State == state && run.Version == v:
 		return Download{Ongoing: true}, nil
 	}
-	first, err := s.d.Store.Chunks(ctx, run.Account, run.ID, v, 0, 1)
-	if err != nil || len(first) == 0 {
+	ext, err := s.d.Store.Extent(ctx, run.Account, run.ID, v, 0)
+	if err != nil || ext.Chunks == 0 {
 		return Download{Expired: true}, err //nolint:wrapcheck // the store names the read
+	}
+	if ext.Stored == "" {
+		// With no chunk stored, only the compacted log can expire, and it
+		// is written after the run entered the state, so within the
+		// retention of that the compaction is pending.
+		pending := s.d.Retention == 0 || s.d.Now().Before(ext.Entered.Add(s.d.Retention))
+		return Download{Ongoing: pending, Expired: !pending}, nil
 	}
 	// Retention removes a state's chunks oldest first, so a first chunk
 	// still live means the compaction is pending, not that lines expired.
-	live, err := s.d.Objects.Live(ctx, objectstore.RunLogs, first[0].Key)
+	live, err := s.d.Objects.Live(ctx, objectstore.RunLogs, ext.Stored)
 	if err != nil {
 		return Download{}, err //nolint:wrapcheck // blobs names the object
 	}
@@ -428,11 +488,12 @@ func (s *Service) version(
 
 // Compact is lifecycle.CompactKind's handler. It writes the indexed
 // chunks of the job's state, in sequence order, to the state's LogKey,
-// then commits the object and completes the job in one transaction that
-// locks the chunks' rows, so an account's purge, which deletes the
-// object with them, finds it live. A compacted object already live, a
-// state with no chunk, and a chunk retention removed end the job with
-// nothing written. A key holding an earlier attempt's object is
+// with Missing's line in place of each chunk below Extent.Chunks that
+// holds no lines, then commits the object and completes the job in one
+// transaction that locks the chunks' rows, so an account's purge, which
+// deletes the object with them, finds it live. A compacted object
+// already live, a state with no chunk, a run deleted, and a chunk
+// retention removed end the job with nothing written. A key holding an earlier attempt's object is
 // committed when that write finished, and otherwise deleted so a later
 // attempt writes it again. A payload that does not decode never will, so
 // its job dies at once.
@@ -444,24 +505,27 @@ func (s *Service) Compact(ctx context.Context, j queue.Job) error {
 	}
 	acct := kernel.AccountID{ULID: j.Account}
 	key := report.LogKey(acct, c.Run, c.State, c.StateVersion)
+	ext, err := s.d.Store.Extent(ctx, acct, c.Run, c.StateVersion, 0)
+	switch {
+	case errors.Is(err, lifecycle.ErrNotFound):
+		return s.complete(ctx, j)
+	case err != nil:
+		return err //nolint:wrapcheck // the store names the read
+	}
 	chunks, err := s.d.Store.Chunks(ctx, acct, c.Run, c.StateVersion, 0, math.MaxInt32)
 	if err != nil {
 		return err //nolint:wrapcheck // the store names the read
 	}
 	live := false
-	if len(chunks) > 0 {
+	if ext.Chunks > 0 {
 		if live, err = s.d.Objects.Live(ctx, objectstore.RunLogs, key); err != nil {
 			return err //nolint:wrapcheck // blobs names the object
 		}
 	}
-	if len(chunks) == 0 || live {
+	if ext.Chunks == 0 || live {
 		return s.complete(ctx, j)
 	}
-	in := &stream{ctx: ctx, objects: s.d.Objects, chunks: chunks}
-	var size int64
-	for _, ch := range chunks {
-		size += ch.Bytes
-	}
+	in, size := newStream(ctx, s.d.Objects, chunks, ext.Chunks)
 	_, err = s.d.Objects.Put(ctx, objectstore.RunLogs, key, in, size)
 	in.close()
 	switch {
@@ -520,28 +584,52 @@ func (s *Service) complete(ctx context.Context, j queue.Job) error {
 }
 
 // stream reads chunks' objects one after another, opening each when the
-// one before ends; err is the first error an open or a read met, which
-// the writer reading it may report otherwise.
+// one before ends, with Missing's line for a key that is empty; err is
+// the first error an open or a read met, which the writer reading it may
+// report otherwise.
 type stream struct {
 	ctx     context.Context //nolint:containedctx // an io.Reader's reads take none
 	objects Objects
-	chunks  []report.Chunk
+	keys    []string
 	cur     io.ReadCloser
 	err     error
+}
+
+// newStream is the stream of a state's n chunks, the indexed ones being
+// chunks in sequence order, and its size.
+func newStream(ctx context.Context, objects Objects, chunks []report.Chunk, n int64) (*stream,
+	int64,
+) {
+	if k := len(chunks); k > 0 {
+		n = max(n, chunks[k-1].Seq+1)
+	}
+	s := &stream{ctx: ctx, objects: objects, keys: make([]string, n)}
+	size := int64(len(Missing)+1) * n
+	for _, c := range chunks {
+		if !c.Lost {
+			s.keys[c.Seq] = c.Key
+			size += c.Bytes - int64(len(Missing)+1)
+		}
+	}
+	return s, size
 }
 
 func (s *stream) Read(p []byte) (int, error) {
 	for {
 		if s.cur == nil {
-			if len(s.chunks) == 0 {
+			if len(s.keys) == 0 {
 				return 0, io.EOF
 			}
-			r, err := s.objects.Open(s.ctx, objectstore.RunLogs, s.chunks[0].Key)
+			if s.keys[0] == "" {
+				s.cur, s.keys = io.NopCloser(strings.NewReader(Missing+"\n")), s.keys[1:]
+				continue
+			}
+			r, err := s.objects.Open(s.ctx, objectstore.RunLogs, s.keys[0])
 			if err != nil {
 				s.err = err
 				return 0, err //nolint:wrapcheck // blobs names the object
 			}
-			s.cur, s.chunks = r, s.chunks[1:]
+			s.cur, s.keys = r, s.keys[1:]
 		}
 		n, err := s.cur.Read(p)
 		if errors.Is(err, io.EOF) {

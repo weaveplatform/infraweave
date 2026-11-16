@@ -431,6 +431,9 @@ type LogChunk struct {
 	// LastAt When the chunk's last line was written, in Unix seconds.
 	LastAt int64 `json:"lastAt"`
 
+	// Lost The worker could not upload the chunk and gave up on it. A lost chunk has no upload; a reader finds one line in its place that says part of the log could not be stored.
+	Lost *bool `json:"lost,omitempty"`
+
 	// Seq The chunk's sequence number, its upload's name.
 	Seq int64 `json:"seq"`
 }
@@ -600,6 +603,9 @@ type RunReport struct {
 
 	// Event started names the phase the worker begins; the first, which names the state its preparation leads to, ends the handover. succeeded, failed and stopped name the state the run is in. A launcher whose preparation fails reports failed for the preparing state.
 	Event RunReportEvent `json:"event"`
+
+	// LogChunks How many chunks the worker cut the phase's log into, which a succeeded, failed or stopped report carries. Once the run has left the state, a reader of its log finds a line in place of each chunk below this number that was never indexed.
+	LogChunks *int64 `json:"logChunks,omitempty"`
 
 	// State A state in which a worker holds the run.
 	State WorkerState `json:"state"`
@@ -1092,7 +1098,7 @@ type ClientInterface interface {
 
 	// WorkerRunLogChunksWithBody Index a run's uploaded log chunks
 	//
-	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1101,7 +1107,7 @@ type ClientInterface interface {
 
 	// WorkerRunLogChunks Index a run's uploaded log chunks
 	//
-	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1292,7 +1298,7 @@ func (c *Client) WorkerRunArtifacts(ctx context.Context, run Run, body WorkerRun
 
 // WorkerRunLogChunksWithBody Index a run's uploaded log chunks
 //
-// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1311,7 +1317,7 @@ func (c *Client) WorkerRunLogChunksWithBody(ctx context.Context, run Run, conten
 
 // WorkerRunLogChunks Index a run's uploaded log chunks
 //
-// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1910,7 +1916,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerRunLogChunksWithBodyWithResponse Index a run's uploaded log chunks
 	//
-	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -1919,7 +1925,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerRunLogChunksWithResponse Index a run's uploaded log chunks
 	//
-	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+	// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -2972,7 +2978,7 @@ func (c *ClientWithResponses) WorkerRunArtifactsWithResponse(ctx context.Context
 
 // WorkerRunLogChunksWithBodyWithResponse Index a run's uploaded log chunks
 //
-// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -2987,7 +2993,7 @@ func (c *ClientWithResponses) WorkerRunLogChunksWithBodyWithResponse(ctx context
 
 // WorkerRunLogChunksWithResponse Index a run's uploaded log chunks
 //
-// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+// Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

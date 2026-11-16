@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -49,8 +50,8 @@ func (s *Store) Chunks(
 	version, from int64,
 	limit int,
 ) ([]report.Chunk, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT state_version, state, seq, object_key, bytes,
-		first_at, last_at FROM run_log_chunks
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT state_version, state, seq,
+		coalesce(object_key, ''), bytes, first_at, last_at, lost FROM run_log_chunks
 		WHERE account_id = $1 AND run_id = $2 AND state_version = $3 AND seq >= $4
 		ORDER BY seq LIMIT $5`, acct, run, version, from, limit)
 	if err != nil {
@@ -58,13 +59,50 @@ func (s *Store) Chunks(
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Chunk, error) {
 		var c report.Chunk
-		err := r.Scan(&c.Version, &c.State, &c.Seq, &c.Key, &c.Bytes, &c.FirstAt, &c.LastAt)
+		err := r.Scan(&c.Version, &c.State, &c.Seq, &c.Key, &c.Bytes, &c.FirstAt, &c.LastAt,
+			&c.Lost)
 		return c, err //nolint:wrapcheck // wrapped below
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runs: read run %s's log chunks: %w", run, sql.Unavailable(err))
 	}
 	return out, nil
+}
+
+// Extent reads what the index holds of acct's run's log of state version
+// version, its line before chunk from being the last line of the chunk
+// indexed before it; lifecycle.ErrNotFound when the run has no
+// transition to version.
+func (s *Store) Extent(
+	ctx context.Context,
+	acct kernel.AccountID,
+	run kernel.ULID,
+	version, from int64,
+) (logs.Extent, error) {
+	var e logs.Extent
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT
+		coalesce(greatest(t.log_chunks, (SELECT max(seq) + 1 FROM run_log_chunks c
+			WHERE c.account_id = t.account_id AND c.run_id = t.run_id
+			AND c.state_version = t.sequence)), 0),
+		coalesce((SELECT object_key FROM run_log_chunks c
+			WHERE c.account_id = t.account_id AND c.run_id = t.run_id
+			AND c.state_version = t.sequence AND NOT lost ORDER BY seq LIMIT 1), ''),
+		coalesce((SELECT last_at FROM run_log_chunks c
+			WHERE c.account_id = t.account_id AND c.run_id = t.run_id
+			AND c.state_version = t.sequence AND seq < $4 ORDER BY seq DESC LIMIT 1),
+			t.timestamp),
+		t.timestamp
+		FROM run_state_transitions t
+		WHERE t.account_id = $1 AND t.run_id = $2 AND t.sequence = $3`, acct, run, version, from).
+		Scan(&e.Chunks, &e.Stored, &e.Before, &e.Entered)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return e, fmt.Errorf("%w: %s at state version %d", lifecycle.ErrNotFound, run, version)
+	case err != nil:
+		return e, fmt.Errorf("runs: read run %s's log of %d: %w", run, version,
+			sql.Unavailable(err))
+	}
+	return e, nil
 }
 
 // LockChunks reads the sequence numbers of acct's run's log chunks of
@@ -103,21 +141,24 @@ func (s *Store) DeleteLogs(
 	if err != nil {
 		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))
 	}
-	var compacted []report.Object
-	objs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Object, error) {
+	var compacted, objs []report.Object
+	_, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (struct{}, error) {
 		var (
 			state   kernel.RunState
 			version int64
+			key     *string
 		)
-		o := report.Object{Store: objectstore.RunLogs}
-		err := r.Scan(&state, &version, &o.Key)
+		err := r.Scan(&state, &version, &key)
 		k := report.Object{
 			Store: objectstore.RunLogs, Key: report.LogKey(run.Account, run.ID, state, version),
 		}
 		if err == nil && !slices.Contains(compacted, k) {
 			compacted = append(compacted, k)
 		}
-		return o, err //nolint:wrapcheck // the delete names the read
+		if err == nil && key != nil {
+			objs = append(objs, report.Object{Store: objectstore.RunLogs, Key: *key})
+		}
+		return struct{}{}, err //nolint:wrapcheck // the delete names the read
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))

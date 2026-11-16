@@ -345,9 +345,9 @@ func TestAccComment(t *testing.T) {
 }
 
 // TestAccDeleteLogs deletes a run's log chunks and observability records,
-// answers their objects with each state version's compacted log once, and
-// marks the run's logs deleted; and leaves its other artifacts and
-// another run's logs.
+// answers their objects, none for a lost chunk, with each state
+// version's compacted log once, and marks the run's logs deleted; and
+// leaves its other artifacts and another run's logs.
 func TestAccDeleteLogs(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -370,6 +370,7 @@ func TestAccDeleteLogs(t *testing.T) {
 	}{
 		{run, report.Chunk{Version: 2, State: kernel.RunStatePlanning, Seq: 0, Key: "plan-0"}},
 		{run, report.Chunk{Version: 2, State: kernel.RunStatePlanning, Seq: 1, Key: "plan-1"}},
+		{run, report.Chunk{Version: 2, State: kernel.RunStatePlanning, Seq: 2, Lost: true}},
 		{run, report.Chunk{Version: 3, State: kernel.RunStateApplying, Seq: 0, Key: "apply-0"}},
 		{theirs, report.Chunk{Version: 2, State: kernel.RunStatePlanning, Seq: 0, Key: "theirs"}},
 	} {

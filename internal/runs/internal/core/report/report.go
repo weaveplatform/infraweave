@@ -26,7 +26,8 @@ import (
 
 // Chunk is a log chunk as the store indexes it: the state version and
 // state it was written in, its sequence number there, its object's key
-// and size, and when its first and last lines were written.
+// and size, and when its first and last lines were written. A Lost chunk
+// is one the worker gave up uploading, with no key and no bytes.
 type Chunk struct {
 	Version int64
 	State   kernel.RunState
@@ -35,6 +36,7 @@ type Chunk struct {
 	Bytes   int64
 	FirstAt time.Time
 	LastAt  time.Time
+	Lost    bool
 }
 
 // Artifact is an uploaded object other than a log chunk as the store
@@ -73,6 +75,9 @@ type Store interface {
 	Indexed(ctx context.Context, run lifecycle.Run, version, seq int64) (bool, error)
 	// IndexChunk indexes c, a log chunk of run.
 	IndexChunk(ctx context.Context, run lifecycle.Run, c Chunk) error
+	// CountChunks records n as how many chunks run's worker cut its log
+	// of state version version into.
+	CountChunks(ctx context.Context, run lifecycle.Run, version, n int64) error
 	// Recorded reports whether run recorded the object of kind named
 	// name in state version version.
 	Recorded(ctx context.Context, run lifecycle.Run, version int64,
@@ -228,6 +233,11 @@ func (s *Service) Report(
 	}
 	switch r.StateVersion {
 	case run.Version:
+		if r.LogChunks != nil && r.Event != workersapi.ReportStarted && r.State == run.State {
+			if err := s.d.Store.CountChunks(ctx, run, run.Version, *r.LogChunks); err != nil {
+				return workersapi.Step{}, err //nolint:wrapcheck // the store names the write
+			}
+		}
 		if planned(r) && run.State == kernel.RunStatePlanning {
 			return s.decide(ctx, run, r)
 		}
@@ -614,7 +624,8 @@ func uploadInvalid(err error, pointer string) error {
 }
 
 // LogChunks commits and indexes each of chunks, as workersapi.Reports
-// says, in the run's current state.
+// says, in the run's current state; a lost chunk is indexed with no
+// object.
 func (s *Service) LogChunks(
 	ctx context.Context,
 	id kernel.ULID,
@@ -643,15 +654,19 @@ func (s *Service) LogChunks(
 			}
 			continue
 		}
-		k := key(run, strconv.FormatInt(c.Seq, 10))
-		obj, err := s.d.Objects.CommitUpload(ctx, objectstore.RunLogs, k)
-		if err != nil {
-			return uploadInvalid(err, fmt.Sprintf("/chunks/%d", i))
+		ch := Chunk{
+			Version: version, State: run.State, Seq: c.Seq, FirstAt: c.FirstAt, LastAt: c.LastAt,
+			Lost: c.Lost,
 		}
-		if err := s.d.Store.IndexChunk(ctx, run, Chunk{
-			Version: version, State: run.State, Seq: c.Seq, Key: k, Bytes: obj.Size,
-			FirstAt: c.FirstAt, LastAt: c.LastAt,
-		}); err != nil {
+		if !c.Lost {
+			ch.Key = key(run, strconv.FormatInt(c.Seq, 10))
+			obj, err := s.d.Objects.CommitUpload(ctx, objectstore.RunLogs, ch.Key)
+			if err != nil {
+				return uploadInvalid(err, fmt.Sprintf("/chunks/%d", i))
+			}
+			ch.Bytes = obj.Size
+		}
+		if err := s.d.Store.IndexChunk(ctx, run, ch); err != nil {
 			return err //nolint:wrapcheck // the store names the write
 		}
 	}

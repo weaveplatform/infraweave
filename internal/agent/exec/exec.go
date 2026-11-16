@@ -110,7 +110,10 @@ func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
 				d.Log.WarnContext(ctx, "log not synced", "run", h.Run, "state", state, "error", err)
 			}
 			rep := r.phase(ctx, state, step.StateVersion)
-			if err := r.log.End(ctx); err != nil {
+			err := r.log.End(ctx)
+			chunks := r.log.Chunks()
+			rep.LogChunks = &chunks
+			if err != nil {
 				d.Log.WarnContext(
 					ctx,
 					"log not flushed",

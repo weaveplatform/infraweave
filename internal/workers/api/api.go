@@ -258,13 +258,15 @@ const (
 // it last learned, the state the phase is, what happened, and what the
 // worker says about it, which the transition records as its note. Delta
 // is the plan's, which a succeeded report of PLANNING carries and no
-// other report does.
+// other report does. LogChunks is how many chunks the worker cut the
+// phase's log into, which a report of the phase's end carries.
 type Report struct {
 	StateVersion int64
 	State        kernel.RunState
 	Event        ReportEvent
 	Details      string
 	Delta        *kernel.PlanDelta
+	LogChunks    *int64
 }
 
 // Action is what a report's answer tells the worker to do.
@@ -325,11 +327,13 @@ type SignedUpload struct {
 }
 
 // LogChunk is an uploaded log chunk: its sequence number and when its
-// first and last lines were written.
+// first and last lines were written. Lost is a chunk the worker gave up
+// uploading, which has no object.
 type LogChunk struct {
 	Seq     int64
 	FirstAt time.Time
 	LastAt  time.Time
+	Lost    bool
 }
 
 // Recorded is an uploaded object other than a log chunk, to record by
