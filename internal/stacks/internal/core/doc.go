@@ -15,7 +15,10 @@
 // BindDestroyer binds, and Destroyed deletes it, or clears the mark, when
 // that run ends. Creating a stack whose state infraweave keeps opens its
 // default workspace, in the creation's transaction, through the
-// stacksapi.ManagedState BindManagedState binds. Both ask after the stack's row is locked FOR UPDATE, which
+// stacksapi.ManagedState BindManagedState binds, which imports the state
+// file the creation's stackObjectID names; such a creation needs
+// STACK_MANAGED_STATE_IMPORT on the new stack's space and managed state,
+// refused before anything is written. The guards ask after the stack's row is locked FOR UPDATE, which
 // waits for every Hold. A write bumps the stack's version and appends
 // stacksapi.Changed in
 // the same transaction; Update and Delete take the kernel.Expect of the

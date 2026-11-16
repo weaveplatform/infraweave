@@ -129,7 +129,8 @@ func (s Server) Stack(ctx context.Context, req api.StackRequestObject) (api.Stac
 	}, nil
 }
 
-// StackCreate creates a stack in the space its input names.
+// StackCreate creates a stack in the space its input names, from the
+// state file its stackObjectID names when it names one.
 func (s Server) StackCreate(ctx context.Context, req api.StackCreateRequestObject) (api.StackCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -139,11 +140,14 @@ func (s Server) StackCreate(ctx context.Context, req api.StackCreateRequestObjec
 	if err != nil {
 		return nil, err
 	}
-	slug := ""
+	slug, object := "", ""
 	if req.Body.Slug != nil {
 		slug = *req.Body.Slug
 	}
-	st, err := s.stacks.Create(ctx, p, slug, req.Body.ManageState, in)
+	if req.Body.StackObjectID != nil {
+		object = *req.Body.StackObjectID
+	}
+	st, err := s.stacks.Create(ctx, p, slug, req.Body.ManageState, object, in)
 	if err != nil {
 		return nil, stackError(err, slug)
 	}

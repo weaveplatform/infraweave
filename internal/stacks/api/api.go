@@ -287,9 +287,14 @@ type StackGuard interface {
 //
 // ref: decision 0004
 // ref: decision 0010 § "Storage"
+// ref: decision 0010 § "Upload, import and download URLs"
 type ManagedState interface {
-	// Created opens st's default workspace.
-	Created(ctx context.Context, st Stack) error
+	// Created opens st's default workspace and, when object is not
+	// empty, imports the state file p uploaded under that object ID as
+	// the workspace's first version, marked imported by p. An upload p
+	// did not ask for, or that is gone, too large or no state, is a
+	// *kernel.Invalid pointing at /stackObjectID.
+	Created(ctx context.Context, p kernel.Principal, st Stack, object string) error
 }
 
 // StackMove is a proposed move of a stack from the space it lives in to

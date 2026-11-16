@@ -270,8 +270,7 @@ func (s *Service) release(ctx context.Context, p kernel.Principal, remoteIP stri
 }
 
 // unlocked is the audit entry of p releasing held, the locks on w, from
-// remoteIP, with p as the actor: a run's in-run token acts as the
-// administrative run it is, under Actor.
+// remoteIP, with p as the actor.
 //
 // ref: decision 0015 § "Audit trail"
 func unlocked(p kernel.Principal, remoteIP string, w Workspace, held []Lock) kernel.AuditEntry {
@@ -286,13 +285,9 @@ func unlocked(p kernel.Principal, remoteIP string, w Workspace, held []Lock) ker
 		WorkspaceID string            `json:"workspaceId"`
 		Released    []json.RawMessage `json:"released"`
 	}{w.Name, w.ID.String(), released})
-	actor := kernel.AuditActor{Username: p.Login}
-	if p.Kind == kernel.PrincipalRun {
-		actor = kernel.AuditActor{Username: Actor, Run: p.ActorID}
-	}
 	return kernel.AuditEntry{
 		AccountID: p.AccountID.ULID,
-		Actor:     actor,
+		Actor:     actorOf(p),
 		Action:    ActionBreakLock,
 		EventType: "DELETE",
 		AffectedResource: kernel.AuditResource{
@@ -300,4 +295,14 @@ func unlocked(p kernel.Principal, remoteIP string, w Workspace, held []Lock) ker
 		},
 		RemoteIP: remoteIP,
 	}
+}
+
+// actorOf is the actor of an entry p's call records: a run's in-run
+// token acts as the administrative run it is, under Actor, and any other
+// caller under its username.
+func actorOf(p kernel.Principal) kernel.AuditActor {
+	if p.Kind == kernel.PrincipalRun {
+		return kernel.AuditActor{Username: Actor, Run: p.ActorID}
+	}
+	return kernel.AuditActor{Username: username(p)}
 }

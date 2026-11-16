@@ -40,7 +40,7 @@ func (g *guard) Deleting(_ context.Context, st stacksapi.Stack) error {
 func TestAccServiceGuards(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	st, err := f.svc.Create(ctx, f.admin, "", false, input("Infra"))
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestAccServiceHoldFind(t *testing.T) {
 	f := newFixture(t)
 	in := input("Infra")
 	in.Labels = []string{"autoattach:prod"}
-	st, err := f.svc.Create(ctx, f.admin, "", false, in)
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", in)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,11 +204,11 @@ func TestAccHandlersConfiguration(t *testing.T) {
 	// server to the router, which still reads what is bound later.
 	handed := s
 	admin := kernel.WithPrincipal(t.Context(), f.admin)
-	infra, err := f.svc.Create(t.Context(), f.admin, "", false, input("Infra"))
+	infra, err := f.svc.Create(t.Context(), f.admin, "", false, "", input("Infra"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := f.svc.Create(t.Context(), f.admin, "", false, input("Other"))
+	other, err := f.svc.Create(t.Context(), f.admin, "", false, "", input("Other"))
 	if err != nil {
 		t.Fatal(err)
 	}

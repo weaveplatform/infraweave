@@ -39,22 +39,25 @@ const (
 // Version is a managed state version's metadata, without its contents.
 // Serial and Lineage are nil for a client-encrypted version, whose body
 // the server never parses; Run is nil for a version no run wrote, such as
-// an import.
+// an import. ImportedUsername and ImportedAt name who imported an
+// imported version and when, nil for any other.
 //
 // ref: decision 0010 § "Storage"
 type Version struct {
-	ID              kernel.ULID
-	Stack           kernel.ULID
-	Workspace       string
-	Size            int64
-	SHA256          []byte
-	Serial          *int64
-	Lineage         *string
-	ClientEncrypted bool
-	Run             *kernel.ULID
-	Imported        bool
-	Rollback        bool
-	CreatedAt       time.Time
+	ID               kernel.ULID
+	Stack            kernel.ULID
+	Workspace        string
+	Size             int64
+	SHA256           []byte
+	Serial           *int64
+	Lineage          *string
+	ClientEncrypted  bool
+	Run              *kernel.ULID
+	Imported         bool
+	ImportedUsername *string
+	ImportedAt       *time.Time
+	Rollback         bool
+	CreatedAt        time.Time
 }
 
 // Output is one of a state's root module outputs: Value is its JSON

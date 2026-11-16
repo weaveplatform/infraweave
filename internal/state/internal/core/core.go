@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -13,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -100,6 +102,11 @@ type Stacks interface {
 	BySlug(ctx context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error)
 	// InSpaces lists every stack of acct in spaces.
 	InSpaces(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID) ([]stacksapi.Stack, error)
+	// LockForRun reads acct's stack id's settings and locks its row FOR
+	// UPDATE in the context's transaction, which waits for every Hold and
+	// keeps a run from being created on the stack until it ends;
+	// stacksapi.ErrNotFound when acct lacks it.
+	LockForRun(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error)
 }
 
 // Objects are the objects of the states store, and the state files
@@ -117,6 +124,11 @@ type Objects interface {
 	Commit(ctx context.Context, store objectstore.Name, key string) error
 	// Open streams key's live object, unsealed.
 	Open(ctx context.Context, store objectstore.Name, key string) (io.ReadCloser, error)
+	// LockLive locks key's live object's row in the transaction on ctx
+	// and answers its plaintext's size and SHA-256, so one import alone
+	// consumes an upload; objectstore.ErrNotFound when key has no live
+	// object.
+	LockLive(ctx context.Context, store objectstore.Name, key string) (objectstore.Object, error)
 	// Delete marks key's object deleting, in the transaction on ctx, so
 	// it goes once that commits.
 	Delete(ctx context.Context, store objectstore.Name, key string) error
@@ -129,10 +141,13 @@ type Jobs interface {
 }
 
 // Deps are what the service takes: DB, which it opens its transactions
-// on; Store; Stacks, which holds a stack while its workspace is written
-// and names the stacks a workspace search reads; Authz, which names the
-// spaces a caller may read; Objects, which hold each version's object;
-// and Jobs, which enqueues a deleted stack's purge.
+// on; Store; Stacks, which holds a stack while its workspace is written,
+// locks one an import writes and names the stacks a workspace search
+// reads; Authz, which names the spaces a caller may read; Objects, which
+// hold each version's object; Jobs, which enqueues a deleted stack's
+// purge; Runs, which lists the runs under way on a stack an import
+// writes; and Now, the clock an import's time is read from, time.Now
+// when nil.
 type Deps struct {
 	DB      tx.Beginner
 	Store   Store
@@ -140,6 +155,8 @@ type Deps struct {
 	Authz   Authorizer
 	Objects Objects
 	Jobs    Jobs
+	Runs    runsapi.StackRuns
+	Now     func() time.Time
 }
 
 // Service is the state domain's core.
@@ -150,13 +167,19 @@ type Service struct {
 	authz   Authorizer
 	objects Objects
 	jobs    Jobs
+	runs    runsapi.StackRuns
+	now     func() time.Time
 }
 
 // New returns the service over d.
 func New(d Deps) *Service {
+	now := d.Now
+	if now == nil {
+		now = time.Now
+	}
 	return &Service{
 		db: d.DB, store: d.Store, stacks: d.Stacks, authz: d.Authz, objects: d.Objects,
-		jobs: d.Jobs,
+		jobs: d.Jobs, runs: d.Runs, now: now,
 	}
 }
 

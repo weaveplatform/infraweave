@@ -20,7 +20,9 @@
 // size with Head and, on gcs and azureblob, whose URLs bind no SHA-256,
 // reads the object back to compare, and answers the size and SHA-256; a
 // mismatch leaves the row pending. Open reads a live object, opening a
-// sealed one, and Live reports whether an object is live. Delete marks the row deleting and enqueues blob.delete in the caller's
+// sealed one, and Live reports whether an object is live; LockLive locks
+// a live object's row in the caller's transaction and answers its size
+// and SHA-256, for a caller that consumes the object once. Delete marks the row deleting and enqueues blob.delete in the caller's
 // transaction. Reaper is the scheduler's side, over the full Store:
 // blob.delete removes the object and then the row, and blob.expire marks
 // live rows past expires_at and pending rows older than a day deleting,

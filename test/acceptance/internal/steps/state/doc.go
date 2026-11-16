@@ -24,7 +24,11 @@
 // Basic credentials, write a terraform_remote_state of another stack into
 // a run's workspace or a user's workspace of its own, whose credential
 // reaches the tool only in its environment, and check that no Terraform
-// Cloud API is discovered.
+// Cloud API is discovered. The import steps put the state a run's tool
+// pulled at an upload URL, keep the object ID the URL's answer names for
+// a stack's creation or import to name, and check the imported version a
+// stack's default workspace holds, the upload the import consumed and the
+// import the audit trail records.
 //
 // ref: decision 0008
 // ref: decision 0010
@@ -36,10 +40,11 @@
 // pkg/sdk, starts and removes containers through the suite's Docker
 // daemon, reads the scenario's database through SQL and its bucket in
 // RustFS through S3, and writes each run's workspace under the
-// scenario's directory. A failed scenario leaves the relay's calls and
-// each tool's output beside the servers' evidence. It sends a signed
-// URL's request and a backend request of its own with net/http,
-// recording its answer for the answer steps.
+// scenario's directory; the import steps read the versions, uploads and
+// audit trail entries an import writes through SQL. A failed scenario
+// leaves the relay's calls and each tool's output beside the servers'
+// evidence. It sends a signed URL's request and a backend request of its
+// own with net/http, recording its answer for the answer steps.
 //
 // # Dependencies
 //

@@ -51,6 +51,11 @@ func (f *fake) UnlockStack(_ context.Context, p kernel.Principal, addr, slug str
 	return f.many, f.err
 }
 
+func (f *fake) Import(_ context.Context, p kernel.Principal, addr, slug, object string) error {
+	f.who, f.addr, f.arg = p, addr, slug+" "+object
+	return f.err
+}
+
 var (
 	created = time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC)
 	held    = core.Workspace{
@@ -86,8 +91,8 @@ func TestUnitView(t *testing.T) {
 }
 
 // TestUnitHandlers checks that each operation hands the core the caller,
-// an unlock the caller's address too, and its argument, and answers what
-// the core answers.
+// an unlock or import the caller's address too, and its argument, and
+// answers what the core answers.
 func TestUnitHandlers(t *testing.T) {
 	p := kernel.Principal{Kind: kernel.PrincipalUser, AccountID: kernel.NewAccountID(), Login: "dave"}
 	ctx := kernel.WithPrincipal(accessapi.WithClientAddr(t.Context(), "192.0.2.1"), p)
@@ -140,6 +145,14 @@ func TestUnitHandlers(t *testing.T) {
 		aout.Body.UnlockedWorkspaces == nil {
 		t.Errorf("a stack with no lock = %+v, %v", ares, err)
 	}
+
+	ires, err := s.StackManagedStateImport(ctx, api.StackManagedStateImportRequestObject{
+		StackId: "app", Body: &api.StackManagedStateImportJSONRequestBody{State: "obj"},
+	})
+	if iout, _ := ires.(api.StackManagedStateImport200JSONResponse); err != nil || !iout.Body ||
+		f.arg != "app obj" || f.addr != "192.0.2.1" || f.who.Login != "dave" {
+		t.Errorf("StackManagedStateImport = %+v, %v", ires, err)
+	}
 }
 
 // TestUnitRefusals checks that a call without a principal is refused, a
@@ -170,6 +183,12 @@ func TestUnitRefusals(t *testing.T) {
 			_, err := s.TofuWorkspaceUnlockAll(ctx, api.TofuWorkspaceUnlockAllRequestObject{})
 			return err
 		},
+		"import": func(ctx context.Context) error {
+			_, err := s.StackManagedStateImport(ctx, api.StackManagedStateImportRequestObject{
+				Body: &api.StackManagedStateImportJSONRequestBody{},
+			})
+			return err
+		},
 	}
 	for name, call := range calls {
 		if p, ok := errors.AsType[*problem.Error](call(bare)); !ok ||
@@ -180,11 +199,30 @@ func TestUnitRefusals(t *testing.T) {
 			t.Errorf("%s with the core down = %v", name, err)
 		}
 	}
+	importing := func(s Server) error {
+		_, err := s.StackManagedStateImport(ctx, api.StackManagedStateImportRequestObject{
+			StackId: "s", Body: &api.StackManagedStateImportJSONRequestBody{State: "obj"},
+		})
+		return err
+	}
+	err := importing(New(&fake{err: &core.Blocked{Detail: "The stack is not locked."}}))
+	if p, ok := errors.AsType[*problem.Error](err); !ok || p.Problem.Status != http.StatusConflict ||
+		p.Problem.Type != problem.TypePrefix+problem.InvalidState.Slug || p.Problem.Detail != "The stack is not locked." {
+		t.Errorf("a blocked import = %v", err)
+	}
+	inv := &kernel.Invalid{Errors: []kernel.FieldError{{Pointer: "/state"}}}
+	if err := importing(New(&fake{err: inv})); !errors.Is(err, inv) {
+		t.Errorf("a refused upload = %v", err)
+	}
 	for _, err := range []error{core.ErrNotFound, stacksapi.ErrNotFound} {
 		s := New(&fake{err: err})
 		_, uerr := s.TofuWorkspaceUnlock(ctx, api.TofuWorkspaceUnlockRequestObject{TofuWorkspaceId: "w"})
 		_, aerr := s.TofuWorkspaceUnlockAll(ctx, api.TofuWorkspaceUnlockAllRequestObject{StackId: "s"})
-		for _, got := range []error{uerr, aerr} {
+		got := []error{uerr, aerr}
+		if errors.Is(err, stacksapi.ErrNotFound) {
+			got = append(got, importing(s))
+		}
+		for _, got := range got {
 			if p, ok := errors.AsType[*problem.Error](got); !ok ||
 				p.Problem.Status != http.StatusNotFound {
 				t.Errorf("%v = %v, want 404", err, got)

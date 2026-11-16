@@ -310,22 +310,38 @@ does (decision [0003](0003-api-conventions.md)).
   | It is at most 100 MiB | `422`, reason `maximum` | `422`, reason `maximum` |
   | It is a JSON state with `version` 4, or a client-encrypted envelope | `422`, reason `rule` | `422`, reason `rule` |
 
-  - **At creation**, the checks run through `stacksapi.ManagedState`, the one port through
-    which `stackCreate` reaches `state`, and which opens the default workspace
-    (§ "Storage"). `state` implements it and the assembly wires it in, as
-    `stacksapi.StackGuard` is ([0004](0004-repository-architecture.md)). `stackCreate`
-    calls it inside the creation's transaction, so a failed check fails the create and
-    nothing is created.
+  - A client-encrypted envelope is a JSON object with `encrypted_data` and
+    `encryption_version` and neither `serial` nor `lineage`, as OpenTofu's state
+    encryption writes it. A plain state is checked for `version` 4 at import alone; a
+    run's write takes any plain state.
+  - **At creation**, `stackCreate` decides the first two checks itself, in its
+    transaction before it writes the stack: `STACK_MANAGED_STATE_IMPORT` on the new
+    stack's space beside the route's `STACK_CREATE`, as a move decides its second action,
+    and that the stack keeps its state, as `manageState` or a Terragrunt stack's
+    `useStateManagement` decides. The upload's checks and the import run through
+    `stacksapi.ManagedState`, the one port through which `stackCreate` reaches `state`,
+    and which opens the default workspace (§ "Storage"), with the caller and the object
+    ID. `state` implements it and the assembly wires it in, as `stacksapi.StackGuard` is
+    ([0004](0004-repository-architecture.md)). `stackCreate` calls it inside the
+    creation's transaction, after the stack's row, so a failed check fails the create
+    and nothing is created.
   - **Later**, the checks and the version's insert run in one transaction that holds the
     stack's row `FOR UPDATE`, which waits for `stacksapi.Hold` and keeps a run from being
-    created until the import commits. The idle check reads `runsapi`'s list of a stack's
-    runs that have not ended, with their types.
+    created until the import commits. The idle check reads `runsapi.StackRuns`, the
+    runs domain's list of a stack's runs that have not ended, with their types.
+  - Either way the import locks the upload's `blob_objects` row `FOR UPDATE` before it
+    reads it, so of two imports of one upload the second waits and then finds it gone.
+    A refused file leaves its resealed object `pending`, for `blob.expire`: the refusal
+    rolls back the import's transaction, which a deletion would join, while the pending
+    row is written outside it.
   - An import acts on the default workspace. It reseals the file into `states` as a new
-    version with `imported`, `imported_username` and `imported_at` set, even when it
-    matches the current version, since an import is a user's act and is recorded as one.
+    version with `imported`, `imported_username` (the caller's login, or its actor's ID
+    without one) and `imported_at` set, even when it matches the current version, since an
+    import is a user's act and is recorded as one.
     It then deletes the upload
     ([16 section 5](../reference/16-state-management.md#5-importing-state)).
-  - It records the audit action `stack.state_import` (decision 0015).
+  - It records the audit action `stack.state_import` (decision 0015), event type `UPDATE`
+    on the stack, with the new version's ID.
   - The problem slugs are those of decision [0022](0022-api-errors-and-update-semantics.md);
     the `detail` names the failed check.
 - **`stateDownloadUrl`** needs `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` on the stack's
