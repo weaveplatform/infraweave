@@ -8,8 +8,11 @@
 // location without following it, so the bearer token never reaches the
 // store. Put and PutFile upload to a pre-signed URL an upload declaration
 // answered, with no bearer token, PutFile streaming a file of any size.
-// Status reads an error's status. Base is the worker API's base URL under
-// the server's public URL a pool token names.
+// Status reads an error's status. A store's 400 or 403 to a pre-signed
+// URL, RefusesSignature's rule, is marked ErrSigned (Signed), which every
+// signed transfer of the launcher and the runner retries with a URL
+// signed afresh. Base is the worker API's base URL under the server's
+// public URL a pool token names.
 //
 // ref: decision 0008 § "The worker API"
 //

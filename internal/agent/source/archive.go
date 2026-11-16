@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/workspace"
 )
 
@@ -35,8 +36,9 @@ func (f *Fetcher) archive(ctx context.Context, dir, src string) error {
 }
 
 // download hands read the body src answers, at most maxArchive bytes of
-// it. No error names src, whose signature lets anyone holding it read
-// the object.
+// it. src is pre-signed, so a refusal of its signature is marked
+// client.ErrSigned for the caller to ask for a URL signed afresh. No error
+// names src, whose signature lets anyone holding it read the object.
 func (f *Fetcher) download(ctx context.Context, src string, read func(io.Reader) error) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src, nil)
 	if err != nil {
@@ -48,7 +50,11 @@ func (f *Fetcher) download(ctx context.Context, src string, read func(io.Reader)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%w: answered %s", ErrDownload, resp.Status)
+		err := fmt.Errorf("%w: answered %s", ErrDownload, resp.Status)
+		if client.RefusesSignature(resp.StatusCode) {
+			return client.Signed(err) //nolint:wrapcheck // err names the download
+		}
+		return err
 	}
 	body := &bounded{r: resp.Body, n: f.maxArchive}
 	err = read(body)

@@ -66,8 +66,9 @@ type Suite struct {
 	// areas register each area's steps on every scenario.
 	areas []func(*godog.ScenarioContext, *World)
 
-	mu      sync.Mutex
-	skipped map[string][]string // scenario name → the tags that needed Docker
+	mu       sync.Mutex
+	skipped  map[string][]string // scenario name → the tags that needed Docker
+	refusals []scenarioRefusals  // each stressed scenario's store relay's
 }
 
 func newSuite(t *testing.T) *Suite {
@@ -267,6 +268,15 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 			Concurrency: runtime.GOMAXPROCS(0),
 		},
 	}.Run()
+	if s.Stress.store() {
+		total, err := writeRefusals(s.Out, s.refusals)
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Printf("acceptance: the store relay refused %d of %d signed uploads and %d of %d "+
+			"signed reads (%s)\n", total.UploadsRefused, total.Uploads, total.ReadsRefused,
+			total.Reads, filepath.Join(s.Out, RefusalsFile))
+	}
 	if len(s.skipped) > 0 {
 		names := slices.Sorted(func(yield func(string) bool) {
 			for n := range s.skipped {
@@ -326,6 +336,9 @@ func (s *Suite) initScenario(sc *godog.ScenarioContext) {
 			err = errors.Join(err, srv.Stop(ctx))
 		}
 		if w.storeRelay != nil {
+			s.mu.Lock()
+			s.refusals = append(s.refusals, scenarioRefusals{w.Name, w.storeRelay.Refusals()})
+			s.mu.Unlock()
 			err = errors.Join(err, w.storeRelay.Close(ctx))
 		}
 		if w.db != nil {

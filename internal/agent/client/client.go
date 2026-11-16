@@ -60,6 +60,35 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %d %s", e.Op, e.Status, e.Detail)
 }
 
+// ErrSigned marks a store's refusal of a request to a pre-signed URL as a
+// refusal of its signature: one that expired while the transfer waited,
+// or one dated ahead of the store's clock, as a store whose clock differs
+// from the server's sees it. Only a URL signed afresh can succeed where
+// it failed, so every signed transfer asks the worker API for a new one
+// and tries again within its budget.
+//
+// ref: decision 0008 § "Logs and artifacts"
+var ErrSigned = errors.New("the store refused the signed request")
+
+// RefusesSignature reports whether status, a store's answer to a request
+// to a pre-signed URL, refuses its signature: 400 or 403, which S3, GCS
+// and Azure answer to a signature that is expired, early or does not
+// match.
+func RefusesSignature(status int) bool {
+	return status == http.StatusBadRequest || status == http.StatusForbidden
+}
+
+// Signed is err, a store's refusal of a pre-signed URL's signature, marked
+// as ErrSigned with its message unchanged, so a run's note reads as the
+// store's answer.
+func Signed(err error) error { return signed{err} }
+
+type signed struct{ error }
+
+func (s signed) Unwrap() error { return s.error }
+
+func (signed) Is(target error) bool { return target == ErrSigned }
+
 // Status is err's status when it is an *Error, else 0.
 func Status(err error) int {
 	var e *Error
@@ -187,7 +216,7 @@ const maxStoreAnswer = 64 << 10
 // Put uploads body to u, a pre-signed URL UploadURLs answered, with the
 // headers it names and no bearer token, since the URL is its own
 // credential; no error names the URL. A store's refusal is an *Error
-// with its status.
+// with its status, marked ErrSigned when it refuses the signature.
 func (c *Client) Put(ctx context.Context, u wire.SignedUpload, body []byte) error {
 	return c.put(ctx, u, bytes.NewReader(body), int64(len(body)))
 }
@@ -230,7 +259,11 @@ func (c *Client) put(ctx context.Context, u wire.SignedUpload, body io.Reader, s
 	defer res.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, maxStoreAnswer))
 	if res.StatusCode/100 != 2 {
-		return &Error{Op: op, Status: res.StatusCode}
+		err := &Error{Op: op, Status: res.StatusCode}
+		if RefusesSignature(res.StatusCode) {
+			return Signed(err)
+		}
+		return err
 	}
 	return nil
 }

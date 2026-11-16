@@ -126,6 +126,45 @@ func TestUnitSaveRetries(t *testing.T) {
 	})
 }
 
+// TestUnitSaveSignedRefusal checks that a PUT whose signature the store
+// refuses is declared again, which signs it afresh, and sent after 1
+// second; that the worker API's own 403 fails the save at once; and that
+// a store refusing the signature until the next wait would pass ten
+// minutes fails it with the store's answer.
+func TestUnitSaveSignedRefusal(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		skewed := client.Signed(&client.Error{Op: "upload plan.json", Status: 403})
+		s := &stalling{errs: map[string][]error{"put": {skewed}}}
+		began := time.Now()
+		if note := saving(t, s).save(t.Context(), 5, plan.Plan{}); note != "" ||
+			time.Since(began) != time.Second {
+			t.Errorf("a refused signature: %q after %s", note, time.Since(began))
+		}
+		if want := []string{"urls", "put", "urls", "put", "put", "artifacts"}; !slices.Equal(
+			s.calls, want) {
+			t.Errorf("calls %q, want %q", s.calls, want)
+		}
+
+		s = &stalling{errs: map[string][]error{
+			"urls": {&client.Error{Op: "declare uploads", Status: 403}},
+		}}
+		began = time.Now()
+		if note := saving(t, s).save(t.Context(), 5, plan.Plan{}); note !=
+			"The plan's results could not be uploaded: declare uploads: 403 Forbidden." ||
+			time.Since(began) != 0 {
+			t.Errorf("the worker API's 403: %q after %s", note, time.Since(began))
+		}
+
+		s = &stalling{always: client.Signed(&client.Error{Op: "upload workspace", Status: 400})}
+		began = time.Now()
+		if note := saving(t, s).save(t.Context(), 5, plan.Plan{}); note !=
+			"The plan's results could not be uploaded: upload workspace: 400 Bad Request." ||
+			time.Since(began) > reportRetry || time.Since(began) < reportRetry-reportWaitMax {
+			t.Errorf("a signature always refused: %q after %s", note, time.Since(began))
+		}
+	})
+}
+
 // TestUnitSaveNotes checks the note of a save that cannot seal: a run ID
 // that is no ULID, a plan's JSON that is gone, an artifact key that is no
 // AES-256 key, and a temporary directory that is gone.

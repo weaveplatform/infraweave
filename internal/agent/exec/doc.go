@@ -36,9 +36,10 @@
 // internal/agent/workspace, which the server cannot open. Each is written
 // to the run's temporary directory, declared, PUT to its pre-signed URL
 // and recorded, every step taken again for up to ten minutes while the
-// worker API or the store is unavailable; a save that fails fails the
-// phase. A run that resumes in a new container to apply or replan its
-// saved workspace runs the init hooks and command first, since the
+// worker API or the store is unavailable or the store refuses the URL's
+// signature, which a new declaration signs afresh; a save that fails
+// fails the phase. A run that resumes in a new container to apply or
+// replan its saved workspace runs the init hooks and command first, since the
 // workspace was saved without its providers; a replan's plan command
 // renders the specification's targets, each one -target word. Applying
 // runs getOutputs after apply, its output the outputs file, and fails on

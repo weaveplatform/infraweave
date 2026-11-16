@@ -148,6 +148,12 @@ jobs:
         run: |
           n=$(jq '[.[].elements[]?] | length' cover/accept/cucumber.json)
           line="accept-runs under stress ran ${n} scenarios."
+          # A stress of CPUs alone starts no store relay, so it refuses nothing.
+          refusals=test/acceptance/out/store-refusals.json
+          if [ -f "$refusals" ]; then
+            line="$line $(jq -r '.total | "The store relay refused \(.uploadsRefused) of \(.uploads)"
+              + " signed uploads and \(.readsRefused) of \(.reads) signed reads."' "$refusals")"
+          fi
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 

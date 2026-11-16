@@ -2,10 +2,13 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -100,9 +103,12 @@ func send(ctx context.Context, t *testing.T, method, url string) (int, string) {
 }
 
 // TestUnitStoreRelay checks that a refusal share of 1 answers every
-// signed upload with a skewed store's 403 and passes the rest on with
-// their Host, that a share of 0 passes every upload, that a share of 0.2
-// refuses every fifth, and that the relay records each call.
+// signed upload, and every signed read of a saved workspace or an
+// uploaded archive, with a skewed store's 403, and passes the rest on
+// with their Host, among them a signed read of a log; that a share of 0
+// passes every upload, that a share of 0.2 refuses every fifth upload
+// from the fifth and every fifth read from the first, and that the relay
+// counts and records each call.
 func TestUnitStoreRelay(t *testing.T) {
 	s := newStore(t)
 	r := startStoreRelay(t, s, Stress{Refuse: 1})
@@ -117,7 +123,14 @@ func TestUnitStoreRelay(t *testing.T) {
 		}
 	}
 	if code, _ := send(t.Context(), t, http.MethodGet, signed); code != http.StatusOK {
-		t.Errorf("a signed read = %d", code)
+		t.Errorf("a signed read of a log = %d", code)
+	}
+	for _, store := range []string{"workspaces", "uploads"} {
+		code, body := send(t.Context(), t, http.MethodGet,
+			r.URL+"/bucket/"+store+"/run/workspace?X-Amz-Signature=abc")
+		if code != http.StatusForbidden || !strings.Contains(body, "RequestTimeTooSkewed") {
+			t.Errorf("a launcher's signed read of %s under refuse=1 = %d %s", store, code, body)
+		}
 	}
 	host := strings.TrimPrefix(r.URL, "http://")
 	want := []string{
@@ -127,7 +140,7 @@ func TestUnitStoreRelay(t *testing.T) {
 		t.Errorf("the store saw %q, want %q", got, want)
 	}
 	calls := r.Calls()
-	if len(calls) != 4 || calls[0] != (Call{
+	if len(calls) != 6 || calls[0] != (Call{
 		Method: http.MethodPut, Path: "/bucket/logs/0", Status: http.StatusForbidden,
 	}) ||
 		calls[3].Status != http.StatusOK {
@@ -150,6 +163,58 @@ func TestUnitStoreRelay(t *testing.T) {
 	}
 	if len(refused) != 2 || refused[0] != 4 || refused[1] != 9 {
 		t.Errorf("refuse=0.2 refused uploads %v of 10, want 4 and 9", refused)
+	}
+	refused = refused[:0]
+	for i := range 10 {
+		if code, _ := send(t.Context(), t, http.MethodGet,
+			fifth.URL+"/bucket/workspaces/run/workspace?X-Amz-Signature=abc"); code == http.StatusForbidden {
+			refused = append(refused, i)
+		}
+	}
+	if len(refused) != 2 || refused[0] != 0 || refused[1] != 5 {
+		t.Errorf("refuse=0.2 refused reads %v of 10, want 0 and 5, counted apart from uploads",
+			refused)
+	}
+	if got := fifth.Refusals(); got != (Refusals{
+		Uploads: 10, UploadsRefused: 2, Reads: 10, ReadsRefused: 2,
+	}) {
+		t.Errorf("refuse=0.2 counted %+v", got)
+	}
+	if got := r.Refusals(); got != (Refusals{
+		Uploads: 1, UploadsRefused: 1, Reads: 2, ReadsRefused: 2,
+	}) {
+		t.Errorf("refuse=1 counted %+v", got)
+	}
+}
+
+// TestUnitWriteRefusals checks that a stressed run's refusals are written
+// to RefusalsFile with their total and the scenarios sorted by name, and
+// that an evidence directory that cannot be made is an error.
+func TestUnitWriteRefusals(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "out")
+	total, err := writeRefusals(out, []scenarioRefusals{
+		{"b", Refusals{Uploads: 5, UploadsRefused: 1, Reads: 1}},
+		{"a", Refusals{Uploads: 10, UploadsRefused: 2, Reads: 5, ReadsRefused: 1}},
+	})
+	want := Refusals{Uploads: 15, UploadsRefused: 3, Reads: 6, ReadsRefused: 1}
+	if err != nil || total != want {
+		t.Fatalf("writeRefusals = %+v, %v", total, err)
+	}
+	data, err := os.ReadFile(filepath.Join(out, RefusalsFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Total     Refusals           `json:"total"`
+		Scenarios []scenarioRefusals `json:"scenarios"`
+	}
+	if err := json.Unmarshal(data, &got); err != nil || got.Total != want ||
+		len(got.Scenarios) != 2 || got.Scenarios[0].Scenario != "a" ||
+		got.Scenarios[1].Refusals != (Refusals{Uploads: 5, UploadsRefused: 1, Reads: 1}) {
+		t.Errorf("%s = %s, %v", RefusalsFile, data, err)
+	}
+	if _, err := writeRefusals(filepath.Join(out, RefusalsFile, "x"), nil); err == nil {
+		t.Error("an evidence directory under a file was made")
 	}
 }
 

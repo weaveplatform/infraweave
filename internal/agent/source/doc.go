@@ -13,7 +13,10 @@
 // and extracted the same way by internal/agent/workspace. The
 // specification's project root must then be a directory of the
 // workspace, which is handed to the run's user: owned by UID and GID 1983
-// where the launcher may change owners, else open to every user.
+// where the launcher may change owners, else open to every user. A
+// store's 400 or 403 to either download is marked client.ErrSigned, the
+// store's refusal of the URL's signature, for the caller to fetch again
+// from a URL signed afresh.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 // ref: decision 0012 § "Source access for runs"
@@ -28,6 +31,6 @@
 //
 // # Dependencies
 //
-// It imports go-git and internal/agent/wire and workspace.
+// It imports go-git and internal/agent/client, wire and workspace.
 // internal/agent/launcher calls it while it prepares a run.
 package source

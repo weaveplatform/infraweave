@@ -62,11 +62,14 @@ var ErrAction = errors.New("the server answered an unknown action")
 var errMovedOn = errors.New("the run moved on")
 
 // transient reports whether err is a failure a later attempt may not
-// meet: no answer, or the server's or the store's being unavailable for
-// now.
+// meet: no answer, the server's or the store's being unavailable for now,
+// or the store's refusal of a signature a new declaration replaces.
 func transient(ctx context.Context, err error) bool {
 	if ctx.Err() != nil {
 		return false
+	}
+	if errors.Is(err, client.ErrSigned) {
+		return true
 	}
 	s := client.Status(err)
 	return s == 0 && !errors.Is(err, errUpload) || s == http.StatusTooManyRequests ||

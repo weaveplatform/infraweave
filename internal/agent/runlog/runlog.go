@@ -54,11 +54,6 @@ var addMask = []byte("::add-mask")
 // URL.
 var errAnswer = errors.New("the worker API answered no upload URL")
 
-// errSigned marks a PUT the store refused as a signed request it does not
-// accept, 400 or 403: a signature that expired while the chunk waited, or
-// one dated ahead of the store's clock. A new declaration signs afresh.
-var errSigned = errors.New("the store refused the signed upload")
-
 // API is the worker API's side of a run's log; *client.Client is one.
 type API interface {
 	UploadURLs(
@@ -507,9 +502,6 @@ func (l *Log) send(
 			return errAnswer
 		}
 		if err := l.d.API.Put(ctx, ups[0], body); err != nil {
-			if s := client.Status(err); s == http.StatusBadRequest || s == http.StatusForbidden {
-				return fmt.Errorf("%w: %w", errSigned, err)
-			}
 			return err //nolint:wrapcheck // client names the upload
 		}
 		*uploaded = true
@@ -525,7 +517,7 @@ func transient(ctx context.Context, err error) bool {
 	if ctx.Err() != nil {
 		return false
 	}
-	if errors.Is(err, errSigned) {
+	if errors.Is(err, client.ErrSigned) {
 		return true
 	}
 	s := client.Status(err)

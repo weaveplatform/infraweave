@@ -569,11 +569,30 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `run_log_chunks(run, state_version, seq, state, object key, bytes, first_at, last_at, lost)`;
   a chunk already indexed is skipped, so a repeated `seq` is not duplicated.
   Readers tail the index; logs therefore exist per state and state version.
+- **A signature the store refuses.** Every transfer to or from a
+  pre-signed URL, the runner's and the launcher's alike, takes a `400` or
+  `403` from the store as a refusal of the URL's signature. That is how a
+  store answers a signature that expired while the transfer waited, or one
+  dated ahead of its clock, as a store whose clock differs from the
+  server's sees it. The transfer asks the worker API for a URL signed
+  afresh and tries again within its budget, as it does when the worker API
+  or the store cannot take it for now:
+  - a log chunk, from a new declaration, within the log's budget below;
+  - a plan's artifacts, its saved workspace, the outputs and a CPU
+    profile, from a new declaration, within the ten minutes a save takes.
+    A save still refused fails the phase with the store's answer, but a
+    profile's, which is noted in the log;
+  - a local preview's archive and a saved workspace the launcher fetches,
+    from the specification or the saved workspace's location asked for
+    again, after a backoff that doubles from 1 to 30 seconds, for ten
+    minutes. One still refused fails the run's preparation with the store's
+    answer.
+
+  A URL the API answers a client, such as a log's download, is the
+  client's to ask for again.
 - **A chunk that cannot be stored.** A chunk the worker API or the store
-  cannot take for now is sent again, as a report is. So is a `PUT` the
-  store refuses with `400` or `403`, from a new declaration that signs it
-  afresh: that is how a store answers a signature that expired while the
-  chunk waited, or one its clock disagrees with. The ten-minute budget is
+  cannot take for now is sent again, as a report is, and so is one whose
+  signature the store refuses, as above. The ten-minute budget is
   the log's, not each chunk's. It runs from the first failure, a chunk
   taken renews it, and once a chunk has spent it each later chunk is sent
   once until one is taken, so an outage holds the run's output for ten
@@ -1139,6 +1158,20 @@ offers this policy is available to it alone; 0009 lists built-ins.
   refuses with `403` stored from a second declaration, one refused for ten
   minutes committed as lost, a chunk after the budget is spent sent once,
   the budget renewed once a chunk is taken, and the state's chunk count.
+- `TestUnitClientSignedRefusal` (`internal/agent/client`) and
+  `TestUnitFetchSignedRefusal` (`internal/agent/source`): a store's `400`
+  or `403` to a pre-signed upload, archive or saved workspace is marked a
+  refused signature with the store's answer as its message, and a `404`,
+  a `429`, a `503` and the worker API's own refusals are not.
+- `TestUnitSaveSignedRefusal` (`internal/agent/exec`) and
+  `TestUnitLauncherFetchesAgainARefusedSignature`
+  (`internal/agent/launcher`), in virtual time: a refused upload declared
+  again and stored after 1 second, the worker API's own `403` failing the
+  save at once, and one refused for ten minutes failing it with the store's
+  answer; a refused archive fetched again after 1 and 2 seconds from the
+  specification asked for again, a refused saved workspace restored from
+  its location asked for again, and one refused for ten minutes failing
+  the preparation.
 - `TestUnitLogsPage`, `TestUnitLogsCompact` and `TestUnitLogsDownload`
   (`internal/runs/internal/core/logs`): a lost chunk, a middle gap and a
   trailing gap below the reported count each read and compacted as the

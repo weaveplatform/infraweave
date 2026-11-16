@@ -208,9 +208,20 @@ everywhere, and the reason names where the contract checks it instead.
   - an `@objectstore` scenario's servers reach the object store through a
     store relay on the host's loopback, which the URLs they sign name. It
     holds each request for the latency, refuses the share of signed
-    uploads with the `403 RequestTimeTooSkewed` a store whose clock
-    differs from the signer's answers, spread evenly, and records each
-    call into a failed scenario's evidence, `store-calls.json`;
+    uploads, and apart from them of the launcher's signed reads of a saved
+    workspace or a local preview's archive, with the
+    `403 RequestTimeTooSkewed` a store whose clock differs from the
+    signer's answers, spread evenly: uploads from the fifth, and reads,
+    one or two a scenario, from the first, while a scenario's first
+    upload may be a step's own, which nothing signs afresh. It records
+    each call into a failed scenario's evidence, `store-calls.json`. A
+    log or a profile a step reads through a URL the API signed for it
+    passes, since only its client could ask for that URL again. A run
+    that passes leaves no other trace of its refusals, so every stressed
+    run writes
+    `store-refusals.json` beside the evidence: each scenario's count of
+    the uploads and reads the relay could refuse and refused, and their
+    total, which the run prints and the `stress` job's summary reports;
   - each run container, any container labelled `io.infraweave.run`, is
     capped at the CPUs with `docker update` as the daemon creates it, and
     each process mode runs with `GOMAXPROCS` at the CPUs rounded up.
@@ -396,7 +407,7 @@ coverage it would contribute is not waived.
 | `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` and `console`, whose TypeScript coverage has its own thresholds | 10 min | yes |
 | `postgres-next` | `ubuntu-latest` | the `sqltest` suites, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)), selected by `INFRAWEAVE_POSTGRES=next` | 20 min | no |
 | `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
-| `stress` | `ubuntu-latest`, scheduled weekly and on demand | `make accept-stress PARTITION=runs`, uploading a failed scenario's evidence | 90 min | no |
+| `stress` | `ubuntu-latest`, scheduled weekly and on demand | `make accept-stress PARTITION=runs`, reporting the relay's refusals and uploading a failed scenario's evidence | 90 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
 | `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's and OpenTofu's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
 | `vcs-lab` | `ubuntu-latest`, scheduled nightly | `sourcetest` and the `@vcs-lab` scenarios against GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps repositories created for the run and destroyed after it | 45 min | no |
@@ -585,11 +596,15 @@ coverage it would contribute is not waived.
 - `test/acceptance/features/runs/terraform.feature` and
   `runs/tofu.feature` carry the first real-run scenarios, and
   `runs/runner_image.feature` a public runner image's.
-- `TestUnitStoreRelay`, `TestUnitStoreRelayLatency` and
-  `TestUnitParseStress` (`test/acceptance/internal/harness`) prove the
-  stress: a refusal share of 1 refuses every signed upload with a skewed
-  store's `403`, a share of 0 refuses none and 0.2 every fifth, unsigned
-  requests pass with their `Host`, and the latency holds each request.
+- `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
+  `TestUnitWriteRefusals` and `TestUnitParseStress`
+  (`test/acceptance/internal/harness`) prove the stress: a refusal share
+  of 1 refuses every signed upload, and every signed read of a saved
+  workspace or an uploaded archive, with a skewed store's `403`, a share
+  of 0 refuses none and 0.2 every fifth upload from the fifth and every
+  fifth read from the first, each counted, unsigned requests and a signed read of a log pass with their
+  `Host`, the latency holds each request, and the counts land in
+  `store-refusals.json` with their total.
 - `make verify-parity` and the state check run in the `parity` job; the
   existing `api/reference_spec.feature` and `api/bundle.feature` keep running
   in `accept-core`.
