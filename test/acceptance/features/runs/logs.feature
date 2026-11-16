@@ -139,7 +139,7 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
     And the answer's action is '"SPACE_READ"'
 
   @op:runLogs @op:runLogsDownloadURL @case:failure
-  Scenario: A caller who cannot read the run, an unknown run, and a token that is not this log's are refused
+  Scenario: A caller who cannot read the run, an unknown run, a state no run has, a state version out of range, and a token that is not this log's are refused
     When token "m" sends "GET /api/v1/runs/{run}/logs?state=PLANNING" through A
     Then it answers a 404 problem "not-found"
     When token "m" sends "GET /api/v1/runs/{run}/logs-download-url?state=PLANNING" through B
@@ -148,6 +148,15 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
     Then it answers a 404 problem "not-found"
     When token "h" sends "GET /api/v1/runs/01JBQ6Q4V2ZK5Y3W8N7M6P5R4T/logs-download-url?state=PLANNING" through B
     Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/runs/{run}/logs?state=LATER" through A
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "#/query/state" as "enum"
+    When token "h" sends "GET /api/v1/runs/{run}/logs-download-url?state=LATER" through B
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "#/query/state" as "enum"
+    When token "h" sends "GET /api/v1/runs/{run}/logs?state=PLANNING&stateVersion=3000000000" through A
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "#/query/stateVersion" as "format"
     When token "h" sends "GET /api/v1/runs/{run}/logs?state=PLANNING" through A
     And the answer's nextToken is kept as "planning"
     And token "h" sends "GET /api/v1/runs/{run}/logs?state=INITIALIZING&token={planning}" through B

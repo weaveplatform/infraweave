@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -40,6 +41,24 @@ func wantTyped(t *testing.T, rec *httptest.ResponseRecorder, typ problem.Type) {
 	}
 	if rec.Code != typ.Status || p.Type != problem.TypePrefix+typ.Slug || p.Title != typ.Title {
 		t.Errorf("got %d %+v, want %s", rec.Code, p, typ.Slug)
+	}
+}
+
+// wantRefused fails unless rec is 400 invalid-request naming one field
+// error, want's pointer and reason, with a detail that begins subject.
+func wantRefused(
+	t *testing.T,
+	rec *httptest.ResponseRecorder,
+	subject string,
+	want problem.FieldError,
+) {
+	t.Helper()
+	wantTyped(t, rec, problem.InvalidRequest)
+	var p problem.Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || len(p.Errors) != 1 ||
+		p.Errors[0].Pointer != want.Pointer || p.Errors[0].Reason != want.Reason ||
+		p.Errors[0].Message == "" || !strings.HasPrefix(p.Detail, subject+" ") {
+		t.Errorf("answers %s, want %s at %s from %s", rec.Body, want.Reason, want.Pointer, subject)
 	}
 }
 
@@ -80,7 +99,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		},
 	} {
 		got := ops[key]
-		got.Required, got.Body = nil, nil
+		got.Required, got.Body, got.Query = nil, nil, nil
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("%s: %+v, want %+v", key, got, want)
 		}
@@ -630,9 +649,10 @@ func TestUnitSignedURLRoutes(t *testing.T) {
 
 // TestUnitStrictBodies checks that an operation whose body schema forbids
 // unknown properties answers 400 invalid-request, before its handler, for
-// an unknown field, a missing required one or a wrong type, and passes a
-// good body with or without a Content-Type; a lenient operation's body is
-// not checked. The served apiKeyCreate is strict.
+// an unknown field, a missing required one or a wrong type, each named by
+// its pointer and reason, and for a body that is empty, and passes a good
+// body with or without a Content-Type; a lenient operation's body is not
+// checked. The served apiKeyCreate is strict.
 func TestUnitStrictBodies(t *testing.T) {
 	ops := apiOperations()
 	if ops["POST "+BaseURL+"/api-keys"].Body == nil {
@@ -688,28 +708,14 @@ func TestUnitStrictBodies(t *testing.T) {
 		r.ServeHTTP(rec, req)
 		return rec
 	}
-	for name, body := range map[string]string{
-		"unknown field": `{"name":"k","admin":false}`,
-		"missing":       `{}`,
-		"wrong type":    `{"name":7}`,
-		"empty":         ``,
+	wantTyped(t, post("/strict", ``, "application/json"), problem.InvalidRequest)
+	for body, want := range map[string]problem.FieldError{
+		`{"name":"k","admin":false}`:     {Pointer: "/admin", Reason: kernel.ReasonUnknownField},
+		`{"name":"k","meta":{"a/b~":1}}`: {Pointer: "/meta/a~1b~0", Reason: kernel.ReasonUnknownField},
+		`{}`:                             {Pointer: "/name", Reason: kernel.ReasonRequired},
+		`{"name":7}`:                     {Pointer: "/name", Reason: kernel.ReasonType},
 	} {
-		rec := post("/strict", body, "application/json")
-		wantTyped(t, rec, problem.InvalidRequest)
-		if name == "unknown field" && !strings.Contains(rec.Body.String(), "admin") {
-			t.Errorf("the unknown field's problem does not name it: %s", rec.Body)
-		}
-	}
-	for body, want := range map[string]string{
-		`{"name":"k","admin":false}`:     "/admin",
-		`{"name":"k","meta":{"a/b~":1}}`: "/meta/a~1b~0",
-	} {
-		var p problem.Problem
-		rec := post("/strict", body, "application/json")
-		if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || len(p.Errors) != 1 ||
-			p.Errors[0].Pointer != want || p.Errors[0].Reason != kernel.ReasonUnknownField {
-			t.Errorf("%s answers %s, want an unknown-field at %s", body, rec.Body, want)
-		}
+		wantRefused(t, post("/strict", body, "application/json"), "The body", want)
 	}
 	if runs != 0 {
 		t.Fatalf("a refused body reached the handler %d times", runs)
@@ -724,32 +730,44 @@ func TestUnitStrictBodies(t *testing.T) {
 	}
 }
 
-// TestUnitStrictQueries checks that an operation whose query parameter
-// carries a JSON object its schema closes answers 400 invalid-request,
-// before its handler, for an unknown member, named by its pointer under
-// the parameter, a value its enum lacks, a wrong type, JSON that does not
-// parse and a missing required parameter, and passes a good one; a
-// lenient parameter is not checked. The served runChangesV3 and
-// stackSearchManagedEntities are strict.
+// TestUnitStrictQueries checks that an operation's query parameters are
+// checked against their schemas before its handler: 400 invalid-request,
+// naming the value by its pointer under the parameter and the reason, for
+// an unknown member of a closed JSON object, a value its enum lacks, a
+// wrong type, a missing required parameter or member, a bound, an int32
+// out of range and a pattern, never quoting the value; JSON that does not
+// parse is refused naming nothing. An open object takes members its
+// schema does not name, a good request passes, and an operation's
+// parameters are its own. The served runChangesV3 and
+// stackSearchManagedEntities check their input and runLogs its state.
 func TestUnitStrictQueries(t *testing.T) {
 	ops := apiOperations()
-	for _, key := range []string{
-		"GET /runs/{runId}/changes-v3", "GET /stacks/{stackId}/search-managed-entities",
-	} {
+	names := func(key string) []string {
 		method, path, _ := strings.Cut(key, " ")
-		if q := ops[method+" "+BaseURL+path].Query; len(q) != 1 || q[0].Value.Name != "input" {
-			t.Errorf("%s's input is not checked", key)
+		q := ops[method+" "+BaseURL+path].Query
+		out := make([]string, 0, len(q))
+		for _, p := range q {
+			out = append(out, p.Value.Name)
 		}
+		return out
 	}
-	if q := ops["GET "+BaseURL+"/runs/{runId}/logs"].Query; len(q) != 0 {
-		t.Errorf("runLogs' plain parameters are checked as JSON: %v", q)
+	for key, want := range map[string]string{
+		"GET /runs/{runId}/changes-v3":                  "input",
+		"GET /stacks/{stackId}/search-managed-entities": "input",
+		"GET /runs/{runId}/logs":                        "state",
+	} {
+		if !slices.Contains(names(key), want) {
+			t.Errorf("%s checks %v, not %s", key, names(key), want)
+		}
 	}
 	no := false
 	object := func(closed bool) *openapi3.Schema {
 		s := &openapi3.Schema{
-			Type: &openapi3.Types{"object"},
+			Type:     &openapi3.Types{"object"},
+			Required: []string{"phase"},
 			Properties: openapi3.Schemas{
 				"phase": openapi3.NewStringSchema().WithEnum("PLAN", "APPLY").NewRef(),
+				"count": openapi3.NewInt32Schema().NewRef(),
 			},
 		}
 		if closed {
@@ -757,60 +775,110 @@ func TestUnitStrictQueries(t *testing.T) {
 		}
 		return s
 	}
-	param := func(closed bool) *openapi3.ParameterRef {
+	input := func(closed bool) *openapi3.ParameterRef {
 		return &openapi3.ParameterRef{Value: &openapi3.Parameter{
 			Name: "input", In: openapi3.ParameterInQuery, Required: true,
 			Content: openapi3.NewContentWithJSONSchema(object(closed)),
 		}}
 	}
+	scalar := func(name string, s *openapi3.Schema) *openapi3.ParameterRef {
+		return &openapi3.ParameterRef{Value: &openapi3.Parameter{
+			Name: name, In: openapi3.ParameterInQuery, Schema: s.NewRef(),
+		}}
+	}
 	strict := strictQuery(&openapi3.Operation{Parameters: openapi3.Parameters{
-		param(true), {Value: openapi3.NewQueryParameter("plain")},
+		input(true),
+		scalar("state", openapi3.NewStringSchema().WithEnum("NEW", "DONE")),
+		scalar("limit", openapi3.NewInt32Schema().WithMin(1).WithMax(100)),
+		scalar("slug", openapi3.NewStringSchema().WithPattern("^[a-z]+$")),
+		{Value: openapi3.NewQueryParameter("bare")},
+		{Value: openapi3.NewPathParameter("stackId").WithSchema(openapi3.NewStringSchema())},
 	}})
-	if len(strict) != 1 || len(strictQuery(&openapi3.Operation{
-		Parameters: openapi3.Parameters{param(false)},
-	})) != 0 {
-		t.Fatalf("strictQuery = %v", strict)
+	if len(strict) != 4 {
+		t.Fatalf("strictQuery = %d parameters, want input, state, limit and slug", len(strict))
 	}
 	runs := 0
 	r := Guarded(discard(), config.Defaults().Server, Operations{
 		"GET /strict": {Cost: ratelimit.Standard, Public: true, Query: strict},
-		"GET /plain":  {Cost: ratelimit.Standard, Public: true},
+		"GET /open": {
+			Cost:   ratelimit.Standard,
+			Public: true,
+			Query: strictQuery(&openapi3.Operation{
+				Parameters: openapi3.Parameters{input(false)},
+			}),
+		},
+		"GET /plain": {Cost: ratelimit.Standard, Public: true},
 	}, memory(config.Defaults().Server), nil, nil, nil)
 	ok := func(w http.ResponseWriter, r *http.Request) {
 		runs++
 		w.WriteHeader(http.StatusOK)
 	}
 	r.Get("/strict", ok)
+	r.Get("/open", ok)
 	r.Get("/plain", ok)
-	get := func(path, input string) *httptest.ResponseRecorder {
-		target := path
-		if input != "" {
-			target += "?input=" + url.QueryEscape(input)
-		}
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
+	get := func(path string, q url.Values) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path+"?"+q.Encode(), nil)
 		req.RemoteAddr = "192.0.2.1:1"
 		rec := httptest.NewRecorder()
 		r.ServeHTTP(rec, req)
 		return rec
 	}
-	for _, input := range []string{`{"phase":"LATER"}`, `{"phase":7}`, `{"phase"`, ``} {
-		wantTyped(t, get("/strict", input), problem.InvalidRequest)
+	good := `{"phase":"PLAN"}`
+	refused := func(pointer, reason string) problem.FieldError {
+		return problem.FieldError{Pointer: pointer, Reason: reason}
 	}
-	var p problem.Problem
-	rec := get("/strict", `{"phase":"PLAN","after":"x"}`)
-	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil || len(p.Errors) != 1 ||
-		p.Errors[0].Pointer != "#/query/input/after" ||
-		p.Errors[0].Reason != kernel.ReasonUnknownField {
-		t.Errorf("an unknown member answers %s", rec.Body)
+	for _, c := range []struct {
+		q    url.Values
+		want problem.FieldError
+	}{
+		{url.Values{"input": {`{"phase":"PLAN","after":"x"}`}}, refused("#/query/input/after", kernel.ReasonUnknownField)},
+		{url.Values{"input": {`{"phase":"LATER"}`}}, refused("#/query/input/phase", kernel.ReasonEnum)},
+		{url.Values{"input": {`{"phase":"PLAN","count":"x"}`}}, refused("#/query/input/count", kernel.ReasonType)},
+		{url.Values{"input": {`{}`}}, refused("#/query/input/phase", kernel.ReasonRequired)},
+		{url.Values{}, refused("#/query/input", kernel.ReasonRequired)},
+		{url.Values{"input": {good}, "state": {"LATER"}}, refused("#/query/state", kernel.ReasonEnum)},
+		{url.Values{"input": {good}, "limit": {"many"}}, refused("#/query/limit", kernel.ReasonType)},
+		{url.Values{"input": {good}, "limit": {"0"}}, refused("#/query/limit", kernel.ReasonMinimum)},
+		{url.Values{"input": {good}, "limit": {"101"}}, refused("#/query/limit", kernel.ReasonMaximum)},
+		{url.Values{"input": {good}, "limit": {"3000000000"}}, refused("#/query/limit", kernel.ReasonFormat)},
+		{url.Values{"input": {good}, "slug": {"S3CR3T"}}, refused("#/query/slug", kernel.ReasonPattern)},
+	} {
+		rec := get("/strict", c.q)
+		name, _, _ := strings.Cut(strings.TrimPrefix(c.want.Pointer, "#/query/"), "/")
+		wantRefused(t, rec, "The query parameter "+name, c.want)
+		for _, vs := range c.q {
+			if v := vs[0]; v != good && len(v) > 4 && strings.Contains(rec.Body.String(), v) {
+				t.Errorf("the refusal of %s quotes it: %s", v, rec.Body)
+			}
+		}
 	}
+	rec := get("/strict", url.Values{"input": {`{"phase"`}})
+	wantTyped(t, rec, problem.InvalidRequest)
+	if strings.Contains(rec.Body.String(), `"errors"`) {
+		t.Errorf("JSON that does not parse names a field: %s", rec.Body)
+	}
+	wantRefused(t, get("/open", url.Values{"input": {`{"phase":"LATER","after":"x"}`}}),
+		"The query parameter input", refused("#/query/input/phase", kernel.ReasonEnum))
 	if runs != 0 {
-		t.Fatalf("a refused input reached the handler %d times", runs)
+		t.Fatalf("a refused query reached the handler %d times", runs)
 	}
-	if rec := get("/strict", `{"phase":"PLAN"}`); rec.Code != http.StatusOK {
-		t.Errorf("a good input: %d %s", rec.Code, rec.Body)
+	if rec := get("/strict", url.Values{
+		"input": {good}, "state": {"DONE"}, "limit": {"100"}, "slug": {"infra"}, "bare": {"x"},
+	}); rec.Code != http.StatusOK {
+		t.Errorf("a good query: %d %s", rec.Code, rec.Body)
 	}
-	if rec := get("/plain", `{"anything":1}`); rec.Code != http.StatusOK || runs != 2 {
-		t.Errorf("a plain parameter: %d, %d runs", rec.Code, runs)
+	if rec := get(
+		"/open",
+		url.Values{"input": {`{"phase":"PLAN","after":"x"}`}},
+	); rec.Code != http.StatusOK {
+		t.Errorf("an open object's unnamed member: %d %s", rec.Code, rec.Body)
+	}
+	if rec := get(
+		"/plain",
+		url.Values{"input": {`{"anything":1}`}},
+	); rec.Code != http.StatusOK ||
+		runs != 3 {
+		t.Errorf("another operation's parameter: %d, %d runs", rec.Code, runs)
 	}
 }
 

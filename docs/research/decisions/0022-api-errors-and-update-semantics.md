@@ -141,18 +141,30 @@ path.
 
 | Input | Rule |
 |---|---|
-| JSON request bodies | Strict. Input schemas set `additionalProperties: false`; an unknown field answers `400 invalid-request` with reason `unknown-field`. A field Spacelift documents as accepted and ignored (`StackInput.administrative`) stays in the served schema, `deprecated: true`, and is ignored |
-| Query parameters | Unknown parameters are ignored; known ones are validated. A parameter that carries a JSON object, such as a search's `input`, is strict as a body is: its schema sets `additionalProperties: false`, and an unknown member answers `400 invalid-request` with reason `unknown-field` at `#/query/<parameter>/<member>` |
+| JSON request bodies | Strict. Input schemas set `additionalProperties: false`; an unknown field answers `400 invalid-request` with reason `unknown-field`, and every other value the schema refuses answers it naming the value's pointer and the refusing keyword's reason (`type`, `enum`, `required` and so on). A field Spacelift documents as accepted and ignored (`StackInput.administrative`) stays in the served schema, `deprecated: true`, and is ignored |
+| Query parameters | Unknown parameters are ignored; known ones are validated against their schemas on every operation. A value its `enum`, `format`, bounds or `pattern` refuses, a value of the wrong type and a missing required parameter answer `400 invalid-request` at `#/query/<parameter>` with the keyword's reason. A parameter that carries a JSON object, such as a search's `input`, is strict as a body is: its schema sets `additionalProperties: false`, an unknown member answers `400 invalid-request` with reason `unknown-field` at `#/query/<parameter>/<member>`, and a member's refused value is named the same way |
 | `.infraweave/config.yml` | Known keys are typed strictly: a wrong type fails the run in `INITIALIZING` with the key's path in the log. Unknown keys are reported as warnings in the run log and in `Run.runtimeConfig`, and do not fail the run. The server setting `runs.runtime_config.unknown_keys` (`warn`, the default, or `reject`) makes them fatal for an installation that wants that |
 | Labels | 1 to 255 characters of valid UTF-8, no control characters (Unicode category `Cc`), no leading or trailing whitespace. At most 100 labels per entity. A duplicate label in one request is `422 validation-failed`, reason `duplicate`. Labels are compared byte for byte, so `Prod` and `prod` differ. Prefixes with meaning (`autoattach:`, `feature:`, `ghenv:`) obey the same rules |
 | Cron expressions | The grammar of [0011](0011-persistent-work-queue.md)'s `internal/cron` parser, which owns it: exactly five whitespace-separated fields (minute 0-59, hour 0-23, day of month 1-31, month 1-12, day of week 0-7, where 0 and 7 are Sunday); each field a comma list of items; an item is `*`, `n` or `a-b`, each optionally followed by `/step` with step at least 1 (`n/step` runs from n to the field maximum). Rejected as `validation-failed`: month and weekday names, `?`, `L`, `W`, `#`, `@` macros, a seconds or year field, out-of-range values, `a-b` with a > b, a step of 0 or longer than the field, a day of month that no selected month has (`0 0 30 2 *`). When day of month and day of week are both restricted (each leaves out a value), either matching fires (Vixie cron) |
 | Timezones | IANA names resolved by Go's `time.LoadLocation`, with `time/tzdata` embedded so that a host without zone files (the distroless image of [0020](0020-reference-deployments-and-packaging.md)) still resolves them. `LoadLocation` reads `ZONEINFO` and the host's database before the embedded copy, so where a host has one, its tzdata version decides. Names are case-sensitive. Zones and links of the IANA database (`CET`, `US/Pacific`, `Etc/GMT+1`) resolve; abbreviations outside it (`PST`, `BST`) and numeric offsets (`+01:00`) are `validation-failed`. Absent means `UTC`. A timezone beside a one-off timestamp schedule is `validation-failed` |
 
 Request validation runs in two layers. Before the handler, `kin-openapi`'s
-`openapi3filter` checks each strict body and each JSON object a query
-parameter carries against the bundled spec, and the generated binding checks
-every other parameter's type, each giving `invalid-request`. Handlers then
-apply domain rules, giving `validation-failed`.
+`openapi3filter` checks each strict body and each query parameter with a
+schema against the bundled spec, in `internal/app`'s `strictBodies` and
+`strictQueries`, so the generated binding, which checks only a value's Go
+type, never decodes a value its schema refuses. Each refusal is
+`invalid-request` naming the value by its pointer and the reason of the
+keyword that refuses it; a body or a JSON object that does not parse names
+nothing. A refusal's message is the validator's reason, which never quotes
+the value, so a value sent in error, such as a token, is not echoed.
+Handlers then apply domain rules, giving `validation-failed`.
+
+Path parameters are left to the generated binding's type check. Each is
+an ID or a slug with no constraint beyond its type but one: the worker
+API's run ID of at most 26 characters, which a run token must name, so a
+longer one is refused as another run's, `401`. Header parameters are each
+checked by the middleware that reads them, as the `Idempotency-Key`'s
+length is.
 
 ## Rationale
 
@@ -239,7 +251,11 @@ apply domain rules, giving `validation-failed`.
   constant with the same status and title, and every constant is in the register.
 - `api/api_test.go` (`TestUnitAPIProblemTypes`): every problem example in
   the bundled spec uses a slug from the problem register with its status and title.
-- `api/api_test.go`: every input schema sets `additionalProperties: false`;
+- `internal/app/operations_test.go` (`TestUnitStrictBodies`,
+  `TestUnitStrictQueries`): a body's and a query parameter's refused value
+  is named by its pointer and reason, before the handler, without quoting it.
+- `api/api_test.go`: every input schema, of a body or of a JSON object a
+  query parameter carries, sets `additionalProperties: false`;
   every update route has a matching `PATCH` with
   `application/merge-patch+json`; both are recorded in
   `x-infraweave-divergence`.
@@ -248,6 +264,10 @@ apply domain rules, giving `validation-failed`.
     title `not found`; no token answers `401` with `WWW-Authenticate`; an
     unknown body field answers `400` with reason `unknown-field` and its
     pointer; a confirm on a finished run answers `409 invalid-state`.
+  - `runs/logs.feature` and `runs/profiles.feature`: a state no run has
+    answers `400 invalid-request` with reason `enum` at `#/query/state`, a
+    state version beyond int32 with reason `format`, and a missing state with
+    reason `required`.
   - `api/updates.feature`: `PUT` without an optional field resets it; `PATCH` keeps
     it; `PATCH` with a field set to `null` resets it to its default; `PUT` with
     `null` sets a nullable field whose default is not null to null; a secret

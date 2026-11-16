@@ -809,6 +809,7 @@ components:
       type: object
       x-graphql-type: ManagedUser
     MetricsInput:
+      additionalProperties: false
       properties:
         endTime:
           description: End time of the metrics
@@ -998,6 +999,7 @@ components:
       type: object
       x-graphql-args-of: searchSpacePolicies
     SearchSpacesInput:
+      additionalProperties: false
       description: Arguments used to filter spaces.
       properties:
         actions:

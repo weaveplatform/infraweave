@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -96,10 +98,10 @@ type Operation struct {
 	// handler decodes leniently. A PATCH beside an update PUT checks its
 	// merge patch against patchSchema of the PUT's input.
 	Body *openapi3.RequestBody
-	// Query is the operation's query parameters that carry a JSON object
-	// whose schema sets additionalProperties: false, such as a search's
-	// input, which strictQueries checks before the handler as
-	// strictBodies checks a body; empty for every other operation.
+	// Query is the operation's query parameters with a schema, a scalar's
+	// or the JSON object's of one such as a search's input, which
+	// strictQueries checks before the handler as strictBodies checks a
+	// body; empty for an operation that takes none.
 	Query openapi3.Parameters
 	// Gate is the operation's x-infraweave-feature, a capability of the
 	// catalogue, and the options its request body's properties name.
@@ -357,19 +359,19 @@ func strictBody(mt *bodyMedia) *openapi3.RequestBody {
 	}
 }
 
-// strictQuery is op's query parameters that carry a JSON object whose
-// schema forbids properties it does not name.
+// strictQuery is op's query parameters with a schema, a scalar's or the
+// JSON object's one carries.
 func strictQuery(op *openapi3.Operation) openapi3.Parameters {
 	var out openapi3.Parameters
 	for _, p := range op.Parameters {
 		if p.Value == nil || p.Value.In != openapi3.ParameterInQuery {
 			continue
 		}
-		mt := p.Value.Content.Get(jsonType)
-		if mt == nil || mt.Schema == nil || mt.Schema.Value == nil {
+		if p.Value.Schema != nil {
+			out = append(out, p)
 			continue
 		}
-		if ap := mt.Schema.Value.AdditionalProperties.Has; ap != nil && !*ap {
+		if mt := p.Value.Content.Get(jsonType); mt != nil && mt.Schema != nil {
 			out = append(out, p)
 		}
 	}
@@ -764,7 +766,7 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 			}
 			in := &openapi3filter.RequestValidationInput{Request: r, Options: opts}
 			if err := openapi3filter.ValidateRequestBody(r.Context(), in, rb); err != nil {
-				strictError(w, r, err, "", "The body sets a field its schema does not name.")
+				strictError(w, r, err, "", "The body")
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -772,11 +774,13 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 	}
 }
 
-// strictQueries checks the JSON object each of a request's strict query
-// parameters carries against its schema, as strictBodies checks a body:
-// 400 invalid-request for an unknown member, a value its enum lacks or a
-// wrong type, before the handler decodes it. An unknown member is named
-// by its pointer under #/query/ and the parameter's name.
+// strictQueries checks each of a request's query parameters with a
+// schema against it, as strictBodies checks a body: 400 invalid-request
+// for a value its enum, format, bounds or pattern refuses, a wrong type,
+// a missing required parameter or an unknown member of a JSON object,
+// before the generated binding, which checks only a value's Go type,
+// decodes it. The refused value is named by its pointer under #/query/
+// and the parameter's name.
 //
 // ref: decision 0022
 func strictQueries(
@@ -789,9 +793,8 @@ func strictQueries(
 			for _, p := range query(r) {
 				err := openapi3filter.ValidateParameter(r.Context(), in, p.Value)
 				if err != nil {
-					strictError(w, r, err, "#/query/"+p.Value.Name, fmt.Sprintf(
-						"The query parameter %s sets a field its schema does not name.",
-						p.Value.Name))
+					strictError(w, r, err, "#/query/"+p.Value.Name,
+						"The query parameter "+p.Value.Name)
 					return
 				}
 			}
@@ -800,39 +803,130 @@ func strictQueries(
 	}
 }
 
-// strictError answers an input its schema refuses as invalid-request. A
-// member the schema does not list is named by its pointer under root,
-// reason unknown-field, with detail, so a client finds the misspelt field
-// without parsing the detail. kin-openapi names that member only in its
-// reason's text, which TestUnitStrictBodies pins, so a change to the text
-// fails there rather than silently dropping the pointer.
-func strictError(w http.ResponseWriter, r *http.Request, err error, root, detail string) {
-	se, ok := errors.AsType[*openapi3.SchemaError](err)
-	if !ok || se.SchemaField != "properties" {
+// strictError answers an input its schema refuses as invalid-request,
+// naming the refused value by its pointer under root with the reason the
+// schema gives, so a client finds it without parsing the detail, which
+// subject, the input's name, begins. A refusal that names no field
+// answers kin-openapi's text alone.
+func strictError(w http.ResponseWriter, r *http.Request, err error, root, subject string) {
+	fe, ok := refusedField(err, root)
+	if !ok {
 		problem.RequestError(w, r, err)
 		return
 	}
-	quoted, prefixed := strings.CutPrefix(se.Reason, "property ")
-	quoted, suffixed := strings.CutSuffix(quoted, " is unsupported")
-	if !prefixed || !suffixed {
-		problem.RequestError(w, r, err)
-		return
-	}
-	name, uerr := strconv.Unquote(quoted)
-	if uerr != nil {
-		problem.RequestError(w, r, err)
-		return
-	}
-	at := root
-	for _, token := range append(se.JSONPointer(), name) {
-		at += "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(token)
+	detail := subject + " holds a value its schema refuses."
+	if fe.Reason == kernel.ReasonUnknownField {
+		detail = subject + " sets a field its schema does not name."
 	}
 	p := problem.InvalidRequest.New(detail)
-	p.Errors = []problem.FieldError{{
-		Pointer: at, Reason: kernel.ReasonUnknownField,
-		Message: fmt.Sprintf("No field %q here.", name),
-	}}
+	p.Errors = []problem.FieldError{fe}
 	problem.Write(w, p)
+}
+
+// schemaReasons is the field error's reason for a refusal under each
+// schema keyword that has one; a refusal under another, such as oneOf or
+// minItems, names no field.
+var schemaReasons = map[string]string{
+	"type":             kernel.ReasonType,
+	"nullable":         kernel.ReasonType,
+	"enum":             kernel.ReasonEnum,
+	"format":           kernel.ReasonFormat,
+	"pattern":          kernel.ReasonPattern,
+	"minLength":        kernel.ReasonMinLength,
+	"maxLength":        kernel.ReasonMaxLength,
+	"minimum":          kernel.ReasonMinimum,
+	"exclusiveMinimum": kernel.ReasonMinimum,
+	"maximum":          kernel.ReasonMaximum,
+	"exclusiveMaximum": kernel.ReasonMaximum,
+	"required":         kernel.ReasonRequired,
+}
+
+// refusedField is the field error naming the value err, a refusal of the
+// input under root, refuses: a schema keyword's at the value's pointer,
+// and a member the schema does not list at the member's, reason
+// unknown-field; and a parameter's whole value that is missing, or does
+// not parse as its type or within its format's range, at the parameter's.
+// A body or a JSON object that does not parse names nothing. Messages
+// carry kin-openapi's reasons, which never quote the value, so a value
+// sent in error, such as a token, is not echoed.
+//
+// kin-openapi names an unknown member only in its reason's text, and a
+// missing one in its pointer; TestUnitStrictBodies pins both, so a change
+// to either fails there rather than silently dropping the pointer.
+func refusedField(err error, root string) (problem.FieldError, bool) {
+	if se, ok := errors.AsType[*openapi3.SchemaError](err); ok {
+		return schemaField(se, root)
+	}
+	re, ok := errors.AsType[*openapi3filter.RequestError](err)
+	if !ok || re.Parameter == nil {
+		return problem.FieldError{}, false
+	}
+	_, parse := errors.AsType[*openapi3filter.ParseError](err)
+	switch {
+	case errors.Is(err, openapi3filter.ErrInvalidRequired) || missing(re):
+		return problem.FieldError{
+			Pointer: root, Reason: kernel.ReasonRequired,
+			Message: "A value is required.",
+		}, true
+	case parse && errors.Is(err, strconv.ErrRange):
+		return problem.FieldError{
+			Pointer: root, Reason: kernel.ReasonFormat,
+			Message: "The value is out of its format's range.",
+		}, true
+	case parse:
+		return problem.FieldError{
+			Pointer: root, Reason: kernel.ReasonType,
+			Message: "The value is not of its schema's type.",
+		}, true
+	}
+	return problem.FieldError{}, false
+}
+
+// missing reports whether re refuses a required parameter its request
+// lacks, which kin-openapi gives no sentinel error for when the parameter
+// carries JSON.
+func missing(re *openapi3filter.RequestError) bool {
+	return re.Parameter.Required && re.Input != nil && re.Input.Request != nil &&
+		!re.Input.Request.URL.Query().Has(re.Parameter.Name)
+}
+
+// schemaField is refusedField of se.
+func schemaField(se *openapi3.SchemaError, root string) (problem.FieldError, bool) {
+	at := root
+	for _, token := range se.JSONPointer() {
+		at += "/" + pointerToken(token)
+	}
+	if se.SchemaField == "properties" {
+		quoted, prefixed := strings.CutPrefix(se.Reason, "property ")
+		quoted, suffixed := strings.CutSuffix(quoted, " is unsupported")
+		name, err := strconv.Unquote(quoted)
+		if !prefixed || !suffixed || err != nil {
+			return problem.FieldError{}, false
+		}
+		return problem.FieldError{
+			Pointer: at + "/" + pointerToken(name), Reason: kernel.ReasonUnknownField,
+			Message: fmt.Sprintf("No field %q here.", name),
+		}, true
+	}
+	reason, ok := schemaReasons[se.SchemaField]
+	if !ok {
+		return problem.FieldError{}, false
+	}
+	return problem.FieldError{Pointer: at, Reason: reason, Message: sentence(se.Reason)}, true
+}
+
+// pointerToken is name escaped as a JSON Pointer token (RFC 6901).
+func pointerToken(name string) string {
+	return strings.NewReplacer("~", "~0", "/", "~1").Replace(name)
+}
+
+// sentence is reason, a kin-openapi reason, as a sentence.
+func sentence(reason string) string {
+	if reason == "" {
+		return "The schema refuses the value."
+	}
+	r, n := utf8.DecodeRuneInString(reason)
+	return string(unicode.ToUpper(r)) + strings.TrimSuffix(reason[n:], ".") + "."
 }
 
 // caller is the key of the rate limits and idempotency keys: the
