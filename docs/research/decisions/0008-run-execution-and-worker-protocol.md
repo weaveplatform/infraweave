@@ -478,7 +478,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   session, and `after_run` runs whenever the runner processed the run.
 - **Reports.** A report is `{stateVersion, state, event, details}` with `event`
   `started`, `succeeded`, `failed` or `stopped`, and names the run's current
-  state version.
+  state version. A `succeeded`, `failed` or `stopped` report also carries
+  `logChunks`, how many chunks the runner cut the state's log into, which
+  the state's transition keeps (see "Logs and artifacts").
   - **`started`** of the state a preparing run moves to ends the handover
     (T10, T32, T35). `started` of the state the run is already in moves
     nothing and answers that state.
@@ -560,30 +562,53 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   a `log-chunk`. The runner commits a state's last chunk before it reports
   the state's end. The session's output reaches the runner through a pipe,
   so before that commit the runner writes a barrier line of its own to the
-  pipe and waits to read it back, which proves every earlier line read. A
-  chunk the worker API or the store cannot take for now is sent again for up
-  to ten minutes, as a report is; one still refused is dropped with a
-  warning. The `after_run` hooks run once the run has left its last worker
-  state, so their output goes to stdout alone. Each chunk is uploaded by pre-signed `PUT`, then
-  `log-chunks` commits it and indexes it in
-  `run_log_chunks(run, state_version, seq, state, object key, bytes, first_at, last_at)`;
+  pipe and waits to read it back, which proves every earlier line read. The
+  `after_run` hooks run once the run has left its last worker state, so
+  their output goes to stdout alone. Each chunk is uploaded by pre-signed
+  `PUT`, then `log-chunks` commits it and indexes it in
+  `run_log_chunks(run, state_version, seq, state, object key, bytes, first_at, last_at, lost)`;
   a chunk already indexed is skipped, so a repeated `seq` is not duplicated.
   Readers tail the index; logs therefore exist per state and state version.
+- **A chunk that cannot be stored.** A chunk the worker API or the store
+  cannot take for now is sent again, as a report is. So is a `PUT` the
+  store refuses with `400` or `403`, from a new declaration that signs it
+  afresh: that is how a store answers a signature that expired while the
+  chunk waited, or one its clock disagrees with. The ten-minute budget is
+  the log's, not each chunk's. It runs from the first failure, a chunk
+  taken renews it, and once a chunk has spent it each later chunk is sent
+  once until one is taken, so an outage holds the run's output for ten
+  minutes in all rather than ten minutes a chunk. A chunk that cannot be
+  taken is committed as lost, `{seq, firstAt, lastAt, lost: true}` with no
+  upload, and the runner warns. The state's report names `logChunks`,
+  which `run_state_transitions.log_chunks` keeps, so a chunk whose lost
+  commit failed too, even the state's last, is still known to be missing.
 - **Reading.** `runLogs` answers a page of whole chunks of one state and
-  state version, in sequence order, at most 1 MiB and 64 chunks. While the
-  run is in the state a page ends before a chunk not yet indexed; once it
-  has left, a missing sequence number is skipped. Each line's timestamp is
-  its chunk's `first_at`, and `sanitize` strips ANSI escape sequences only
-  (DV-117). A chunk whose object retention removed is left out and the page
-  is `expired`.
+  state version, in sequence order, at most 1 MiB and 64 chunks. Each
+  line's timestamp is its chunk's `first_at`, and `sanitize` strips ANSI
+  escape sequences only (DV-117). While the run is in the state a page ends
+  before a chunk not yet indexed. Once it has left, the state's chunks run
+  to its report's `logChunks`, or one past the highest sequence number
+  indexed when that is more or no report came. Each chunk that holds no
+  lines, lost or never committed, reads as one line,
+  `infraweave: part of this log could not be stored.`, stamped with a lost
+  chunk's `first_at`, otherwise with the last line before it or when the
+  run entered the state. A lost chunk reads so while the run is in the
+  state too. The server writes the line, so it carries no value of the
+  run's ([0013](0013-secrets-at-rest.md)), and a page's shape is unchanged.
+  A chunk whose object retention removed is left out and the page is
+  `expired`.
 - **Compaction.** The transaction of a transition out of a worker state
   enqueues `run.logs.compact` for that state and state version, keyed so
-  it runs once. The job writes the indexed chunks in sequence order to one
-  object, `<account>/<run>/<state>-<stateVersion>.log` in `run-logs`, and
-  running it again changes nothing. `runLogsDownloadURL` answers that
-  object's pre-signed `GET`, with `ongoing` while the run is in the state
-  or the compaction is pending, `expired` when no chunk was written or
-  retention removed them, and `deleted` after `runLogsDelete`.
+  it runs once. The job writes the state's chunks in sequence order to one
+  object, `<account>/<run>/<state>-<stateVersion>.log` in `run-logs`, with
+  the reading's line in place of each chunk that holds none, and running
+  it again changes nothing. `runLogsDownloadURL` answers that object's
+  pre-signed `GET`, with `ongoing` while the run is in the state or the
+  compaction is pending, `expired` when no chunk was written or retention
+  removed them, and `deleted` after `runLogsDelete`. A state whose every
+  chunk was lost has no chunk object to tell a pending compaction from an
+  expired one, so it is pending while the run entered the state within
+  the store's retention.
 - **Artifacts.** Plan JSON, changes, outputs and anything else the server or a
   policy reads are sealed by the runner with the run's artifact key, in 0013's
   streaming format (64 KiB AES-256-GCM segments, the same code in the same
@@ -1107,6 +1132,21 @@ offers this policy is available to it alone; 0009 lists built-ins.
   every worker-report edge by event, a repeated report answered again, a
   stale one refused, and `PLANNING`'s `succeeded` taking each row of the
   decision with no plan policy attached, refused `400` without its `delta`.
+  `TestUnitReportCountsChunks`: a phase's end records its `logChunks`, and
+  a started report, one of another state and a repeat record none.
+- `TestUnitLogSignedRefusal`, `TestUnitLogRetries` and `TestUnitLogGivesUp`
+  (`internal/agent/runlog`, in virtual time): a chunk whose `PUT` the store
+  refuses with `403` stored from a second declaration, one refused for ten
+  minutes committed as lost, a chunk after the budget is spent sent once,
+  the budget renewed once a chunk is taken, and the state's chunk count.
+- `TestUnitLogsPage`, `TestUnitLogsCompact` and `TestUnitLogsDownload`
+  (`internal/runs/internal/core/logs`): a lost chunk, a middle gap and a
+  trailing gap below the reported count each read and compacted as the
+  missing line once the run has left the state, a page in the state ending
+  at a gap, and a state whose every chunk was lost pending within its
+  retention and expired after. `features/runs/logs.feature`: a worker's
+  chunks 0 and 2, chunk 1 committed as lost and a report of 4 chunks read
+  and downloaded with the line in place of chunks 1 and 3.
 - `TestAccRunReports` (`internal/app`, PostgreSQL and the `fs` driver): the
   handover ended once, uploads under the run's prefix, a chunk indexed once,
   an artifact the runner sealed opened by the server, the workspace's `307`,

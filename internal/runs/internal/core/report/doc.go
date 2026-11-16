@@ -11,8 +11,10 @@
 // next step, execute, pause or exit, with the run's state version, which
 // the next report names; a report that names an older state version is
 // refused, unless it repeats the one that took the run's last transition.
-// A succeeded report of PLANNING carries the plan's delta, and no other
-// report does; it takes the plan decision with no plan policy attached,
+// A report of a phase's end that names how many log chunks the worker
+// cut records that count on the state's transition, so readers know of a
+// chunk never committed. A succeeded report of PLANNING carries the
+// plan's delta, and no other report does; it takes the plan decision with no plan policy attached,
 // from the delta and the stack's autodeploy and lock, which the service
 // reads through Stacks: Decision moves the run to FINISHED, APPLYING or
 // UNCONFIRMED, and the delta is kept on the run. A tracked run's
@@ -27,7 +29,8 @@
 // Uploads are keyed <account>/<run>/<state>-<stateVersion>/<name> in
 // their kind's store, recorded pending in blob_objects before their PUT
 // URLs are signed, and made live when the worker indexes a log chunk in
-// run_log_chunks or records another object in run_artifacts. A run
+// run_log_chunks or records another object in run_artifacts. A chunk the
+// worker committed as lost is indexed with no object. A run
 // artifact is sealed by the runner under a content key derived from the
 // run's artifact key and the object's key, which its row holds sealed.
 // PurgeObjects deletes a deleted account's chunks and records with their

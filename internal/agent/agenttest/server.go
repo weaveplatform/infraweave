@@ -119,7 +119,8 @@ type Report struct {
 }
 
 // Chunk is a log chunk the server indexed: its run, state version and
-// sequence number, its first and last lines' times, and its bytes.
+// sequence number, its first and last lines' times, and its bytes, or
+// whether the worker committed it as lost.
 type Chunk struct {
 	Run          string
 	StateVersion int64
@@ -127,6 +128,7 @@ type Chunk struct {
 	FirstAt      int64
 	LastAt       int64
 	Body         []byte
+	Lost         bool
 }
 
 // Artifact is an artifact or workspace the server recorded: its run,
@@ -625,8 +627,8 @@ func (s *Server) put(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// logChunks indexes each uploaded chunk once, as the server does; a chunk
-// not uploaded is refused with 422.
+// logChunks indexes each uploaded or lost chunk once, as the server does;
+// a chunk neither uploaded nor lost is refused with 422.
 func (s *Server) logChunks(w http.ResponseWriter, r *http.Request) {
 	if st := s.refused("log-chunks"); st != 0 {
 		problem(w, st, "the chunks are refused")
@@ -648,9 +650,13 @@ func (s *Server) logChunks(w http.ResponseWriter, r *http.Request) {
 		key := objectKey(wire.UploadKindLogChunk, run.Assignment.Run, req.StateVersion,
 			fmt.Sprint(c.Seq))
 		o, ok := s.objects[key]
+		lost := c.Lost != nil && *c.Lost
 		switch {
 		case ok && o.recorded:
 			continue
+		case lost:
+			o = &object{}
+			s.objects[key] = o
 		case !ok || !o.uploaded:
 			problem(w, http.StatusUnprocessableEntity, "a chunk is not uploaded")
 			return
@@ -658,7 +664,7 @@ func (s *Server) logChunks(w http.ResponseWriter, r *http.Request) {
 		o.recorded = true
 		s.chunks = append(s.chunks, Chunk{
 			Run: run.Assignment.Run, StateVersion: req.StateVersion, Seq: c.Seq,
-			FirstAt: c.FirstAt, LastAt: c.LastAt, Body: o.body,
+			FirstAt: c.FirstAt, LastAt: c.LastAt, Body: o.body, Lost: lost,
 		})
 	}
 	w.WriteHeader(http.StatusNoContent)

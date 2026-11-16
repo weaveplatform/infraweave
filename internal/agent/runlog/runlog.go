@@ -32,7 +32,11 @@ const Cut = 2 * time.Second
 
 // Upload retries: a chunk the worker API or the store could not take for
 // now is sent again for up to retryFor, waiting from retryWait to
-// retryWaitMax between sends, as the runner's reports are.
+// retryWaitMax between sends, as the runner's reports are. The budget is
+// the log's, not each chunk's: it runs from the first failure, and once a
+// chunk spends it each later chunk is sent once until one is taken, which
+// renews it. An outage holds the run's output for retryFor in all, not
+// for retryFor a chunk.
 const (
 	retryFor     = 10 * time.Minute
 	retryWait    = time.Second
@@ -49,6 +53,11 @@ var addMask = []byte("::add-mask")
 // errAnswer marks an upload declaration answered with other than one
 // URL.
 var errAnswer = errors.New("the worker API answered no upload URL")
+
+// errSigned marks a PUT the store refused as a signed request it does not
+// accept, 400 or 403: a signature that expired while the chunk waited, or
+// one dated ahead of the store's clock. A new declaration signs afresh.
+var errSigned = errors.New("the store refused the signed upload")
 
 // API is the worker API's side of a run's log; *client.Client is one.
 type API interface {
@@ -103,6 +112,9 @@ type Log struct {
 	buf     []byte
 	first   time.Time
 	last    time.Time
+	// giveUp ends the retries of every chunk until one is taken; the
+	// uploader alone reads and writes it.
+	giveUp time.Time
 	// gen names the chunk being collected, so the timer of one already
 	// cut cuts nothing.
 	gen   int
@@ -182,6 +194,15 @@ func (l *Log) Begin(ctx context.Context, version int64) error {
 	defer l.mu.Unlock()
 	l.open, l.version, l.seq = true, version, 0
 	return err
+}
+
+// Chunks is how many chunks the open state's lines, or the last state's
+// once End has closed it, were cut into, which the state's report names
+// so a reader learns of a chunk lost after the last it holds.
+func (l *Log) Chunks() int64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.seq
 }
 
 // End closes the open state: once every line written before it is read,
@@ -405,8 +426,9 @@ func (l *Log) uploading(ctx context.Context) {
 // upload declares, PUTs and commits c, retrying each step that could not
 // be taken for now: a declaration again, which signs the same object, a
 // failed PUT from a new declaration, and a commit alone, which skips a
-// chunk already indexed. A chunk that cannot be taken is dropped with a
-// warning; readers skip its sequence number once the state has ended.
+// chunk already indexed. A chunk that cannot be taken is committed as
+// lost, with a warning, so readers find a line in its place; a lost
+// commit that fails too leaves the state's report to name the gap.
 func (l *Log) upload(ctx context.Context, c chunk) {
 	sum := sha256.Sum256(c.body)
 	name := strconv.FormatInt(c.seq, 10)
@@ -417,17 +439,24 @@ func (l *Log) upload(ctx context.Context, c chunk) {
 	commit := wire.LogChunksRequest{StateVersion: c.version, Chunks: []wire.LogChunk{{
 		Seq: c.seq, FirstAt: c.first.Unix(), LastAt: c.last.Unix(),
 	}}}
-	deadline := time.Now().Add(retryFor)
 	wait := retryWait
 	uploaded := false
 	for {
 		err := l.send(ctx, decl, commit, c.body, &uploaded)
 		if err == nil {
+			l.giveUp = time.Time{}
 			return
 		}
-		if !transient(ctx, err) || time.Now().Add(wait).After(deadline) {
-			l.d.Log.WarnContext(ctx, "log chunk dropped", "run", l.d.Run,
-				"stateVersion", c.version, "seq", c.seq, "error", err)
+		if !transient(ctx, err) {
+			l.lose(ctx, commit, err)
+			return
+		}
+		if l.giveUp.IsZero() {
+			l.giveUp = time.Now().Add(retryFor)
+		}
+		if time.Now().Add(wait).After(l.giveUp) {
+			l.giveUp = time.Now()
+			l.lose(ctx, commit, err)
 			return
 		}
 		l.d.Log.WarnContext(ctx, "log chunk not taken", "run", l.d.Run,
@@ -440,6 +469,23 @@ func (l *Log) upload(ctx context.Context, c chunk) {
 		case <-t.C:
 		}
 		wait = min(wait*2, retryWaitMax)
+	}
+}
+
+// lose commits commit's chunk as lost, which err kept from being stored,
+// unless ctx has ended.
+func (l *Log) lose(ctx context.Context, commit wire.LogChunksRequest, err error) {
+	c := commit.Chunks[0]
+	l.d.Log.WarnContext(ctx, "log chunk lost", "run", l.d.Run, "stateVersion",
+		commit.StateVersion, "seq", c.Seq, "error", err)
+	if ctx.Err() != nil {
+		return
+	}
+	lost := true
+	commit.Chunks = []wire.LogChunk{{Seq: c.Seq, FirstAt: c.FirstAt, LastAt: c.LastAt, Lost: &lost}}
+	if err := l.d.API.LogChunks(ctx, l.d.Token, l.d.Run, commit); err != nil {
+		l.d.Log.WarnContext(ctx, "lost log chunk not committed", "run", l.d.Run,
+			"stateVersion", commit.StateVersion, "seq", c.Seq, "error", err)
 	}
 }
 
@@ -461,6 +507,9 @@ func (l *Log) send(
 			return errAnswer
 		}
 		if err := l.d.API.Put(ctx, ups[0], body); err != nil {
+			if s := client.Status(err); s == http.StatusBadRequest || s == http.StatusForbidden {
+				return fmt.Errorf("%w: %w", errSigned, err)
+			}
 			return err //nolint:wrapcheck // client names the upload
 		}
 		*uploaded = true
@@ -470,10 +519,14 @@ func (l *Log) send(
 }
 
 // transient reports whether err is a failure a later send may not meet:
-// no answer, or the server's or the store's being unavailable for now.
+// no answer, the server's or the store's being unavailable for now, or
+// the store's refusal of a signature a new declaration replaces.
 func transient(ctx context.Context, err error) bool {
 	if ctx.Err() != nil {
 		return false
+	}
+	if errors.Is(err, errSigned) {
+		return true
 	}
 	s := client.Status(err)
 	return s == 0 && !errors.Is(err, errAnswer) || s == http.StatusTooManyRequests ||

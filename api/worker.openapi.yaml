@@ -159,7 +159,7 @@ paths:
     post:
       summary: Index a run's uploaded log chunks
       description: >-
-        Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
+        Indexes log chunks of the run's current state once their uploads hold the declared size and SHA-256, by state version and sequence number, and a lost chunk with no upload. A chunk already indexed is left as it is. A chunk whose upload is missing or does not match answers 422 validation-failed.
       operationId: workerRunLogChunks
       security:
         - runToken: []
@@ -560,6 +560,10 @@ components:
           format: int64
           minimum: 0
           description: When the chunk's last line was written, in Unix seconds.
+        lost:
+          type: boolean
+          description: >-
+            The worker could not upload the chunk and gave up on it. A lost chunk has no upload; a reader finds one line in its place that says part of the log could not be stored.
     LogChunksRequest:
       description: Log chunks of the run's current state, uploaded and to be indexed.
       type: object
@@ -826,6 +830,12 @@ components:
             What the worker says about the event, such as why a phase failed, which the transition records as its note.
         delta:
           $ref: '#/components/schemas/PlanDelta'
+        logChunks:
+          type: integer
+          format: int64
+          minimum: 0
+          description: >-
+            How many chunks the worker cut the phase's log into, which a succeeded, failed or stopped report carries. Once the run has left the state, a reader of its log finds a line in place of each chunk below this number that was never indexed.
     RunSpec:
       description: >-
         What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token, the run's artifact key and the credential that reads the source are in sealed, which only the pool's private key opens.

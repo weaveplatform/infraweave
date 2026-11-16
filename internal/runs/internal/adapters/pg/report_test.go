@@ -21,9 +21,9 @@ import (
 // once by state version and sequence number, its other uploads recorded
 // once by kind and name with the last workspace, and the last changes
 // document and plan's JSON of a planning state, read back, and a deleted
-// account's chunks and records purged a batch at a time with their
-// objects' stores and keys and each state's compacted log, another
-// account's kept.
+// account's chunks, lost ones among them, and records purged a batch at
+// a time with their objects' stores and keys and each state's compacted
+// log, another account's kept.
 func TestAccReportStore(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -64,6 +64,14 @@ func TestAccReportStore(t *testing.T) {
 		if err := s.IndexChunk(ctx, run, report.Chunk{
 			Version: 3, State: kernel.RunStatePlanning, Seq: seq, Key: "k/" + string(rune('0'+seq)),
 			Bytes: 10, FirstAt: at, LastAt: at,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, seq := range []int64{2, 3, 4} {
+		if err := s.IndexChunk(ctx, run, report.Chunk{
+			Version: 3, State: kernel.RunStatePlanning, Seq: seq, FirstAt: at, LastAt: at,
+			Lost: true,
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -173,7 +181,8 @@ func TestAccReportStore(t *testing.T) {
 		"changes-5": objectstore.RunArtifacts, "changes-7": objectstore.RunArtifacts,
 		"ws-9": objectstore.Workspaces,
 	}
-	if len(got) != len(want) {
+	// A state whose chunks span batches names its compacted log in each.
+	if len(stores) != len(want) {
 		t.Errorf("purged %+v", got)
 	}
 	for k, store := range want {
@@ -183,6 +192,9 @@ func TestAccReportStore(t *testing.T) {
 	}
 	if n := count(t, db, "run_log_chunks", other); n != 1 {
 		t.Errorf("another account keeps %d chunks", n)
+	}
+	if n := count(t, db, "run_log_chunks", acct); n != 0 {
+		t.Errorf("the purge left %d chunks", n)
 	}
 
 	db.Close()

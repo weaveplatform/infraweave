@@ -52,15 +52,18 @@ func TestUnitSanitize(t *testing.T) {
 	}
 }
 
-// store holds one run, the state it entered at each state version, and
-// its chunks by state version; locked, when set, is what LockChunks
-// answers; the method named in fail fails.
+// store holds one run, the state it entered at each state version and
+// when, its chunks by state version, and the counts its reports named;
+// locked, when set, is what LockChunks answers; the method named in fail
+// fails.
 type store struct {
-	run    lifecycle.Run
-	states map[int64]kernel.RunState
-	chunks map[int64][]report.Chunk
-	locked []int64
-	fail   string
+	run     lifecycle.Run
+	states  map[int64]kernel.RunState
+	entered time.Time
+	chunks  map[int64][]report.Chunk
+	counts  map[int64]int64
+	locked  []int64
+	fail    string
 }
 
 func (s *store) err(method string) error {
@@ -113,6 +116,25 @@ func (s *store) Chunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID, ver
 	return out, s.err("Chunks")
 }
 
+func (s *store) Extent(_ context.Context, _ kernel.AccountID, _ kernel.ULID, version,
+	from int64,
+) (logs.Extent, error) {
+	if _, ok := s.states[version]; !ok {
+		return logs.Extent{}, lifecycle.ErrNotFound
+	}
+	e := logs.Extent{Chunks: s.counts[version], Before: s.entered, Entered: s.entered}
+	for _, c := range s.chunks[version] {
+		e.Chunks = max(e.Chunks, c.Seq+1)
+		if e.Stored == "" && !c.Lost {
+			e.Stored = c.Key
+		}
+		if c.Seq < from {
+			e.Before = c.LastAt
+		}
+	}
+	return e, s.err("Extent")
+}
+
 func (s *store) LockChunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
 	version int64,
 ) ([]int64, error) {
@@ -146,7 +168,9 @@ func (s *store) DeleteLogs(_ context.Context, run lifecycle.Run, at time.Time) (
 	var out []report.Object
 	for v, cs := range s.chunks {
 		for _, c := range cs {
-			out = append(out, report.Object{Store: objectstore.RunLogs, Key: c.Key})
+			if !c.Lost {
+				out = append(out, report.Object{Store: objectstore.RunLogs, Key: c.Key})
+			}
 		}
 		out = append(out, report.Object{
 			Store: objectstore.RunLogs, Key: report.LogKey(run.Account, run.ID, s.states[v], v),
@@ -306,8 +330,12 @@ func (fakeTx) Commit(context.Context) error                       { return nil }
 func (fakeTx) Rollback(context.Context) error                     { return nil }
 
 // at is when every chunk's first line was written, in seconds after
-// the epoch: chunk seq's is at+seq.
+// the epoch: chunk seq's is at+seq. The run entered each state a second
+// before.
 const at = 1_800_000_000
+
+// retention is how long the run-logs store keeps an object.
+const retention = 24 * time.Hour
 
 // world is a run of the account acct, in APPLYING at state version 7,
 // which entered PLANNING at 5 and APPLYING at 7, with the service over
@@ -331,13 +359,13 @@ func newWorld() *world {
 		s: &store{run: run, states: map[int64]kernel.RunState{
 			4: kernel.RunStateInitializing, 5: kernel.RunStatePlanning,
 			6: kernel.RunStateConfirmed, 7: kernel.RunStateApplying,
-		}, chunks: map[int64][]report.Chunk{}},
+		}, entered: time.Unix(at-1, 0), chunks: map[int64][]report.Chunk{}, counts: map[int64]int64{}},
 		o: newObjects(),
 		j: &jobs{},
 	}
 	w.svc = logs.New(logs.Deps{
 		DB: db{}, Store: w.s, Objects: w.o, Jobs: w.j, Stacks: stacks{id: run.Stack},
-		Now: func() time.Time { return time.Unix(at, 123456789).UTC() },
+		Retention: retention, Now: func() time.Time { return time.Unix(at, 123456789).UTC() },
 	})
 	return w
 }
@@ -356,6 +384,17 @@ func (w *world) chunk(version, seq int64, body string, bytes int64) {
 	}
 	w.s.chunks[version] = append(w.s.chunks[version], report.Chunk{
 		Version: version, State: w.s.states[version], Seq: seq, Key: key, Bytes: bytes,
+		FirstAt: time.Unix(at+seq, 0), LastAt: time.Unix(at+seq, 0),
+	})
+	slices.SortFunc(w.s.chunks[version], func(a, b report.Chunk) int {
+		return int(a.Seq - b.Seq)
+	})
+}
+
+// lost indexes chunk seq of state version version as lost.
+func (w *world) lost(version, seq int64) {
+	w.s.chunks[version] = append(w.s.chunks[version], report.Chunk{
+		Version: version, State: w.s.states[version], Seq: seq, Lost: true,
 		FirstAt: time.Unix(at+seq, 0), LastAt: time.Unix(at+seq, 0),
 	})
 	slices.SortFunc(w.s.chunks[version], func(a, b report.Chunk) int {
@@ -385,9 +424,10 @@ func version(v int64) *int64 { return &v }
 
 // TestUnitLogsPage checks a state's pages: lines in sequence order with
 // their chunk's time, a gap waited at while the run is in the state and
-// passed once it has left, a removed chunk skipped and marked expired,
-// the page's size and chunk limits, sanitizing, the state version named
-// or the latest, and a state never entered.
+// read as the missing line once it has left, a lost chunk read as the
+// missing line, as are chunks below a report's count never indexed, a
+// removed chunk skipped and marked expired, sanitizing, the state version
+// named or the latest, and a state never entered.
 func TestUnitLogsPage(t *testing.T) {
 	w := newWorld()
 	w.chunk(5, 0, "a\nb\n", 0)
@@ -396,7 +436,8 @@ func TestUnitLogsPage(t *testing.T) {
 	w.chunk(5, 4, "\x1b[1md\x1b[0m\n", 0)
 	w.chunk(5, 5, "", 0)
 	got := w.page(t, logs.Query{State: kernel.RunStatePlanning})
-	if text(got) != "a@0,b@0,c@2,\x1b[1md\x1b[0m@4" || got.Version != 5 || got.Next != 6 ||
+	if text(got) != "a@0,b@0,"+logs.Missing+"@0,c@2,\x1b[1md\x1b[0m@4" || got.Version != 5 ||
+		got.Next != 6 ||
 		!got.Exists || got.Ongoing || !got.Expired || got.HasMore || !got.Finished() ||
 		got.More() {
 		t.Errorf("the left state's page is %q %+v", text(got), got)
@@ -409,6 +450,19 @@ func TestUnitLogsPage(t *testing.T) {
 		t.Errorf("the sanitized page from 4 is %q %+v", text(got), got)
 	}
 
+	w.s.counts[4] = 4
+	w.lost(4, 1)
+	w.chunk(4, 2, "x\n", 0)
+	got = w.page(t, logs.Query{State: kernel.RunStateInitializing})
+	if m := logs.Missing; text(got) != m+"@-1,"+m+"@1,x@2,"+m+"@2" || got.Next != 4 ||
+		got.HasMore {
+		t.Errorf("the page of a state with lost chunks is %q %+v", text(got), got)
+	}
+	got = w.page(t, logs.Query{State: kernel.RunStateInitializing, From: 3})
+	if text(got) != logs.Missing+"@2" || got.Next != 4 || got.HasMore {
+		t.Errorf("the page from a trailing gap is %q %+v", text(got), got)
+	}
+
 	w.chunk(7, 0, "x\n", 0)
 	w.chunk(7, 2, "z\n", 0)
 	got = w.page(t, logs.Query{State: kernel.RunStateApplying})
@@ -417,8 +471,9 @@ func TestUnitLogsPage(t *testing.T) {
 		t.Errorf("the ongoing state's page is %q %+v", text(got), got)
 	}
 	w.chunk(7, 1, "y\n", 0)
+	w.lost(7, 3)
 	got = w.page(t, logs.Query{State: kernel.RunStateApplying, Version: version(7), From: 1})
-	if text(got) != "y@1,z@2" || got.Next != 3 || got.HasMore {
+	if text(got) != "y@1,z@2,"+logs.Missing+"@3" || got.Next != 4 || got.HasMore {
 		t.Errorf("the page once the gap is indexed is %q %+v", text(got), got)
 	}
 
@@ -479,7 +534,7 @@ func TestUnitLogsPageFailures(t *testing.T) {
 	for _, c := range []struct {
 		fail    string
 		version *int64
-	}{{"Get", nil}, {"Entered", nil}, {"StateAt", version(5)}, {"Chunks", nil}} {
+	}{{"Get", nil}, {"Entered", nil}, {"StateAt", version(5)}, {"Chunks", nil}, {"Extent", nil}} {
 		w.s.fail = c.fail
 		if _, err := w.svc.Page(t.Context(), w.p, w.s.run.ID.String(),
 			logs.Query{State: kernel.RunStatePlanning, Version: c.version}); !errors.Is(err,
@@ -495,9 +550,11 @@ func TestUnitLogsPageFailures(t *testing.T) {
 }
 
 // TestUnitLogsDownload checks each answer: a compacted log's URL, ongoing
-// while the run is in the state or the compaction is pending, expired for
-// a state never entered, with no chunk or whose chunks retention removed,
-// and each read's failure.
+// while the run is in the state or the compaction is pending, as it is
+// for a state whose every chunk was lost within the retention of its
+// entry, expired for a state never entered, with no chunk, whose chunks
+// retention removed or whose every chunk was lost longer ago, and each
+// read's failure.
 func TestUnitLogsDownload(t *testing.T) {
 	w := newWorld()
 	download := func(state kernel.RunState, v *int64) logs.Download {
@@ -543,6 +600,15 @@ func TestUnitLogsDownload(t *testing.T) {
 			name: "retention removed the chunks", setup: func() { w.chunk(6, 0, "expired", 2) },
 			state: kernel.RunStateConfirmed, want: logs.Download{Expired: true},
 		},
+		{
+			name: "every chunk lost", setup: func() { w.lost(4, 0) },
+			state: kernel.RunStateInitializing, want: logs.Download{Ongoing: true},
+		},
+		{
+			name:  "every chunk lost before the retention",
+			setup: func() { w.s.entered = time.Unix(at, 0).Add(-retention) },
+			state: kernel.RunStateInitializing, want: logs.Download{Expired: true},
+		},
 	} {
 		if c.setup != nil {
 			c.setup()
@@ -555,11 +621,11 @@ func TestUnitLogsDownload(t *testing.T) {
 		nil); !errors.Is(err, read.ErrNotFound) {
 		t.Errorf("Download of no run: %v", err)
 	}
-	w.chunk(4, 0, "i\n", 0)
+	w.chunk(4, 1, "i\n", 0)
 	for _, c := range []struct {
 		store, objects string
 		live           int
-	}{{store: "Entered"}, {objects: "SignGet"}, {store: "Chunks"}, {live: 1}} {
+	}{{store: "Entered"}, {objects: "SignGet"}, {store: "Extent"}, {live: 1}} {
 		w.s.fail, w.o.fail, w.o.failLive, w.o.lives = c.store, c.objects, c.live, 0
 		if _, err := w.svc.Download(t.Context(), w.p, w.s.run.ID.String(),
 			kernel.RunStateInitializing, nil); !errors.Is(err, errDown) {
@@ -646,13 +712,18 @@ func (w *world) compactJob(t *testing.T, state kernel.RunState, version int64) q
 }
 
 // TestUnitLogsCompact checks that a state's chunks are written, in order,
-// to its log's key and committed with the job, that compacting again
-// writes nothing, and that a state with no chunk writes nothing.
+// to its log's key, with the missing line in place of each chunk lost or
+// below the report's count never indexed, and committed with the job;
+// that compacting again writes nothing; that a state with no chunk, and
+// a deleted run's, write nothing; and that a state whose every chunk was
+// lost writes the missing lines alone.
 func TestUnitLogsCompact(t *testing.T) {
 	w := newWorld()
 	w.chunk(5, 0, "a\n", 0)
 	w.chunk(5, 1, "b\nc\n", 0)
-	w.chunk(5, 3, "d\n", 0)
+	w.lost(5, 3)
+	w.chunk(5, 4, "d\n", 0)
+	w.s.counts[5] = 6
 	key := report.LogKey(w.s.run.Account, w.s.run.ID, kernel.RunStatePlanning, 5)
 	j := w.compactJob(t, kernel.RunStatePlanning, 5)
 	for range 2 {
@@ -660,14 +731,25 @@ func TestUnitLogsCompact(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if w.o.rows[key] != "live" || string(w.o.data[key]) != "a\nb\nc\nd\n" || w.o.puts != 1 ||
-		w.j.completed != 2 {
+	m := logs.Missing + "\n"
+	if w.o.rows[key] != "live" || string(w.o.data[key]) != "a\nb\nc\n"+m+m+"d\n"+m ||
+		w.o.puts != 1 || w.j.completed != 2 {
 		t.Errorf("compacted %s %q in %d writes, %d completions", w.o.rows[key], w.o.data[key],
 			w.o.puts, w.j.completed)
 	}
 	if err := w.svc.Compact(t.Context(), w.compactJob(t, kernel.RunStateInitializing,
 		4)); err != nil || w.o.puts != 1 || w.j.completed != 3 {
 		t.Errorf("a state without chunks: %v, %d writes", err, w.o.puts)
+	}
+	if err := w.svc.Compact(t.Context(), w.compactJob(t, kernel.RunStatePlanning,
+		99)); err != nil || w.o.puts != 1 || w.j.completed != 4 {
+		t.Errorf("a deleted run: %v, %d writes", err, w.o.puts)
+	}
+	w.lost(4, 0)
+	key = report.LogKey(w.s.run.Account, w.s.run.ID, kernel.RunStateInitializing, 4)
+	if err := w.svc.Compact(t.Context(), w.compactJob(t, kernel.RunStateInitializing,
+		4)); err != nil || string(w.o.data[key]) != m || w.j.completed != 5 {
+		t.Errorf("a state whose chunks were lost: %v, %q", err, w.o.data[key])
 	}
 	if err := w.svc.Compact(t.Context(), queue.Job{Payload: []byte("{")}); err == nil {
 		t.Error("a payload that does not decode compacted")
@@ -727,6 +809,7 @@ func TestUnitLogsCompactFailures(t *testing.T) {
 		jobs           error
 		before         string
 	}{
+		{store: "Extent"},
 		{store: "Chunks"},
 		{live: 1},
 		{objects: "Put"},

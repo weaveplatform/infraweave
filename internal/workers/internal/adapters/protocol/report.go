@@ -28,7 +28,7 @@ func (s Server) WorkerRunReport(
 	run, _ := kernel.ParseULID(req.Run)
 	r := workersapi.Report{
 		StateVersion: req.Body.StateVersion, State: kernel.RunState(req.Body.State),
-		Event: workersapi.ReportEvent(req.Body.Event),
+		Event: workersapi.ReportEvent(req.Body.Event), LogChunks: req.Body.LogChunks,
 	}
 	if req.Body.Details != nil {
 		r.Details = *req.Body.Details
@@ -109,6 +109,7 @@ func (s Server) WorkerRunLogChunks(
 			Seq:     c.Seq,
 			FirstAt: time.Unix(c.FirstAt, 0).UTC(),
 			LastAt:  time.Unix(c.LastAt, 0).UTC(),
+			Lost:    c.Lost != nil && *c.Lost,
 		})
 	}
 	if err := s.svc.LogChunks(ctx, b, run, req.Body.StateVersion, chunks); err != nil {

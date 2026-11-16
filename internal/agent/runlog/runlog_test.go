@@ -128,11 +128,16 @@ func (w *world) end() {
 	}
 }
 
-// chunks are the indexed chunks as version/seq: body.
+// chunks are the indexed chunks as version/seq: body, or version/seq
+// lost.
 func (w *world) chunks() []string {
 	chunks := w.srv.Chunks()
 	got := make([]string, 0, len(chunks))
 	for _, c := range chunks {
+		if c.Lost {
+			got = append(got, fmt.Sprintf("%d/%d lost", c.StateVersion, c.Seq))
+			continue
+		}
 		got = append(got, fmt.Sprintf("%d/%d: %s", c.StateVersion, c.Seq, c.Body))
 	}
 	return got
@@ -209,8 +214,8 @@ func TestUnitLogCuts(t *testing.T) {
 
 // TestUnitLogRetries sends a chunk again after a failed PUT, a
 // declaration and a commit the server could not take for now and a
-// commit whose answer was lost, each chunk indexed once; and drops a
-// chunk the server refuses, going on with the next.
+// commit whose answer was lost, each chunk indexed once; and commits as
+// lost a chunk the server refuses, going on with the next.
 func TestUnitLogRetries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
@@ -232,12 +237,41 @@ func TestUnitLogRetries(t *testing.T) {
 		synctest.Wait()
 		w.write("three\n")
 		w.end()
-		equal(t, "chunks", w.chunks(), []string{"4/0: one\n", "4/2: three\n"})
+		equal(t, "chunks", w.chunks(), []string{"4/0: one\n", "4/1 lost", "4/2: three\n"})
 	})
 }
 
-// TestUnitLogGivesUp drops a chunk the worker API cannot take within
-// retryFor, and one whose declaration answers no URL.
+// TestUnitLogSignedRefusal sends a chunk again from a new declaration
+// after the store refuses its signed PUT with 403, as a store whose clock
+// disagrees with the signature's does, and commits as lost one it refuses
+// with 400 for retryFor; Chunks counts the state's chunks either way.
+func TestUnitLogSignedRefusal(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		w.begin(4)
+		w.srv.Refuse("put", http.StatusForbidden, 1)
+		w.write("one\n")
+		<-time.After(Cut + 2*retryWait)
+		synctest.Wait()
+		equal(t, "a refused chunk sent again", w.chunks(), []string{"4/0: one\n"})
+		w.srv.Refuse("put", http.StatusBadRequest, 1000)
+		start := time.Now()
+		w.write("two\n")
+		w.end()
+		if took := time.Since(start); took < retryFor-retryWaitMax {
+			t.Errorf("gave up after %s", took)
+		}
+		equal(t, "a chunk refused for retryFor", w.chunks(), []string{"4/0: one\n", "4/1 lost"})
+		if n := w.log.Chunks(); n != 2 {
+			t.Errorf("Chunks = %d, want 2", n)
+		}
+	})
+}
+
+// TestUnitLogGivesUp gives up on a chunk the worker API cannot take
+// within retryFor, whose lost commit is refused too; sends a later chunk
+// once while none has been taken since; renews the budget once one is
+// taken; and commits as lost a chunk whose declaration answers no URL.
 func TestUnitLogGivesUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
@@ -249,14 +283,26 @@ func TestUnitLogGivesUp(t *testing.T) {
 		if took := time.Since(start); took > retryFor || took < retryFor-retryWaitMax {
 			t.Errorf("gave up after %s", took)
 		}
-		w.srv.Refuse("log-chunks", 0, 0)
-		w.log.d.API = noURL{w.api}
 		w.begin(5)
+		start = time.Now()
 		w.write("two\n")
 		w.end()
-		if got := w.chunks(); len(got) != 0 {
-			t.Errorf("indexed %q", got)
+		if took := time.Since(start); took != 0 {
+			t.Errorf("a chunk after the budget was spent took %s", took)
 		}
+		w.srv.Refuse("log-chunks", 0, 0)
+		w.begin(6)
+		w.write("three\n")
+		<-time.After(Cut)
+		synctest.Wait()
+		w.srv.Refuse("put", http.StatusServiceUnavailable, 2)
+		w.write("four\n")
+		w.end()
+		w.log.d.API = noURL{w.api}
+		w.begin(7)
+		w.write("five\n")
+		w.end()
+		equal(t, "chunks", w.chunks(), []string{"6/0: three\n", "6/1: four\n", "7/0 lost"})
 	})
 }
 

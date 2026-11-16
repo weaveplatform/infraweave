@@ -2,6 +2,7 @@ package pg_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -9,14 +10,17 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 )
 
 // TestAccLogsStore checks the latest state version at which a run entered
 // a state, a state version's chunks read in sequence order from a
-// sequence number with a limit, the transitions that wrote logs marked as
-// having them, and LockChunks holding a purge's delete of the chunks
-// until its transaction ends.
+// sequence number with a limit, a lost chunk read with no key, the
+// transitions that wrote logs marked as having them, a state version's
+// extent with and without a reported count, and LockChunks holding a
+// purge's delete of the chunks until its transaction ends.
 func TestAccLogsStore(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -100,6 +104,54 @@ func TestAccLogsStore(t *testing.T) {
 	if got, err := s.Chunks(ctx, other, theirs, 4, 0, 10); err != nil || len(got) != 0 {
 		t.Errorf("another account's chunks = %+v, %v", got, err)
 	}
+	if err := s.IndexChunk(ctx, run, report.Chunk{
+		Version: 4, State: kernel.RunStatePlanning, Seq: 5, FirstAt: at, LastAt: at, Lost: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.Chunks(ctx, acct, id, 4, 5, 1); err != nil || len(got) != 1 ||
+		!got[0].Lost || got[0].Key != "" || got[0].Bytes != 0 {
+		t.Errorf("the lost chunk = %+v, %v", got, err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO run_log_chunks (account_id, run_id, state_version,
+		seq, state, object_key, bytes, first_at, last_at, lost)
+		VALUES ($1, $2, 4, 6, 'PLANNING', 'k46', 0, now(), now(), true)`, acct, id); err == nil {
+		t.Error("a lost chunk with an object was indexed")
+	}
+
+	entered := func(v int64) time.Time {
+		var ts time.Time
+		if err := db.QueryRow(ctx, `SELECT timestamp FROM run_state_transitions
+			WHERE account_id = $1 AND run_id = $2 AND sequence = $3`, acct, id, v).
+			Scan(&ts); err != nil {
+			t.Fatal(err)
+		}
+		return ts
+	}
+	extent := func(v, from int64, want logs.Extent) {
+		t.Helper()
+		got, err := s.Extent(ctx, acct, id, v, from)
+		if err != nil || got.Chunks != want.Chunks || got.Stored != want.Stored ||
+			!got.Before.Equal(want.Before) || !got.Entered.Equal(want.Entered) {
+			t.Errorf("Extent(%d, %d) = %+v, %v, want %+v", v, from, got, err, want)
+		}
+	}
+	extent(4, 3, logs.Extent{
+		Chunks: 6, Stored: "k40", Before: at.Add(time.Minute), Entered: entered(4),
+	})
+	extent(4, 0, logs.Extent{Chunks: 6, Stored: "k40", Before: entered(4), Entered: entered(4)})
+	extent(3, 0, logs.Extent{Before: entered(3), Entered: entered(3)})
+	for n, want := range map[int64]int64{9: 9, 2: 6} {
+		if err := s.CountChunks(ctx, run, 4, n); err != nil {
+			t.Fatal(err)
+		}
+		extent(4, 3, logs.Extent{
+			Chunks: want, Stored: "k40", Before: at.Add(time.Minute), Entered: entered(4),
+		})
+	}
+	if _, err := s.Extent(ctx, acct, id, 99, 0); !errors.Is(err, lifecycle.ErrNotFound) {
+		t.Errorf("Extent of no transition = %v", err)
+	}
 
 	conn, err := db.Acquire(ctx)
 	if err != nil {
@@ -110,7 +162,7 @@ func TestAccLogsStore(t *testing.T) {
 	}
 	if err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
 		seqs, err := s.LockChunks(ctx, acct, id, 4)
-		if err != nil || !slices.Equal(seqs, []int64{0, 1, 3}) {
+		if err != nil || !slices.Equal(seqs, []int64{0, 1, 3, 5}) {
 			t.Errorf("LockChunks = %v, %v", seqs, err)
 		}
 		if _, err := conn.Exec(ctx, `DELETE FROM run_log_chunks WHERE account_id = $1`,
@@ -137,6 +189,11 @@ func TestAccLogsStore(t *testing.T) {
 			_, err := s.LockChunks(context.Background(), acct, id, 4)
 			return err
 		}(),
+		"Extent": func() error {
+			_, err := s.Extent(context.Background(), acct, id, 4, 0)
+			return err
+		}(),
+		"CountChunks": s.CountChunks(context.Background(), run, 4, 1),
 	} {
 		if err == nil {
 			t.Errorf("%s on a closed pool succeeded", name)
