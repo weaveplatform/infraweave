@@ -4,8 +4,10 @@
 
 -- A stack's workspaces, name empty for its default workspace, which its
 -- http backend reaches. id is the ULID the Tofu Workspaces operations
--- name a workspace by, set when the first lock creates the row; locks and
--- versions name their workspace by its stack and name. stack_id has no
+-- name a workspace by, set when the row is created: the default
+-- workspace's with a stack whose state infraweave keeps, any other by the
+-- first lock on it. Locks and versions name their workspace by its stack
+-- and name. stack_id has no
 -- foreign key because stacks belong to the stacks domain: a workspace
 -- holds its stack while it is written, and deleting the stack deletes its
 -- workspaces through the domain's StackGuard. current_version_id is the
