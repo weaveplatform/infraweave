@@ -3,6 +3,7 @@
 components:
   schemas:
     FeatureFlagBoolEvaluation:
+      additionalProperties: false
       description: Used to evaluate a boolean flag.
       properties:
         defaultValue:
@@ -17,6 +18,7 @@ components:
       type: object
       x-graphql-type: FeatureFlagBoolEvaluation
     FeatureFlagEvaluation:
+      additionalProperties: false
       description: |-
         Represents an individual flag that you want to evaluate. Only one of intEvaluation
         or boolEvaluation should be provided, depending on the type of flag you're evaluating.
@@ -28,6 +30,7 @@ components:
       type: object
       x-graphql-type: FeatureFlagEvaluation
     FeatureFlagEvaluationInput:
+      additionalProperties: false
       description: The input to the evaluateFeatureFlags request. Used to evaluate feature flags in Self-Hosted instances.
       properties:
         flags:
@@ -67,6 +70,7 @@ components:
         - items
       type: object
     FeatureFlagIntEvaluation:
+      additionalProperties: false
       description: Used to evaluate an int flag.
       properties:
         defaultValue:

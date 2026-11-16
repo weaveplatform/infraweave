@@ -80,10 +80,14 @@ Feature: A run's CPU profile of a state downloads once its worker records it
     And the answer's action is '"SPACE_READ"'
 
   @op:runCpuProfileDownloadURL @case:failure
-  Scenario: A caller who cannot read the run, an unknown run and a request that names no state are refused
+  Scenario: A caller who cannot read the run, an unknown run, and a request that names no state or one no run has are refused
     When token "m" sends "GET /api/v1/runs/{run}/cpu-profile-download-url?state=PLANNING" through A
     Then it answers a 404 problem "not-found"
     When token "h" sends "GET /api/v1/runs/01JBQ6Q4V2ZK5Y3W8N7M6P5R4T/cpu-profile-download-url?state=PLANNING" through B
     Then it answers a 404 problem "not-found"
     When token "h" sends "GET /api/v1/runs/{run}/cpu-profile-download-url" through A
     Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "#/query/state" as "required"
+    When token "h" sends "GET /api/v1/runs/{run}/cpu-profile-download-url?state=LATER" through B
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "#/query/state" as "enum"

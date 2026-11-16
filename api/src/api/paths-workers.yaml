@@ -408,6 +408,7 @@ components:
       type: object
       x-graphql-type: WorkerUsageCycle
     WorkerUsageInput:
+      additionalProperties: false
       description: |-
         Selects the billing cycle returned by `workerUsage`. Omitting `input`, passing
         an empty input, omitting `cyclesAgo`, and setting `cyclesAgo` to 0 all select
