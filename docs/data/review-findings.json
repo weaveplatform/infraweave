@@ -8057,7 +8057,7 @@
           "file": "docs/research/decisions/0016-testing-and-acceptance.md",
           "present": [
             "an `infraweave flows-agent` subprocess that runs it in Docker",
-            "`@terraform`, `@tofu`, `@kubernetes`, `@flows-agent`"
+            "`@terraform`, `@tofu`, `@terragrunt`, `@kubernetes`, `@flows-agent`"
           ],
           "absent": [
             "@flows-runtime"
@@ -8180,7 +8180,8 @@
         {
           "file": "docs/research/decisions/0010-state-backend.md",
           "present": [
-            "signed with HMAC-SHA256 under `crypt.DeriveKey("
+            "signed with HMAC-SHA-256 under a key derived for its kind",
+            "`crypt.DeriveKey(\"state-upload-url\")` for uploads"
           ]
         }
       ]
@@ -9484,7 +9485,7 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "Terragrunt, Pulumi, CloudFormation and Kubernetes each run a tracked run to `FINISHED` in acceptance."
+            "Pulumi, CloudFormation and Kubernetes each run a tracked run to `FINISHED` in acceptance"
           ]
         }
       ]
@@ -12375,8 +12376,8 @@
         {
           "file": "docs/research/decisions/0006-authentication-and-tokens.md",
           "present": [
-            "The one cross-audience",
-            "acceptance is `/mcp`, which also takes an API token, unnarrowed"
+            "Two surfaces accept a credential of another audience",
+            "`/mcp` also takes an API token, unnarrowed"
           ]
         },
         {
@@ -13446,7 +13447,7 @@
       "id": "DES-10.33",
       "severity": "wrong",
       "finding": "two operations read across the graph against its direction: `stackCreate` imported state, which `stacks` cannot reach, and `workers` served `workerPoolSearchSchedulableRuns` over runs",
-      "change": "`state` imports on `StackCreated`; `runs`' partial serves the schedulable-runs search",
+      "change": "`state` implements a state-import port that `stacksapi` declares, so `stackCreate` imports with no edge to `state`; `runs`' partial serves the schedulable-runs search",
       "status": "folded",
       "files": [
         "docs/implementation/plan.md"
@@ -13455,7 +13456,7 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "by `state` on `StackCreated` carrying the",
+            "Import at creation through a state-import port that `stacksapi` declares",
             "which `runs`' partial serves, since `workers` imports no `runs` package"
           ]
         }

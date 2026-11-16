@@ -1195,6 +1195,15 @@
       "why": "Every URL infraweave signs for an upload binds a declared size and SHA-256, as the worker API's uploads do, so a client cannot fill the store and a run fetches exactly the archive that was declared; a pre-signed PUT cannot bound a size it is not given",
       "impact": "A client hashes the archive before it asks for the upload URL",
       "source": "[0008 The run specification and its secrets](../research/decisions/0008-run-execution-and-worker-protocol.md#the-run-specification-and-its-secrets)"
+    },
+    {
+      "id": "DV-119",
+      "group": "State and queue: decisions 0010 and 0011",
+      "spacelift": "A Terragrunt unit under managed state cannot read another stack's state",
+      "infraweave": "A Terragrunt unit reads another stack's state as any run of its stack does: read only, when the stack has external access on and the unit's stack holds `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` in its space",
+      "why": "A unit's tool reaches the backend with its run's token, as every run's tool does, so refusing units alone would add a rule with no protection behind it",
+      "impact": "Terragrunt dependencies on another stack's outputs work under managed state",
+      "source": "[0010 Who may call what](../research/decisions/0010-state-backend.md#who-may-call-what)"
     }
   ]
 }

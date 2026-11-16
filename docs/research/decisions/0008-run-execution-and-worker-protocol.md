@@ -377,7 +377,14 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 - **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
   and `download`. The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the
-  run uses one release. The constraint is the stack's `terraformVersion`,
+  run uses one release. A Terragrunt stack's run also names `terragrunt`
+  (`version` and `download`), which drives the tool its `tool` setting
+  chooses (`OPEN_TOFU` is `tofu`, `TERRAFORM_FOSS` is `terraform`;
+  `MANUALLY_PROVISIONED` answers `422` until the Terragrunt work of P20);
+  its version is the newest Terragrunt release matching the stack's
+  `terragruntVersion`, from Terragrunt's release index without alpha or
+  release-candidate tags, and the stack reads both back as
+  `effectiveVersions`. The constraint is the stack's `terraformVersion`,
   else its vendor settings' `version`; a stack with neither runs the
   newest listed release. `download` is false when the stack sets
   `skipVendorBinaryDownload`, and the image's own binary runs. A
@@ -500,6 +507,14 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
     or for a run no longer on a worker, answers `409` `invalid-state`, for
     example when a timer ended the run, and the runner exits without further
     reports.
+- **A Terragrunt run** writes each unit's backend file in `INITIALIZING`
+  ([0010](0010-state-backend.md)) and runs each phase's tool commands as
+  `terragrunt run --all -- <command>`, with `TG_TF_PATH` naming the mounted
+  tool. After planning it reads each unit's plan from `--json-out-dir` and
+  reports their summed `delta`. It uploads no `plan.json`, `changes.json` or
+  outputs, and the specification marks the run so the server expects none;
+  the changes view, outputs and the plan policy input of a Terragrunt run
+  are P20's.
 - **After planning** the runner uploads two sealed artifacts: `plan.json`,
   the tool's `show -json` of the plan, and `changes.json`, the changes
   `internal/iac` parses from it, which the server reads for the run's
@@ -888,7 +903,8 @@ has failed":
   |---|---|
   | Terraform | `SHA256SUMS` signed by HashiCorp's PGP key, which is embedded in the binary, then the archive checksum |
   | OpenTofu | `SHA256SUMS` signed by the OpenTofu signing key, embedded, then the archive checksum |
-  | Terragrunt, kubectl | The published SHA-256 checksum |
+  | Terragrunt | `SHA256SUMS` signed by Gruntwork's Terragrunt signing key, embedded rather than taken from the release, then the binary's checksum |
+  | kubectl | The published SHA-256 checksum |
 
   Binaries are cached at `<cache_dir>/binaries/<tool>/<version>/<os>_<arch>` and
   reused. Each is written beside its path and renamed into place, so

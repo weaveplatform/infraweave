@@ -147,7 +147,7 @@ and lint is clean.
 | P8b Managed state backend | Done | Epic [#394](https://github.com/weaveplatform/infraweave/issues/394). Done: [#395](https://github.com/weaveplatform/infraweave/issues/395) the state surface, deviations, plan decision and purges in the plan and decisions; [#397](https://github.com/weaveplatform/infraweave/issues/397) the state domain with its workspaces, locks and versions; [#396](https://github.com/weaveplatform/infraweave/issues/396) a run's state access decided from its current state; [#398](https://github.com/weaveplatform/infraweave/issues/398) the plan decision taken when no policy is attached; [#399](https://github.com/weaveplatform/infraweave/issues/399) the state backend named in the run specification and `infraweave_backend.tf` written by the agent; [#400](https://github.com/weaveplatform/infraweave/issues/400) `/state/v1` and its locks served behind the API's shared controls; [#401](https://github.com/weaveplatform/infraweave/issues/401) a deleted stack's and account's state purged; [#402](https://github.com/weaveplatform/infraweave/issues/402) sealed state versions written and read through `/state/v1`; [#403](https://github.com/weaveplatform/infraweave/issues/403) `state/backend.feature` proving the backend with real Terraform and OpenTofu |
 | P9 First tracked run end to end | Done | **M3**. Epic [#413](https://github.com/weaveplatform/infraweave/issues/413). Done: [#414](https://github.com/weaveplatform/infraweave/issues/414) P9's run specification, artifacts, log compaction, images and captures in the plan and decisions; [#415](https://github.com/weaveplatform/infraweave/issues/415) a run's source, tool version and masking named in its specification, and the full plan delta taken; [#420](https://github.com/weaveplatform/infraweave/issues/420) Terraform and OpenTofu downloaded, verified and cached for each run; [#421](https://github.com/weaveplatform/infraweave/issues/421) a run's source fetched into its workspace before its container starts; [#416](https://github.com/weaveplatform/infraweave/issues/416) Terraform and OpenTofu plan JSON parsed into a run's changes and delta; [#423](https://github.com/weaveplatform/infraweave/issues/423) a run's phases executed with their hooks in one shell session; [#425](https://github.com/weaveplatform/infraweave/issues/425) a run's log masked and uploaded in chunks; [#426](https://github.com/weaveplatform/infraweave/issues/426) a run's plan sealed and its encrypted workspace saved for confirmation; [#422](https://github.com/weaveplatform/infraweave/issues/422) runs proposed on uploaded local workspaces; [#417](https://github.com/weaveplatform/infraweave/issues/417) runs awaiting confirmation confirmed and discarded; [#419](https://github.com/weaveplatform/infraweave/issues/419) a run's logs served per state with their compacted download; [#424](https://github.com/weaveplatform/infraweave/issues/424) a run's changes and delta served; [#418](https://github.com/weaveplatform/infraweave/issues/418) infraweave's Terraform and OpenTofu runner images, built in CI and the harness; [#429](https://github.com/weaveplatform/infraweave/issues/429) the runs reader in-run API tokens authenticate through; [#441](https://github.com/weaveplatform/infraweave/issues/441) the run's account named in its specification, so a runner derives each artifact's key; [#427](https://github.com/weaveplatform/infraweave/issues/427) `runs/terraform.feature`, `runs/tofu.feature`, `runs/runner_image.feature` and `platform/secrets_run_delivery.feature` proving tracked, discarded, local preview and proposed runs end to end through a real launcher with the newest Terraform and OpenTofu |
 | P10 Run lifecycle completeness | Done | Epic [#451](https://github.com/weaveplatform/infraweave/issues/451). Done: [#452](https://github.com/weaveplatform/infraweave/issues/452) P10's run actions, timers, outputs, profiles and captures in the plan and decisions; [#453](https://github.com/weaveplatform/infraweave/issues/453) `.infraweave/workflow.yml` command templates checked at initialization and rendered by the runner with every value one shell word, the built-in commands as the same templates, and the `workflow` editor surface; [#454](https://github.com/weaveplatform/infraweave/issues/454) `taskCreate`, `runTriggerBatch` and destroy on delete, the stack deleted in the transaction of its destroy run's `FINISHED`; [#456](https://github.com/weaveplatform/infraweave/issues/456) `runStop` and `runKill`, each signal delivered once through the busy worker's poll, the runner passing `SIGINT` to the running command's process group and reporting `stopped`, and a killed container failing its run with the note `killed`; [#458](https://github.com/weaveplatform/infraweave/issues/458) `run.timers` ending abandoned runs on report 08's 2, 7 and 30 day rules, each move noting its rule and naming it on `run_updated`, and `runLogRetentionDays`; [#460](https://github.com/weaveplatform/infraweave/issues/460) each stack's outputs kept from its last apply's sealed `outputs.json`, each value sealed to its row, with descriptions from the plan's JSON and no value answered for a sensitive output; [#457](https://github.com/weaveplatform/infraweave/issues/457) `runRetry`, `runPromote`, `runDiscardAll`, `runComment` and `runLogsDelete`, each run's `canRetry`, `canPromote` and their blockers, and its comments; [#459](https://github.com/weaveplatform/infraweave/issues/459) `launcher.run_timeout` and `launcher.log_timeout`, the launcher killing a container that runs too long or goes silent and reporting `run-timeout` or `log-timeout`, which fail its run with the note `run timeout` or `no log output`; [#455](https://github.com/weaveplatform/infraweave/issues/455) a task's command performed through `sh -c` between its hooks, `skipInitialization` running the init hooks alone, and destroy runs and test runs destroying through the workflow's `destroy`; [#467](https://github.com/weaveplatform/infraweave/issues/467) a stack locked by another caller answered `409 resource-locked` with `lockedBy` on every run-creating operation, as on the stacks surface; [#466](https://github.com/weaveplatform/infraweave/issues/466) every run-creating operation rate-limited as `expensive`, which the server checks at start; [#461](https://github.com/weaveplatform/infraweave/issues/461) OpenTofu runs profiled per tool command, each state's merged profile uploaded and served by `runCpuProfileDownloadURL`; [#462](https://github.com/weaveplatform/infraweave/issues/462) `runTargetedReplan`, a tracked run waiting for confirmation planned again with one `-target` for each resource or module address, its workspace restored in `PREPARING_REPLAN` and a failed restore failing it (T44); [#470](https://github.com/weaveplatform/infraweave/issues/470) a sensitive output's value kept, sealed, only where both its stack's `enableSensitiveOutputUpload` and its launcher's `launcher.sensitive_output_upload` allow it, and otherwise recorded with no value in its object and its row; [#481](https://github.com/weaveplatform/infraweave/issues/481) a refused authorization compared with the account's `authz_version` before it stands, so a grant committed on another replica holds at the caller's next request before its message arrives; [#478](https://github.com/weaveplatform/infraweave/issues/478) every query parameter checked against its schema before the handler, and a refused value of a query parameter or a body named by its pointer and the refusing keyword's reason; [#486](https://github.com/weaveplatform/infraweave/issues/486) a log chunk whose upload the store refuses signed afresh and sent again within one ten-minute budget an outage spends once, a chunk that still fails committed as lost, and each lost chunk, and each below the count the state's report names that was never committed, read and downloaded as `infraweave: part of this log could not be stored.`; [#485](https://github.com/weaveplatform/infraweave/issues/485) every path parameter checked against its schema before the handler, a worker API run ID longer than any run's answered `400` at `#/path/run` like any refused value; [#487](https://github.com/weaveplatform/infraweave/issues/487) the runs partition run weekly and on demand under stress, a share of signed uploads refused as a skewed store refuses them, a slow store and capped run containers, with no assertion or budget changed; [#491](https://github.com/weaveplatform/infraweave/issues/491) every signed transfer of the runner and the launcher, a log chunk, an artifact, a saved workspace, the outputs, a CPU profile, a local preview's archive and a saved workspace's download, retried with a URL signed afresh when the store refuses its signature; [#483](https://github.com/weaveplatform/infraweave/issues/483) every Go function signature that fits on one line of golines' 180 characters joined onto it, and `make sig-check`, in `make lint` and CI's lint job, failing one wrapped that fits; [#463](https://github.com/weaveplatform/infraweave/issues/463) `runs/lifecycle.feature`, every run type, action and timer end to end with each run's history and `run_updated` events, the timers, the reap and the preparing timeout reached by moving time on for one run or worker, and C10, C34, C36, C39, C42 and C44 awaited against it |
-| P11 State management | Not started | |
+| P11 State management | In progress | Epic [#503](https://github.com/weaveplatform/infraweave/issues/503). |
 | P12 VCS integrations | Done | Epic [#313](https://github.com/weaveplatform/infraweave/issues/313). Done: [#314](https://github.com/weaveplatform/infraweave/issues/314) the plan and decisions rewritten with P12 before runs and every provider a peer; [#315](https://github.com/weaveplatform/infraweave/issues/315) VCS integrations stored with sealed credentials, one default per provider; [#316](https://github.com/weaveplatform/infraweave/issues/316) GitHub, [#317](https://github.com/weaveplatform/infraweave/issues/317) GitLab, [#321](https://github.com/weaveplatform/infraweave/issues/321) Bitbucket Cloud, [#322](https://github.com/weaveplatform/infraweave/issues/322) Bitbucket Data Center and [#323](https://github.com/weaveplatform/infraweave/issues/323) Azure DevOps, each with its integration operations and provider; [#318](https://github.com/weaveplatform/infraweave/issues/318) repositories, branches and users browsed through every provider's integrations; [#319](https://github.com/weaveplatform/infraweave/issues/319) private stacks tracked on every provider, each run handed its source credential; [#320](https://github.com/weaveplatform/infraweave/issues/320) every provider proved by `vcs-lab` against real repositories that Terraform provisions. The Bitbucket Data Center lab is optional: it runs only where the `vcs-lab` environment holds a licence, and is skipped otherwise |
 | P12b VCS events and feedback | Not started | |
 | P13 Policy engine and workflow policies | Not started | **M4** |
@@ -344,6 +344,7 @@ assigns a domain to another phase, this plan's assignment holds.
 | Flows moves from the end of the spine to P18c and P18d | Flows is built on Deploy's events from the start ([0018](../research/decisions/0018-flows-runtime.md)): the engine needs the fan-out of P18 and the queue of P2c, nothing later, and its clients join `infraweavectl` and the provider in P24 and P24b |
 | P24c added for the console | Decision [0023](../research/decisions/0023-console.md) builds a console over the public API only, so it follows the last client phase and covers every surface |
 | P12, P13, P17, P20, P22, P24 and P25 each split in two; P18 splits in four | Size: each part is a few pull requests. P18's parts are events, audit and observability, the Flows engine, and Flows apps and agents |
+| A minimal Terragrunt vendor moves from P20 to P11 | P11's exit runs `state/terragrunt_units.feature` and captures C113 and C114, which need a Terragrunt stack whose units each reach their own workspace, and P20 depends on P11. P11 takes the vendor, its release index, a run specification that names Terragrunt and its tool, the launcher's verification and the runner's `run --all` with a backend per unit; P20 keeps smart sanitization, `MANUALLY_PROVISIONED`, `skipReplan`, explicit stacks, the version operations, the changes view, outputs and the policy input (maintainer, 2026-11-16) |
 | P28 added | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) replays captures as fixtures, and report [30](../research/reference/30-open-questions.md) lists 269 of them; qualification closes the loop once an authorized account is available |
 | Report 26's provisional Terraform phases remapped | The reference rows `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. [capabilities.json](../data/capabilities.json) is the assignment |
 
@@ -1926,34 +1927,52 @@ Decisions: [0010](../research/decisions/0010-state-backend.md), [0013](../resear
 **Depends on:** P10, P8b.
 
 Everything around the backend: import, history and rollback, external
-read-only access, signed URLs, Terragrunt workspaces and retention.
+read-only access, signed URLs, Terragrunt units' workspaces and retention.
 
 **Tasks**
 1. `stateUploadUrl` and `stateDownloadUrl` with tokens under
-   `DeriveKey("state-upload-url")`; `PUT /state/v1/uploads/{token}` and
-   `GET /state/v1/download/{token}`. Records DV-033.
-2. Import at creation, by `state` on `StackCreated` carrying the
-   `stackObjectID` of `stackCreate`, and later
-   (`stackManagedStateImport`), with decision 0010's checks; rollback
-   (`stackManagedStateRollback`) as a new version; `isStateRollback`;
-   `stackSearchManagedStateVersions`.
+   `DeriveKey("state-upload-url")` and `DeriveKey("state-download-url")`;
+   `PUT /state/v1/uploads/{token}`, sealed by `state` as it streams, and
+   `GET /state/v1/download/{token}`; `externalStateAccessEnabled` typed in
+   the stack's settings and refused without managed state. Records DV-033.
+2. Import at creation through a state-import port that `stacksapi` declares
+   and `state` implements, inside `stackCreate`'s transaction, and later
+   (`stackManagedStateImport`), with decision 0010's checks and `runsapi`'s
+   list of a stack's runs that have not ended; rollback
+   (`stackManagedStateRollback`) as a new version; `isStateRollback` through
+   a read port; `stackSearchManagedStateVersions`.
 3. External access with `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD`;
-   `terraform_remote_state` through the `http` backend with a token. No
-   Terraform Cloud service is served or listed in discovery ([0010](../research/decisions/0010-state-backend.md)).
-   The API's credentials join run tokens on `/state/v1`. Records DV-032.
+   `terraform_remote_state` through the `http` backend under the Basic
+   username `api` with an API key or bearer token, and a run reading another
+   stack's state as its stack. No Terraform Cloud service is served or
+   listed in discovery ([0010](../research/decisions/0010-state-backend.md)).
+   Records DV-032.
 4. Tofu Workspaces: `searchTofuWorkspaces`,
    `searchTofuWorkspacesSuggestions`, `tofuWorkspaceUnlock`,
-   `tofuWorkspaceUnlockAll`; retention with `state.noncurrent_retention`
-   (90 days by default) applied by the daily `state.retention` task.
-   Records DV-036.
+   `tofuWorkspaceUnlockAll`, with a ULID for each workspace; retention with
+   `state.noncurrent_retention` (90 days by default) applied by the daily
+   `state.retention` task. Records DV-036. `objectstore.retention.states` and
+   `objectstore.retention.modules` fail the configuration's load
+   ([0005](../research/decisions/0005-persistence-postgresql.md)).
+5. A minimal Terragrunt vendor: `internal/iac/terragrunt` with
+   `useStateManagement` deciding over `manageState`, Terragrunt's release
+   index, a run specification naming Terragrunt and its tool, the launcher's
+   verification of Terragrunt's signed sums, and the runner's
+   `terragrunt run --all` with a backend file per unit
+   ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md),
+   [0010](../research/decisions/0010-state-backend.md)). Gated by
+   `vendor-terragrunt`. Feature: `vendors/terragrunt.feature`.
 
 **Exit criteria**
 - `state/external_access.feature`, `state/import.feature`,
-  `state/rollback.feature` and `state/terragrunt_units.feature` pass.
+  `state/rollback.feature` and `state/terragrunt_units.feature` pass with
+  real Terraform, OpenTofu and Terragrunt.
 - Tofu Workspaces and the state operations of the Stacks tag meet decision
   0016's evidence rule.
 - Captures C106, C107, C108, C109, C110, C112, C113 and C114 replay once
-  recorded.
+  recorded. C106 is asserted by `state/external_access.feature` (no
+  Terraform Cloud service), and C112 by a client-encrypted import, which
+  the server stores without parsing.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P12: VCS integrations
@@ -2780,13 +2799,16 @@ Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.m
 
 **Depends on:** P11.
 
-Terragrunt, Pulumi, CloudFormation and Kubernetes, each an `iac` package and an
-agent command set behind the same contract.
+Pulumi, CloudFormation and Kubernetes, each an `iac` package and an agent
+command set behind the same contract, and the rest of Terragrunt, whose
+runs and units P11 delivers.
 
 **Tasks**
-1. `internal/iac/terragrunt` and `internal/agent/vendors/terragrunt`:
-   run-all, units with workspaces in the state backend, `terragruntVersions`,
-   `terragruntEffectiveVersion`. Feature: `vendors/terragrunt.feature`.
+1. Terragrunt beyond P11's minimum: smart sanitization,
+   `MANUALLY_PROVISIONED`, `skipReplan` and `skipReplanWhenRunAll`,
+   `prefixResourceNamesWithModuleName`, explicit stacks,
+   `terragruntVersions` and `terragruntEffectiveVersion`, and a Terragrunt
+   run's changes view, outputs and plan policy input.
 2. `internal/iac/pulumi` and the agent command set, following option 5's
    walkthrough. Feature: `vendors/pulumi.feature`.
 3. `internal/iac/cloudformation` (CDK, SAM, Serverless) and
@@ -2795,12 +2817,13 @@ agent command set behind the same contract.
    (`@kubernetes`).
 4. Every vendor passes `iactest`; runner images for each in
    `deploy/images/`; plan sanitization per vendor. Each vendor is an option
-   on its `vendorConfig` member: `vendor-terragrunt`, `vendor-pulumi`,
-   `vendor-cloudformation` and `vendor-kubernetes`.
+   on its `vendorConfig` member: `vendor-pulumi`, `vendor-cloudformation`
+   and `vendor-kubernetes`, beside P11's `vendor-terragrunt`.
 
 **Exit criteria**
-- Terragrunt, Pulumi, CloudFormation and Kubernetes each run a tracked run
-  to `FINISHED` in acceptance.
+- Pulumi, CloudFormation and Kubernetes each run a tracked run to
+  `FINISHED` in acceptance, and `vendors/terragrunt.feature` covers
+  Terragrunt's P20 settings.
 - Captures C185, C188, C189, C190, C192 and C193 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 

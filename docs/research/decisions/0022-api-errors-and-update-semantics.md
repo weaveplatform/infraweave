@@ -87,10 +87,12 @@ Rules that apply to every problem:
   stack with no worker pool, for example) answers `204 No Content`. `404` on
   such a route always means the parent is missing or hidden.
 - **Protocol endpoints differ.** Routes whose client is defined by someone
-  else answer what that client expects, not problem details: the Terraform
-  `http` state backend ([0010](0010-state-backend.md)), the registry protocol
-  (decision 0014), and inbound VCS webhooks
-  ([0012](0012-vcs-integration-model.md)). The worker API
+  else answer what that client expects, not problem details: the registry
+  protocol (decision 0014) and inbound VCS webhooks
+  ([0012](0012-vcs-integration-model.md)). The Terraform `http` state backend
+  ([0010](0010-state-backend.md)) answers problem details too, but a `423`,
+  whose `LockInfo` body Terraform reads; its client reads only the status of
+  any other error. The worker API
   ([0008](0008-run-execution-and-worker-protocol.md)) uses this register.
 
 `internal/platform/httpkit/problem` holds the slug registry as Go values, listed by `problem.Types()`. The problem

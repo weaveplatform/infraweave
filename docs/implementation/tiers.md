@@ -56,7 +56,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `vendor-opentofu` | option | `vendorConfig.opentofu` | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
 | `vendor-pulumi` | option | `vendorConfig.pulumi` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
 | `vendor-terraform` | option | `vendorConfig.terraform` | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
-| `vendor-terragrunt` | option | `vendorConfig.terragrunt` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-terragrunt` | option | `vendorConfig.terragrunt` | ✓ | ✓ | ✓ | ✓ | ✓ | P11 |
 | `version-catalog` | capability | The Version Catalog tag | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
 | `viewer` | capability | The Viewer tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
 | `worker-pools` | capability | The Worker Pools tag less private pools: the public worker pool and the reads every pool shares | ✓ | ✓ | ✓ | ✓ | ✓ | P8 |

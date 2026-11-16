@@ -589,7 +589,7 @@
       "kind": "option",
       "field": "`vendorConfig.terragrunt`",
       "lowestTier": "Free",
-      "phase": "P20"
+      "phase": "P11"
     },
     {
       "id": "version-catalog",

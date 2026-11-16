@@ -192,6 +192,7 @@ key, such as an HMAC key.
   |---|---|---|
   | `objectstore-url` | Signed URLs of the `fs` object store driver | [0005](0005-persistence-postgresql.md) |
   | `state-upload-url` | Tokens of the state upload URLs | [0010](0010-state-backend.md) |
+  | `state-download-url` | Tokens of the state download URLs | [0010](0010-state-backend.md) |
   | `registry-file-url` | Tokens of the registry's `proxy` file URLs | [0014](0014-module-and-provider-registry.md) |
   | `audit-secret-sha` | The `SecretSHA` that stands in for write-only fields in audit entries and webhook payloads | decision 0015 |
 
@@ -232,9 +233,11 @@ the owning record beside it.
 
 - **Which stores are sealed.** Objects in the `states`, `policy-inputs` and
   `run-artifacts` stores ([0005](0005-persistence-postgresql.md)), and state
-  files uploaded through the state backend into `uploads`
+  files uploaded through `/state/v1/uploads/{token}` into `uploads`
   ([0010](0010-state-backend.md)), are sealed whatever the bucket's own
-  encryption.
+  encryption. The `state` domain seals a state upload itself as it streams,
+  so `uploads` stays an unsealed store for the archives clients upload there
+  directly, such as local-preview workspaces sealed to their pool.
 - **The content key.** Each object has its own 256-bit content key. That key
   is sealed into `blob_objects.content_key_sealed` as any sealed column is,
   with associated data `blob_objects.content_key_sealed:<store>/<key>`, so

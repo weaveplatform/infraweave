@@ -286,8 +286,8 @@ sees the same keys, buckets and switches.
   | `run-logs` | Run log chunks | Runner, through pre-signed `PUT` | 60 days | [0008](0008-run-execution-and-worker-protocol.md) |
   | `run-artifacts` | Plan files, plan JSON, change and output uploads | Runner | 30 days | [0008](0008-run-execution-and-worker-protocol.md) |
   | `workspaces` | Workspaces of runs awaiting confirmation or replan, encrypted to the pool key | Runner | 7 days after the run settles | [0008](0008-run-execution-and-worker-protocol.md) |
-  | `states` | State versions, sealed | State backend | none | [0010](0010-state-backend.md) |
-  | `modules` | Module and provider archives | Registry | none | decision 0014 |
+  | `states` | State versions, sealed | State backend | none, not settable | [0010](0010-state-backend.md) |
+  | `modules` | Module and provider archives | Registry | none, not settable | decision 0014 |
   | `policy-inputs` | Sampled policy inputs, sealed | Policy engine | 7 days | [0009](0009-policy-engine-opa.md) |
   | `uploads` | Client uploads, such as a state file at stack creation or a local-preview workspace | API clients, through pre-signed `PUT` | 1 day | the owning family |
   | `deliveries` | Outbound webhook request and response bodies | Event delivery | `events.deliveries.retention` | [0015](0015-events-notifications-webhooks-audit.md) |
@@ -301,7 +301,11 @@ sees the same keys, buckets and switches.
   ([24 section 3.2](../reference/24-self-hosted-reference.md#32-object-storage-buckets)).
   Each one is set by `objectstore.retention.<store>`, except `deliveries`
   and `flows-events`, whose bodies are read through their rows and so live
-  exactly as long as those rows, under the owner's setting. For deliveries
+  exactly as long as those rows, under the owner's setting, and `states` and
+  `modules`, whose objects are a stack's current state and a published
+  version's archive: a store-wide expiry would delete them while their rows
+  still name them, so the owners delete them with their rows, and a setting
+  for either fails the configuration's load. For deliveries
   that is 7 days, where Spacelift suggests 1 day for its bucket.
 
 - **Keys.** A key is `<account>/<owner path>/<leaf>` within its store, and
