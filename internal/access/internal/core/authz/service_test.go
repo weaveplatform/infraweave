@@ -91,7 +91,7 @@ func TestUnitService(t *testing.T) {
 	if ok, err := svc.Holds(ctx, p, accessapi.ActionApiKeyDelete); err != nil || !ok {
 		t.Errorf("Holds = %t, %v", ok, err)
 	}
-	if got, err := svc.Actions(ctx, p, x.spaces["a"]); err != nil || len(got) != 145 {
+	if got, err := svc.Actions(ctx, p, x.spaces["a"]); err != nil || len(got) != assignable() {
 		t.Errorf("Actions = %d, %v", len(got), err)
 	}
 	if err := svc.Refresh(ctx); err != nil || f.loads != 2 {

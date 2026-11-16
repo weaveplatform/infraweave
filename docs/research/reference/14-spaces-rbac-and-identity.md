@@ -355,7 +355,10 @@ published; `Role.actions` returns it at run time [G] *(unverified)* (C116).
 
 ### 3.3 The action catalogue
 
-`Action` has 150 values [G]. The table groups them by subject, gives the UI
+`Action` has 155 values [G]. Five of them, the Azure integration consent
+actions, the stack dependency actions and `BLUEPRINT_DEPLOYMENT_TASK_CREATE`,
+are in the introspection fetched 2026-11-16 and were checked against
+[rbac] that day. The table groups them by subject, gives the UI
 label and the legacy access level that grants the action when no role does
 [D] [rbac]. Labels marked "not documented" appear only in the schema.
 
@@ -393,6 +396,8 @@ label and the legacy access level that grants the action when no role does
 | `STACK_CREATE` | Create stack | Admin | |
 | `STACK_DELETE` | Delete stack | Admin | |
 | `STACK_DELETE_CONFIG` | Delete stack config | Writer | |
+| `STACK_DEPENDENCIES_MANAGE` | Manage stack dependencies (create, update and delete dependencies between stacks) | Admin | |
+| `STACK_DEPENDENCIES_REFERENCES_MANAGE` | Manage stack dependency references (add, update and delete output references on a stack dependency) | Admin | |
 | `STACK_DISABLE` | Disable stack | Admin | |
 | `STACK_ENABLE` | Enable stack | Admin | |
 | `STACK_LOCK` | Lock stack | Writer | |
@@ -487,6 +492,10 @@ label and the legacy access level that grants the action when no role does
 | `UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS` | covered by Upgrade | Admin | Deprecated: use `UPGRADE_BLUEPRINT_DEPLOYMENT` |
 | `ROLLBACK_BLUEPRINT_DEPLOYMENT` | Rollback template deployment | Admin | |
 | `TEST_BLUEPRINT_DEPLOYMENT` | Test template deployment | Admin | |
+| `BLUEPRINT_DEPLOYMENT_TASK_CREATE` | not documented | *(unverified)* (C272) | |
+| **Cloud integrations** | | | |
+| `AZURE_INTEGRATION_CONFIRM_CONSENT` | Confirm Azure integration consent (record admin consent granted outside Spacelift) | Admin | |
+| `AZURE_INTEGRATION_CLEAR_CONSENT` | Clear Azure integration consent confirmation (the integration can no longer be used) | Admin | |
 | **Stack attachments and integrations** | | | |
 | `STACK_CONTEXT_ATTACH` | Attach context | Admin | "Disabled. Do not use." |
 | `STACK_CONTEXT_DETACH` | Detach context | Admin | "Disabled. Do not use." |

@@ -12,6 +12,12 @@
 # STACK_SCHEDULED_DELETE_UPDATE's fallback is undocumented; it takes admin,
 # as the other scheduling actions do.
 # ref: report 14 C117
+#
+# BLUEPRINT_DEPLOYMENT_TASK_CREATE's fallback is undocumented; it takes
+# admin, as the other template deployment actions do.
+# ref: report 14 C272
+AZURE_INTEGRATION_CLEAR_CONSENT: {subject: azure_integration, fallback: admin}
+AZURE_INTEGRATION_CONFIRM_CONSENT: {subject: azure_integration, fallback: admin}
 CONTEXT_CREATE: {subject: context, fallback: admin}
 CONTEXT_DELETE: {subject: context, fallback: admin}
 CONTEXT_UPDATE: {subject: context, fallback: admin}
@@ -91,6 +97,8 @@ STACK_ADD_CONFIG: {subject: stack, fallback: writer}
 STACK_CREATE: {subject: stack, fallback: admin}
 STACK_DELETE: {subject: stack, fallback: admin}
 STACK_DELETE_CONFIG: {subject: stack, fallback: writer}
+STACK_DEPENDENCIES_MANAGE: {subject: stack, fallback: admin}
+STACK_DEPENDENCIES_REFERENCES_MANAGE: {subject: stack, fallback: admin}
 STACK_DISABLE: {subject: stack, fallback: admin}
 STACK_ENABLE: {subject: stack, fallback: admin}
 STACK_LOCK: {subject: stack, fallback: writer}
@@ -140,6 +148,7 @@ UPDATE_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin, dep
 UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS: {subject: template_deployment, fallback: admin, deprecated: true}
 ROLLBACK_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin}
 TEST_BLUEPRINT_DEPLOYMENT: {subject: template_deployment, fallback: admin}
+BLUEPRINT_DEPLOYMENT_TASK_CREATE: {subject: template_deployment, fallback: admin}
 STACK_CONTEXT_ATTACH: {subject: stack, fallback: admin, disabled: true}
 STACK_CONTEXT_DETACH: {subject: stack, fallback: admin, disabled: true}
 STACK_POLICY_ATTACH: {subject: stack, fallback: admin, disabled: true}

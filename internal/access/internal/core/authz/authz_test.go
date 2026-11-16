@@ -377,8 +377,8 @@ func TestUnitActions(t *testing.T) {
 	snap := authz.Build(x.data)
 	has := slices.Contains[[]accessapi.Action]
 
-	if got := snap.Actions(x.user(admin), x.spaces["top"]); len(got) != 145 {
-		t.Errorf("the account admin holds %d actions on the top space, want 145", len(got))
+	if got := snap.Actions(x.user(admin), x.spaces["top"]); len(got) != assignable() {
+		t.Errorf("the account admin holds %d actions on the top space, want %d", len(got), assignable())
 	}
 	got := snap.Actions(x.user(below), x.spaces["a11"])
 	if !has(got, accessapi.ActionStackCreate) || !has(got, accessapi.ActionApiKeyRead) ||
@@ -405,4 +405,16 @@ func TestUnitActions(t *testing.T) {
 		x.spaces["top"]); got != nil {
 		t.Errorf("actions of another account's principal = %v", got)
 	}
+}
+
+// assignable counts the catalogue's assignable actions, which the
+// reference's enum grows as Spacelift adds them.
+func assignable() int {
+	n := 0
+	for _, a := range accessapi.Actions() {
+		if a.Assignable() {
+			n++
+		}
+	}
+	return n
 }
