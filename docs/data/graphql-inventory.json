@@ -2141,6 +2141,18 @@
           "nullable": true
         },
         {
+          "name": "externalIdForScan",
+          "args": [
+            {
+              "name": "scanId",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "ExternalIdForStackResult",
+          "nullable": true
+        },
+        {
           "name": "labels",
           "type": "[String!]!",
           "nullable": false
@@ -2449,6 +2461,17 @@
         },
         {
           "name": "autoattachEnabled",
+          "type": "Boolean!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "AzureIntegrationConsent",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "adminConsentProvided",
           "type": "Boolean!",
           "nullable": false
         }
@@ -8283,6 +8306,30 @@
           "nullable": false
         },
         {
+          "name": "azureIntegrationConsentConfirm",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "AzureIntegrationConsent!",
+          "nullable": false
+        },
+        {
+          "name": "azureIntegrationConsentClear",
+          "args": [
+            {
+              "name": "id",
+              "type": "ID!",
+              "nullable": false
+            }
+          ],
+          "type": "AzureIntegrationConsent",
+          "nullable": true
+        },
+        {
           "name": "azureIntegrationCreate",
           "args": [
             {
@@ -10636,6 +10683,18 @@
             }
           ],
           "type": "[ScanIgnoredResource!]!",
+          "nullable": false
+        },
+        {
+          "name": "scanCoverageGenerate",
+          "args": [
+            {
+              "name": "provider",
+              "type": "ScanProvider!",
+              "nullable": false
+            }
+          ],
+          "type": "ScanCoverage!",
           "nullable": false
         },
         {
@@ -16975,6 +17034,18 @@
           "nullable": false
         },
         {
+          "name": "scanCoverage",
+          "args": [
+            {
+              "name": "provider",
+              "type": "ScanProvider!",
+              "nullable": false
+            }
+          ],
+          "type": "ScanCoverage!",
+          "nullable": false
+        },
+        {
           "name": "scimSettings",
           "type": "ScimOauthClient",
           "nullable": true
@@ -20583,6 +20654,11 @@
           "nullable": true
         },
         {
+          "name": "schedule",
+          "type": "ScanSchedule",
+          "nullable": true
+        },
+        {
           "name": "searchRuns",
           "args": [
             {
@@ -20632,6 +20708,13 @@
         },
         {
           "name": "latestRun",
+          "args": [
+            {
+              "name": "withResources",
+              "type": "Boolean",
+              "nullable": true
+            }
+          ],
           "type": "ScanRun",
           "nullable": true
         },
@@ -20680,6 +20763,337 @@
         {
           "name": "node",
           "type": "Scan!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverage",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "provider",
+          "type": "ScanProvider!",
+          "nullable": false
+        },
+        {
+          "name": "generating",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "lastGenerationFailed",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "generatedAt",
+          "type": "Int",
+          "nullable": true
+        },
+        {
+          "name": "generationAvailableAt",
+          "type": "Int",
+          "nullable": true
+        },
+        {
+          "name": "report",
+          "type": "ScanCoverageReport",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageRecommendation",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "steps",
+          "type": "[ScanCoverageStep!]!",
+          "nullable": false
+        },
+        {
+          "name": "stacks",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "gain",
+          "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageReport",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "scannerProviderVersion",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "totalResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "totalProviderResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "recognizedResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "coveredResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "notCoveredResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "recommendations",
+          "type": "[ScanCoverageRecommendation!]!",
+          "nullable": false
+        },
+        {
+          "name": "statusCounts",
+          "type": "[ScanCoverageStatusCount!]!",
+          "nullable": false
+        },
+        {
+          "name": "tools",
+          "type": "[ScanCoverageVersionCount!]!",
+          "nullable": false
+        },
+        {
+          "name": "providerVersions",
+          "type": "[ScanCoverageVersionCount!]!",
+          "nullable": false
+        },
+        {
+          "name": "stacks",
+          "args": [
+            {
+              "name": "status",
+              "type": "ScanCoverageStackStatus",
+              "nullable": true
+            },
+            {
+              "name": "recommendation",
+              "type": "ID",
+              "nullable": true
+            },
+            {
+              "name": "tool",
+              "type": "TerraformWorkflowTool",
+              "nullable": true
+            },
+            {
+              "name": "toolVersions",
+              "type": "[String!]",
+              "nullable": true
+            },
+            {
+              "name": "providerVersions",
+              "type": "[String!]",
+              "nullable": true
+            },
+            {
+              "name": "first",
+              "type": "Int",
+              "nullable": true
+            },
+            {
+              "name": "after",
+              "type": "String",
+              "nullable": true
+            }
+          ],
+          "type": "ScanCoverageStacksOutput!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageStack",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "stackId",
+          "type": "ID!",
+          "nullable": false
+        },
+        {
+          "name": "stackName",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "ScanCoverageStackStatus!",
+          "nullable": false
+        },
+        {
+          "name": "totalResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "totalProviderResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "recognizedResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "coveredResources",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "recommendation",
+          "type": "ID",
+          "nullable": true
+        },
+        {
+          "name": "vendor",
+          "type": "StackVendor!",
+          "nullable": false
+        },
+        {
+          "name": "tool",
+          "type": "TerraformWorkflowTool",
+          "nullable": true
+        },
+        {
+          "name": "toolVersion",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "providerVersion",
+          "type": "String",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageStackConnection",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "cursor",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "node",
+          "type": "ScanCoverageStack!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageStacksOutput",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "edges",
+          "type": "[ScanCoverageStackConnection!]!",
+          "nullable": false
+        },
+        {
+          "name": "pageInfo",
+          "type": "PageInfo!",
+          "nullable": false
+        },
+        {
+          "name": "total",
+          "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageStatusCount",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "status",
+          "type": "ScanCoverageStackStatus!",
+          "nullable": false
+        },
+        {
+          "name": "recommendation",
+          "type": "ID",
+          "nullable": true
+        },
+        {
+          "name": "stacks",
+          "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageStep",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "kind",
+          "type": "ScanCoverageStepKind!",
+          "nullable": false
+        },
+        {
+          "name": "tool",
+          "type": "TerraformWorkflowTool",
+          "nullable": true
+        },
+        {
+          "name": "provider",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "minimumVersion",
+          "type": "String",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageVersionCount",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "version",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "stacks",
+          "type": "Int!",
           "nullable": false
         }
       ]
@@ -20962,12 +21376,22 @@
           "nullable": false
         },
         {
+          "name": "unmanagedResourceCount",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
           "name": "resourceStats",
           "type": "ScanRunResourceStats!",
           "nullable": false
         },
         {
           "name": "note",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "triggeredBy",
           "type": "String",
           "nullable": true
         },
@@ -21130,6 +21554,27 @@
         },
         {
           "name": "ignored",
+          "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanSchedule",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "cron",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "timezone",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "nextSchedule",
           "type": "Int!",
           "nullable": false
         }
@@ -30759,6 +31204,11 @@
           "name": "runnerImage",
           "type": "String",
           "nullable": true
+        },
+        {
+          "name": "schedule",
+          "type": "ScanScheduleInput",
+          "nullable": true
         }
       ]
     },
@@ -30784,6 +31234,22 @@
         {
           "name": "aws",
           "type": "AWSScanSettingsInput",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "ScanScheduleInput",
+      "kind": "INPUT_OBJECT",
+      "fields": [
+        {
+          "name": "cron",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "timezone",
+          "type": "String",
           "nullable": true
         }
       ]
@@ -32413,6 +32879,12 @@
       "kind": "ENUM",
       "values": [
         {
+          "name": "AZURE_INTEGRATION_CLEAR_CONSENT"
+        },
+        {
+          "name": "AZURE_INTEGRATION_CONFIRM_CONSENT"
+        },
+        {
           "name": "CONTEXT_CREATE"
         },
         {
@@ -32650,6 +33122,12 @@
           "name": "STACK_DELETE_CONFIG"
         },
         {
+          "name": "STACK_DEPENDENCIES_MANAGE"
+        },
+        {
+          "name": "STACK_DEPENDENCIES_REFERENCES_MANAGE"
+        },
+        {
           "name": "STACK_DISABLE"
         },
         {
@@ -32799,6 +33277,9 @@
         },
         {
           "name": "TEST_BLUEPRINT_DEPLOYMENT"
+        },
+        {
+          "name": "BLUEPRINT_DEPLOYMENT_TASK_CREATE"
         },
         {
           "name": "STACK_CONTEXT_ATTACH"
@@ -33246,6 +33727,24 @@
         },
         {
           "name": "V5_STRATEGIC"
+        },
+        {
+          "name": "V6_FREE"
+        },
+        {
+          "name": "V6_STARTER"
+        },
+        {
+          "name": "V6_BUSINESS"
+        },
+        {
+          "name": "V6_ENTERPRISE"
+        },
+        {
+          "name": "V6_SELF_HOSTED"
+        },
+        {
+          "name": "V6_STRATEGIC"
         }
       ]
     },
@@ -34324,6 +34823,39 @@
         },
         {
           "name": "STRING_MAP"
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageStackStatus",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "RECOGNIZED"
+        },
+        {
+          "name": "ACTION_NEEDED"
+        },
+        {
+          "name": "NOT_SUPPORTED"
+        }
+      ]
+    },
+    {
+      "id": "ScanCoverageStepKind",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "TRIGGER_TRACKED_RUN"
+        },
+        {
+          "name": "UPGRADE_TOOL"
+        },
+        {
+          "name": "SWITCH_TOOL"
+        },
+        {
+          "name": "UPGRADE_PROVIDER"
         }
       ]
     },

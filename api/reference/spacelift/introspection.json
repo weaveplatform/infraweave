@@ -893,6 +893,18 @@
           "interfaces": null,
           "enumValues": [
             {
+              "name": "AZURE_INTEGRATION_CLEAR_CONSENT",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "AZURE_INTEGRATION_CONFIRM_CONSENT",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "CONTEXT_CREATE",
               "description": "",
               "isDeprecated": false,
@@ -1367,6 +1379,18 @@
               "deprecationReason": ""
             },
             {
+              "name": "STACK_DEPENDENCIES_MANAGE",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "STACK_DEPENDENCIES_REFERENCES_MANAGE",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "STACK_DISABLE",
               "description": "",
               "isDeprecated": false,
@@ -1656,6 +1680,12 @@
             },
             {
               "name": "TEST_BLUEPRINT_DEPLOYMENT",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "BLUEPRINT_DEPLOYMENT_TASK_CREATE",
               "description": "",
               "isDeprecated": false,
               "deprecationReason": ""
@@ -8406,6 +8436,33 @@
               "deprecationReason": ""
             },
             {
+              "name": "externalIdForScan",
+              "description": "Generates the external ID that would be used for role assumption by the specified scan.\nPass the scan slug. The scan does not need to exist yet.",
+              "args": [
+                {
+                  "name": "scanId",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "ID",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "OBJECT",
+                "name": "ExternalIdForStackResult",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "labels",
               "description": "User-defined labels set on the integration.",
               "args": [],
@@ -9389,6 +9446,33 @@
         },
         {
           "kind": "OBJECT",
+          "name": "AzureIntegrationConsent",
+          "description": "AzureIntegrationConsent is the persisted consent state after confirming or clearing consent.",
+          "fields": [
+            {
+              "name": "adminConsentProvided",
+              "description": "The integration's final admin consent state after the mutation.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
           "name": "AzureIntegrationStackAttachment",
           "description": "AzureIntegrationStackAttachment is the stack attachment viewed from the integration.",
           "fields": [
@@ -10231,6 +10315,42 @@
             {
               "name": "V5_STRATEGIC",
               "description": "Strategic Billing tier (V5).",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "V6_FREE",
+              "description": "Free Billing tier (V6).",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "V6_STARTER",
+              "description": "Starter Billing tier (V6).",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "V6_BUSINESS",
+              "description": "Business Billing tier (V6).",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "V6_ENTERPRISE",
+              "description": "Enterprise Billing tier (V6).",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "V6_SELF_HOSTED",
+              "description": "Self-Hosted Billing tier (V6).",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "V6_STRATEGIC",
+              "description": "Strategic Billing tier (V6).",
               "isDeprecated": false,
               "deprecationReason": ""
             }
@@ -31674,6 +31794,64 @@
               "deprecationReason": ""
             },
             {
+              "name": "azureIntegrationConsentConfirm",
+              "description": "Records admin consent granted externally. Does not grant or verify Azure permissions.",
+              "args": [
+                {
+                  "name": "id",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "ID",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "AzureIntegrationConsent",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "azureIntegrationConsentClear",
+              "description": "Clears Spacelift consent confirmation without revoking Azure permissions.",
+              "args": [
+                {
+                  "name": "id",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "ID",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "OBJECT",
+                "name": "AzureIntegrationConsent",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "azureIntegrationCreate",
               "description": "Creates an Azure integration.",
               "args": [
@@ -37720,6 +37898,37 @@
                       "ofType": null
                     }
                   }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "scanCoverageGenerate",
+              "description": "Start generating a new scan coverage report. Schedules nothing within an hour of\nthe last one that didn't fail. Account admins only.",
+              "args": [
+                {
+                  "name": "provider",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "ENUM",
+                      "name": "ScanProvider",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "ScanCoverage",
+                  "ofType": null
                 }
               },
               "isDeprecated": false,
@@ -44399,7 +44608,7 @@
             },
             {
               "name": "stackMigrateVendor",
-              "description": "Migrate stack vendor configuration.\nSupports bidirectional migration between Terraform stacks with 'terragrunt' label and native Terragrunt.",
+              "description": "Migrate stack vendor configuration.\nSupports bidirectional migration between Terraform stacks and native Terragrunt.\nThe migration back to Terraform restores the 'terragrunt' label.",
               "args": [
                 {
                   "name": "id",
@@ -55997,6 +56206,37 @@
                 "ofType": {
                   "kind": "OBJECT",
                   "name": "SearchSuggestionsOutput",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "scanCoverage",
+              "description": "How many of the account's managed resources scans recognize for a provider, and\nwhat would recognize more. Account admins only.",
+              "args": [
+                {
+                  "name": "provider",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "ENUM",
+                      "name": "ScanProvider",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "ScanCoverage",
                   "ofType": null
                 }
               },
@@ -68166,6 +68406,18 @@
               "deprecationReason": ""
             },
             {
+              "name": "schedule",
+              "description": "When the scan triggers itself. Null when it only runs on demand.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "ScanSchedule",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "searchRuns",
               "description": "The scan's runs, with a set of predicates, ordering and paging.",
               "args": [
@@ -68291,8 +68543,19 @@
             },
             {
               "name": "latestRun",
-              "description": "The scan's most recent run, in whatever state it is in. Null until the\nscan has run for the first time.",
-              "args": [],
+              "description": "The scan's most recent run, in any state. Null until the scan has run\nfor the first time. If withResources is true, returns the most recent\nrun that found at least one resource.",
+              "args": [
+                {
+                  "name": "withResources",
+                  "description": "",
+                  "type": {
+                    "kind": "SCALAR",
+                    "name": "Boolean",
+                    "ofType": null
+                  },
+                  "defaultValue": null
+                }
+              ],
               "type": {
                 "kind": "OBJECT",
                 "name": "ScanRun",
@@ -68452,6 +68715,1024 @@
                 "ofType": {
                   "kind": "OBJECT",
                   "name": "Scan",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverage",
+          "description": "ScanCoverage is the state of an account's scan coverage report for one provider.",
+          "fields": [
+            {
+              "name": "provider",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "ScanProvider",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "generating",
+              "description": "A report is being generated.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "lastGenerationFailed",
+              "description": "The latest generation failed. The report, if any, comes from an older one.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "generatedAt",
+              "description": "When the report was generated, in unix seconds. Null when there is none.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "generationAvailableAt",
+              "description": "When a new report can be generated, in unix seconds. Null when it can be now.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "Int",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "report",
+              "description": "The latest report. Null when there is none. Reports are deleted after 2 days.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "ScanCoverageReport",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageRecommendation",
+          "description": "",
+          "fields": [
+            {
+              "name": "id",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "ID",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "steps",
+              "description": "In the order to follow them.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanCoverageStep",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "stacks",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "gain",
+              "description": "How many more resources scans would recognize.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageReport",
+          "description": "",
+          "fields": [
+            {
+              "name": "scannerProviderVersion",
+              "description": "The provider version scans read their schemas from, like \"6.61.0\".",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "totalResources",
+              "description": "Every resource of the stacks scans support, of any provider.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "totalProviderResources",
+              "description": "The resources of this report's provider.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "recognizedResources",
+              "description": "The resources scans recognize now.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "coveredResources",
+              "description": "The resources scans would recognize after following every recommendation.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "notCoveredResources",
+              "description": "The resources no customer action makes recognizable, like those of types scans\ncan't list yet.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "recommendations",
+              "description": "Largest gain first.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanCoverageRecommendation",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "statusCounts",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanCoverageStatusCount",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "tools",
+              "description": "Stacks per tool and version. The name is a TerraformWorkflowTool value.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanCoverageVersionCount",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "providerVersions",
+              "description": "Stacks per version of the provider, like \"hashicorp/aws\".",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanCoverageVersionCount",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "stacks",
+              "description": "The stacks, largest gain first. Every filter is optional, and an empty list\nfilters nothing. In the version filters, an empty string matches stacks whose\nversion is unknown.",
+              "args": [
+                {
+                  "name": "status",
+                  "description": "",
+                  "type": {
+                    "kind": "ENUM",
+                    "name": "ScanCoverageStackStatus",
+                    "ofType": null
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "recommendation",
+                  "description": "",
+                  "type": {
+                    "kind": "SCALAR",
+                    "name": "ID",
+                    "ofType": null
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "tool",
+                  "description": "",
+                  "type": {
+                    "kind": "ENUM",
+                    "name": "TerraformWorkflowTool",
+                    "ofType": null
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "toolVersions",
+                  "description": "",
+                  "type": {
+                    "kind": "LIST",
+                    "name": "",
+                    "ofType": {
+                      "kind": "NON_NULL",
+                      "name": "",
+                      "ofType": {
+                        "kind": "SCALAR",
+                        "name": "String",
+                        "ofType": null
+                      }
+                    }
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "providerVersions",
+                  "description": "",
+                  "type": {
+                    "kind": "LIST",
+                    "name": "",
+                    "ofType": {
+                      "kind": "NON_NULL",
+                      "name": "",
+                      "ofType": {
+                        "kind": "SCALAR",
+                        "name": "String",
+                        "ofType": null
+                      }
+                    }
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "first",
+                  "description": "",
+                  "type": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                  },
+                  "defaultValue": null
+                },
+                {
+                  "name": "after",
+                  "description": "",
+                  "type": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "ScanCoverageStacksOutput",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageStack",
+          "description": "",
+          "fields": [
+            {
+              "name": "stackId",
+              "description": "The stack's ID, which may no longer exist.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "ID",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "stackName",
+              "description": "The stack's name when the report was generated.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "status",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "ScanCoverageStackStatus",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "totalResources",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "totalProviderResources",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "recognizedResources",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "coveredResources",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "recommendation",
+              "description": "Null unless the status is ACTION_NEEDED.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "vendor",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "StackVendor",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "tool",
+              "description": "Null for a stack scans don't support.",
+              "args": [],
+              "type": {
+                "kind": "ENUM",
+                "name": "TerraformWorkflowTool",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "toolVersion",
+              "description": "Null when unknown, and always for CUSTOM.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "providerVersion",
+              "description": "Null when unknown.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageStackConnection",
+          "description": "",
+          "fields": [
+            {
+              "name": "cursor",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "node",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "ScanCoverageStack",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "ENUM",
+          "name": "ScanCoverageStackStatus",
+          "description": "",
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "enumValues": [
+            {
+              "name": "RECOGNIZED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ACTION_NEEDED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "NOT_SUPPORTED",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageStacksOutput",
+          "description": "",
+          "fields": [
+            {
+              "name": "edges",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanCoverageStackConnection",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "pageInfo",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "PageInfo",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "total",
+              "description": "The stacks matching the filters, across every page.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageStatusCount",
+          "description": "",
+          "fields": [
+            {
+              "name": "status",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "ScanCoverageStackStatus",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "recommendation",
+              "description": "Set for ACTION_NEEDED stacks.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "ID",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "stacks",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageStep",
+          "description": "",
+          "fields": [
+            {
+              "name": "kind",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "ScanCoverageStepKind",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "tool",
+              "description": "The tool to upgrade or switch to.",
+              "args": [],
+              "type": {
+                "kind": "ENUM",
+                "name": "TerraformWorkflowTool",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "provider",
+              "description": "The provider to upgrade, like \"hashicorp/aws\".",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "minimumVersion",
+              "description": "Null for TRIGGER_TRACKED_RUN.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "ENUM",
+          "name": "ScanCoverageStepKind",
+          "description": "",
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "enumValues": [
+            {
+              "name": "TRIGGER_TRACKED_RUN",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "UPGRADE_TOOL",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "SWITCH_TOOL",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "UPGRADE_PROVIDER",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanCoverageVersionCount",
+          "description": "",
+          "fields": [
+            {
+              "name": "name",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "version",
+              "description": "Null when the version is unknown.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "stacks",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
                   "ofType": null
                 }
               },
@@ -68903,6 +70184,16 @@
               "type": {
                 "kind": "SCALAR",
                 "name": "String",
+                "ofType": null
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "schedule",
+              "description": "When the scan triggers itself. Null for on demand only.\nSend nothing to remove.",
+              "type": {
+                "kind": "INPUT_OBJECT",
+                "name": "ScanScheduleInput",
                 "ofType": null
               },
               "defaultValue": null
@@ -69747,6 +71038,22 @@
               "deprecationReason": ""
             },
             {
+              "name": "unmanagedResourceCount",
+              "description": "How many of resourceCount no stack managed when the run recorded them.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "resourceStats",
               "description": "The run's resources split by whether a stack already manages them.",
               "args": [],
@@ -69765,6 +71072,18 @@
             {
               "name": "note",
               "description": "Free-form text describing the run outcome, e.g. why it failed or the note\nwhoever canceled it left.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "triggeredBy",
+              "description": "Login of whoever triggered the run, or spacelift/schedules/scan/\u003cscan ID\u003e\nwhen the scan's schedule did. Null for runs older than this field.",
               "args": [],
               "type": {
                 "kind": "SCALAR",
@@ -70287,6 +71606,100 @@
               "deprecationReason": ""
             }
           ],
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanSchedule",
+          "description": "ScanSchedule is the cron schedule a Scan triggers itself on.",
+          "fields": [
+            {
+              "name": "cron",
+              "description": "Cron expression of five fields, evaluated in timezone.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "timezone",
+              "description": "Timezone the cron expression is evaluated in.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "nextSchedule",
+              "description": "Unix timestamp of the next trigger.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "INPUT_OBJECT",
+          "name": "ScanScheduleInput",
+          "description": "",
+          "fields": null,
+          "inputFields": [
+            {
+              "name": "cron",
+              "description": "Cron expression of five fields. The minute must be a single number, so a\nscan runs at most once an hour.",
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "defaultValue": null
+            },
+            {
+              "name": "timezone",
+              "description": "Timezone the cron expression is evaluated in. Defaults to UTC.",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "defaultValue": null
+            }
+          ],
+          "interfaces": null,
+          "enumValues": null,
           "possibleTypes": null
         },
         {

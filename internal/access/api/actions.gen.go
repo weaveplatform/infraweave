@@ -4,6 +4,8 @@ package api
 
 // The reference's Action enum, in its order, then infraweave's own actions by name.
 const (
+	ActionAzureIntegrationClearConsent             Action = "AZURE_INTEGRATION_CLEAR_CONSENT"
+	ActionAzureIntegrationConfirmConsent           Action = "AZURE_INTEGRATION_CONFIRM_CONSENT"
 	ActionContextCreate                            Action = "CONTEXT_CREATE"
 	ActionContextDelete                            Action = "CONTEXT_DELETE"
 	ActionContextUpdate                            Action = "CONTEXT_UPDATE"
@@ -83,6 +85,8 @@ const (
 	ActionStackCreate                              Action = "STACK_CREATE"
 	ActionStackDelete                              Action = "STACK_DELETE"
 	ActionStackDeleteConfig                        Action = "STACK_DELETE_CONFIG"
+	ActionStackDependenciesManage                  Action = "STACK_DEPENDENCIES_MANAGE"
+	ActionStackDependenciesReferencesManage        Action = "STACK_DEPENDENCIES_REFERENCES_MANAGE"
 	ActionStackDisable                             Action = "STACK_DISABLE"
 	ActionStackEnable                              Action = "STACK_ENABLE"
 	ActionStackLock                                Action = "STACK_LOCK"
@@ -132,6 +136,7 @@ const (
 	ActionUpdateBlueprintDeploymentInputs          Action = "UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS"
 	ActionRollbackBlueprintDeployment              Action = "ROLLBACK_BLUEPRINT_DEPLOYMENT"
 	ActionTestBlueprintDeployment                  Action = "TEST_BLUEPRINT_DEPLOYMENT"
+	ActionBlueprintDeploymentTaskCreate            Action = "BLUEPRINT_DEPLOYMENT_TASK_CREATE"
 	ActionStackContextAttach                       Action = "STACK_CONTEXT_ATTACH"
 	ActionStackContextDetach                       Action = "STACK_CONTEXT_DETACH"
 	ActionStackPolicyAttach                        Action = "STACK_POLICY_ATTACH"
@@ -173,6 +178,8 @@ const (
 
 // catalogue is each value's row of actions.yaml.
 var catalogue = []ActionInfo{
+	{Action: ActionAzureIntegrationClearConsent, Subject: "azure_integration", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
+	{Action: ActionAzureIntegrationConfirmConsent, Subject: "azure_integration", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionContextCreate, Subject: "context", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionContextDelete, Subject: "context", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionContextUpdate, Subject: "context", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
@@ -252,6 +259,8 @@ var catalogue = []ActionInfo{
 	{Action: ActionStackCreate, Subject: "stack", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackDelete, Subject: "stack", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackDeleteConfig, Subject: "stack", Fallback: FallbackWriter, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
+	{Action: ActionStackDependenciesManage, Subject: "stack", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
+	{Action: ActionStackDependenciesReferencesManage, Subject: "stack", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackDisable, Subject: "stack", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackEnable, Subject: "stack", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackLock, Subject: "stack", Fallback: FallbackWriter, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
@@ -301,6 +310,7 @@ var catalogue = []ActionInfo{
 	{Action: ActionUpdateBlueprintDeploymentInputs, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: true, Infraweave: false, Anywhere: false},
 	{Action: ActionRollbackBlueprintDeployment, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionTestBlueprintDeployment, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
+	{Action: ActionBlueprintDeploymentTaskCreate, Subject: "template_deployment", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackContextAttach, Subject: "stack", Fallback: FallbackAdmin, Disabled: true, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackContextDetach, Subject: "stack", Fallback: FallbackAdmin, Disabled: true, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionStackPolicyAttach, Subject: "stack", Fallback: FallbackAdmin, Disabled: true, Deprecated: false, Infraweave: false, Anywhere: false},

@@ -3,7 +3,7 @@ package api
 import "testing"
 
 // TestUnitActions checks the generated catalogue against the counts report
-// 14 section 3.3 gives: 150 values, 18 disabled, 2 deprecated, followed by
+// 14 section 3.3 gives: 155 values, 18 disabled, 2 deprecated, followed by
 // infraweave's 15 account actions, none disabled or deprecated.
 func TestUnitActions(t *testing.T) {
 	all := Actions()
@@ -11,7 +11,7 @@ func TestUnitActions(t *testing.T) {
 	for i, a := range all {
 		if a.Infraweave {
 			own++
-			if i < 150 || a.Disabled || a.Deprecated {
+			if i < 155 || a.Disabled || a.Deprecated {
 				t.Errorf("infraweave's %s at %d: disabled %t, deprecated %t",
 					a.Action, i, a.Disabled, a.Deprecated)
 			}
@@ -28,9 +28,9 @@ func TestUnitActions(t *testing.T) {
 			t.Errorf("%s: Assignable = %t", a.Action, a.Assignable())
 		}
 	}
-	if len(all)-own != 150 || disabled != 18 || deprecated != 2 || own != 15 {
+	if len(all)-own != 155 || disabled != 18 || deprecated != 2 || own != 15 {
 		t.Errorf("catalogue holds %d enum values, %d disabled and %d deprecated, and %d "+
-			"of infraweave's; want 150, 18, 2 and 15", len(all)-own, disabled, deprecated, own)
+			"of infraweave's; want 155, 18, 2 and 15", len(all)-own, disabled, deprecated, own)
 	}
 	if a, ok := ActionOf(ActionApiKeyRead); !ok || !a.Infraweave || !a.Anywhere ||
 		a.Subject != "api_key" {

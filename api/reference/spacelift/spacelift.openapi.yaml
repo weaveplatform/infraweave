@@ -455,6 +455,8 @@ components:
     Action:
       description: Action represents an action in Spacelift that can be performed by a user.
       enum:
+        - AZURE_INTEGRATION_CLEAR_CONSENT
+        - AZURE_INTEGRATION_CONFIRM_CONSENT
         - CONTEXT_CREATE
         - CONTEXT_DELETE
         - CONTEXT_UPDATE
@@ -534,6 +536,8 @@ components:
         - STACK_CREATE
         - STACK_DELETE
         - STACK_DELETE_CONFIG
+        - STACK_DEPENDENCIES_MANAGE
+        - STACK_DEPENDENCIES_REFERENCES_MANAGE
         - STACK_DISABLE
         - STACK_ENABLE
         - STACK_LOCK
@@ -583,6 +587,7 @@ components:
         - UPDATE_BLUEPRINT_DEPLOYMENT_INPUTS
         - ROLLBACK_BLUEPRINT_DEPLOYMENT
         - TEST_BLUEPRINT_DEPLOYMENT
+        - BLUEPRINT_DEPLOYMENT_TASK_CREATE
         - STACK_CONTEXT_ATTACH
         - STACK_CONTEXT_DETACH
         - STACK_POLICY_ATTACH
@@ -3053,6 +3058,7 @@ components:
       type: object
       x-graphql-omitted:
         attachedStack: served by GET /aws-integrations/{awsIntegrationId}/attached-stack
+        externalIdForScan: served by GET /aws-integrations/{awsIntegrationId}/external-id-for-scan
         externalIdForStack: served by GET /aws-integrations/{awsIntegrationId}/external-id-for-stack
       x-graphql-type: AwsIntegration
     AwsIntegrationAttachRequest:
@@ -3541,6 +3547,16 @@ components:
         - write
       type: object
       x-graphql-args-of: azureIntegrationAttachmentUpdate
+    AzureIntegrationConsent:
+      description: AzureIntegrationConsent is the persisted consent state after confirming or clearing consent.
+      properties:
+        adminConsentProvided:
+          description: The integration's final admin consent state after the mutation.
+          type: boolean
+      required:
+        - adminConsentProvided
+      type: object
+      x-graphql-type: AzureIntegrationConsent
     AzureIntegrationCreateRequest:
       description: The arguments of azureIntegrationCreate not carried in the path.
       properties:
@@ -3863,6 +3879,12 @@ components:
         - V5_ENTERPRISE
         - V5_ENTERPRISE_PLUS
         - V5_STRATEGIC
+        - V6_FREE
+        - V6_STARTER
+        - V6_BUSINESS
+        - V6_ENTERPRISE
+        - V6_SELF_HOSTED
+        - V6_STRATEGIC
       type: string
       x-enum-descriptions:
         CLOUD: Cloud billing tier.
@@ -3883,6 +3905,12 @@ components:
         V5_STARTER_PLUS: Starter Plus Billing tier (V5).
         V5_STARTER_PLUS_2: Starter Plus 2 Billing tier (V5).
         V5_STRATEGIC: Strategic Billing tier (V5).
+        V6_BUSINESS: Business Billing tier (V6).
+        V6_ENTERPRISE: Enterprise Billing tier (V6).
+        V6_FREE: Free Billing tier (V6).
+        V6_SELF_HOSTED: Self-Hosted Billing tier (V6).
+        V6_STARTER: Starter Billing tier (V6).
+        V6_STRATEGIC: Strategic Billing tier (V6).
       x-graphql-type: BillingTier
     BillingTierFeature:
       description: BillingTierFeature lists various features that are feature-gated by billing tier.
@@ -14275,8 +14303,6 @@ components:
           items:
             type: string
           type: array
-        latestRun:
-          $ref: '#/components/schemas/ScanRunRef'
         name:
           description: Display name.
           type: string
@@ -14291,6 +14317,8 @@ components:
           description: Optional custom runner image the scan's runs are executed with.
           nullable: true
           type: string
+        schedule:
+          $ref: '#/components/schemas/ScanSchedule'
         scope:
           description: Resources to discover and their per-resource filters.
           items:
@@ -14325,6 +14353,7 @@ components:
         - workerPool
       type: object
       x-graphql-omitted:
+        latestRun: served by GET /scans/{scanId}/latest-run
         searchIgnoredResources: served by GET /scans/{scanId}/search-ignored-resources
         searchIgnoredResourcesSuggestions: served by GET /scans/{scanId}/search-ignored-resources-suggestions
         searchRuns: served by GET /scans/{scanId}/search-runs
@@ -14363,6 +14392,193 @@ components:
         - node
       type: object
       x-graphql-type: ScanConnection
+    ScanCoverage:
+      description: ScanCoverage is the state of an account's scan coverage report for one provider.
+      properties:
+        generatedAt:
+          description: When the report was generated, in unix seconds. Null when there is none.
+          format: int32
+          nullable: true
+          type: integer
+        generating:
+          description: A report is being generated.
+          type: boolean
+        generationAvailableAt:
+          description: When a new report can be generated, in unix seconds. Null when it can be now.
+          format: int32
+          nullable: true
+          type: integer
+        lastGenerationFailed:
+          description: The latest generation failed. The report, if any, comes from an older one.
+          type: boolean
+        provider:
+          $ref: '#/components/schemas/ScanProvider'
+        report:
+          $ref: '#/components/schemas/ScanCoverageReport'
+      required:
+        - generating
+        - lastGenerationFailed
+        - provider
+      type: object
+      x-graphql-type: ScanCoverage
+    ScanCoverageGenerateRequest:
+      description: The arguments of scanCoverageGenerate not carried in the path.
+      properties:
+        provider:
+          $ref: '#/components/schemas/ScanProvider'
+      required:
+        - provider
+      type: object
+      x-graphql-args-of: scanCoverageGenerate
+    ScanCoverageRecommendation:
+      properties:
+        gain:
+          description: How many more resources scans would recognize.
+          format: int32
+          type: integer
+        id:
+          type: string
+        stacks:
+          format: int32
+          type: integer
+        steps:
+          description: In the order to follow them.
+          items:
+            $ref: '#/components/schemas/ScanCoverageStep'
+          type: array
+      required:
+        - gain
+        - id
+        - stacks
+        - steps
+      type: object
+      x-graphql-type: ScanCoverageRecommendation
+    ScanCoverageReport:
+      properties:
+        coveredResources:
+          description: The resources scans would recognize after following every recommendation.
+          format: int32
+          type: integer
+        notCoveredResources:
+          description: |-
+            The resources no customer action makes recognizable, like those of types scans
+            can't list yet.
+          format: int32
+          type: integer
+        providerVersions:
+          description: Stacks per version of the provider, like "hashicorp/aws".
+          items:
+            $ref: '#/components/schemas/ScanCoverageVersionCount'
+          type: array
+        recognizedResources:
+          description: The resources scans recognize now.
+          format: int32
+          type: integer
+        recommendations:
+          description: Largest gain first.
+          items:
+            $ref: '#/components/schemas/ScanCoverageRecommendation'
+          type: array
+        scannerProviderVersion:
+          description: The provider version scans read their schemas from, like "6.61.0".
+          type: string
+        statusCounts:
+          items:
+            $ref: '#/components/schemas/ScanCoverageStatusCount'
+          type: array
+        tools:
+          description: Stacks per tool and version. The name is a TerraformWorkflowTool value.
+          items:
+            $ref: '#/components/schemas/ScanCoverageVersionCount'
+          type: array
+        totalProviderResources:
+          description: The resources of this report's provider.
+          format: int32
+          type: integer
+        totalResources:
+          description: Every resource of the stacks scans support, of any provider.
+          format: int32
+          type: integer
+      required:
+        - coveredResources
+        - notCoveredResources
+        - providerVersions
+        - recognizedResources
+        - recommendations
+        - scannerProviderVersion
+        - statusCounts
+        - tools
+        - totalProviderResources
+        - totalResources
+      type: object
+      x-graphql-omitted:
+        stacks: takes arguments; not reachable from an item route
+      x-graphql-type: ScanCoverageReport
+    ScanCoverageStackStatus:
+      enum:
+        - RECOGNIZED
+        - ACTION_NEEDED
+        - NOT_SUPPORTED
+      type: string
+      x-graphql-type: ScanCoverageStackStatus
+    ScanCoverageStatusCount:
+      properties:
+        recommendation:
+          description: Set for ACTION_NEEDED stacks.
+          nullable: true
+          type: string
+        stacks:
+          format: int32
+          type: integer
+        status:
+          $ref: '#/components/schemas/ScanCoverageStackStatus'
+      required:
+        - stacks
+        - status
+      type: object
+      x-graphql-type: ScanCoverageStatusCount
+    ScanCoverageStep:
+      properties:
+        kind:
+          $ref: '#/components/schemas/ScanCoverageStepKind'
+        minimumVersion:
+          description: Null for TRIGGER_TRACKED_RUN.
+          nullable: true
+          type: string
+        provider:
+          description: The provider to upgrade, like "hashicorp/aws".
+          nullable: true
+          type: string
+        tool:
+          $ref: '#/components/schemas/TerraformWorkflowTool'
+      required:
+        - kind
+      type: object
+      x-graphql-type: ScanCoverageStep
+    ScanCoverageStepKind:
+      enum:
+        - TRIGGER_TRACKED_RUN
+        - UPGRADE_TOOL
+        - SWITCH_TOOL
+        - UPGRADE_PROVIDER
+      type: string
+      x-graphql-type: ScanCoverageStepKind
+    ScanCoverageVersionCount:
+      properties:
+        name:
+          type: string
+        stacks:
+          format: int32
+          type: integer
+        version:
+          description: Null when the version is unknown.
+          nullable: true
+          type: string
+      required:
+        - name
+        - stacks
+      type: object
+      x-graphql-type: ScanCoverageVersionCount
     ScanFailureCode:
       enum:
         - UNKNOWN
@@ -14456,6 +14672,8 @@ components:
           description: RunnerImage is an optional string used to set a customer runner image
           nullable: true
           type: string
+        schedule:
+          $ref: '#/components/schemas/ScanScheduleInput'
         scope:
           description: Resources to discover and their per-resource filters.
           items:
@@ -14810,6 +15028,16 @@ components:
             its current state. For a terminal state, that is when the run finished.
           format: int32
           type: integer
+        triggeredBy:
+          description: |-
+            Login of whoever triggered the run, or spacelift/schedules/scan/<scan ID>
+            when the scan's schedule did. Null for runs older than this field.
+          nullable: true
+          type: string
+        unmanagedResourceCount:
+          description: How many of resourceCount no stack managed when the run recorded them.
+          format: int32
+          type: integer
         workerUlid:
           description: ULID of the worker that picked up this run, if any.
           nullable: true
@@ -14827,6 +15055,7 @@ components:
         - scope
         - state
         - stateChangedAt
+        - unmanagedResourceCount
       type: object
       x-graphql-omitted:
         searchFailures: served by GET /scan-runs/{scanRunId}/search-failures
@@ -14945,6 +15174,40 @@ components:
           type: string
       type: object
       x-graphql-args-of: scanRunStop
+    ScanSchedule:
+      description: ScanSchedule is the cron schedule a Scan triggers itself on.
+      properties:
+        cron:
+          description: Cron expression of five fields, evaluated in timezone.
+          type: string
+        nextSchedule:
+          description: Unix timestamp of the next trigger.
+          format: int32
+          type: integer
+        timezone:
+          description: Timezone the cron expression is evaluated in.
+          type: string
+      required:
+        - cron
+        - nextSchedule
+        - timezone
+      type: object
+      x-graphql-type: ScanSchedule
+    ScanScheduleInput:
+      properties:
+        cron:
+          description: |-
+            Cron expression of five fields. The minute must be a single number, so a
+            scan runs at most once an hour.
+          type: string
+        timezone:
+          description: Timezone the cron expression is evaluated in. Defaults to UTC.
+          nullable: true
+          type: string
+      required:
+        - cron
+      type: object
+      x-graphql-type: ScanScheduleInput
     ScanScope:
       description: |-
         ScanScope describes one resource type the worker should list, and which of the
@@ -23039,7 +23302,7 @@ components:
 info:
   description: The Spacelift GraphQL API projected onto resource-oriented REST routes. Generated by `specref generate` from the pinned introspection snapshot, the spacelift-api-bruno collection and the Spacelift Terraform provider; see docs/research/reference/02-graphql-to-rest-mapping.md. Every operation names the GraphQL field it stands for in `x-graphql`.
   title: Spacelift API reference (REST projection)
-  version: schema-1fc7d2c49a8e
+  version: schema-97187ac2bca2
   x-sources:
     bruno:
       ref: d4d77d9333d99f69aa7fdaa96865864d9ec13b39
@@ -23047,11 +23310,11 @@ info:
       sha256: 6e0e62ea8c7000cc9b03d6c29442159e06673daf650e1681dfae798da0bfbdda
     introspection:
       endpoint: https://demo.app.spacelift.io/graphql
-      sha256: 1fc7d2c49a8e8586f96306436b5bcb098753c5661fd077a2538d82d3f9666588
+      sha256: 97187ac2bca25dad724b541e1e14da0fa2c9ca155cea3aa0982709c2a21119f8
     provider:
-      ref: v1.58.0
+      ref: v1.60.0
       repository: spacelift-io/terraform-provider-spacelift
-      sha256: 0396d27a6a5d47814554c590fbee93c04efde480fe96d31711a23198051af443
+      sha256: 18a2b9a185a05d95907df736407323e3693a1cfdd66906576f7cc9696690ad52
 openapi: 3.0.3
 paths:
   /account/api-key-non-root-managers:
@@ -26034,6 +26297,44 @@ paths:
         operation: query
         type: AwsIntegration
       x-rest-style: field
+  /aws-integrations/{awsIntegrationId}/external-id-for-scan:
+    get:
+      description: |-
+        Generates the external ID that would be used for role assumption by the specified scan.
+        Pass the scan slug. The scan does not need to exist yet.
+      operationId: awsIntegrationExternalIdForScan
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: scanId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: scanId
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalIdForStackResult'
+          description: The externalIdForScan result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Aws integration external id for scan
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: externalIdForScan
+        operation: query
+        type: AwsIntegration
+      x-rest-style: field
   /aws-integrations/{awsIntegrationId}/external-id-for-stack:
     get:
       description: Generates the external ID that would be used for role assumption when attached to the specified stack.
@@ -26582,6 +26883,66 @@ paths:
         operation: query
         type: AzureIntegration
       x-rest-style: field
+  /azure-integrations/{azureIntegrationId}/consent-clear:
+    post:
+      description: Clears Spacelift consent confirmation without revoking Azure permissions.
+      operationId: azureIntegrationConsentClear
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationConsent'
+          description: The azureIntegrationConsentClear result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Azure integration consent clear
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: azureIntegrationConsentClear
+        operation: mutation
+        type: Mutation
+      x-rest-style: action
+  /azure-integrations/{azureIntegrationId}/consent-confirm:
+    post:
+      description: Records admin consent granted externally. Does not grant or verify Azure permissions.
+      operationId: azureIntegrationConsentConfirm
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationConsent'
+          description: The azureIntegrationConsentConfirm result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Azure integration consent confirm
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: azureIntegrationConsentConfirm
+        operation: mutation
+        type: Mutation
+      x-rest-style: action
   /billed-externally:
     get:
       description: Whether the account is billed externally (not through Stripe)
@@ -37558,6 +37919,64 @@ paths:
         operation: mutation
         type: Mutation
       x-rest-style: update
+  /scan-coverage:
+    get:
+      description: |-
+        How many of the account's managed resources scans recognize for a provider, and
+        what would recognize more. Account admins only.
+      operationId: scanCoverage
+      parameters:
+        - in: query
+          name: provider
+          required: true
+          schema:
+            $ref: '#/components/schemas/ScanProvider'
+          x-graphql-arg: provider
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanCoverage'
+          description: The scanCoverage result.
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Scan coverage
+      tags:
+        - Scans
+      x-graphql:
+        field: scanCoverage
+        operation: query
+        type: Query
+      x-rest-style: override
+    post:
+      description: |-
+        Start generating a new scan coverage report. Schedules nothing within an hour of
+        the last one that didn't fail. Account admins only.
+      operationId: scanCoverageGenerate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanCoverageGenerateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanCoverage'
+          description: The scanCoverageGenerate result.
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Scan coverage generate
+      tags:
+        - Scans
+      x-graphql:
+        field: scanCoverageGenerate
+        operation: mutation
+        type: Mutation
+      x-rest-style: override
   /scan-provider-schemas:
     get:
       description: |-
@@ -38015,6 +38434,44 @@ paths:
         operation: mutation
         type: Mutation
       x-rest-style: update
+  /scans/{scanId}/latest-run:
+    get:
+      description: |-
+        The scan's most recent run, in any state. Null until the scan has run
+        for the first time. If withResources is true, returns the most recent
+        run that found at least one resource.
+      operationId: scanLatestRun
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: scanId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: withResources
+          schema:
+            type: boolean
+          x-graphql-arg: withResources
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanRun'
+          description: The latestRun result.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Scan latest run
+      tags:
+        - Scans
+      x-graphql:
+        field: latestRun
+        operation: query
+        type: Scan
+      x-rest-style: field
   /scans/{scanId}/resources-ignore:
     post:
       description: |-
@@ -41016,7 +41473,8 @@ paths:
     post:
       description: |-
         Migrate stack vendor configuration.
-        Supports bidirectional migration between Terraform stacks with 'terragrunt' label and native Terragrunt.
+        Supports bidirectional migration between Terraform stacks and native Terragrunt.
+        The migration back to Terraform restores the 'terragrunt' label.
       operationId: stackMigrateVendor
       parameters:
         - in: path

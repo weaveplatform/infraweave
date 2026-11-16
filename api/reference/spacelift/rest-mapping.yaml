@@ -101,6 +101,17 @@ operations:
   tofuWorkspaceUnlockAll:
     method: POST
     path: /stacks/{stackId}/tofu-workspaces/unlock
+  # Starting a scan coverage report creates one; GET /scan-coverage reads
+  # the latest. No Bruno request names either, so each carries the tag of
+  # the scans whose coverage it reports.
+  scanCoverage:
+    method: GET
+    path: /scan-coverage
+    tag: Scans
+  scanCoverageGenerate:
+    method: POST
+    path: /scan-coverage
+    tag: Scans
   vcsIntegrationTest:
     method: GET
     path: /vcs-integrations/{vcsIntegrationId}/test

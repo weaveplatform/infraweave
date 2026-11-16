@@ -573,7 +573,7 @@
       }
     },
     "spacelift_azure_integration": {
-      "description": "`spacelift_azure_integration` represents an integration with an Azure AD tenant. This integration is account-level and needs to be explicitly attached to individual stacks in order to take effect. Note that you will need to provide admin consent manually for the integration to work",
+      "description": "`spacelift_azure_integration` represents an integration with an Azure AD tenant. This integration is account-level and needs to be explicitly attached to individual stacks in order to take effect. Admin consent must be granted in Azure before the integration can be used. For consent granted outside the browser consent flow, use `spacelift_azure_integration_consent` to record it in Spacelift.",
       "attributes": {
         "admin_consent_provided": {
           "type": "bool",
@@ -689,6 +689,26 @@
           "type": "bool",
           "description": "Indicates whether this attachment is used for write operations. Defaults to `true`.",
           "optional": true
+        }
+      }
+    },
+    "spacelift_azure_integration_consent": {
+      "description": "`spacelift_azure_integration_consent` records externally granted Azure admin consent in Spacelift. Create this resource after granting consent in Azure, for example with `azuread_service_principal_delegated_permission_grant`. It does not grant or verify permissions in Azure. Deleting this resource clears Spacelift's consent confirmation and prevents the integration from being used; it does not revoke the Azure consent grant or delete the service principal. The caller needs permission to confirm or clear consent in the integration's space, or the Space admin role. This resource requires a Spacelift version supporting the `azureIntegrationConsentConfirm` and `azureIntegrationConsentClear` GraphQL mutations. Use this resource's `admin_consent_provided` attribute for outputs during the first apply, because the parent integration's consent status may not refresh until the next plan.",
+      "attributes": {
+        "admin_consent_provided": {
+          "type": "bool",
+          "description": "Indicates whether Spacelift has recorded admin consent for the integration",
+          "computed": true
+        },
+        "id": {
+          "type": "string",
+          "optional": true,
+          "computed": true
+        },
+        "integration_id": {
+          "type": "string",
+          "description": "ID of the Azure integration whose admin consent has been granted",
+          "required": true
         }
       }
     },
@@ -3234,7 +3254,7 @@
           "nestingMode": "list",
           "maxItems": 1,
           "block": {
-            "description": "Terragrunt-specific configuration. Presence means this Stack is an Terragrunt Stack.",
+            "description": "Terragrunt-specific configuration. Presence means this Stack is a Terragrunt Stack. Adding this block to an existing Terraform Stack migrates it to Terragrunt in place, so it keeps its run history. A Stack with a Terraform workspace or the `CUSTOM` workflow tool cannot migrate. A migration in either direction cannot change state management: `use_state_management` must equal `manage_state`. `manage_state` defaults to `true` and `use_state_management` defaults to `false`, so set `use_state_management = true` unless the Stack has `manage_state = false`. Removing the block migrates a migrated Stack back to Terraform with the `terragrunt` label: add `terragrunt` to `labels` in the same change, or the update that follows removes the label again. A Stack created as a Terragrunt Stack cannot migrate back.",
             "attributes": {
               "prefix_resource_names_with_module_name": {
                 "type": "bool",

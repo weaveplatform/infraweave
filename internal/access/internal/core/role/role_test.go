@@ -62,10 +62,10 @@ func TestUnitSystemActions(t *testing.T) {
 			t.Errorf("space-writer holds %s: %t, want %t", a.Action, in(writer), want)
 		}
 	}
-	// The enum's 130 assignable values and infraweave's 15 account actions.
-	if len(reader) == 0 || len(writer) <= len(reader) || len(admin) != 145 {
-		t.Errorf("reader %d, writer %d, admin %d actions; want admin to hold the 145 assignable",
-			len(reader), len(writer), len(admin))
+	// The enum's assignable values and infraweave's account actions.
+	if n := assignable(); len(reader) == 0 || len(writer) <= len(reader) || len(admin) != n {
+		t.Errorf("reader %d, writer %d, admin %d actions; want admin to hold the %d assignable",
+			len(reader), len(writer), len(admin), n)
 	}
 	for slug, want := range map[string][]accessapi.Action{
 		role.WorkerPoolController: {
@@ -108,4 +108,16 @@ func TestUnitLevels(t *testing.T) {
 	if _, ok := role.LevelOf(role.WorkerPoolController); ok {
 		t.Error("worker-pool-controller has a level")
 	}
+}
+
+// assignable counts the catalogue's assignable actions, which the
+// reference's enum grows as Spacelift adds them.
+func assignable() int {
+	n := 0
+	for _, a := range accessapi.Actions() {
+		if a.Assignable() {
+			n++
+		}
+	}
+	return n
 }
