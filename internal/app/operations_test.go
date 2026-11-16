@@ -99,7 +99,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		},
 	} {
 		got := ops[key]
-		got.Required, got.Body, got.Query = nil, nil, nil
+		got.Required, got.Body, got.Path, got.Query = nil, nil, nil, nil
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("%s: %+v, want %+v", key, got, want)
 		}
@@ -786,16 +786,16 @@ func TestUnitStrictQueries(t *testing.T) {
 			Name: name, In: openapi3.ParameterInQuery, Schema: s.NewRef(),
 		}}
 	}
-	strict := strictQuery(&openapi3.Operation{Parameters: openapi3.Parameters{
+	strict := strictParams(&openapi3.Operation{Parameters: openapi3.Parameters{
 		input(true),
 		scalar("state", openapi3.NewStringSchema().WithEnum("NEW", "DONE")),
 		scalar("limit", openapi3.NewInt32Schema().WithMin(1).WithMax(100)),
 		scalar("slug", openapi3.NewStringSchema().WithPattern("^[a-z]+$")),
 		{Value: openapi3.NewQueryParameter("bare")},
 		{Value: openapi3.NewPathParameter("stackId").WithSchema(openapi3.NewStringSchema())},
-	}})
+	}}, openapi3.ParameterInQuery)
 	if len(strict) != 4 {
-		t.Fatalf("strictQuery = %d parameters, want input, state, limit and slug", len(strict))
+		t.Fatalf("strictParams = %d parameters, want input, state, limit and slug", len(strict))
 	}
 	runs := 0
 	r := Guarded(discard(), config.Defaults().Server, Operations{
@@ -803,9 +803,9 @@ func TestUnitStrictQueries(t *testing.T) {
 		"GET /open": {
 			Cost:   ratelimit.Standard,
 			Public: true,
-			Query: strictQuery(&openapi3.Operation{
+			Query: strictParams(&openapi3.Operation{
 				Parameters: openapi3.Parameters{input(false)},
-			}),
+			}, openapi3.ParameterInQuery),
 		},
 		"GET /plain": {Cost: ratelimit.Standard, Public: true},
 	}, memory(config.Defaults().Server), nil, nil, nil)
@@ -879,6 +879,107 @@ func TestUnitStrictQueries(t *testing.T) {
 	); rec.Code != http.StatusOK ||
 		runs != 3 {
 		t.Errorf("another operation's parameter: %d, %d runs", rec.Code, runs)
+	}
+}
+
+// TestUnitStrictPaths checks that every path parameter with a schema is
+// collected, the worker API's run ID among them, and that a value its
+// maxLength, pattern, enum or format refuses, or not of its type, answers
+// 400 at #/path/<name> with the keyword's reason, never quoting it and
+// never reaching the handler; that a value is checked unescaped, as the
+// binding decodes it; and that good values and another operation's pass.
+func TestUnitStrictPaths(t *testing.T) {
+	ops := apiOperations()
+	for key, want := range map[string]string{
+		"POST " + WorkerBaseURL + "/runs/{run}/reports": "run",
+		"GET " + BaseURL + "/stacks/{stackId}":          "stackId",
+	} {
+		names := make([]string, 0, len(ops[key].Path))
+		for _, p := range ops[key].Path {
+			names = append(names, p.Value.Name)
+		}
+		if !slices.Equal(names, []string{want}) {
+			t.Errorf("%s checks %v, not %s", key, names, want)
+		}
+	}
+	param := func(name string, s *openapi3.Schema) *openapi3.ParameterRef {
+		return &openapi3.ParameterRef{Value: openapi3.NewPathParameter(name).WithSchema(s)}
+	}
+	strict := strictParams(&openapi3.Operation{Parameters: openapi3.Parameters{
+		param("run", openapi3.NewStringSchema().WithMaxLength(26)),
+		param("slug", openapi3.NewStringSchema().WithPattern("^[a-z-]+$")),
+		param("id", openapi3.NewInt64Schema()),
+		param("state", openapi3.NewStringSchema().WithEnum("NEW", "DONE")),
+		{Value: openapi3.NewQueryParameter("q").WithSchema(openapi3.NewStringSchema())},
+	}}, openapi3.ParameterInPath)
+	if len(strict) != 4 {
+		t.Fatalf("strictParams = %d parameters, want run, slug, id and state", len(strict))
+	}
+	runs := 0
+	r := Guarded(discard(), config.Defaults().Server, Operations{
+		"GET /strict/{run}/{slug}/{id}/{state}": {
+			Cost: ratelimit.Standard, Public: true, Path: strict,
+		},
+		"GET /plain/{run}": {Cost: ratelimit.Standard, Public: true},
+	}, memory(config.Defaults().Server), nil, nil, nil)
+	ok := func(w http.ResponseWriter, r *http.Request) {
+		runs++
+		w.WriteHeader(http.StatusOK)
+	}
+	r.Get("/strict/{run}/{slug}/{id}/{state}", ok)
+	r.Get("/plain/{run}", ok)
+	get := func(path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+		req.RemoteAddr = "192.0.2.1:1"
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		return rec
+	}
+	run := strings.Repeat("A", 26)
+	for _, c := range []struct {
+		path, quoted string
+		want         problem.FieldError
+	}{
+		{"/strict/" + run + "A/infra/7/NEW", run + "A", problem.FieldError{
+			Pointer: "#/path/run", Reason: kernel.ReasonMaxLength,
+		}},
+		{"/strict/" + run + "/S3CR3T/7/NEW", "S3CR3T", problem.FieldError{
+			Pointer: "#/path/slug", Reason: kernel.ReasonPattern,
+		}},
+		{"/strict/" + run + "/a%2Fb/7/NEW", "", problem.FieldError{
+			Pointer: "#/path/slug", Reason: kernel.ReasonPattern,
+		}},
+		{"/strict/" + run + "/infra/seven/NEW", "seven", problem.FieldError{
+			Pointer: "#/path/id", Reason: kernel.ReasonType,
+		}},
+		{"/strict/" + run + "/infra/9223372036854775808/NEW", "", problem.FieldError{
+			Pointer: "#/path/id", Reason: kernel.ReasonFormat,
+		}},
+		{"/strict/" + run + "/infra/7/LATER", "LATER", problem.FieldError{
+			Pointer: "#/path/state", Reason: kernel.ReasonEnum,
+		}},
+	} {
+		rec := get(c.path)
+		name := strings.TrimPrefix(c.want.Pointer, "#/path/")
+		wantRefused(t, rec, "The path parameter "+name, c.want)
+		if c.quoted != "" && strings.Contains(rec.Body.String(), c.quoted) {
+			t.Errorf("the refusal of %s quotes it: %s", c.quoted, rec.Body)
+		}
+	}
+	if runs != 0 {
+		t.Fatalf("a refused path reached the handler %d times", runs)
+	}
+	for _, path := range []string{
+		"/strict/" + run + "/infra-net/7/DONE",
+		"/strict/" + run[:25] + "%41/infra/7/NEW",
+		"/plain/" + run + "A",
+	} {
+		if rec := get(path); rec.Code != http.StatusOK {
+			t.Errorf("%s: %d %s", path, rec.Code, rec.Body)
+		}
+	}
+	if runs != 3 {
+		t.Errorf("good paths reached the handler %d times, want 3", runs)
 	}
 }
 

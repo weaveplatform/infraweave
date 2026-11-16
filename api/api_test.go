@@ -528,6 +528,31 @@ func TestUnitServedNames(t *testing.T) {
 	})
 }
 
+// TestUnitAPIParameters fails when a parameter is declared on its path
+// rather than its operation, or a path parameter has no schema: the
+// server's strict checks read each operation's own parameters and check
+// each path parameter by its schema, so either would be left unchecked.
+//
+// ref: decision 0022
+func TestUnitAPIParameters(t *testing.T) {
+	for file, doc := range servedDocuments(t) {
+		for path, item := range doc.Paths.Map() {
+			if len(item.Parameters) > 0 {
+				t.Errorf("%s: %s declares parameters on its path", file, path)
+			}
+			for method, op := range item.Operations() {
+				for _, p := range op.Parameters {
+					if p.Value != nil && p.Value.In == openapi3.ParameterInPath &&
+						(p.Value.Schema == nil || p.Value.Schema.Value == nil) {
+						t.Errorf("%s: %s %s's path parameter %s has no schema", file, method,
+							path, p.Value.Name)
+					}
+				}
+			}
+		}
+	}
+}
+
 // TestUnitAPIStrictInputs fails when a request body, or a JSON object a
 // query parameter carries, reaches an object schema that does not set
 // additionalProperties: false, so a misspelt field is refused instead of
