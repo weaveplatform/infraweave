@@ -198,6 +198,14 @@ func TestUnitStores(t *testing.T) {
 		if n.Sealed() != want {
 			t.Errorf("%s sealed %v", n, n.Sealed())
 		}
+		lives := n == objectstore.States || n == objectstore.Modules ||
+			n == objectstore.Deliveries || n == objectstore.FlowsEvents
+		if n.Expires() == lives {
+			t.Errorf("%s expires %v", n, n.Expires())
+		}
+	}
+	if objectstore.Name("elsewhere").Expires() {
+		t.Error("a store no list names expires")
 	}
 	r := objectstore.Defaults().Retention
 	for n, want := range map[objectstore.Name]time.Duration{
@@ -256,6 +264,49 @@ func TestUnitConfig(t *testing.T) {
 			err := c.Validate()
 			if !errors.Is(err, objectstore.ErrConfig) || !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("got %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestUnitConfigRetention checks each store's retention key: states and
+// modules refuse any retention, naming the key and why, and every other
+// store's key takes one.
+func TestUnitConfigRetention(t *testing.T) {
+	const day = 24 * time.Hour
+	for name, tc := range map[string]struct {
+		store   objectstore.Name
+		set     func(*objectstore.Retention)
+		refused bool
+	}{
+		"run-logs":          {objectstore.RunLogs, func(r *objectstore.Retention) { r.RunLogs = day }, false},
+		"run-artifacts":     {objectstore.RunArtifacts, func(r *objectstore.Retention) { r.RunArtifacts = day }, false},
+		"workspaces":        {objectstore.Workspaces, func(r *objectstore.Retention) { r.Workspaces = day }, false},
+		"policy-inputs":     {objectstore.PolicyInputs, func(r *objectstore.Retention) { r.PolicyInputs = day }, false},
+		"uploads":           {objectstore.Uploads, func(r *objectstore.Retention) { r.Uploads = day }, false},
+		"inbox":             {objectstore.Inbox, func(r *objectstore.Retention) { r.Inbox = day }, false},
+		"run-observability": {objectstore.RunObservability, func(r *objectstore.Retention) { r.RunObservability = day }, false},
+		"states":            {objectstore.States, func(r *objectstore.Retention) { r.States = day }, true},
+		"modules":           {objectstore.Modules, func(r *objectstore.Retention) { r.Modules = day }, true},
+		"negative states":   {objectstore.States, func(r *objectstore.Retention) { r.States = -day }, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := objectstore.Defaults()
+			tc.set(&c.Retention)
+			if c.Retention.Of(tc.store) == 0 {
+				t.Fatalf("the case sets no retention on %s", tc.store)
+			}
+			err := c.Validate()
+			if !tc.refused {
+				if err != nil {
+					t.Errorf("refused: %v", err)
+				}
+				return
+			}
+			want := "objectstore.retention." + string(tc.store) +
+				" must not be set: the store's objects live as long as their rows"
+			if !errors.Is(err, objectstore.ErrConfig) || !strings.Contains(err.Error(), want) {
+				t.Errorf("got %v, want %q", err, want)
 			}
 		})
 	}

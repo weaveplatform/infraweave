@@ -129,7 +129,11 @@ WHERE store = $1 AND key = $2 AND state = 'pending' AND size = $3 AND sha256 = $
 
 func (o *Objects) begin(ctx context.Context, store objectstore.Name, key string, size int64, sum, sealed []byte) error {
 	var expires *time.Duration
-	if d := o.retention.Of(store); d > 0 {
+	// Expires repeats Validate's refusal for a Config that never passed
+	// through Validate: an expires_at on a states or modules row lets
+	// blob.expire delete an object its row still references, such as a
+	// stack's current state version.
+	if d := o.retention.Of(store); d > 0 && store.Expires() {
 		expires = &d
 	}
 	_, err := o.db.Exec(ctx, begin, store, key, size, sum, sealed, expires)

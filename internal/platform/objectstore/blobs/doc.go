@@ -24,7 +24,9 @@
 // transaction. Reaper is the scheduler's side, over the full Store:
 // blob.delete removes the object and then the row, and blob.expire marks
 // live rows past expires_at and pending rows older than a day deleting,
-// a batch at a time, each with its blob.delete.
+// a batch at a time, each with its blob.delete. A row's expires_at is its
+// creation plus its store's retention, and none on a store that does not
+// expire, such as states or modules, whatever the retention holds.
 //
 // ref: decision 0005
 //

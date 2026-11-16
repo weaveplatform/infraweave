@@ -656,3 +656,50 @@ func TestAccBlobsSealedUpload(t *testing.T) {
 		t.Error("SignGet on a closed pool succeeded")
 	}
 }
+
+// TestAccBlobsNoExpiry checks that a states or modules object is begun
+// with no expires_at even when the retention holds one for its store,
+// which only a Config that skipped Validate can, while an uploads object
+// under the same Config takes its store's.
+func TestAccBlobsNoExpiry(t *testing.T) {
+	h := open(t, objectstore.DriverFS)
+	ctx := t.Context()
+	c := objectstore.Defaults()
+	c.Driver = objectstore.DriverFS
+	c.Retention.States, c.Retention.Modules, c.Retention.Uploads = time.Hour, time.Hour, time.Hour
+	o := blobs.New(h.pool, h.q, objectstore.WriterOnly(h.store), h.keys, c)
+	for _, store := range []objectstore.Name{objectstore.States, objectstore.Modules, objectstore.Uploads} {
+		if _, err := o.Put(ctx, store, "acct/put", bytes.NewReader(random(10)), 10); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sum := sha256.Sum256(nil)
+	if err := o.BeginSealed(ctx, objectstore.States, "acct/signed", 0, sum[:],
+		bytes.Repeat([]byte{9}, seal.KeySize)); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.Begin(ctx, objectstore.Modules, "acct/signed", 0, sum[:]); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		store objectstore.Name
+		key   string
+		want  string
+	}{
+		{objectstore.States, "acct/put", "never"},
+		{objectstore.States, "acct/signed", "never"},
+		{objectstore.Modules, "acct/put", "never"},
+		{objectstore.Modules, "acct/signed", "never"},
+		{objectstore.Uploads, "acct/put", "01:00:00"},
+	} {
+		var got string
+		if err := h.pool.QueryRow(ctx, `
+SELECT coalesce((expires_at - created_at)::text, 'never') FROM blob_objects
+WHERE store = $1 AND key = $2`, tc.store, tc.key).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != tc.want {
+			t.Errorf("%s/%s expires %s after its creation, want %s", tc.store, tc.key, got, tc.want)
+		}
+	}
+}
