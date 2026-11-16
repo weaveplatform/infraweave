@@ -43,7 +43,7 @@ func TestAccHandlersStatus(t *testing.T) {
 	s := http.New(f.svc, f.authz, f.spaces)
 	handed := s
 	admin := kernel.WithPrincipal(ctx, f.admin)
-	infra, err := f.svc.Create(ctx, f.admin, "", false, input("Infra"))
+	infra, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
 	if err != nil {
 		t.Fatal(err)
 	}

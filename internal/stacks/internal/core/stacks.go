@@ -568,7 +568,16 @@ func (s *Service) Starred(ctx context.Context, p kernel.Principal, stacks []Stac
 // when manageState is set, with its default workspace open from the
 // start. The route has decided STACK_CREATE on in's space. Its refusals
 // point into stackCreate's body, where in is input.
-func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, manageState bool, in Input) (Stack, error) {
+//
+// When object is not empty, the state file p uploaded under that object
+// ID becomes the workspace's first version, in the creation's
+// transaction, so a refused import leaves no stack: p needs
+// STACK_MANAGED_STATE_IMPORT on in's space, a *Denied without it, and a
+// stack that does not keep its state is refused, pointing at
+// stackObjectID, before anything is written.
+//
+// ref: decision 0010 § "Upload, import and download URLs"
+func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, manageState bool, object string, in Input) (Stack, error) {
 	if err := check("/input", in); err != nil {
 		return Stack{}, err
 	}
@@ -586,6 +595,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 		if err != nil {
 			return err
 		}
+		if err := s.importable(ctx, p, space, manageState, object); err != nil {
+			return err
+		}
 		st = Stack{CreatedAt: s.now(), State: kernel.StackStateNone}
 		st.ManagesState = manageState
 		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
@@ -599,7 +611,7 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 		if err := s.store.Create(ctx, st); err != nil {
 			return err //nolint:wrapcheck // the store names the write
 		}
-		if err := s.openState(ctx, st); err != nil {
+		if err := s.openState(ctx, p, st, object); err != nil {
 			return err
 		}
 		return s.changed(ctx, st, stacksapi.ChangeCreated, true)
@@ -607,19 +619,53 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 	return st, err //nolint:wrapcheck // each step in the transaction names itself
 }
 
+// importable refuses a stack's creation from the state file uploaded as
+// object, when it is set, unless p holds STACK_MANAGED_STATE_IMPORT on
+// space, the new stack's, and the stack keeps its state, which is the
+// only state an import fills.
+//
+// ref: decision 0010 § "Upload, import and download URLs"
+func (s *Service) importable(ctx context.Context, p kernel.Principal, space kernel.ULID, manageState bool, object string) error {
+	if object == "" {
+		return nil
+	}
+	if err := s.require(ctx, p, accessapi.ActionStackManagedStateImport, space); err != nil {
+		return err
+	}
+	if !manageState {
+		return &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
+			Pointer: "/stackObjectID", Reason: kernel.ReasonRule,
+			Message: "A state file is imported into a stack whose state infraweave manages, " +
+				"which this stack does not.",
+		}}}
+	}
+	return nil
+}
+
 // openState opens the default workspace of st, written in the context's
 // transaction, through the bound state domain, when infraweave keeps its
-// state.
+// state, importing the state file p uploaded as object into it when
+// object is set. With no state domain bound, such an import finds no
+// upload.
 //
 // ref: decision 0010 § "Storage"
-func (s *Service) openState(ctx context.Context, st Stack) error {
+func (s *Service) openState(ctx context.Context, p kernel.Principal, st Stack, object string) error {
 	s.mu.RLock()
 	m := s.state
 	s.mu.RUnlock()
-	if !st.ManagesState || m == nil {
+	switch {
+	case !st.ManagesState:
+		return nil
+	case m == nil && object != "":
+		return &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
+			Pointer: "/stackObjectID", Reason: kernel.ReasonNotFound,
+			Message: "No state file was uploaded under this object ID.",
+		}}}
+	case m == nil:
 		return nil
 	}
-	return m.Created(ctx, st.Stack) //nolint:wrapcheck // the state domain names the write
+	//nolint:wrapcheck // the state domain names the write; a refusal is answered as it is
+	return m.Created(ctx, p, st.Stack, object)
 }
 
 // Update replaces the settings of p's account's stack slug with in's,

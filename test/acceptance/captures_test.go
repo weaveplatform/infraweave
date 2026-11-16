@@ -70,7 +70,10 @@ var awaited = map[string]string{
 	"C103": "runs/terraform.feature",
 	"C104": "runs/terraform.feature",
 	"C105": "state/backend.feature",
+	"C107": "state/import.feature",
+	"C109": "state/import.feature",
 	"C111": "state/backend.feature",
+	"C112": "state/import.feature",
 }
 
 // TestAccCaptures replays every capture's calls against infraweave serve on

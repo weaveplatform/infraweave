@@ -167,17 +167,11 @@ func (s *Store) step(ctx context.Context, run lifecycle.Run, step lifecycle.Step
 // Active reads acct's oldest run of stack of type typ on commit hash and
 // local workspace workspace, none when empty, that has not ended.
 func (s *Store) Active(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, typ kernel.RunType, hash, workspace string) (lifecycle.Run, bool, error) {
-	var terminal []string
-	for _, st := range kernel.RunStates() {
-		if st.Terminal() {
-			terminal = append(terminal, string(st))
-		}
-	}
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND stack_id = $2 AND type = $3 AND commit->>'hash' = $4
 			AND state <> ALL($5) AND local_workspace IS NOT DISTINCT FROM nullif($6, '')
 			AND env_overrides_sealed IS NULL
-		ORDER BY id LIMIT 1`, acct, stack, string(typ), hash, terminal, workspace))
+		ORDER BY id LIMIT 1`, acct, stack, string(typ), hash, terminalStates(), workspace))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return lifecycle.Run{}, false, nil

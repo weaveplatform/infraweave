@@ -83,26 +83,29 @@ func TestUnitDeleting(t *testing.T) {
 }
 
 // TestUnitCreated checks that a stack's creation opens its default
-// workspace in the creation's transaction, that a failing store fails it,
-// and that outside a transaction nothing is opened.
+// workspace in the creation's transaction, importing nothing without an
+// object, that a failing store fails it, and that outside a transaction
+// nothing is opened.
 //
 // ref: decision 0010 § "Storage"
 func TestUnitCreated(t *testing.T) {
 	m := newMem()
 	s := New(Deps{DB: db{}, Store: m, Stacks: m})
 	st := stacksapi.Stack{ID: kernel.NewULID(), Account: kernel.NewAccountID()}
+	p := kernel.Principal{Kind: kernel.PrincipalUser, AccountID: st.Account}
 	at := Target{Account: st.Account, Stack: st.ID}
-	if err := s.Created(t.Context(), st); !errors.Is(err, ErrNoTransaction) || m.workspaces[at] {
+	if err := s.Created(t.Context(), p, st, ""); !errors.Is(err, ErrNoTransaction) ||
+		m.workspaces[at] {
 		t.Errorf("outside a transaction = %v, opened %v", err, m.workspaces[at])
 	}
 	if err := inTransaction(t, func(ctx context.Context) error {
-		return s.Created(ctx, st)
-	}); err != nil || !m.workspaces[at] || len(m.workspaces) != 1 {
-		t.Errorf("Created = %v, opened %v", err, m.workspaces)
+		return s.Created(ctx, p, st, "")
+	}); err != nil || !m.workspaces[at] || len(m.workspaces) != 1 || len(m.versions) != 0 {
+		t.Errorf("Created = %v, opened %v with versions %v", err, m.workspaces, m.versions)
 	}
 	m.fail = "OpenWorkspace"
 	if err := inTransaction(t, func(ctx context.Context) error {
-		return s.Created(ctx, st)
+		return s.Created(ctx, p, st, "")
 	}); !errors.Is(err, errDown) {
 		t.Errorf("a failing store = %v", err)
 	}

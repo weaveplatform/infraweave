@@ -80,6 +80,8 @@ CREATE INDEX state_broken_locks_run ON state_broken_locks (account_id, run_id);
 -- a client-encrypted state the server never parses. run_id is the run
 -- that wrote it, absent for an import or a rollback, with no foreign key,
 -- as in state_locks; rolled_back_from is the version a rollback copied.
+-- imported_username and imported_at name who imported an imported
+-- version and when, and only an imported version has them.
 CREATE TABLE managed_state_versions (
     account_id        uuid        NOT NULL,
     id                uuid        NOT NULL,
@@ -103,7 +105,8 @@ CREATE TABLE managed_state_versions (
     FOREIGN KEY (account_id, stack_id, workspace)
         REFERENCES state_workspaces (account_id, stack_id, name) ON DELETE CASCADE,
     CHECK (size >= 0 AND octet_length(sha256) = 32),
-    CHECK (client_encrypted OR (serial IS NOT NULL AND lineage IS NOT NULL))
+    CHECK (client_encrypted OR (serial IS NOT NULL AND lineage IS NOT NULL)),
+    CHECK (imported = (imported_username IS NOT NULL AND imported_at IS NOT NULL))
 );
 
 -- A stack's version search lists a workspace's versions by when they were

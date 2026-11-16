@@ -41,7 +41,7 @@ func (d *destroyer) Destroy(_ context.Context, _ kernel.Principal, id kernel.ULI
 func TestAccServiceDestroy(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	st, err := f.svc.Create(ctx, f.admin, "", false, input("Infra"))
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestAccServiceDestroy(t *testing.T) {
 
 	in := input("Kept")
 	in.ProtectFromDeletion = new(true)
-	if _, err := f.svc.Create(ctx, f.admin, "", false, in); err != nil {
+	if _, err := f.svc.Create(ctx, f.admin, "", false, "", in); err != nil {
 		t.Fatal(err)
 	}
 	for _, destroy := range []bool{false, true} {
@@ -145,7 +145,7 @@ func TestAccHandlerDestroy(t *testing.T) {
 	f := newFixture(t)
 	s := http.New(f.svc, f.authz, f.spaces)
 	admin := kernel.WithPrincipal(ctx, f.admin)
-	if _, err := f.svc.Create(ctx, f.admin, "", false, input("Infra")); err != nil {
+	if _, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra")); err != nil {
 		t.Fatal(err)
 	}
 	d := &destroyer{err: &stacksapi.Undestroyable{Detail: "The stack is disabled."}}

@@ -10,8 +10,10 @@
 // holds each of some stacks' run lock, deletes a deleted stack's runs,
 // with their transitions, and its run lock, tracked run and outputs,
 // reads a run's account, stack and state by its ID alone without locking
-// its row, for the state access its token asks, and purges a deleted
-// account's rows a batch a statement.
+// its row, for the state access its token asks, reads a stack's runs
+// that have not ended with their types and states, for the state
+// domain's import, and purges a deleted account's rows a batch a
+// statement.
 // It is also the lifecycle's store: it locks a run's row, moves a run and
 // records its transition, inserts a run, seals a proposed run's environment
 // variable overrides to its row in env_overrides_sealed, finds a stack's
@@ -54,7 +56,7 @@
 //
 // # Dependencies
 //
-// It imports pgx, stacksapi, workersapi, the domain's core, changes,
+// It imports pgx, runsapi, stacksapi, workersapi, the domain's core, changes,
 // control, handover, lifecycle, logs, read, report, schedule and timers,
 // internal/iac/plan, internal/kernel and kernel/search, platform/crypt,
 // platform/objectstore, platform/sql and its integrity, migrate, notify

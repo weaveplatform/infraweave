@@ -106,6 +106,15 @@ func TestAccSchema(t *testing.T) {
 		return err //nolint:wrapcheck // as above
 	}
 	serial, lineage := new(int64(1)), new("f3c1")
+	imported := func(imported bool, username *string) error {
+		_, err := db.Exec(ctx, `INSERT INTO managed_state_versions
+			(account_id, id, stack_id, workspace, object_key, size, sha256,
+			client_encrypted, imported, imported_username, imported_at)
+			VALUES ($1, $2, $3, '', 'key', 10, $4, true, $5, $6,
+				CASE WHEN $6::text IS NOT NULL THEN now() END)`,
+			acct, kernel.NewULID(), stack, make([]byte, 32), imported, username)
+		return err //nolint:wrapcheck // as above
+	}
 	for name, err := range map[string]error{
 		"a shared lock":    lock("a", "shared", `{"ID": "a"}`),
 		"an exclusive one": lock("b", "exclusive", `{"ID": "b"}`),
@@ -113,6 +122,7 @@ func TestAccSchema(t *testing.T) {
 			`{"Info": "`+strings.Repeat("x", 16384-len(`{"Info": ""}`))+`"}`),
 		"a plain version":            version(32, serial, lineage, false),
 		"a client-encrypted version": version(32, nil, nil, true),
+		"an import":                  imported(true, new("alice")),
 	} {
 		if err != nil {
 			t.Errorf("%s = %v", name, err)
@@ -137,6 +147,8 @@ func TestAccSchema(t *testing.T) {
 		"a short digest":             version(31, serial, lineage, false),
 		"a plain version no serial":  version(32, nil, lineage, false),
 		"a plain version no lineage": version(32, serial, nil, false),
+		"an import naming no one":    imported(true, nil),
+		"an importer of no import":   imported(false, new("alice")),
 	} {
 		if err == nil {
 			t.Errorf("%s was written", name)
@@ -453,7 +465,8 @@ func TestAccStoreUnavailable(t *testing.T) {
 
 // TestAccStoreVersions adds versions to a workspace and reads back the
 // current one with each column: a run's plain state, then a
-// client-encrypted one without serial, lineage or run. Each reads back
+// client-encrypted one without serial, lineage or run, then an import
+// with who imported it and when. Each reads back
 // by its ID too, which no other account finds. A workspace with no
 // version, or none at all, has no current version, and a version of a
 // workspace that does not exist is refused.
@@ -482,7 +495,22 @@ func TestAccStoreVersions(t *testing.T) {
 		ID: kernel.NewULID(), Stack: at.Stack, Workspace: at.Workspace, Size: 0,
 		SHA256: make([]byte, 32), ClientEncrypted: true,
 	}, Key: "a/b/c/2"}
-	for _, want := range []core.Version{plain, encrypted} {
+	importedAt := time.Unix(1_800_000_000, 0).UTC()
+	imported := core.Version{Version: stateapi.Version{
+		ID: kernel.NewULID(), Stack: at.Stack, Workspace: at.Workspace, Size: 10, SHA256: sum,
+		Serial: &serial, Lineage: &lineage, Imported: true, ImportedUsername: new("alice"),
+		ImportedAt: &importedAt,
+	}, Key: "a/b/c/3"}
+	// read drops what the database sets and reads an import's time in UTC,
+	// so a version compares with the one written.
+	read := func(v core.Version) core.Version {
+		v.CreatedAt = time.Time{}
+		if v.ImportedAt != nil {
+			v.ImportedAt = new(v.ImportedAt.UTC())
+		}
+		return v
+	}
+	for _, want := range []core.Version{plain, encrypted, imported} {
 		if err := s.AddVersion(ctx, at.Account, want); err != nil {
 			t.Fatal(err)
 		}
@@ -490,21 +518,19 @@ func TestAccStoreVersions(t *testing.T) {
 		if err != nil || !ok || got.CreatedAt.IsZero() {
 			t.Fatalf("Current %+v, %v, %v", got, ok, err)
 		}
-		got.CreatedAt = time.Time{}
-		if !reflect.DeepEqual(got, want) {
+		if got = read(got); !reflect.DeepEqual(got, want) {
 			t.Errorf("Current %+v, want %+v", got, want)
 		}
 		byID, ok, err := s.Version(ctx, at.Account, want.ID)
-		byID.CreatedAt = time.Time{}
-		if err != nil || !ok || !reflect.DeepEqual(byID, want) {
+		if byID = read(byID); err != nil || !ok || !reflect.DeepEqual(byID, want) {
 			t.Errorf("Version %+v, %v, %v, want %+v", byID, ok, err, want)
 		}
 		if _, ok, err := s.Version(ctx, kernel.NewAccountID(), want.ID); ok || err != nil {
 			t.Errorf("another account's Version: %v, %v", ok, err)
 		}
 	}
-	if n := count(t, db, "managed_state_versions", at.Account); n != 2 {
-		t.Errorf("%d versions, want 2", n)
+	if n := count(t, db, "managed_state_versions", at.Account); n != 3 {
+		t.Errorf("%d versions, want 3", n)
 	}
 	gone := at
 	gone.Workspace = "gone"

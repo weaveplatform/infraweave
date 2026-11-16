@@ -81,6 +81,7 @@ func newStateServer(t *testing.T, w *claimWorld, driver string) stateServer {
 		DB:        w.db.Primary(),
 		Stacks:    w.d.Stacks.Stacks(),
 		Access:    w.d.Runs.StateAccess(),
+		Runs:      w.d.Runs.StackRuns(),
 		Authz:     w.d.Access.Authorizer(),
 		Objects:   blobs.New(w.q, queue.New(w.q), objectstore.WriterOnly(store), w.keys, c),
 		Jobs:      queue.New(w.q),

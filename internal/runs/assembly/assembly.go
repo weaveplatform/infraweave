@@ -351,6 +351,11 @@ func (d *Domain) StackGuard() stacksapi.StackGuard { return d.runs }
 // domain.
 func (d *Domain) StateAccess() runsapi.StateAccess { return d.runs }
 
+// StackRuns lists a stack's runs that have not ended, with their types,
+// the forward edge internal/app hands the state domain, whose import
+// refuses a stack with a tracked run, task or destroy run under way.
+func (d *Domain) StackRuns() runsapi.StackRuns { return d.runs }
+
 // RunsAPI is the domain's partial of the API's strict server, which
 // internal/app embeds under this alias.
 type RunsAPI = http.Server

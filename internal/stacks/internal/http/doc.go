@@ -5,7 +5,8 @@
 // to its branch's head or set it to a commit, and suggest the values a
 // stack search filters by. A read, change or patch answers the
 // stack's ETag; a change, patch or delete passes its If-Match to the
-// service. A patch merges its body into the stack's settings as a PUT
+// service, and a creation passes its stackObjectID, the state file to
+// import. A patch merges its body into the stack's settings as a PUT
 // would send them and writes the result through the change, through
 // platform/httpkit/strict. The route table has already authorized each
 // request on the stack's space, or on the space its body names; Server

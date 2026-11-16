@@ -74,16 +74,19 @@ type Objects = core.Objects
 // before it: DB; Stacks, which holds a stack while its workspace is
 // written, names a stack by its slug and lists the stacks of the spaces a
 // workspace search reads; Access, the runs domain's decision of what a
-// run token may do with its stack's state; Authz, the access domain's
-// decisions of a caller's actions and of the spaces it may read; Objects,
-// which hold each version's object and each upload's; Jobs, which
-// enqueues a deleted stack's purge; Keys, which derive the signed URLs'
-// keys; PublicURL, server.public_url, and URLTTL,
+// run token may do with its stack's state; Runs, the runs domain's list
+// of a stack's runs that have not ended, which an import refuses a stack
+// with a tracked run, task or destroy run among; Authz, the access
+// domain's decisions of a caller's actions and of the spaces it may read;
+// Objects, which hold each version's object and each upload's; Jobs,
+// which enqueues a deleted stack's purge; Keys, which derive the signed
+// URLs' keys; PublicURL, server.public_url, and URLTTL,
 // objectstore.signed_url_ttl, of the signed URLs; and Settings.
 type Deps struct {
 	DB        DB
 	Stacks    stacksapi.Stacks
 	Access    runsapi.StateAccess
+	Runs      runsapi.StackRuns
 	Authz     accessapi.Authorizer
 	Objects   Objects
 	Jobs      core.Jobs
@@ -104,7 +107,7 @@ type Domain struct {
 func New(d Deps) *Domain {
 	svc := core.New(core.Deps{
 		DB: d.DB, Store: pg.New(d.DB), Stacks: d.Stacks, Authz: d.Authz, Objects: d.Objects,
-		Jobs: d.Jobs,
+		Jobs: d.Jobs, Runs: d.Runs,
 	})
 	return &Domain{
 		state:   svc,
@@ -119,7 +122,8 @@ func New(d Deps) *Domain {
 // StateAPI is the domain's partial of the API's strict server, which
 // internal/app embeds once: the signed URLs' stateUploadUrl and
 // stateDownloadUrl, served by the domain's urls adapter, and the Tofu
-// Workspaces operations, served by its http adapter. It forwards each
+// Workspaces operations and stackManagedStateImport, served by its http
+// adapter. It forwards each
 // operation to its adapter rather than embedding the two, since an
 // embedded adapter's methods would sit at the depth of the API's 501
 // stubs, which then make each ambiguous.
@@ -172,6 +176,15 @@ func (a StateAPI) TofuWorkspaceUnlockAll(ctx context.Context, req api.TofuWorksp
 	return a.workspaces.TofuWorkspaceUnlockAll(ctx, req) //nolint:wrapcheck // as above
 }
 
+// StackManagedStateImport imports an uploaded state file into a stack's
+// default workspace.
+func (a StateAPI) StackManagedStateImport(
+	ctx context.Context,
+	req api.StackManagedStateImportRequestObject,
+) (api.StackManagedStateImportResponseObject, error) {
+	return a.workspaces.StackManagedStateImport(ctx, req) //nolint:wrapcheck // as above
+}
+
 // Versions are what other domains read of a stack's managed state.
 func (d *Domain) Versions() stateapi.Versions { return d.state }
 
@@ -205,7 +218,8 @@ func (d *Domain) StackGuard() stacksapi.StackGuard { return d.state }
 
 // ManagedState is the domain's part in a stack's creation, which
 // internal/app binds to the stacks domain, so a stack whose state
-// infraweave keeps lists its default workspace from its creation.
+// infraweave keeps lists its default workspace from its creation, with
+// the state file its creation imports as the first version.
 func (d *Domain) ManagedState() stacksapi.ManagedState { return d.state }
 
 // StackPurge is the job that purges a deleted stack's state.

@@ -19,7 +19,11 @@
 // runner image, which executes the run's phases and reports them itself.
 // The steps of the signed state URLs keep the URL an answer names and
 // send it, with no credential, to either replica's listener in place of
-// server.public_url.
+// server.public_url. The import steps put the state a run's tool pulled
+// at an upload URL, keep the object ID the URL's answer names for a
+// stack's creation or import to name, and check the imported version a
+// stack's default workspace holds, the upload the import consumed and the
+// import the audit trail records.
 //
 // ref: decision 0008
 // ref: decision 0010
@@ -31,7 +35,8 @@
 // pkg/sdk, starts and removes containers through the suite's Docker
 // daemon, reads the scenario's database through SQL and its bucket in
 // RustFS through S3, and writes each run's workspace under the
-// scenario's directory. A failed scenario leaves the relay's calls and
+// scenario's directory; the import steps read the versions, uploads and
+// audit trail entries an import writes through SQL. A failed scenario leaves the relay's calls and
 // each tool's output beside the servers' evidence. It sends a signed
 // URL's request with net/http, recording its answer for the answer steps.
 //

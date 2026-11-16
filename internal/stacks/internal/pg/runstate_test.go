@@ -22,7 +22,7 @@ func TestAccServiceRunState(t *testing.T) {
 	f := newFixture(t)
 	created := map[string]core.Stack{}
 	for _, name := range []string{"Infra", "Web", "Idle"} {
-		st, err := f.svc.Create(ctx, f.admin, "", false, input(name))
+		st, err := f.svc.Create(ctx, f.admin, "", false, "", input(name))
 		if err != nil {
 			t.Fatal(err)
 		}

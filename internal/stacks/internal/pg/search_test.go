@@ -92,7 +92,7 @@ func TestAccServiceSearch(t *testing.T) {
 		if c.vendor != "" {
 			in.VendorConfig = json.RawMessage(`{"` + c.vendor + `":{}}`)
 		}
-		if _, err := f.svc.Create(ctx, c.p, "", false, in); err != nil {
+		if _, err := f.svc.Create(ctx, c.p, "", false, "", in); err != nil {
 			t.Fatalf("create %s: %v", c.name, err)
 		}
 	}

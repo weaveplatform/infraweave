@@ -77,12 +77,17 @@ func (s *Service) Write(ctx context.Context, w Write) (bool, error) {
 	v := Version{Version: stateapi.Version{
 		ID: kernel.NewULID(), Stack: w.Stack, Workspace: w.Workspace, Run: &w.Run,
 	}}
-	v.Key = fmt.Sprintf("%s/%s/%x/%s", w.Account, w.Stack, sha256.Sum256([]byte(w.Workspace)),
-		v.ID)
+	v.Key = versionKey(w.Target, v.ID)
 	if err := s.put(ctx, w, &v); err != nil {
 		return false, err
 	}
 	return s.commit(ctx, w, v)
+}
+
+// versionKey is the key of t's version id's object in the states store:
+// the workspace's name is hashed, so any name makes a key the store takes.
+func versionKey(t Target, id kernel.ULID) string {
+	return fmt.Sprintf("%s/%s/%x/%s", t.Account, t.Stack, sha256.Sum256([]byte(t.Workspace)), id)
 }
 
 // put streams w's body into v's object, recording its size, SHA-256 and
@@ -263,11 +268,28 @@ func outputs(r io.Reader) ([]stateapi.Output, error) {
 
 // meta is what a state body says of itself: a plain state's serial and
 // lineage, or that it is client-encrypted, as OpenTofu's encryption
-// writes a state with neither.
+// writes a state with neither. Version is the format version a plain
+// state names when it is a whole number, and envelope whether the body
+// carries both members of OpenTofu's encrypted state, encrypted_data and
+// encryption_version; a write needs neither, an import one or the other.
 type meta struct {
 	serial    *int64
 	lineage   *string
 	encrypted bool
+	version   *int64
+	envelope  bool
+}
+
+// importable reports whether a state an import reads is one infraweave
+// takes: a plain state of format version 4, the one Terraform and
+// OpenTofu write, or OpenTofu's client-encrypted envelope.
+//
+// ref: decision 0010 § "Upload, import and download URLs"
+func (m meta) importable() bool {
+	if m.encrypted {
+		return m.envelope
+	}
+	return m.version != nil && *m.version == 4
 }
 
 // scanner scans a body for its meta as the body streams to its object,
@@ -312,8 +334,8 @@ func scan(r io.Reader) (meta, error) {
 		return meta{}, err
 	}
 	var (
-		m       meta
-		version bool
+		m                    meta
+		version, data, label bool
 	)
 	for dec.More() {
 		k, err := dec.Token()
@@ -327,6 +349,12 @@ func scan(r io.Reader) (meta, error) {
 			m.lineage, err = lineage(dec)
 		case "version":
 			version = true
+			m.version, err = number(dec)
+		case "encrypted_data":
+			data = true
+			err = skip(dec)
+		case "encryption_version":
+			label = true
 			err = skip(dec)
 		default:
 			err = skip(dec)
@@ -343,7 +371,7 @@ func scan(r io.Reader) (meta, error) {
 	}
 	switch {
 	case m.serial == nil && m.lineage == nil:
-		m.encrypted = true
+		m.encrypted, m.envelope = true, data && label
 	case m.serial == nil || m.lineage == nil || !version:
 		return meta{}, fmt.Errorf("%w: a plain state has version, serial and lineage", ErrState)
 	}
@@ -368,12 +396,17 @@ func notState(err error) error {
 // skip reads past the value dec is at, one token at a time, so a member
 // of any size streams past without being held.
 func skip(dec *json.Decoder) error {
+	t, err := dec.Token()
+	if err != nil {
+		return err //nolint:wrapcheck // the decoder names the offset
+	}
+	return past(dec, t)
+}
+
+// past reads past the rest of the value whose first token is t.
+func past(dec *json.Decoder, t json.Token) error {
 	depth := 0
 	for {
-		t, err := dec.Token()
-		if err != nil {
-			return err //nolint:wrapcheck // the decoder names the offset
-		}
 		switch t {
 		case json.Delim('{'), json.Delim('['):
 			depth++
@@ -383,7 +416,27 @@ func skip(dec *json.Decoder) error {
 		if depth == 0 {
 			return nil
 		}
+		var err error
+		if t, err = dec.Token(); err != nil {
+			return err //nolint:wrapcheck // the decoder names the offset
+		}
 	}
+}
+
+// number reads the value dec is at, answering it when it is a whole
+// number and nil for any other value, which it reads past: a write takes
+// a state whatever its version says, so only an import's check reads it.
+func number(dec *json.Decoder) (*int64, error) {
+	t, err := dec.Token()
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the decoder names the offset
+	}
+	if n, ok := t.(json.Number); ok {
+		if i, err := n.Int64(); err == nil {
+			return &i, nil
+		}
+	}
+	return nil, past(dec, t)
 }
 
 func serial(dec *json.Decoder) (*int64, error) {

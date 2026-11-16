@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -154,4 +155,41 @@ func (s *Store) DeleteStack(ctx context.Context, acct kernel.AccountID, stack ke
 		}
 	}
 	return nil
+}
+
+// Unended reads acct's stack's runs that have not ended, oldest first,
+// with their types and states, in the context's transaction.
+func (s *Store) Unended(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]runsapi.UnendedRun, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, type, state FROM runs
+		WHERE account_id = $1 AND stack_id = $2 AND state <> ALL($3)
+		ORDER BY id`, acct, stack, terminalStates())
+	if err != nil {
+		return nil, fmt.Errorf("runs: read the unended runs of stack %s: %w", stack,
+			sql.Unavailable(err))
+	}
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (runsapi.UnendedRun, error) {
+		var (
+			r          runsapi.UnendedRun
+			typ, state string
+		)
+		err := row.Scan(&r.ID, &typ, &state)
+		r.Type, r.State = kernel.RunType(typ), kernel.RunState(state)
+		return r, err //nolint:wrapcheck // CollectRows' caller names the read
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runs: read the unended runs of stack %s: %w", stack,
+			sql.Unavailable(err))
+	}
+	return out, nil
+}
+
+// terminalStates are the run states a run that has ended is in.
+func terminalStates() []string {
+	var out []string
+	for _, st := range kernel.RunStates() {
+		if st.Terminal() {
+			out = append(out, string(st))
+		}
+	}
+	return out
 }

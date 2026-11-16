@@ -254,7 +254,7 @@ func bindingFixture(t *testing.T) fixture {
 	top := input("Top")
 	top.Space = "acme"
 	for _, in := range []core.Input{input("Infra"), top} {
-		if _, err := f.svc.Create(t.Context(), f.admin, "", false, in); err != nil {
+		if _, err := f.svc.Create(t.Context(), f.admin, "", false, "", in); err != nil {
 			t.Fatal(err)
 		}
 	}

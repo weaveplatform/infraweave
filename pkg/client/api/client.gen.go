@@ -8751,7 +8751,9 @@ type StackCreateRequest struct {
 	ManageState bool `json:"manageState"`
 
 	// Slug Allows setting the custom ID (slug) for the stack
-	Slug          *string `json:"slug,omitempty"`
+	Slug *string `json:"slug,omitempty"`
+
+	// StackObjectID The objectId stateUploadUrl answered for a state file the caller uploaded, which becomes the new stack's first state version. It needs manageState and STACK_MANAGED_STATE_IMPORT in the stack's space. A missing, foreign or already imported upload, one over 100 MiB, or a file that is neither a JSON state of format version 4 nor an OpenTofu client-encrypted state answers 422 pointing here, and no stack is created.
 	StackObjectID *string `json:"stackObjectID,omitempty"`
 }
 
@@ -9081,6 +9083,7 @@ type StackLockRequest struct {
 
 // StackManagedStateImportRequest The arguments of stackManagedStateImport not carried in the path.
 type StackManagedStateImportRequest struct {
+	// State The objectId stateUploadUrl answered for the state file the caller uploaded.
 	State string `json:"state"`
 }
 
@@ -17295,9 +17298,7 @@ type ClientInterface interface {
 
 	// StackCreateWithBody Create Stack
 	//
-	// Create a new stack. The third argument (stackObjectID) is optional, and
-	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to infraweave for further management.
+	// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -17306,9 +17307,7 @@ type ClientInterface interface {
 
 	// StackCreate Create Stack
 	//
-	// Create a new stack. The third argument (stackObjectID) is optional, and
-	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to infraweave for further management.
+	// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -17589,9 +17588,7 @@ type ClientInterface interface {
 
 	// StackManagedStateImportWithBody Import State
 	//
-	// Import a previously uploaded state file into a managed-state stack.
-	// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-	// mutation, which points at the file you uploaded via its pre-signed URL.
+	// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -17600,9 +17597,7 @@ type ClientInterface interface {
 
 	// StackManagedStateImport Import State
 	//
-	// Import a previously uploaded state file into a managed-state stack.
-	// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-	// mutation, which points at the file you uploaded via its pre-signed URL.
+	// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -24845,9 +24840,7 @@ func (c *Client) Stacks(ctx context.Context, params *StacksParams, reqEditors ..
 
 // StackCreateWithBody Create Stack
 //
-// Create a new stack. The third argument (stackObjectID) is optional, and
-// should only be used when creating a Stack with pre-existing state that is
-// handed over to infraweave for further management.
+// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 //
 // Takes any type of body and a specified content type.
 //
@@ -24866,9 +24859,7 @@ func (c *Client) StackCreateWithBody(ctx context.Context, params *StackCreatePar
 
 // StackCreate Create Stack
 //
-// Create a new stack. The third argument (stackObjectID) is optional, and
-// should only be used when creating a Stack with pre-existing state that is
-// handed over to infraweave for further management.
+// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -25489,9 +25480,7 @@ func (c *Client) StackLock(ctx context.Context, stackId string, params *StackLoc
 
 // StackManagedStateImportWithBody Import State
 //
-// Import a previously uploaded state file into a managed-state stack.
-// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-// mutation, which points at the file you uploaded via its pre-signed URL.
+// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 //
 // Takes any type of body and a specified content type.
 //
@@ -25510,9 +25499,7 @@ func (c *Client) StackManagedStateImportWithBody(ctx context.Context, stackId st
 
 // StackManagedStateImport Import State
 //
-// Import a previously uploaded state file into a managed-state stack.
-// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-// mutation, which points at the file you uploaded via its pre-signed URL.
+// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -51284,9 +51271,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackCreateWithBodyWithResponse Create Stack
 	//
-	// Create a new stack. The third argument (stackObjectID) is optional, and
-	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to infraweave for further management.
+	// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -51295,9 +51280,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackCreateWithResponse Create Stack
 	//
-	// Create a new stack. The third argument (stackObjectID) is optional, and
-	// should only be used when creating a Stack with pre-existing state that is
-	// handed over to infraweave for further management.
+	// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -51608,9 +51591,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackManagedStateImportWithBodyWithResponse Import State
 	//
-	// Import a previously uploaded state file into a managed-state stack.
-	// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-	// mutation, which points at the file you uploaded via its pre-signed URL.
+	// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -51619,9 +51600,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackManagedStateImportWithResponse Import State
 	//
-	// Import a previously uploaded state file into a managed-state stack.
-	// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-	// mutation, which points at the file you uploaded via its pre-signed URL.
+	// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -95057,9 +95036,7 @@ func (c *ClientWithResponses) StacksWithResponse(ctx context.Context, params *St
 
 // StackCreateWithBodyWithResponse Create Stack
 //
-// Create a new stack. The third argument (stackObjectID) is optional, and
-// should only be used when creating a Stack with pre-existing state that is
-// handed over to infraweave for further management.
+// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -95074,9 +95051,7 @@ func (c *ClientWithResponses) StackCreateWithBodyWithResponse(ctx context.Contex
 
 // StackCreateWithResponse Create Stack
 //
-// Create a new stack. The third argument (stackObjectID) is optional, and
-// should only be used when creating a Stack with pre-existing state that is
-// handed over to infraweave for further management.
+// Create a new stack. stackObjectID is optional, and names a state file uploaded through stateUploadUrl that becomes the stack's first state version, for a stack whose existing state infraweave takes over. The stack and its imported state are created together or not at all.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -95591,9 +95566,7 @@ func (c *ClientWithResponses) StackLockWithResponse(ctx context.Context, stackId
 
 // StackManagedStateImportWithBodyWithResponse Import State
 //
-// Import a previously uploaded state file into a managed-state stack.
-// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-// mutation, which points at the file you uploaded via its pre-signed URL.
+// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -95608,9 +95581,7 @@ func (c *ClientWithResponses) StackManagedStateImportWithBodyWithResponse(ctx co
 
 // StackManagedStateImportWithResponse Import State
 //
-// Import a previously uploaded state file into a managed-state stack.
-// NOTE: the `state` argument is the objectId returned by the stateUploadUrl
-// mutation, which points at the file you uploaded via its pre-signed URL.
+// Import a state file uploaded through stateUploadUrl, named by its objectId in `state`, into the stack's default workspace as its new current state version, marked imported by the caller, even when it matches the current version. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the import answers 409. The upload must be the caller's own, at most 100 MiB, and a JSON state of format version 4 or an OpenTofu client-encrypted state; otherwise the import answers 422 pointing at `/state`. No run is created on the stack while the import runs. The upload is deleted once imported, and the import is recorded on the audit trail.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

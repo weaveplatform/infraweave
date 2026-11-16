@@ -8,9 +8,10 @@
 // API's strict server, StateAPI, which embeds two: stateUploadUrl and
 // stateDownloadUrl, which sign URLs under the installation's keyring,
 // absolute under server.public_url and lasting
-// objectstore.signed_url_ttl, and the Tofu Workspaces operations, served
-// through the domain's http adapter, which reads the spaces a caller may
-// read through Authz. Routes adds the routes that verify the signed URLs
+// objectstore.signed_url_ttl, and the Tofu Workspaces operations and
+// stackManagedStateImport, served through the domain's http adapter,
+// which reads the spaces a caller may read through Authz and the runs an
+// import waits on through the runs domain's StackRuns. Routes adds the routes that verify the signed URLs
 // beside the backend's, and a nil domain's routes answer 501. SpaceOf
 // resolves the Entity subject, a Tofu workspace, to its stack's space.
 // Versions is what other domains read of a stack's managed state. Subscribe
@@ -19,7 +20,8 @@
 // registers with the stacks domain, whose stack delete enqueues
 // StackPurge, one of Jobs; ManagedState is the stacksapi.ManagedState it
 // binds there, which opens the default workspace of a new stack whose
-// state infraweave keeps in the creation's transaction; Purge deletes a deleted account's state, which
+// state infraweave keeps in the creation's transaction and imports the
+// state file the creation names; Purge deletes a deleted account's state, which
 // internal/app runs on access' account deletion. Held declares the columns that hold
 // the access domain's accounts, the stacks domain's stacks and the runs
 // domain's runs, for the nightly orphan count; Stream is its migration

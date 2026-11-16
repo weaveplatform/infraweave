@@ -218,7 +218,7 @@ func TestAccServiceCreate(t *testing.T) {
 	in.Labels = []string{"b", "a"}
 	in.Hooks = map[string][]string{stacksapi.BeforePlan: {"echo 1", "echo 2"}}
 	in.VendorConfig = json.RawMessage(`{"opentofu":{"version":"~> 1.8.0"},"terraform":null}`)
-	st, err := f.svc.Create(ctx, f.admin, "", true, in)
+	st, err := f.svc.Create(ctx, f.admin, "", true, "", in)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestAccServiceCreate(t *testing.T) {
 	if c := f.changes(t, st.ID); !reflect.DeepEqual(c, []string{stacksapi.ChangeCreated}) {
 		t.Errorf("events %v", c)
 	}
-	plain, err := f.svc.Create(ctx, f.admin, "custom-1", false, core.Input{
+	plain, err := f.svc.Create(ctx, f.admin, "custom-1", false, "", core.Input{
 		Name: "Plain", Repository: "r", Branch: "b",
 	})
 	if err != nil || plain.Slug != "custom-1" || plain.Space != f.acct.ULID ||
@@ -256,6 +256,7 @@ func TestAccServiceCreate(t *testing.T) {
 		f.admin,
 		"",
 		false,
+		"",
 		input("prod eu"),
 	); !isSlugTaken(
 		err,
@@ -264,7 +265,7 @@ func TestAccServiceCreate(t *testing.T) {
 		t.Errorf("Create of a taken slug = %v", err)
 	}
 	if got := pointers(t, func() error {
-		_, err := f.svc.Create(ctx, f.admin, "Not A Slug", false, input("x"))
+		_, err := f.svc.Create(ctx, f.admin, "Not A Slug", false, "", input("x"))
 		return err
 	}()); !reflect.DeepEqual(got, []string{"/slug"}) {
 		t.Errorf("a bad slug's pointers = %v", got)
@@ -280,7 +281,7 @@ func TestAccServiceCreate(t *testing.T) {
 		"/input/vendorConfig/terraform/version",
 	}
 	if got := pointers(t, func() error {
-		_, err := f.svc.Create(ctx, f.admin, "", false, bad)
+		_, err := f.svc.Create(ctx, f.admin, "", false, "", bad)
 		return err
 	}()); !reflect.DeepEqual(got, want) {
 		t.Errorf("a bad input's pointers = %v, want %v", got, want)
@@ -288,7 +289,7 @@ func TestAccServiceCreate(t *testing.T) {
 	for _, space := range []string{"hidden", "nowhere"} {
 		in := input("Elsewhere")
 		in.Space = space
-		if _, err := f.svc.Create(ctx, f.admin, "", false, in); !isNoSpace(err, space) {
+		if _, err := f.svc.Create(ctx, f.admin, "", false, "", in); !isNoSpace(err, space) {
 			t.Errorf("Create in %s = %v", space, err)
 		}
 	}
@@ -309,7 +310,7 @@ func isNoSpace(err error, slug string) bool {
 func TestAccServiceReads(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	st, err := f.svc.Create(ctx, f.admin, "", false, input("Infra"))
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,11 +402,11 @@ func TestAccServiceReads(t *testing.T) {
 func TestAccServiceUpdate(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	st, err := f.svc.Create(ctx, f.admin, "", false, input("Infra"))
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.Create(ctx, f.admin, "", false, input("Renamed")); err != nil {
+	if _, err := f.svc.Create(ctx, f.admin, "", false, "", input("Renamed")); err != nil {
 		t.Fatal(err)
 	}
 	in := input("Renamed")
@@ -549,7 +550,7 @@ func (f fixture) authzGrant(p kernel.Principal, space kernel.ULID, action access
 func TestAccServiceLocks(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	if _, err := f.svc.Create(ctx, f.admin, "", false, input("Infra")); err != nil {
+	if _, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra")); err != nil {
 		t.Fatal(err)
 	}
 	st, err := f.svc.Lock(ctx, f.writer, "infra", "deploying")
@@ -620,7 +621,7 @@ func TestAccServiceStateChanges(t *testing.T) {
 	f := newFixture(t)
 	in := input("Infra")
 	in.ProtectFromDeletion = new(true)
-	st, err := f.svc.Create(ctx, f.admin, "", false, in)
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", in)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -737,7 +738,7 @@ func (s sources) Resolve(_ context.Context, _ kernel.AccountID, _ kernel.ULID, r
 func TestAccServiceTracked(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	st, err := f.svc.Create(ctx, f.admin, "", false, input("Infra"))
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -859,10 +860,10 @@ func TestAccServiceIntegration(t *testing.T) {
 			t.Errorf("%s's pointers = %v", name, got)
 		}
 	}
-	create := func() error { _, err := f.svc.Create(ctx, f.admin, "", false, in); return err }
+	create := func() error { _, err := f.svc.Create(ctx, f.admin, "", false, "", in); return err }
 	refused("a create with none bound", create, "/input/vcsIntegrationId")
 	f.svc.BindIntegrations(integrations{bound: bound})
-	st, err := f.svc.Create(ctx, f.admin, "", false, in)
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", in)
 	if err != nil || st.VCSIntegration == nil || *st.VCSIntegration != bound {
 		t.Fatalf("Create = %+v, %v", st, err)
 	}
@@ -929,7 +930,7 @@ func TestAccServicePool(t *testing.T) {
 	f.pools.reach[wp] = f.team
 	in := input("Infra")
 	in.Space, in.WorkerPool = "team", new(wp.String())
-	st, err := f.svc.Create(ctx, f.admin, "", false, in)
+	st, err := f.svc.Create(ctx, f.admin, "", false, "", in)
 	if err != nil || st.WorkerPool == nil || *st.WorkerPool != wp {
 		t.Fatalf("Create = %+v, %v", st, err)
 	}
