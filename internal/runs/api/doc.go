@@ -5,7 +5,7 @@
 // asks of the vcs domain, a back edge that domain implements; and
 // StateAccess, which decides from a run's current state its StateGrant on
 // its stack's managed state, the read, lock and write the state domain
-// allows the run's token.
+// allows the run's token, with who triggered the run.
 //
 // # Input and output
 //

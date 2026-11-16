@@ -72,14 +72,18 @@ const (
 // run's current state; one with Read, Lock and Write unset grants nothing.
 // Account is the run's account whenever some account has the run, which
 // the state domain scopes its rows and a stack's slug by, so no part of a
-// request's URL chooses the account it reaches.
+// request's URL chooses the account it reaches. TriggeredBy is the login
+// or trigger that created the run, which the state domain records with
+// each lock the run takes and answers as the workspace's lockedBy.
 //
 // ref: decision 0010 § "Who may call what"
+// ref: decision 0010 § "Storage"
 type StateGrant struct {
-	Account kernel.AccountID
-	Read    bool
-	Lock    StateLock
-	Write   bool
+	Account     kernel.AccountID
+	Read        bool
+	Lock        StateLock
+	Write       bool
+	TriggeredBy string
 }
 
 // StateAccess decides a run token's access to a stack's managed state, a
