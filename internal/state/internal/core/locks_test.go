@@ -31,11 +31,14 @@ type mem struct {
 	lockedRun  []string
 	audits     []kernel.AuditEntry
 	fail       string
+	// rolledBack are the stacks RolledBack answers.
+	rolledBack []kernel.ULID
 	// searched is the last search's or suggestion's input and scope.
 	searched struct {
-		in      any
-		scope   WorkspaceScope
-		account kernel.AccountID
+		in       any
+		scope    WorkspaceScope
+		versions VersionScope
+		account  kernel.AccountID
 	}
 }
 

@@ -5462,13 +5462,13 @@ type ManagedStateVersion struct {
 	// Imported True if the state has been manually imported
 	Imported bool `json:"imported"`
 
-	// ImportedTimestamp When the version is a rollback to a manually imported state this will be set to imported state timestamp
+	// ImportedTimestamp Unix timestamp of the import, for an imported version and for a rollback to one
 	ImportedTimestamp *int32 `json:"importedTimestamp,omitempty"`
 
-	// ImportedUsername The username that initiated the import
+	// ImportedUsername The username that initiated the import, for an imported version and for a rollback to one
 	ImportedUsername *string `json:"importedUsername,omitempty"`
 
-	// LastModified Unix timestamp of the last time the state has been modified
+	// LastModified Unix timestamp of when the version was written
 	LastModified int32 `json:"lastModified"`
 
 	// Rollback Indicate if this state is a rollback
@@ -5484,7 +5484,7 @@ type ManagedStateVersion struct {
 	Size int32 `json:"size"`
 }
 
-// ManagedStateVersionConnection ManagedStateVersionConnection represents a single worker pool in a page of results.
+// ManagedStateVersionConnection ManagedStateVersionConnection represents a single state version in a page of results.
 type ManagedStateVersionConnection struct {
 	Cursor string `json:"cursor"`
 
@@ -9093,6 +9093,7 @@ type StackManagedStateImportRequest struct {
 
 // StackManagedStateRollbackRequest The arguments of stackManagedStateRollback not carried in the path.
 type StackManagedStateRollbackRequest struct {
+	// ManagedStateVersionId The ID of the state version of the stack's default workspace to roll back to, as stackSearchManagedStateVersions answers it.
 	ManagedStateVersionId string `json:"managedStateVersionId"`
 }
 
@@ -17610,12 +17611,16 @@ type ClientInterface interface {
 
 	// StackManagedStateRollbackWithBody Rollback State
 	//
+	// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
+	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /stacks/{stackId}/managed-state-rollback (the `StackManagedStateRollback` operationId).
 	StackManagedStateRollbackWithBody(ctx context.Context, stackId string, params *StackManagedStateRollbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackManagedStateRollback Rollback State
+	//
+	// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -18198,7 +18203,7 @@ type ClientInterface interface {
 
 	// StackSearchManagedStateVersions Stack search managed state versions
 	//
-	// Returns managed state versions.
+	// Search the state versions of the stack's default workspace, filtering by createdAt, run, rollback and imported, newest first unless the search names an order. A rollback names the run of the version it copies, and an imported version names no run.
 	//
 	// Corresponds with GET /stacks/{stackId}/search-managed-state-versions (the `StackSearchManagedStateVersions` operationId).
 	StackSearchManagedStateVersions(ctx context.Context, stackId string, params *StackSearchManagedStateVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -25522,6 +25527,8 @@ func (c *Client) StackManagedStateImport(ctx context.Context, stackId string, pa
 
 // StackManagedStateRollbackWithBody Rollback State
 //
+// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
+//
 // Takes any type of body and a specified content type.
 //
 // Corresponds with POST /stacks/{stackId}/managed-state-rollback (the `StackManagedStateRollback` operationId).
@@ -25538,6 +25545,8 @@ func (c *Client) StackManagedStateRollbackWithBody(ctx context.Context, stackId 
 }
 
 // StackManagedStateRollback Rollback State
+//
+// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -26790,7 +26799,7 @@ func (c *Client) StackSearchManagedEntitiesSuggestions(ctx context.Context, stac
 
 // StackSearchManagedStateVersions Stack search managed state versions
 //
-// Returns managed state versions.
+// Search the state versions of the stack's default workspace, filtering by createdAt, run, rollback and imported, newest first unless the search names an order. A rollback names the run of the version it copies, and an imported version names no run.
 //
 // Corresponds with GET /stacks/{stackId}/search-managed-state-versions (the `StackSearchManagedStateVersions` operationId).
 func (c *Client) StackSearchManagedStateVersions(ctx context.Context, stackId string, params *StackSearchManagedStateVersionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -51613,12 +51622,16 @@ type ClientWithResponsesInterface interface {
 
 	// StackManagedStateRollbackWithBodyWithResponse Rollback State
 	//
+	// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
+	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /stacks/{stackId}/managed-state-rollback (the `StackManagedStateRollback` operationId).
 	StackManagedStateRollbackWithBodyWithResponse(ctx context.Context, stackId string, params *StackManagedStateRollbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackManagedStateRollbackResponse, error)
 
 	// StackManagedStateRollbackWithResponse Rollback State
+	//
+	// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -52245,7 +52258,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackSearchManagedStateVersionsWithResponse Stack search managed state versions
 	//
-	// Returns managed state versions.
+	// Search the state versions of the stack's default workspace, filtering by createdAt, run, rollback and imported, newest first unless the search names an order. A rollback names the run of the version it copies, and an imported version names no run.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -95600,6 +95613,8 @@ func (c *ClientWithResponses) StackManagedStateImportWithResponse(ctx context.Co
 
 // StackManagedStateRollbackWithBodyWithResponse Rollback State
 //
+// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
+//
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /stacks/{stackId}/managed-state-rollback (the `StackManagedStateRollback` operationId).
@@ -95612,6 +95627,8 @@ func (c *ClientWithResponses) StackManagedStateRollbackWithBodyWithResponse(ctx 
 }
 
 // StackManagedStateRollbackWithResponse Rollback State
+//
+// Roll the stack's default workspace back to an earlier state version, named by its ID in `managedStateVersionId`, by writing a copy of it as the new current version, marked as a rollback by the caller. The copy keeps the earlier version's run and, for an imported version, who imported it and when. The stack must have its state managed by infraweave, the caller must hold the stack's lock, and no tracked run, task or destroy run on the stack may be under way; otherwise the rollback answers 409. A version the stack's default workspace does not hold, or no longer holds, answers 404, and the current version answers 409. Only the state changes, never the infrastructure: the next run plans against the restored state, and the stack's isStateRollback is true until a run or an import writes a newer version. No run is created on the stack while the rollback runs, and the rollback is recorded on the audit trail. It answers the new version.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -96640,7 +96657,7 @@ func (c *ClientWithResponses) StackSearchManagedEntitiesSuggestionsWithResponse(
 
 // StackSearchManagedStateVersionsWithResponse Stack search managed state versions
 //
-// Returns managed state versions.
+// Search the state versions of the stack's default workspace, filtering by createdAt, run, rollback and imported, newest first unless the search names an order. A rollback names the run of the version it copies, and an imported version names no run.
 //
 // Returns a wrapper object for the known response body format(s).
 //

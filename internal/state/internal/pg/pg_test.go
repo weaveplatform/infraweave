@@ -81,7 +81,9 @@ func TestAccStoreWorkspace(t *testing.T) {
 
 // TestAccSchema checks the locks' and versions' constraints: a lock's
 // mode and LockInfo size, a version's digest and its serial and lineage
-// unless client-encrypted, and that both go with their workspace.
+// unless client-encrypted, an import's importer and a rollback's marks,
+// which only an import and a rollback have, and that both go with their
+// workspace.
 func TestAccSchema(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -115,6 +117,15 @@ func TestAccSchema(t *testing.T) {
 			acct, kernel.NewULID(), stack, make([]byte, 32), imported, username)
 		return err //nolint:wrapcheck // as above
 	}
+	rolled := func(rollback bool, username *string, from *kernel.ULID) error {
+		_, err := db.Exec(ctx, `INSERT INTO managed_state_versions
+			(account_id, id, stack_id, workspace, object_key, size, sha256,
+			client_encrypted, rollback, rollback_username, rolled_back_from)
+			VALUES ($1, $2, $3, '', 'key', 10, $4, true, $5, $6, $7)`,
+			acct, kernel.NewULID(), stack, make([]byte, 32), rollback, username, from)
+		return err //nolint:wrapcheck // as above
+	}
+	from := new(kernel.NewULID())
 	for name, err := range map[string]error{
 		"a shared lock":    lock("a", "shared", `{"ID": "a"}`),
 		"an exclusive one": lock("b", "exclusive", `{"ID": "b"}`),
@@ -123,6 +134,7 @@ func TestAccSchema(t *testing.T) {
 		"a plain version":            version(32, serial, lineage, false),
 		"a client-encrypted version": version(32, nil, nil, true),
 		"an import":                  imported(true, new("alice")),
+		"a rollback":                 rolled(true, new("bob"), from),
 	} {
 		if err != nil {
 			t.Errorf("%s = %v", name, err)
@@ -149,6 +161,9 @@ func TestAccSchema(t *testing.T) {
 		"a plain version no lineage": version(32, serial, nil, false),
 		"an import naming no one":    imported(true, nil),
 		"an importer of no import":   imported(false, new("alice")),
+		"a rollback naming no one":   rolled(true, nil, from),
+		"a rollback of no version":   rolled(true, new("bob"), nil),
+		"a rollback's marks alone":   rolled(false, new("bob"), from),
 	} {
 		if err == nil {
 			t.Errorf("%s was written", name)
@@ -461,13 +476,20 @@ func TestAccStoreUnavailable(t *testing.T) {
 		core.WorkspaceScope{}); err == nil {
 		t.Error("SuggestWorkspaces on a closed pool succeeded")
 	}
+	if _, err := s.SearchVersions(ctx, search.Input{}, core.VersionScope{Target: at}); err == nil {
+		t.Error("SearchVersions on a closed pool succeeded")
+	}
+	if _, err := s.RolledBack(ctx, at.Account, []kernel.ULID{at.Stack}); err == nil {
+		t.Error("RolledBack on a closed pool succeeded")
+	}
 }
 
 // TestAccStoreVersions adds versions to a workspace and reads back the
 // current one with each column: a run's plain state, then a
 // client-encrypted one without serial, lineage or run, then an import
-// with who imported it and when. Each reads back
-// by its ID too, which no other account finds. A workspace with no
+// with who imported it and when, then a rollback to the import, which
+// keeps them, with a run and who rolled back from which version. Each
+// reads back by its ID too, which no other account finds. A workspace with no
 // version, or none at all, has no current version, and a version of a
 // workspace that does not exist is refused.
 func TestAccStoreVersions(t *testing.T) {
@@ -501,6 +523,9 @@ func TestAccStoreVersions(t *testing.T) {
 		Serial: &serial, Lineage: &lineage, Imported: true, ImportedUsername: new("alice"),
 		ImportedAt: &importedAt,
 	}, Key: "a/b/c/3"}
+	back := imported
+	back.ID, back.Key, back.Run = kernel.NewULID(), "a/b/c/4", &run
+	back.Rollback, back.RollbackUsername, back.RolledBackFrom = true, new("bob"), &imported.ID
 	// read drops what the database sets and reads an import's time in UTC,
 	// so a version compares with the one written.
 	read := func(v core.Version) core.Version {
@@ -510,7 +535,7 @@ func TestAccStoreVersions(t *testing.T) {
 		}
 		return v
 	}
-	for _, want := range []core.Version{plain, encrypted, imported} {
+	for _, want := range []core.Version{plain, encrypted, imported, back} {
 		if err := s.AddVersion(ctx, at.Account, want); err != nil {
 			t.Fatal(err)
 		}
@@ -529,8 +554,8 @@ func TestAccStoreVersions(t *testing.T) {
 			t.Errorf("another account's Version: %v, %v", ok, err)
 		}
 	}
-	if n := count(t, db, "managed_state_versions", at.Account); n != 3 {
-		t.Errorf("%d versions, want 3", n)
+	if n := count(t, db, "managed_state_versions", at.Account); n != 4 {
+		t.Errorf("%d versions, want 4", n)
 	}
 	gone := at
 	gone.Workspace = "gone"

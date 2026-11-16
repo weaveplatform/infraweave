@@ -11,13 +11,16 @@
 // exist, locks its row while its locks are taken or released, records and
 // deletes locks and audit entries, records and reads broken locks,
 // deleting a run's with its locks, reads a workspace's current version
-// and adds one, with who imported it and when, pointing the workspace at
-// it, and purges a stack's or an
+// and adds one, with who imported it and when or who rolled it back from
+// which version, pointing the workspace at it, and purges a stack's or an
 // account's rows a batch at a time, versions first and workspaces last.
 // It reads a workspace by its ID with the lock that holds it, locks a
 // stack's workspace rows in name order for a release, and searches and
 // suggests workspaces over the scope's stacks, which a query binds as
-// arrays since stacks belong to the stacks domain. Held names the columns
+// arrays since stacks belong to the stacks domain. It searches a
+// workspace's versions, answering each run's ID as the API writes it, and
+// lists the stacks whose default workspace's current version is a
+// rollback. Held names the columns
 // that hold the access domain's accounts,
 // the stacks domain's stacks and the runs domain's runs. Every method
 // joins the transaction its context carries.
@@ -28,7 +31,8 @@
 //
 // # Dependencies
 //
-// It imports internal/kernel, kernel/search, stateapi, the domain's core,
-// pgx, platform/audit, platform/sql, platform/sql/integrity,
-// platform/sql/migrate, platform/sql/search and platform/tx. The state domain's assembly constructs it.
+// It imports internal/kernel, kernel/search, the domain's core, pgx,
+// platform/audit, platform/sql, platform/sql/integrity,
+// platform/sql/migrate, platform/sql/search and platform/tx. The state
+// domain's assembly constructs it.
 package pg

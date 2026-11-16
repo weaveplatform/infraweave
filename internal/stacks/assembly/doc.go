@@ -18,7 +18,10 @@
 // stacksapi.StackDestroyer, which a delete with destroyResources creates
 // its destroy run through; BindManagedState binds the state domain's
 // stacksapi.ManagedState, which a stack's creation opens its default
-// workspace through when infraweave keeps its state; SpaceOf is the accessapi.SpaceOf internal/app registers
+// workspace through when infraweave keeps its state; BindStateRollbacks
+// binds its stacksapi.StateRollbacks, which the stack view reads
+// isStateRollback through; SpaceOf is the accessapi.SpaceOf internal/app
+// registers
 // for the entity "stack", so the
 // access domain decides a stack's operations in the stack's space, and
 // BindingSpaceOf the one it registers for "stack_role_binding", so a

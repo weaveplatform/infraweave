@@ -15,4 +15,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&workspaceSteps{w: w}).register(sc)
 	u.register(sc)
 	(&importSteps{w: w, backend: b, urls: u}).register(sc)
+	(&rollbackSteps{w: w}).register(sc)
 }

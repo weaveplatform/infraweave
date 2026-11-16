@@ -209,9 +209,9 @@ Any other username, or a password that is neither, answers `401`.
 - **Table `managed_state_versions`** (report [28 section 12.3](../reference/28-data-model.md#123-stacks-and-runs)):
   `id` (ULID), `account_id`, `stack_id`, `workspace`, `object_key`, `size`, `sha256`,
   `serial`, `lineage`, `client_encrypted`, `run_id` (null for imports; a rollback copies
-  its target's), `rollback`,
-  `rollback_username`, `rolled_back_from`, `imported`, `imported_username`,
-  `imported_at`, `created_at` (answered as `lastModified`). Index
+  its target's), `rollback`, `rollback_username` and `rolled_back_from` (set together,
+  for a rollback alone), `imported`, `imported_username`, `imported_at`, `created_at`
+  (answered as `lastModified`). Index
   `(account_id, stack_id, workspace, created_at)` serves `stackSearchManagedStateVersions`
   and the version's key to its workspace.
 - **Objects.** Each version is its own object in the `states` store (decision
@@ -366,21 +366,27 @@ does (decision [0003](0003-api-conventions.md)).
 
 - **`stackManagedStateRollback`** checks, in order: `STACK_MANAGED_STATE_ROLLBACK` (`403`),
   managed state, the caller's stack lock and an idle stack as import does (`409`), that the
-  target version exists (`404`, `not-found`, also once retention has deleted it), and that
-  it is not the current version (`409`, `invalid-state`). In the same transaction as
-  import's, it unseals the target, reseals it as a new object and inserts a version that
-  copies the target's `run_id`, `serial`, `lineage`, `imported`, `imported_username` and
-  `imported_at`, with `rollback`, `rollback_username` and `rolled_back_from` set
+  target version exists in the stack's default workspace (`404`, `not-found`, also once
+  retention has deleted it), and that it is not the current version (`409`,
+  `invalid-state`). In the same transaction as import's, it unseals the target, reseals it
+  as a new object and inserts a version that copies the target's `run_id`, `serial`,
+  `lineage`, `client_encrypted`, `imported`, `imported_username` and `imported_at`, with
+  `rollback`, `rollback_username` (the caller's login, or its actor's ID without one) and
+  `rolled_back_from` set
   ([16 section 6](../reference/16-state-management.md#6-state-history-and-rollback)).
-  A rollback to an imported version therefore answers its `importedTimestamp`. It records
-  the audit action `stack.state_rollback`.
+  A rollback to an imported version therefore answers its `importedTimestamp`. It answers
+  the new version and records the audit action `stack.state_rollback`, event type `UPDATE`
+  on the stack, with the new version's ID and the target's.
 - **`Stack.isStateRollback`** is true while the default workspace's current version has
-  `rollback` set; the next write clears it. `stacksapi` declares a read port that `state`
-  implements, so the `Stack` view answers it with no edge from `stacks` to `state`.
+  `rollback` set; the next version a run or an import writes clears it, and a run whose
+  state matches the current version's writes none. `stacksapi` declares
+  `StateRollbacks`, a read port that `state` implements, so the `Stack` view answers it
+  with no edge from `stacks` to `state`.
 - **Searches.** Each takes `SearchInput` with cursor paging, the `expensive` class and
   `SPACE_READ` reach (decision 0007):
   - `stackSearchManagedStateVersions` searches the default workspace's versions by
-    `createdAt` (the default order, newest first), `run`, `rollback` and `imported`.
+    `createdAt` (the default order, newest first), `run` (the run's ID as the API answers
+    it; a rollback names its target's run), `rollback` and `imported`.
   - `searchTofuWorkspaces` searches by `name` (the default order, ascending), `stack` and
     `isLocked`; `searchTofuWorkspacesSuggestions` suggests `name` and `stack`. The Tofu
     Workspaces tag is gated by the `tofu-workspaces` feature (decision 0021).

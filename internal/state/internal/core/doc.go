@@ -35,7 +35,16 @@
 // stack after its creation, in one transaction that locks the stack's
 // row FOR UPDATE, refusing as a *Blocked a stack that keeps no managed
 // state, one whose lock the caller does not hold, and one with a tracked
-// run, task or destroy run under way, which runsapi.StackRuns lists. As
+// run, task or destroy run under way, which runsapi.StackRuns lists.
+// Rollback refuses the same stacks, then a target version the stack's
+// default workspace lacks, as ErrNoVersion, and the current version, as a
+// *Blocked; in the same transaction it unseals the target, reseals it as
+// a new object and records a version that copies the target's run,
+// serial, lineage and import, marked as the caller's rollback from the
+// target, and audits it. SearchVersions reads a page of the default
+// workspace's versions by VersionFields, newest first, and RolledBack,
+// the stacksapi.StateRollbacks the stack view reads, reports the stacks
+// whose current version is a rollback. As
 // the stacks domain's StackGuard, a stack's delete enqueues PurgeKind in
 // its transaction; as its ManagedState, a stack's creation opens its
 // default workspace in its transaction and imports the state file the

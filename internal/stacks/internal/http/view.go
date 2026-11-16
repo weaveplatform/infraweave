@@ -21,8 +21,9 @@ import (
 // viewOf is st as the API answers it, in the space slug, with the
 // actions held there and whether the caller starred it, its state and
 // whether a run blocks it, versions, a Terragrunt stack's effective
-// versions, and no contexts, config elements, blocker or outputs, which
-// views reads from the configuration and runs domains. The fields later
+// versions, and no contexts, config elements, blocker, outputs or
+// rollback, which views reads from the configuration, runs and state
+// domains. The fields later
 // phases own read their empty values: no other attachments, no
 // dependencies and no managed resources.
 func viewOf(st core.Stack, space string, held []accessapi.Action, starred bool, versions api.EffectiveTerragruntVersionResult) (api.Stack, error) {

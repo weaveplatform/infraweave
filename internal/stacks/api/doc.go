@@ -20,7 +20,9 @@
 // Undestroyable for a stack that cannot run one. ManagedState is what a
 // stack's creation opens its default workspace through when infraweave
 // keeps its state, importing the state file the caller uploaded when the
-// creation names one, a back edge the state domain implements. StackSources is what the stack's commit operations resolve refs
+// creation names one, a back edge the state domain implements, and
+// StateRollbacks what the stack view reads isStateRollback through,
+// another. StackSources is what the stack's commit operations resolve refs
 // through, a back edge the vcs domain implements, with ErrRefNotFound for
 // a ref the repository lacks, and StackIntegrations what a stack's write
 // checks the VCS integration it names with, another, with
@@ -40,6 +42,6 @@
 // stacks in the declared graph import it; the stacks domain's assembly
 // implements Stacks, those domains StackGuard, the configuration domain
 // StackConfiguration, the runs domain StackStatus and StackDestroyer, the
-// state domain ManagedState, and the vcs domain
+// state domain ManagedState and StateRollbacks, and the vcs domain
 // StackSources and StackIntegrations.
 package api

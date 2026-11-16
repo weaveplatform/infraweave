@@ -548,7 +548,7 @@ it adds no import.
 | `access` | features | `policiesapi.Evaluator` for `LOGIN` policies |
 | `workers` | features, access | `workersapi.Scheduler` and `workersapi.Reports`, which `runs` implements, for the worker protocol's claims and reports |
 | `vendors` | features, access | |
-| `stacks` | features, access, workers, vendors | `stacksapi.StackStatus`, which `runs` implements, for the stack view's blocker; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config` |
+| `stacks` | features, access, workers, vendors | `stacksapi.StackStatus`, which `runs` implements, for the stack view's blocker; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config`; `stacksapi.StateRollbacks`, which `state` implements, for the stack view's `isStateRollback` |
 | `configuration` | features, access, stacks | |
 | `policies` | features, access, stacks | |
 | `runs` | features, access, stacks, configuration, workers, vendors, policies | `runsapi.RunSources`, which `vcs` implements, so a run's end releases its source credentials and its handover reaches its source; `cloudapi.Credentials`, `stateapi.Versions` at handover |

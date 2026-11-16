@@ -8,10 +8,15 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// unbound is the configuration and run status of a server whose
-// configuration and runs domains are not bound: no stack has a context, a
-// config element or an output, no run blocks one, and no run exists.
+// unbound is the configuration, run status and state of a server whose
+// configuration, runs and state domains are not bound: no stack has a
+// context, a config element or an output, no run blocks one, no run
+// exists, and no stack is rolled back.
 type unbound struct{}
+
+func (unbound) RolledBack(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]bool, error) {
+	return map[kernel.ULID]bool{}, nil
+}
 
 func (unbound) Blockers(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error) {
 	return map[kernel.ULID]stacksapi.Blocker{}, nil
@@ -36,8 +41,9 @@ func (unbound) Config(context.Context, kernel.AccountID, []kernel.ULID) (map[ker
 // edges holds the server's back edges. Every copy of a Server shares
 // one, so a binding made after the server was handed out reaches it.
 type edges struct {
-	config stacksapi.StackConfiguration
-	status stacksapi.StackStatus
+	config    stacksapi.StackConfiguration
+	status    stacksapi.StackStatus
+	rollbacks stacksapi.StateRollbacks
 }
 
 // BindConfiguration makes c the configuration every copy of s reads. It
@@ -47,6 +53,11 @@ func (s Server) BindConfiguration(c stacksapi.StackConfiguration) { s.edges.conf
 // SetStackStatus makes st the run status every copy of s reads. It runs
 // during construction, before the server serves a request.
 func (s Server) SetStackStatus(st stacksapi.StackStatus) { s.edges.status = st }
+
+// BindStateRollbacks makes r what every copy of s reads isStateRollback
+// through. It runs during construction, before the server serves a
+// request.
+func (s Server) BindStateRollbacks(r stacksapi.StateRollbacks) { s.edges.rollbacks = r }
 
 // contextView is a context attachment as the API answers it.
 func contextView(c stacksapi.AttachedContext) api.StackContextAttachment {

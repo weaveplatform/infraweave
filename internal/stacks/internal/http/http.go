@@ -35,12 +35,12 @@ type Server struct {
 // New returns the partial over the service, deciding allowedActions with
 // authz, naming spaces through spaces and resolving a Terragrunt stack's
 // effective versions in catalog. Its stacks have no configuration until
-// BindConfiguration binds a reader, and no blocker until SetStackStatus
-// binds one.
+// BindConfiguration binds a reader, no blocker until SetStackStatus binds
+// one, and no rollback until BindStateRollbacks binds one.
 func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces, catalog vendorsapi.Catalog) Server {
 	return Server{
 		stacks: svc, authz: authz, spaces: spaces, catalog: catalog,
-		edges: &edges{config: unbound{}, status: unbound{}},
+		edges: &edges{config: unbound{}, status: unbound{}, rollbacks: unbound{}},
 	}
 }
 
@@ -363,9 +363,9 @@ func (s Server) view(ctx context.Context, p kernel.Principal, st core.Stack) (ap
 
 // views are all as p sees them: the actions p holds in each one's space,
 // whether p has starred it, its space by slug, its attached contexts and
-// config elements, the run blocking it and its outputs, read for all at
-// once, and a Terragrunt stack's effective versions, each vendor and
-// constraint resolved once.
+// config elements, the run blocking it, its outputs and whether its state
+// is rolled back, read for all at once, and a Terragrunt stack's
+// effective versions, each vendor and constraint resolved once.
 func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack) ([]api.Stack, error) {
 	out := make([]api.Stack, 0, len(all))
 	if len(all) == 0 {
@@ -406,6 +406,10 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
+	rolledBack, err := s.edges.rollbacks.RolledBack(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the state domain names the read
+	}
 	releases := resolver{catalog: s.catalog, seen: map[resolution]*string{}}
 	for _, st := range all {
 		var versions api.EffectiveTerragruntVersionResult
@@ -424,6 +428,7 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 		}
 		v.Config = elementViews(config[st.ID])
 		v.Outputs = outputViews(outputs[st.ID])
+		v.IsStateRollback = rolledBack[st.ID]
 		if b, ok := blockers[st.ID]; ok {
 			v.Blocker = &api.RunRef{Id: b.Run.String()}
 			v.Delta = apidelta.Of(b.Delta)

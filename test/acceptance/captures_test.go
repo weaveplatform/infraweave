@@ -73,6 +73,7 @@ var awaited = map[string]string{
 	"C106": "state/external_access.feature",
 	"C107": "state/import.feature",
 	"C109": "state/import.feature",
+	"C110": "state/rollback.feature",
 	"C111": "state/backend.feature",
 	"C112": "state/import.feature",
 }
