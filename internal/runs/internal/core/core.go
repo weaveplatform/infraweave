@@ -29,6 +29,9 @@ type Store interface {
 	// and its run lock, tracked run and outputs, in the context's
 	// transaction.
 	DeleteStack(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error
+	// Unended reads acct's stack's runs that have not ended, oldest
+	// first, with their types and states, in the context's transaction.
+	Unended(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]runsapi.UnendedRun, error)
 }
 
 // Run is a run as Access reads it: TriggeredBy is the login or trigger
@@ -42,7 +45,7 @@ type Run struct {
 
 // Service is the runs domain's core: the stacksapi.StackStatus the stack
 // view reads, the stacksapi.StackGuard a stack's move and delete ask, and
-// the runsapi.StateAccess the state domain asks.
+// the runsapi.StateAccess and runsapi.StackRuns the state domain asks.
 type Service struct{ store Store }
 
 // New returns the service over store.
@@ -129,4 +132,10 @@ func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.S
 		g.TriggeredBy = r.TriggeredBy
 	}
 	return g, nil
+}
+
+// Unended answers acct's stack's runs that have not ended, oldest first,
+// with their types and states.
+func (s *Service) Unended(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]runsapi.UnendedRun, error) {
+	return s.store.Unended(ctx, acct, stack) //nolint:wrapcheck // the store names the read
 }

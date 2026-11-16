@@ -180,6 +180,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		DB:        db.Primary(),
 		Stacks:    stacks.Stacks(),
 		Access:    runs.StateAccess(),
+		Runs:      runs.StackRuns(),
 		Authz:     access.Authorizer(),
 		Reader:    access.StateReader(),
 		Objects:   objects,

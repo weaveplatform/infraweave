@@ -10,16 +10,21 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// store answers blockers, outputs, runs' stacks and runs and records each
-// read and delete, failing with err.
+// store answers blockers, outputs, runs' stacks, runs and each stack's
+// unended runs and records each read and delete, failing with err.
 type store struct {
 	blockers map[kernel.ULID]stacksapi.Blocker
 	outputs  map[kernel.ULID][]stacksapi.Output
 	stacks   map[kernel.ULID]kernel.ULID
 	runs     map[kernel.ULID]Run
+	unended  map[kernel.ULID][]runsapi.UnendedRun
 	err      error
 	reads    int
 	deleted  []kernel.ULID
+}
+
+func (s *store) Unended(_ context.Context, _ kernel.AccountID, stack kernel.ULID) ([]runsapi.UnendedRun, error) {
+	return s.unended[stack], s.err
 }
 
 func (s *store) RunOf(_ context.Context, run kernel.ULID) (Run, bool, error) {
@@ -48,8 +53,9 @@ func (s *store) DeleteStack(_ context.Context, _ kernel.AccountID, stack kernel.
 }
 
 // TestUnitService checks that the service answers the store's blockers
-// and outputs, reading nothing for no stacks, and runs' stacks, that a
-// move loses nothing, and that a delete deletes the stack's runs.
+// and outputs, reading nothing for no stacks, runs' stacks and a stack's
+// unended runs, that a move loses nothing, and that a delete deletes the
+// stack's runs.
 func TestUnitService(t *testing.T) {
 	ctx := t.Context()
 	stack, run := kernel.NewULID(), kernel.NewULID()
@@ -57,6 +63,9 @@ func TestUnitService(t *testing.T) {
 		blockers: map[kernel.ULID]stacksapi.Blocker{stack: {Run: run}},
 		outputs:  map[kernel.ULID][]stacksapi.Output{stack: {{Name: "web"}}},
 		stacks:   map[kernel.ULID]kernel.ULID{run: stack},
+		unended: map[kernel.ULID][]runsapi.UnendedRun{stack: {{
+			ID: run, Type: kernel.RunTypeTracked, State: kernel.RunStateQueued,
+		}}},
 	}
 	s := New(st)
 	acct := kernel.NewAccountID()
@@ -86,6 +95,10 @@ func TestUnitService(t *testing.T) {
 	}
 	if _, err := s.RunStack(ctx, acct, stack); !errors.Is(err, stacksapi.ErrNotFound) {
 		t.Errorf("RunStack of no run = %v", err)
+	}
+	if got, err := s.Unended(ctx, acct, stack); err != nil || len(got) != 1 || got[0].ID != run ||
+		got[0].Type != kernel.RunTypeTracked {
+		t.Errorf("Unended = %+v, %v", got, err)
 	}
 	if lost, err := s.LostOnMove(ctx, stacksapi.StackMove{}); err != nil || lost != nil {
 		t.Errorf("LostOnMove = %v, %v", lost, err)

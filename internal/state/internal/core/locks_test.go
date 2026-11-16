@@ -16,9 +16,9 @@ var errDown = errors.New("down")
 
 // mem is an in-memory Store and Stacks: the workspaces that exist, each
 // one's locks oldest first, the locks released from under their runs and
-// current version, the workspaces that have an ID, the stacks, and the
-// audit entries recorded. fail names the one method that fails with
-// errDown.
+// current version, the workspaces that have an ID, the stacks with their
+// settings and each stack LockForRun locked, and the audit entries
+// recorded. fail names the one method that fails with errDown.
 type mem struct {
 	workspaces map[Target]bool
 	locks      map[Target][]Lock
@@ -27,6 +27,8 @@ type mem struct {
 	versions   map[kernel.ULID]Version
 	named      map[kernel.ULID]Target
 	stacks     []stacksapi.Stack
+	settings   map[kernel.ULID]stacksapi.Settings
+	lockedRun  []string
 	audits     []kernel.AuditEntry
 	fail       string
 	// searched is the last search's or suggestion's input and scope.
@@ -45,6 +47,7 @@ func newMem() *mem {
 		current:    map[Target]Version{},
 		versions:   map[kernel.ULID]Version{},
 		named:      map[kernel.ULID]Target{},
+		settings:   map[kernel.ULID]stacksapi.Settings{},
 	}
 }
 

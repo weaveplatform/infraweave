@@ -26,10 +26,12 @@ import (
 // bucket is an in-memory Objects: each object's bytes and state,
 // pending, live or deleting. Put reads its whole source before it
 // answers, as the store's does, and runs onPut once it has; broken names
-// the one method that fails with errDown.
+// the one method that fails with errDown. sizes overrides the size
+// LockLive answers of an object, by its key in the store.
 type bucket struct {
 	objects map[string][]byte
 	states  map[string]string
+	sizes   map[string]int64
 	onPut   func()
 	broken  string
 }
@@ -85,6 +87,23 @@ func (b *bucket) Open(_ context.Context, store objectstore.Name, key string) (io
 		return nil, objectstore.ErrNotFound
 	}
 	return io.NopCloser(bytes.NewReader(b.objects[k])), nil
+}
+
+func (b *bucket) LockLive(ctx context.Context, store objectstore.Name, key string) (objectstore.Object, error) {
+	k := string(store) + "/" + key
+	switch {
+	case !tx.In(ctx):
+		return objectstore.Object{}, queue.ErrNoTransaction
+	case b.broken == "LockLive":
+		return objectstore.Object{}, errDown
+	case b.states[k] != "live":
+		return objectstore.Object{}, objectstore.ErrNotFound
+	}
+	size, ok := b.sizes[key]
+	if !ok {
+		size = int64(len(b.objects[k]))
+	}
+	return objectstore.Object{Size: size, SHA256: sha256.Sum256(b.objects[k])}, nil
 }
 
 func (b *bucket) Delete(ctx context.Context, store objectstore.Name, key string) error {

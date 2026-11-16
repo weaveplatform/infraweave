@@ -102,6 +102,27 @@ type StateAccess interface {
 	Access(ctx context.Context, run, stack kernel.ULID) (StateGrant, error)
 }
 
+// StackRuns reads a stack's runs for a domain that changes the stack only
+// while no run that may change it is under way, such as a state import, a
+// forward edge internal/app hands the state domain.
+type StackRuns interface {
+	// Unended lists acct's stack's runs that have not ended, oldest first,
+	// with their types and states, in the transaction ctx carries; none
+	// for a stack acct lacks. A caller that holds the stack's row FOR
+	// UPDATE reads every run there is, since a run's creation locks that
+	// row first.
+	Unended(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]UnendedRun, error)
+}
+
+// UnendedRun is a run that has not ended: its ID, its type, which tells a
+// run that takes its stack's exclusive lock from one that never does, and
+// its state.
+type UnendedRun struct {
+	ID    kernel.ULID
+	Type  kernel.RunType
+	State kernel.RunState
+}
+
 // UpdatedKind is the event the runs domain appends to the outbox each
 // time a run changes state, its creation included.
 //

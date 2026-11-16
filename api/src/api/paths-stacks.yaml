@@ -5093,6 +5093,15 @@ components:
           x-terraform:
             - spacelift_stack.slug
         stackObjectID:
+          description: >-
+            The objectId stateUploadUrl answered for a state file the caller
+            uploaded, which becomes the new stack's first state version. It
+            needs the stack's state managed by infraweave, through manageState
+            or a Terragrunt stack's useStateManagement, and
+            STACK_MANAGED_STATE_IMPORT in the stack's space. A missing, foreign or already imported upload, one over
+            100 MiB, or a file that is neither a JSON state of format
+            version 4 nor an OpenTofu client-encrypted state answers 422
+            pointing here, and no stack is created.
           nullable: true
           type: string
       required:
@@ -5700,6 +5709,9 @@ components:
       description: The arguments of stackManagedStateImport not carried in the path.
       properties:
         state:
+          description: >-
+            The objectId stateUploadUrl answered for the state file the caller
+            uploaded.
           type: string
       required:
         - state
@@ -7395,10 +7407,11 @@ paths:
         - rate-limit
       x-rest-style: list
     post:
-      description: |-
-        Create a new stack. The third argument (stackObjectID) is optional, and
-        should only be used when creating a Stack with pre-existing state that is
-        handed over to infraweave for further management.
+      description: >-
+        Create a new stack. stackObjectID is optional, and names a state file
+        uploaded through stateUploadUrl that becomes the stack's first state
+        version, for a stack whose existing state infraweave takes over. The
+        stack and its imported state are created together or not at all.
       operationId: stackCreate
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_CREATE
@@ -8524,7 +8537,19 @@ paths:
       x-rest-style: action
   /stacks/{stackId}/managed-state-import:
     post:
-      description: "Import a previously uploaded state file into a managed-state stack.\nNOTE: the `state` argument is the objectId returned by the stateUploadUrl \nmutation, which points at the file you uploaded via its pre-signed URL."
+      description: >-
+        Import a state file uploaded through stateUploadUrl, named by its
+        objectId in `state`, into the stack's default workspace as its new
+        current state version, marked imported by the caller, even when it
+        matches the current version. The stack must have its state managed by
+        infraweave, the caller must hold the stack's lock, and no tracked run,
+        task or destroy run on the stack may be under way; otherwise the
+        import answers 409. The upload must be the caller's own, at most 100
+        MiB, and a JSON state of format version 4 or an OpenTofu
+        client-encrypted state; otherwise the import answers 422 pointing at
+        `/state`. No run is created on the stack while the import runs. The
+        upload is deleted once imported, and the import is recorded on the
+        audit trail.
       operationId: stackManagedStateImport
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_MANAGED_STATE_IMPORT
@@ -8541,7 +8566,7 @@ paths:
         content:
           application/json:
             example:
-              state: BASE64_ENCODED_STATE_HERE
+              state: 01JCQ6V1Z8K4X7N2P5R9T3W6YB
             schema:
               $ref: '#/components/schemas/StackManagedStateImportRequest'
         required: true

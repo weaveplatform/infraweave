@@ -477,6 +477,33 @@ func (o *Objects) Live(ctx context.Context, store objectstore.Name, key string) 
 	return true, nil
 }
 
+const lockLive = `SELECT size, sha256 FROM blob_objects
+WHERE store = $1 AND key = $2 AND state = 'live' FOR UPDATE`
+
+// LockLive locks key's live object's row in the transaction on ctx until
+// it ends, and answers the object's size and SHA-256, the plaintext's for
+// a sealed object, so a caller that consumes the object and deletes it in
+// that transaction is the only one to: a second caller waits, then finds
+// it deleting. A key with no live row is objectstore.ErrNotFound.
+func (o *Objects) LockLive(ctx context.Context, store objectstore.Name, key string) (objectstore.Object, error) {
+	if !tx.In(ctx) {
+		return objectstore.Object{}, queue.ErrNoTransaction
+	}
+	var (
+		obj objectstore.Object
+		sum []byte
+	)
+	err := tx.Q(ctx, o.db).QueryRow(ctx, lockLive, store, key).Scan(&obj.Size, &sum)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return obj, objectstore.ErrNotFound
+	case err != nil:
+		return obj, fmt.Errorf("blobs: lock %s/%s: %w", store, key, sql.Unavailable(err))
+	}
+	copy(obj.SHA256[:], sum)
+	return obj, nil
+}
+
 // target is blob.delete's payload.
 type target struct {
 	Store objectstore.Name `json:"store"`

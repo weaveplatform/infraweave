@@ -184,12 +184,14 @@ func (s *Store) ReleaseRun(ctx context.Context, acct kernel.AccountID, run kerne
 func (s *Store) Current(ctx context.Context, t core.Target) (core.Version, bool, error) {
 	v := core.Version{Version: stateapi.Version{Stack: t.Stack, Workspace: t.Workspace}}
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT v.id, v.object_key, v.size, v.sha256,
-		v.serial, v.lineage, v.client_encrypted, v.run_id, v.imported, v.rollback, v.created_at
+		v.serial, v.lineage, v.client_encrypted, v.run_id, v.imported, v.imported_username,
+		v.imported_at, v.rollback, v.created_at
 		FROM state_workspaces w JOIN managed_state_versions v
 			ON v.account_id = w.account_id AND v.id = w.current_version_id
 		WHERE w.account_id = $1 AND w.stack_id = $2 AND w.name = $3`,
 		t.Account, t.Stack, t.Workspace).Scan(&v.ID, &v.Key, &v.Size, &v.SHA256, &v.Serial,
-		&v.Lineage, &v.ClientEncrypted, &v.Run, &v.Imported, &v.Rollback, &v.CreatedAt)
+		&v.Lineage, &v.ClientEncrypted, &v.Run, &v.Imported, &v.ImportedUsername,
+		&v.ImportedAt, &v.Rollback, &v.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return core.Version{}, false, nil
 	}
@@ -205,10 +207,12 @@ func (s *Store) Current(ctx context.Context, t core.Target) (core.Version, bool,
 func (s *Store) Version(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (core.Version, bool, error) {
 	v := core.Version{Version: stateapi.Version{ID: id}}
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT stack_id, workspace, object_key, size,
-		sha256, serial, lineage, client_encrypted, run_id, imported, rollback, created_at
+		sha256, serial, lineage, client_encrypted, run_id, imported, imported_username,
+		imported_at, rollback, created_at
 		FROM managed_state_versions WHERE account_id = $1 AND id = $2`,
 		acct, id).Scan(&v.Stack, &v.Workspace, &v.Key, &v.Size, &v.SHA256, &v.Serial,
-		&v.Lineage, &v.ClientEncrypted, &v.Run, &v.Imported, &v.Rollback, &v.CreatedAt)
+		&v.Lineage, &v.ClientEncrypted, &v.Run, &v.Imported, &v.ImportedUsername,
+		&v.ImportedAt, &v.Rollback, &v.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return core.Version{}, false, nil
 	}
@@ -219,17 +223,18 @@ func (s *Store) Version(ctx context.Context, acct kernel.AccountID, id kernel.UL
 	return v, true, nil
 }
 
-// AddVersion records v in acct's stack's workspace and points the
-// workspace at it, in one statement.
+// AddVersion records v in acct's stack's workspace, with who imported it
+// and when, and points the workspace at it, in one statement.
 func (s *Store) AddVersion(ctx context.Context, acct kernel.AccountID, v core.Version) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx, `WITH v AS (
 		INSERT INTO managed_state_versions (account_id, id, stack_id, workspace, object_key,
-			size, sha256, serial, lineage, client_encrypted, run_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id)
+			size, sha256, serial, lineage, client_encrypted, run_id, imported,
+			imported_username, imported_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id)
 		UPDATE state_workspaces SET current_version_id = (SELECT id FROM v)
 		WHERE account_id = $1 AND stack_id = $3 AND name = $4`,
 		acct, v.ID, v.Stack, v.Workspace, v.Key, v.Size, v.SHA256, v.Serial, v.Lineage,
-		v.ClientEncrypted, v.Run); err != nil {
+		v.ClientEncrypted, v.Run, v.Imported, v.ImportedUsername, v.ImportedAt); err != nil {
 		return fmt.Errorf("state: add version %s to workspace %q of stack %s: %w", v.ID,
 			v.Workspace, v.Stack, sql.Unavailable(err))
 	}

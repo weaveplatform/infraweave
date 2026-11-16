@@ -44,7 +44,7 @@ func TestAccServiceSearchUsers(t *testing.T) {
 			f.svc.BindIntegrations(integrations{bound: c.integration})
 			in.VCSIntegration = new(c.integration.String())
 		}
-		if _, err := f.svc.Create(ctx, c.p, "", false, in); err != nil {
+		if _, err := f.svc.Create(ctx, c.p, "", false, "", in); err != nil {
 			t.Fatalf("create %s: %v", c.name, err)
 		}
 	}

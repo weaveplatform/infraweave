@@ -19,7 +19,8 @@
 // destroy run through, another back edge the runs domain implements, with
 // Undestroyable for a stack that cannot run one. ManagedState is what a
 // stack's creation opens its default workspace through when infraweave
-// keeps its state, a back edge the state domain implements. StackSources is what the stack's commit operations resolve refs
+// keeps its state, importing the state file the caller uploaded when the
+// creation names one, a back edge the state domain implements. StackSources is what the stack's commit operations resolve refs
 // through, a back edge the vcs domain implements, with ErrRefNotFound for
 // a ref the repository lacks, and StackIntegrations what a stack's write
 // checks the VCS integration it names with, another, with

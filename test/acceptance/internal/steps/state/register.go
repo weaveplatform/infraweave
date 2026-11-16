@@ -7,9 +7,12 @@ import (
 )
 
 // Register registers the state area's steps on sc, sharing the scenario's
-// World w.
+// World w. The import steps read the runs the backend steps took over and
+// the URLs the URL steps kept.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
-	(&backendSteps{w: w}).register(sc)
+	b, u := &backendSteps{w: w}, &urlSteps{w: w}
+	b.register(sc)
 	(&workspaceSteps{w: w}).register(sc)
-	(&urlSteps{w: w}).register(sc)
+	u.register(sc)
+	(&importSteps{w: w, backend: b, urls: u}).register(sc)
 }

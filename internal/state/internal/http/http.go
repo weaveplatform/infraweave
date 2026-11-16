@@ -16,21 +16,22 @@ import (
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 )
 
-// Workspaces is what the partial asks of the state domain's core.
-type Workspaces interface {
+// State is what the partial asks of the state domain's core.
+type State interface {
 	SearchWorkspaces(ctx context.Context, p kernel.Principal, in search.Input) (search.Result[core.Workspace], error)
 	SuggestWorkspaces(ctx context.Context, p kernel.Principal, in search.SuggestionsInput) (search.Suggestions, error)
 	UnlockWorkspace(ctx context.Context, p kernel.Principal, remoteIP, raw string) (core.Workspace, error)
 	UnlockStack(ctx context.Context, p kernel.Principal, remoteIP, slug string) ([]core.Workspace, error)
+	Import(ctx context.Context, p kernel.Principal, remoteIP, slug, object string) error
 }
 
 // Server is the state domain's partial of the API's strict server. The
 // route table has decided each operation's action, and answered 404 for
 // a workspace or stack the caller cannot read, before its handler runs.
-type Server struct{ workspaces Workspaces }
+type Server struct{ state State }
 
-// New returns the partial over the core's workspaces.
-func New(w Workspaces) Server { return Server{workspaces: w} }
+// New returns the partial over the core.
+func New(st State) Server { return Server{state: st} }
 
 // SearchTofuWorkspaces searches the workspaces of the stacks of the
 // caller's account in the spaces it may read.
@@ -39,7 +40,7 @@ func (s Server) SearchTofuWorkspaces(ctx context.Context, req api.SearchTofuWork
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.workspaces.SearchWorkspaces(ctx, p, apisearch.Input(*req.Body))
+	res, err := s.state.SearchWorkspaces(ctx, p, apisearch.Input(*req.Body))
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
 	}
@@ -64,7 +65,7 @@ func (s Server) SearchTofuWorkspacesSuggestions(
 	if err != nil {
 		return nil, err
 	}
-	got, err := s.workspaces.SuggestWorkspaces(ctx, p, apisearch.SuggestionsInput(*req.Body))
+	got, err := s.state.SuggestWorkspaces(ctx, p, apisearch.SuggestionsInput(*req.Body))
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
 	}
@@ -79,7 +80,7 @@ func (s Server) TofuWorkspaceUnlock(ctx context.Context, req api.TofuWorkspaceUn
 	if err != nil {
 		return nil, err
 	}
-	w, err := s.workspaces.UnlockWorkspace(ctx, p, accessapi.ClientAddr(ctx), req.TofuWorkspaceId)
+	w, err := s.state.UnlockWorkspace(ctx, p, accessapi.ClientAddr(ctx), req.TofuWorkspaceId)
 	if err != nil {
 		return nil, refusal(err, req.TofuWorkspaceId)
 	}
@@ -94,7 +95,7 @@ func (s Server) TofuWorkspaceUnlockAll(ctx context.Context, req api.TofuWorkspac
 	if err != nil {
 		return nil, err
 	}
-	ws, err := s.workspaces.UnlockStack(ctx, p, accessapi.ClientAddr(ctx), req.StackId)
+	ws, err := s.state.UnlockStack(ctx, p, accessapi.ClientAddr(ctx), req.StackId)
 	if err != nil {
 		return nil, refusal(err, req.StackId)
 	}
@@ -103,6 +104,29 @@ func (s Server) TofuWorkspaceUnlockAll(ctx context.Context, req api.TofuWorkspac
 		out.UnlockedWorkspaces[i] = view(w)
 	}
 	return api.TofuWorkspaceUnlockAll200JSONResponse{Body: out}, nil
+}
+
+// StackManagedStateImport imports the state file the caller uploaded
+// under the body's object ID into the stack's default workspace,
+// recording the caller's address with the import, and answers true. A
+// stack whose state, lock or runs refuse it answers 409 invalid-state,
+// naming what blocks it. The route has decided STACK_MANAGED_STATE_IMPORT
+// on the stack's space.
+//
+// ref: decision 0010 § "Upload, import and download URLs"
+func (s Server) StackManagedStateImport(ctx context.Context, req api.StackManagedStateImportRequestObject) (api.StackManagedStateImportResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = s.state.Import(ctx, p, accessapi.ClientAddr(ctx), req.StackId, req.Body.State)
+	if b, ok := errors.AsType[*core.Blocked](err); ok {
+		return nil, problem.InvalidState.Error(b.Detail) //nolint:wrapcheck // a problem, answered as it is
+	}
+	if err != nil {
+		return nil, refusal(err, req.StackId)
+	}
+	return api.StackManagedStateImport200JSONResponse{Body: true}, nil
 }
 
 // view is w as the API answers it: the default workspace named default,
@@ -133,7 +157,7 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 
 // refusal answers a workspace or stack named id that the account lacks,
 // which the route's check and the handler's read can race, as 404; any
-// other error passes as it is.
+// other error, a *kernel.Invalid among them, passes as it is.
 func refusal(err error, id string) error {
 	switch {
 	case errors.Is(err, core.ErrNotFound):
