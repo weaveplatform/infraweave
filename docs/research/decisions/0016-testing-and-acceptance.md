@@ -371,6 +371,7 @@ decision 0009 as `TestUnitPolicyLibrary`.
 | No `time.Sleep` in tests | forbidigo pattern on `_test.go` files in `.golangci.yml` |
 | Waiting on asynchronous work polls a condition with a deadline, through one helper (`deps.Eventually`), never a fixed delay | review; the helper reports what it waited for |
 | Unit tests use virtual time | `internal/clock` and `testing/synctest` |
+| An acceptance scenario reaches a server's timer without waiting for it: time passes for one run or worker by moving its timestamps back, and the periodic task that reads them falls due | review; the runs steps age a run's or worker's rows, since a real server's clock cannot be moved |
 | No test depends on order | `-shuffle=on`; godog runs scenarios in random order with a printed seed |
 | No shared mutable state across scenarios | per-scenario database, bucket prefix and server |
 | No network beyond the containers | Terraform, OpenTofu and providers come from checksummed caches; Gitea replaces hosted VCS |
@@ -596,6 +597,11 @@ coverage it would contribute is not waived.
 - `test/acceptance/features/runs/terraform.feature` and
   `runs/tofu.feature` carry the first real-run scenarios, and
   `runs/runner_image.feature` a public runner image's.
+  `runs/lifecycle.feature` takes every run type and action through its
+  history and its `run_updated` events, and reaches the timers, the
+  reap and the preparing timeout by moving time on for one run or
+  worker; `TestAccCaptures` skips the six captures it stands in for as
+  awaited.
 - `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
   `TestUnitWriteRefusals` and `TestUnitParseStress`
   (`test/acceptance/internal/harness`) prove the stress: a refusal share

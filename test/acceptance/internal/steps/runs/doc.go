@@ -6,7 +6,10 @@
 // run's changes, whose document it writes from internal/iac's recorded
 // plans and seals and commits as a worker does; and it checks that a
 // value, such as an override's, is named in no answer and no server's
-// log, and whether an output a run kept holds a sealed value.
+// log, and whether an output a run kept holds a sealed value. It moves
+// the clock on for one run or one worker by ageing its timestamps, so
+// run.timers and worker.reap reach their boundaries without a wait, and
+// reads the timer a run_updated event names.
 //
 // # Input and output
 //
