@@ -651,12 +651,7 @@ func (b *builder) requestBody(r *Route, op *openapi3.Operation, bru *BrunoOperat
 
 // exampleFor lifts a request example out of the Bruno variables: the one
 // input argument's value, or the unbound arguments as an object.
-func exampleFor(
-	bru *BrunoOperation,
-	bodyArg string,
-	args []InputValue,
-	inPath map[string][]string,
-) any {
+func exampleFor(bru *BrunoOperation, bodyArg string, args []InputValue, inPath map[string][]string) any {
 	if bru == nil || len(bru.Variables) == 0 {
 		return nil
 	}

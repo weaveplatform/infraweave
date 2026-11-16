@@ -34,9 +34,7 @@ type world struct {
 	opened               []string
 }
 
-func (w *world) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run,
-	error,
-) {
+func (w *world) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error) {
 	if w.getErr != nil {
 		return lifecycle.Run{}, w.getErr
 	}
@@ -53,9 +51,7 @@ func (w *world) Changes(_ context.Context, run lifecycle.Run) (string, bool, err
 	return w.key, w.key != "", w.changesErr
 }
 
-func (w *world) Open(_ context.Context, store objectstore.Name, key string) (io.ReadCloser,
-	error,
-) {
+func (w *world) Open(_ context.Context, store objectstore.Name, key string) (io.ReadCloser, error) {
 	if store != objectstore.RunArtifacts {
 		panic("the " + string(store) + " store")
 	}
@@ -66,9 +62,7 @@ func (w *world) Open(_ context.Context, store objectstore.Name, key string) (io.
 	return io.NopCloser(bytes.NewReader(w.doc)), nil
 }
 
-func (w *world) Settings(_ context.Context, _ kernel.AccountID, id kernel.ULID) (
-	stacksapi.Settings, error,
-) {
+func (w *world) Settings(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	if id != w.run.Stack {
 		panic("another stack's settings")
 	}

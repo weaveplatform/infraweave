@@ -48,11 +48,7 @@ var trailing = regexp.MustCompile(
 // outside a ${{ … }} has none; a cursor outside the source is ErrCursor.
 //
 // ref: decision 0024 "Editor intelligence"
-func (r *Registry) Complete(
-	req Request,
-	at kernel.Position,
-	sample map[string]any,
-) ([]Completion, error) {
+func (r *Registry) Complete(req Request, at kernel.Position, sample map[string]any) ([]Completion, error) {
 	vars, err := r.declared(req)
 	if err != nil {
 		return nil, err

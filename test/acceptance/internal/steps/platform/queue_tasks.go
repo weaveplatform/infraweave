@@ -138,10 +138,7 @@ func (q *queueSteps) fallsDue(ctx context.Context, task string) error {
 
 // newest is the state, attempt and last error of the newest job of kind
 // since the mark, or "" when there is none yet.
-func (q *queueSteps) newest(
-	ctx context.Context,
-	kind string,
-) (state string, attempt int, lastError string, err error) {
+func (q *queueSteps) newest(ctx context.Context, kind string) (state string, attempt int, lastError string, err error) {
 	out, err := q.w.Query(
 		ctx,
 		fmt.Sprintf(`SELECT state || '|' || attempt || '|' || coalesce(last_error, '')

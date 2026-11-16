@@ -32,27 +32,22 @@ type Store interface {
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error)
 	// Entered reads the latest state version at which acct's run entered
 	// state, and false when it never did.
-	Entered(ctx context.Context, acct kernel.AccountID, run kernel.ULID,
-		state kernel.RunState) (int64, bool, error)
+	Entered(ctx context.Context, acct kernel.AccountID, run kernel.ULID, state kernel.RunState) (int64, bool, error)
 	// StateAt reads the state acct's run entered at state version
 	// version; lifecycle.ErrNotFound when it has no such transition.
-	StateAt(ctx context.Context, acct kernel.AccountID, run kernel.ULID,
-		version int64) (kernel.RunState, error)
+	StateAt(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version int64) (kernel.RunState, error)
 	// Chunks reads up to limit of acct's run's log chunks of state version
 	// version, from sequence number from on, in sequence order.
-	Chunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version, from int64,
-		limit int) ([]report.Chunk, error)
+	Chunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version, from int64, limit int) ([]report.Chunk, error)
 	// Extent reads what the index holds of acct's run's log of state
 	// version version, its line before chunk from being the last line of
 	// the chunk indexed before it; lifecycle.ErrNotFound when the run has
 	// no transition to version.
-	Extent(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version,
-		from int64) (Extent, error)
+	Extent(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version, from int64) (Extent, error)
 	// LockChunks reads the sequence numbers of acct's run's log chunks of
 	// state version version, in order, and locks their rows until the
 	// transaction ends.
-	LockChunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID,
-		version int64) ([]int64, error)
+	LockChunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version int64) ([]int64, error)
 	// Lock reads acct's run id and locks its row FOR UPDATE;
 	// lifecycle.ErrNotFound when acct lacks it.
 	Lock(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error)
@@ -69,8 +64,7 @@ type Objects interface {
 	Open(ctx context.Context, store objectstore.Name, key string) (io.ReadCloser, error)
 	SignGet(ctx context.Context, store objectstore.Name, key string) (objectstore.Signed, error)
 	Live(ctx context.Context, store objectstore.Name, key string) (bool, error)
-	Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (
-		objectstore.Object, error)
+	Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error)
 	Commit(ctx context.Context, store objectstore.Name, key string) error
 	Delete(ctx context.Context, store objectstore.Name, key string) error
 }
@@ -218,9 +212,7 @@ type Download struct {
 // before it was written. A state the run never entered at that version
 // answers an empty page with Exists false. The route has decided
 // SPACE_READ on the run's stack's space.
-func (s *Service) Page(ctx context.Context, p kernel.Principal, raw string, q Query) (Page,
-	error,
-) {
+func (s *Service) Page(ctx context.Context, p kernel.Principal, raw string, q Query) (Page, error) {
 	run, err := s.get(ctx, p.AccountID, raw)
 	if err != nil {
 		return Page{}, err
@@ -315,13 +307,7 @@ func (s *Service) lines(ctx context.Context, c report.Chunk, sanitize bool) ([]L
 // Download answers where p's run raw's whole log of state at version,
 // nil for the latest at which the run entered it, downloads from. The
 // route has decided SPACE_READ on the run's stack's space.
-func (s *Service) Download(
-	ctx context.Context,
-	p kernel.Principal,
-	raw string,
-	state kernel.RunState,
-	version *int64,
-) (Download, error) {
+func (s *Service) Download(ctx context.Context, p kernel.Principal, raw string, state kernel.RunState, version *int64) (Download, error) {
 	run, err := s.get(ctx, p.AccountID, raw)
 	if err != nil {
 		return Download{}, err
@@ -371,12 +357,7 @@ func (s *Service) Download(
 // SPACE_READ on the run's stack's space.
 //
 // ref: decision 0008 § "Logs and artifacts"
-func (s *Service) Profile(
-	ctx context.Context,
-	p kernel.Principal,
-	raw string,
-	state kernel.RunState,
-) (Download, error) {
+func (s *Service) Profile(ctx context.Context, p kernel.Principal, raw string, state kernel.RunState) (Download, error) {
 	run, err := s.get(ctx, p.AccountID, raw)
 	if err != nil {
 		return Download{}, err
@@ -410,11 +391,7 @@ func (s *Service) Profile(
 // on the account's top space.
 //
 // ref: decision 0008 § "Logs and artifacts"
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw string,
-) (lifecycle.Run, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug, raw string) (lifecycle.Run, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return lifecycle.Run{}, fmt.Errorf("%w: %q", read.ErrNotFound, raw)
@@ -453,9 +430,7 @@ func (s *Service) Delete(
 }
 
 // get reads acct's run raw; read.ErrNotFound when raw is no run ID.
-func (s *Service) get(ctx context.Context, acct kernel.AccountID, raw string) (lifecycle.Run,
-	error,
-) {
+func (s *Service) get(ctx context.Context, acct kernel.AccountID, raw string) (lifecycle.Run, error) {
 	id, err := kernel.ParseULID(raw)
 	if err != nil {
 		return lifecycle.Run{}, fmt.Errorf("%w: %q", read.ErrNotFound, raw)
@@ -466,12 +441,7 @@ func (s *Service) get(ctx context.Context, acct kernel.AccountID, raw string) (l
 // version is the state version run entered state at: version when the
 // run entered state there, else the latest at which it entered state
 // when version is nil; false when it did not.
-func (s *Service) version(
-	ctx context.Context,
-	run lifecycle.Run,
-	state kernel.RunState,
-	version *int64,
-) (int64, bool, error) {
+func (s *Service) version(ctx context.Context, run lifecycle.Run, state kernel.RunState, version *int64) (int64, bool, error) {
 	if version == nil {
 		//nolint:wrapcheck // the store names the read
 		return s.d.Store.Entered(ctx, run.Account, run.ID, state)
@@ -597,9 +567,7 @@ type stream struct {
 
 // newStream is the stream of a state's n chunks, the indexed ones being
 // chunks in sequence order, and its size.
-func newStream(ctx context.Context, objects Objects, chunks []report.Chunk, n int64) (*stream,
-	int64,
-) {
+func newStream(ctx context.Context, objects Objects, chunks []report.Chunk, n int64) (*stream, int64) {
 	if k := len(chunks); k > 0 {
 		n = max(n, chunks[k-1].Seq+1)
 	}

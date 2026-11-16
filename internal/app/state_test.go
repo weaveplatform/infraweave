@@ -28,9 +28,7 @@ const stateChallenge = `Basic realm="infraweave-state"`
 // authenticator does with a run token.
 type basicRuns struct{}
 
-func (basicRuns) Middleware(
-	access func(*http.Request) accessapi.Access,
-) func(http.Handler) http.Handler {
+func (basicRuns) Middleware(access func(*http.Request) accessapi.Access) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, pass, ok := r.BasicAuth()
@@ -57,22 +55,14 @@ type stateWorld struct {
 	writes kernel.ULID
 }
 
-func (s stateWorld) BySlug(
-	_ context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (stacksapi.Stack, error) {
+func (s stateWorld) BySlug(_ context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	if acct != s.acct || slug != "one" {
 		return stacksapi.Stack{}, stacksapi.ErrNotFound
 	}
 	return stacksapi.Stack{ID: s.stack, Account: s.acct, Slug: slug}, nil
 }
 
-func (s stateWorld) Settings(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s stateWorld) Settings(_ context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	if acct != s.acct || id != s.stack {
 		return stacksapi.Settings{}, stacksapi.ErrNotFound
 	}

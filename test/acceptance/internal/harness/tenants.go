@@ -177,12 +177,7 @@ func (t Tenant) Exchange(ctx context.Context, c *sdk.Client) (string, error) {
 
 // Authenticated is a client of the API at base holding a token of t's
 // key, which it seeds in db first, and the token.
-func Authenticated(
-	ctx context.Context,
-	db Querier,
-	base string,
-	t Tenant,
-) (*sdk.Client, string, error) {
+func Authenticated(ctx context.Context, db Querier, base string, t Tenant) (*sdk.Client, string, error) {
 	if err := t.Seed(ctx, db); err != nil {
 		return nil, "", fmt.Errorf("seed the %s tenant: %w", t.Slug, err)
 	}

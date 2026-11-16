@@ -18,12 +18,7 @@ import (
 // slugs of its account's spaces, which the grants name. The route table
 // has answered 404 or 403 for a space the caller cannot read or does not
 // administer.
-func (s Server) held(
-	ctx context.Context,
-	slug string,
-	list holder.List,
-	in api.SearchInput,
-) (search.Result[holder.Held], map[kernel.ULID]string, error) {
+func (s Server) held(ctx context.Context, slug string, list holder.List, in api.SearchInput) (search.Result[holder.Held], map[kernel.ULID]string, error) {
 	var out search.Result[holder.Held]
 	p, err := principal(ctx)
 	if err != nil {
@@ -46,12 +41,7 @@ func (s Server) held(
 
 // suggestHeld lists the values list's holders of the caller's space slug
 // hold.
-func (s Server) suggestHeld(
-	ctx context.Context,
-	slug string,
-	list holder.List,
-	in api.SearchSuggestionsInput,
-) (api.SearchSuggestionsOutput, error) {
+func (s Server) suggestHeld(ctx context.Context, slug string, list holder.List, in api.SearchSuggestionsInput) (api.SearchSuggestionsOutput, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return api.SearchSuggestionsOutput{}, err
@@ -100,10 +90,7 @@ func count(n int) int32 {
 
 // UsersWithAccessToSpace lists the managed users whose own bindings, or
 // those of a group their latest sign-in reported, reach the space.
-func (s Server) UsersWithAccessToSpace(
-	ctx context.Context,
-	req api.UsersWithAccessToSpaceRequestObject,
-) (api.UsersWithAccessToSpaceResponseObject, error) {
+func (s Server) UsersWithAccessToSpace(ctx context.Context, req api.UsersWithAccessToSpaceRequestObject) (api.UsersWithAccessToSpaceResponseObject, error) {
 	res, slugs, err := s.held(ctx, req.Params.Space, holder.Users, req.Params.Input)
 	if err != nil {
 		return nil, err
@@ -159,10 +146,7 @@ func (s Server) UsersWithAccessToSpaceSuggestions(
 
 // UserGroupsWithAccessToSpace lists the managed user groups whose
 // bindings reach the space.
-func (s Server) UserGroupsWithAccessToSpace(
-	ctx context.Context,
-	req api.UserGroupsWithAccessToSpaceRequestObject,
-) (api.UserGroupsWithAccessToSpaceResponseObject, error) {
+func (s Server) UserGroupsWithAccessToSpace(ctx context.Context, req api.UserGroupsWithAccessToSpaceRequestObject) (api.UserGroupsWithAccessToSpaceResponseObject, error) {
 	res, slugs, err := s.held(ctx, req.Params.Space, holder.Groups, req.Params.Input)
 	if err != nil {
 		return nil, err
@@ -207,10 +191,7 @@ func (s Server) UserGroupsWithAccessToSpaceSuggestions(
 // those of the groups their teams name, reach the space.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeysWithAccessToSpace(
-	ctx context.Context,
-	req api.ApiKeysWithAccessToSpaceRequestObject,
-) (api.ApiKeysWithAccessToSpaceResponseObject, error) {
+func (s Server) ApiKeysWithAccessToSpace(ctx context.Context, req api.ApiKeysWithAccessToSpaceRequestObject) (api.ApiKeysWithAccessToSpaceResponseObject, error) {
 	res, slugs, err := s.held(ctx, req.Params.Space, holder.Keys, req.Params.Input)
 	if err != nil {
 		return nil, err
@@ -254,10 +235,7 @@ func (s Server) ApiKeysWithAccessToSpaceSuggestions(
 
 // UserSessionsWithAccessToSpace lists the managed users with live
 // sessions that reach the space, with the roles those sessions hold there.
-func (s Server) UserSessionsWithAccessToSpace(
-	ctx context.Context,
-	req api.UserSessionsWithAccessToSpaceRequestObject,
-) (api.UserSessionsWithAccessToSpaceResponseObject, error) {
+func (s Server) UserSessionsWithAccessToSpace(ctx context.Context, req api.UserSessionsWithAccessToSpaceRequestObject) (api.UserSessionsWithAccessToSpaceResponseObject, error) {
 	res, _, err := s.held(ctx, req.Params.Space, holder.UserSessions, req.Params.Input)
 	if err != nil {
 		return nil, err

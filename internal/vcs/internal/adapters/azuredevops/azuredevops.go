@@ -160,13 +160,7 @@ func repoPath(repo port.Repository) (string, error) {
 // get sends a GET of rel, an escaped path under in's organization, with q
 // and the API version, as in's token, and answers a 2xx response that is
 // not Azure DevOps's sign-in page, classifying any other.
-func (p *Provider) get(
-	ctx context.Context,
-	in port.Integration,
-	rel string,
-	q url.Values,
-	what string,
-) (*http.Response, error) {
+func (p *Provider) get(ctx context.Context, in port.Integration, rel string, q url.Values, what string) (*http.Response, error) {
 	o, err := orgOf(in.Settings)
 	if err != nil {
 		return nil, err
@@ -201,14 +195,7 @@ func (p *Provider) get(
 }
 
 // decode GETs rel into v, answering the response's continuation token.
-func (p *Provider) decode(
-	ctx context.Context,
-	in port.Integration,
-	rel string,
-	q url.Values,
-	what string,
-	v any,
-) (string, error) {
+func (p *Provider) decode(ctx context.Context, in port.Integration, rel string, q url.Values, what string, v any) (string, error) {
 	resp, err := p.get(ctx, in, rel, q, what)
 	if err != nil {
 		return "", err
@@ -227,14 +214,7 @@ type list[T any] struct {
 
 // all collects every page of the list at rel, following each answer's
 // continuation token.
-func all[T any](
-	ctx context.Context,
-	p *Provider,
-	in port.Integration,
-	rel string,
-	q url.Values,
-	what string,
-) ([]T, error) {
+func all[T any](ctx context.Context, p *Provider, in port.Integration, rel string, q url.Values, what string) ([]T, error) {
 	q.Set("$top", strconv.Itoa(top))
 	var out []T
 	for {
@@ -287,21 +267,13 @@ func webRepo(o org, repo port.Repository) string {
 
 // ResolveRef resolves ref of repo to its commit: a branch, then a tag,
 // which it names, peeled when it is annotated, then a full SHA.
-func (p *Provider) ResolveRef(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-) (vcsapi.Commit, error) {
+func (p *Provider) ResolveRef(ctx context.Context, repo port.Repository, name string) (vcsapi.Commit, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	return p.resolve(ctx, repo, name)
 }
 
-func (p *Provider) resolve(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-) (vcsapi.Commit, error) {
+func (p *Provider) resolve(ctx context.Context, repo port.Repository, name string) (vcsapi.Commit, error) {
 	rp, err := repoPath(repo)
 	if err != nil {
 		return vcsapi.Commit{}, err
@@ -329,11 +301,7 @@ func (p *Provider) resolve(
 // ref is the commit the branch or tag name points at, and name again when
 // it is a tag. The refs route filters by prefix, so only the ref named
 // exactly counts.
-func (p *Provider) ref(
-	ctx context.Context,
-	in port.Integration,
-	rp, name string,
-) (at, tag string, err error) {
+func (p *Provider) ref(ctx context.Context, in port.Integration, rp, name string) (at, tag string, err error) {
 	for _, kind := range []string{"heads", "tags"} {
 		refs, err := all[ref](ctx, p, in, rp+"/refs",
 			url.Values{"filter": {kind + "/" + name}, "peelTags": {"true"}}, "ref "+name)
@@ -357,11 +325,7 @@ func (p *Provider) ref(
 }
 
 // commitOf is name of repo as a full SHA, resolving a ref that is not one.
-func (p *Provider) commitOf(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-) (string, error) {
+func (p *Provider) commitOf(ctx context.Context, repo port.Repository, name string) (string, error) {
 	if sha.MatchString(name) {
 		return name, nil
 	}
@@ -371,11 +335,7 @@ func (p *Provider) commitOf(
 
 // ReadFile reads path at ref of repo, resolving a ref that is not a full
 // SHA first.
-func (p *Provider) ReadFile(
-	ctx context.Context,
-	repo port.Repository,
-	name, file string,
-) ([]byte, error) {
+func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, name, file string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
@@ -421,11 +381,7 @@ type change struct {
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a renamed file under both its names,
 // resolving each ref that is not a full SHA first.
-func (p *Provider) AffectedFiles(
-	ctx context.Context,
-	repo port.Repository,
-	base, head string,
-) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
@@ -518,11 +474,7 @@ func (p *Provider) projects(ctx context.Context, in port.Integration) ([]string,
 }
 
 // repositories lists the names of project's repositories.
-func (p *Provider) repositories(
-	ctx context.Context,
-	in port.Integration,
-	project string,
-) ([]string, error) {
+func (p *Provider) repositories(ctx context.Context, in port.Integration, project string) ([]string, error) {
 	var rs list[struct {
 		Name string `json:"name"`
 	}]

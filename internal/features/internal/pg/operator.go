@@ -275,12 +275,7 @@ func tell(ctx context.Context, q tx.Querier, payload string) error {
 }
 
 // change runs fn on org's entitlement after touch, in one transaction.
-func (s *Store) change(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	what string,
-	fn func(context.Context, tx.Querier) error,
-) error {
+func (s *Store) change(ctx context.Context, org kernel.OrganizationID, what string, fn func(context.Context, tx.Querier) error) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
 		if err := touch(ctx, q, org); err != nil {
@@ -317,11 +312,7 @@ func (s *Store) GrantFeature(ctx context.Context, org kernel.OrganizationID, fea
 
 // RevokeFeature removes org's grant of feature; one org does not hold is
 // featuresapi.ErrNotFound.
-func (s *Store) RevokeFeature(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	feature string,
-) error {
+func (s *Store) RevokeFeature(ctx context.Context, org kernel.OrganizationID, feature string) error {
 	return s.change(ctx, org, "revoke "+feature, func(ctx context.Context, q tx.Querier) error {
 		return removed(q.Exec(ctx, `DELETE FROM organization_feature_grants
 			WHERE organization_id = $1 AND feature = $2`, org, feature))("grant of " + feature)
@@ -329,12 +320,7 @@ func (s *Store) RevokeFeature(
 }
 
 // GrantLimit sets org's value of limit, nil lifting it.
-func (s *Store) GrantLimit(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	limit string,
-	value *int64,
-) error {
+func (s *Store) GrantLimit(ctx context.Context, org kernel.OrganizationID, limit string, value *int64) error {
 	return s.change(ctx, org, "grant "+limit, func(ctx context.Context, q tx.Querier) error {
 		_, err := q.Exec(ctx, `
 			INSERT INTO organization_limit_grants (organization_id, limit_name, value)

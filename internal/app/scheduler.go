@@ -40,14 +40,7 @@ var (
 )
 
 // platformTasks are the periodic tasks of the platform's own tables.
-func platformTasks(
-	c config.Config,
-	q *queue.Queue,
-	keys *idempotency.Postgres,
-	events *outbox.Outbox,
-	reaper *blobs.Reaper,
-	log *slog.Logger,
-) []cron.Task {
+func platformTasks(c config.Config, q *queue.Queue, keys *idempotency.Postgres, events *outbox.Outbox, reaper *blobs.Reaper, log *slog.Logger) []cron.Task {
 	return []cron.Task{
 		{
 			Kind:  PruneJobs,

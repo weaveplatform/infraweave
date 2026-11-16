@@ -23,11 +23,7 @@ func (s Server) view(ctx context.Context, p kernel.Principal, c core.Context) (a
 // views are all as p sees them: the actions p holds in each one's space,
 // its space by slug, its config elements with write-only values left out,
 // and its attachments with their stacks, read for all at once.
-func (s Server) views(
-	ctx context.Context,
-	p kernel.Principal,
-	all ...core.Context,
-) ([]api.Context, error) {
+func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Context) ([]api.Context, error) {
 	out := make([]api.Context, 0, len(all))
 	if len(all) == 0 {
 		return out, nil
@@ -72,12 +68,7 @@ func (s Server) views(
 }
 
 // attachment is a as the API answers it, with its stack's space by slug.
-func (s Server) attachment(
-	ctx context.Context,
-	p kernel.Principal,
-	a core.Attachment,
-	st stacksapi.Stack,
-) (api.ContextStackAttachment, error) {
+func (s Server) attachment(ctx context.Context, p kernel.Principal, a core.Attachment, st stacksapi.Stack) (api.ContextStackAttachment, error) {
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return api.ContextStackAttachment{}, err //nolint:wrapcheck // the access domain names the read
@@ -85,11 +76,7 @@ func (s Server) attachment(
 	return attachmentView(a, st, slugs[st.Space]), nil
 }
 
-func attachmentView(
-	a core.Attachment,
-	st stacksapi.Stack,
-	space string,
-) api.ContextStackAttachment {
+func attachmentView(a core.Attachment, st stacksapi.Stack, space string) api.ContextStackAttachment {
 	return api.ContextStackAttachment{
 		Id: a.ID.String(), StackId: st.Slug, StackName: st.Name,
 		StackSpaceDetails: api.SpaceRef{Id: space}, Priority: a.Priority,

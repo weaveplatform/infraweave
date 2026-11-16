@@ -155,12 +155,7 @@ type Running struct {
 // address, and serves until Shutdown. A mode that serves no API, such as
 // scheduler, passes a nil api and binds no API listener. ctx bounds only
 // the binding of the listeners.
-func Start(
-	ctx context.Context,
-	c Config,
-	log *slog.Logger,
-	api, admin http.Handler,
-) (*Running, error) {
+func Start(ctx context.Context, c Config, log *slog.Logger, api, admin http.Handler) (*Running, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
@@ -259,13 +254,7 @@ func (r *Running) Shutdown(ctx context.Context) error {
 // already unreachable on it.
 //
 // ref: decision 0017
-func Run(
-	ctx context.Context,
-	c Config,
-	log *slog.Logger,
-	api, admin http.Handler,
-	stopping func(),
-) error {
+func Run(ctx context.Context, c Config, log *slog.Logger, api, admin http.Handler, stopping func()) error {
 	r, err := Start(ctx, c, log, api, admin)
 	if err != nil {
 		return err

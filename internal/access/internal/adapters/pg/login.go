@@ -24,10 +24,7 @@ var (
 
 // BreakGlassCredential reads the organization slug names and its
 // credential with the hash, which only a sign-in reads.
-func (s *Store) BreakGlassCredential(
-	ctx context.Context,
-	slug kernel.Slug,
-) (organization.Organization, *breakglass.Credential, error) {
+func (s *Store) BreakGlassCredential(ctx context.Context, slug kernel.Slug) (organization.Organization, *breakglass.Credential, error) {
 	var (
 		o           organization.Organization
 		login, hash *string
@@ -53,11 +50,7 @@ func (s *Store) BreakGlassCredential(
 
 // SignIn inserts the break-glass session s and records e in one
 // transaction.
-func (s *Store) SignIn(
-	ctx context.Context,
-	ss session.Session,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *Store) SignIn(ctx context.Context, ss session.Session, e kernel.OrganizationAuditEntry) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		if err := s.CreateSession(ctx, ss); err != nil {
 			return err
@@ -85,11 +78,7 @@ func (s *Store) RefuseSignIn(ctx context.Context, e kernel.OrganizationAuditEntr
 
 // Accounts are the accounts of org whose account_users admit member, in
 // slug order.
-func (s *Store) Accounts(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	member kernel.MemberID,
-) ([]session.Admitted, error) {
+func (s *Store) Accounts(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID) ([]session.Admitted, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT a.id, a.slug, a.name
 		FROM account_users u JOIN accounts a
 			ON a.organization_id = u.organization_id AND a.id = u.account_id
@@ -110,12 +99,7 @@ func (s *Store) Accounts(
 }
 
 // Admits reads acct when an account_users row of org admits member to it.
-func (s *Store) Admits(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	member kernel.MemberID,
-	acct kernel.AccountID,
-) (session.Admitted, bool, error) {
+func (s *Store) Admits(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID, acct kernel.AccountID) (session.Admitted, bool, error) {
 	var a session.Admitted
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT a.id, a.slug, a.name
 		FROM account_users u JOIN accounts a

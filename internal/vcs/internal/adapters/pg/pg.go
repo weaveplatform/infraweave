@@ -131,12 +131,7 @@ func key(acct kernel.AccountID, id kernel.ULID) []string {
 
 // sealed seals each of the secrets in plain to in's row, nil for an
 // empty one.
-func (s *Store) sealed(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	sec integration.Secrets,
-) (cred, hook []byte, err error) {
+func (s *Store) sealed(ctx context.Context, acct kernel.AccountID, id kernel.ULID, sec integration.Secrets) (cred, hook []byte, err error) {
 	for _, c := range []struct {
 		col   crypt.Column
 		plain []byte
@@ -153,11 +148,7 @@ func (s *Store) sealed(
 }
 
 // Create writes a new integration.
-func (s *Store) Create(
-	ctx context.Context,
-	in integration.Integration,
-	sec integration.Secrets,
-) error {
+func (s *Store) Create(ctx context.Context, in integration.Integration, sec integration.Secrets) error {
 	settings, err := json.Marshal(in.Settings)
 	if err != nil {
 		return fmt.Errorf("vcs: settings of %s: %w", in.ID, err)
@@ -196,11 +187,7 @@ func writeError(in integration.Integration, err error) error {
 
 // Write replaces the integration's changeable fields and sets its
 // version, and its secrets when sec is not nil.
-func (s *Store) Write(
-	ctx context.Context,
-	in integration.Integration,
-	sec *integration.Secrets,
-) error {
+func (s *Store) Write(ctx context.Context, in integration.Integration, sec *integration.Secrets) error {
 	settings, err := json.Marshal(in.Settings)
 	if err != nil {
 		return fmt.Errorf("vcs: settings of %s: %w", in.ID, err)
@@ -233,12 +220,7 @@ func (s *Store) Write(
 }
 
 // Get reads acct's integration id.
-func (s *Store) Get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	lock bool,
-) (integration.Integration, error) {
+func (s *Store) Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (integration.Integration, error) {
 	query := `SELECT ` + columns + ` FROM vcs_integrations i
 		WHERE i.account_id = $1 AND i.id = $2`
 	if lock {
@@ -248,11 +230,7 @@ func (s *Store) Get(
 }
 
 // Default reads acct's default integration of provider.
-func (s *Store) Default(
-	ctx context.Context,
-	acct kernel.AccountID,
-	provider string,
-) (integration.Integration, error) {
+func (s *Store) Default(ctx context.Context, acct kernel.AccountID, provider string) (integration.Integration, error) {
 	return one(scan(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+columns+` FROM vcs_integrations i
 		WHERE i.account_id = $1 AND i.provider = $2 AND i.is_default`, acct, provider)))
 }
@@ -269,11 +247,7 @@ func one(in integration.Integration, err error) (integration.Integration, error)
 }
 
 // Secrets opens acct's integration id's credential and webhook secret.
-func (s *Store) Secrets(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (integration.Secrets, error) {
+func (s *Store) Secrets(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (integration.Secrets, error) {
 	var cred, hook []byte
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT credentials_sealed, webhook_secret_sealed
 		FROM vcs_integrations WHERE account_id = $1 AND id = $2`, acct, id).Scan(&cred, &hook)
@@ -309,11 +283,7 @@ func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 }
 
 // InSpace reports whether an integration of acct lives in space.
-func (s *Store) InSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (s *Store) InSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	var in bool
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM vcs_integrations
 		WHERE account_id = $1 AND space_id = $2)`, acct, space).Scan(&in)
@@ -347,11 +317,7 @@ func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bo
 }
 
 // OpenManifest keeps m, a manifest form of acct, until it expires.
-func (s *Store) OpenManifest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	m integration.Manifest,
-) error {
+func (s *Store) OpenManifest(ctx context.Context, acct kernel.AccountID, m integration.Manifest) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_manifests
 		(account_id, id, api_host, user_facing_host, expires_at) VALUES ($1, $2, $3, $4, $5)`,
 		acct, m.ID, m.APIHost, m.UserFacingHost, m.ExpiresAt)
@@ -363,12 +329,7 @@ func (s *Store) OpenManifest(
 
 // TakeManifest deletes acct's manifest form id and answers it, when it
 // has not expired at now; integration.ErrNotFound otherwise.
-func (s *Store) TakeManifest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	now time.Time,
-) (integration.Manifest, error) {
+func (s *Store) TakeManifest(ctx context.Context, acct kernel.AccountID, id kernel.ULID, now time.Time) (integration.Manifest, error) {
 	m := integration.Manifest{ID: id}
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `DELETE FROM vcs_manifests
 		WHERE account_id = $1 AND id = $2
@@ -431,12 +392,7 @@ func searchScope(acct kernel.AccountID, scope integration.Scope) sqlsearch.Scope
 }
 
 // Search reads a page of acct's integrations in the scope that in keeps.
-func (s *Store) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	scope integration.Scope,
-) (search.Result[integration.Integration], error) {
+func (s *Store) Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope integration.Scope) (search.Result[integration.Integration], error) {
 	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), integrationSearch, searchScope(acct, scope),
 		in, scan)
 	if err != nil {
@@ -447,12 +403,7 @@ func (s *Store) Search(
 
 // Suggest lists the values acct's integrations in the scope that in
 // keeps hold.
-func (s *Store) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	scope integration.Scope,
-) (search.Suggestions, error) {
+func (s *Store) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope integration.Scope) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), integrationSearch,
 		searchScope(acct, scope), in)
 	if err != nil {

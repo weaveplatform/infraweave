@@ -113,31 +113,17 @@ var ErrExited = errors.New("infraweave exited")
 // the admin listener answers /livez, which only the admin listener serves.
 //
 // ref: decision 0017
-func StartServer(
-	ctx context.Context,
-	bin, dir, coverDir, mode string,
-	config []byte,
-) (*Server, error) {
+func StartServer(ctx context.Context, bin, dir, coverDir, mode string, config []byte) (*Server, error) {
 	return start(ctx, bin, dir, coverDir, mode, config, nil)
 }
 
 // StartLauncher is StartServer for infraweave launcher, which reaches the
 // Docker daemon at dockerHost.
-func StartLauncher(
-	ctx context.Context,
-	bin, dir, coverDir string,
-	config []byte,
-	dockerHost string,
-) (*Server, error) {
+func StartLauncher(ctx context.Context, bin, dir, coverDir string, config []byte, dockerHost string) (*Server, error) {
 	return start(ctx, bin, dir, coverDir, "launcher", config, []string{"DOCKER_HOST=" + dockerHost})
 }
 
-func start(
-	ctx context.Context,
-	bin, dir, coverDir, mode string,
-	config []byte,
-	env []string,
-) (*Server, error) {
+func start(ctx context.Context, bin, dir, coverDir, mode string, config []byte, env []string) (*Server, error) {
 	path := filepath.Join(dir, "config.yaml")
 	if err := os.WriteFile(path, config, 0o600); err != nil {
 		return nil, fmt.Errorf("write config: %w", err)

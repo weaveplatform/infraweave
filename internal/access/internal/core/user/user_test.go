@@ -44,12 +44,7 @@ func (s *store) user(acct kernel.AccountID, id kernel.MemberID) (user.User, erro
 	return u, nil
 }
 
-func (s *store) Users(
-	_ context.Context,
-	acct kernel.AccountID,
-	_ kernel.MemberID,
-	_ int,
-) ([]user.User, error) {
+func (s *store) Users(_ context.Context, acct kernel.AccountID, _ kernel.MemberID, _ int) ([]user.User, error) {
 	if s.fail {
 		return nil, errDown
 	}
@@ -62,22 +57,11 @@ func (s *store) Users(
 	return out, nil
 }
 
-func (s *store) User(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-) (user.User, error) {
+func (s *store) User(_ context.Context, acct kernel.AccountID, id kernel.MemberID) (user.User, error) {
 	return s.user(acct, id)
 }
 
-func (s *store) Invite(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	acct kernel.AccountID,
-	in user.Invite,
-	inv user.Invitation,
-	e kernel.AuditEntry,
-) (user.User, error) {
+func (s *store) Invite(_ context.Context, _ kernel.OrganizationID, acct kernel.AccountID, in user.Invite, inv user.Invitation, e kernel.AuditEntry) (user.User, error) {
 	if s.fail {
 		return user.User{}, errDown
 	}
@@ -90,14 +74,7 @@ func (s *store) Invite(
 	return u, nil
 }
 
-func (s *store) SetSlackMemberID(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	expect kernel.Expect,
-	slack string,
-	e kernel.AuditEntry,
-) (user.User, error) {
+func (s *store) SetSlackMemberID(_ context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, slack string, e kernel.AuditEntry) (user.User, error) {
 	u, err := s.user(acct, id)
 	if err != nil {
 		return u, err
@@ -111,13 +88,7 @@ func (s *store) SetSlackMemberID(
 	return u, nil
 }
 
-func (s *store) Resend(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	at time.Time,
-	e kernel.AuditEntry,
-) (user.User, error) {
+func (s *store) Resend(_ context.Context, acct kernel.AccountID, id kernel.MemberID, at time.Time, e kernel.AuditEntry) (user.User, error) {
 	u, err := s.user(acct, id)
 	if err != nil {
 		return u, err
@@ -133,13 +104,7 @@ func (s *store) Resend(
 	return u, nil
 }
 
-func (s *store) Remove(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	expect kernel.Expect,
-	e kernel.AuditEntry,
-) ([]kernel.ULID, error) {
+func (s *store) Remove(_ context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, e kernel.AuditEntry) ([]kernel.ULID, error) {
 	u, err := s.user(acct, id)
 	if err != nil {
 		return nil, err
@@ -152,13 +117,7 @@ func (s *store) Remove(
 	return s.revoked, nil
 }
 
-func (s *store) PersonalAPIKeys(
-	_ context.Context,
-	acct kernel.AccountID,
-	_ kernel.MemberID,
-	_ kernel.ULID,
-	_ int,
-) ([]apikey.Key, error) {
+func (s *store) PersonalAPIKeys(_ context.Context, acct kernel.AccountID, _ kernel.MemberID, _ kernel.ULID, _ int) ([]apikey.Key, error) {
 	if s.fail {
 		return nil, errDown
 	}
@@ -403,13 +362,7 @@ func TestUnitUserReadsAndWrites(t *testing.T) {
 // removeFails answers Remove with errDown after a read that succeeds.
 type removeFails struct{ *store }
 
-func (removeFails) Remove(
-	context.Context,
-	kernel.AccountID,
-	kernel.MemberID,
-	kernel.Expect,
-	kernel.AuditEntry,
-) ([]kernel.ULID, error) {
+func (removeFails) Remove(context.Context, kernel.AccountID, kernel.MemberID, kernel.Expect, kernel.AuditEntry) ([]kernel.ULID, error) {
 	return nil, errDown
 }
 

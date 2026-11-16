@@ -73,18 +73,14 @@ func (s *store) err(method string) error {
 	return nil
 }
 
-func (s *store) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run,
-	error,
-) {
+func (s *store) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error) {
 	if acct != s.run.Account || id != s.run.ID {
 		return lifecycle.Run{}, read.ErrNotFound
 	}
 	return s.run, s.err("Get")
 }
 
-func (s *store) Entered(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
-	state kernel.RunState,
-) (int64, bool, error) {
+func (s *store) Entered(_ context.Context, _ kernel.AccountID, _ kernel.ULID, state kernel.RunState) (int64, bool, error) {
 	var latest int64
 	for v, st := range s.states {
 		if st == state && v > latest {
@@ -94,9 +90,7 @@ func (s *store) Entered(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
 	return latest, latest > 0, s.err("Entered")
 }
 
-func (s *store) StateAt(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
-	version int64,
-) (kernel.RunState, error) {
+func (s *store) StateAt(_ context.Context, _ kernel.AccountID, _ kernel.ULID, version int64) (kernel.RunState, error) {
 	st, ok := s.states[version]
 	if !ok {
 		return "", lifecycle.ErrNotFound
@@ -104,9 +98,7 @@ func (s *store) StateAt(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
 	return st, s.err("StateAt")
 }
 
-func (s *store) Chunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID, version, from int64,
-	limit int,
-) ([]report.Chunk, error) {
+func (s *store) Chunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID, version, from int64, limit int) ([]report.Chunk, error) {
 	var out []report.Chunk
 	for _, c := range s.chunks[version] {
 		if c.Seq >= from && len(out) < limit {
@@ -116,9 +108,7 @@ func (s *store) Chunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID, ver
 	return out, s.err("Chunks")
 }
 
-func (s *store) Extent(_ context.Context, _ kernel.AccountID, _ kernel.ULID, version,
-	from int64,
-) (logs.Extent, error) {
+func (s *store) Extent(_ context.Context, _ kernel.AccountID, _ kernel.ULID, version, from int64) (logs.Extent, error) {
 	if _, ok := s.states[version]; !ok {
 		return logs.Extent{}, lifecycle.ErrNotFound
 	}
@@ -135,9 +125,7 @@ func (s *store) Extent(_ context.Context, _ kernel.AccountID, _ kernel.ULID, ver
 	return e, s.err("Extent")
 }
 
-func (s *store) LockChunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
-	version int64,
-) ([]int64, error) {
+func (s *store) LockChunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID, version int64) ([]int64, error) {
 	if s.locked != nil {
 		return s.locked, s.err("LockChunks")
 	}
@@ -148,9 +136,7 @@ func (s *store) LockChunks(_ context.Context, _ kernel.AccountID, _ kernel.ULID,
 	return out, s.err("LockChunks")
 }
 
-func (s *store) Lock(_ context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run,
-	error,
-) {
+func (s *store) Lock(_ context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error) {
 	if acct != s.run.Account || id != s.run.ID {
 		return lifecycle.Run{}, lifecycle.ErrNotFound
 	}
@@ -159,9 +145,7 @@ func (s *store) Lock(_ context.Context, acct kernel.AccountID, id kernel.ULID) (
 
 // DeleteLogs drops every chunk and answers its object and each state's
 // compacted log, as the store's does.
-func (s *store) DeleteLogs(_ context.Context, run lifecycle.Run, at time.Time) (
-	[]report.Object, error,
-) {
+func (s *store) DeleteLogs(_ context.Context, run lifecycle.Run, at time.Time) ([]report.Object, error) {
 	if err := s.err("DeleteLogs"); err != nil {
 		return nil, err
 	}
@@ -186,9 +170,7 @@ type stacks struct {
 	id kernel.ULID
 }
 
-func (s stacks) BySlug(_ context.Context, _ kernel.AccountID, slug string) (stacksapi.Stack,
-	error,
-) {
+func (s stacks) BySlug(_ context.Context, _ kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	if slug != "network" {
 		return stacksapi.Stack{}, stacksapi.ErrNotFound
 	}
@@ -226,9 +208,7 @@ func (o *objects) err(method string) error {
 	return nil
 }
 
-func (o *objects) Open(_ context.Context, _ objectstore.Name, key string) (io.ReadCloser,
-	error,
-) {
+func (o *objects) Open(_ context.Context, _ objectstore.Name, key string) (io.ReadCloser, error) {
 	if err := o.err("Open"); err != nil {
 		return nil, err
 	}
@@ -238,9 +218,7 @@ func (o *objects) Open(_ context.Context, _ objectstore.Name, key string) (io.Re
 	return io.NopCloser(bytes.NewReader(o.data[key])), nil
 }
 
-func (o *objects) SignGet(_ context.Context, _ objectstore.Name, key string) (
-	objectstore.Signed, error,
-) {
+func (o *objects) SignGet(_ context.Context, _ objectstore.Name, key string) (objectstore.Signed, error) {
 	if err := o.err("SignGet"); err != nil {
 		return objectstore.Signed{}, err
 	}
@@ -262,9 +240,7 @@ func (o *objects) Live(_ context.Context, _ objectstore.Name, key string) (bool,
 }
 
 // Put reports a failing read as a driver does, without wrapping it.
-func (o *objects) Put(_ context.Context, _ objectstore.Name, key string, r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (o *objects) Put(_ context.Context, _ objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	if err := o.err("Put"); err != nil {
 		return objectstore.Object{}, err
 	}

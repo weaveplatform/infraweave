@@ -65,40 +65,22 @@ type Store interface {
 	// when acct lacks it.
 	BySlug(ctx context.Context, acct kernel.AccountID, slug string, lock Lock) (Context, error)
 	// ByIDs reads those of acct's contexts ids that it has, keyed by ID.
-	ByIDs(
-		ctx context.Context,
-		acct kernel.AccountID,
-		ids []kernel.ULID,
-	) (map[kernel.ULID]Context, error)
+	ByIDs(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]Context, error)
 	// Delete deletes acct's context id with its elements and attachments.
 	Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 	// InSpace reports whether a context of acct lives in space.
 	InSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
 	// Search reads a page of acct's contexts in the scope that in keeps, by
 	// Fields; an input they cannot answer is a *search.Invalid.
-	Search(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.Input,
-		scope Scope,
-	) (search.Result[Context], error)
+	Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope Scope) (search.Result[Context], error)
 	// Suggest lists the values of Fields that acct's contexts in the scope
 	// that in keeps hold, and counts them.
-	Suggest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.SuggestionsInput,
-		scope Scope,
-	) (search.Suggestions, error)
+	Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope Scope) (search.Suggestions, error)
 
 	// Elements reads the config elements of each of owners, which all hold
 	// either contexts or stacks, by name, keyed by the owner's ID. A
 	// write-only element's value is left nil, so it is never opened.
-	Elements(
-		ctx context.Context,
-		acct kernel.AccountID,
-		owners []Owner,
-	) (map[kernel.ULID][]Element, error)
+	Elements(ctx context.Context, acct kernel.AccountID, owners []Owner) (map[kernel.ULID][]Element, error)
 	// Element reads owner's element name; ErrNotFound when it has none.
 	Element(ctx context.Context, acct kernel.AccountID, owner Owner, name string) (Element, error)
 	// PutElement writes e, sealing its value, or keeping the value of the
@@ -106,11 +88,7 @@ type Store interface {
 	PutElement(ctx context.Context, e Element) error
 	// Opened reads the elements of each of owners with every value
 	// opened, write-only or not, by name, keyed by the owner's ID.
-	Opened(
-		ctx context.Context,
-		acct kernel.AccountID,
-		owners []Owner,
-	) (map[kernel.ULID][]Opened, error)
+	Opened(ctx context.Context, acct kernel.AccountID, owners []Owner) (map[kernel.ULID][]Opened, error)
 	// LockElements locks owner's elements until the transaction ends, so
 	// two writers of them take turns.
 	LockElements(ctx context.Context, acct kernel.AccountID, owner Owner) error
@@ -120,12 +98,7 @@ type Store interface {
 
 	// Labelled reads acct's contexts in spaces that carry any of labels,
 	// by name.
-	Labelled(
-		ctx context.Context,
-		acct kernel.AccountID,
-		spaces []kernel.ULID,
-		labels []string,
-	) ([]Context, error)
+	Labelled(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]Context, error)
 	// Attach writes a, or the priority and kind of the attachment its
 	// context already has to its stack, and answers the attachment as
 	// stored.
@@ -144,12 +117,7 @@ type Store interface {
 	// Attachments reads the attachments of contexts, or of stacks when
 	// byStack is set, keyed by that ID, by priority, then context and
 	// stack.
-	Attachments(
-		ctx context.Context,
-		acct kernel.AccountID,
-		ids []kernel.ULID,
-		byStack bool,
-	) (map[kernel.ULID][]Attachment, error)
+	Attachments(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID, byStack bool) (map[kernel.ULID][]Attachment, error)
 	// AttachedStacks lists the stacks any of acct's contexts is attached
 	// to.
 	AttachedStacks(ctx context.Context, acct kernel.AccountID) ([]kernel.ULID, error)

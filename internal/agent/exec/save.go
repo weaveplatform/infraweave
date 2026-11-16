@@ -23,11 +23,7 @@ import (
 // Uploads declares, puts and records a run's artifacts; *client.Client is
 // one.
 type Uploads interface {
-	UploadURLs(
-		ctx context.Context,
-		token, run string,
-		in wire.UploadURLsRequest,
-	) ([]wire.SignedUpload, error)
+	UploadURLs(ctx context.Context, token, run string, in wire.UploadURLsRequest) ([]wire.SignedUpload, error)
 	PutFile(ctx context.Context, u wire.SignedUpload, path string) error
 	Artifacts(ctx context.Context, token, run string, in wire.ArtifactsRequest) error
 }
@@ -223,11 +219,7 @@ func (r *run) sealWorkspace(version int64) (upload, error) {
 // sealed writes what write writes to a new file of the run's temporary
 // directory, counting and hashing it, and answers its upload of kind as
 // name.
-func (r *run) sealed(
-	kind wire.UploadKind,
-	name string,
-	write func(io.Writer) error,
-) (upload, error) {
+func (r *run) sealed(kind wire.UploadKind, name string, write func(io.Writer) error) (upload, error) {
 	path := filepath.Join(r.temp, name+".sealed")
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
@@ -300,13 +292,7 @@ func (r *run) send(ctx context.Context, version int64, ups []upload) error {
 
 // transfer takes ups through the worker API once: their declaration and
 // PUTs, unless uploaded says they were taken, and their record.
-func (r *run) transfer(
-	ctx context.Context,
-	decl wire.UploadURLsRequest,
-	rec wire.ArtifactsRequest,
-	ups []upload,
-	uploaded *bool,
-) error {
+func (r *run) transfer(ctx context.Context, decl wire.UploadURLsRequest, rec wire.ArtifactsRequest, ups []upload, uploaded *bool) error {
 	if !*uploaded {
 		signed, err := r.d.Uploads.UploadURLs(ctx, r.h.RunToken, r.h.Run, decl)
 		if err != nil {

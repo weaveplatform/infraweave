@@ -23,13 +23,7 @@ var errBucket = errors.New("the bucket is down")
 // broken is a store whose every call fails, or deletes with del.
 type broken struct{ del error }
 
-func (broken) Put(
-	context.Context,
-	objectstore.Name,
-	string,
-	io.Reader,
-	int64,
-) (objectstore.Object, error) {
+func (broken) Put(context.Context, objectstore.Name, string, io.Reader, int64) (objectstore.Object, error) {
 	return objectstore.Object{}, errBucket
 }
 
@@ -41,9 +35,7 @@ func (broken) Head(context.Context, objectstore.Name, string) (int64, error) { r
 
 func (b broken) Delete(context.Context, objectstore.Name, string) error { return b.del }
 
-func (broken) SignURL(
-	context.Context, string, objectstore.Name, string, time.Duration, objectstore.Constraints,
-) (objectstore.Signed, error) {
+func (broken) SignURL(context.Context, string, objectstore.Name, string, time.Duration, objectstore.Constraints) (objectstore.Signed, error) {
 	return objectstore.Signed{}, errBucket
 }
 

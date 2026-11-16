@@ -20,10 +20,7 @@ const changesList = "run-changes"
 
 // RunChangesV2 answers a page of the entities one run of the caller's
 // account changed. The route has decided SPACE_READ on its stack's space.
-func (s Server) RunChangesV2(
-	ctx context.Context,
-	req api.RunChangesV2RequestObject,
-) (api.RunChangesV2ResponseObject, error) {
+func (s Server) RunChangesV2(ctx context.Context, req api.RunChangesV2RequestObject) (api.RunChangesV2ResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -78,10 +75,7 @@ func (s Server) RunChangesV2(
 // RunChangesV3 answers the resources one run of the caller's account
 // changed in one phase, as one set, or none before the phase records
 // any. The route has decided SPACE_READ on its stack's space.
-func (s Server) RunChangesV3(
-	ctx context.Context,
-	req api.RunChangesV3RequestObject,
-) (api.RunChangesV3ResponseObject, error) {
+func (s Server) RunChangesV3(ctx context.Context, req api.RunChangesV3RequestObject) (api.RunChangesV3ResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

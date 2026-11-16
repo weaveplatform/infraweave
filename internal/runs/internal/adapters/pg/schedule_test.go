@@ -26,11 +26,7 @@ type failingSchedule struct {
 	fail string
 }
 
-func (f failingSchedule) Queued(
-	ctx context.Context,
-	a kernel.AccountID,
-	stack kernel.ULID,
-) ([]lifecycle.Run, error) {
+func (f failingSchedule) Queued(ctx context.Context, a kernel.AccountID, stack kernel.ULID) ([]lifecycle.Run, error) {
 	if f.fail == "Queued" {
 		return nil, errInjected
 	}

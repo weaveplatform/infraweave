@@ -20,11 +20,7 @@ type runs struct {
 	err  error
 }
 
-func (r *runs) RunAccess(
-	_ context.Context,
-	_ kernel.AccountID,
-	run kernel.ULID,
-) (accessapi.RunAccess, error) {
+func (r *runs) RunAccess(_ context.Context, _ kernel.AccountID, run kernel.ULID) (accessapi.RunAccess, error) {
 	if r.err != nil {
 		return accessapi.RunAccess{}, r.err
 	}

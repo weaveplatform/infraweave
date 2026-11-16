@@ -143,11 +143,7 @@ var semver = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 // FetchTerraformSchema installs the pinned provider into a scratch working
 // directory and asks terraform for its schema. Loading a schema never
 // configures the provider, so no Spacelift credentials are involved.
-func FetchTerraformSchema(
-	ctx context.Context,
-	run CommandRunner,
-	terraform, version string,
-) ([]byte, error) {
+func FetchTerraformSchema(ctx context.Context, run CommandRunner, terraform, version string) ([]byte, error) {
 	// The version lands in HCL; an exact version keeps the pin honest and
 	// rules out injecting anything else into the file.
 	if !semver.MatchString(version) {

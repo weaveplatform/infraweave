@@ -38,11 +38,7 @@ func New(ctx context.Context, c kek.AWSKMSConfig, opts ...func(*kms.Options)) (*
 // NewClient returns a KMS client in region, or the SDK's when region is
 // empty, with credentials from the SDK's default chain. The awskms signing
 // backend calls KMS through it too.
-func NewClient(
-	ctx context.Context,
-	region string,
-	opts ...func(*kms.Options),
-) (*kms.Client, error) {
+func NewClient(ctx context.Context, region string, opts ...func(*kms.Options)) (*kms.Client, error) {
 	var load []func(*config.LoadOptions) error
 	if region != "" {
 		load = append(load, config.WithRegion(region))

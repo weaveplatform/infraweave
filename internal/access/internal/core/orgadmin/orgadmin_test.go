@@ -51,19 +51,11 @@ func (s *store) record(op string, e kernel.OrganizationAuditEntry) error {
 	return nil
 }
 
-func (s *store) Organization(
-	context.Context,
-	kernel.OrganizationID,
-) (organization.Organization, error) {
+func (s *store) Organization(context.Context, kernel.OrganizationID) (organization.Organization, error) {
 	return s.org, s.down("Organization")
 }
 
-func (s *store) RenameOrganization(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	name string,
-	e kernel.OrganizationAuditEntry,
-) (organization.Organization, error) {
+func (s *store) RenameOrganization(_ context.Context, _ kernel.OrganizationID, name string, e kernel.OrganizationAuditEntry) (organization.Organization, error) {
 	if err := s.record("RenameOrganization", e); err != nil {
 		return organization.Organization{}, err
 	}
@@ -71,28 +63,15 @@ func (s *store) RenameOrganization(
 	return s.org, nil
 }
 
-func (s *store) IsOrganizationAdmin(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	m kernel.MemberID,
-) (bool, error) {
+func (s *store) IsOrganizationAdmin(_ context.Context, _ kernel.OrganizationID, m kernel.MemberID) (bool, error) {
 	return s.admins[m], s.down("IsOrganizationAdmin")
 }
 
-func (s *store) OrganizationAccounts(
-	context.Context,
-	kernel.OrganizationID,
-	kernel.AccountID,
-	int,
-) ([]account.Account, error) {
+func (s *store) OrganizationAccounts(context.Context, kernel.OrganizationID, kernel.AccountID, int) ([]account.Account, error) {
 	return s.accounts, s.down("OrganizationAccounts")
 }
 
-func (s *store) AccountBySlug(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	slug kernel.Slug,
-) (account.Account, error) {
+func (s *store) AccountBySlug(_ context.Context, _ kernel.OrganizationID, slug kernel.Slug) (account.Account, error) {
 	for _, a := range s.accounts {
 		if a.Slug == slug {
 			return a, nil
@@ -101,12 +80,7 @@ func (s *store) AccountBySlug(
 	return account.Account{}, port.ErrNotFound
 }
 
-func (s *store) CreateAccount(
-	_ context.Context,
-	a account.Account,
-	admin kernel.MemberID,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *store) CreateAccount(_ context.Context, a account.Account, admin kernel.MemberID, e kernel.OrganizationAuditEntry) error {
 	if m, ok := s.members[admin]; !ok || m.Status != member.Active {
 		return orgadmin.ErrNoAdmin
 	}
@@ -144,13 +118,7 @@ func (s *store) ClaimAccount(
 	return account.Account{}, port.ErrNotFound
 }
 
-func (s *store) RenameAccount(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	acct kernel.AccountID,
-	name string,
-	e kernel.OrganizationAuditEntry,
-) (account.Account, error) {
+func (s *store) RenameAccount(_ context.Context, _ kernel.OrganizationID, acct kernel.AccountID, name string, e kernel.OrganizationAuditEntry) (account.Account, error) {
 	if err := s.record("RenameAccount", e); err != nil {
 		return account.Account{}, err
 	}
@@ -163,32 +131,18 @@ func (s *store) RenameAccount(
 	return account.Account{}, port.ErrNotFound
 }
 
-func (s *store) RemoveAccount(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	_ kernel.AccountID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (s *store) RemoveAccount(_ context.Context, _ kernel.OrganizationID, _ kernel.AccountID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	if err := s.record("RemoveAccount", e); err != nil {
 		return nil, err
 	}
 	return []kernel.ULID{kernel.NewULID()}, nil
 }
 
-func (s *store) Seats(
-	context.Context,
-	kernel.OrganizationID,
-	kernel.AccountID,
-) (featuresapi.Usage, error) {
+func (s *store) Seats(context.Context, kernel.OrganizationID, kernel.AccountID) (featuresapi.Usage, error) {
 	return s.seats, s.down("Seats")
 }
 
-func (s *store) Members(
-	context.Context,
-	kernel.OrganizationID,
-	kernel.MemberID,
-	int,
-) ([]orgadmin.Member, error) {
+func (s *store) Members(context.Context, kernel.OrganizationID, kernel.MemberID, int) ([]orgadmin.Member, error) {
 	out := make([]orgadmin.Member, 0, len(s.members))
 	for _, m := range s.members {
 		out = append(out, m)
@@ -196,11 +150,7 @@ func (s *store) Members(
 	return out, s.down("Members")
 }
 
-func (s *store) Member(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	id kernel.MemberID,
-) (orgadmin.Member, error) {
+func (s *store) Member(_ context.Context, _ kernel.OrganizationID, id kernel.MemberID) (orgadmin.Member, error) {
 	m, ok := s.members[id]
 	if !ok {
 		return orgadmin.Member{}, port.ErrNotFound
@@ -208,26 +158,14 @@ func (s *store) Member(
 	return m, nil
 }
 
-func (s *store) DeactivateMember(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	_ kernel.MemberID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (s *store) DeactivateMember(_ context.Context, _ kernel.OrganizationID, _ kernel.MemberID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	if err := s.record("DeactivateMember", e); err != nil {
 		return nil, err
 	}
 	return []kernel.ULID{kernel.NewULID()}, nil
 }
 
-func (s *store) SetOrganizationAdmin(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	id kernel.MemberID,
-	admin bool,
-	by string,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *store) SetOrganizationAdmin(_ context.Context, _ kernel.OrganizationID, id kernel.MemberID, admin bool, by string, e kernel.OrganizationAuditEntry) error {
 	if by == "" {
 		return errors.New("no grantor")
 	}
@@ -238,12 +176,7 @@ func (s *store) SetOrganizationAdmin(
 	return nil
 }
 
-func (s *store) OrganizationKeys(
-	context.Context,
-	kernel.OrganizationID,
-	kernel.ULID,
-	int,
-) ([]apikey.OrganizationKey, error) {
+func (s *store) OrganizationKeys(context.Context, kernel.OrganizationID, kernel.ULID, int) ([]apikey.OrganizationKey, error) {
 	out := make([]apikey.OrganizationKey, 0, len(s.keys))
 	for _, k := range s.keys {
 		out = append(out, k)
@@ -251,11 +184,7 @@ func (s *store) OrganizationKeys(
 	return out, s.down("OrganizationKeys")
 }
 
-func (s *store) CreateOrganizationKey(
-	_ context.Context,
-	k apikey.OrganizationKey,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *store) CreateOrganizationKey(_ context.Context, k apikey.OrganizationKey, e kernel.OrganizationAuditEntry) error {
 	if err := s.record("CreateOrganizationKey", e); err != nil {
 		return err
 	}
@@ -263,11 +192,7 @@ func (s *store) CreateOrganizationKey(
 	return nil
 }
 
-func (s *store) endKey(
-	op string,
-	id kernel.ULID,
-	e kernel.OrganizationAuditEntry,
-) (apikey.OrganizationKey, []kernel.ULID, error) {
+func (s *store) endKey(op string, id kernel.ULID, e kernel.OrganizationAuditEntry) (apikey.OrganizationKey, []kernel.ULID, error) {
 	k, ok := s.keys[id]
 	if !ok {
 		return apikey.OrganizationKey{}, nil, port.ErrNotFound
@@ -278,29 +203,15 @@ func (s *store) endKey(
 	return k, []kernel.ULID{kernel.NewULID()}, nil
 }
 
-func (s *store) DisableOrganizationKey(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	id kernel.ULID,
-	e kernel.OrganizationAuditEntry,
-) (apikey.OrganizationKey, []kernel.ULID, error) {
+func (s *store) DisableOrganizationKey(_ context.Context, _ kernel.OrganizationID, id kernel.ULID, e kernel.OrganizationAuditEntry) (apikey.OrganizationKey, []kernel.ULID, error) {
 	return s.endKey("DisableOrganizationKey", id, e)
 }
 
-func (s *store) DeleteOrganizationKey(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	id kernel.ULID,
-	e kernel.OrganizationAuditEntry,
-) (apikey.OrganizationKey, []kernel.ULID, error) {
+func (s *store) DeleteOrganizationKey(_ context.Context, _ kernel.OrganizationID, id kernel.ULID, e kernel.OrganizationAuditEntry) (apikey.OrganizationKey, []kernel.ULID, error) {
 	return s.endKey("DeleteOrganizationKey", id, e)
 }
 
-func (s *store) Record(
-	ctx context.Context,
-	e kernel.OrganizationAuditEntry,
-	write func(context.Context) error,
-) error {
+func (s *store) Record(ctx context.Context, e kernel.OrganizationAuditEntry, write func(context.Context) error) error {
 	if err := write(ctx); err != nil {
 		return err
 	}
@@ -321,27 +232,15 @@ type entitlements struct {
 
 func (f *entitlements) LimitNames() []string { return []string{"private-workers", "seats"} }
 
-func (f *entitlements) Entitlement(
-	context.Context,
-	kernel.OrganizationID,
-) (featuresapi.Entitlement, error) {
+func (f *entitlements) Entitlement(context.Context, kernel.OrganizationID) (featuresapi.Entitlement, error) {
 	return featuresapi.Entitlement{Limits: f.pool}, f.poolErr
 }
 
-func (f *entitlements) AccountLimits(
-	_ context.Context,
-	acct kernel.AccountID,
-) (map[string]int64, error) {
+func (f *entitlements) AccountLimits(_ context.Context, acct kernel.AccountID) (map[string]int64, error) {
 	return f.own[acct], f.ownErr
 }
 
-func (f *entitlements) SetAccountLimit(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	acct kernel.AccountID,
-	limit string,
-	value int64,
-) error {
+func (f *entitlements) SetAccountLimit(_ context.Context, _ kernel.OrganizationID, acct kernel.AccountID, limit string, value int64) error {
 	if f.setErr != nil {
 		return f.setErr
 	}
@@ -352,11 +251,7 @@ func (f *entitlements) SetAccountLimit(
 	return nil
 }
 
-func (f *entitlements) ClearAccountLimit(
-	_ context.Context,
-	acct kernel.AccountID,
-	limit string,
-) error {
+func (f *entitlements) ClearAccountLimit(_ context.Context, acct kernel.AccountID, limit string) error {
 	f.cleared = append(f.cleared, limit)
 	delete(f.own[acct], limit)
 	return f.setErr

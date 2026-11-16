@@ -68,12 +68,7 @@ func (s *store) PoolByID(_ context.Context, id kernel.ULID) (pool.Pool, error) {
 	return p, nil
 }
 
-func (s *store) Get(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	_ bool,
-) (pool.Pool, error) {
+func (s *store) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID, _ bool) (pool.Pool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.down("Get"); err != nil {
@@ -88,13 +83,7 @@ func (s *store) Get(
 
 func (s *store) CA(context.Context) ([]byte, error) { return s.ca, s.down("CA") }
 
-func (s *store) Nonce(
-	_ context.Context,
-	_ kernel.AccountID,
-	p kernel.ULID,
-	jti string,
-	expires time.Time,
-) (bool, error) {
+func (s *store) Nonce(_ context.Context, _ kernel.AccountID, p kernel.ULID, jti string, expires time.Time) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.down("Nonce"); err != nil {
@@ -108,11 +97,7 @@ func (s *store) Nonce(
 	return true, nil
 }
 
-func (s *store) Count(
-	_ context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-) (featuresapi.Usage, error) {
+func (s *store) Count(_ context.Context, org kernel.OrganizationID, acct kernel.AccountID) (featuresapi.Usage, error) {
 	var u featuresapi.Usage
 	for _, w := range s.workers {
 		if w.Organization == org {
@@ -166,12 +151,7 @@ func (s *store) Resume(_ context.Context, w worker.Worker) error {
 	return nil
 }
 
-func (s *store) Seen(
-	_ context.Context,
-	id kernel.ULID,
-	busy bool,
-	now time.Time,
-) (worker.Worker, int64, error) {
+func (s *store) Seen(_ context.Context, id kernel.ULID, busy bool, now time.Time) (worker.Worker, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.down("Seen"); err != nil {
@@ -265,12 +245,7 @@ func (s *store) PoolTimeouts(context.Context) ([]workersapi.PoolTimeout, error) 
 	return out, nil
 }
 
-func (s *store) Drain(
-	_ context.Context,
-	acct kernel.AccountID,
-	p, id kernel.ULID,
-	drain bool,
-) (worker.Worker, error) {
+func (s *store) Drain(_ context.Context, acct kernel.AccountID, p, id kernel.ULID, drain bool) (worker.Worker, error) {
 	s.mu.Lock()
 	w, ok := s.workers[id]
 	if !ok || w.Account != acct || w.Pool != p {
@@ -297,12 +272,7 @@ func (s *store) Cycle(_ context.Context, acct kernel.AccountID, p kernel.ULID) e
 	return s.down("Cycle")
 }
 
-func (s *store) SearchWorkers(
-	_ context.Context,
-	_ kernel.AccountID,
-	p, _ kernel.ULID,
-	_ search.Input,
-) (search.Result[worker.Worker], error) {
+func (s *store) SearchWorkers(_ context.Context, _ kernel.AccountID, p, _ kernel.ULID, _ search.Input) (search.Result[worker.Worker], error) {
 	var out search.Result[worker.Worker]
 	for _, w := range s.workers {
 		if w.Pool == p {
@@ -312,13 +282,7 @@ func (s *store) SearchWorkers(
 	return out, nil
 }
 
-func (s *store) SuggestWorkers(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	kernel.ULID,
-	search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *store) SuggestWorkers(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, search.SuggestionsInput) (search.Suggestions, error) {
 	return search.Suggestions{}, s.down("SuggestWorkers")
 }
 
@@ -326,11 +290,7 @@ func (s *store) RunnerImages(context.Context, kernel.AccountID) (images.Images, 
 	return s.images, s.down("RunnerImages")
 }
 
-func (s *store) OfPools(
-	_ context.Context,
-	_ kernel.AccountID,
-	pools []kernel.ULID,
-) (map[kernel.ULID][]worker.Worker, error) {
+func (s *store) OfPools(_ context.Context, _ kernel.AccountID, pools []kernel.ULID) (map[kernel.ULID][]worker.Worker, error) {
 	out := map[kernel.ULID][]worker.Worker{}
 	for _, w := range s.workers {
 		if slices.Contains(pools, w.Pool) {
@@ -361,13 +321,7 @@ func (t tokens) RunToken(_ context.Context, run kernel.ULID) (accessapi.Token, e
 // limits refuses a new worker once the organization has max.
 type limits struct{ max int64 }
 
-func (l limits) CheckLimit(
-	ctx context.Context,
-	_ kernel.OrganizationID,
-	_ kernel.AccountID,
-	limit string,
-	count func(context.Context) (featuresapi.Usage, error),
-) error {
+func (l limits) CheckLimit(ctx context.Context, _ kernel.OrganizationID, _ kernel.AccountID, limit string, count func(context.Context) (featuresapi.Usage, error)) error {
 	u, err := count(ctx)
 	if err != nil {
 		return err
@@ -430,12 +384,7 @@ func newFixture(t *testing.T, d worker.Deps) *fixture {
 }
 
 // sign is a new key and the certificate ca signs for it as pool's.
-func (*fixture) sign(
-	t *testing.T,
-	ca credential.CA,
-	p kernel.ULID,
-	serial int64,
-) (*ecdsa.PrivateKey, *x509.Certificate) {
+func (*fixture) sign(t *testing.T, ca credential.CA, p kernel.ULID, serial int64) (*ecdsa.PrivateKey, *x509.Certificate) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {

@@ -53,19 +53,8 @@ type Deps struct {
 // source, or the workspace it saved for its plan's confirmation, which
 // src, a pre-signed URL, answers sealed to the pool's key.
 type Sources interface {
-	Fetch(
-		ctx context.Context,
-		dir string,
-		spec wire.RunSpec,
-		cred *wire.RunSpecSourceCredential,
-	) error
-	Restore(
-		ctx context.Context,
-		dir, src string,
-		pool *ecdh.PrivateKey,
-		run string,
-		spec wire.RunSpec,
-	) error
+	Fetch(ctx context.Context, dir string, spec wire.RunSpec, cred *wire.RunSpecSourceCredential) error
+	Restore(ctx context.Context, dir, src string, pool *ecdh.PrivateKey, run string, spec wire.RunSpec) error
 }
 
 // Tools answers the path of a verified binary of a tool's release.
@@ -550,11 +539,7 @@ func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 // workspace with it.
 //
 // ref: decision 0008 § "The launcher and the runner"
-func (l *Launcher) prepare(
-	ctx context.Context,
-	a wire.Assignment,
-	out *lines,
-) (executor.Container, error) {
+func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (executor.Container, error) {
 	cctx, cancel := context.WithTimeout(ctx, callTimeout)
 	spec, err := l.api.Spec(cctx, a.RunToken, a.Run)
 	cancel()
@@ -612,12 +597,7 @@ var errNoWorkspace = errors.New("the run saved no workspace to apply or replan f
 //
 // ref: decision 0008 § "The launcher and the runner"
 // ref: decision 0008 § "Logs and artifacts"
-func (l *Launcher) workspace(
-	ctx context.Context,
-	a wire.Assignment,
-	spec wire.RunSpec,
-	cred *wire.RunSpecSourceCredential,
-) (string, error) {
+func (l *Launcher) workspace(ctx context.Context, a wire.Assignment, spec wire.RunSpec, cred *wire.RunSpecSourceCredential) (string, error) {
 	dir, err := l.workspaceDir(a.Run)
 	if err != nil {
 		return "", err
@@ -662,12 +642,7 @@ func (l *Launcher) workspace(
 }
 
 // restore writes into dir the workspace a's planning saved.
-func (l *Launcher) restore(
-	ctx context.Context,
-	a wire.Assignment,
-	dir string,
-	spec wire.RunSpec,
-) error {
+func (l *Launcher) restore(ctx context.Context, a wire.Assignment, dir string, spec wire.RunSpec) error {
 	cctx, cancel := context.WithTimeout(ctx, callTimeout)
 	src, err := l.api.Workspace(cctx, a.RunToken, a.Run)
 	cancel()
@@ -713,14 +688,7 @@ func (l *Launcher) dropWorkspace(ctx context.Context, run string, c executor.Con
 // mounts none, so the image's own binary runs.
 //
 // ref: decision 0008 § "Runner images"
-func (l *Launcher) container(
-	ctx context.Context,
-	a wire.Assignment,
-	spec wire.RunSpec,
-	secrets wire.RunSpecSecrets,
-	ws string,
-	out *lines,
-) (executor.Container, error) {
+func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.RunSpec, secrets wire.RunSpecSecrets, ws string, out *lines) (executor.Container, error) {
 	var mounts []executor.Mount
 	if t := spec.Tool; t != nil && t.Download {
 		bin, err := l.d.Tools.Binary(ctx, tools.Release{
@@ -776,12 +744,7 @@ func (l *Launcher) fail(ctx context.Context, a wire.Assignment, why error) {
 // watch waits for c to end, until ctx ends. Its run timeout counts from
 // started, and its no-log timeout from its last line on out or from now,
 // whichever is later, so a resumed run's no-log timeout starts afresh.
-func (l *Launcher) watch(
-	ctx context.Context,
-	c executor.Container,
-	out *lines,
-	started time.Time,
-) *running {
+func (l *Launcher) watch(ctx context.Context, c executor.Container, out *lines, started time.Time) *running {
 	out.mark(l.d.Now())
 	r := &running{c: c, done: make(chan waited, 1), out: out, started: started}
 	go func() {

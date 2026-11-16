@@ -27,29 +27,17 @@ func (s *store) RunOf(_ context.Context, run kernel.ULID) (Run, bool, error) {
 	return r, ok, s.err
 }
 
-func (s *store) StackOf(
-	_ context.Context,
-	_ kernel.AccountID,
-	run kernel.ULID,
-) (kernel.ULID, bool, error) {
+func (s *store) StackOf(_ context.Context, _ kernel.AccountID, run kernel.ULID) (kernel.ULID, bool, error) {
 	stack, ok := s.stacks[run]
 	return stack, ok, s.err
 }
 
-func (s *store) Blockers(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID]stacksapi.Blocker, error) {
+func (s *store) Blockers(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error) {
 	s.reads++
 	return s.blockers, s.err
 }
 
-func (s *store) Outputs(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID][]stacksapi.Output, error) {
+func (s *store) Outputs(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]stacksapi.Output, error) {
 	s.reads++
 	return s.outputs, s.err
 }

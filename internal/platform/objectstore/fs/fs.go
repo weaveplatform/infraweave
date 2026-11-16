@@ -65,24 +65,13 @@ func (b *Bucket) Close() error { return b.root.Close() } //nolint:wrapcheck // o
 
 // Put writes r to a temporary file, syncs it and renames it into place,
 // so a reader sees the whole object or none.
-func (b *Bucket) Put(
-	ctx context.Context,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *Bucket) Put(ctx context.Context, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	return b.put(ctx, key, r, size, nil)
 }
 
 // put is Put that also refuses bytes whose SHA-256 is not want, before
 // they become readable.
-func (b *Bucket) put(
-	ctx context.Context,
-	key string,
-	r io.Reader,
-	size int64,
-	want []byte,
-) (objectstore.Object, error) {
+func (b *Bucket) put(ctx context.Context, key string, r io.Reader, size int64, want []byte) (objectstore.Object, error) {
 	var name [16]byte
 	_, _ = rand.Read(name[:])
 	temp := tmp + "/" + hex.EncodeToString(name[:])
@@ -102,13 +91,7 @@ func (b *Bucket) put(
 }
 
 // write copies size bytes of r to f, syncs and closes it.
-func write(
-	ctx context.Context,
-	f *os.File,
-	r io.Reader,
-	size int64,
-	want []byte,
-) (objectstore.Object, error) {
+func write(ctx context.Context, f *os.File, r io.Reader, size int64, want []byte) (objectstore.Object, error) {
 	h := sha256.New()
 	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(contextReader{ctx, r}, size+1))
 	if err == nil && n != size {

@@ -64,21 +64,11 @@ func (s *store) SpaceID(_ context.Context, _ kernel.AccountID, slug string) (ker
 	return lookup(s.spaces, slug)
 }
 
-func (s *store) HasActor(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ binding.ActorKind,
-	id kernel.ULID,
-) (bool, error) {
+func (s *store) HasActor(_ context.Context, _ kernel.AccountID, _ binding.ActorKind, id kernel.ULID) (bool, error) {
 	return s.actors[id], s.down("HasActor")
 }
 
-func (s *store) Binding(
-	_ context.Context,
-	_ kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) (binding.Listed, error) {
+func (s *store) Binding(_ context.Context, _ kernel.AccountID, kind binding.ActorKind, id kernel.ULID) (binding.Listed, error) {
 	for _, l := range s.all {
 		if l.ID == id && l.ActorKind == kind {
 			return l, s.down("Binding")
@@ -87,12 +77,7 @@ func (s *store) Binding(
 	return binding.Listed{}, port.ErrNotFound
 }
 
-func (s *store) ActorBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (s *store) ActorBindings(_ context.Context, _ kernel.AccountID, kind binding.ActorKind, id kernel.ULID) ([]binding.Listed, error) {
 	var out []binding.Listed
 	for _, l := range s.all {
 		if l.ActorKind == kind && l.ActorID == id {
@@ -102,11 +87,7 @@ func (s *store) ActorBindings(
 	return out, s.down("ActorBindings")
 }
 
-func (s *store) SpaceBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (s *store) SpaceBindings(_ context.Context, _ kernel.AccountID, id kernel.ULID) ([]binding.Listed, error) {
 	var out []binding.Listed
 	for _, l := range s.all {
 		if l.SpaceID == id {
@@ -116,11 +97,7 @@ func (s *store) SpaceBindings(
 	return out, s.down("SpaceBindings")
 }
 
-func (s *store) CreateBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	bs []binding.Binding,
-) ([]binding.Listed, error) {
+func (s *store) CreateBindings(_ context.Context, _ kernel.AccountID, bs []binding.Binding) ([]binding.Listed, error) {
 	if err := s.down("CreateBindings"); err != nil {
 		return nil, err
 	}
@@ -154,13 +131,7 @@ func (s *store) UpdateBinding(
 	return binding.Listed{Binding: b}, nil
 }
 
-func (s *store) DeleteBinding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-	check func(binding.Listed) error,
-) (binding.Listed, error) {
+func (s *store) DeleteBinding(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID, check func(binding.Listed) error) (binding.Listed, error) {
 	cur, err := s.Binding(ctx, acct, kind, id)
 	if err != nil {
 		return binding.Listed{}, err
@@ -172,22 +143,11 @@ func (s *store) DeleteBinding(
 	return cur, s.down("DeleteBinding")
 }
 
-func (s *store) ReplaceAccessRules(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ binding.ActorKind,
-	_ kernel.ULID,
-	_ []binding.Binding,
-) error {
+func (s *store) ReplaceAccessRules(_ context.Context, _ kernel.AccountID, _ binding.ActorKind, _ kernel.ULID, _ []binding.Binding) error {
 	return s.down("ReplaceAccessRules")
 }
 
-func (s *store) DeleteActorBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ binding.ActorKind,
-	_ kernel.ULID,
-) error {
+func (s *store) DeleteActorBindings(_ context.Context, _ kernel.AccountID, _ binding.ActorKind, _ kernel.ULID) error {
 	return s.down("DeleteActorBindings")
 }
 
@@ -197,20 +157,11 @@ type grants struct {
 	err error
 }
 
-func (g *grants) Authorize(
-	_ context.Context,
-	_ kernel.Principal,
-	a accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (g *grants) Authorize(_ context.Context, _ kernel.Principal, a accessapi.Action, space kernel.ULID) (bool, error) {
 	return slices.Contains(g.on[space], a), g.err
 }
 
-func (g *grants) Reachable(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
-) ([]kernel.ULID, error) {
+func (g *grants) Reachable(context.Context, kernel.Principal, accessapi.Action) ([]kernel.ULID, error) {
 	return nil, g.err
 }
 
@@ -218,11 +169,7 @@ func (g *grants) Holds(context.Context, kernel.Principal, accessapi.Action) (boo
 	return false, g.err
 }
 
-func (g *grants) Actions(
-	context.Context,
-	kernel.Principal,
-	kernel.ULID,
-) ([]accessapi.Action, error) {
+func (g *grants) Actions(context.Context, kernel.Principal, kernel.ULID) ([]accessapi.Action, error) {
 	return nil, g.err
 }
 
@@ -330,12 +277,7 @@ func TestUnitPrepare(t *testing.T) {
 // failAdmin fails only SPACE_ADMIN decisions.
 type failAdmin struct{ *grants }
 
-func (g failAdmin) Authorize(
-	ctx context.Context,
-	p kernel.Principal,
-	a accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (g failAdmin) Authorize(ctx context.Context, p kernel.Principal, a accessapi.Action, space kernel.ULID) (bool, error) {
 	if a == accessapi.ActionSpaceAdmin {
 		return false, errDown
 	}

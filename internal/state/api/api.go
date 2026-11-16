@@ -65,12 +65,7 @@ type Output struct {
 type Versions interface {
 	// Latest reads the metadata of the current version of acct's stack's
 	// workspace, false when the workspace has none.
-	Latest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack kernel.ULID,
-		workspace string,
-	) (Version, bool, error)
+	Latest(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, workspace string) (Version, bool, error)
 	// Outputs reads the outputs of the current version of acct's stack's
 	// default workspace, by name; none when it has no version or the
 	// version is client-encrypted.

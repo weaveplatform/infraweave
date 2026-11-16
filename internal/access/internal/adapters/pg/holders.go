@@ -35,11 +35,7 @@ var candidateQuery = map[holder.List]string{
 }
 
 // Candidates reads list's candidates of acct.
-func (s *Store) Candidates(
-	ctx context.Context,
-	acct kernel.AccountID,
-	list holder.List,
-) ([]holder.Candidate, error) {
+func (s *Store) Candidates(ctx context.Context, acct kernel.AccountID, list holder.List) ([]holder.Candidate, error) {
 	query, ok := candidateQuery[list]
 	if !ok {
 		return []holder.Candidate{}, nil
@@ -106,11 +102,7 @@ var holderSearch = map[holder.List]struct {
 
 // holderEntity is e, listing list's rows, with a column of SQL for each of
 // holder.Fields[list], ordered by the first.
-func holderEntity(
-	list holder.List,
-	e sqlsearch.Entity,
-	sqlOf map[string]sqlsearch.Column,
-) sqlsearch.Entity {
+func holderEntity(list holder.List, e sqlsearch.Entity, sqlOf map[string]sqlsearch.Column) sqlsearch.Entity {
 	e.List = "holders:" + string(list)
 	for _, f := range holder.Fields[list] {
 		c := sqlOf[f.Name]
@@ -129,13 +121,7 @@ func scanHolder(row pgx.Row, extra ...any) (holder.Row, error) {
 
 // SearchHolders reads a page of list's rows of acct among ids that in
 // keeps.
-func (s *Store) SearchHolders(
-	ctx context.Context,
-	acct kernel.AccountID,
-	list holder.List,
-	in search.Input,
-	ids []kernel.ULID,
-) (search.Result[holder.Row], error) {
+func (s *Store) SearchHolders(ctx context.Context, acct kernel.AccountID, list holder.List, in search.Input, ids []kernel.ULID) (search.Result[holder.Row], error) {
 	h := holderSearch[list]
 	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), h.entity, sqlsearch.Scope{
 		Where: h.where, Args: []any{acct}, Reachable: ids,
@@ -148,13 +134,7 @@ func (s *Store) SearchHolders(
 
 // SuggestHolders lists the values list's rows of acct among ids that in
 // keeps hold.
-func (s *Store) SuggestHolders(
-	ctx context.Context,
-	acct kernel.AccountID,
-	list holder.List,
-	in search.SuggestionsInput,
-	ids []kernel.ULID,
-) (search.Suggestions, error) {
+func (s *Store) SuggestHolders(ctx context.Context, acct kernel.AccountID, list holder.List, in search.SuggestionsInput, ids []kernel.ULID) (search.Suggestions, error) {
 	h := holderSearch[list]
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), h.entity, sqlsearch.Scope{
 		Where: h.where, Args: []any{acct}, Reachable: ids,
@@ -166,11 +146,7 @@ func (s *Store) SuggestHolders(
 }
 
 // HolderGroups reads acct's groups among ids as rows.
-func (s *Store) HolderGroups(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-) ([]holder.Row, error) {
+func (s *Store) HolderGroups(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) ([]holder.Row, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT g.id, '', g.name, '', g.description
 		FROM managed_user_groups g WHERE g.account_id = $1 AND g.id = ANY($2::uuid[]) ORDER BY g.id`,
 		acct, ids)

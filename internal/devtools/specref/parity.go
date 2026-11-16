@@ -373,11 +373,7 @@ func CompareParity(reference, served []byte) (*ParityReport, error) {
 
 // compareParity is CompareParity over the served operations whose tag owns
 // accepts, or all of them when owns is nil, with the registers reg.
-func compareParity(
-	reference, served []byte,
-	owns func(tag string) bool,
-	reg *ParityRegisters,
-) (*ParityReport, error) {
+func compareParity(reference, served []byte, owns func(tag string) bool, reg *ParityRegisters) (*ParityReport, error) {
 	if reg == nil {
 		reg = &ParityRegisters{}
 	}

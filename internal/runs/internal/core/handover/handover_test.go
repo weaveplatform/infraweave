@@ -67,22 +67,14 @@ type stacks struct {
 	fail     string
 }
 
-func (s *stacks) Settings(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s *stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	if s.fail == "Settings" {
 		return stacksapi.Settings{}, errDown
 	}
 	return s.settings, nil
 }
 
-func (s *stacks) Labels(
-	_ context.Context,
-	_ kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID][]string, error) {
+func (s *stacks) Labels(_ context.Context, _ kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID][]string, error) {
 	if s.fail == "Labels" {
 		return nil, errDown
 	}
@@ -116,11 +108,7 @@ type environment struct {
 	err      error
 }
 
-func (e *environment) Resolve(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) (configapi.Resolved, error) {
+func (e *environment) Resolve(context.Context, kernel.AccountID, kernel.ULID) (configapi.Resolved, error) {
 	return e.resolved, e.err
 }
 
@@ -150,11 +138,7 @@ func (c *catalog) Versions(context.Context, vendorsapi.Vendor) ([]string, error)
 	return c.versions, c.err
 }
 
-func (c *catalog) Effective(
-	_ context.Context,
-	_ vendorsapi.Vendor,
-	constraints string,
-) (string, error) {
+func (c *catalog) Effective(_ context.Context, _ vendorsapi.Vendor, constraints string) (string, error) {
 	c.asked = append(c.asked, constraints)
 	if c.invalid {
 		return "", &kernel.Invalid{Detail: "none", Errors: []kernel.FieldError{{
@@ -172,12 +156,7 @@ type sources struct {
 	err   error
 }
 
-func (s *sources) Source(
-	_ context.Context,
-	_ kernel.AccountID,
-	_, _ kernel.ULID,
-	commit string,
-) (runsapi.Source, error) {
+func (s *sources) Source(_ context.Context, _ kernel.AccountID, _, _ kernel.ULID, commit string) (runsapi.Source, error) {
 	s.asked = append(s.asked, commit)
 	return s.src, s.err
 }
@@ -191,11 +170,7 @@ type objects struct {
 	err  error
 }
 
-func (o *objects) SignGet(
-	_ context.Context,
-	store objectstore.Name,
-	key string,
-) (objectstore.Signed, error) {
+func (o *objects) SignGet(_ context.Context, store objectstore.Name, key string) (objectstore.Signed, error) {
 	switch {
 	case o.err != nil:
 		return objectstore.Signed{}, o.err

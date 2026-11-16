@@ -131,21 +131,12 @@ func (s *Store) takeSeat(ctx context.Context, id kernel.ULID) error {
 }
 
 // Seats counts the seats in use in org and in acct.
-func (s *Store) Seats(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-) (featuresapi.Usage, error) {
+func (s *Store) Seats(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID) (featuresapi.Usage, error) {
 	return s.countSeats(ctx, org, acct, kernel.ULID{})
 }
 
 // countSeats is the seats query leaving out the key except, none when zero.
-func (s *Store) countSeats(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	except kernel.ULID,
-) (featuresapi.Usage, error) {
+func (s *Store) countSeats(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, except kernel.ULID) (featuresapi.Usage, error) {
 	var u featuresapi.Usage
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, seats, org, acct, SeatWindow, except).
 		Scan(&u.Organization, &u.Account); err != nil {
@@ -177,34 +168,20 @@ func (s *Store) CreateAPIKey(ctx context.Context, k apikey.Key) error {
 
 // AccountAPIKeys reads a page of the account's keys that are not deleted,
 // in ID order.
-func (s *Store) AccountAPIKeys(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.Key, error) {
+func (s *Store) AccountAPIKeys(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]apikey.Key, error) {
 	return s.keyPage(ctx, "API keys", `TRUE`, acct, after, limit)
 }
 
 // AccountPersonalAPIKeys reads a page of the account's personal keys that
 // are not deleted, in ID order.
-func (s *Store) AccountPersonalAPIKeys(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.Key, error) {
+func (s *Store) AccountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]apikey.Key, error) {
 	return s.keyPage(ctx, "personal API keys", `k.is_personal`, acct, after, limit)
 }
 
 // keyPage reads up to limit ($3) of the keys of account $1 that are not
 // deleted and match cond, in ID order from the first after $2; cond may
 // name further arguments from $4.
-func (s *Store) keyPage(
-	ctx context.Context,
-	what, cond string,
-	args ...any,
-) ([]apikey.Key, error) {
+func (s *Store) keyPage(ctx context.Context, what, cond string, args ...any) ([]apikey.Key, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+keyColumns+`
 		FROM api_keys k JOIN accounts a ON a.id = k.account_id
 		WHERE k.account_id = $1 AND k.deleted_at IS NULL AND ($2::uuid IS NULL OR k.id > $2)
@@ -230,13 +207,7 @@ func (s *Store) keyPage(
 // the setting off, removing the member and deactivating them lock first,
 // so a creation and any of those wait for each other; without, it is the
 // same rule read for a view.
-func personalOwner(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	member kernel.MemberID,
-	lock bool,
-) (string, error) {
+func personalOwner(ctx context.Context, q tx.Querier, acct kernel.AccountID, member kernel.MemberID, lock bool) (string, error) {
 	query := `SELECT coalesce(st.personal_api_keys, true), m.status = 'active', m.login
 		FROM accounts a
 		JOIN account_users u ON u.account_id = a.id AND u.member_id = $2
@@ -264,23 +235,14 @@ func personalOwner(
 
 // PersonalCreatable reads whether member could create a personal key in
 // acct now: personalOwner's rule, without its locks.
-func (s *Store) PersonalCreatable(
-	ctx context.Context,
-	acct kernel.AccountID,
-	member kernel.MemberID,
-) error {
+func (s *Store) PersonalCreatable(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) error {
 	_, err := personalOwner(ctx, tx.Q(ctx, s.db), acct, member, false)
 	return err
 }
 
 // KeysOf reads the IDs of acct's keys that are not deleted, in ID order:
 // those login created, and the personal keys member owns.
-func (s *Store) KeysOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	login string,
-	member kernel.MemberID,
-) ([]kernel.ULID, []kernel.ULID, error) {
+func (s *Store) KeysOf(ctx context.Context, acct kernel.AccountID, login string, member kernel.MemberID) ([]kernel.ULID, []kernel.ULID, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, creator = $2,
 			coalesce(owner_user_id = $3, false)
 		FROM api_keys WHERE account_id = $1 AND deleted_at IS NULL
@@ -350,11 +312,7 @@ func (s *Store) CountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID)
 
 // KeyOwner reads member as acct admits them, with the groups their latest
 // sign-in to acct reported as teams.
-func (s *Store) KeyOwner(
-	ctx context.Context,
-	acct kernel.AccountID,
-	member kernel.MemberID,
-) (apikey.Owner, error) {
+func (s *Store) KeyOwner(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) (apikey.Owner, error) {
 	var o apikey.Owner
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT m.login, m.name, u.latest_groups
 		FROM account_users u JOIN members m ON m.id = u.member_id
@@ -364,11 +322,7 @@ func (s *Store) KeyOwner(
 }
 
 // AccountAPIKey reads the account's key id unless it is deleted.
-func (s *Store) AccountAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (apikey.Key, error) {
+func (s *Store) AccountAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (apikey.Key, error) {
 	k, err := scanKey(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+keyColumns+`
 		FROM api_keys k JOIN accounts a ON a.id = k.account_id
 		WHERE k.account_id = $1 AND k.id = $2 AND k.deleted_at IS NULL`, acct, id))
@@ -377,13 +331,7 @@ func (s *Store) AccountAPIKey(
 
 // UpdateAPIKey applies c to the account's key id unless it is deleted or
 // expect does not accept its version.
-func (s *Store) UpdateAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	c apikey.Change,
-) (apikey.Key, error) {
+func (s *Store) UpdateAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, c apikey.Change) (apikey.Key, error) {
 	var claims []byte
 	if c.ClaimMapping != nil {
 		claims = mappings(*c.ClaimMapping)
@@ -415,13 +363,7 @@ func (s *Store) UpdateAPIKey(
 // lockKey locks the account's key id FOR UPDATE unless it is deleted, so
 // the version expect checks is the one the change replaces; a version it
 // does not accept is kernel.ErrStale.
-func lockKey(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-) error {
+func lockKey(ctx context.Context, q tx.Querier, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect) error {
 	var version int64
 	err := q.QueryRow(ctx, `SELECT version FROM api_keys
 		WHERE account_id = $1 AND id = $2 AND deleted_at IS NULL FOR UPDATE`, acct, id).
@@ -434,34 +376,19 @@ func lockKey(
 
 // ResetAPIKey replaces the account's secret key's hash and revokes the
 // key's sessions.
-func (s *Store) ResetAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	hash []byte,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *Store) ResetAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, hash []byte) (apikey.Key, []kernel.ULID, error) {
 	return s.revokeKey(ctx, "reset", acct, id, kernel.Expect{}, `secret_hash = $3`, `TRUE`, hash)
 }
 
 // DisableAPIKey disables the account's key and revokes its sessions. A
 // disabled key keeps the time and reason it was first disabled with.
-func (s *Store) DisableAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	reason string,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *Store) DisableAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (apikey.Key, []kernel.ULID, error) {
 	return s.revokeKey(ctx, "disable", acct, id, kernel.Expect{}, disabled, `TRUE`, reason)
 }
 
 // DisablePersonalAPIKey is DisableAPIKey of a personal key; a key of the
 // account's own is not found.
-func (s *Store) DisablePersonalAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	reason string,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *Store) DisablePersonalAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (apikey.Key, []kernel.ULID, error) {
 	return s.revokeKey(ctx, "disable", acct, id, kernel.Expect{}, disabled, `is_personal`, reason)
 }
 
@@ -472,12 +399,7 @@ const disabled = `disabled_at = coalesce(disabled_at, now()),
 
 // DeleteAPIKey marks the account's key deleted and revokes its sessions,
 // unless expect does not accept its version.
-func (s *Store) DeleteAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-) (apikey.Key, []kernel.ULID, error) {
+func (s *Store) DeleteAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect) (apikey.Key, []kernel.ULID, error) {
 	var (
 		k   apikey.Key
 		ids []kernel.ULID

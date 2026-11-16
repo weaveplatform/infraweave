@@ -37,13 +37,7 @@ type Options struct {
 
 // New returns bucket, or c.Bucket when bucket is "". Writes go up in
 // resumable chunks of partSize.
-func New(
-	ctx context.Context,
-	c objectstore.GCSConfig,
-	bucket string,
-	partSize int64,
-	o Options,
-) (*Bucket, error) {
+func New(ctx context.Context, c objectstore.GCSConfig, bucket string, partSize int64, o Options) (*Bucket, error) {
 	if bucket == "" {
 		bucket = c.Bucket
 	}
@@ -67,12 +61,7 @@ func (b *Bucket) Handle() *storage.BucketHandle { return b.bucket }
 // service checks; Cloud Storage has no SHA-256 it verifies. Only Close
 // makes the object, so a source that gives other than size bytes cancels
 // the upload and leaves nothing.
-func (b *Bucket) Put(
-	ctx context.Context,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *Bucket) Put(ctx context.Context, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	w := b.bucket.Object(key).NewWriter(ctx)
@@ -132,12 +121,7 @@ func (b *Bucket) Delete(ctx context.Context, key string) error {
 
 // SignURL signs a V4 URL. A PUT binds Content-Length as a signed header;
 // Cloud Storage cannot bind a SHA-256, so Commit reads the object back.
-func (b *Bucket) SignURL(
-	_ context.Context,
-	method, key string,
-	ttl time.Duration,
-	c objectstore.Constraints,
-) (objectstore.Signed, error) {
+func (b *Bucket) SignURL(_ context.Context, method, key string, ttl time.Duration, c objectstore.Constraints) (objectstore.Signed, error) {
 	if method != http.MethodGet && method != http.MethodPut {
 		return objectstore.Signed{}, fmt.Errorf("%w: %s", objectstore.ErrMethod, method)
 	}

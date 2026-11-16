@@ -65,8 +65,7 @@ type Store interface {
 	Handed(ctx context.Context, id kernel.ULID) (lifecycle.Run, error)
 	// StateAt reads the state acct's run entered at state version
 	// version.
-	StateAt(ctx context.Context, acct kernel.AccountID, run kernel.ULID,
-		version int64) (kernel.RunState, error)
+	StateAt(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version int64) (kernel.RunState, error)
 	// ArtifactKey is run's artifact key, made the first time it is asked
 	// for.
 	ArtifactKey(ctx context.Context, run lifecycle.Run) (crypt.Value, error)
@@ -80,8 +79,7 @@ type Store interface {
 	CountChunks(ctx context.Context, run lifecycle.Run, version, n int64) error
 	// Recorded reports whether run recorded the object of kind named
 	// name in state version version.
-	Recorded(ctx context.Context, run lifecycle.Run, version int64,
-		kind workersapi.UploadKind, name string) (bool, error)
+	Recorded(ctx context.Context, run lifecycle.Run, version int64, kind workersapi.UploadKind, name string) (bool, error)
 	// Record records a, an uploaded object of run.
 	Record(ctx context.Context, run lifecycle.Run, a Artifact) error
 	// SetDelta keeps d, run's plan's delta, on the run.
@@ -105,16 +103,10 @@ type Store interface {
 type Objects interface {
 	Open(ctx context.Context, store objectstore.Name, key string) (io.ReadCloser, error)
 	Begin(ctx context.Context, store objectstore.Name, key string, size int64, sum []byte) error
-	BeginSealed(ctx context.Context, store objectstore.Name, key string, size int64,
-		sum, content []byte) error
-	SignPut(ctx context.Context, store objectstore.Name, key string, size int64,
-		sum []byte) (objectstore.Signed, error)
+	BeginSealed(ctx context.Context, store objectstore.Name, key string, size int64, sum, content []byte) error
+	SignPut(ctx context.Context, store objectstore.Name, key string, size int64, sum []byte) (objectstore.Signed, error)
 	SignGet(ctx context.Context, store objectstore.Name, key string) (objectstore.Signed, error)
-	CommitUpload(
-		ctx context.Context,
-		store objectstore.Name,
-		key string,
-	) (objectstore.Object, error)
+	CommitUpload(ctx context.Context, store objectstore.Name, key string) (objectstore.Object, error)
 	Delete(ctx context.Context, store objectstore.Name, key string) error
 }
 
@@ -200,11 +192,7 @@ func (s *Service) held(ctx context.Context, id kernel.ULID) (lifecycle.Run, erro
 }
 
 // current is held, at state version version.
-func (s *Service) current(
-	ctx context.Context,
-	id kernel.ULID,
-	version int64,
-) (lifecycle.Run, error) {
+func (s *Service) current(ctx context.Context, id kernel.ULID, version int64) (lifecycle.Run, error) {
 	r, err := s.held(ctx, id)
 	if err == nil && r.Version != version {
 		err = fmt.Errorf("%w: run %s is at %d, not %d", workersapi.ErrMovedOn, id, r.Version,
@@ -218,11 +206,7 @@ func (s *Service) current(
 // succeeded report of PLANNING takes the plan decision instead. A report
 // one state version behind is answered as it was when it took the run's
 // last transition, so a worker whose answer was lost asks again.
-func (s *Service) Report(
-	ctx context.Context,
-	id kernel.ULID,
-	r workersapi.Report,
-) (workersapi.Step, error) {
+func (s *Service) Report(ctx context.Context, id kernel.ULID, r workersapi.Report) (workersapi.Step, error) {
 	if planned(r) != (r.Delta != nil) {
 		return workersapi.Step{}, fmt.Errorf("%w: %s %s", workersapi.ErrDeltaRefused, r.State,
 			r.Event)
@@ -276,14 +260,7 @@ func (s *Service) Report(
 
 // move moves run to to, driven by driver, with actor and note as the
 // transition's, and answers the next step.
-func (s *Service) move(
-	ctx context.Context,
-	run lifecycle.Run,
-	to kernel.RunState,
-	driver machine.Driver,
-	actor lifecycle.Actor,
-	note string,
-) (workersapi.Step, error) {
+func (s *Service) move(ctx context.Context, run lifecycle.Run, to kernel.RunState, driver machine.Driver, actor lifecycle.Actor, note string) (workersapi.Step, error) {
 	moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
 		Account: run.Account, Run: run.ID, Version: run.Version, To: to, Driver: driver,
 		Actor: actor, Note: note,
@@ -299,11 +276,7 @@ func (s *Service) move(
 // to the state Decision answers for its stack.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
-func (s *Service) decide(
-	ctx context.Context,
-	run lifecycle.Run,
-	r workersapi.Report,
-) (workersapi.Step, error) {
+func (s *Service) decide(ctx context.Context, run lifecycle.Run, r workersapi.Report) (workersapi.Step, error) {
 	st, err := s.d.Stacks.Settings(ctx, run.Account, run.Stack)
 	if err != nil {
 		return workersapi.Step{}, err //nolint:wrapcheck // the stacks domain names the read
@@ -515,12 +488,7 @@ func LogKey(acct kernel.AccountID, run kernel.ULID, state kernel.RunState, versi
 // 32-byte SHA-256. An artifact's row holds the content key the runner
 // seals it under, derived from the run's artifact key and its key, so
 // the server opens it later.
-func (s *Service) Uploads(
-	ctx context.Context,
-	id kernel.ULID,
-	version int64,
-	ups []workersapi.Upload,
-) ([]workersapi.SignedUpload, error) {
+func (s *Service) Uploads(ctx context.Context, id kernel.ULID, version int64, ups []workersapi.Upload) ([]workersapi.SignedUpload, error) {
 	run, err := s.current(ctx, id, version)
 	if err != nil {
 		return nil, err
@@ -626,12 +594,7 @@ func uploadInvalid(err error, pointer string) error {
 // LogChunks commits and indexes each of chunks, as workersapi.Reports
 // says, in the run's current state; a lost chunk is indexed with no
 // object.
-func (s *Service) LogChunks(
-	ctx context.Context,
-	id kernel.ULID,
-	version int64,
-	chunks []workersapi.LogChunk,
-) error {
+func (s *Service) LogChunks(ctx context.Context, id kernel.ULID, version int64, chunks []workersapi.LogChunk) error {
 	run, err := s.current(ctx, id, version)
 	if err != nil {
 		return err
@@ -675,12 +638,7 @@ func (s *Service) LogChunks(
 
 // Artifacts commits and records each of recs, as workersapi.Reports says,
 // in the run's current state.
-func (s *Service) Artifacts(
-	ctx context.Context,
-	id kernel.ULID,
-	version int64,
-	recs []workersapi.Recorded,
-) error {
+func (s *Service) Artifacts(ctx context.Context, id kernel.ULID, version int64, recs []workersapi.Recorded) error {
 	run, err := s.current(ctx, id, version)
 	if err != nil {
 		return err
@@ -749,11 +707,7 @@ func (s *Service) Workspace(ctx context.Context, id kernel.ULID) (string, error)
 // PurgeObjects deletes up to batch of the deleted account acct's log
 // chunks, or else of its other recorded objects, with their objects, in
 // one transaction, and reports whether none was left.
-func (s *Service) PurgeObjects(
-	ctx context.Context,
-	acct kernel.AccountID,
-	batch int,
-) (bool, error) {
+func (s *Service) PurgeObjects(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {
 	var done bool
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		objs, err := s.d.Store.PurgeObjects(ctx, acct, batch)

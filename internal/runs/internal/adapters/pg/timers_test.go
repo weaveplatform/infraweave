@@ -14,12 +14,7 @@ import (
 
 // aged inserts a run of w's stack of typ in state, created at created and
 // its state changed at changed, held by no worker.
-func (w *world) aged(
-	t *testing.T,
-	typ kernel.RunType,
-	state kernel.RunState,
-	created, changed time.Time,
-) kernel.ULID {
+func (w *world) aged(t *testing.T, typ kernel.RunType, state kernel.RunState, created, changed time.Time) kernel.ULID {
 	t.Helper()
 	id := kernel.NewULID()
 	if _, err := w.db.Exec(t.Context(), `INSERT INTO runs (account_id, id, stack_id, type,

@@ -69,11 +69,7 @@ func (l *liveness) Lost(ctx context.Context, w kernel.ULID) (int, error) {
 	return len(runs), nil
 }
 
-func (l *liveness) Ended(
-	ctx context.Context,
-	w, run kernel.ULID,
-	exit workersapi.Exit,
-) (bool, error) {
+func (l *liveness) Ended(ctx context.Context, w, run kernel.ULID, exit workersapi.Exit) (bool, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if err := l.check(ctx, "Ended"); err != nil {
@@ -88,13 +84,7 @@ func (l *liveness) Ended(
 	return true, nil
 }
 
-func (l *liveness) Overdue(
-	ctx context.Context,
-	now time.Time,
-	timeouts []workersapi.PoolTimeout,
-	fallback time.Duration,
-	batch int,
-) (int, error) {
+func (l *liveness) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if err := l.check(ctx, "Overdue"); err != nil {

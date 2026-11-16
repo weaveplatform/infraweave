@@ -117,13 +117,7 @@ func (a *args) add(v any) string {
 
 // filter is the condition of s, the predicates and the full text phrase,
 // with Reachable first, its parameters added to a.
-func filter(
-	e Entity,
-	s Scope,
-	preds []kernelsearch.Predicate,
-	text string,
-	a *args,
-) string {
+func filter(e Entity, s Scope, preds []kernelsearch.Predicate, text string, a *args) string {
 	reach := s.Reachable
 	if reach == nil {
 		reach = []kernel.ULID{}
@@ -400,14 +394,7 @@ func after(keys []key, at []string, a *args) string {
 // Select columns and then into extra, the key columns this package reads
 // back. An input e cannot answer is a *kernelsearch.Invalid; a bad cursor
 // is a *problem.Error of type invalid-cursor.
-func Find[T any](
-	ctx context.Context,
-	q tx.Querier,
-	e Entity,
-	s Scope,
-	in kernelsearch.Input,
-	scan func(row pgx.Row, extra ...any) (T, error),
-) (kernelsearch.Result[T], error) {
+func Find[T any](ctx context.Context, q tx.Querier, e Entity, s Scope, in kernelsearch.Input, scan func(row pgx.Row, extra ...any) (T, error)) (kernelsearch.Result[T], error) {
 	var out kernelsearch.Result[T]
 	if err := kernelsearch.Check(e.Fields(), in); err != nil {
 		return out, err //nolint:wrapcheck // answered as it is
@@ -473,13 +460,7 @@ func Find[T any](
 }
 
 // Count counts e's rows under s that in keeps, ignoring its paging.
-func Count(
-	ctx context.Context,
-	q tx.Querier,
-	e Entity,
-	s Scope,
-	in kernelsearch.Input,
-) (int, error) {
+func Count(ctx context.Context, q tx.Querier, e Entity, s Scope, in kernelsearch.Input) (int, error) {
 	if err := kernelsearch.Check(e.Fields(), in); err != nil {
 		return 0, err //nolint:wrapcheck // answered as it is
 	}
@@ -495,13 +476,7 @@ func Count(
 // Suggest counts e's rows under s that in keeps and lists, for each field
 // in asks for, the values they hold, under the same filter, so no value or
 // count reaches past the reachable spaces.
-func Suggest(
-	ctx context.Context,
-	q tx.Querier,
-	e Entity,
-	s Scope,
-	in kernelsearch.SuggestionsInput,
-) (kernelsearch.Suggestions, error) {
+func Suggest(ctx context.Context, q tx.Querier, e Entity, s Scope, in kernelsearch.SuggestionsInput) (kernelsearch.Suggestions, error) {
 	var out kernelsearch.Suggestions
 	if err := kernelsearch.CheckSuggestions(e.Fields(), in); err != nil {
 		return out, err //nolint:wrapcheck // answered as it is
@@ -534,15 +509,7 @@ func Suggest(
 }
 
 // values lists c's most common values among the rows where keeps.
-func values(
-	ctx context.Context,
-	q tx.Querier,
-	e Entity,
-	c Column,
-	where string,
-	a args,
-	sg *kernelsearch.Suggestion,
-) error {
+func values(ctx context.Context, q tx.Querier, e Entity, c Column, where string, a args, sg *kernelsearch.Suggestion) error {
 	from, v := e.From, "("+c.Expr+")::text"
 	if c.Many {
 		from, v = e.From+" CROSS JOIN LATERAL unnest("+c.Expr+") AS suggested(v)", "suggested.v"
@@ -575,16 +542,7 @@ func collect(ctx context.Context, q tx.Querier, query string, a args, f func(str
 
 // nodes lists a HIERARCHY column's nodes in the reachable spaces, each
 // counting the rows where keeps at it and below it.
-func nodes(
-	ctx context.Context,
-	q tx.Querier,
-	e Entity,
-	s Scope,
-	c Column,
-	where string,
-	a args,
-	sg *kernelsearch.Suggestion,
-) error {
+func nodes(ctx context.Context, q tx.Querier, e Entity, s Scope, c Column, where string, a args, sg *kernelsearch.Suggestion) error {
 	direct := map[string]int{}
 	if err := collect(ctx, q, "SELECT ("+c.Expr+")::text, count(*) FROM "+e.From+
 		" WHERE "+where+" GROUP BY 1", a, func(v string, n int) { direct[v] = n }); err != nil {
@@ -623,13 +581,7 @@ func nodes(
 
 // queryNodes lists c's nodes in the reachable spaces by its Nodes
 // template, answering each one's Expr value as text.
-func queryNodes(
-	ctx context.Context,
-	q tx.Querier,
-	s Scope,
-	c Column,
-	sg *kernelsearch.Suggestion,
-) ([]string, error) {
+func queryNodes(ctx context.Context, q tx.Querier, s Scope, c Column, sg *kernelsearch.Suggestion) ([]string, error) {
 	var na args
 	reach := s.Reachable
 	if reach == nil {

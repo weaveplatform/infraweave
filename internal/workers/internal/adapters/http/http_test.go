@@ -36,12 +36,7 @@ type store struct {
 	fail    error
 }
 
-func (s *store) Get(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-	_ bool,
-) (pool.Pool, error) {
+func (s *store) Get(_ context.Context, _ kernel.AccountID, id kernel.ULID, _ bool) (pool.Pool, error) {
 	if s.fail != nil {
 		return pool.Pool{}, s.fail
 	}
@@ -52,12 +47,7 @@ func (s *store) Get(
 	return p, nil
 }
 
-func (s *store) Search(
-	context.Context,
-	kernel.AccountID,
-	search.Input,
-	pool.Scope,
-) (search.Result[pool.Pool], error) {
+func (s *store) Search(context.Context, kernel.AccountID, search.Input, pool.Scope) (search.Result[pool.Pool], error) {
 	out := search.Result[pool.Pool]{}
 	for _, p := range s.rows {
 		out.Edges = append(out.Edges, search.Edge[pool.Pool]{Node: p})
@@ -73,12 +63,7 @@ func (s *store) SetRunnerImages(context.Context, kernel.AccountID, images.Images
 	return s.fail
 }
 
-func (s *store) Suggest(
-	context.Context,
-	kernel.AccountID,
-	search.SuggestionsInput,
-	pool.Scope,
-) (search.Suggestions, error) {
+func (s *store) Suggest(context.Context, kernel.AccountID, search.SuggestionsInput, pool.Scope) (search.Suggestions, error) {
 	return search.Suggestions{}, s.fail
 }
 
@@ -89,21 +74,11 @@ type workers struct {
 	s *store
 }
 
-func (w workers) Get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	lock bool,
-) (pool.Pool, error) {
+func (w workers) Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (pool.Pool, error) {
 	return w.s.Get(ctx, acct, id, lock)
 }
 
-func (w workers) Drain(
-	_ context.Context,
-	_ kernel.AccountID,
-	p, id kernel.ULID,
-	drain bool,
-) (worker.Worker, error) {
+func (w workers) Drain(_ context.Context, _ kernel.AccountID, p, id kernel.ULID, drain bool) (worker.Worker, error) {
 	for i, wk := range w.s.workers[p] {
 		if wk.ID == id {
 			w.s.workers[p][i].Drained = drain
@@ -115,12 +90,7 @@ func (w workers) Drain(
 
 func (w workers) Cycle(context.Context, kernel.AccountID, kernel.ULID) error { return w.s.fail }
 
-func (w workers) SearchWorkers(
-	_ context.Context,
-	_ kernel.AccountID,
-	p, _ kernel.ULID,
-	_ search.Input,
-) (search.Result[worker.Worker], error) {
+func (w workers) SearchWorkers(_ context.Context, _ kernel.AccountID, p, _ kernel.ULID, _ search.Input) (search.Result[worker.Worker], error) {
 	out := search.Result[worker.Worker]{}
 	for _, wk := range w.s.workers[p] {
 		out.Edges = append(out.Edges, search.Edge[worker.Worker]{Cursor: wk.ID.String(), Node: wk})
@@ -128,21 +98,11 @@ func (w workers) SearchWorkers(
 	return out, w.s.fail
 }
 
-func (w workers) SuggestWorkers(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	kernel.ULID,
-	search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (w workers) SuggestWorkers(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, search.SuggestionsInput) (search.Suggestions, error) {
 	return search.Suggestions{}, w.s.fail
 }
 
-func (w workers) OfPools(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID][]worker.Worker, error) {
+func (w workers) OfPools(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]worker.Worker, error) {
 	return w.s.workers, w.s.fail
 }
 

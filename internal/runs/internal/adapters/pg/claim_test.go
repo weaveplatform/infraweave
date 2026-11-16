@@ -45,12 +45,7 @@ func (w *world) waits(
 
 // take claims through c for worker of w's account's pool, with the drift
 // limit limit, in a transaction of its own.
-func (w *world) take(
-	t *testing.T,
-	c *schedule.Claims,
-	pool, worker kernel.ULID,
-	limit *int,
-) (workersapi.Assignment, bool, error) {
+func (w *world) take(t *testing.T, c *schedule.Claims, pool, worker kernel.ULID, limit *int) (workersapi.Assignment, bool, error) {
 	t.Helper()
 	var (
 		a  workersapi.Assignment
@@ -269,22 +264,14 @@ type failingClaims struct {
 	fail string
 }
 
-func (f failingClaims) Holding(
-	ctx context.Context,
-	a kernel.AccountID,
-	w kernel.ULID,
-) (bool, error) {
+func (f failingClaims) Holding(ctx context.Context, a kernel.AccountID, w kernel.ULID) (bool, error) {
 	if f.fail == "Holding" {
 		return false, errInjected
 	}
 	return f.ClaimStore.Holding(ctx, a, w)
 }
 
-func (f failingClaims) Drifting(
-	ctx context.Context,
-	a kernel.AccountID,
-	p kernel.ULID,
-) (int, error) {
+func (f failingClaims) Drifting(ctx context.Context, a kernel.AccountID, p kernel.ULID) (int, error) {
 	if f.fail == "Drifting" {
 		return 0, errInjected
 	}
@@ -298,13 +285,7 @@ func (f failingClaims) TakeDrift(ctx context.Context, a kernel.AccountID, p kern
 	return f.ClaimStore.TakeDrift(ctx, a, p)
 }
 
-func (f failingClaims) Next(
-	ctx context.Context,
-	a kernel.AccountID,
-	p kernel.ULID,
-	states []kernel.RunState,
-	last int,
-) (lifecycle.Run, bool, error) {
+func (f failingClaims) Next(ctx context.Context, a kernel.AccountID, p kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
 	if f.fail == "Next" || (f.fail == "NextEarlier" && last < 6) {
 		return lifecycle.Run{}, false, errInjected
 	}

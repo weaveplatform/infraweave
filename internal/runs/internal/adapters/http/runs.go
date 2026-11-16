@@ -34,10 +34,7 @@ func (s Server) Run(ctx context.Context, req api.RunRequestObject) (api.RunRespo
 }
 
 // StackRun answers one of the stack's runs or tasks.
-func (s Server) StackRun(
-	ctx context.Context,
-	req api.StackRunRequestObject,
-) (api.StackRunResponseObject, error) {
+func (s Server) StackRun(ctx context.Context, req api.StackRunRequestObject) (api.StackRunResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -50,10 +47,7 @@ func (s Server) StackRun(
 }
 
 // StackRuns lists the stack's tracked and destroy runs, newest first.
-func (s Server) StackRuns(
-	ctx context.Context,
-	req api.StackRunsRequestObject,
-) (api.StackRunsResponseObject, error) {
+func (s Server) StackRuns(ctx context.Context, req api.StackRunsRequestObject) (api.StackRunsResponseObject, error) {
 	out, err := s.list(ctx, req.StackId, read.ListRuns, req.Params.Cursor, req.Params.Before,
 		req.Params.Limit, read.Query{})
 	if err != nil {
@@ -63,10 +57,7 @@ func (s Server) StackRuns(
 }
 
 // StackProposedRuns lists the stack's proposed runs, newest first.
-func (s Server) StackProposedRuns(
-	ctx context.Context,
-	req api.StackProposedRunsRequestObject,
-) (api.StackProposedRunsResponseObject, error) {
+func (s Server) StackProposedRuns(ctx context.Context, req api.StackProposedRunsRequestObject) (api.StackProposedRunsResponseObject, error) {
 	out, err := s.list(ctx, req.StackId, read.ListProposed, req.Params.Cursor,
 		req.Params.Before, req.Params.Limit, read.Query{})
 	if err != nil {
@@ -76,10 +67,7 @@ func (s Server) StackProposedRuns(
 }
 
 // StackTasks lists the stack's tasks, newest first.
-func (s Server) StackTasks(
-	ctx context.Context,
-	req api.StackTasksRequestObject,
-) (api.StackTasksResponseObject, error) {
+func (s Server) StackTasks(ctx context.Context, req api.StackTasksRequestObject) (api.StackTasksResponseObject, error) {
 	out, err := s.list(ctx, req.StackId, read.ListTasks, req.Params.Cursor, req.Params.Before,
 		req.Params.Limit, read.Query{})
 	if err != nil {
@@ -91,10 +79,7 @@ func (s Server) StackTasks(
 // StackRunsInRange lists the stack's runs created from start, inclusive,
 // until end, exclusive, both Unix seconds at most eight days apart,
 // newest first.
-func (s Server) StackRunsInRange(
-	ctx context.Context,
-	req api.StackRunsInRangeRequestObject,
-) (api.StackRunsInRangeResponseObject, error) {
+func (s Server) StackRunsInRange(ctx context.Context, req api.StackRunsInRangeRequestObject) (api.StackRunsInRangeResponseObject, error) {
 	from, to, err := span(req.Params.Start, req.Params.End)
 	if err != nil {
 		return nil, err
@@ -110,14 +95,7 @@ func (s Server) StackRunsInRange(
 // list reads a page of the stack's list l: q's range, older than the run
 // before names, after the run cursor ends a page at. The route has
 // decided SPACE_READ on the stack's space.
-func (s Server) list(
-	ctx context.Context,
-	slug string,
-	l read.List,
-	cursor, before *string,
-	limit *int32,
-	q read.Query,
-) (api.RunPage, error) {
+func (s Server) list(ctx context.Context, slug string, l read.List, cursor, before *string, limit *int32, q read.Query) (api.RunPage, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return api.RunPage{}, err
@@ -197,10 +175,7 @@ func invalidRange(pointer, reason, message string) error {
 // SearchRuns searches the runs of the caller's account's stacks in the
 // spaces it may read, newest first, a page at a time from a cursor or
 // from an offset.
-func (s Server) SearchRuns(
-	ctx context.Context,
-	req api.SearchRunsRequestObject,
-) (api.SearchRunsResponseObject, error) {
+func (s Server) SearchRuns(ctx context.Context, req api.SearchRunsRequestObject) (api.SearchRunsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -267,10 +242,7 @@ func under(at string, err error) error {
 
 // SearchRunsSuggestions lists the values the runs of the caller's
 // account's stacks in the spaces it may read hold.
-func (s Server) SearchRunsSuggestions(
-	ctx context.Context,
-	req api.SearchRunsSuggestionsRequestObject,
-) (api.SearchRunsSuggestionsResponseObject, error) {
+func (s Server) SearchRunsSuggestions(ctx context.Context, req api.SearchRunsSuggestionsRequestObject) (api.SearchRunsSuggestionsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -284,10 +256,7 @@ func (s Server) SearchRunsSuggestions(
 
 // RunCancel cancels a run of the stack that has not started. The route
 // has decided RUN_CANCEL on the stack's space.
-func (s Server) RunCancel(
-	ctx context.Context,
-	req api.RunCancelRequestObject,
-) (api.RunCancelResponseObject, error) {
+func (s Server) RunCancel(ctx context.Context, req api.RunCancelRequestObject) (api.RunCancelResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -305,10 +274,7 @@ func (s Server) RunCancel(
 
 // RunStop asks the worker of a run of the stack that initializes or plans
 // to stop it. The route has decided RUN_STOP on the stack's space.
-func (s Server) RunStop(
-	ctx context.Context,
-	req api.RunStopRequestObject,
-) (api.RunStopResponseObject, error) {
+func (s Server) RunStop(ctx context.Context, req api.RunStopRequestObject) (api.RunStopResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -328,10 +294,7 @@ func (s Server) RunStop(
 // RunKill asks the worker of a run of the stack that a stop did not end
 // to kill its container. The route has decided RUN_KILL on the stack's
 // space.
-func (s Server) RunKill(
-	ctx context.Context,
-	req api.RunKillRequestObject,
-) (api.RunKillResponseObject, error) {
+func (s Server) RunKill(ctx context.Context, req api.RunKillRequestObject) (api.RunKillResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -351,10 +314,7 @@ func (s Server) RunKill(
 // RunConfirm confirms the stack's run waiting for confirmation, the one
 // the body names or else the one that holds the stack's run lock. The
 // route has decided RUN_CONFIRM on the stack's space.
-func (s Server) RunConfirm(
-	ctx context.Context,
-	req api.RunConfirmRequestObject,
-) (api.RunConfirmResponseObject, error) {
+func (s Server) RunConfirm(ctx context.Context, req api.RunConfirmRequestObject) (api.RunConfirmResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -373,10 +333,7 @@ func (s Server) RunConfirm(
 // RunDiscard discards the stack's run waiting for confirmation, chosen as
 // RunConfirm chooses it. The route has decided RUN_DISCARD on the stack's
 // space.
-func (s Server) RunDiscard(
-	ctx context.Context,
-	req api.RunDiscardRequestObject,
-) (api.RunDiscardResponseObject, error) {
+func (s Server) RunDiscard(ctx context.Context, req api.RunDiscardRequestObject) (api.RunDiscardResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -396,10 +353,7 @@ func (s Server) RunDiscard(
 // confirmation again against the request's resource addresses. The route
 // has decided RUN_TARGETED_REPLAN on the stack's space, and the
 // targeted-replan feature.
-func (s Server) RunTargetedReplan(
-	ctx context.Context,
-	req api.RunTargetedReplanRequestObject,
-) (api.RunTargetedReplanResponseObject, error) {
+func (s Server) RunTargetedReplan(ctx context.Context, req api.RunTargetedReplanRequestObject) (api.RunTargetedReplanResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -417,10 +371,7 @@ func (s Server) RunTargetedReplan(
 
 // RunPrioritySet sets the priority of a run of the stack that has not
 // ended. The route has decided RUN_PRIORITIZE_SET on the stack's space.
-func (s Server) RunPrioritySet(
-	ctx context.Context,
-	req api.RunPrioritySetRequestObject,
-) (api.RunPrioritySetResponseObject, error) {
+func (s Server) RunPrioritySet(ctx context.Context, req api.RunPrioritySetRequestObject) (api.RunPrioritySetResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

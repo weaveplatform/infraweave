@@ -17,10 +17,7 @@ const personalAPIKeysAccountList = "personal-api-keys"
 // oldest first.
 //
 //nolint:revive // the generated interface names it
-func (s Server) PersonalApiKeys(
-	ctx context.Context,
-	req api.PersonalApiKeysRequestObject,
-) (api.PersonalApiKeysResponseObject, error) {
+func (s Server) PersonalApiKeys(ctx context.Context, req api.PersonalApiKeysRequestObject) (api.PersonalApiKeysResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -52,10 +49,7 @@ func (s Server) PersonalApiKeys(
 // readable.
 //
 //nolint:revive // the generated interface names it
-func (s Server) PersonalApiKeyCreate(
-	ctx context.Context,
-	req api.PersonalApiKeyCreateRequestObject,
-) (api.PersonalApiKeyCreateResponseObject, error) {
+func (s Server) PersonalApiKeyCreate(ctx context.Context, req api.PersonalApiKeyCreateRequestObject) (api.PersonalApiKeyCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -79,10 +73,7 @@ func (s Server) PersonalApiKeyCreate(
 // account that still work.
 //
 //nolint:revive // the generated interface names it
-func (s Server) PersonalApiKeysCount(
-	ctx context.Context,
-	_ api.PersonalApiKeysCountRequestObject,
-) (api.PersonalApiKeysCountResponseObject, error) {
+func (s Server) PersonalApiKeysCount(ctx context.Context, _ api.PersonalApiKeysCountRequestObject) (api.PersonalApiKeysCountResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -100,10 +91,7 @@ func (s Server) PersonalApiKeysCount(
 // answers 404.
 //
 //nolint:revive // the generated interface names it
-func (s Server) PersonalApiKeyDisable(
-	ctx context.Context,
-	req api.PersonalApiKeyDisableRequestObject,
-) (api.PersonalApiKeyDisableResponseObject, error) {
+func (s Server) PersonalApiKeyDisable(ctx context.Context, req api.PersonalApiKeyDisableRequestObject) (api.PersonalApiKeyDisableResponseObject, error) {
 	k, err := s.onKey(ctx, req.PersonalApiKeyId, s.keys.DisablePersonal)
 	if err != nil {
 		return nil, err

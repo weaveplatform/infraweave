@@ -98,12 +98,7 @@ type ClassFunc func(*http.Request) Class
 // Middleware draws one token from the caller's bucket for the request's
 // class, writes the bucket's state on the response and answers 429 when the
 // bucket is empty.
-func Middleware(
-	c Config,
-	store Store,
-	caller CallerFunc,
-	class ClassFunc,
-) func(http.Handler) http.Handler {
+func Middleware(c Config, store Store, caller CallerFunc, class ClassFunc) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cl := class(r)

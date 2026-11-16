@@ -30,10 +30,7 @@ func NewOperatorServer(orgs *operator.Service) OperatorServer {
 }
 
 // Organizations lists the installation's organizations, oldest first.
-func (s OperatorServer) Organizations(
-	ctx context.Context,
-	req opapi.OrganizationsRequestObject,
-) (opapi.OrganizationsResponseObject, error) {
+func (s OperatorServer) Organizations(ctx context.Context, req opapi.OrganizationsRequestObject) (opapi.OrganizationsResponseObject, error) {
 	var after kernel.OrganizationID
 	if req.Params.Cursor != nil {
 		c, err := page.Decode[string](organizationsList, *req.Params.Cursor)
@@ -73,10 +70,7 @@ func (s OperatorServer) Organizations(
 
 // OrganizationCreate creates an organization with its first account and,
 // when the body names one, its break-glass credential.
-func (s OperatorServer) OrganizationCreate(
-	ctx context.Context,
-	req opapi.OrganizationCreateRequestObject,
-) (opapi.OrganizationCreateResponseObject, error) {
+func (s OperatorServer) OrganizationCreate(ctx context.Context, req opapi.OrganizationCreateRequestObject) (opapi.OrganizationCreateResponseObject, error) {
 	in := operator.Input{
 		Slug:        req.Body.Slug,
 		Name:        req.Body.Name,
@@ -97,10 +91,7 @@ func (s OperatorServer) OrganizationCreate(
 }
 
 // Organization reads an organization.
-func (s OperatorServer) Organization(
-	ctx context.Context,
-	req opapi.OrganizationRequestObject,
-) (opapi.OrganizationResponseObject, error) {
+func (s OperatorServer) Organization(ctx context.Context, req opapi.OrganizationRequestObject) (opapi.OrganizationResponseObject, error) {
 	o, err := s.orgs.Get(ctx, req.Organization)
 	if err != nil {
 		return nil, orgError(err, req.Organization)
@@ -110,10 +101,7 @@ func (s OperatorServer) Organization(
 
 // OrganizationDelete deletes an organization and its accounts, and answers
 // it as it was.
-func (s OperatorServer) OrganizationDelete(
-	ctx context.Context,
-	req opapi.OrganizationDeleteRequestObject,
-) (opapi.OrganizationDeleteResponseObject, error) {
+func (s OperatorServer) OrganizationDelete(ctx context.Context, req opapi.OrganizationDeleteRequestObject) (opapi.OrganizationDeleteResponseObject, error) {
 	o, err := s.orgs.Delete(ctx, actor(ctx), req.Organization)
 	if err != nil {
 		return nil, orgError(err, req.Organization)
@@ -123,10 +111,7 @@ func (s OperatorServer) OrganizationDelete(
 
 // OrganizationBreakGlassSet sets or replaces an organization's break-glass
 // credential.
-func (s OperatorServer) OrganizationBreakGlassSet(
-	ctx context.Context,
-	req opapi.OrganizationBreakGlassSetRequestObject,
-) (opapi.OrganizationBreakGlassSetResponseObject, error) {
+func (s OperatorServer) OrganizationBreakGlassSet(ctx context.Context, req opapi.OrganizationBreakGlassSetRequestObject) (opapi.OrganizationBreakGlassSetResponseObject, error) {
 	o, err := s.orgs.SetBreakGlass(ctx, actor(ctx), req.Organization, operator.BreakGlassInput{
 		Login: req.Body.Login, PasswordHash: deref(req.Body.PasswordHash),
 	})

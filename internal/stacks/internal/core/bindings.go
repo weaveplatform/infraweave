@@ -42,11 +42,7 @@ type Holding struct {
 // BindingSpaceOf is the space of the stack acct's stack binding raw
 // binds, which the access domain's middleware decides the binding's
 // operations on; accessapi.ErrNoSubject when acct lacks either.
-func (s *Service) BindingSpaceOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	raw string,
-) (kernel.ULID, error) {
+func (s *Service) BindingSpaceOf(ctx context.Context, acct kernel.AccountID, raw string) (kernel.ULID, error) {
 	b, err := s.Binding(ctx, acct, raw)
 	if errors.Is(err, accessapi.ErrNoBinding) {
 		return kernel.ULID{}, accessapi.ErrNoSubject
@@ -76,11 +72,7 @@ func (s *Service) Binding(ctx context.Context, acct kernel.AccountID, raw string
 }
 
 // Bindings reads the bindings of acct's stack slug, oldest first.
-func (s *Service) Bindings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) ([]Binding, error) {
+func (s *Service) Bindings(ctx context.Context, acct kernel.AccountID, slug string) ([]Binding, error) {
 	st, err := s.store.BySlug(ctx, acct, slug, false)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
@@ -131,11 +123,7 @@ func (s *Service) Bind(ctx context.Context, p kernel.Principal, r BindRequest) (
 // not administer are refused by rule.
 //
 // ref: decision 0007 § "Bindings"
-func (s *Service) BindAll(
-	ctx context.Context,
-	p kernel.Principal,
-	rs []BindRequest,
-) ([]Binding, error) {
+func (s *Service) BindAll(ctx context.Context, p kernel.Principal, rs []BindRequest) ([]Binding, error) {
 	const pointer = "/bindings"
 	var out []Binding
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
@@ -180,13 +168,7 @@ func (s *Service) BindAll(
 // one it moves to each need SPACE_ADMIN, the first decided under the
 // binding's lock, and the second follows Bind's rules. r's stack is not
 // read, since a binding's stack never changes.
-func (s *Service) Rebind(
-	ctx context.Context,
-	p kernel.Principal,
-	raw string,
-	expect kernel.Expect,
-	r BindRequest,
-) (Binding, error) {
+func (s *Service) Rebind(ctx context.Context, p kernel.Principal, raw string, expect kernel.Expect, r BindRequest) (Binding, error) {
 	var out Binding
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		cur, err := s.heldBinding(ctx, p.AccountID, raw)
@@ -211,12 +193,7 @@ func (s *Service) Rebind(
 // version, as p, and answers it as it was. The route has decided
 // STACK_MANAGE on the stack's space; the space the binding is in needs
 // SPACE_ADMIN, decided under the binding's lock.
-func (s *Service) Unbind(
-	ctx context.Context,
-	p kernel.Principal,
-	raw string,
-	expect kernel.Expect,
-) (Binding, error) {
+func (s *Service) Unbind(ctx context.Context, p kernel.Principal, raw string, expect kernel.Expect) (Binding, error) {
 	var out Binding
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		cur, err := s.heldBinding(ctx, p.AccountID, raw)
@@ -236,11 +213,7 @@ func (s *Service) Unbind(
 
 // held reads acct's stack slug and holds it in the context's transaction,
 // so its delete waits for the binding the caller writes and removes it.
-func (s *Service) held(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (stacksapi.Stack, error) {
+func (s *Service) held(ctx context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	st, err := s.store.BySlug(ctx, acct, slug, false)
 	if err != nil {
 		return stacksapi.Stack{}, err //nolint:wrapcheck // the store names the read
@@ -253,11 +226,7 @@ func (s *Service) held(
 
 // heldBinding reads acct's stack binding raw and holds its stack, as held
 // does.
-func (s *Service) heldBinding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	raw string,
-) (Binding, error) {
+func (s *Service) heldBinding(ctx context.Context, acct kernel.AccountID, raw string) (Binding, error) {
 	b, err := s.Binding(ctx, acct, raw)
 	if err != nil {
 		return Binding{}, err
@@ -272,10 +241,7 @@ func (s *Service) heldBinding(
 
 // administers refuses a binding in a space p does not administer, as a
 // *Denied.
-func (s *Service) administers(
-	ctx context.Context,
-	p kernel.Principal,
-) func(accessapi.RoleBinding) error {
+func (s *Service) administers(ctx context.Context, p kernel.Principal) func(accessapi.RoleBinding) error {
 	return func(b accessapi.RoleBinding) error {
 		return s.require(ctx, p, accessapi.ActionSpaceAdmin, b.SpaceID)
 	}
@@ -284,12 +250,7 @@ func (s *Service) administers(
 // target refuses binding st in the space slug, as p, unless p reads it
 // and administers it and, for the top space, st lives there; a refusal of
 // the top space points at pointer.
-func (s *Service) target(
-	ctx context.Context,
-	p kernel.Principal,
-	st stacksapi.Stack,
-	slug, pointer string,
-) error {
+func (s *Service) target(ctx context.Context, p kernel.Principal, st stacksapi.Stack, slug, pointer string) error {
 	id, err := s.spaces.Find(ctx, p.AccountID, slug)
 	if errors.Is(err, accessapi.ErrNoSpace) {
 		return &SpaceError{Slug: slug}
@@ -317,12 +278,7 @@ func (s *Service) target(
 // answering the refusal at pointer when p's account lacks it, p cannot
 // read its space or may not perform STACK_MANAGE there, and none
 // otherwise.
-func (s *Service) managed(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, pointer string,
-	st *stacksapi.Stack,
-) ([]kernel.FieldError, error) {
+func (s *Service) managed(ctx context.Context, p kernel.Principal, slug, pointer string, st *stacksapi.Stack) ([]kernel.FieldError, error) {
 	var err error
 	*st, err = s.held(ctx, p.AccountID, slug)
 	if err != nil && !errors.Is(err, stacksapi.ErrNotFound) {
@@ -356,12 +312,7 @@ func (s *Service) managed(
 // topSpace is the refusal at pointer of binding st in the space slug when
 // it is acct's top space and st lives below it, and none otherwise; a
 // space acct lacks is left to the binding's own refusal.
-func (s *Service) topSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	st stacksapi.Stack,
-	slug, pointer string,
-) ([]kernel.FieldError, error) {
+func (s *Service) topSpace(ctx context.Context, acct kernel.AccountID, st stacksapi.Stack, slug, pointer string) ([]kernel.FieldError, error) {
 	id, err := s.spaces.Find(ctx, acct, slug)
 	if errors.Is(err, accessapi.ErrNoSpace) {
 		return []kernel.FieldError{}, nil
@@ -376,12 +327,7 @@ func (s *Service) topSpace(
 
 // topRefused is the refusal at pointer of binding st in space when space
 // is acct's top space, whose ID is the account's, and st lives below it.
-func topRefused(
-	acct kernel.AccountID,
-	st stacksapi.Stack,
-	space kernel.ULID,
-	pointer string,
-) *kernel.FieldError {
+func topRefused(acct kernel.AccountID, st stacksapi.Stack, space kernel.ULID, pointer string) *kernel.FieldError {
 	if space != acct.ULID || st.Space == acct.ULID {
 		return nil
 	}
@@ -400,12 +346,7 @@ func topRefused(
 // as a *Denied. Each stack is listed whatever space it lives in, as the
 // reference's narrow view of it does, so the space's admin sees every
 // stack that can act in it.
-func (s *Service) Holding(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, mode string,
-	in search.Input,
-) (search.Result[Holding], error) {
+func (s *Service) Holding(ctx context.Context, p kernel.Principal, slug, mode string, in search.Input) (search.Result[Holding], error) {
 	scope, grants, err := s.holding(ctx, p, slug, mode)
 	if err != nil {
 		return search.Result[Holding]{}, err
@@ -428,12 +369,7 @@ func (s *Service) Holding(
 
 // SuggestHolding lists the values the stacks a space's access view lists
 // hold, under in's predicates, as Holding decides them.
-func (s *Service) SuggestHolding(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, mode string,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) SuggestHolding(ctx context.Context, p kernel.Principal, slug, mode string, in search.SuggestionsInput) (search.Suggestions, error) {
 	scope, _, err := s.holding(ctx, p, slug, mode)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -444,11 +380,7 @@ func (s *Service) SuggestHolding(
 // holding is the scope of the space slug's access view in mode, holding
 // a search to the stacks it lists, and the grants that reach the space
 // for each of them.
-func (s *Service) holding(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, mode string,
-) (Scope, map[kernel.ULID][]accessapi.StackGrant, error) {
+func (s *Service) holding(ctx context.Context, p kernel.Principal, slug, mode string) (Scope, map[kernel.ULID][]accessapi.StackGrant, error) {
 	space, err := s.spaces.Find(ctx, p.AccountID, slug)
 	if errors.Is(err, accessapi.ErrNoSpace) {
 		return Scope{}, nil, &SpaceError{Slug: slug}

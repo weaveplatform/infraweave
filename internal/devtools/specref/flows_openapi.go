@@ -288,12 +288,7 @@ func planFlows(src *FlowsSources) ([]*flowsOperation, *FlowsReport, error) {
 	return ops, rep, nil
 }
 
-func addFlowsRPC(
-	m *FlowsMapping,
-	byID map[string]*flowsOperation,
-	e FlowsRPCEntry,
-	r flowsRPC,
-) error {
+func addFlowsRPC(m *FlowsMapping, byID map[string]*flowsOperation, e FlowsRPCEntry, r flowsRPC) error {
 	route, err := m.route(r.Path, r.Request)
 	if err != nil {
 		return err

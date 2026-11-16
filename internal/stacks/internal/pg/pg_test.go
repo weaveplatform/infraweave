@@ -156,14 +156,7 @@ func TestAccPurge(t *testing.T) {
 
 // insertStack writes a stack of acct named slug in space with labels,
 // and returns its ID.
-func insertStack(
-	t *testing.T,
-	db *pgxpool.Pool,
-	acct kernel.AccountID,
-	slug string,
-	space kernel.ULID,
-	labels ...string,
-) kernel.ULID {
+func insertStack(t *testing.T, db *pgxpool.Pool, acct kernel.AccountID, slug string, space kernel.ULID, labels ...string) kernel.ULID {
 	t.Helper()
 	ctx := t.Context()
 	id := kernel.NewULID()

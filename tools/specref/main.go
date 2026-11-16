@@ -443,12 +443,7 @@ func newRoot() *cobra.Command {
 
 // states prints the computed state of each of the product's capability
 // records and returns the records that claim more than it.
-func states(
-	cmd *cobra.Command,
-	c *config,
-	p specref.Product,
-	rep *specref.ParityReport,
-) ([]string, error) {
+func states(cmd *cobra.Command, c *config, p specref.Product, rep *specref.ParityReport) ([]string, error) {
 	caps, err := os.ReadFile(c.Capabilities)
 	if err != nil {
 		return nil, fmt.Errorf("states: %w", err)

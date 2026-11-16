@@ -26,12 +26,7 @@ type store struct {
 	fail error
 }
 
-func (s *store) Get(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-	_ bool,
-) (integration.Integration, error) {
+func (s *store) Get(_ context.Context, _ kernel.AccountID, id kernel.ULID, _ bool) (integration.Integration, error) {
 	if s.fail != nil {
 		return integration.Integration{}, s.fail
 	}
@@ -43,11 +38,7 @@ func (s *store) Get(
 }
 
 // Default is the account's first integration of provider.
-func (s *store) Default(
-	_ context.Context,
-	_ kernel.AccountID,
-	provider string,
-) (integration.Integration, error) {
+func (s *store) Default(_ context.Context, _ kernel.AccountID, provider string) (integration.Integration, error) {
 	if s.fail != nil {
 		return integration.Integration{}, s.fail
 	}
@@ -59,20 +50,11 @@ func (s *store) Default(
 	return integration.Integration{}, integration.ErrNotFound
 }
 
-func (s *store) Secrets(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) (integration.Secrets, error) {
+func (s *store) Secrets(context.Context, kernel.AccountID, kernel.ULID) (integration.Secrets, error) {
 	return integration.Secrets{Credential: []byte("token")}, nil
 }
 
-func (s *store) Search(
-	context.Context,
-	kernel.AccountID,
-	search.Input,
-	integration.Scope,
-) (search.Result[integration.Integration], error) {
+func (s *store) Search(context.Context, kernel.AccountID, search.Input, integration.Scope) (search.Result[integration.Integration], error) {
 	if s.fail != nil {
 		return search.Result[integration.Integration]{}, s.fail
 	}
@@ -83,12 +65,7 @@ func (s *store) Search(
 	return out, nil
 }
 
-func (s *store) Suggest(
-	context.Context,
-	kernel.AccountID,
-	search.SuggestionsInput,
-	integration.Scope,
-) (search.Suggestions, error) {
+func (s *store) Suggest(context.Context, kernel.AccountID, search.SuggestionsInput, integration.Scope) (search.Suggestions, error) {
 	return search.Suggestions{}, s.fail
 }
 
@@ -127,20 +104,11 @@ type authz struct {
 	top kernel.ULID
 }
 
-func (a authz) Authorize(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
-	kernel.ULID,
-) (bool, error) {
+func (a authz) Authorize(context.Context, kernel.Principal, accessapi.Action, kernel.ULID) (bool, error) {
 	return true, nil
 }
 
-func (a authz) Reachable(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
-) ([]kernel.ULID, error) {
+func (a authz) Reachable(context.Context, kernel.Principal, accessapi.Action) ([]kernel.ULID, error) {
 	return []kernel.ULID{a.top}, nil
 }
 

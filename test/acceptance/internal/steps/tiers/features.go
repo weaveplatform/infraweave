@@ -128,10 +128,7 @@ func (s *featureSteps) apiAnswers(ctx context.Context, method, path, code string
 
 // apiBodyProblem sends body, a JSON document, on the API listener: an
 // option of a feature is a member of a request's body.
-func (s *featureSteps) apiBodyProblem(
-	ctx context.Context,
-	method, path, body, code, slug string,
-) error {
+func (s *featureSteps) apiBodyProblem(ctx context.Context, method, path, body, code, slug string) error {
 	resp, err := s.w.API.Do(ctx, method, path, json.RawMessage(body))
 	if resp == nil {
 		return err //nolint:wrapcheck // the client names the request

@@ -102,10 +102,7 @@ const sessionsList = "sessions"
 // validUntil are the token and its expiry.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeyUser(
-	ctx context.Context,
-	req api.ApiKeyUserRequestObject,
-) (api.ApiKeyUserResponseObject, error) {
+func (s Server) ApiKeyUser(ctx context.Context, req api.ApiKeyUserRequestObject) (api.ApiKeyUserResponseObject, error) {
 	g, err := s.auth.Exchange(ctx, req.Body.Id, req.Body.Secret, from(ctx).addr)
 	if errors.Is(err, authn.ErrUnauthenticated) {
 		//nolint:wrapcheck // a problem, answered as it is
@@ -131,10 +128,7 @@ func (s Server) ApiKeyUser(
 
 // Viewer is the caller, with the token it presented; a browser session
 // presents none.
-func (s Server) Viewer(
-	ctx context.Context,
-	_ api.ViewerRequestObject,
-) (api.ViewerResponseObject, error) {
+func (s Server) Viewer(ctx context.Context, _ api.ViewerRequestObject) (api.ViewerResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -148,10 +142,7 @@ func (s Server) Viewer(
 }
 
 // Sessions lists the live sessions of the caller's account, oldest first.
-func (s Server) Sessions(
-	ctx context.Context,
-	req api.SessionsRequestObject,
-) (api.SessionsResponseObject, error) {
+func (s Server) Sessions(ctx context.Context, req api.SessionsRequestObject) (api.SessionsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -196,10 +187,7 @@ func (s Server) Sessions(
 // answers 404, as one the caller cannot see.
 //
 // ref: decision 0007
-func (s Server) SessionDelete(
-	ctx context.Context,
-	req api.SessionDeleteRequestObject,
-) (api.SessionDeleteResponseObject, error) {
+func (s Server) SessionDelete(ctx context.Context, req api.SessionDeleteRequestObject) (api.SessionDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -225,10 +213,7 @@ func (s Server) SessionDelete(
 
 // SessionDeleteAll revokes every session of the caller's account but its
 // own, and answers the sessions it revoked.
-func (s Server) SessionDeleteAll(
-	ctx context.Context,
-	_ api.SessionDeleteAllRequestObject,
-) (api.SessionDeleteAllResponseObject, error) {
+func (s Server) SessionDeleteAll(ctx context.Context, _ api.SessionDeleteAllRequestObject) (api.SessionDeleteAllResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -250,10 +235,7 @@ func (s Server) SessionDeleteAll(
 
 // Logout revokes the caller's own session, and clears a browser
 // session's cookie.
-func (s Server) Logout(
-	ctx context.Context,
-	_ api.LogoutRequestObject,
-) (api.LogoutResponseObject, error) {
+func (s Server) Logout(ctx context.Context, _ api.LogoutRequestObject) (api.LogoutResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -292,12 +274,7 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 // p may create a personal key are the apikey service's.
 //
 // ref: decision 0007 § "Evaluation"
-func (s Server) userOf(
-	ctx context.Context,
-	p kernel.Principal,
-	token string,
-	until time.Time,
-) (api.User, error) {
+func (s Server) userOf(ctx context.Context, p kernel.Principal, token string, until time.Time) (api.User, error) {
 	u := user(p, token, until)
 	h, err := s.keys.Held(ctx, p)
 	if err != nil {
@@ -321,11 +298,7 @@ const (
 // actionsOn are the actions on an entity of kind entity that p holds, as
 // the route table decides each: the catalogue's actions on the kind,
 // which are account actions.
-func (s Server) actionsOn(
-	ctx context.Context,
-	p kernel.Principal,
-	entity string,
-) ([]api.Action, error) {
+func (s Server) actionsOn(ctx context.Context, p kernel.Principal, entity string) ([]api.Action, error) {
 	held, err := s.authz.Actions(ctx, p, p.AccountID.ULID)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the snapshot's read names itself

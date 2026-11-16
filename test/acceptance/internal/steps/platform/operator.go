@@ -190,10 +190,7 @@ type operatorOrganization struct {
 	} `json:"breakGlass"`
 }
 
-func (o *operatorSteps) create(
-	ctx context.Context,
-	name, slug, account, login, replica string,
-) error {
+func (o *operatorSteps) create(ctx context.Context, name, slug, account, login, replica string) error {
 	c, err := o.client(replica, name)
 	if err != nil {
 		return err
@@ -270,10 +267,7 @@ func (o *operatorSteps) listed(ctx context.Context, replica, name, how, slug str
 	return nil
 }
 
-func (o *operatorSteps) read(
-	ctx context.Context,
-	slug, replica, name, account, login string,
-) error {
+func (o *operatorSteps) read(ctx context.Context, slug, replica, name, account, login string) error {
 	c, err := o.client(replica, name)
 	if err != nil {
 		return err
@@ -294,10 +288,7 @@ func (o *operatorSteps) read(
 	return organization(resp.Body, slug, account, login)
 }
 
-func (o *operatorSteps) setBreakGlass(
-	ctx context.Context,
-	name, slug, login, replica string,
-) error {
+func (o *operatorSteps) setBreakGlass(ctx context.Context, name, slug, login, replica string) error {
 	c, err := o.client(replica, name)
 	if err != nil {
 		return err
@@ -381,10 +372,7 @@ func (o *operatorSteps) trail(ctx context.Context, slug string, actions ...strin
 	return nil
 }
 
-func (o *operatorSteps) createAgain(
-	ctx context.Context,
-	slug, replica, name, code, problem string,
-) error {
+func (o *operatorSteps) createAgain(ctx context.Context, slug, replica, name, code, problem string) error {
 	c, err := o.client(replica, name)
 	if err != nil {
 		return err
@@ -397,12 +385,7 @@ func (o *operatorSteps) createAgain(
 	return operatorProblem(resp.HTTPResponse, resp.Body, "creating "+slug, code, problem, "")
 }
 
-func (o *operatorSteps) createWeak(
-	ctx context.Context,
-	slug string,
-	iterations int,
-	replica, name, code, problem, field string,
-) error {
+func (o *operatorSteps) createWeak(ctx context.Context, slug string, iterations int, replica, name, code, problem, field string) error {
 	salt := make([]byte, 16)
 	key, err := pbkdf2.Key(sha256.New, "correct horse", salt, iterations, 32)
 	if err != nil {

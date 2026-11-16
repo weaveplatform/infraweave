@@ -48,12 +48,7 @@ func (m *mem) CreateAPIKey(_ context.Context, k Key) error {
 	return m.err
 }
 
-func (m *mem) AccountAPIKeys(
-	_ context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]Key, error) {
+func (m *mem) AccountAPIKeys(_ context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]Key, error) {
 	var out []Key
 	for _, k := range m.keys {
 		if k.AccountID == acct && k.DeletedAt.IsZero() &&
@@ -76,13 +71,7 @@ func (m *mem) AccountAPIKey(_ context.Context, acct kernel.AccountID, id kernel.
 	return k, m.err
 }
 
-func (m *mem) UpdateAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	c Change,
-) (Key, error) {
+func (m *mem) UpdateAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, c Change) (Key, error) {
 	k, err := m.AccountAPIKey(ctx, acct, id)
 	if err != nil {
 		return Key{}, err
@@ -107,12 +96,7 @@ func (m *mem) UpdateAPIKey(
 	return k, nil
 }
 
-func (m *mem) change(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	f func(*Key),
-) (Key, []kernel.ULID, error) {
+func (m *mem) change(ctx context.Context, acct kernel.AccountID, id kernel.ULID, f func(*Key)) (Key, []kernel.ULID, error) {
 	k, err := m.AccountAPIKey(ctx, acct, id)
 	if err != nil {
 		return Key{}, nil, err
@@ -124,21 +108,11 @@ func (m *mem) change(
 	return k, revoked, nil
 }
 
-func (m *mem) ResetAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	hash []byte,
-) (Key, []kernel.ULID, error) {
+func (m *mem) ResetAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, hash []byte) (Key, []kernel.ULID, error) {
 	return m.change(ctx, acct, id, func(k *Key) { k.SecretHash = hash })
 }
 
-func (m *mem) DisableAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	reason string,
-) (Key, []kernel.ULID, error) {
+func (m *mem) DisableAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (Key, []kernel.ULID, error) {
 	return m.change(ctx, acct, id, func(k *Key) {
 		if k.DisabledAt.IsZero() {
 			k.DisabledAt, k.DisabledReason = t0, reason
@@ -146,12 +120,7 @@ func (m *mem) DisableAPIKey(
 	})
 }
 
-func (m *mem) DeleteAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-) (Key, []kernel.ULID, error) {
+func (m *mem) DeleteAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect) (Key, []kernel.ULID, error) {
 	if k, err := m.AccountAPIKey(ctx, acct, id); err == nil {
 		if err := expect.Check(k.Version); err != nil {
 			return Key{}, nil, err
@@ -181,12 +150,7 @@ type role struct {
 	err, holdsErr error
 }
 
-func (r *role) Authorize(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
-	kernel.ULID,
-) (bool, error) {
+func (r *role) Authorize(context.Context, kernel.Principal, accessapi.Action, kernel.ULID) (bool, error) {
 	return r.top, r.err
 }
 
@@ -532,12 +496,7 @@ func (m *mem) CreatePersonalAPIKey(_ context.Context, k Key) (Key, error) {
 	return k, nil
 }
 
-func (m *mem) AccountPersonalAPIKeys(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]Key, error) {
+func (m *mem) AccountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]Key, error) {
 	all, err := m.AccountAPIKeys(ctx, acct, after, len(m.keys))
 	var out []Key
 	for _, k := range all {
@@ -559,12 +518,7 @@ func (m *mem) CountPersonalAPIKeys(ctx context.Context, acct kernel.AccountID) (
 	return n, err
 }
 
-func (m *mem) DisablePersonalAPIKey(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	reason string,
-) (Key, []kernel.ULID, error) {
+func (m *mem) DisablePersonalAPIKey(ctx context.Context, acct kernel.AccountID, id kernel.ULID, reason string) (Key, []kernel.ULID, error) {
 	if k, ok := m.keys[id]; ok && !k.Personal() {
 		return Key{}, nil, errMissing
 	}
@@ -663,11 +617,7 @@ func TestUnitServicePersonalRefusals(t *testing.T) {
 	}
 }
 
-func (m *mem) PersonalCreatable(
-	_ context.Context,
-	acct kernel.AccountID,
-	member kernel.MemberID,
-) error {
+func (m *mem) PersonalCreatable(_ context.Context, acct kernel.AccountID, member kernel.MemberID) error {
 	switch {
 	case m.creatableErr != nil:
 		return m.creatableErr
@@ -679,12 +629,7 @@ func (m *mem) PersonalCreatable(
 	return nil
 }
 
-func (m *mem) KeysOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	login string,
-	member kernel.MemberID,
-) ([]kernel.ULID, []kernel.ULID, error) {
+func (m *mem) KeysOf(ctx context.Context, acct kernel.AccountID, login string, member kernel.MemberID) ([]kernel.ULID, []kernel.ULID, error) {
 	keys, err := m.AccountAPIKeys(ctx, acct, kernel.ULID{}, len(m.keys))
 	var created, owned []kernel.ULID
 	for _, k := range keys {

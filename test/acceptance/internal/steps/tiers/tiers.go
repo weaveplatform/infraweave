@@ -68,12 +68,7 @@ func (p *platformSteps) register(sc *godog.ScenarioContext) {
 }
 
 // ok sends a request and fails unless it answers want.
-func (p *platformSteps) ok(
-	ctx context.Context,
-	replica, tok, method, path string,
-	body any,
-	want int,
-) (harness.Response, error) {
+func (p *platformSteps) ok(ctx context.Context, replica, tok, method, path string, body any, want int) (harness.Response, error) {
 	r, err := p.w.Do(ctx, replica, tok, method, path, body)
 	if err != nil {
 		return r, err
@@ -94,10 +89,7 @@ func (p *platformSteps) ok(
 
 // createTier creates a tier of one feature and, when seats is set, that
 // many seats.
-func (p *platformSteps) createTier(
-	ctx context.Context,
-	tok, name, feature, seats, replica string,
-) error {
+func (p *platformSteps) createTier(ctx context.Context, tok, name, feature, seats, replica string) error {
 	limits := map[string]int64{}
 	if seats != "" {
 		n, err := strconv.ParseInt(seats, 10, 64)
@@ -114,10 +106,7 @@ func (p *platformSteps) createTier(
 
 // eventuallyJSON waits for a replica to answer 200 with want, as
 // eventuallyProblem waits for a problem.
-func (p *platformSteps) eventuallyJSON(
-	ctx context.Context,
-	method, path, replica, tok, want string,
-) error {
+func (p *platformSteps) eventuallyJSON(ctx context.Context, method, path, replica, tok, want string) error {
 	return deps.Eventually(ctx, method+" "+path+" to answer "+want,
 		func(ctx context.Context) (bool, error) {
 			r, err := p.w.Do(ctx, replica, tok, method, path, nil)
@@ -130,10 +119,7 @@ func (p *platformSteps) eventuallyJSON(
 
 // tierAsOperator checks that the account's tier read is the tier name as
 // the operator API reads it: its name, features and limits.
-func (p *platformSteps) tierAsOperator(
-	ctx context.Context,
-	replica, tok, name, opTok, opReplica string,
-) error {
+func (p *platformSteps) tierAsOperator(ctx context.Context, replica, tok, name, opTok, opReplica string) error {
 	type tier struct {
 		Name     string           `json:"name"`
 		Features []string         `json:"features"`
@@ -190,10 +176,7 @@ func (p *platformSteps) grant(ctx context.Context, tok, feature, replica string)
 // eventuallyProblem waits for a replica to answer the problem: a replica
 // drops what it holds when infraweave_invalidate tells it to, which lands
 // after the write that sends it has answered.
-func (p *platformSteps) eventuallyProblem(
-	ctx context.Context,
-	method, path, replica, tok, code, slug string,
-) error {
+func (p *platformSteps) eventuallyProblem(ctx context.Context, method, path, replica, tok, code, slug string) error {
 	return deps.Eventually(
 		ctx,
 		method+" "+path+" to answer "+code,
@@ -207,11 +190,7 @@ func (p *platformSteps) eventuallyProblem(
 	)
 }
 
-func (p *platformSteps) eventuallyAnswers(
-	ctx context.Context,
-	method, path, replica, tok string,
-	code int,
-) error {
+func (p *platformSteps) eventuallyAnswers(ctx context.Context, method, path, replica, tok string, code int) error {
 	return deps.Eventually(ctx, method+" "+path+" to answer "+strconv.Itoa(code),
 		func(ctx context.Context) (bool, error) {
 			r, err := p.w.Do(ctx, replica, tok, method, path, nil)

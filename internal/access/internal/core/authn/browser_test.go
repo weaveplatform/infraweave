@@ -140,10 +140,7 @@ func TestUnitSignInBreakGlass(t *testing.T) {
 
 // member gives w a member's browser session in acct, admitted to the
 // accounts admits, and returns the session and its cookie value.
-func (w *world) member(
-	acct kernel.AccountID,
-	admits ...session.Admitted,
-) (session.Session, string) {
+func (w *world) member(acct kernel.AccountID, admits ...session.Admitted) (session.Session, string) {
 	secret, hash := session.NewSecret()
 	ss := session.Session{
 		ID: kernel.NewULID(), OrganizationID: kernel.NewOrganizationID(), AccountID: acct,

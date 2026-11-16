@@ -62,10 +62,7 @@ type fakes struct {
 	org kernel.OrganizationID
 }
 
-func (f *fakes) Organization(
-	_ context.Context,
-	id kernel.OrganizationID,
-) (organization.Organization, error) {
+func (f *fakes) Organization(_ context.Context, id kernel.OrganizationID) (organization.Organization, error) {
 	return organization.Organization{ID: id}, f.down("Organization")
 }
 
@@ -76,11 +73,7 @@ func (f *fakes) Account(_ context.Context, id kernel.AccountID) (account.Account
 	return account.Account{OrganizationID: f.org, ID: id}, nil
 }
 
-func (f *fakes) KeyOwner(
-	_ context.Context,
-	_ kernel.AccountID,
-	member kernel.MemberID,
-) (apikey.Owner, error) {
+func (f *fakes) KeyOwner(_ context.Context, _ kernel.AccountID, member kernel.MemberID) (apikey.Owner, error) {
 	if err := f.down("KeyOwner"); err != nil {
 		return apikey.Owner{}, err
 	}
@@ -193,10 +186,7 @@ func (f *fakes) EndSession(_ context.Context, id kernel.ULID) (session.Session, 
 	return s, nil
 }
 
-func (f *fakes) BreakGlassCredential(
-	_ context.Context,
-	slug kernel.Slug,
-) (organization.Organization, *breakglass.Credential, error) {
+func (f *fakes) BreakGlassCredential(_ context.Context, slug kernel.Slug) (organization.Organization, *breakglass.Credential, error) {
 	if err := f.down("BreakGlassCredential"); err != nil {
 		return organization.Organization{}, nil, err
 	}
@@ -207,11 +197,7 @@ func (f *fakes) BreakGlassCredential(
 	return o.org, o.cred, nil
 }
 
-func (f *fakes) SignIn(
-	ctx context.Context,
-	s session.Session,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (f *fakes) SignIn(ctx context.Context, s session.Session, e kernel.OrganizationAuditEntry) error {
 	if err := f.down("SignIn"); err != nil {
 		return err
 	}
@@ -227,23 +213,14 @@ func (f *fakes) RefuseSignIn(_ context.Context, e kernel.OrganizationAuditEntry)
 	return nil
 }
 
-func (f *fakes) Accounts(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	member kernel.MemberID,
-) ([]session.Admitted, error) {
+func (f *fakes) Accounts(_ context.Context, _ kernel.OrganizationID, member kernel.MemberID) ([]session.Admitted, error) {
 	if err := f.down("Accounts"); err != nil {
 		return nil, err
 	}
 	return f.admits[member], nil
 }
 
-func (f *fakes) Admits(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	member kernel.MemberID,
-	acct kernel.AccountID,
-) (session.Admitted, bool, error) {
+func (f *fakes) Admits(_ context.Context, _ kernel.OrganizationID, member kernel.MemberID, acct kernel.AccountID) (session.Admitted, bool, error) {
 	if err := f.down("Admits"); err != nil {
 		return session.Admitted{}, false, err
 	}
@@ -266,12 +243,7 @@ func (f *fakes) Session(_ context.Context, id kernel.ULID) (session.Session, err
 	return s, nil
 }
 
-func (f *fakes) Sessions(
-	_ context.Context,
-	acct kernel.AccountID,
-	_ kernel.ULID,
-	_ int,
-) ([]session.Session, error) {
+func (f *fakes) Sessions(_ context.Context, acct kernel.AccountID, _ kernel.ULID, _ int) ([]session.Session, error) {
 	var out []session.Session
 	for _, s := range f.sessions {
 		if s.AccountID == acct {
@@ -281,11 +253,7 @@ func (f *fakes) Sessions(
 	return out, nil
 }
 
-func (f *fakes) RevokeSession(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (session.Session, error) {
+func (f *fakes) RevokeSession(_ context.Context, acct kernel.AccountID, id kernel.ULID) (session.Session, error) {
 	if err := f.down("RevokeSession"); err != nil {
 		return session.Session{}, err
 	}
@@ -298,11 +266,7 @@ func (f *fakes) RevokeSession(
 	return s, nil
 }
 
-func (f *fakes) RevokeSessionsExcept(
-	_ context.Context,
-	acct kernel.AccountID,
-	except kernel.ULID,
-) ([]session.Session, error) {
+func (f *fakes) RevokeSessionsExcept(_ context.Context, acct kernel.AccountID, except kernel.ULID) ([]session.Session, error) {
 	if err := f.down("RevokeSessionsExcept"); err != nil {
 		return nil, err
 	}

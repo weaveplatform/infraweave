@@ -278,9 +278,7 @@ func (d *Domain) Subscribe(events *outbox.Outbox) error {
 // stackChanged is the outbox handler that decodes a stacksapi.Changed and
 // runs track on its stack when the change touched its source; a document
 // that does not decode never will, so its job dies at once.
-func stackChanged(
-	track func(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error,
-) outbox.Handler {
+func stackChanged(track func(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error) outbox.Handler {
 	return func(ctx context.Context, ev outbox.Event, _ queue.Job) error {
 		var ch stacksapi.Changed
 		if err := json.Unmarshal(ev.Document, &ch); err != nil {

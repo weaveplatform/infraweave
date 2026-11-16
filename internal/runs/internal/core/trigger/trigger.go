@@ -72,12 +72,7 @@ type Input struct {
 // locked.
 //
 // ref: decision 0008 § "Who drives each transition"
-func (s *Service) Trigger(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	in Input,
-) (read.View, error) {
+func (s *Service) Trigger(ctx context.Context, p kernel.Principal, slug string, in Input) (read.View, error) {
 	typ := in.Type
 	if typ == "" {
 		typ = kernel.RunTypeTracked
@@ -116,12 +111,7 @@ func (s *Service) Trigger(
 // one another caller locked.
 //
 // ref: decision 0008 § "Who drives each transition"
-func (s *Service) Task(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	t kernel.Task,
-) (read.View, error) {
+func (s *Service) Task(ctx context.Context, p kernel.Principal, slug string, t kernel.Task) (read.View, error) {
 	if errs := t.Check("/command"); errs != nil {
 		return read.View{}, &kernel.Invalid{Detail: "The task's command is refused.", Errors: errs}
 	}
@@ -130,12 +120,7 @@ func (s *Service) Task(
 
 // create creates n's run as p on p's account's stack slug, on the commit
 // sha, in one transaction, and answers its view.
-func (s *Service) create(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, sha string,
-	n lifecycle.NewRun,
-) (read.View, error) {
+func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha string, n lifecycle.NewRun) (read.View, error) {
 	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
@@ -164,12 +149,7 @@ func (s *Service) create(
 // commit is the commit a run of st works on: sha resolved on its
 // repository, a commit it lacks refused at at, or its tracked commit, or
 // its branch head.
-func (s *Service) commit(
-	ctx context.Context,
-	acct kernel.AccountID,
-	st stacksapi.Settings,
-	sha, at string,
-) (stacksapi.Commit, error) {
+func (s *Service) commit(ctx context.Context, acct kernel.AccountID, st stacksapi.Settings, sha, at string) (stacksapi.Commit, error) {
 	if sha == "" {
 		switch {
 		case st.TrackedCommit != nil:

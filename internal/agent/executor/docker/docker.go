@@ -56,49 +56,17 @@ type Config struct {
 // is one.
 type api interface {
 	Ping(ctx context.Context, o client.PingOptions) (client.PingResult, error)
-	ImageInspect(
-		ctx context.Context, ref string, o ...client.ImageInspectOption,
-	) (client.ImageInspectResult, error)
-	ImagePull(
-		ctx context.Context,
-		ref string,
-		o client.ImagePullOptions,
-	) (client.ImagePullResponse, error)
-	ContainerCreate(
-		ctx context.Context,
-		o client.ContainerCreateOptions,
-	) (client.ContainerCreateResult, error)
-	ContainerAttach(
-		ctx context.Context, id string, o client.ContainerAttachOptions,
-	) (client.ContainerAttachResult, error)
-	ContainerStart(
-		ctx context.Context, id string, o client.ContainerStartOptions,
-	) (client.ContainerStartResult, error)
-	ContainerList(
-		ctx context.Context,
-		o client.ContainerListOptions,
-	) (client.ContainerListResult, error)
-	ContainerLogs(
-		ctx context.Context,
-		id string,
-		o client.ContainerLogsOptions,
-	) (client.ContainerLogsResult, error)
-	ContainerWait(
-		ctx context.Context,
-		id string,
-		o client.ContainerWaitOptions,
-	) client.ContainerWaitResult
-	ContainerInspect(
-		ctx context.Context, id string, o client.ContainerInspectOptions,
-	) (client.ContainerInspectResult, error)
-	ContainerKill(
-		ctx context.Context,
-		id string,
-		o client.ContainerKillOptions,
-	) (client.ContainerKillResult, error)
-	ContainerRemove(
-		ctx context.Context, id string, o client.ContainerRemoveOptions,
-	) (client.ContainerRemoveResult, error)
+	ImageInspect(ctx context.Context, ref string, o ...client.ImageInspectOption) (client.ImageInspectResult, error)
+	ImagePull(ctx context.Context, ref string, o client.ImagePullOptions) (client.ImagePullResponse, error)
+	ContainerCreate(ctx context.Context, o client.ContainerCreateOptions) (client.ContainerCreateResult, error)
+	ContainerAttach(ctx context.Context, id string, o client.ContainerAttachOptions) (client.ContainerAttachResult, error)
+	ContainerStart(ctx context.Context, id string, o client.ContainerStartOptions) (client.ContainerStartResult, error)
+	ContainerList(ctx context.Context, o client.ContainerListOptions) (client.ContainerListResult, error)
+	ContainerLogs(ctx context.Context, id string, o client.ContainerLogsOptions) (client.ContainerLogsResult, error)
+	ContainerWait(ctx context.Context, id string, o client.ContainerWaitOptions) client.ContainerWaitResult
+	ContainerInspect(ctx context.Context, id string, o client.ContainerInspectOptions) (client.ContainerInspectResult, error)
+	ContainerKill(ctx context.Context, id string, o client.ContainerKillOptions) (client.ContainerKillResult, error)
+	ContainerRemove(ctx context.Context, id string, o client.ContainerRemoveOptions) (client.ContainerRemoveResult, error)
 	Close() error
 }
 
@@ -257,11 +225,7 @@ func (e *Executor) image(ctx context.Context, ref string) error {
 
 // Find answers worker's newest container, running or ended, copying what
 // it writes from now on to out.
-func (e *Executor) Find(
-	ctx context.Context,
-	worker string,
-	out io.Writer,
-) (executor.Container, bool, error) {
+func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (executor.Container, bool, error) {
 	list, err := e.cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true, Filters: client.Filters{}.Add("label", LabelWorker+"="+worker),
 	})

@@ -28,11 +28,7 @@ var outputValue = crypt.Column{
 // ReplaceOutputs replaces the outputs of run's stack with outs, written
 // by run, each value sealed to its row and a sensitive output with no
 // value kept with none, in the context's transaction.
-func (s *Store) ReplaceOutputs(
-	ctx context.Context,
-	run lifecycle.Run,
-	outs map[string]plan.Output,
-) error {
+func (s *Store) ReplaceOutputs(ctx context.Context, run lifecycle.Run, outs map[string]plan.Output) error {
 	names := slices.Sorted(maps.Keys(outs))
 	sealed := make([][]byte, len(names))
 	sensitive := make([]bool, len(names))
@@ -69,11 +65,7 @@ func (s *Store) ReplaceOutputs(
 // Outputs reads the outputs of each of acct's stacks, by name, keyed by
 // stack ID, opening the value of each that is not sensitive; a stack
 // with none is absent.
-func (s *Store) Outputs(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stacks []kernel.ULID,
-) (map[kernel.ULID][]stacksapi.Output, error) {
+func (s *Store) Outputs(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.Output, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT stack_id, name, coalesce(description, ''),
 		sensitive, CASE WHEN NOT sensitive THEN value_sealed END
 		FROM stack_outputs WHERE account_id = $1 AND stack_id = ANY($2)

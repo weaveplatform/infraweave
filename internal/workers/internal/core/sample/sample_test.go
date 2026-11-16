@@ -78,12 +78,7 @@ func (s *store) Prune(_ context.Context, before time.Time, batch int) (int, erro
 	return n, nil
 }
 
-func (s *store) Between(
-	_ context.Context,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-	from, to time.Time,
-) ([]workersapi.Sample, error) {
+func (s *store) Between(_ context.Context, acct kernel.AccountID, pool kernel.ULID, from, to time.Time) ([]workersapi.Sample, error) {
 	if s.fail == "Between" {
 		return nil, errInjected
 	}

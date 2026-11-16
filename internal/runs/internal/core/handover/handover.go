@@ -284,12 +284,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 // credential, or the commit of the stack's repository.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func (s *Service) source(
-	ctx context.Context,
-	r lifecycle.Run,
-	spec *workersapi.Spec,
-	sec *secrets,
-) error {
+func (s *Service) source(ctx context.Context, r lifecycle.Run, spec *workersapi.Spec, sec *secrets) error {
 	if r.LocalPreview() {
 		signed, err := s.objects.SignGet(ctx, objectstore.Uploads, r.LocalWorkspace)
 		if errors.Is(err, objectstore.ErrNotFound) {
@@ -405,11 +400,7 @@ func constraint(st stacksapi.Settings) (*string, string) {
 // version is the catalogue's newest release of vendor that constraints
 // allow, or its newest when constraints are nil; a *kernel.Invalid when
 // none is listed.
-func (s *Service) version(
-	ctx context.Context,
-	vendor vendorsapi.Vendor,
-	constraints *string,
-) (string, error) {
+func (s *Service) version(ctx context.Context, vendor vendorsapi.Vendor, constraints *string) (string, error) {
 	if constraints != nil {
 		//nolint:wrapcheck // the vendors domain names the read
 		return s.catalog.Effective(ctx, vendor, *constraints)
@@ -534,12 +525,7 @@ func (s *Service) environment(
 // A template that fails to render is a *kernel.Invalid naming the
 // variable, whose message is left out when the template reads a secret,
 // since a failure can quote the value it read.
-func (s *Service) render(
-	ctx context.Context,
-	name, source string,
-	in expr.Input,
-	writeOnly map[string]bool,
-) (string, bool, error) {
+func (s *Service) render(ctx context.Context, name, source string, in expr.Input, writeOnly map[string]bool) (string, bool, error) {
 	if !strings.Contains(source, "${{") {
 		return source, false, nil
 	}

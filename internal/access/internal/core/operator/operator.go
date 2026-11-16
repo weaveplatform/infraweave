@@ -40,40 +40,17 @@ type Organization struct {
 type Store interface {
 	// CreateOrganization records org, its first account and, when bg is
 	// not nil, its break-glass credential, in one transaction.
-	CreateOrganization(
-		ctx context.Context,
-		org organization.Organization,
-		first account.Account,
-		bg *breakglass.Credential,
-		e kernel.OrganizationAuditEntry,
-	) error
+	CreateOrganization(ctx context.Context, org organization.Organization, first account.Account, bg *breakglass.Credential, e kernel.OrganizationAuditEntry) error
 	// Organizations are up to limit organizations in ID order from the
 	// first after after; a zero after starts at the first.
-	Organizations(
-		ctx context.Context,
-		after kernel.OrganizationID,
-		limit int,
-	) ([]Organization, error)
+	Organizations(ctx context.Context, after kernel.OrganizationID, limit int) ([]Organization, error)
 	OrganizationBySlug(ctx context.Context, slug kernel.Slug) (Organization, error)
 	// DeleteOrganization deletes the organization, its accounts and what
 	// the access domain holds for them, revoking each live session of the
 	// organization, and returns those sessions.
-	DeleteOrganization(
-		ctx context.Context,
-		id kernel.OrganizationID,
-		e kernel.OrganizationAuditEntry,
-	) ([]kernel.ULID, error)
-	SetBreakGlass(
-		ctx context.Context,
-		id kernel.OrganizationID,
-		c breakglass.Credential,
-		e kernel.OrganizationAuditEntry,
-	) error
-	DeleteBreakGlass(
-		ctx context.Context,
-		id kernel.OrganizationID,
-		e kernel.OrganizationAuditEntry,
-	) error
+	DeleteOrganization(ctx context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error)
+	SetBreakGlass(ctx context.Context, id kernel.OrganizationID, c breakglass.Credential, e kernel.OrganizationAuditEntry) error
+	DeleteBreakGlass(ctx context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) error
 }
 
 // Deps are what the service needs.
@@ -150,11 +127,7 @@ func (s *Service) Create(ctx context.Context, by Actor, in Input) (Organization,
 }
 
 // List is up to limit organizations from the first after after.
-func (s *Service) List(
-	ctx context.Context,
-	after kernel.OrganizationID,
-	limit int,
-) ([]Organization, error) {
+func (s *Service) List(ctx context.Context, after kernel.OrganizationID, limit int) ([]Organization, error) {
 	return s.d.Store.Organizations(ctx, after, limit) //nolint:wrapcheck // as above
 }
 
@@ -190,12 +163,7 @@ func (s *Service) Delete(ctx context.Context, by Actor, slug string) (Organizati
 
 // SetBreakGlass sets or replaces the break-glass credential of the
 // organization slug names and returns the organization with it.
-func (s *Service) SetBreakGlass(
-	ctx context.Context,
-	by Actor,
-	slug string,
-	in BreakGlassInput,
-) (Organization, error) {
+func (s *Service) SetBreakGlass(ctx context.Context, by Actor, slug string, in BreakGlassInput) (Organization, error) {
 	o, err := s.Get(ctx, slug)
 	if err != nil {
 		return Organization{}, err
@@ -216,11 +184,7 @@ func (s *Service) SetBreakGlass(
 // DeleteBreakGlass removes the break-glass credential of the organization
 // slug names, so no break-glass sign-in works until one is set; removing
 // none is no change.
-func (s *Service) DeleteBreakGlass(
-	ctx context.Context,
-	by Actor,
-	slug string,
-) (Organization, error) {
+func (s *Service) DeleteBreakGlass(ctx context.Context, by Actor, slug string) (Organization, error) {
 	o, err := s.Get(ctx, slug)
 	if err != nil {
 		return Organization{}, err
@@ -245,12 +209,7 @@ func (s *Service) credential(prefix string, in BreakGlassInput) (breakglass.Cred
 }
 
 // entry is the trail entry of a change to o by a.
-func (a Actor) entry(
-	o organization.Organization,
-	action, eventType string,
-	body json.RawMessage,
-	at time.Time,
-) kernel.OrganizationAuditEntry {
+func (a Actor) entry(o organization.Organization, action, eventType string, body json.RawMessage, at time.Time) kernel.OrganizationAuditEntry {
 	return kernel.OrganizationAuditEntry{
 		OrganizationID:   o.ID,
 		ActorKind:        a.Principal.Kind,

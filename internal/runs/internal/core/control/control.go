@@ -86,12 +86,7 @@ type Store interface {
 	// Request records sig as run's request of kind, and its updated_at,
 	// sig.At, and notifies the held polls of run's pool on commit, so its
 	// worker's poll delivers it.
-	Request(
-		ctx context.Context,
-		run lifecycle.Run,
-		kind workersapi.Signal,
-		sig lifecycle.Signal,
-	) error
+	Request(ctx context.Context, run lifecycle.Run, kind workersapi.Signal, sig lifecycle.Signal) error
 	// Overrides opens run's environment variable overrides, none for a run
 	// without.
 	Overrides(ctx context.Context, run lifecycle.Run) ([]lifecycle.Override, error)
@@ -102,11 +97,7 @@ type Store interface {
 	SetTargets(ctx context.Context, run lifecycle.Run, targets []string) error
 	// Discardable reads acct's stack's runs in QUEUED, READY or
 	// UNCONFIRMED, oldest first.
-	Discardable(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack kernel.ULID,
-	) ([]lifecycle.Run, error)
+	Discardable(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]lifecycle.Run, error)
 }
 
 // Deps are what the actions read and write through; Now is the clock,
@@ -153,14 +144,8 @@ func (s *Service) BindSources(src stacksapi.StackSources) {
 // and one that has started ErrState.
 //
 // ref: decision 0008 § "Who drives each transition"
-func (s *Service) Cancel(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, note string,
-) (read.View, error) {
-	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (
-		lifecycle.Run, error,
-	) {
+func (s *Service) Cancel(ctx context.Context, p kernel.Principal, slug, raw, note string) (read.View, error) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
 		holder, held, err := s.d.Store.Holder(ctx, p.AccountID, st.ID)
 		if err != nil {
 			return r, err //nolint:wrapcheck // the store names the read
@@ -193,11 +178,7 @@ func (s *Service) Cancel(
 // ErrNoHolder.
 //
 // ref: decision 0008 § "Who drives each transition"
-func (s *Service) Confirm(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, note string,
-) (read.View, error) {
+func (s *Service) Confirm(ctx context.Context, p kernel.Principal, slug, raw, note string) (read.View, error) {
 	return s.decide(ctx, p, slug, raw, note, kernel.RunStateConfirmed, confirmGates...)
 }
 
@@ -209,11 +190,7 @@ var confirmGates = []machine.Guard{machine.GuardApproved}
 // stack's run lock when raw is empty: T27 from UNCONFIRMED to DISCARDED,
 // which ends the run and releases the lock. The route has decided
 // RUN_DISCARD on the stack's space; errors are Confirm's.
-func (s *Service) Discard(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, note string,
-) (read.View, error) {
+func (s *Service) Discard(ctx context.Context, p kernel.Principal, slug, raw, note string) (read.View, error) {
 	return s.decide(ctx, p, slug, raw, note, kernel.RunStateDiscarded)
 }
 
@@ -226,21 +203,14 @@ func (s *Service) Discard(
 // targets' write, which runs' CHECK holds to a tracked run.
 //
 // ref: decision 0008 § "Who drives each transition"
-func (s *Service) Replan(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw string,
-	targets []string,
-) (read.View, error) {
+func (s *Service) Replan(ctx context.Context, p kernel.Principal, slug, raw string, targets []string) (read.View, error) {
 	if errs := kernel.CheckTargets("/targets", targets); errs != nil {
 		return read.View{}, &kernel.Invalid{
 			Detail: "The replan's targets are refused.",
 			Errors: errs,
 		}
 	}
-	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (
-		lifecycle.Run, error,
-	) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
 		moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
 			Account: p.AccountID, Run: r.ID, Version: r.Version,
 			To: kernel.RunStateReplanRequested, Driver: machine.DriverAPI,
@@ -261,16 +231,8 @@ func (s *Service) Replan(
 // decision on its plan, with checked the edge's guards it has checked.
 // The machine holds the only edges, so a run in any other state is
 // refused there, not here.
-func (s *Service) decide(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, note string,
-	to kernel.RunState,
-	checked ...machine.Guard,
-) (read.View, error) {
-	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (
-		lifecycle.Run, error,
-	) {
+func (s *Service) decide(ctx context.Context, p kernel.Principal, slug, raw, note string, to kernel.RunState, checked ...machine.Guard) (read.View, error) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
 		moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
 			Account: p.AccountID, Run: r.ID, Version: r.Version, To: to,
 			Driver: machine.DriverAPI, Checked: checked, Actor: lifecycle.ActorOf(p), Note: note,
@@ -285,15 +247,8 @@ func (s *Service) decide(
 // SetPriority sets p's run raw of stack slug's priority, until it ends;
 // ErrState once it has. The route has decided RUN_PRIORITIZE_SET on the
 // stack's space.
-func (s *Service) SetPriority(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw string,
-	priority kernel.RunPriority,
-) (read.View, error) {
-	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (
-		lifecycle.Run, error,
-	) {
+func (s *Service) SetPriority(ctx context.Context, p kernel.Principal, slug, raw string, priority kernel.RunPriority) (read.View, error) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
 		if r.State.Terminal() {
 			return r, &Refused{Run: r.ID, State: r.State, Needs: needsPriority}
 		}
@@ -319,12 +274,7 @@ func (s *Service) SetPriority(
 // one SIGINT.
 //
 // ref: decision 0008 § "Stop and kill"
-func (s *Service) Stop(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, note string,
-	state kernel.RunState,
-) (read.View, error) {
+func (s *Service) Stop(ctx context.Context, p kernel.Principal, slug, raw, note string, state kernel.RunState) (read.View, error) {
 	return s.signal(ctx, p, slug, raw, note, state, workersapi.SignalStop)
 }
 
@@ -337,26 +287,13 @@ func (s *Service) Stop(
 // and refusals, are as Stop's.
 //
 // ref: decision 0008 § "Stop and kill"
-func (s *Service) Kill(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, note string,
-	state kernel.RunState,
-) (read.View, error) {
+func (s *Service) Kill(ctx context.Context, p kernel.Principal, slug, raw, note string, state kernel.RunState) (read.View, error) {
 	return s.signal(ctx, p, slug, raw, note, state, workersapi.SignalKill)
 }
 
 // signal records p's request of kind for the run, as Stop and Kill say.
-func (s *Service) signal(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, note string,
-	state kernel.RunState,
-	kind workersapi.Signal,
-) (read.View, error) {
-	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (
-		lifecycle.Run, error,
-	) {
+func (s *Service) signal(ctx context.Context, p kernel.Principal, slug, raw, note string, state kernel.RunState, kind workersapi.Signal) (read.View, error) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
 		asked, ok, needs, blocking := r.Stop, r.Stoppable(), needsStop,
 			accessapi.ActionRunStopBlocking
 		if kind == workersapi.SignalKill {
@@ -411,9 +348,7 @@ func (s *Service) act(
 	f func(context.Context, stacksapi.Stack, lifecycle.Run) (lifecycle.Run, error),
 ) (read.View, error) {
 	var v read.View
-	err := s.in(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack,
-		r lifecycle.Run,
-	) error {
+	err := s.in(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) error {
 		r, err := f(ctx, st, r)
 		if err != nil {
 			return err
@@ -426,12 +361,7 @@ func (s *Service) act(
 
 // in locks p's run raw of stack slug in one transaction, or the run that
 // holds the stack's run lock when raw is empty, and hands it to f.
-func (s *Service) in(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw string,
-	f func(context.Context, stacksapi.Stack, lifecycle.Run) error,
-) error {
+func (s *Service) in(ctx context.Context, p kernel.Principal, slug, raw string, f func(context.Context, stacksapi.Stack, lifecycle.Run) error) error {
 	var id kernel.ULID
 	if raw != "" {
 		var err error

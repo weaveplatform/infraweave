@@ -41,11 +41,7 @@ func (b *bindBook) RoleID(_ context.Context, _ kernel.AccountID, slug string) (k
 	return r.ID, nil
 }
 
-func (b *bindBook) SpaceID(
-	_ context.Context,
-	_ kernel.AccountID,
-	slug string,
-) (kernel.ULID, error) {
+func (b *bindBook) SpaceID(_ context.Context, _ kernel.AccountID, slug string) (kernel.ULID, error) {
 	if err := b.w.st.err(); err != nil {
 		return kernel.ULID{}, err
 	}
@@ -56,12 +52,7 @@ func (b *bindBook) SpaceID(
 	return sp.ID, nil
 }
 
-func (b *bindBook) HasActor(
-	_ context.Context,
-	_ kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) (bool, error) {
+func (b *bindBook) HasActor(_ context.Context, _ kernel.AccountID, kind binding.ActorKind, id kernel.ULID) (bool, error) {
 	if err := b.w.st.err(); err != nil {
 		return false, err
 	}
@@ -86,12 +77,7 @@ func (b *bindBook) find(kind binding.ActorKind, id kernel.ULID) int {
 	})
 }
 
-func (b *bindBook) Binding(
-	_ context.Context,
-	_ kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) (binding.Listed, error) {
+func (b *bindBook) Binding(_ context.Context, _ kernel.AccountID, kind binding.ActorKind, id kernel.ULID) (binding.Listed, error) {
 	if err := b.w.st.err(); err != nil {
 		return binding.Listed{}, err
 	}
@@ -115,23 +101,14 @@ func (b *bindBook) where(keep func(binding.Listed) bool) ([]binding.Listed, erro
 	return out, nil
 }
 
-func (b *bindBook) ActorBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (b *bindBook) ActorBindings(_ context.Context, _ kernel.AccountID, kind binding.ActorKind, id kernel.ULID) ([]binding.Listed, error) {
 	if b.down {
 		return nil, errDown
 	}
 	return b.where(func(l binding.Listed) bool { return l.ActorKind == kind && l.ActorID == id })
 }
 
-func (b *bindBook) SpaceBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (b *bindBook) SpaceBindings(_ context.Context, _ kernel.AccountID, id kernel.ULID) ([]binding.Listed, error) {
 	return b.where(func(l binding.Listed) bool { return l.SpaceID == id })
 }
 
@@ -160,11 +137,7 @@ func (b *bindBook) held(bb binding.Binding, skip kernel.ULID) bool {
 	})
 }
 
-func (b *bindBook) CreateBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	bs []binding.Binding,
-) ([]binding.Listed, error) {
+func (b *bindBook) CreateBindings(_ context.Context, _ kernel.AccountID, bs []binding.Binding) ([]binding.Listed, error) {
 	if err := b.w.st.err(); err != nil {
 		return nil, err
 	}
@@ -206,13 +179,7 @@ func (b *bindBook) UpdateBinding(
 	return l, nil
 }
 
-func (b *bindBook) DeleteBinding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-	check func(binding.Listed) error,
-) (binding.Listed, error) {
+func (b *bindBook) DeleteBinding(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID, check func(binding.Listed) error) (binding.Listed, error) {
 	cur, err := b.Binding(ctx, acct, kind, id)
 	if err != nil {
 		return binding.Listed{}, err
@@ -224,13 +191,7 @@ func (b *bindBook) DeleteBinding(
 	return cur, nil
 }
 
-func (b *bindBook) ReplaceAccessRules(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-	bs []binding.Binding,
-) error {
+func (b *bindBook) ReplaceAccessRules(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID, bs []binding.Binding) error {
 	if err := b.w.st.err(); err != nil {
 		return err
 	}
@@ -241,12 +202,7 @@ func (b *bindBook) ReplaceAccessRules(
 	return err
 }
 
-func (b *bindBook) DeleteActorBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) error {
+func (b *bindBook) DeleteActorBindings(_ context.Context, _ kernel.AccountID, kind binding.ActorKind, id kernel.ULID) error {
 	if err := b.w.st.err(); err != nil {
 		return err
 	}

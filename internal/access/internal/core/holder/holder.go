@@ -73,22 +73,10 @@ type Store interface {
 	// a key. Groups has none, as the snapshot holds them.
 	Candidates(ctx context.Context, acct kernel.AccountID, list List) ([]Candidate, error)
 	// SearchHolders reads a page of list's rows of acct among ids that in keeps.
-	SearchHolders(
-		ctx context.Context,
-		acct kernel.AccountID,
-		list List,
-		in search.Input,
-		ids []kernel.ULID,
-	) (search.Result[Row], error)
+	SearchHolders(ctx context.Context, acct kernel.AccountID, list List, in search.Input, ids []kernel.ULID) (search.Result[Row], error)
 	// SuggestHolders lists the values list's rows of acct among ids that in keeps
 	// hold.
-	SuggestHolders(
-		ctx context.Context,
-		acct kernel.AccountID,
-		list List,
-		in search.SuggestionsInput,
-		ids []kernel.ULID,
-	) (search.Suggestions, error)
+	SuggestHolders(ctx context.Context, acct kernel.AccountID, list List, in search.SuggestionsInput, ids []kernel.ULID) (search.Suggestions, error)
 	// HolderGroups are acct's groups among ids, as rows.
 	HolderGroups(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) ([]Row, error)
 }
@@ -96,18 +84,8 @@ type Store interface {
 // Evaluator answers grants from the account's authorization snapshot, as
 // authz.Service does.
 type Evaluator interface {
-	Holders(
-		ctx context.Context,
-		acct kernel.AccountID,
-		space kernel.ULID,
-		kinds ...binding.ActorKind,
-	) ([]authz.Holder, error)
-	ExplainEach(
-		ctx context.Context,
-		acct kernel.AccountID,
-		space kernel.ULID,
-		whos []authz.Who,
-	) ([][]authz.Grant, error)
+	Holders(ctx context.Context, acct kernel.AccountID, space kernel.ULID, kinds ...binding.ActorKind) ([]authz.Holder, error)
+	ExplainEach(ctx context.Context, acct kernel.AccountID, space kernel.ULID, whos []authz.Who) ([][]authz.Grant, error)
 }
 
 // Held is a row of a grant view with the grants it holds on the space,
@@ -137,13 +115,7 @@ func NewService(store Store, ev Evaluator) *Service {
 // Search reads a page of list's holders of acct's space that in keeps,
 // with their grants there. Only holders are searched, so a page is full
 // and its cursor exact.
-func (s *Service) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	list List,
-	in search.Input,
-) (search.Result[Held], error) {
+func (s *Service) Search(ctx context.Context, acct kernel.AccountID, space kernel.ULID, list List, in search.Input) (search.Result[Held], error) {
 	var out search.Result[Held]
 	held, ids, err := s.holders(ctx, acct, space, list)
 	if err != nil {
@@ -186,13 +158,7 @@ func (s *Service) Search(
 
 // Suggest lists the values list's holders of acct's space that in keeps
 // hold, counting holders only.
-func (s *Service) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	list List,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, acct kernel.AccountID, space kernel.ULID, list List, in search.SuggestionsInput) (search.Suggestions, error) {
 	_, ids, err := s.holders(ctx, acct, space, list)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -202,12 +168,7 @@ func (s *Service) Suggest(
 }
 
 // holders is list's holders of space by ID, and their IDs in order.
-func (s *Service) holders(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	list List,
-) (map[kernel.ULID]*Held, []kernel.ULID, error) {
+func (s *Service) holders(ctx context.Context, acct kernel.AccountID, space kernel.ULID, list List) (map[kernel.ULID]*Held, []kernel.ULID, error) {
 	held := map[kernel.ULID]*Held{}
 	if list == Groups {
 		hs, err := s.authz.Holders(ctx, acct, space, binding.ActorGroup)

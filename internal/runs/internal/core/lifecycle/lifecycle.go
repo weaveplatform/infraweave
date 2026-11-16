@@ -233,13 +233,7 @@ type Store interface {
 	// Active reads acct's run of stack of type typ on commit hash and
 	// local workspace workspace, none when empty, that has not ended and
 	// has no environment overrides, the oldest when several have not.
-	Active(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack kernel.ULID,
-		typ kernel.RunType,
-		hash, workspace string,
-	) (Run, bool, error)
+	Active(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, typ kernel.RunType, hash, workspace string) (Run, bool, error)
 	// SetOverrides seals ovs, run's environment overrides, to its row.
 	SetOverrides(ctx context.Context, run Run, ovs []Override) error
 	// Track makes run the tracked run of its stack.
@@ -253,12 +247,7 @@ type Store interface {
 	// Projection reads stack's state, the last state of its tracked run
 	// that is one of states, NONE without one, and whether a run holds its
 	// run lock.
-	Projection(
-		ctx context.Context,
-		acct kernel.AccountID,
-		stack kernel.ULID,
-		states []kernel.StackState,
-	) (kernel.StackState, bool, error)
+	Projection(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, states []kernel.StackState) (kernel.StackState, bool, error)
 }
 
 // Events appends an event in its change's transaction: the outbox.
@@ -495,12 +484,7 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 // of its credentials, the stack's projection when the run tracks the
 // stack or released the lock, its event, the stack's scheduling, and the
 // announcement to its private pool when it waits for a worker.
-func (l *Lifecycle) consequences(
-	ctx context.Context,
-	run Run,
-	step Step,
-	timer runsapi.Timer,
-) error {
+func (l *Lifecycle) consequences(ctx context.Context, run Run, step Step, timer runsapi.Timer) error {
 	released := false
 	if run.State.Terminal() {
 		var err error
@@ -557,12 +541,7 @@ func (l *Lifecycle) Project(ctx context.Context, acct kernel.AccountID, stack ke
 
 // updated appends run's run_updated event for step, which timer took
 // when it is not empty.
-func (l *Lifecycle) updated(
-	ctx context.Context,
-	run Run,
-	step Step,
-	timer runsapi.Timer,
-) error {
+func (l *Lifecycle) updated(ctx context.Context, run Run, step Step, timer runsapi.Timer) error {
 	st, err := l.d.Stacks.Get(ctx, run.Account, run.Stack)
 	if err != nil {
 		return err //nolint:wrapcheck // the stacks domain names the read

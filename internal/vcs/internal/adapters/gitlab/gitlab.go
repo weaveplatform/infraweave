@@ -154,11 +154,7 @@ func (p *Provider) repo(repo port.Repository) (*gitlab.Client, host, string, err
 
 // ResolveRef resolves ref of repo to its commit, naming the tag when ref
 // is one. GitLab names no commit author's login.
-func (p *Provider) ResolveRef(
-	ctx context.Context,
-	repo port.Repository,
-	ref string,
-) (vcsapi.Commit, error) {
+func (p *Provider) ResolveRef(ctx context.Context, repo port.Repository, ref string) (vcsapi.Commit, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, h, pid, err := p.repo(repo)
@@ -208,11 +204,7 @@ func (w *capped) Write(p []byte) (int, error) {
 }
 
 // ReadFile reads path at ref of repo through the raw file route.
-func (p *Provider) ReadFile(
-	ctx context.Context,
-	repo port.Repository,
-	ref, name string,
-) ([]byte, error) {
+func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, ref, name string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, _, pid, err := p.repo(repo)
@@ -239,11 +231,7 @@ func (p *Provider) ReadFile(
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a renamed file under both its names.
 // GitLab's comparison lists the files within its diff limits.
-func (p *Provider) AffectedFiles(
-	ctx context.Context,
-	repo port.Repository,
-	base, head string,
-) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, _, pid, err := p.repo(repo)
@@ -306,11 +294,7 @@ func (p *Provider) Repositories(ctx context.Context, in port.Integration) ([]por
 
 // projects lists, sorted, the full paths of the projects c's user is a
 // member of at least at level, at any level when it is 0.
-func projects(
-	ctx context.Context,
-	c *gitlab.Client,
-	level gitlab.AccessLevelValue,
-) ([]string, error) {
+func projects(ctx context.Context, c *gitlab.Client, level gitlab.AccessLevelValue) ([]string, error) {
 	opt := &gitlab.ListProjectsOptions{
 		ListOptions: gitlab.ListOptions{PerPage: 100},
 		Membership:  gitlab.Ptr(true),
@@ -361,12 +345,7 @@ func (p *Provider) Branches(ctx context.Context, repo port.Repository) ([]string
 // read_repository alone at Reporter, so it clones that project and reads
 // nothing else. GitLab expires a token at the start of its expiry date in
 // UTC, so it expires at the start of expires' date, before expires.
-func (p *Provider) Mint(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-	expires time.Time,
-) (port.Credential, error) {
+func (p *Provider) Mint(ctx context.Context, repo port.Repository, name string, expires time.Time) (port.Credential, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, _, pid, err := p.repo(repo)
@@ -452,11 +431,7 @@ func (p *Provider) Lend(in port.Integration) port.Credential {
 
 // all collects every page list answers, classifying the failure of the
 // page that fails.
-func all[T any](
-	ctx context.Context,
-	what string,
-	list func(...gitlab.RequestOptionFunc) ([]T, *gitlab.Response, error),
-) ([]T, error) {
+func all[T any](ctx context.Context, what string, list func(...gitlab.RequestOptionFunc) ([]T, *gitlab.Response, error)) ([]T, error) {
 	var last *gitlab.Response
 	out, err := gitlab.ScanAndCollect(
 		func(page gitlab.PaginationOptionFunc) ([]T, *gitlab.Response, error) {

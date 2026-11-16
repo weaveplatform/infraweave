@@ -53,12 +53,7 @@ func minimal() kernel.AuditEntry {
 	}
 }
 
-func record(
-	t *testing.T,
-	pool *pgxpool.Pool,
-	e kernel.AuditEntry,
-	fail error,
-) (kernel.AuditEntry, error) {
+func record(t *testing.T, pool *pgxpool.Pool, e kernel.AuditEntry, fail error) (kernel.AuditEntry, error) {
 	t.Helper()
 	var stored kernel.AuditEntry
 	err := tx.Do(t.Context(), pool, tx.Options{}, func(ctx context.Context) error {

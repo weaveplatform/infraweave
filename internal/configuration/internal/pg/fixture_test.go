@@ -149,11 +149,7 @@ func (s *stacks) byID(id kernel.ULID) (stacksapi.Stack, bool) {
 	return stacksapi.Stack{}, false
 }
 
-func (s *stacks) Get(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Stack, error) {
+func (s *stacks) Get(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error) {
 	if s.err != nil {
 		return stacksapi.Stack{}, s.err
 	}
@@ -163,11 +159,7 @@ func (s *stacks) Get(
 	return stacksapi.Stack{}, stacksapi.ErrNotFound
 }
 
-func (s *stacks) BySlug(
-	_ context.Context,
-	_ kernel.AccountID,
-	slug string,
-) (stacksapi.Stack, error) {
+func (s *stacks) BySlug(_ context.Context, _ kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	if s.err != nil {
 		return stacksapi.Stack{}, s.err
 	}
@@ -177,11 +169,7 @@ func (s *stacks) BySlug(
 	return stacksapi.Stack{}, stacksapi.ErrNotFound
 }
 
-func (s *stacks) ByIDs(
-	_ context.Context,
-	_ kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID]stacksapi.Stack, error) {
+func (s *stacks) ByIDs(_ context.Context, _ kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]stacksapi.Stack, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -210,24 +198,18 @@ func (*stacks) DetachVCS(context.Context, kernel.AccountID, kernel.ULID) error {
 
 // SearchUsers is never reached: the configuration domain searches no VCS
 // integration's stacks.
-func (*stacks) SearchUsers(
-	context.Context, kernel.Principal, stacksapi.Use, search.Input,
-) (search.Result[stacksapi.Stack], error) {
+func (*stacks) SearchUsers(context.Context, kernel.Principal, stacksapi.Use, search.Input) (search.Result[stacksapi.Stack], error) {
 	return search.Result[stacksapi.Stack]{}, nil
 }
 
 // SuggestUsers is never reached, as SearchUsers is not.
-func (*stacks) SuggestUsers(
-	context.Context, kernel.Principal, stacksapi.Use, search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (*stacks) SuggestUsers(context.Context, kernel.Principal, stacksapi.Use, search.SuggestionsInput) (search.Suggestions, error) {
 	return search.Suggestions{}, nil
 }
 
 // SetRunState is never reached: the configuration domain does not run
 // stacks.
-func (*stacks) SetRunState(
-	context.Context, kernel.AccountID, kernel.ULID, kernel.StackState, bool,
-) error {
+func (*stacks) SetRunState(context.Context, kernel.AccountID, kernel.ULID, kernel.StackState, bool) error {
 	return nil
 }
 
@@ -238,17 +220,11 @@ func (*stacks) Destroyed(context.Context, kernel.AccountID, kernel.ULID, bool) e
 
 // SetTracked is never reached: the configuration domain does not track
 // commits.
-func (*stacks) SetTracked(
-	context.Context, kernel.AccountID, kernel.ULID, *stacksapi.Commit, *stacksapi.Commit, string,
-) error {
+func (*stacks) SetTracked(context.Context, kernel.AccountID, kernel.ULID, *stacksapi.Commit, *stacksapi.Commit, string) error {
 	return nil
 }
 
-func (s *stacks) Settings(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s *stacks) Settings(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	if s.err != nil {
 		return stacksapi.Settings{}, s.err
 	}
@@ -261,30 +237,15 @@ func (s *stacks) Settings(
 	}, nil
 }
 
-func (*stacks) ByRepository(
-	context.Context,
-	kernel.AccountID,
-	*kernel.ULID,
-	string,
-	string,
-) ([]stacksapi.Stack, error) {
+func (*stacks) ByRepository(context.Context, kernel.AccountID, *kernel.ULID, string, string) ([]stacksapi.Stack, error) {
 	return nil, errors.ErrUnsupported
 }
 
-func (*stacks) LockForRun(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) (stacksapi.Settings, error) {
+func (*stacks) LockForRun(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	return stacksapi.Settings{}, errors.ErrUnsupported
 }
 
-func (s *stacks) Find(
-	_ context.Context,
-	_ kernel.AccountID,
-	spaces []kernel.ULID,
-	labels []string,
-) ([]stacksapi.Stack, error) {
+func (s *stacks) Find(_ context.Context, _ kernel.AccountID, spaces []kernel.ULID, labels []string) ([]stacksapi.Stack, error) {
 	return s.matching(spaces, func(slug string) bool {
 		return slices.ContainsFunc(
 			s.labels[slug],
@@ -293,19 +254,12 @@ func (s *stacks) Find(
 	})
 }
 
-func (s *stacks) InSpaces(
-	_ context.Context,
-	_ kernel.AccountID,
-	spaces []kernel.ULID,
-) ([]stacksapi.Stack, error) {
+func (s *stacks) InSpaces(_ context.Context, _ kernel.AccountID, spaces []kernel.ULID) ([]stacksapi.Stack, error) {
 	return s.matching(spaces, func(string) bool { return true })
 }
 
 // matching lists the stacks in spaces whose slug keep keeps, by slug.
-func (s *stacks) matching(
-	spaces []kernel.ULID,
-	keep func(slug string) bool,
-) ([]stacksapi.Stack, error) {
+func (s *stacks) matching(spaces []kernel.ULID, keep func(slug string) bool) ([]stacksapi.Stack, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.err != nil {
@@ -320,11 +274,7 @@ func (s *stacks) matching(
 	return out, nil
 }
 
-func (s *stacks) Labels(
-	_ context.Context,
-	_ kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID][]string, error) {
+func (s *stacks) Labels(_ context.Context, _ kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID][]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.err != nil {
@@ -342,20 +292,11 @@ func (s *stacks) Labels(
 // authz allows each caller the actions it lists in each space.
 type authz map[string]map[kernel.ULID][]accessapi.Action
 
-func (a authz) Authorize(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (a authz) Authorize(_ context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error) {
 	return slices.Contains(a[p.Caller()][space], action), nil
 }
 
-func (a authz) Reachable(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-) ([]kernel.ULID, error) {
+func (a authz) Reachable(_ context.Context, p kernel.Principal, action accessapi.Action) ([]kernel.ULID, error) {
 	var out []kernel.ULID
 	for sp, as := range a[p.Caller()] {
 		if slices.Contains(as, action) {
@@ -369,11 +310,7 @@ func (authz) Holds(context.Context, kernel.Principal, accessapi.Action) (bool, e
 	return false, nil
 }
 
-func (a authz) Actions(
-	_ context.Context,
-	p kernel.Principal,
-	sp kernel.ULID,
-) ([]accessapi.Action, error) {
+func (a authz) Actions(_ context.Context, p kernel.Principal, sp kernel.ULID) ([]accessapi.Action, error) {
 	return a[p.Caller()][sp], nil
 }
 
@@ -500,11 +437,7 @@ func (f *fixture) changes(t *testing.T, id kernel.ULID) []string {
 
 // create creates a context named name in space as the admin, failing the
 // test on a refusal.
-func (f *fixture) create(
-	t *testing.T,
-	name, space string,
-	config ...core.ElementInput,
-) core.Context {
+func (f *fixture) create(t *testing.T, name, space string, config ...core.ElementInput) core.Context {
 	t.Helper()
 	c, err := f.svc.Create(
 		t.Context(),

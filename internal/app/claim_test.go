@@ -116,13 +116,7 @@ func (s runSpec) tier() int { return kernel.RunTier(s.p, s.typ, s.drift) }
 
 // run inserts a READY run of acct waiting in pool, created at, on the
 // stack one.
-func (w *claimWorld) run(
-	t *testing.T,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-	s runSpec,
-	at time.Time,
-) kernel.ULID {
+func (w *claimWorld) run(t *testing.T, acct kernel.AccountID, pool kernel.ULID, s runSpec, at time.Time) kernel.ULID {
 	t.Helper()
 	id := kernel.NewULID()
 	w.exec(t, `INSERT INTO runs (account_id, id, stack_id, type, state, commit, triggered_by,
@@ -142,13 +136,7 @@ type polled struct {
 
 // poll polls as the idle worker through replica r, with the drain flag
 // drained, asking to be held wait seconds.
-func (w *claimWorld) poll(
-	ctx context.Context,
-	r int,
-	worker kernel.ULID,
-	drained bool,
-	wait int32,
-) polled {
+func (w *claimWorld) poll(ctx context.Context, r int, worker kernel.ULID, drained bool, wait int32) polled {
 	start := time.Now()
 	ctx = accessapi.WithBearer(ctx,
 		accessapi.Bearer{ID: worker, Expires: time.Now().Add(time.Hour)})
@@ -165,11 +153,7 @@ func (w *claimWorld) poll(
 
 // pollAll polls as each worker at once, alternating the replicas, the
 // drained ones with their drain flag, each held at most MinWait.
-func (w *claimWorld) pollAll(
-	ctx context.Context,
-	workers []kernel.ULID,
-	drained ...kernel.ULID,
-) []polled {
+func (w *claimWorld) pollAll(ctx context.Context, workers []kernel.ULID, drained ...kernel.ULID) []polled {
 	out := make([]polled, len(workers))
 	var wg sync.WaitGroup
 	for i, id := range workers {

@@ -58,12 +58,7 @@ type stackPage struct {
 // first page by each endCursor, then backwards from the last by each
 // startCursor. Both ways find want's stacks in order, and every page is
 // full but the one read last.
-func (st *stackSearchSteps) searches(
-	ctx context.Context,
-	name, where, by, desc, replica string,
-	n int,
-	want string,
-) error {
+func (st *stackSearchSteps) searches(ctx context.Context, name, where, by, desc, replica string, n int, want string) error {
 	base := map[string]any{"first": n}
 	if where != "" {
 		base["predicates"] = json.RawMessage(st.w.Resolve(where))
@@ -211,10 +206,7 @@ func (st *stackSearchSteps) suggests(field, want string, count int) error {
 // resumes reads the first stack of a search ordered by from with token
 // name, and sends a search ordered by by after its endCursor, cut to half
 // its length when short is set, for the scenario to check the answer.
-func (st *stackSearchSteps) resumes(
-	ctx context.Context,
-	name, by, replica, from, short string,
-) error {
+func (st *stackSearchSteps) resumes(ctx context.Context, name, by, replica, from, short string) error {
 	first := map[string]any{"first": 1, "orderBy": []any{map[string]any{"field": from}}}
 	r, err := st.w.Do(ctx, replica, name, http.MethodPost, "/api/v1/stacks/search", first)
 	if err != nil {

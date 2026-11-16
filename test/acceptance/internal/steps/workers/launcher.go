@@ -101,10 +101,7 @@ func (l *launcherSteps) servers(ctx context.Context, raw string) error {
 // sensitive_output_upload on. The pool token token reads names the relay
 // as its endpoint, as a pool token names the server a launcher reaches.
 // The launcher's worker is kept as name once it registers.
-func (l *launcherSteps) start(
-	ctx context.Context,
-	token, name, pool, csr, keeps, replica string,
-) error {
+func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps, replica string) error {
 	w := l.w
 	host, err := w.Suite.Launchers(ctx)
 	if err != nil {
@@ -188,10 +185,7 @@ var scenarioTools = []struct {
 
 // poolToken reads the pool kept as pool through replica with token and
 // answers its pool token with the relay as its endpoint.
-func (l *launcherSteps) poolToken(
-	ctx context.Context,
-	token, pool, replica string,
-) (string, error) {
+func (l *launcherSteps) poolToken(ctx context.Context, token, pool, replica string) (string, error) {
 	if err := l.w.SendAs(ctx, `token "`+token+`"`, http.MethodGet,
 		"/api/v1/worker-pools/"+l.w.IDs[pool], "", replica); err != nil {
 		return "", err
@@ -340,10 +334,7 @@ func (l *launcherSteps) passed(method, path string, status int) error {
 // worker reads the workers of the pool kept as pool through replica with
 // token until the worker kept as name has status, or, for GONE, until the
 // pool has no such worker.
-func (l *launcherSteps) worker(
-	ctx context.Context,
-	token, name, pool, status, replica string,
-) error {
+func (l *launcherSteps) worker(ctx context.Context, token, name, pool, status, replica string) error {
 	//nolint:wrapcheck // names what it waited for
 	return deps.Eventually(
 		ctx,
@@ -426,9 +417,7 @@ func (l *launcherSteps) note(want string) error {
 // end stops the scenario's launchers, leaving the evidence of a failed
 // scenario beside the servers', removes the containers its launchers and
 // forwarder started, and closes the relay.
-func (l *launcherSteps) end(ctx context.Context, _ *godog.Scenario, failed error) (context.Context,
-	error,
-) {
+func (l *launcherSteps) end(ctx context.Context, _ *godog.Scenario, failed error) (context.Context, error) {
 	ctx = context.WithoutCancel(ctx)
 	if l.relay == nil {
 		return ctx, nil

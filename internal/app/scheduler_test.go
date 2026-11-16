@@ -48,12 +48,7 @@ func runMode(t *testing.T, observer *sql.DB, m Mode) (out *lines, admin string, 
 }
 
 // runModeWith is runMode with edit's changes to the configuration.
-func runModeWith(
-	t *testing.T,
-	observer *sql.DB,
-	m Mode,
-	edit func(*config.Config),
-) (out *lines, admin string, stop func()) {
+func runModeWith(t *testing.T, observer *sql.DB, m Mode, edit func(*config.Config)) (out *lines, admin string, stop func()) {
 	t.Helper()
 	c := local(t)
 	c.Database.URL = observer.Primary().Config().ConnString()

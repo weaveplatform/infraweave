@@ -25,11 +25,7 @@ func (c catalog) Versions(_ context.Context, kind vendorsapi.Vendor) ([]string, 
 	return c.versions[kind], c.err
 }
 
-func (c catalog) Effective(
-	_ context.Context,
-	kind vendorsapi.Vendor,
-	constraints string,
-) (string, error) {
+func (c catalog) Effective(_ context.Context, kind vendorsapi.Vendor, constraints string) (string, error) {
 	if c.err != nil {
 		return "", c.err
 	}

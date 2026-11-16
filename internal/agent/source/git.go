@@ -22,11 +22,7 @@ import (
 // before it, from a server that serves a commit by its hash, as GitHub,
 // GitLab and Gitea do; from one that does not, every branch is fetched,
 // whose histories hold the commit of any run on one of them.
-func (f *Fetcher) git(
-	ctx context.Context,
-	dir, url, commit string,
-	cred *wire.RunSpecSourceCredential,
-) error {
+func (f *Fetcher) git(ctx context.Context, dir, url, commit string, cred *wire.RunSpecSourceCredential) error {
 	if !plumbing.IsHash(commit) {
 		return fmt.Errorf("%w: %q", ErrCommit, commit)
 	}

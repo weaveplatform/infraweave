@@ -81,11 +81,7 @@ VALUES (%s, 'acceptance.work', '{}', 5, %s, '%s', 5, %s);`, harness.Literal(queu
 
 // statsPage reads one page of messageQueueStats through the SDK; a limit
 // of 0 sends none.
-func (s *queueStatSteps) statsPage(
-	ctx context.Context,
-	limit int,
-	cursor *string,
-) ([]queueStat, *string, error) {
+func (s *queueStatSteps) statsPage(ctx context.Context, limit int, cursor *string) ([]queueStat, *string, error) {
 	q := url.Values{}
 	if limit > 0 {
 		q.Set("limit", strconv.Itoa(limit))
@@ -150,11 +146,7 @@ func (s *queueStatSteps) statsList(ctx context.Context, client string) error {
 	return nil
 }
 
-func (s *queueStatSteps) statsReport(
-	ctx context.Context,
-	visible, inFlight int,
-	queue string,
-) error {
+func (s *queueStatSteps) statsReport(ctx context.Context, visible, inFlight int, queue string) error {
 	all, err := s.stats(ctx)
 	if err != nil {
 		return err

@@ -92,10 +92,7 @@ func (s Server) Tier(ctx context.Context, _ api.TierRequestObject) (api.TierResp
 }
 
 // TierFeatures pages through the organization's entitlement by name.
-func (s Server) TierFeatures(
-	ctx context.Context,
-	req api.TierFeaturesRequestObject,
-) (api.TierFeaturesResponseObject, error) {
+func (s Server) TierFeatures(ctx context.Context, req api.TierFeaturesRequestObject) (api.TierFeaturesResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -134,10 +131,7 @@ func (s Server) TierFeatures(
 // limit when one is set, where members and API keys share one count.
 //
 // ref: DV-080
-func (s Server) Seats(
-	ctx context.Context,
-	_ api.SeatsRequestObject,
-) (api.SeatsResponseObject, error) {
+func (s Server) Seats(ctx context.Context, _ api.SeatsRequestObject) (api.SeatsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -159,34 +153,22 @@ func (s Server) Seats(
 }
 
 // BilledExternally answers true: no Stripe subscription exists.
-func (Server) BilledExternally(
-	context.Context,
-	api.BilledExternallyRequestObject,
-) (api.BilledExternallyResponseObject, error) {
+func (Server) BilledExternally(context.Context, api.BilledExternallyRequestObject) (api.BilledExternallyResponseObject, error) {
 	return api.BilledExternally200JSONResponse{Body: true}, nil
 }
 
 // BillingSubscription answers null: no Stripe subscription exists.
-func (Server) BillingSubscription(
-	context.Context,
-	api.BillingSubscriptionRequestObject,
-) (api.BillingSubscriptionResponseObject, error) {
+func (Server) BillingSubscription(context.Context, api.BillingSubscriptionRequestObject) (api.BillingSubscriptionResponseObject, error) {
 	return api.BillingSubscription200JSONResponse{}, nil
 }
 
 // OnTrialUntil answers null: no organization is ever on a trial.
-func (Server) OnTrialUntil(
-	context.Context,
-	api.OnTrialUntilRequestObject,
-) (api.OnTrialUntilResponseObject, error) {
+func (Server) OnTrialUntil(context.Context, api.OnTrialUntilRequestObject) (api.OnTrialUntilResponseObject, error) {
 	return api.OnTrialUntil200JSONResponse{}, nil
 }
 
 // AvailableBillingAddons answers no add-ons.
-func (Server) AvailableBillingAddons(
-	_ context.Context,
-	req api.AvailableBillingAddonsRequestObject,
-) (api.AvailableBillingAddonsResponseObject, error) {
+func (Server) AvailableBillingAddons(_ context.Context, req api.AvailableBillingAddonsRequestObject) (api.AvailableBillingAddonsResponseObject, error) {
 	if err := checkCursor(addonsList, req.Params.Cursor); err != nil {
 		return nil, err
 	}
@@ -196,10 +178,7 @@ func (Server) AvailableBillingAddons(
 }
 
 // AvailableSelfServicePlans answers no plans.
-func (Server) AvailableSelfServicePlans(
-	_ context.Context,
-	req api.AvailableSelfServicePlansRequestObject,
-) (api.AvailableSelfServicePlansResponseObject, error) {
+func (Server) AvailableSelfServicePlans(_ context.Context, req api.AvailableSelfServicePlansRequestObject) (api.AvailableSelfServicePlansResponseObject, error) {
 	if err := checkCursor(plansList, req.Params.Cursor); err != nil {
 		return nil, err
 	}
@@ -209,51 +188,33 @@ func (Server) AvailableSelfServicePlans(
 }
 
 // BillingSubscriptionCreate answers 403 installation-unsupported.
-func (Server) BillingSubscriptionCreate(
-	context.Context,
-	api.BillingSubscriptionCreateRequestObject,
-) (api.BillingSubscriptionCreateResponseObject, error) {
+func (Server) BillingSubscriptionCreate(context.Context, api.BillingSubscriptionCreateRequestObject) (api.BillingSubscriptionCreateResponseObject, error) {
 	return nil, unsupported()
 }
 
 // BillingSubscriptionUpdateV2 answers 403 installation-unsupported.
-func (Server) BillingSubscriptionUpdateV2(
-	context.Context,
-	api.BillingSubscriptionUpdateV2RequestObject,
-) (api.BillingSubscriptionUpdateV2ResponseObject, error) {
+func (Server) BillingSubscriptionUpdateV2(context.Context, api.BillingSubscriptionUpdateV2RequestObject) (api.BillingSubscriptionUpdateV2ResponseObject, error) {
 	return nil, unsupported()
 }
 
 // BillingSubscriptionDelete answers 403 installation-unsupported.
-func (Server) BillingSubscriptionDelete(
-	context.Context,
-	api.BillingSubscriptionDeleteRequestObject,
-) (api.BillingSubscriptionDeleteResponseObject, error) {
+func (Server) BillingSubscriptionDelete(context.Context, api.BillingSubscriptionDeleteRequestObject) (api.BillingSubscriptionDeleteResponseObject, error) {
 	return nil, unsupported()
 }
 
 // BillingSubscriptionUpdateInfo answers 403 installation-unsupported.
-func (Server) BillingSubscriptionUpdateInfo(
-	context.Context,
-	api.BillingSubscriptionUpdateInfoRequestObject,
-) (api.BillingSubscriptionUpdateInfoResponseObject, error) {
+func (Server) BillingSubscriptionUpdateInfo(context.Context, api.BillingSubscriptionUpdateInfoRequestObject) (api.BillingSubscriptionUpdateInfoResponseObject, error) {
 	return nil, unsupported()
 }
 
 // BillingSubscriptionUpdateTier answers 403 installation-unsupported.
-func (Server) BillingSubscriptionUpdateTier(
-	context.Context,
-	api.BillingSubscriptionUpdateTierRequestObject,
-) (api.BillingSubscriptionUpdateTierResponseObject, error) {
+func (Server) BillingSubscriptionUpdateTier(context.Context, api.BillingSubscriptionUpdateTierRequestObject) (api.BillingSubscriptionUpdateTierResponseObject, error) {
 	return nil, unsupported()
 }
 
 // EvaluateFeatureFlags answers an empty set: infraweave holds none of
 // Spacelift's flags, as Spacelift SaaS answers.
-func (Server) EvaluateFeatureFlags(
-	_ context.Context,
-	req api.EvaluateFeatureFlagsRequestObject,
-) (api.EvaluateFeatureFlagsResponseObject, error) {
+func (Server) EvaluateFeatureFlags(_ context.Context, req api.EvaluateFeatureFlagsRequestObject) (api.EvaluateFeatureFlagsResponseObject, error) {
 	if err := checkCursor(flagsList, req.Params.Cursor); err != nil {
 		return nil, err
 	}

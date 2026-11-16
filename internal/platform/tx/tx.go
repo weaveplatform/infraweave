@@ -96,12 +96,7 @@ func Do(ctx context.Context, db Beginner, opts Options, fn func(ctx context.Cont
 // once runs one attempt. Rollback uses a context that outlives ctx's
 // cancellation, so a cancelled request still ends its transaction rather
 // than leaving the connection to pgx's close-on-cancel.
-func once(
-	ctx context.Context,
-	db Beginner,
-	opts pgx.TxOptions,
-	fn func(context.Context) error,
-) (u *unit, err error) {
+func once(ctx context.Context, db Beginner, opts pgx.TxOptions, fn func(context.Context) error) (u *unit, err error) {
 	t, err := db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the caller's error, as pgx reports it

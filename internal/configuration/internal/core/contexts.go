@@ -77,11 +77,7 @@ func (m *Missing) Error() string { return fmt.Sprintf("configuration: no %s %q",
 // SpaceOf is the space of acct's context slug, which the access domain's
 // middleware decides a context's operations on; accessapi.ErrNoSubject
 // when acct lacks it.
-func (s *Service) SpaceOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (kernel.ULID, error) {
+func (s *Service) SpaceOf(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
 	c, err := s.store.BySlug(ctx, acct, slug, NoLock)
 	if errors.Is(err, ErrNotFound) {
 		return kernel.ULID{}, accessapi.ErrNoSubject
@@ -92,11 +88,7 @@ func (s *Service) SpaceOf(
 // AttachmentSpaceOf is the space of the stack acct's attachment id
 // attaches to, which the middleware decides a detach on;
 // accessapi.ErrNoSubject when acct lacks it.
-func (s *Service) AttachmentSpaceOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id string,
-) (kernel.ULID, error) {
+func (s *Service) AttachmentSpaceOf(ctx context.Context, acct kernel.AccountID, id string) (kernel.ULID, error) {
 	a, err := s.attachment(ctx, acct, id)
 	if errors.Is(err, ErrNotFound) {
 		return kernel.ULID{}, accessapi.ErrNoSubject
@@ -112,22 +104,14 @@ func (s *Service) AttachmentSpaceOf(
 }
 
 // Context reads acct's context slug.
-func (s *Service) Context(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (Context, error) {
+func (s *Service) Context(ctx context.Context, acct kernel.AccountID, slug string) (Context, error) {
 	return s.store.BySlug(ctx, acct, slug, NoLock) //nolint:wrapcheck // the store names the read
 }
 
 // Search reads a page of the contexts of p's account in the spaces it may
 // read, which the query leaves the others out of, so every page before
 // the last is full.
-func (s *Service) Search(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.Input,
-) (search.Result[Context], error) {
+func (s *Service) Search(ctx context.Context, p kernel.Principal, in search.Input) (search.Result[Context], error) {
 	scope, err := s.scope(ctx, p, nil)
 	if err != nil {
 		return search.Result[Context]{}, err
@@ -138,11 +122,7 @@ func (s *Service) Search(
 
 // Suggest lists the values the contexts of p's account in the spaces it
 // may read hold, so no value or count names a context p cannot read.
-func (s *Service) Suggest(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, p kernel.Principal, in search.SuggestionsInput) (search.Suggestions, error) {
 	scope, err := s.scope(ctx, p, nil)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -153,12 +133,7 @@ func (s *Service) Suggest(
 // Attachable reads a page of the contexts a stack in the space slug may
 // attach that p may read, in the space or one it inherits from; a space
 // p cannot read is a *Missing.
-func (s *Service) Attachable(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	in search.Input,
-) (search.Result[Context], kernel.ULID, error) {
+func (s *Service) Attachable(ctx context.Context, p kernel.Principal, slug string, in search.Input) (search.Result[Context], kernel.ULID, error) {
 	space, scope, err := s.attachableScope(ctx, p, slug)
 	if err != nil {
 		return search.Result[Context]{}, space, err
@@ -168,12 +143,7 @@ func (s *Service) Attachable(
 }
 
 // AttachableSuggest lists the values the contexts Attachable reads hold.
-func (s *Service) AttachableSuggest(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) AttachableSuggest(ctx context.Context, p kernel.Principal, slug string, in search.SuggestionsInput) (search.Suggestions, error) {
 	_, scope, err := s.attachableScope(ctx, p, slug)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -182,11 +152,7 @@ func (s *Service) AttachableSuggest(
 	return got, err //nolint:wrapcheck // the store names the read
 }
 
-func (s *Service) attachableScope(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-) (kernel.ULID, Scope, error) {
+func (s *Service) attachableScope(ctx context.Context, p kernel.Principal, slug string) (kernel.ULID, Scope, error) {
 	space, err := s.readable(ctx, p, slug)
 	if err != nil {
 		return space, Scope{}, err
@@ -197,11 +163,7 @@ func (s *Service) attachableScope(
 
 // reachScope is the scope of the contexts a stack in space may attach that
 // p may read.
-func (s *Service) reachScope(
-	ctx context.Context,
-	p kernel.Principal,
-	space kernel.ULID,
-) (Scope, error) {
+func (s *Service) reachScope(ctx context.Context, p kernel.Principal, space kernel.ULID) (Scope, error) {
 	tree, err := s.spaces.Tree(ctx, p.AccountID)
 	if err != nil {
 		return Scope{}, err //nolint:wrapcheck // the access domain names the read
@@ -219,11 +181,7 @@ func (s *Service) reachScope(
 
 // scope is what p's searches see: the spaces it may read and its
 // account's tree, read unless tree is given.
-func (s *Service) scope(
-	ctx context.Context,
-	p kernel.Principal,
-	tree []accessapi.SpaceNode,
-) (Scope, error) {
+func (s *Service) scope(ctx context.Context, p kernel.Principal, tree []accessapi.SpaceNode) (Scope, error) {
 	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
 	if err != nil {
 		return Scope{}, err //nolint:wrapcheck // the snapshot's read names itself
@@ -246,11 +204,7 @@ type Details struct {
 }
 
 // Details reads the details of acct's contexts all at once.
-func (s *Service) Details(
-	ctx context.Context,
-	acct kernel.AccountID,
-	all ...Context,
-) (Details, error) {
+func (s *Service) Details(ctx context.Context, acct kernel.AccountID, all ...Context) (Details, error) {
 	ids := make([]kernel.ULID, len(all))
 	owners := make([]Owner, len(all))
 	for i, c := range all {
@@ -277,11 +231,7 @@ func (s *Service) Details(
 }
 
 // Element reads acct's context slug's element name.
-func (s *Service) Element(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug, name string,
-) (Element, error) {
+func (s *Service) Element(ctx context.Context, acct kernel.AccountID, slug, name string) (Element, error) {
 	c, err := s.store.BySlug(ctx, acct, slug, NoLock)
 	if err != nil {
 		return Element{}, err //nolint:wrapcheck // the store names the read
@@ -291,11 +241,7 @@ func (s *Service) Element(
 
 // AttachedStack reads acct's context slug's attachment id, with the stack
 // it attaches to.
-func (s *Service) AttachedStack(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug, id string,
-) (Attachment, stacksapi.Stack, error) {
+func (s *Service) AttachedStack(ctx context.Context, acct kernel.AccountID, slug, id string) (Attachment, stacksapi.Stack, error) {
 	c, err := s.store.BySlug(ctx, acct, slug, NoLock)
 	if err != nil {
 		return Attachment{}, stacksapi.Stack{}, err //nolint:wrapcheck // the store names the read
@@ -366,14 +312,7 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Con
 // refused when a stack attached to the context by hand could no longer
 // reach it. The context's automatic attachments follow its labels and
 // space. Its refusals point into contextUpdateV2's body.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-	in Input,
-	replace bool,
-) (Context, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect, in Input, replace bool) (Context, error) {
 	if !replace {
 		in.Config = nil
 	}
@@ -401,14 +340,7 @@ func (s *Service) Update(
 // update is Update's write, under LockAutoattach: it brings the
 // context's auto-attachments in line with its labels and space once in
 // is applied.
-func (s *Service) update(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-	in Input,
-	replace bool,
-) (Context, error) {
+func (s *Service) update(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect, in Input, replace bool) (Context, error) {
 	return s.write(ctx, p.AccountID, slug, expect, configapi.ChangeUpdated, nil,
 		func(ctx context.Context, c *Context) error {
 			space, err := s.space(ctx, p, in.Space)
@@ -450,13 +382,7 @@ func (s *Service) update(
 // Delete deletes p's account's context slug with its elements, when
 // expect accepts its version, and answers it as it was. A context
 // attached to a stack is refused unless force is set, which detaches it.
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-	force bool,
-) (Context, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect, force bool) (Context, error) {
 	var c Context
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		var err error
@@ -489,13 +415,7 @@ func (s *Service) Delete(
 // context slug and reports whether it created it. The route has decided
 // CONTEXT_UPDATE on the context's space. Refusals point under at, the
 // element's place in the request body, and its name at at+name.
-func (s *Service) SetElement(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	in ElementInput,
-	at, name string,
-) (Element, bool, error) {
+func (s *Service) SetElement(ctx context.Context, p kernel.Principal, slug string, in ElementInput, at, name string) (Element, bool, error) {
 	if errs := checkElement(at, name, in); len(errs) > 0 {
 		return Element{}, false, &kernel.Invalid{
 			Detail: "The config element is refused.",
@@ -515,13 +435,7 @@ func (s *Service) SetElement(
 
 // set writes in into owner's elements and answers the element as stored,
 // and whether it created it; a refusal's pointers lie under at.
-func (s *Service) set(
-	ctx context.Context,
-	acct kernel.AccountID,
-	owner Owner,
-	in ElementInput,
-	at string,
-) (Element, bool, error) {
+func (s *Service) set(ctx context.Context, acct kernel.AccountID, owner Owner, in ElementInput, at string) (Element, bool, error) {
 	old, err := s.put(ctx, acct, owner, in)
 	if inv, ok := errors.AsType[*kernel.Invalid](err); ok {
 		for i := range inv.Errors {
@@ -540,12 +454,7 @@ func (s *Service) set(
 // element's value, which neither a new element nor one that changes type
 // may do, and a write-only element stays write-only unless its value is
 // sent.
-func (s *Service) put(
-	ctx context.Context,
-	acct kernel.AccountID,
-	owner Owner,
-	in ElementInput,
-) (Element, error) {
+func (s *Service) put(ctx context.Context, acct kernel.AccountID, owner Owner, in ElementInput) (Element, error) {
 	old, err := s.store.Element(ctx, acct, owner, in.Name)
 	switch {
 	case errors.Is(err, ErrNotFound):
@@ -598,11 +507,7 @@ func (s *Service) put(
 
 // DeleteElement deletes the element name of p's account's context slug
 // and answers it as it was. The route has decided CONTEXT_UPDATE.
-func (s *Service) DeleteElement(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, name string,
-) (Element, error) {
+func (s *Service) DeleteElement(ctx context.Context, p kernel.Principal, slug, name string) (Element, error) {
 	var e Element
 	_, err := s.write(ctx, p.AccountID, slug, kernel.Expect{}, configapi.ChangeConfigured, nil,
 		func(ctx context.Context, c *Context) error {
@@ -622,12 +527,7 @@ func (s *Service) DeleteElement(
 // the attachment with the stack. The route has decided
 // STACK_CONTEXT_ATTACH in the stack's space; the caller must read the
 // context too, and a context outside the stack's reach is refused.
-func (s *Service) Attach(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, stack string,
-	priority int32,
-) (Attachment, stacksapi.Stack, error) {
+func (s *Service) Attach(ctx context.Context, p kernel.Principal, slug, stack string, priority int32) (Attachment, stacksapi.Stack, error) {
 	var a Attachment
 	var st stacksapi.Stack
 	_, err := s.write(ctx, p.AccountID, slug, kernel.Expect{}, configapi.ChangeAttached, &a.Stack,
@@ -652,14 +552,7 @@ func (s *Service) Attach(
 // its space and c's space so no move or delete passes it unseen. When
 // the stack is not the route's, at is its pointer in the request body,
 // and p needs STACK_CONTEXT_ATTACH in its space.
-func (s *Service) attach(
-	ctx context.Context,
-	p kernel.Principal,
-	c Context,
-	slug string,
-	priority int32,
-	at string,
-) (Attachment, error) {
+func (s *Service) attach(ctx context.Context, p kernel.Principal, c Context, slug string, priority int32, at string) (Attachment, error) {
 	st, err := s.stacks.BySlug(ctx, c.Account, slug)
 	if errors.Is(err, stacksapi.ErrNotFound) {
 		return Attachment{}, &Missing{Kind: "stack", ID: slug}
@@ -718,11 +611,7 @@ func (s *Service) attach(
 // Detach deletes p's account's attachment id and answers it as it was,
 // with the stack it attached to; an automatic attachment is refused. The route has decided
 // STACK_CONTEXT_DETACH in the stack's space.
-func (s *Service) Detach(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-) (Attachment, stacksapi.Stack, error) {
+func (s *Service) Detach(ctx context.Context, p kernel.Principal, id string) (Attachment, stacksapi.Stack, error) {
 	a, err := s.attachment(ctx, p.AccountID, id)
 	if err != nil {
 		return Attachment{}, stacksapi.Stack{}, err
@@ -779,11 +668,7 @@ func autoDetach(id string) error {
 }
 
 // attachment reads acct's attachment by its ID as the API gives it.
-func (s *Service) attachment(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id string,
-) (Attachment, error) {
+func (s *Service) attachment(ctx context.Context, acct kernel.AccountID, id string) (Attachment, error) {
 	uid, err := kernel.ParseULID(id)
 	if err != nil {
 		return Attachment{}, fmt.Errorf("%w: attachment %q", ErrNotFound, id)
@@ -843,11 +728,7 @@ func (s *Service) space(ctx context.Context, p kernel.Principal, slug string) (k
 
 // readable is the ID of the space slug, the top space when it is empty,
 // when p may read it; a *Missing otherwise.
-func (s *Service) readable(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-) (kernel.ULID, error) {
+func (s *Service) readable(ctx context.Context, p kernel.Principal, slug string) (kernel.ULID, error) {
 	id := p.AccountID.ULID
 	if slug != "" {
 		var err error
@@ -868,12 +749,7 @@ func (s *Service) readable(
 }
 
 // require refuses p action in space, as a *Denied.
-func (s *Service) require(
-	ctx context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) error {
+func (s *Service) require(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) error {
 	ok, err := s.authz.Authorize(ctx, p, action, space)
 	switch {
 	case err != nil:

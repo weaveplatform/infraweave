@@ -19,10 +19,7 @@ import (
 const rolesList = "roles"
 
 // Roles lists the caller's account's roles, system and custom, by slug.
-func (s Server) Roles(
-	ctx context.Context,
-	req api.RolesRequestObject,
-) (api.RolesResponseObject, error) {
+func (s Server) Roles(ctx context.Context, req api.RolesRequestObject) (api.RolesResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -53,10 +50,7 @@ func (s Server) Roles(
 }
 
 // Role answers one role of the caller's account, tagged with its version.
-func (s Server) Role(
-	ctx context.Context,
-	req api.RoleRequestObject,
-) (api.RoleResponseObject, error) {
+func (s Server) Role(ctx context.Context, req api.RoleRequestObject) (api.RoleResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -75,10 +69,7 @@ func (s Server) Role(
 }
 
 // RoleCreate creates a custom role, its slug made from its name.
-func (s Server) RoleCreate(
-	ctx context.Context,
-	req api.RoleCreateRequestObject,
-) (api.RoleCreateResponseObject, error) {
+func (s Server) RoleCreate(ctx context.Context, req api.RoleCreateRequestObject) (api.RoleCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -99,10 +90,7 @@ func (s Server) RoleCreate(
 
 // RoleUpdate changes the fields of a custom role its body names, when its
 // If-Match, if any, names the role's version.
-func (s Server) RoleUpdate(
-	ctx context.Context,
-	req api.RoleUpdateRequestObject,
-) (api.RoleUpdateResponseObject, error) {
+func (s Server) RoleUpdate(ctx context.Context, req api.RoleUpdateRequestObject) (api.RoleUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -123,10 +111,7 @@ func (s Server) RoleUpdate(
 
 // RolePatch changes the fields its merge patch names and keeps the rest,
 // writing the result as RoleUpdate writes its body.
-func (s Server) RolePatch(
-	ctx context.Context,
-	req api.RolePatchRequestObject,
-) (api.RolePatchResponseObject, error) {
+func (s Server) RolePatch(ctx context.Context, req api.RolePatchRequestObject) (api.RolePatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -162,13 +147,7 @@ func (s Server) RolePatch(
 
 // updateRole writes in to acct's role slug, as RoleUpdate and RolePatch
 // do, when expect accepts its version.
-func (s Server) updateRole(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	expect kernel.Expect,
-	in api.RoleUpdateInput,
-) (role.Role, error) {
+func (s Server) updateRole(ctx context.Context, acct kernel.AccountID, slug string, expect kernel.Expect, in api.RoleUpdateInput) (role.Role, error) {
 	c := role.Change{Name: in.Name, Description: in.Description}
 	if in.Actions != nil {
 		c.Actions = new(catalogued(*in.Actions))
@@ -182,10 +161,7 @@ func (s Server) updateRole(
 
 // RoleDelete deletes a custom role without bindings, when its If-Match, if
 // any, names the role's version, and answers it as it was.
-func (s Server) RoleDelete(
-	ctx context.Context,
-	req api.RoleDeleteRequestObject,
-) (api.RoleDeleteResponseObject, error) {
+func (s Server) RoleDelete(ctx context.Context, req api.RoleDeleteRequestObject) (api.RoleDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -203,11 +179,7 @@ func (s Server) RoleDelete(
 
 // roleView is r as Spacelift's Role, with its bindings to users, groups
 // and API keys. Its count covers every binding, a stack's included.
-func (s Server) roleView(
-	ctx context.Context,
-	acct kernel.AccountID,
-	r role.Role,
-) (api.Role, error) {
+func (s Server) roleView(ctx context.Context, acct kernel.AccountID, r role.Role) (api.Role, error) {
 	bs, err := s.roles.Bindings(ctx, acct, r)
 	if err != nil {
 		return api.Role{}, err //nolint:wrapcheck // the store names the read

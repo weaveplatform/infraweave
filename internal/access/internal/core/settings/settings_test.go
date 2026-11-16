@@ -88,11 +88,7 @@ type mem struct {
 
 func (m *mem) Settings(context.Context, kernel.AccountID) (Settings, error) { return m.s, m.err }
 
-func (m *mem) SetPersonalAPIKeys(
-	_ context.Context,
-	_ kernel.AccountID,
-	enabled, disable bool,
-) ([]kernel.ULID, error) {
+func (m *mem) SetPersonalAPIKeys(_ context.Context, _ kernel.AccountID, enabled, disable bool) ([]kernel.ULID, error) {
 	m.s.PersonalAPIKeys, m.disabled = enabled, disable
 	if !disable {
 		return nil, m.err
@@ -134,11 +130,7 @@ func (m *mem) RequestPersonalAPIKeys(_ context.Context, e kernel.AuditEntry) err
 	return m.err
 }
 
-func (m *mem) DeleteAccount(
-	_ context.Context,
-	_ kernel.AccountID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (m *mem) DeleteAccount(_ context.Context, _ kernel.AccountID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	m.org = append(m.org, e)
 	return m.revoked, m.err
 }

@@ -34,10 +34,7 @@ func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces)
 
 // Contexts lists the contexts of the caller's account in the spaces it may
 // read, by slug.
-func (s Server) Contexts(
-	ctx context.Context,
-	req api.ContextsRequestObject,
-) (api.ContextsResponseObject, error) {
+func (s Server) Contexts(ctx context.Context, req api.ContextsRequestObject) (api.ContextsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -55,10 +52,7 @@ func (s Server) Contexts(
 
 // AttachableContextsInSpace lists the contexts a stack in the space may
 // attach that the caller may read, by slug.
-func (s Server) AttachableContextsInSpace(
-	ctx context.Context,
-	req api.AttachableContextsInSpaceRequestObject,
-) (api.AttachableContextsInSpaceResponseObject, error) {
+func (s Server) AttachableContextsInSpace(ctx context.Context, req api.AttachableContextsInSpaceRequestObject) (api.AttachableContextsInSpaceResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -77,10 +71,7 @@ func (s Server) AttachableContextsInSpace(
 
 // SearchContexts searches the contexts of the caller's account in the
 // spaces it may read.
-func (s Server) SearchContexts(
-	ctx context.Context,
-	req api.SearchContextsRequestObject,
-) (api.SearchContextsResponseObject, error) {
+func (s Server) SearchContexts(ctx context.Context, req api.SearchContextsRequestObject) (api.SearchContextsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -102,10 +93,7 @@ func (s Server) SearchContexts(
 
 // SearchContextsSuggestions lists the values the contexts of the caller's
 // account in the spaces it may read hold.
-func (s Server) SearchContextsSuggestions(
-	ctx context.Context,
-	req api.SearchContextsSuggestionsRequestObject,
-) (api.SearchContextsSuggestionsResponseObject, error) {
+func (s Server) SearchContextsSuggestions(ctx context.Context, req api.SearchContextsSuggestionsRequestObject) (api.SearchContextsSuggestionsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -119,10 +107,7 @@ func (s Server) SearchContextsSuggestions(
 
 // SearchSpaceContexts searches the contexts a stack in the space may
 // attach, marking those of the spaces it inherits from.
-func (s Server) SearchSpaceContexts(
-	ctx context.Context,
-	req api.SearchSpaceContextsRequestObject,
-) (api.SearchSpaceContextsResponseObject, error) {
+func (s Server) SearchSpaceContexts(ctx context.Context, req api.SearchSpaceContextsRequestObject) (api.SearchSpaceContextsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -147,10 +132,7 @@ func (s Server) SearchSpaceContexts(
 
 // SearchSpaceContextsSuggestions lists the values the contexts a stack in
 // the space may attach hold.
-func (s Server) SearchSpaceContextsSuggestions(
-	ctx context.Context,
-	req api.SearchSpaceContextsSuggestionsRequestObject,
-) (api.SearchSpaceContextsSuggestionsResponseObject, error) {
+func (s Server) SearchSpaceContextsSuggestions(ctx context.Context, req api.SearchSpaceContextsSuggestionsRequestObject) (api.SearchSpaceContextsSuggestionsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -164,10 +146,7 @@ func (s Server) SearchSpaceContextsSuggestions(
 }
 
 // Context answers one context of the caller's account.
-func (s Server) Context(
-	ctx context.Context,
-	req api.ContextRequestObject,
-) (api.ContextResponseObject, error) {
+func (s Server) Context(ctx context.Context, req api.ContextRequestObject) (api.ContextResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -187,10 +166,7 @@ func (s Server) Context(
 }
 
 // ContextCreateV2 creates a context in the space its input names.
-func (s Server) ContextCreateV2(
-	ctx context.Context,
-	req api.ContextCreateV2RequestObject,
-) (api.ContextCreateV2ResponseObject, error) {
+func (s Server) ContextCreateV2(ctx context.Context, req api.ContextCreateV2RequestObject) (api.ContextCreateV2ResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -208,10 +184,7 @@ func (s Server) ContextCreateV2(
 
 // ContextUpdateV2 replaces a context's fields with its input's, and its
 // config elements when replaceConfigElements is true.
-func (s Server) ContextUpdateV2(
-	ctx context.Context,
-	req api.ContextUpdateV2RequestObject,
-) (api.ContextUpdateV2ResponseObject, error) {
+func (s Server) ContextUpdateV2(ctx context.Context, req api.ContextUpdateV2RequestObject) (api.ContextUpdateV2ResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -229,13 +202,7 @@ func (s Server) ContextUpdateV2(
 	}, nil
 }
 
-func (s Server) update(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-	body api.ContextUpdateV2Request,
-) (core.Context, error) {
+func (s Server) update(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect, body api.ContextUpdateV2Request) (core.Context, error) {
 	replace := body.ReplaceConfigElements != nil && *body.ReplaceConfigElements
 	c, err := s.svc.Update(ctx, p, slug, expect, inputOf(body.Input), replace)
 	return c, err //nolint:wrapcheck // answered by contextError
@@ -245,10 +212,7 @@ func (s Server) update(
 // rest, writing the result as ContextUpdateV2 writes its body. The view
 // it patches leaves the config elements out, so a patch replaces them
 // only when it names both configAttachments and replaceConfigElements.
-func (s Server) ContextPatch(
-	ctx context.Context,
-	req api.ContextPatchRequestObject,
-) (api.ContextPatchResponseObject, error) {
+func (s Server) ContextPatch(ctx context.Context, req api.ContextPatchRequestObject) (api.ContextPatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -286,10 +250,7 @@ func (s Server) ContextPatch(
 
 // ContextDelete deletes a context and answers it as it was, with the
 // caller's access to it then.
-func (s Server) ContextDelete(
-	ctx context.Context,
-	req api.ContextDeleteRequestObject,
-) (api.ContextDeleteResponseObject, error) {
+func (s Server) ContextDelete(ctx context.Context, req api.ContextDeleteRequestObject) (api.ContextDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -318,10 +279,7 @@ func (s Server) ContextDelete(
 }
 
 // ContextAttachedStack answers one of a context's attachments.
-func (s Server) ContextAttachedStack(
-	ctx context.Context,
-	req api.ContextAttachedStackRequestObject,
-) (api.ContextAttachedStackResponseObject, error) {
+func (s Server) ContextAttachedStack(ctx context.Context, req api.ContextAttachedStackRequestObject) (api.ContextAttachedStackResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -338,10 +296,7 @@ func (s Server) ContextAttachedStack(
 }
 
 // ContextConfigElement answers one of a context's config elements.
-func (s Server) ContextConfigElement(
-	ctx context.Context,
-	req api.ContextConfigElementRequestObject,
-) (api.ContextConfigElementResponseObject, error) {
+func (s Server) ContextConfigElement(ctx context.Context, req api.ContextConfigElementRequestObject) (api.ContextConfigElementResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -354,10 +309,7 @@ func (s Server) ContextConfigElement(
 }
 
 // ContextConfigAdd creates or replaces the config element its body names.
-func (s Server) ContextConfigAdd(
-	ctx context.Context,
-	req api.ContextConfigAddRequestObject,
-) (api.ContextConfigAddResponseObject, error) {
+func (s Server) ContextConfigAdd(ctx context.Context, req api.ContextConfigAddRequestObject) (api.ContextConfigAddResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -377,10 +329,7 @@ func (s Server) ContextConfigAdd(
 }
 
 // ContextConfigSet creates or replaces the config element configId.
-func (s Server) ContextConfigSet(
-	ctx context.Context,
-	req api.ContextConfigSetRequestObject,
-) (api.ContextConfigSetResponseObject, error) {
+func (s Server) ContextConfigSet(ctx context.Context, req api.ContextConfigSetRequestObject) (api.ContextConfigSetResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -401,10 +350,7 @@ func (s Server) ContextConfigSet(
 
 // ContextConfigDelete deletes a context's config element and answers it as
 // it was.
-func (s Server) ContextConfigDelete(
-	ctx context.Context,
-	req api.ContextConfigDeleteRequestObject,
-) (api.ContextConfigDeleteResponseObject, error) {
+func (s Server) ContextConfigDelete(ctx context.Context, req api.ContextConfigDeleteRequestObject) (api.ContextConfigDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -418,10 +364,7 @@ func (s Server) ContextConfigDelete(
 
 // ContextAttach attaches a context to a stack, or changes the priority of
 // its attachment.
-func (s Server) ContextAttach(
-	ctx context.Context,
-	req api.ContextAttachRequestObject,
-) (api.ContextAttachResponseObject, error) {
+func (s Server) ContextAttach(ctx context.Context, req api.ContextAttachRequestObject) (api.ContextAttachResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -439,10 +382,7 @@ func (s Server) ContextAttach(
 
 // ContextDetach detaches a context from a stack and answers the
 // attachment as it was.
-func (s Server) ContextDetach(
-	ctx context.Context,
-	req api.ContextDetachRequestObject,
-) (api.ContextDetachResponseObject, error) {
+func (s Server) ContextDetach(ctx context.Context, req api.ContextDetachRequestObject) (api.ContextDetachResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -468,11 +408,7 @@ func page(cursor *api.Cursor, limit *api.Limit) search.Input {
 }
 
 // page is res as a page of views.
-func (s Server) page(
-	ctx context.Context,
-	p kernel.Principal,
-	res search.Result[core.Context],
-) (api.ContextPage, error) {
+func (s Server) page(ctx context.Context, p kernel.Principal, res search.Result[core.Context]) (api.ContextPage, error) {
 	all := make([]core.Context, 0, len(res.Edges))
 	for _, e := range res.Edges {
 		all = append(all, e.Node)

@@ -47,12 +47,7 @@ func (c *changeSteps) register(sc *godog.ScenarioContext) {
 // harness.RecordArtifact: the account kept as acct is the one the run's
 // specification names, and key keeps the artifact key in hex. The
 // commit's answer is the last.
-func (c *changeSteps) commit(
-	ctx context.Context,
-	token, tool, name, key, run, acct string,
-	version int64,
-	replica string,
-) error {
+func (c *changeSteps) commit(ctx context.Context, token, tool, name, key, run, acct string, version int64, replica string) error {
 	doc, err := changesDocument(tool, name)
 	if err != nil {
 		return err

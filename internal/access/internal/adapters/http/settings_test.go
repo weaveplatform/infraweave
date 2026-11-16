@@ -36,11 +36,7 @@ func (c *configs) Settings(context.Context, kernel.AccountID) (settings.Settings
 	return c.s, c.fail()
 }
 
-func (c *configs) SetPersonalAPIKeys(
-	_ context.Context,
-	_ kernel.AccountID,
-	enabled, _ bool,
-) ([]kernel.ULID, error) {
+func (c *configs) SetPersonalAPIKeys(_ context.Context, _ kernel.AccountID, enabled, _ bool) ([]kernel.ULID, error) {
 	c.s.PersonalAPIKeys = enabled
 	return nil, c.fail()
 }
@@ -65,11 +61,7 @@ func (c *configs) SetSurvey(_ context.Context, _ kernel.AccountID, sv settings.S
 	return c.fail()
 }
 
-func (c *configs) ToggleDeletionMark(
-	_ context.Context,
-	_ kernel.AccountID,
-	m settings.Mark,
-) (bool, error) {
+func (c *configs) ToggleDeletionMark(_ context.Context, _ kernel.AccountID, m settings.Mark) (bool, error) {
 	if c.s.Mark == nil {
 		c.s.Mark = &m
 	} else {
@@ -83,11 +75,7 @@ func (c *configs) RequestPersonalAPIKeys(context.Context, kernel.AuditEntry) err
 	return c.fail()
 }
 
-func (c *configs) DeleteAccount(
-	context.Context,
-	kernel.AccountID,
-	kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (c *configs) DeleteAccount(context.Context, kernel.AccountID, kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	switch {
 	case c.s.Mark == nil:
 		return nil, settings.ErrInvalidState

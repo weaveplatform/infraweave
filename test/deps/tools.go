@@ -180,11 +180,7 @@ func (d *Dependencies) cached(ctx context.Context, t Tool, archive string) (stri
 // SHA256SUMS must list that SHA-256 for it, so the cache is fetched again
 // when it lists another. The signature is left to the launcher, which
 // verifies it as it would the vendor's.
-func (d *Dependencies) Release(
-	ctx context.Context,
-	t Tool,
-	arch string,
-) (map[string]string, error) {
+func (d *Dependencies) Release(ctx context.Context, t Tool, arch string) (map[string]string, error) {
 	archive := t.Archive(arch)
 	files, err := d.release(ctx, t, archive)
 	if err != nil {
@@ -193,9 +189,7 @@ func (d *Dependencies) Release(
 	return files, nil
 }
 
-func (d *Dependencies) release(ctx context.Context, t Tool, archive string) (map[string]string,
-	error,
-) {
+func (d *Dependencies) release(ctx context.Context, t Tool, archive string) (map[string]string, error) {
 	path, err := d.cached(ctx, t, archive)
 	if err != nil {
 		return nil, err

@@ -122,13 +122,7 @@ type Entitlements interface {
 	// org's entitlement must exist to hold. A name that is no limit of the
 	// catalogue, a negative value, or a value above the organization's
 	// pool as it applies now is an *AccountLimitError.
-	SetAccountLimit(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-		limit string,
-		value int64,
-	) error
+	SetAccountLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, value int64) error
 	// ClearAccountLimit removes acct's limit on limit, so the pool alone
 	// applies; clearing none is no error. A name that is no limit of the
 	// catalogue is an *AccountLimitError.
@@ -146,11 +140,5 @@ type Entitlements interface {
 	// transaction, the lock holds until the creation commits, so two
 	// creations cannot both take the last unit. An organization without
 	// an entitlement has no limits.
-	CheckLimit(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-		limit string,
-		count func(context.Context) (Usage, error),
-	) error
+	CheckLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, count func(context.Context) (Usage, error)) error
 }

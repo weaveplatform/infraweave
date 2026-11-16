@@ -309,10 +309,7 @@ func (h *harness) notified(t *testing.T, payload string) []string {
 
 // job is the state, attempt and last error of the only job of kind whose
 // unique key is key.
-func (h *harness) job(
-	t *testing.T,
-	kind, key string,
-) (state string, attempt int, lastError string) {
+func (h *harness) job(t *testing.T, kind, key string) (state string, attempt int, lastError string) {
 	t.Helper()
 	err := h.pool.QueryRow(t.Context(), `
 SELECT state, attempt, coalesce(last_error, '') FROM jobs WHERE kind = $1 AND unique_key = $2`,

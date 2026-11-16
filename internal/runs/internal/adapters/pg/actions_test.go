@@ -187,19 +187,13 @@ type racer struct {
 	fail  bool
 }
 
-func (r racer) Discardable(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-) ([]lifecycle.Run, error) {
+func (r racer) Discardable(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]lifecycle.Run, error) {
 	runs, err := r.Store.Discardable(ctx, acct, stack)
 	r.moved()
 	return runs, err
 }
 
-func (r racer) Lock(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run,
-	error,
-) {
+func (r racer) Lock(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error) {
 	if r.fail {
 		return lifecycle.Run{}, errInjected
 	}

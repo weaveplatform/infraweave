@@ -125,12 +125,7 @@ func privateKey(b []byte) bool {
 
 // sameSpace refuses slug when it names a space other than space; an empty
 // slug keeps it.
-func (s *Service) sameSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	slug string,
-) error {
+func (s *Service) sameSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID, slug string) error {
 	if slug == "" {
 		return nil
 	}
@@ -158,11 +153,7 @@ func (s *Service) WebhookURL(provider string, id kernel.ULID) string {
 // operator sets, with p's account's check options: those it stored, or
 // the defaults until it stores some. ErrNotConfigured when the operator
 // has set none.
-func (s *Service) Builtin(
-	ctx context.Context,
-	p kernel.Principal,
-	provider string,
-) (Integration, error) {
+func (s *Service) Builtin(ctx context.Context, p kernel.Principal, provider string) (Integration, error) {
 	use, ok := s.builtin[provider]
 	if !ok {
 		return Integration{}, fmt.Errorf("%w: %s", ErrNotConfigured, provider)
@@ -183,13 +174,7 @@ func (s *Service) Builtin(
 // SetBuiltin stores p's account's check options of the built-in provider
 // and whether its runs use a Git checkout, keeping the stored value of
 // each that is nil. The route has decided SPACE_ADMIN on the top space.
-func (s *Service) SetBuiltin(
-	ctx context.Context,
-	p kernel.Principal,
-	provider string,
-	checks Checks,
-	useGitCheckout *bool,
-) (Integration, error) {
+func (s *Service) SetBuiltin(ctx context.Context, p kernel.Principal, provider string, checks Checks, useGitCheckout *bool) (Integration, error) {
 	if _, ok := s.builtin[provider]; !ok {
 		return Integration{}, fmt.Errorf("%w: %s", ErrNotConfigured, provider)
 	}
@@ -240,11 +225,7 @@ func (s *Service) SetBuiltin(
 // route has decided SPACE_ADMIN on the top space.
 //
 // ref: decision 0012 § "Integrations, the default and spaces"
-func (s *Service) OpenManifest(
-	ctx context.Context,
-	p kernel.Principal,
-	host, apiHost, owner string,
-) (port.Manifest, error) {
+func (s *Service) OpenManifest(ctx context.Context, p kernel.Principal, host, apiHost, owner string) (port.Manifest, error) {
 	if s.apps == nil {
 		return port.Manifest{}, fmt.Errorf("%w: GitHub Apps", ErrNotConfigured)
 	}
@@ -285,11 +266,7 @@ func (s *Service) OpenManifest(
 // space, with the form's ID, named after the App, and the default when
 // the account has none. A form that is unknown, expired or completed is
 // refused at state; the route has decided SPACE_ADMIN on the top space.
-func (s *Service) FromManifest(
-	ctx context.Context,
-	p kernel.Principal,
-	code, state string,
-) (Integration, error) {
+func (s *Service) FromManifest(ctx context.Context, p kernel.Principal, code, state string) (Integration, error) {
 	if s.apps == nil {
 		return Integration{}, fmt.Errorf("%w: GitHub Apps", ErrNotConfigured)
 	}

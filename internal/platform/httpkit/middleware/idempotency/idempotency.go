@@ -68,12 +68,7 @@ func (c Config) Validate() error {
 // request's body in memory to hash it before the handler reads it, so it
 // runs behind middleware.LimitBodies, whose bound is the only one: a body
 // past it answers 413 payload-too-large here as it would in the handler.
-func Middleware(
-	store Store,
-	caller func(*http.Request) string,
-	applies func(*http.Request) bool,
-	log *slog.Logger,
-) func(http.Handler) http.Handler {
+func Middleware(store Store, caller func(*http.Request) string, applies func(*http.Request) bool, log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			keys := r.Header.Values(Header)
@@ -93,13 +88,7 @@ type guard struct {
 	log   *slog.Logger
 }
 
-func (g guard) serve(
-	w http.ResponseWriter,
-	r *http.Request,
-	next http.Handler,
-	keys []string,
-	caller string,
-) {
+func (g guard) serve(w http.ResponseWriter, r *http.Request, next http.Handler, keys []string, caller string) {
 	// The generated handler binds header parameters without their schema's
 	// length, so the bound is checked here.
 	if len(keys) > 1 || keys[0] == "" || len(keys[0]) > MaxKeyLength {

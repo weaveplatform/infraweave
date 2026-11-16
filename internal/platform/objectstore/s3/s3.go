@@ -37,13 +37,7 @@ type Option = func(*config.LoadOptions) error
 // New returns bucket, or c.Bucket when bucket is "", with credentials
 // from the SDK's default chain. Writes above partSize go in parts of
 // partSize.
-func New(
-	ctx context.Context,
-	c objectstore.S3Config,
-	bucket string,
-	partSize int64,
-	opts ...Option,
-) (*Bucket, error) {
+func New(ctx context.Context, c objectstore.S3Config, bucket string, partSize int64, opts ...Option) (*Bucket, error) {
 	if bucket == "" {
 		bucket = c.Bucket
 	}
@@ -88,24 +82,14 @@ func b64(sum []byte) *string { return aws.String(base64.StdEncoding.EncodeToStri
 // parts each carry theirs. The multipart upload completes only once the
 // source has given exactly size bytes, and is aborted otherwise, so a
 // failed write leaves nothing readable.
-func (b *Bucket) Put(
-	ctx context.Context,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *Bucket) Put(ctx context.Context, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	if size <= b.partSize {
 		return b.putOne(ctx, key, r, size)
 	}
 	return b.putParts(ctx, key, r, size)
 }
 
-func (b *Bucket) putOne(
-	ctx context.Context,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *Bucket) putOne(ctx context.Context, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	body, err := objectstore.ReadPart(r, make([]byte, size), size)
 	if err == nil {
 		err = objectstore.AtEnd(r)
@@ -128,12 +112,7 @@ func (b *Bucket) putOne(
 	return obj, nil
 }
 
-func (b *Bucket) putParts(
-	ctx context.Context,
-	key string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *Bucket) putParts(ctx context.Context, key string, r io.Reader, size int64) (objectstore.Object, error) {
 	up, err := b.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
 		Bucket:               &b.bucket,
 		Key:                  &key,
@@ -162,13 +141,7 @@ func (b *Bucket) putParts(
 	return obj, nil
 }
 
-func (b *Bucket) upload(
-	ctx context.Context,
-	key string,
-	id *string,
-	r io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (b *Bucket) upload(ctx context.Context, key string, id *string, r io.Reader, size int64) (objectstore.Object, error) {
 	whole := sha256.New()
 	buf := make([]byte, b.partSize)
 	var parts []types.CompletedPart
@@ -254,12 +227,7 @@ func (b *Bucket) Delete(ctx context.Context, key string) error {
 // SignURL presigns a GetObject or PutObject with SigV4. A PUT binds
 // Content-Length and, when given, x-amz-checksum-sha256, which the
 // client sends among the returned headers.
-func (b *Bucket) SignURL(
-	ctx context.Context,
-	method, key string,
-	ttl time.Duration,
-	c objectstore.Constraints,
-) (objectstore.Signed, error) {
+func (b *Bucket) SignURL(ctx context.Context, method, key string, ttl time.Duration, c objectstore.Constraints) (objectstore.Signed, error) {
 	expires := s3.WithPresignExpires(ttl)
 	var (
 		req *v4.PresignedHTTPRequest

@@ -226,16 +226,7 @@ func keyringCheck(h *observe.Health, keys *crypt.Keyring) {
 // and the installation's own through p, and holding objects as b, or nil
 // when m serves no API, so serve binds no API listener; and the probes,
 // which answer from health.
-func handlers(
-	log *slog.Logger,
-	c config.Server,
-	m Mode,
-	g Guards,
-	d Domains,
-	p Platform,
-	b Blobs,
-	health *observe.Health,
-) (api, admin http.Handler) {
+func handlers(log *slog.Logger, c config.Server, m Mode, g Guards, d Domains, p Platform, b Blobs, health *observe.Health) (api, admin http.Handler) {
 	if m.API {
 		api = API(log, c, g, d, p, b)
 	}
@@ -250,14 +241,7 @@ func handlers(
 // until ctx ends.
 //
 // ref: decision 0005
-func postgresGuards(
-	ctx context.Context,
-	wg *sync.WaitGroup,
-	c config.Server,
-	db *sql.DB,
-	keys *crypt.Keyring,
-	l *notify.Listener,
-) Guards {
+func postgresGuards(ctx context.Context, wg *sync.WaitGroup, c config.Server, db *sql.DB, keys *crypt.Keyring, l *notify.Listener) Guards {
 	sub, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
 	table := ratelimit.NewTable(db.Primary(), time.Now)
 	wg.Go(func() { table.Watch(ctx, sub) })

@@ -219,10 +219,7 @@ func requestID(raw string) (kernel.ULID, error) {
 
 // AuthOAuthRequest is an authorization request as the consent page shows
 // it.
-func (s Server) AuthOAuthRequest(
-	ctx context.Context,
-	req api.AuthOAuthRequestRequestObject,
-) (api.AuthOAuthRequestResponseObject, error) {
+func (s Server) AuthOAuthRequest(ctx context.Context, req api.AuthOAuthRequestRequestObject) (api.AuthOAuthRequestResponseObject, error) {
 	p, err := consenter(ctx)
 	if err != nil {
 		return nil, err
@@ -249,10 +246,7 @@ func (s Server) AuthOAuthRequest(
 
 // AuthOAuthRequestApprove grants an authorization request to the
 // caller's member in the account the body names.
-func (s Server) AuthOAuthRequestApprove(
-	ctx context.Context,
-	req api.AuthOAuthRequestApproveRequestObject,
-) (api.AuthOAuthRequestApproveResponseObject, error) {
+func (s Server) AuthOAuthRequestApprove(ctx context.Context, req api.AuthOAuthRequestApproveRequestObject) (api.AuthOAuthRequestApproveResponseObject, error) {
 	p, err := consenter(ctx)
 	if err != nil {
 		return nil, err
@@ -275,10 +269,7 @@ func (s Server) AuthOAuthRequestApprove(
 }
 
 // AuthOAuthRequestDeny refuses an authorization request.
-func (s Server) AuthOAuthRequestDeny(
-	ctx context.Context,
-	req api.AuthOAuthRequestDenyRequestObject,
-) (api.AuthOAuthRequestDenyResponseObject, error) {
+func (s Server) AuthOAuthRequestDeny(ctx context.Context, req api.AuthOAuthRequestDenyRequestObject) (api.AuthOAuthRequestDenyResponseObject, error) {
 	p, err := consenter(ctx)
 	if err != nil {
 		return nil, err

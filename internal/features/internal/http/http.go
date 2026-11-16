@@ -25,10 +25,7 @@ type Allower interface {
 // its body sets, the Allower refuses: 403 feature-disabled or feature-not-in-tier.
 // gate resolves the request's Gate; a request it resolves none for, such
 // as a 404, passes.
-func Middleware(
-	a Allower,
-	gate func(*nethttp.Request) (featuresapi.Gate, bool),
-) func(nethttp.Handler) nethttp.Handler {
+func Middleware(a Allower, gate func(*nethttp.Request) (featuresapi.Gate, bool)) func(nethttp.Handler) nethttp.Handler {
 	return func(next nethttp.Handler) nethttp.Handler {
 		return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 			g, ok := gate(r)

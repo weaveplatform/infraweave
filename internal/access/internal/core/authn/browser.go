@@ -81,11 +81,7 @@ func (x *secretIndex) put(hash []byte, id kernel.ULID) {
 // acts as on a route of reach, and the session. A cookie that names no session, or a session
 // that is not live or not a browser session, is ErrUnauthenticated. A use
 // moves the session's idle end at most once a minute.
-func (s *Service) AuthenticateBrowser(
-	ctx context.Context,
-	secret string,
-	reach Reach,
-) (kernel.Principal, session.Session, error) {
+func (s *Service) AuthenticateBrowser(ctx context.Context, secret string, reach Reach) (kernel.Principal, session.Session, error) {
 	hash := session.HashSecret(secret)
 	id, ok := s.secrets.get(hash)
 	if !ok {
@@ -138,10 +134,7 @@ var decoy = sync.OnceValue(func() breakglass.Hash {
 // wrong login or password, an organization with no credential and one
 // that does not exist are each ErrUnauthenticated; every attempt on an
 // organization that exists is on its trail.
-func (s *Service) SignInBreakGlass(
-	ctx context.Context,
-	slug, login, password, ip string,
-) (Browser, error) {
+func (s *Service) SignInBreakGlass(ctx context.Context, slug, login, password, ip string) (Browser, error) {
 	sl, err := organization.ParseSlug("organization", slug)
 	if err != nil {
 		decoy().Verify(password)
@@ -281,11 +274,7 @@ type Switched struct {
 // the same channel and with the same absolute end, when acct admits p's
 // member; the old session ends. A caller who is not a member, or an
 // account that does not admit them, is ErrNotAdmitted.
-func (s *Service) SwitchAccount(
-	ctx context.Context,
-	p kernel.Principal,
-	acct kernel.AccountID,
-) (Switched, error) {
+func (s *Service) SwitchAccount(ctx context.Context, p kernel.Principal, acct kernel.AccountID) (Switched, error) {
 	if p.Kind != kernel.PrincipalUser || p.MemberID.IsZero() {
 		return Switched{}, ErrNotAdmitted
 	}

@@ -21,21 +21,11 @@ type Store interface {
 	// CreateOrganization gives org its entitlement on the default tier.
 	CreateOrganization(ctx context.Context, org kernel.OrganizationID) error
 	DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error
-	SetAccountLimit(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-		limit string,
-		value int64,
-	) error
+	SetAccountLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, value int64) error
 	DeleteAccount(ctx context.Context, acct kernel.AccountID) error
 	// Entitlement reads org's tier, grants and limits, locking its row
 	// until ctx's transaction ends when lock is set.
-	Entitlement(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		lock bool,
-	) (featuresapi.Entitlement, error)
+	Entitlement(ctx context.Context, org kernel.OrganizationID, lock bool) (featuresapi.Entitlement, error)
 	AccountLimit(ctx context.Context, acct kernel.AccountID, limit string) (int64, bool, error)
 	ClearAccountLimit(ctx context.Context, acct kernel.AccountID, limit string) error
 	AccountLimits(ctx context.Context, acct kernel.AccountID) (map[string]int64, error)
@@ -152,13 +142,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, org kernel.Organizatio
 // SetAccountLimit sets acct's limit on limit, which must be a limit of
 // the catalogue, zero or more, and no more than org's pool as it applies
 // now; with billing off no pool applies.
-func (s *Service) SetAccountLimit(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	limit string,
-	value int64,
-) error {
+func (s *Service) SetAccountLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, value int64) error {
 	if f, ok := features.Lookup(limit); !ok || f.Kind != features.Limit {
 		return &featuresapi.AccountLimitError{Limit: limit, Value: value, Unknown: true}
 	}
@@ -176,11 +160,7 @@ func (s *Service) SetAccountLimit(
 }
 
 // ClearAccountLimit removes acct's limit on limit.
-func (s *Service) ClearAccountLimit(
-	ctx context.Context,
-	acct kernel.AccountID,
-	limit string,
-) error {
+func (s *Service) ClearAccountLimit(ctx context.Context, acct kernel.AccountID, limit string) error {
 	if f, ok := features.Lookup(limit); !ok || f.Kind != features.Limit {
 		return &featuresapi.AccountLimitError{Limit: limit, Unknown: true}
 	}
@@ -200,10 +180,7 @@ func (*Service) LimitNames() []string {
 }
 
 // AccountLimits are acct's limits by limit name.
-func (s *Service) AccountLimits(
-	ctx context.Context,
-	acct kernel.AccountID,
-) (map[string]int64, error) {
+func (s *Service) AccountLimits(ctx context.Context, acct kernel.AccountID) (map[string]int64, error) {
 	return s.store.AccountLimits(ctx, acct) //nolint:wrapcheck // as above
 }
 
@@ -216,10 +193,7 @@ func (s *Service) DeleteAccount(ctx context.Context, acct kernel.AccountID) erro
 // less the switched-off features, less every feature whose requirements
 // that leaves out. With billing off it reads as Enterprise, every gated
 // feature and no limit, under the organization's own tier and version.
-func (s *Service) Entitlement(
-	ctx context.Context,
-	org kernel.OrganizationID,
-) (featuresapi.Entitlement, error) {
+func (s *Service) Entitlement(ctx context.Context, org kernel.OrganizationID) (featuresapi.Entitlement, error) {
 	s.mu.Lock()
 	e, ok := s.orgs[org]
 	gen := s.gen
@@ -299,11 +273,7 @@ func (s *Service) Allow(ctx context.Context, feature string) error {
 
 // AllowOrganization is Allow for org's work outside a request, such as a
 // job; a zero org is refused only a switched-off feature.
-func (s *Service) AllowOrganization(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	feature string,
-) error {
+func (s *Service) AllowOrganization(ctx context.Context, org kernel.OrganizationID, feature string) error {
 	if s.switchedOff(feature) {
 		return &Refusal{Disabled: true, Feature: feature}
 	}
@@ -372,13 +342,7 @@ func (s *Service) contents(ctx context.Context) ([]features.Tier, error) {
 // *featuresapi.LimitError; with billing off it admits everything. The pool
 // is checked first, so a creation that passes both names the
 // organization, which no account admin can raise.
-func (s *Service) CheckLimit(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	limit string,
-	count func(context.Context) (featuresapi.Usage, error),
-) error {
+func (s *Service) CheckLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, count func(context.Context) (featuresapi.Usage, error)) error {
 	return s.inTx(ctx, func(ctx context.Context) error {
 		// Read in the creating transaction rather than from the snapshot,
 		// so a switch turned on a moment ago already counts.

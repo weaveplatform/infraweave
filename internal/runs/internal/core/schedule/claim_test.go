@@ -57,13 +57,7 @@ func (s *store) Drifting(_ context.Context, acct kernel.AccountID, pool kernel.U
 
 func (*store) TakeDrift(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
-func (s *store) Next(
-	_ context.Context,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-	states []kernel.RunState,
-	last int,
-) (lifecycle.Run, bool, error) {
+func (s *store) Next(_ context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
 	var out []lifecycle.Run
 	for _, r := range s.runs {
 		if r.Account == acct && *r.WorkerPool == pool && slices.Contains(states, r.State) &&
@@ -80,10 +74,7 @@ func (s *store) Next(
 	}), true, nil
 }
 
-func (s *store) Waiting(
-	_ context.Context,
-	states []kernel.RunState,
-) (map[kernel.ULID]int, error) {
+func (s *store) Waiting(_ context.Context, states []kernel.RunState) (map[kernel.ULID]int, error) {
 	out := map[kernel.ULID]int{}
 	for _, r := range s.runs {
 		if r.WorkerPool != nil && slices.Contains(states, r.State) {
@@ -110,12 +101,7 @@ func (s *store) Move(_ context.Context, run lifecycle.Run, step lifecycle.Step) 
 
 func (*store) Track(context.Context, lifecycle.Run) error { return nil }
 
-func (*store) Projection(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	[]kernel.StackState,
-) (kernel.StackState, bool, error) {
+func (*store) Projection(context.Context, kernel.AccountID, kernel.ULID, []kernel.StackState) (kernel.StackState, bool, error) {
 	return kernel.StackStateNone, false, nil
 }
 
@@ -132,13 +118,7 @@ func (stacks) Get(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacks
 	return stacksapi.Stack{ID: id}, nil
 }
 
-func (stacks) SetRunState(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	kernel.StackState,
-	bool,
-) error {
+func (stacks) SetRunState(context.Context, kernel.AccountID, kernel.ULID, kernel.StackState, bool) error {
 	return nil
 }
 

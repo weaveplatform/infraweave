@@ -46,13 +46,7 @@ func newMem() *mem {
 	}
 }
 
-func (m *mem) CreateOrganization(
-	_ context.Context,
-	org organization.Organization,
-	first account.Account,
-	bg *breakglass.Credential,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (m *mem) CreateOrganization(_ context.Context, org organization.Organization, first account.Account, bg *breakglass.Credential, e kernel.OrganizationAuditEntry) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -70,11 +64,7 @@ func (m *mem) CreateOrganization(
 	return nil
 }
 
-func (m *mem) Organizations(
-	_ context.Context,
-	after kernel.OrganizationID,
-	limit int,
-) ([]Organization, error) {
+func (m *mem) Organizations(_ context.Context, after kernel.OrganizationID, limit int) ([]Organization, error) {
 	var out []Organization
 	for _, o := range m.orgs {
 		if after.IsZero() || o.ID.String() > after.String() {
@@ -96,11 +86,7 @@ func (m *mem) OrganizationBySlug(_ context.Context, slug kernel.Slug) (Organizat
 	return Organization{}, port.ErrNotFound
 }
 
-func (m *mem) DeleteOrganization(
-	_ context.Context,
-	id kernel.OrganizationID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (m *mem) DeleteOrganization(_ context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -109,12 +95,7 @@ func (m *mem) DeleteOrganization(
 	return m.sessions[id], nil
 }
 
-func (m *mem) SetBreakGlass(
-	_ context.Context,
-	id kernel.OrganizationID,
-	c breakglass.Credential,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (m *mem) SetBreakGlass(_ context.Context, id kernel.OrganizationID, c breakglass.Credential, e kernel.OrganizationAuditEntry) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -125,11 +106,7 @@ func (m *mem) SetBreakGlass(
 	return nil
 }
 
-func (m *mem) DeleteBreakGlass(
-	_ context.Context,
-	id kernel.OrganizationID,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (m *mem) DeleteBreakGlass(_ context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) error {
 	if m.err != nil {
 		return m.err
 	}

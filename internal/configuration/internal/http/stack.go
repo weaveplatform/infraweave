@@ -9,10 +9,7 @@ import (
 
 // StackAttachableContexts lists the contexts the stack may attach that
 // the caller may read, by slug.
-func (s Server) StackAttachableContexts(
-	ctx context.Context,
-	req api.StackAttachableContextsRequestObject,
-) (api.StackAttachableContextsResponseObject, error) {
+func (s Server) StackAttachableContexts(ctx context.Context, req api.StackAttachableContextsRequestObject) (api.StackAttachableContextsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -34,10 +31,7 @@ func (s Server) StackAttachableContexts(
 }
 
 // StackConfigElement reads a stack's config element by its ID.
-func (s Server) StackConfigElement(
-	ctx context.Context,
-	req api.StackConfigElementRequestObject,
-) (api.StackConfigElementResponseObject, error) {
+func (s Server) StackConfigElement(ctx context.Context, req api.StackConfigElementRequestObject) (api.StackConfigElementResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -51,10 +45,7 @@ func (s Server) StackConfigElement(
 
 // StackConfigAdd creates or replaces the stack's config element its body
 // names.
-func (s Server) StackConfigAdd(
-	ctx context.Context,
-	req api.StackConfigAddRequestObject,
-) (api.StackConfigAddResponseObject, error) {
+func (s Server) StackConfigAdd(ctx context.Context, req api.StackConfigAddRequestObject) (api.StackConfigAddResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -74,10 +65,7 @@ func (s Server) StackConfigAdd(
 }
 
 // StackConfigSet creates or replaces the stack's config element configId.
-func (s Server) StackConfigSet(
-	ctx context.Context,
-	req api.StackConfigSetRequestObject,
-) (api.StackConfigSetResponseObject, error) {
+func (s Server) StackConfigSet(ctx context.Context, req api.StackConfigSetRequestObject) (api.StackConfigSetResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -98,10 +86,7 @@ func (s Server) StackConfigSet(
 
 // StackConfigDelete deletes a stack's config element and answers it as it
 // was.
-func (s Server) StackConfigDelete(
-	ctx context.Context,
-	req api.StackConfigDeleteRequestObject,
-) (api.StackConfigDeleteResponseObject, error) {
+func (s Server) StackConfigDelete(ctx context.Context, req api.StackConfigDeleteRequestObject) (api.StackConfigDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

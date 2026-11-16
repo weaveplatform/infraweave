@@ -113,12 +113,7 @@ type Header struct{ Name, Value string }
 // returns the answer and, for a status of 400 or more, the typed error of
 // its problem as well. A caller's Idempotency-Key header replaces the one
 // the SDK would choose.
-func (c *Client) Do(
-	ctx context.Context,
-	method, path string,
-	body any,
-	headers ...Header,
-) (*Response, error) {
+func (c *Client) Do(ctx context.Context, method, path string, body any, headers ...Header) (*Response, error) {
 	var rd io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)

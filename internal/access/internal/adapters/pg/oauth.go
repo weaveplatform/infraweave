@@ -154,12 +154,7 @@ func (s *Store) RedirectHosts(ctx context.Context, acct kernel.AccountID) ([]str
 // updates the member before each revokes the member's sessions, so a
 // grant written under these locks is one they revoke, and one they
 // precede is refused here.
-func grantOwner(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	member kernel.MemberID,
-) (oauth.Owner, error) {
+func grantOwner(ctx context.Context, q tx.Querier, acct kernel.AccountID, member kernel.MemberID) (oauth.Owner, error) {
 	var o oauth.Owner
 	err := q.QueryRow(ctx, `SELECT m.login, m.name, u.latest_groups
 		FROM account_users u JOIN members m ON m.id = u.member_id
@@ -170,11 +165,7 @@ func grantOwner(
 
 // Redeem spends the code whose SHA-256 is hash for the grant session
 // grant builds, under grantOwner's locks.
-func (s *Store) Redeem(
-	ctx context.Context,
-	hash []byte,
-	grant func(oauth.Request, oauth.Owner) (session.Session, error),
-) (session.Session, error) {
+func (s *Store) Redeem(ctx context.Context, hash []byte, grant func(oauth.Request, oauth.Owner) (session.Session, error)) (session.Session, error) {
 	var (
 		out    session.Session
 		reused bool
@@ -232,11 +223,7 @@ func (s *Store) Redeem(
 
 // Refresh rotates the grant whose current refresh token hashes to hash,
 // under grantOwner's locks.
-func (s *Store) Refresh(
-	ctx context.Context,
-	hash []byte,
-	rotate func(session.Session, oauth.Owner) (session.Session, error),
-) (session.Session, error) {
+func (s *Store) Refresh(ctx context.Context, hash []byte, rotate func(session.Session, oauth.Owner) (session.Session, error)) (session.Session, error) {
 	var (
 		out     session.Session
 		outcome error
@@ -298,13 +285,7 @@ func (s *Store) Refresh(
 // spent revokes the grant that spent the refresh token hashing to hash,
 // answering it and ErrReused through out and outcome, or port.ErrNotFound
 // when no grant spent it.
-func (s *Store) spent(
-	ctx context.Context,
-	q tx.Querier,
-	hash []byte,
-	out *session.Session,
-	outcome *error,
-) error {
+func (s *Store) spent(ctx context.Context, q tx.Querier, hash []byte, out *session.Session, outcome *error) error {
 	var sid kernel.ULID
 	err := q.QueryRow(ctx, `SELECT session_id FROM oauth_spent_refresh_tokens WHERE hash = $1`,
 		hash).Scan(&sid)

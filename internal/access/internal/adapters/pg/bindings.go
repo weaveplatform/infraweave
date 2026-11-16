@@ -46,11 +46,7 @@ func (s *Store) bindings(ctx context.Context, query string, args ...any) ([]bind
 }
 
 // RoleID is the ID of acct's role slug.
-func (s *Store) RoleID(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (kernel.ULID, error) {
+func (s *Store) RoleID(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
 	var id kernel.ULID
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM roles WHERE account_id = $1 AND slug = $2`,
 		acct, slug).Scan(&id)
@@ -58,11 +54,7 @@ func (s *Store) RoleID(
 }
 
 // SpaceID is the ID of acct's space slug.
-func (s *Store) SpaceID(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (kernel.ULID, error) {
+func (s *Store) SpaceID(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
 	var id kernel.ULID
 	err := tx.Q(ctx, s.db).
 		QueryRow(ctx, `SELECT id FROM spaces WHERE account_id = $1 AND slug = $2`,
@@ -86,12 +78,7 @@ var actorTables = map[binding.ActorKind]string{
 // HasActor reports whether acct holds the actor of kind id; a kind the
 // account does not keep, a stack's or a Flows project's, is never held
 // here.
-func (s *Store) HasActor(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) (bool, error) {
+func (s *Store) HasActor(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID) (bool, error) {
 	query, ok := actorTables[kind]
 	if !ok {
 		return false, nil
@@ -104,12 +91,7 @@ func (s *Store) HasActor(
 }
 
 // Binding reads acct's binding id of an actor of kind.
-func (s *Store) Binding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) (binding.Listed, error) {
+func (s *Store) Binding(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID) (binding.Listed, error) {
 	l, err := scanBinding(tx.Q(ctx, s.db).QueryRow(ctx, bindingColumns+`
 		WHERE b.account_id = $1 AND b.actor_kind = $2 AND b.id = $3`, acct, kind, id))
 	return l, read(err, "binding", id)
@@ -117,32 +99,19 @@ func (s *Store) Binding(
 
 // ActorBindings reads the bindings of acct's actor of kind id, oldest
 // first.
-func (s *Store) ActorBindings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (s *Store) ActorBindings(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID) ([]binding.Listed, error) {
 	return s.bindings(ctx, `b.account_id = $1 AND b.actor_kind = $2 AND b.actor_id = $3`,
 		acct, kind, id)
 }
 
 // SpaceBindings reads the bindings in acct's space id, oldest first.
-func (s *Store) SpaceBindings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (s *Store) SpaceBindings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]binding.Listed, error) {
 	return s.bindings(ctx, `b.account_id = $1 AND b.space_id = $2`, acct, id)
 }
 
 // CreateBindings records bs in one transaction, which a context carrying
 // one joins.
-func (s *Store) CreateBindings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	bs []binding.Binding,
-) ([]binding.Listed, error) {
+func (s *Store) CreateBindings(ctx context.Context, acct kernel.AccountID, bs []binding.Binding) ([]binding.Listed, error) {
 	ids := make([]kernel.ULID, 0, len(bs))
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -231,13 +200,7 @@ func (s *Store) UpdateBinding(
 }
 
 // DeleteBinding deletes acct's binding id when check accepts it.
-func (s *Store) DeleteBinding(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-	check func(binding.Listed) error,
-) (binding.Listed, error) {
+func (s *Store) DeleteBinding(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID, check func(binding.Listed) error) (binding.Listed, error) {
 	var cur binding.Listed
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -262,13 +225,7 @@ func (s *Store) DeleteBinding(
 
 // ReplaceAccessRules replaces the access_rule bindings of acct's actor of
 // kind id with bs, in one transaction.
-func (s *Store) ReplaceAccessRules(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-	bs []binding.Binding,
-) error {
+func (s *Store) ReplaceAccessRules(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID, bs []binding.Binding) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
 		if _, err := q.Exec(ctx, `DELETE FROM role_bindings WHERE account_id = $1
@@ -290,12 +247,7 @@ func (s *Store) ReplaceAccessRules(
 }
 
 // DeleteActorBindings deletes every binding of acct's actor of kind id.
-func (s *Store) DeleteActorBindings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) error {
+func (s *Store) DeleteActorBindings(ctx context.Context, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
 		if err := unbindActor(ctx, q, acct, kind, id); err != nil {
@@ -311,13 +263,7 @@ func (s *Store) DeleteActorBindings(
 
 // unbindActor deletes the bindings of acct's actor of kind id, in the
 // transaction that removes the actor.
-func unbindActor(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) error {
+func unbindActor(ctx context.Context, q tx.Querier, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID) error {
 	if _, err := q.Exec(ctx, `DELETE FROM role_bindings
 		WHERE account_id = $1 AND actor_kind = $2 AND actor_id = $3`, acct, kind, id); err != nil {
 		return fmt.Errorf(
@@ -332,13 +278,7 @@ func unbindActor(
 
 // lockBinding reads acct's binding id of an actor of kind and locks its
 // row.
-func lockBinding(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	kind binding.ActorKind,
-	id kernel.ULID,
-) (binding.Listed, error) {
+func lockBinding(ctx context.Context, q tx.Querier, acct kernel.AccountID, kind binding.ActorKind, id kernel.ULID) (binding.Listed, error) {
 	l, err := scanBinding(q.QueryRow(ctx, bindingColumns+`
 		WHERE b.account_id = $1 AND b.actor_kind = $2 AND b.id = $3 FOR UPDATE OF b`,
 		acct, kind, id))

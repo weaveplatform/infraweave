@@ -49,10 +49,7 @@ func (s *grantViewSteps) register(sc *godog.ScenarioContext) {
 
 // list reads a page of the view of slug, in mode, keeping the rows that
 // contain text and ordered by field when they are given.
-func (s *grantViewSteps) list(
-	ctx context.Context,
-	who, view, slug, mode, text, field, replica string,
-) error {
+func (s *grantViewSteps) list(ctx context.Context, who, view, slug, mode, text, field, replica string) error {
 	in := map[string]any{}
 	if text != "" {
 		in["fullTextSearch"] = text

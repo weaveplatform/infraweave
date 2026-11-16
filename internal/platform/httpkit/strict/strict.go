@@ -70,12 +70,7 @@ const patchAttempts = 3
 // write wins that race and the client sent no If-Match, it reads again;
 // with one, the client sees kernel.ErrStale, since the version it named is
 // gone.
-func Apply[V, R any](
-	expect kernel.Expect,
-	patch map[string]any,
-	read func() (V, int64, error),
-	write func(V, kernel.Expect) (R, error),
-) (R, error) {
+func Apply[V, R any](expect kernel.Expect, patch map[string]any, read func() (V, int64, error), write func(V, kernel.Expect) (R, error)) (R, error) {
 	var zero R
 	for range patchAttempts {
 		view, version, err := read()

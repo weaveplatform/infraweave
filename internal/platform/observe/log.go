@@ -131,13 +131,7 @@ func (h requestHandler) WithGroup(name string) slog.Handler {
 // FollowLevel sets lv from read each time sig delivers, until ctx ends: the
 // process re-reads log.level on SIGHUP and nothing else. A read that fails
 // keeps the level and logs why.
-func FollowLevel(
-	ctx context.Context,
-	sig <-chan os.Signal,
-	read func() (slog.Level, error),
-	lv *slog.LevelVar,
-	log *slog.Logger,
-) {
+func FollowLevel(ctx context.Context, sig <-chan os.Signal, read func() (slog.Level, error), lv *slog.LevelVar, log *slog.Logger) {
 	for {
 		select {
 		case <-ctx.Done():

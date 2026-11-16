@@ -72,14 +72,7 @@ func orgAdminError(err error, what string) error {
 
 // listPage reads one page of a list named list, whose positions parse
 // parses: one more than the page asks for shows whether another follows.
-func listPage[T, P any](
-	list string,
-	cursor *string,
-	limit *int32,
-	parse func(string) (P, error),
-	read func(after P, n int) ([]T, error),
-	id func(T) string,
-) ([]T, *string, error) {
+func listPage[T, P any](list string, cursor *string, limit *int32, parse func(string) (P, error), read func(after P, n int) ([]T, error), id func(T) string) ([]T, *string, error) {
 	var after P
 	if cursor != nil {
 		c, err := page.Decode[string](list, *cursor)
@@ -120,10 +113,7 @@ func parseMember(s string) (kernel.MemberID, error) {
 }
 
 // Organization reads the caller's organization.
-func (s Server) Organization(
-	ctx context.Context,
-	_ api.OrganizationRequestObject,
-) (api.OrganizationResponseObject, error) {
+func (s Server) Organization(ctx context.Context, _ api.OrganizationRequestObject) (api.OrganizationResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -136,10 +126,7 @@ func (s Server) Organization(
 }
 
 // OrganizationUpdate renames the caller's organization.
-func (s Server) OrganizationUpdate(
-	ctx context.Context,
-	req api.OrganizationUpdateRequestObject,
-) (api.OrganizationUpdateResponseObject, error) {
+func (s Server) OrganizationUpdate(ctx context.Context, req api.OrganizationUpdateRequestObject) (api.OrganizationUpdateResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -152,10 +139,7 @@ func (s Server) OrganizationUpdate(
 }
 
 // OrganizationAccounts lists the organization's accounts, oldest first.
-func (s Server) OrganizationAccounts(
-	ctx context.Context,
-	req api.OrganizationAccountsRequestObject,
-) (api.OrganizationAccountsResponseObject, error) {
+func (s Server) OrganizationAccounts(ctx context.Context, req api.OrganizationAccountsRequestObject) (api.OrganizationAccountsResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -180,10 +164,7 @@ func (s Server) OrganizationAccounts(
 
 // OrganizationAccountCreate creates an account claimed by the member the
 // body names.
-func (s Server) OrganizationAccountCreate(
-	ctx context.Context,
-	req api.OrganizationAccountCreateRequestObject,
-) (api.OrganizationAccountCreateResponseObject, error) {
+func (s Server) OrganizationAccountCreate(ctx context.Context, req api.OrganizationAccountCreateRequestObject) (api.OrganizationAccountCreateResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -196,10 +177,7 @@ func (s Server) OrganizationAccountCreate(
 }
 
 // OrganizationAccountClaim claims an unclaimed account.
-func (s Server) OrganizationAccountClaim(
-	ctx context.Context,
-	req api.OrganizationAccountClaimRequestObject,
-) (api.OrganizationAccountClaimResponseObject, error) {
+func (s Server) OrganizationAccountClaim(ctx context.Context, req api.OrganizationAccountClaimRequestObject) (api.OrganizationAccountClaimResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -212,10 +190,7 @@ func (s Server) OrganizationAccountClaim(
 }
 
 // OrganizationAccountUpdate renames an account.
-func (s Server) OrganizationAccountUpdate(
-	ctx context.Context,
-	req api.OrganizationAccountUpdateRequestObject,
-) (api.OrganizationAccountUpdateResponseObject, error) {
+func (s Server) OrganizationAccountUpdate(ctx context.Context, req api.OrganizationAccountUpdateRequestObject) (api.OrganizationAccountUpdateResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -228,10 +203,7 @@ func (s Server) OrganizationAccountUpdate(
 }
 
 // OrganizationAccountDelete deletes an account and answers it as it was.
-func (s Server) OrganizationAccountDelete(
-	ctx context.Context,
-	req api.OrganizationAccountDeleteRequestObject,
-) (api.OrganizationAccountDeleteResponseObject, error) {
+func (s Server) OrganizationAccountDelete(ctx context.Context, req api.OrganizationAccountDeleteRequestObject) (api.OrganizationAccountDeleteResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -244,10 +216,7 @@ func (s Server) OrganizationAccountDelete(
 }
 
 // OrganizationAccountLimitSet sets an account limit.
-func (s Server) OrganizationAccountLimitSet(
-	ctx context.Context,
-	req api.OrganizationAccountLimitSetRequestObject,
-) (api.OrganizationAccountLimitSetResponseObject, error) {
+func (s Server) OrganizationAccountLimitSet(ctx context.Context, req api.OrganizationAccountLimitSetRequestObject) (api.OrganizationAccountLimitSetResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -260,10 +229,7 @@ func (s Server) OrganizationAccountLimitSet(
 }
 
 // OrganizationAccountLimitClear clears an account limit.
-func (s Server) OrganizationAccountLimitClear(
-	ctx context.Context,
-	req api.OrganizationAccountLimitClearRequestObject,
-) (api.OrganizationAccountLimitClearResponseObject, error) {
+func (s Server) OrganizationAccountLimitClear(ctx context.Context, req api.OrganizationAccountLimitClearRequestObject) (api.OrganizationAccountLimitClearResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -281,10 +247,7 @@ func accountError(err error, slug string) error {
 }
 
 // OrganizationMembers lists the organization's members, oldest first.
-func (s Server) OrganizationMembers(
-	ctx context.Context,
-	req api.OrganizationMembersRequestObject,
-) (api.OrganizationMembersResponseObject, error) {
+func (s Server) OrganizationMembers(ctx context.Context, req api.OrganizationMembersRequestObject) (api.OrganizationMembersResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -308,10 +271,7 @@ func (s Server) OrganizationMembers(
 }
 
 // OrganizationMemberDeactivate deactivates a member.
-func (s Server) OrganizationMemberDeactivate(
-	ctx context.Context,
-	req api.OrganizationMemberDeactivateRequestObject,
-) (api.OrganizationMemberDeactivateResponseObject, error) {
+func (s Server) OrganizationMemberDeactivate(ctx context.Context, req api.OrganizationMemberDeactivateRequestObject) (api.OrganizationMemberDeactivateResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -324,10 +284,7 @@ func (s Server) OrganizationMemberDeactivate(
 }
 
 // OrganizationAdminGrant grants a member organization-admin.
-func (s Server) OrganizationAdminGrant(
-	ctx context.Context,
-	req api.OrganizationAdminGrantRequestObject,
-) (api.OrganizationAdminGrantResponseObject, error) {
+func (s Server) OrganizationAdminGrant(ctx context.Context, req api.OrganizationAdminGrantRequestObject) (api.OrganizationAdminGrantResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -340,10 +297,7 @@ func (s Server) OrganizationAdminGrant(
 }
 
 // OrganizationAdminRevoke revokes a member's organization-admin.
-func (s Server) OrganizationAdminRevoke(
-	ctx context.Context,
-	req api.OrganizationAdminRevokeRequestObject,
-) (api.OrganizationAdminRevokeResponseObject, error) {
+func (s Server) OrganizationAdminRevoke(ctx context.Context, req api.OrganizationAdminRevokeRequestObject) (api.OrganizationAdminRevokeResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -357,10 +311,7 @@ func (s Server) OrganizationAdminRevoke(
 
 // OrganizationKeys lists the organization's keys, oldest first, with no
 // secret.
-func (s Server) OrganizationKeys(
-	ctx context.Context,
-	req api.OrganizationKeysRequestObject,
-) (api.OrganizationKeysResponseObject, error) {
+func (s Server) OrganizationKeys(ctx context.Context, req api.OrganizationKeysRequestObject) (api.OrganizationKeysResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -385,10 +336,7 @@ func (s Server) OrganizationKeys(
 
 // OrganizationKeyCreate creates an organization key and answers its
 // secret, once.
-func (s Server) OrganizationKeyCreate(
-	ctx context.Context,
-	req api.OrganizationKeyCreateRequestObject,
-) (api.OrganizationKeyCreateResponseObject, error) {
+func (s Server) OrganizationKeyCreate(ctx context.Context, req api.OrganizationKeyCreateRequestObject) (api.OrganizationKeyCreateResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -405,10 +353,7 @@ func (s Server) OrganizationKeyCreate(
 }
 
 // OrganizationKeyDisable disables an organization key.
-func (s Server) OrganizationKeyDisable(
-	ctx context.Context,
-	req api.OrganizationKeyDisableRequestObject,
-) (api.OrganizationKeyDisableResponseObject, error) {
+func (s Server) OrganizationKeyDisable(ctx context.Context, req api.OrganizationKeyDisableRequestObject) (api.OrganizationKeyDisableResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -422,10 +367,7 @@ func (s Server) OrganizationKeyDisable(
 
 // OrganizationKeyDelete deletes an organization key and answers it as it
 // was.
-func (s Server) OrganizationKeyDelete(
-	ctx context.Context,
-	req api.OrganizationKeyDeleteRequestObject,
-) (api.OrganizationKeyDeleteResponseObject, error) {
+func (s Server) OrganizationKeyDelete(ctx context.Context, req api.OrganizationKeyDeleteRequestObject) (api.OrganizationKeyDeleteResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -438,10 +380,7 @@ func (s Server) OrganizationKeyDelete(
 }
 
 // OrganizationLimits answers the pooled limits and their use.
-func (s Server) OrganizationLimits(
-	ctx context.Context,
-	_ api.OrganizationLimitsRequestObject,
-) (api.OrganizationLimitsResponseObject, error) {
+func (s Server) OrganizationLimits(ctx context.Context, _ api.OrganizationLimitsRequestObject) (api.OrganizationLimitsResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err
@@ -457,10 +396,7 @@ func (s Server) OrganizationLimits(
 
 // OrganizationUsage answers each account's use of every limit, oldest
 // account first.
-func (s Server) OrganizationUsage(
-	ctx context.Context,
-	req api.OrganizationUsageRequestObject,
-) (api.OrganizationUsageResponseObject, error) {
+func (s Server) OrganizationUsage(ctx context.Context, req api.OrganizationUsageRequestObject) (api.OrganizationUsageResponseObject, error) {
 	by, err := orgActor(ctx)
 	if err != nil {
 		return nil, err

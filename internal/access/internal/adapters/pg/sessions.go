@@ -119,12 +119,7 @@ func (s *Store) EndSession(ctx context.Context, id kernel.ULID) (session.Session
 }
 
 // Sessions reads a page of the account's live sessions in ID order.
-func (s *Store) Sessions(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]session.Session, error) {
+func (s *Store) Sessions(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]session.Session, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+sessionColumns+` FROM sessions
 		WHERE account_id = $1 AND revoked_at IS NULL AND expires_at > now()
 			AND (idle_expires_at IS NULL OR idle_expires_at > now())
@@ -144,11 +139,7 @@ func (s *Store) Sessions(
 
 // RevokeSession revokes the account's session id. Revoking a revoked
 // session succeeds and sends the message again.
-func (s *Store) RevokeSession(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (session.Session, error) {
+func (s *Store) RevokeSession(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (session.Session, error) {
 	var ss session.Session
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -168,11 +159,7 @@ func (s *Store) RevokeSession(
 }
 
 // RevokeSessionsExcept revokes the account's live sessions but except.
-func (s *Store) RevokeSessionsExcept(
-	ctx context.Context,
-	acct kernel.AccountID,
-	except kernel.ULID,
-) ([]session.Session, error) {
+func (s *Store) RevokeSessionsExcept(ctx context.Context, acct kernel.AccountID, except kernel.ULID) ([]session.Session, error) {
 	var out []session.Session
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		var err error
@@ -202,12 +189,7 @@ func (s *Store) ExpireSessions(ctx context.Context, before time.Time) (int64, er
 // revoke revokes the live sessions where holds, with args, sends each
 // one's message, in the caller's transaction, and returns them in ID
 // order.
-func revoke(
-	ctx context.Context,
-	q tx.Querier,
-	where string,
-	args ...any,
-) ([]session.Session, error) {
+func revoke(ctx context.Context, q tx.Querier, where string, args ...any) ([]session.Session, error) {
 	rows, err := q.Query(ctx, `WITH revoked AS (UPDATE sessions SET revoked_at = now()
 		WHERE revoked_at IS NULL AND `+where+` RETURNING *)
 		SELECT `+sessionColumns+` FROM revoked ORDER BY id`, args...)

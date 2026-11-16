@@ -13,11 +13,7 @@ import (
 // config element or an output, no run blocks one, and no run exists.
 type unbound struct{}
 
-func (unbound) Blockers(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID]stacksapi.Blocker, error) {
+func (unbound) Blockers(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error) {
 	return map[kernel.ULID]stacksapi.Blocker{}, nil
 }
 
@@ -25,27 +21,15 @@ func (unbound) RunStack(context.Context, kernel.AccountID, kernel.ULID) (kernel.
 	return kernel.ULID{}, stacksapi.ErrNotFound
 }
 
-func (unbound) Outputs(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID][]stacksapi.Output, error) {
+func (unbound) Outputs(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]stacksapi.Output, error) {
 	return map[kernel.ULID][]stacksapi.Output{}, nil
 }
 
-func (unbound) AttachedContexts(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID][]stacksapi.AttachedContext, error) {
+func (unbound) AttachedContexts(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]stacksapi.AttachedContext, error) {
 	return map[kernel.ULID][]stacksapi.AttachedContext{}, nil
 }
 
-func (unbound) Config(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID][]stacksapi.ConfigElement, error) {
+func (unbound) Config(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]stacksapi.ConfigElement, error) {
 	return map[kernel.ULID][]stacksapi.ConfigElement{}, nil
 }
 

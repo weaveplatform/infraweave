@@ -136,12 +136,7 @@ func ParseCSR(in string) (*x509.CertificateRequest, error) {
 // Sign issues the pool's certificate for csr's key, with serial, valid
 // from now until the CA's certificate ends. Its subject names the pool,
 // so a certificate signed for one pool is never another's.
-func (ca CA) Sign(
-	csr *x509.CertificateRequest,
-	pool kernel.ULID,
-	serial int64,
-	now time.Time,
-) (*x509.Certificate, error) {
+func (ca CA) Sign(csr *x509.CertificateRequest, pool kernel.ULID, serial int64, now time.Time) (*x509.Certificate, error) {
 	tmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(serial),
 		Subject:      pkix.Name{CommonName: pool.String()},

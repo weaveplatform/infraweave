@@ -123,10 +123,7 @@ var origins = map[string]string{
 
 // postForm posts the sign-in form through the jar, with origin when it is
 // not empty.
-func (b *browserSteps) postForm(
-	ctx context.Context,
-	replica, slug, login, password, origin string,
-) (harness.Response, error) {
+func (b *browserSteps) postForm(ctx context.Context, replica, slug, login, password, origin string) (harness.Response, error) {
 	form := url.Values{"login": {login}, "password": {password}}.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		b.w.Base(replica)+"/admin-login/"+slug, strings.NewReader(form))
@@ -175,10 +172,7 @@ func (b *browserSteps) signIn(ctx context.Context, slug, login, password, replic
 	return nil
 }
 
-func (b *browserSteps) signInRefused(
-	ctx context.Context,
-	slug, login, password, replica, origin, code, slug2 string,
-) error {
+func (b *browserSteps) signInRefused(ctx context.Context, slug, login, password, replica, origin, code, slug2 string) error {
 	r, err := b.postForm(ctx, replica, slug, login, password, origins[origin])
 	if err != nil {
 		return err
@@ -222,10 +216,7 @@ func (b *browserSteps) viewerAdmin(ctx context.Context, replica, login string) e
 	return nil
 }
 
-func (b *browserSteps) answersProblem(
-	ctx context.Context,
-	method, path, replica, origin, code, slug string,
-) error {
+func (b *browserSteps) answersProblem(ctx context.Context, method, path, replica, origin, code, slug string) error {
 	r, err := b.w.BrowserDo(ctx, replica, method, path, origins[origin], nil)
 	if err != nil {
 		return err
@@ -637,10 +628,7 @@ func (b *browserSteps) cliTokenRefused(ctx context.Context, replica, key, code, 
 	return nil
 }
 
-func (b *browserSteps) cliTokenWithToken(
-	ctx context.Context,
-	replica, name, code, slug string,
-) error {
+func (b *browserSteps) cliTokenWithToken(ctx context.Context, replica, name, code, slug string) error {
 	r, err := b.w.Do(ctx, replica, name, http.MethodPost, "/api/v1/auth/cli-confirmation-tokens",
 		map[string]string{"pubKey": "unused"})
 	if err != nil {

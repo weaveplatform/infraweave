@@ -82,12 +82,7 @@ func (k *Keyring) Watch(ctx context.Context, sub *notify.Subscription, log *slog
 // enqueues secrets.reseal in the same transaction. It returns ErrRotating
 // while a retiring key remains, so rotations never pile up; a concurrent
 // rotation waits on the active key's lock and then sees that key retiring.
-func Rotate(
-	ctx context.Context,
-	tx Querier,
-	p kek.Provider,
-	olderThan time.Duration,
-) (bool, error) {
+func Rotate(ctx context.Context, tx Querier, p kek.Provider, olderThan time.Duration) (bool, error) {
 	if _, err := tx.Exec(ctx, `
 		SELECT 1 FROM encryption_keys WHERE state IN ('active', 'retiring') FOR UPDATE`); err != nil {
 		return false, fmt.Errorf("%w: rotate: %w", ErrKeyring, sql.Unavailable(err))
@@ -330,14 +325,7 @@ func (k *Keyring) walkColumn(ctx context.Context, db DB, c Column) (int, error) 
 
 // resealPage reseals the rows query selects in one transaction and
 // returns how many there were and the last one's primary key.
-func (k *Keyring) resealPage(
-	ctx context.Context,
-	db DB,
-	c Column,
-	query string,
-	args []any,
-	table, column string,
-) (int, []string, error) {
+func (k *Keyring) resealPage(ctx context.Context, db DB, c Column, query string, args []any, table, column string) (int, []string, error) {
 	fail := func(err error) (int, []string, error) {
 		return 0, nil, fmt.Errorf("%w: reseal %s.%s: %w", ErrKeyring, c.Table, c.Name, err)
 	}

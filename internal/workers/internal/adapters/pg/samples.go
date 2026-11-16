@@ -60,12 +60,7 @@ func (s *Store) Prune(ctx context.Context, before time.Time, batch int) (int, er
 
 // Between reads acct's samples of pool taken from from up to, not
 // including, to, oldest first, along the primary key.
-func (s *Store) Between(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-	from, to time.Time,
-) ([]workersapi.Sample, error) {
+func (s *Store) Between(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, from, to time.Time) ([]workersapi.Sample, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT sampled_at, busy_workers,
 			registered_workers, queued_runs FROM worker_pool_samples
 		WHERE account_id = $1 AND worker_pool_id = $2 AND sampled_at >= $3 AND sampled_at < $4

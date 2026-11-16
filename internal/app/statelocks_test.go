@@ -24,10 +24,7 @@ type stateCalls struct {
 	token string
 }
 
-func (c stateCalls) send(
-	t *testing.T,
-	method, target, body string,
-) *httptest.ResponseRecorder {
+func (c stateCalls) send(t *testing.T, method, target, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), method, target, strings.NewReader(body))
 	req.SetBasicAuth("run", c.token)
