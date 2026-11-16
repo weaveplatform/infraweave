@@ -56,6 +56,8 @@ type Suite struct {
 	requireDocker                     bool
 	dockerErr                         error
 	Deps                              *deps.Dependencies
+	// Stress is the stress EnvStress puts the run under.
+	Stress Stress
 
 	launchOnce sync.Once
 	launchers  Launchers
@@ -85,6 +87,10 @@ func newSuite(t *testing.T) *Suite {
 	}
 	if v, ok := os.LookupEnv(EnvCucumber); ok {
 		s.cucumber = v
+	}
+	var err error
+	if s.Stress, err = ParseStress(os.Getenv(EnvStress)); err != nil {
+		t.Fatal(err)
 	}
 	s.Deps.Migrate = func(ctx context.Context, dsn string) error {
 		bin, err := Binary(ctx)
@@ -187,6 +193,9 @@ func (s *Suite) Launchers(ctx context.Context) (*Launchers, error) {
 		}
 		s.launchErr = s.launchers.prepare(ctx, root, buildDir)
 		s.Deps.OnClose(s.launchers.Close)
+		if s.launchErr == nil && s.Stress.CPUs > 0 {
+			s.launchers.capRuns(ctx, s.Stress.CPUs)
+		}
 	})
 	return &s.launchers, s.launchErr
 }
@@ -303,6 +312,9 @@ func (s *Suite) initScenario(sc *godog.ScenarioContext) {
 			return ctx, fmt.Errorf("scenario dir: %w", err)
 		}
 		w.Dir = dir
+		if procs := s.Stress.procs(); procs != "" {
+			w.Setenv("GOMAXPROCS", procs)
+		}
 		return ctx, nil
 	})
 	sc.After(func(ctx context.Context, _ *godog.Scenario, err error) (context.Context, error) {
@@ -312,6 +324,9 @@ func (s *Suite) initScenario(sc *godog.ScenarioContext) {
 		}
 		for _, srv := range w.Servers {
 			err = errors.Join(err, srv.Stop(ctx))
+		}
+		if w.storeRelay != nil {
+			err = errors.Join(err, w.storeRelay.Close(ctx))
 		}
 		if w.db != nil {
 			err = errors.Join(err, w.db.Drop(ctx))

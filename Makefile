@@ -108,6 +108,14 @@ accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
 	INFRAWEAVE_ACCEPT_PARTITION=$(PARTITION) $(GO) test -count=1 -run '$(if $(ACCEPT_FEATURES_ONLY),^TestAccFeatures$$,^TestAcc)' -covermode=atomic -cover -coverpkg=$(MODULE)/... $(if $(ACCEPT_FEATURES_ONLY),./test/acceptance,./...) -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
 
+## accept-stress: make accept under the stress INFRAWEAVE_ACCEPT_STRESS names, by default a fifth of the signed uploads refused, 500ms on each object store request and half a CPU for each run container (make accept-stress PARTITION=runs)
+# The default applies only here: a variable this file sets is not exported,
+# so make accept runs unstressed unless the environment names a stress.
+# ref: decision 0016
+INFRAWEAVE_ACCEPT_STRESS ?= refuse=0.2,latency=500ms,cpus=0.5
+accept-stress:
+	INFRAWEAVE_ACCEPT_STRESS='$(INFRAWEAVE_ACCEPT_STRESS)' $(MAKE) accept PARTITION=$(PARTITION)
+
 # PRODUCTS are the Spacelift products with a reference; specref --product
 # picks each one's reference directory, inventory outputs and parity
 # baseline. Narrow it to run a target for one product (PRODUCTS=flows).
@@ -224,4 +232,4 @@ docs-check:
 ## gate: everything CI runs, in order
 gate: docs-check vet lint lint-fixtures labs-cloud labs-vcs test accept verify-parity verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint lint-fixtures labs-cloud labs-vcs vet test accept reference-fetch scaffold vendors-fixtures iac-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint lint-fixtures labs-cloud labs-vcs vet test accept accept-stress reference-fetch scaffold vendors-fixtures iac-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate

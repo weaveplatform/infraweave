@@ -199,6 +199,28 @@ everywhere, and the reason names where the contract checks it instead.
   serves the pinned archive with the release's `SHA256SUMS` and its
   signature, so the launcher verifies it against the vendor's key as it
   would a download from the vendor, and no scenario downloads a release.
+- **Stress.** `INFRAWEAVE_ACCEPT_STRESS` puts a run of the suite under
+  what a busy or badly synchronised host does to a run: a comma-separated
+  list of `refuse=<share>`, `latency=<duration>` and `cpus=<CPUs>`. Docker
+  Desktop runs every container in one virtual machine, whose clock no one
+  container can skew, and the Go binaries ignore `libfaketime`, so the
+  harness makes the stress itself:
+  - an `@objectstore` scenario's servers reach the object store through a
+    store relay on the host's loopback, which the URLs they sign name. It
+    holds each request for the latency, refuses the share of signed
+    uploads with the `403 RequestTimeTooSkewed` a store whose clock
+    differs from the signer's answers, spread evenly, and records each
+    call into a failed scenario's evidence, `store-calls.json`;
+  - each run container, any container labelled `io.infraweave.run`, is
+    capped at the CPUs with `docker update` as the daemon creates it, and
+    each process mode runs with `GOMAXPROCS` at the CPUs rounded up.
+
+  No step's assertion or `Eventually` budget changes under stress, so a
+  budget too short for a busy host fails as a finding. Each failure is
+  triaged as a product defect or a harness assumption, with its evidence.
+  `make accept-stress PARTITION=runs` runs a partition under the stress,
+  by default `refuse=0.2,latency=500ms,cpus=0.5`. Stress is a further run
+  of a partition, not a partition of its own.
 
 ### Docker: skip locally, never in CI
 
@@ -374,6 +396,7 @@ coverage it would contribute is not waived.
 | `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` and `console`, whose TypeScript coverage has its own thresholds | 10 min | yes |
 | `postgres-next` | `ubuntu-latest` | the `sqltest` suites, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)), selected by `INFRAWEAVE_POSTGRES=next` | 20 min | no |
 | `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
+| `stress` | `ubuntu-latest`, scheduled weekly and on demand | `make accept-stress PARTITION=runs`, uploading a failed scenario's evidence | 90 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
 | `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's and OpenTofu's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
 | `vcs-lab` | `ubuntu-latest`, scheduled nightly | `sourcetest` and the `@vcs-lab` scenarios against GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps repositories created for the run and destroyed after it | 45 min | no |
@@ -536,8 +559,8 @@ coverage it would contribute is not waived.
 - The Spacelift provider's acceptance configurations are translated, not
   copied verbatim, where they reference Spacelift-only resources; the
   translation is recorded in `provider-parity.yaml`.
-- The `nightly`, `postgres-next`, `objectstore-cloud`, `vendors-upstream`
-  and `vcs-lab` jobs are informational: a newer Terraform, OpenTofu or
+- The `nightly`, `stress`, `postgres-next`, `objectstore-cloud`,
+  `vendors-upstream` and `vcs-lab` jobs are informational: a newer Terraform, OpenTofu or
   PostgreSQL release, a real cloud or VCS provider, or a release index that
   changes its format, that breaks a case opens an issue rather than
   blocking merges.
@@ -562,6 +585,11 @@ coverage it would contribute is not waived.
 - `test/acceptance/features/runs/terraform.feature` and
   `runs/tofu.feature` carry the first real-run scenarios, and
   `runs/runner_image.feature` a public runner image's.
+- `TestUnitStoreRelay`, `TestUnitStoreRelayLatency` and
+  `TestUnitParseStress` (`test/acceptance/internal/harness`) prove the
+  stress: a refusal share of 1 refuses every signed upload with a skewed
+  store's `403`, a share of 0 refuses none and 0.2 every fifth, unsigned
+  requests pass with their `Host`, and the latency holds each request.
 - `make verify-parity` and the state check run in the `parity` job; the
   existing `api/reference_spec.feature` and `api/bundle.feature` keep running
   in `accept-core`.

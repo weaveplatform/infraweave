@@ -16,8 +16,11 @@
 // tool's process (RunTool) in a container of one; RunnerContract holds a
 // runner image to deploy/images/contract.sh. A Relay is the worker API and
 // state backend as those containers reach them, recording each call and
-// holding reports or UNLOCK calls on demand. A failed scenario leaves its
-// evidence in out/<scenario>/.
+// holding reports or UNLOCK calls on demand. Stress is what EnvStress
+// puts a run under: an @objectstore scenario's StoreRelay holds each
+// object store request for a latency and refuses a share of signed
+// uploads as a skewed store does, and each run container is capped at a
+// CPU count. A failed scenario leaves its evidence in out/<scenario>/.
 //
 // ref: decision 0016
 //
@@ -29,7 +32,9 @@
 // Docker daemon's builder, serves the pinned tool releases to launchers
 // as a tool mirror, reaches their listeners over loopback HTTP, queries
 // the scenario's database, and writes godog's cucumber report, the
-// subprocesses' coverage and a failed scenario's evidence.
+// subprocesses' coverage and a failed scenario's evidence. Under a CPU
+// stress it watches the daemon's container events and updates each run
+// container's CPU limit.
 //
 // # Dependencies
 //
