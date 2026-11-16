@@ -45,6 +45,8 @@ components:
           $ref: '#/components/schemas/RunSpecSource'
         tool:
           $ref: '#/components/schemas/RunSpecTool'
+        terragrunt:
+          $ref: '#/components/schemas/RunSpecTerragrunt'
         task:
           $ref: '#/components/schemas/RunSpecTask'
         targets:
@@ -251,7 +253,10 @@ components:
     RunSpecTool:
       description: >-
         The infrastructure tool the launcher mounts into the run. Absent for
-        a vendor that mounts none.
+        a vendor that mounts none. A Terragrunt stack's run mounts the tool
+        its Terragrunt drives, tofu for OPEN_TOFU and terraform for
+        TERRAFORM_FOSS, whose version constraint is the stack's
+        terraformVersion, else its Terragrunt settings' terraformVersion.
       type: object
       required: [name, version, download]
       properties:
@@ -276,6 +281,26 @@ components:
             Whether the runner profiles each tool command's CPU and uploads
             each state's merged profile. Only an OpenTofu stack that enables
             CPU profiling, on release 1.11 or later, sets it.
+    RunSpecTerragrunt:
+      description: >-
+        The Terragrunt the launcher mounts beside the tool, present for a
+        Terragrunt stack's run alone. The runner runs each phase's tool
+        commands through it across the stack's units, and such a run records
+        no plan, changes or outputs documents, so the server expects none.
+      type: object
+      required: [version, download]
+      properties:
+        version:
+          type: string
+          description: >-
+            The release: the newest stable Terragrunt release the version
+            catalogue lists that meets the stack's terragruntVersion, or the
+            newest it lists when the stack sets none.
+        download:
+          type: boolean
+          description: >-
+            Whether the launcher mounts the release; false when the stack
+            runs the runner image's own binaries instead.
     RunSpecStateBackend:
       description: >-
         The stack's managed state backend, present only when infraweave keeps

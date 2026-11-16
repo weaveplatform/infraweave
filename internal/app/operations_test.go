@@ -74,6 +74,7 @@ func TestUnitAPIOperations(t *testing.T) {
 			Feature: "stacks", Options: []featuresapi.OptionGate{
 				{Pointer: "/input/vendorConfig/opentofu", Feature: "vendor-opentofu"},
 				{Pointer: "/input/vendorConfig/terraform", Feature: "vendor-terraform"},
+				{Pointer: "/input/vendorConfig/terragrunt", Feature: "vendor-terragrunt"},
 			},
 		}},
 		"DELETE /operator/v1/organizations/{organization}": {Cost: ratelimit.Standard, Gate: gate("operator")},
@@ -169,6 +170,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		[]featuresapi.OptionGate{
 			{Pointer: "/vendorConfig/opentofu", Feature: "vendor-opentofu"},
 			{Pointer: "/vendorConfig/terraform", Feature: "vendor-terraform"},
+			{Pointer: "/vendorConfig/terragrunt", Feature: "vendor-terragrunt"},
 		}) {
 		t.Errorf("stackUpdate's options: %+v", g.Options)
 	}

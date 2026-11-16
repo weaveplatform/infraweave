@@ -28,6 +28,11 @@ type Vendor interface {
 	// changes and delta, as plan.Parse does; any number of goroutines may
 	// call it at once.
 	ParsePlan(r io.Reader) (plan.Plan, error)
+	// ManagesState reports whether a stack created with settings, its
+	// member of vendorConfig, and manageState keeps its state in
+	// infraweave's backend. Only Terragrunt's settings decide over
+	// manageState; it is decided once, at creation.
+	ManagesState(settings json.RawMessage, manageState bool) bool
 }
 
 // Input is what a stack input carries for its vendor.

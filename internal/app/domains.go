@@ -119,6 +119,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Grants:   access.Grants(),
 		Pools:    workers.Pools(),
 		Events:   events,
+		Catalog:  vendors.Catalog(),
 	})
 	workers.GuardPools(stacks.PoolGuard())
 	workers.BindStacks(stacks.SpaceOf())

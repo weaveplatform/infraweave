@@ -245,6 +245,9 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 			out.Tool.EnableCPUProfiling = &t.CPUProfiling
 		}
 	}
+	if t := spec.Terragrunt; t != nil {
+		out.Terragrunt = &gen.RunSpecTerragrunt{Version: t.Version, Download: t.Download}
+	}
 	if t := spec.Task; t != nil {
 		out.Task = &gen.RunSpecTask{Command: t.Command, SkipInitialization: t.SkipInitialization}
 	}

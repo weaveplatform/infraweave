@@ -554,9 +554,13 @@ func (s *Service) Starred(ctx context.Context, p kernel.Principal, stacks []Stac
 
 // Create creates a stack of p's account from in, slugged slug when it is
 // not empty and from in's name otherwise, whose state infraweave keeps
-// when manageState is set. The route has decided
-// STACK_CREATE on in's space. Its refusals point into stackCreate's body,
-// where in is input.
+// when manageState is set, or, for a Terragrunt stack, when its
+// useStateManagement is set and manageState only when it is null. Either
+// is decided here alone: an update keeps the stack's state management as
+// it was created. The route has decided STACK_CREATE on in's space. Its
+// refusals point into stackCreate's body, where in is input.
+//
+// ref: decision 0010 § "How a run reaches it"
 func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, manageState bool, in Input) (Stack, error) {
 	if err := check("/input", in); err != nil {
 		return Stack{}, err
@@ -576,9 +580,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 			return err
 		}
 		st = Stack{CreatedAt: s.now(), State: kernel.StackStateNone}
-		st.ManagesState = manageState
 		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
 		apply(&st, space, in)
+		st.ManagesState = managesState(st.Settings, manageState)
 		if err := checkExternal("/input", &st); err != nil {
 			return err
 		}

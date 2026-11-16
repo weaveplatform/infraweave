@@ -993,11 +993,20 @@ components:
       description: EffectiveTerragruntVersionResult represents the effective Terragrunt and Terraform versions to be used in a stack.
       properties:
         effectiveTerraformVersion:
-          description: Effective Terraform version to be used in a stack. Returns null if tool is set to MANUALLY_PROVISIONED.
+          description: >-
+            The release of the tool the stack's Terragrunt drives that its runs
+            use: the newest the version catalogue lists that the stack's
+            terraformVersion, else its Terragrunt settings' terraformVersion,
+            allows, or the newest it lists when neither is set. Null when the
+            catalogue lists none the constraint allows.
           nullable: true
           type: string
         effectiveTerragruntVersion:
-          description: Effective Terragrunt version to be used in a stack. Returns null if tool is set to MANUALLY_PROVISIONED.
+          description: >-
+            The Terragrunt release the stack's runs use: the newest stable
+            release the version catalogue lists that terragruntVersion allows,
+            or the newest it lists when it is not set. Null when the catalogue
+            lists none the constraint allows.
           nullable: true
           type: string
         tool:
@@ -4647,6 +4656,8 @@ components:
             feature: vendor-terraform
         terragrunt:
           $ref: '#/components/schemas/StackConfigVendorTerragruntInput'
+          x-infraweave-feature:
+            feature: vendor-terragrunt
       type: object
       x-graphql-type: StackConfigVendorInput
     StackConfigVendorKubernetes:
@@ -4927,6 +4938,10 @@ components:
             Smart sanitization will only sanitize values that terraform has marked as sensitive.
           type: boolean
         useStateManagement:
+          description: >-
+            Whether infraweave keeps the state of the stack's units: the input's
+            useStateManagement when the stack was created with one, else the
+            create's manageState. It is decided once, when the stack is created.
           type: boolean
       required:
         - effectiveVersions
@@ -4990,6 +5005,11 @@ components:
             Smart sanitization will only sanitize values that terraform has marked as sensitive.
           type: boolean
         useStateManagement:
+          description: >-
+            Whether infraweave keeps the state of the stack's units. When set it
+            decides over the create's manageState; when null manageState
+            decides. Only a create reads it: a stack keeps the state management
+            it was created with.
           nullable: true
           type: boolean
       required:

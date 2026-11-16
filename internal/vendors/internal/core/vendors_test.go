@@ -181,14 +181,15 @@ func TestUnitEffective(t *testing.T) {
 // stack kind of the same tool, so a stack's kind names its vendor.
 func TestUnitVendorsAreKinds(t *testing.T) {
 	for v, k := range map[vendorsapi.Vendor]iac.Kind{
-		vendorsapi.Terraform: iac.Terraform,
-		vendorsapi.OpenTofu:  iac.OpenTofu,
+		vendorsapi.Terraform:  iac.Terraform,
+		vendorsapi.OpenTofu:   iac.OpenTofu,
+		vendorsapi.Terragrunt: iac.Terragrunt,
 	} {
 		if string(v) != string(k) {
 			t.Errorf("vendor %q, kind %q", v, k)
 		}
 	}
-	if len(core.Kinds) != 2 {
+	if len(core.Kinds) != 3 {
 		t.Errorf("vendors %v", core.Kinds)
 	}
 }

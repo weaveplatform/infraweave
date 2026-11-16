@@ -4458,10 +4458,10 @@ type DriftDetectionIntegrationTile struct {
 
 // EffectiveTerragruntVersionResult EffectiveTerragruntVersionResult represents the effective Terragrunt and Terraform versions to be used in a stack.
 type EffectiveTerragruntVersionResult struct {
-	// EffectiveTerraformVersion Effective Terraform version to be used in a stack. Returns null if tool is set to MANUALLY_PROVISIONED.
+	// EffectiveTerraformVersion The release of the tool the stack's Terragrunt drives that its runs use: the newest the version catalogue lists that the stack's terraformVersion, else its Terragrunt settings' terraformVersion, allows, or the newest it lists when neither is set. Null when the catalogue lists none the constraint allows.
 	EffectiveTerraformVersion *string `json:"effectiveTerraformVersion,omitempty"`
 
-	// EffectiveTerragruntVersion Effective Terragrunt version to be used in a stack. Returns null if tool is set to MANUALLY_PROVISIONED.
+	// EffectiveTerragruntVersion The Terragrunt release the stack's runs use: the newest stable release the version catalogue lists that terragruntVersion allows, or the newest it lists when it is not set. Null when the catalogue lists none the constraint allows.
 	EffectiveTerragruntVersion *string `json:"effectiveTerragruntVersion,omitempty"`
 
 	// Tool TerragruntTool defines the underlying tool run by Terragrunt.
@@ -8650,7 +8650,9 @@ type StackConfigVendorTerragrunt struct {
 	// UseSmartSanitization If Smart sanitization should be used for sanitizing terraform plans and resources.
 	// Smart sanitization will only sanitize values that terraform has marked as sensitive.
 	UseSmartSanitization bool `json:"useSmartSanitization"`
-	UseStateManagement   bool `json:"useStateManagement"`
+
+	// UseStateManagement Whether infraweave keeps the state of the stack's units: the input's useStateManagement when the stack was created with one, else the create's manageState. It is decided once, when the stack is created.
+	UseStateManagement bool `json:"useStateManagement"`
 }
 
 // StackConfigVendorTerragruntKind The concrete type, for union and interface responses.
@@ -8694,8 +8696,10 @@ type StackConfigVendorTerragruntInput struct {
 
 	// UseSmartSanitization If Smart sanitization should be used for sanitizing terraform plans and resources.
 	// Smart sanitization will only sanitize values that terraform has marked as sensitive.
-	UseSmartSanitization bool  `json:"useSmartSanitization"`
-	UseStateManagement   *bool `json:"useStateManagement,omitempty"`
+	UseSmartSanitization bool `json:"useSmartSanitization"`
+
+	// UseStateManagement Whether infraweave keeps the state of the stack's units. When set it decides over the create's manageState; when null manageState decides. Only a create reads it: a stack keeps the state management it was created with.
+	UseStateManagement *bool `json:"useStateManagement,omitempty"`
 }
 
 // StackConnection StackConnection represents a single stack in a page of results.

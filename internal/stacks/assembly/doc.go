@@ -25,7 +25,8 @@
 // binds its stacks and removes a deleted stack's bindings, and
 // accessapi.Grants, which explains the stacks a space's grants reach,
 // and the workers domain's workersapi.Pools, which holds the pool a
-// stack's write names;
+// stack's write names, and the vendors domain's vendorsapi.Catalog, which
+// a Terragrunt stack's effective versions are read from;
 // RegisterEvents registers stacksapi.Changed with the outbox; API is its
 // partial of the API's strict server, aliased StacksAPI; Purge deletes a
 // deleted account's stacks PurgeBatch at a time, which internal/app runs
@@ -43,8 +44,8 @@
 //
 // # Dependencies
 //
-// It imports accessapi, stacksapi, workersapi, the domain's core, http
-// and pg packages, internal/kernel, platform/outbox,
+// It imports accessapi, stacksapi, vendorsapi, workersapi, the domain's
+// core, http and pg packages, internal/kernel, platform/outbox,
 // platform/sql/integrity and platform/sql/migrate. Only internal/app and
 // cmd/ import it, as the constructors rule enforces.
 package assembly

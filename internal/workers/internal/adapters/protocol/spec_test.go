@@ -80,9 +80,10 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			Tool: &workersapi.SpecTool{
 				Name: "tofu", Version: "1.11.2", Download: true, CPUProfiling: true,
 			},
-			Task:    &kernel.Task{Command: "make check", SkipInitialization: true},
-			Targets: []string{"aws_instance.web", `module.app["a"]`},
-			Hooks:   map[string][]string{"beforeInit": {"echo hi"}},
+			Terragrunt: &workersapi.SpecTerragrunt{Version: "0.93.3", Download: true},
+			Task:       &kernel.Task{Command: "make check", SkipInitialization: true},
+			Targets:    []string{"aws_instance.web", `module.app["a"]`},
+			Hooks:      map[string][]string{"beforeInit": {"echo hi"}},
 			Environment: []workersapi.Variable{
 				{Name: "REGION", Value: &value}, {Name: "TOKEN", WriteOnly: true},
 			},
@@ -142,9 +143,10 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		"tool": map[string]any{
 			"name": "tofu", "version": "1.11.2", "download": true, "enableCPUProfiling": true,
 		},
-		"task":    map[string]any{"command": "make check", "skipInitialization": true},
-		"targets": []any{"aws_instance.web", `module.app["a"]`},
-		"hooks":   map[string]any{"beforeInit": []any{"echo hi"}},
+		"terragrunt": map[string]any{"version": "0.93.3", "download": true},
+		"task":       map[string]any{"command": "make check", "skipInitialization": true},
+		"targets":    []any{"aws_instance.web", `module.app["a"]`},
+		"hooks":      map[string]any{"beforeInit": []any{"echo hi"}},
 		"environment": []any{
 			map[string]any{"name": "REGION", "value": "eu", "writeOnly": false},
 			map[string]any{"name": "TOKEN", "writeOnly": true},
@@ -172,7 +174,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 // not on a worker with 409 invalid-state, and a template that fails to
 // render with 422; and that a handover with nothing optional answers
 // empty hooks, environment and files rather than null, and no state
-// backend.
+// backend, tool or Terragrunt.
 func TestUnitProtocolRunSpecRefused(t *testing.T) {
 	f := newFixture(t)
 	f.store.pool.Certificate = f.cert.Raw
@@ -198,7 +200,7 @@ func TestUnitProtocolRunSpecRefused(t *testing.T) {
 	if code != http.StatusOK || !reflect.DeepEqual(body["hooks"], map[string]any{}) ||
 		!reflect.DeepEqual(body["environment"], []any{}) ||
 		!reflect.DeepEqual(body["files"], []any{}) || body["runtimeConfig"] != nil ||
-		body["stateBackend"] != nil {
+		body["stateBackend"] != nil || body["tool"] != nil || body["terragrunt"] != nil {
 		t.Errorf("a bare handover = %d %v", code, body)
 	}
 	sch.err = workersapi.ErrNotOnWorker

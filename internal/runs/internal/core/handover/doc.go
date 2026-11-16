@@ -16,13 +16,13 @@
 // backend of a stack whose state infraweave keeps. The Spec also names the
 // targets of a run claimed from REPLAN_REQUESTED, the stack's well-known
 // secret masking and sensitive output upload, the tool its vendor mounts
-// at the catalogue's release for the stack's version constraint, and
-// where the
-// run's worker fetches its source by Git, whose credential, minted by
-// RunSources before the in-run API token, goes into the secrets. A
-// constraint no listed release meets is a *kernel.Invalid naming the
-// setting it comes from. The workers domain seals the secrets to the
-// pool's key.
+// at the catalogue's release for the stack's version constraint, for a
+// Terragrunt stack the tool its tool setting drives and Terragrunt itself
+// at the release its terragruntVersion allows, and where the run's worker
+// fetches its source by Git, whose credential, minted by RunSources
+// before the in-run API token, goes into the secrets. A constraint no
+// listed release meets is a *kernel.Invalid naming the setting it comes
+// from. The workers domain seals the secrets to the pool's key.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 // ref: decision 0013 § "Delivery to runs"
@@ -41,7 +41,8 @@
 // # Dependencies
 //
 // It imports the access, configuration, runs, stacks, vendors and workers
-// api packages, internal/kernel, platform/crypt, platform/expr,
+// api packages, iac/terragrunt, iac/version, internal/kernel,
+// platform/crypt, platform/expr,
 // platform/tx and the domain's lifecycle and surface packages. The
 // domain's assembly constructs it over the pg adapter.
 package handover

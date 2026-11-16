@@ -144,3 +144,41 @@ func TestUnitHashiCorp(t *testing.T) {
 		t.Errorf("OpenTofu served %s", w.Body)
 	}
 }
+
+// TestUnitGitHub pages as GitHub's REST API does, at most GitHubPage
+// releases a page, linking the next page while one remains, and refuses
+// the requests it would.
+func TestUnitGitHub(t *testing.T) {
+	body := json.RawMessage(`[{"tag_name":"v3"},{"tag_name":"v2"},{"tag_name":"v1"}]`)
+	get := func(h http.Handler, query string) (int, string, string) {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+			"/repos/o/r/releases?"+query, nil))
+		return w.Code, strings.TrimSpace(w.Body.String()), w.Header().Get("Link")
+	}
+	h := indextest.GitHub(body)
+	for query, want := range map[string][2]string{
+		"per_page=2": {
+			`[{"tag_name":"v3"},{"tag_name":"v2"}]`,
+			`<http://example.com/repos/o/r/releases?page=2&per_page=2>; rel="next", ` +
+				`<http://example.com/repos/o/r/releases?page=2&per_page=2>; rel="last"`,
+		},
+		"per_page=2&page=2": {`[{"tag_name":"v1"}]`, ""},
+		"per_page=100":      {string(body), ""},
+		"per_page=2&page=9": {`[]`, ""},
+	} {
+		code, out, link := get(h, query)
+		if code != http.StatusOK || out != want[0] || link != want[1] {
+			t.Errorf("%s: %d %s %q, want %s %q", query, code, out, link, want[0], want[1])
+		}
+	}
+	for _, query := range []string{"", "per_page=101", "per_page=1&page=0", "per_page=1&page=x"} {
+		if code, _, _ := get(h, query); code != http.StatusBadRequest {
+			t.Errorf("%s: %d, want 400", query, code)
+		}
+	}
+	if code, _, _ := get(indextest.GitHub(json.RawMessage(`{}`)), "per_page=1"); code !=
+		http.StatusInternalServerError {
+		t.Errorf("a body not a list: %d", code)
+	}
+}

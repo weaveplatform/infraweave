@@ -1,5 +1,6 @@
 // Package vendors holds the acceptance steps of features/vendors: the
-// Version Catalog, refreshed from release indexes the steps serve.
+// Version Catalog, refreshed from release indexes the steps serve, and a
+// Terragrunt stack's vendor settings and effective versions read back.
 //
 // # Input and output
 //

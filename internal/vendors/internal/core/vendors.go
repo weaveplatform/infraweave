@@ -24,7 +24,7 @@ type Store interface {
 
 // Kinds are the vendors the catalogue lists, in the order a refresh reads
 // their indexes.
-var Kinds = []vendorsapi.Vendor{vendorsapi.Terraform, vendorsapi.OpenTofu}
+var Kinds = []vendorsapi.Vendor{vendorsapi.Terraform, vendorsapi.OpenTofu, vendorsapi.Terragrunt}
 
 // Service is the version catalogue.
 type Service struct {

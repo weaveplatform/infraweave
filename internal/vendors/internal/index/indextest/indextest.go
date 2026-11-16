@@ -44,6 +44,14 @@ var (
 		Listed:   []string{"1.6.0"},
 		Resolves: []Resolution{{"< 1.6.1", "1.6.0"}, {"= 1.6.0", "1.6.0"}},
 	}
+	TerragruntFacts = Facts{
+		Listed: []string{"0.73.0", "0.73.16"},
+		Resolves: []Resolution{
+			{"~> 0.73.0", "0.73.16"},
+			{">= 0.73.0, < 0.73.11", "0.73.10"},
+			{"0.73.11", "0.73.11"},
+		},
+	}
 )
 
 // ErrContract is a reader that breaks the contract.
@@ -165,6 +173,53 @@ func HashiCorp(body json.RawMessage) http.Handler {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(out[:min(limit, len(out))]) // a client gone has no answer
+	})
+	return r
+}
+
+// GitHubPage is the most releases GitHub serves a page, fewer than the
+// API's hundred, so a recorded fixture spans pages and a reader is held
+// to following each page's Link to the next.
+const GitHubPage = 10
+
+// GitHub serves body, a recorded list of a repository's releases newest
+// first, as GitHub's REST API pages it: per_page releases, at most
+// GitHubPage, on the page'th page, with a Link header naming the next
+// page while one remains, and the last.
+func GitHub(body json.RawMessage) http.Handler {
+	r := chi.NewRouter()
+	r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
+		var releases []json.RawMessage
+		if err := json.Unmarshal(body, &releases); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		q := req.URL.Query()
+		size, err := strconv.Atoi(q.Get("per_page"))
+		if err != nil || size < 1 || size > index.GitHubPage {
+			http.Error(w, "per_page is 1 to 100", http.StatusBadRequest)
+			return
+		}
+		size = min(size, GitHubPage)
+		page := 1
+		if raw := q.Get("page"); raw != "" {
+			if page, err = strconv.Atoi(raw); err != nil || page < 1 {
+				http.Error(w, "page is a number from 1", http.StatusBadRequest)
+				return
+			}
+		}
+		from := min((page-1)*size, len(releases))
+		to := min(from+size, len(releases))
+		last := max(1, (len(releases)+size-1)/size)
+		link := func(n int, rel string) string {
+			q.Set("page", strconv.Itoa(n))
+			return fmt.Sprintf(`<http://%s%s?%s>; rel="%s"`, req.Host, req.URL.Path, q.Encode(), rel)
+		}
+		if page < last {
+			w.Header().Set("Link", link(page+1, "next")+", "+link(last, "last"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(releases[from:to]) // a client gone has no answer
 	})
 	return r
 }
