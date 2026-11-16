@@ -22,10 +22,7 @@ import (
 // keeping those where it may perform every action input.actions lists.
 // The spaces it may not read, or where it may not perform one of them, are
 // left out in the query, so every page before the last is full.
-func (s Server) Spaces(
-	ctx context.Context,
-	req api.SpacesRequestObject,
-) (api.SpacesResponseObject, error) {
+func (s Server) Spaces(ctx context.Context, req api.SpacesRequestObject) (api.SpacesResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -66,11 +63,7 @@ func (s Server) Spaces(
 // each of want. An action no role may hold, being disabled, deprecated or
 // no catalogue action, is allowed nowhere, as a space's allowedActions
 // never list it.
-func (s Server) allowing(
-	ctx context.Context,
-	p kernel.Principal,
-	want []api.Action,
-) ([]kernel.ULID, error) {
+func (s Server) allowing(ctx context.Context, p kernel.Principal, want []api.Action) ([]kernel.ULID, error) {
 	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the snapshot's read names itself
@@ -93,10 +86,7 @@ func (s Server) allowing(
 }
 
 // SearchSpaces searches the spaces of the caller's account it may read.
-func (s Server) SearchSpaces(
-	ctx context.Context,
-	req api.SearchSpacesRequestObject,
-) (api.SearchSpacesResponseObject, error) {
+func (s Server) SearchSpaces(ctx context.Context, req api.SearchSpacesRequestObject) (api.SearchSpacesResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -123,10 +113,7 @@ func (s Server) SearchSpaces(
 
 // SearchSpacesSuggestions lists the values of the spaces of the caller's
 // account it may read.
-func (s Server) SearchSpacesSuggestions(
-	ctx context.Context,
-	req api.SearchSpacesSuggestionsRequestObject,
-) (api.SearchSpacesSuggestionsResponseObject, error) {
+func (s Server) SearchSpacesSuggestions(ctx context.Context, req api.SearchSpacesSuggestionsRequestObject) (api.SearchSpacesSuggestionsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -143,10 +130,7 @@ func (s Server) SearchSpacesSuggestions(
 }
 
 // ActionCatalogue lists every catalogue action with its flags.
-func (s Server) ActionCatalogue(
-	context.Context,
-	api.ActionCatalogueRequestObject,
-) (api.ActionCatalogueResponseObject, error) {
+func (s Server) ActionCatalogue(context.Context, api.ActionCatalogueRequestObject) (api.ActionCatalogueResponseObject, error) {
 	catalogue := accessapi.Actions()
 	out := make([]api.ActionCatalogueEntry, 0, len(catalogue))
 	for _, a := range catalogue {
@@ -160,10 +144,7 @@ func (s Server) ActionCatalogue(
 // Space answers one space of the caller's account, tagged with its
 // version. The route table has answered 404 for one the caller cannot
 // read.
-func (s Server) Space(
-	ctx context.Context,
-	req api.SpaceRequestObject,
-) (api.SpaceResponseObject, error) {
+func (s Server) Space(ctx context.Context, req api.SpaceRequestObject) (api.SpaceResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -182,10 +163,7 @@ func (s Server) Space(
 }
 
 // SpaceCreate creates a space below the body's parentSpace.
-func (s Server) SpaceCreate(
-	ctx context.Context,
-	req api.SpaceCreateRequestObject,
-) (api.SpaceCreateResponseObject, error) {
+func (s Server) SpaceCreate(ctx context.Context, req api.SpaceCreateRequestObject) (api.SpaceCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -204,10 +182,7 @@ func (s Server) SpaceCreate(
 
 // SpaceUpdate changes a space's fields and moves it below the body's
 // parentSpace, when its If-Match, if any, names the space's version.
-func (s Server) SpaceUpdate(
-	ctx context.Context,
-	req api.SpaceUpdateRequestObject,
-) (api.SpaceUpdateResponseObject, error) {
+func (s Server) SpaceUpdate(ctx context.Context, req api.SpaceUpdateRequestObject) (api.SpaceUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -227,10 +202,7 @@ func (s Server) SpaceUpdate(
 
 // SpacePatch changes the fields its merge patch names and keeps the rest,
 // writing the result as SpaceUpdate writes its body.
-func (s Server) SpacePatch(
-	ctx context.Context,
-	req api.SpacePatchRequestObject,
-) (api.SpacePatchResponseObject, error) {
+func (s Server) SpacePatch(ctx context.Context, req api.SpacePatchRequestObject) (api.SpacePatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -268,13 +240,7 @@ func (s Server) SpacePatch(
 
 // updateSpace writes in to p's account's space slug, as SpaceUpdate and
 // SpacePatch do, when expect accepts its version.
-func (s Server) updateSpace(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-	in api.SpaceInput,
-) (space.Space, error) {
+func (s Server) updateSpace(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect, in api.SpaceInput) (space.Space, error) {
 	sp, err := s.spaces.Update(ctx, p, slug, in.ParentSpace, expect, spaceOf(in))
 	if err != nil {
 		// A missing space was answered by the route table, so a missing
@@ -287,10 +253,7 @@ func (s Server) updateSpace(
 // SpaceDelete deletes a space, when its If-Match, if any, names the
 // space's version, and answers it as it was, with the caller's access to
 // it then.
-func (s Server) SpaceDelete(
-	ctx context.Context,
-	req api.SpaceDeleteRequestObject,
-) (api.SpaceDeleteResponseObject, error) {
+func (s Server) SpaceDelete(ctx context.Context, req api.SpaceDeleteRequestObject) (api.SpaceDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -312,10 +275,7 @@ func (s Server) SpaceDelete(
 }
 
 // AllowNonAdminSpaceCreation answers the account's setting.
-func (s Server) AllowNonAdminSpaceCreation(
-	ctx context.Context,
-	_ api.AllowNonAdminSpaceCreationRequestObject,
-) (api.AllowNonAdminSpaceCreationResponseObject, error) {
+func (s Server) AllowNonAdminSpaceCreation(ctx context.Context, _ api.AllowNonAdminSpaceCreationRequestObject) (api.AllowNonAdminSpaceCreationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -360,12 +320,7 @@ func (s Server) view(ctx context.Context, p kernel.Principal, sp space.Space) (a
 // spaceView is sp with the actions p holds there, as the evaluator
 // explains them, and the access level the highest space action among
 // them gives; slugs names each space's parent.
-func (s Server) spaceView(
-	ctx context.Context,
-	p kernel.Principal,
-	sp space.Space,
-	slugs map[kernel.ULID]string,
-) (api.Space, error) {
+func (s Server) spaceView(ctx context.Context, p kernel.Principal, sp space.Space, slugs map[kernel.ULID]string) (api.Space, error) {
 	held, err := s.authz.Actions(ctx, p, sp.ID)
 	if err != nil {
 		return api.Space{}, err //nolint:wrapcheck // the snapshot's read names itself

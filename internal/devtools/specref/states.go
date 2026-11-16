@@ -188,11 +188,7 @@ func (e evidence) complete() bool {
 // States computes the state of every record from the report, the scenarios
 // and, for Terraform records, the root fields tf records each calls; tf may
 // be nil for a product without a provider in the register.
-func (r *ParityReport) States(
-	records []CapabilityRecord,
-	scenarios []Scenario,
-	tf *TerraformOperations,
-) []CapabilityState {
+func (r *ParityReport) States(records []CapabilityRecord, scenarios []Scenario, tf *TerraformOperations) []CapabilityState {
 	ops := map[string]OperationParity{}
 	byTag := map[string][]string{}
 	byField := map[string]string{}

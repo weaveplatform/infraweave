@@ -49,9 +49,7 @@ func (d *daemon) Ping(context.Context, client.PingOptions) (client.PingResult, e
 	return client.PingResult{}, d.err("ping")
 }
 
-func (d *daemon) ImageInspect(
-	context.Context, string, ...client.ImageInspectOption,
-) (client.ImageInspectResult, error) {
+func (d *daemon) ImageInspect(context.Context, string, ...client.ImageInspectOption) (client.ImageInspectResult, error) {
 	if d.missing {
 		return client.ImageInspectResult{}, cerrdefs.ErrNotFound
 	}
@@ -69,27 +67,19 @@ func (p pulled) JSONMessages(context.Context) iter.Seq2[jsonstream.Message, erro
 
 func (p pulled) Wait(context.Context) error { return p.err }
 
-func (d *daemon) ImagePull(
-	context.Context,
-	string,
-	client.ImagePullOptions,
-) (client.ImagePullResponse, error) {
+func (d *daemon) ImagePull(context.Context, string, client.ImagePullOptions) (client.ImagePullResponse, error) {
 	if err := d.err("pull"); err != nil {
 		return nil, err
 	}
 	return pulled{io.NopCloser(strings.NewReader("")), d.err("pull-wait")}, nil
 }
 
-func (d *daemon) ContainerCreate(
-	_ context.Context, o client.ContainerCreateOptions,
-) (client.ContainerCreateResult, error) {
+func (d *daemon) ContainerCreate(_ context.Context, o client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
 	d.created, d.host = *o.Config, *o.HostConfig
 	return client.ContainerCreateResult{ID: "c1"}, d.err("create")
 }
 
-func (d *daemon) ContainerAttach(
-	context.Context, string, client.ContainerAttachOptions,
-) (client.ContainerAttachResult, error) {
+func (d *daemon) ContainerAttach(context.Context, string, client.ContainerAttachOptions) (client.ContainerAttachResult, error) {
 	if err := d.err("attach"); err != nil {
 		return client.ContainerAttachResult{}, err
 	}
@@ -103,22 +93,15 @@ func (d *daemon) ContainerAttach(
 	return client.ContainerAttachResult{HijackedResponse: client.NewHijackedResponse(ours, "")}, nil
 }
 
-func (d *daemon) ContainerStart(
-	context.Context, string, client.ContainerStartOptions,
-) (client.ContainerStartResult, error) {
+func (d *daemon) ContainerStart(context.Context, string, client.ContainerStartOptions) (client.ContainerStartResult, error) {
 	return client.ContainerStartResult{}, d.err("start")
 }
 
-func (d *daemon) ContainerList(
-	context.Context,
-	client.ContainerListOptions,
-) (client.ContainerListResult, error) {
+func (d *daemon) ContainerList(context.Context, client.ContainerListOptions) (client.ContainerListResult, error) {
 	return client.ContainerListResult{Items: d.items}, d.err("list")
 }
 
-func (d *daemon) ContainerLogs(
-	context.Context, string, client.ContainerLogsOptions,
-) (client.ContainerLogsResult, error) {
+func (d *daemon) ContainerLogs(context.Context, string, client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
 	if err := d.err("logs"); err != nil {
 		return nil, err
 	}
@@ -129,11 +112,7 @@ func (d *daemon) ContainerLogs(
 }
 
 // ContainerWait ends the container's output stream, then answers.
-func (d *daemon) ContainerWait(
-	context.Context,
-	string,
-	client.ContainerWaitOptions,
-) client.ContainerWaitResult {
+func (d *daemon) ContainerWait(context.Context, string, client.ContainerWaitOptions) client.ContainerWaitResult {
 	if d.stdin != nil {
 		_ = d.stdin.Close()
 	}
@@ -146,25 +125,17 @@ func (d *daemon) ContainerWait(
 	return client.ContainerWaitResult{Result: res, Error: errs}
 }
 
-func (d *daemon) ContainerInspect(
-	context.Context, string, client.ContainerInspectOptions,
-) (client.ContainerInspectResult, error) {
+func (d *daemon) ContainerInspect(context.Context, string, client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
 	return client.ContainerInspectResult{Container: container.InspectResponse{
 		Image: "sha256:img", State: &container.State{OOMKilled: d.oom},
 	}}, d.err("inspect")
 }
 
-func (d *daemon) ContainerKill(
-	context.Context,
-	string,
-	client.ContainerKillOptions,
-) (client.ContainerKillResult, error) {
+func (d *daemon) ContainerKill(context.Context, string, client.ContainerKillOptions) (client.ContainerKillResult, error) {
 	return client.ContainerKillResult{}, d.err("kill")
 }
 
-func (d *daemon) ContainerRemove(
-	context.Context, string, client.ContainerRemoveOptions,
-) (client.ContainerRemoveResult, error) {
+func (d *daemon) ContainerRemove(context.Context, string, client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
 	d.mu.Lock()
 	d.removed++
 	d.mu.Unlock()

@@ -192,10 +192,7 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 
 // open opens spec's sealed part with the private key of the request kept
 // as csr, for the run and state version spec names, and answers the key.
-func (b *backendSteps) open(
-	csr string,
-	spec wire.RunSpec,
-) (wire.RunSpecSecrets, *ecdh.PrivateKey, error) {
+func (b *backendSteps) open(csr string, spec wire.RunSpec) (wire.RunSpecSecrets, *ecdh.PrivateKey, error) {
 	var secrets wire.RunSpecSecrets
 	key, ok := b.w.Keys[csr].(*ecdsa.PrivateKey)
 	if !ok {
@@ -397,9 +394,7 @@ func (b *backendSteps) output(run, want string) error {
 // end removes the scenario's containers, leaving a failed scenario's
 // relay calls and tool output beside its servers' evidence, and closes
 // the relay, which releases what it holds.
-func (b *backendSteps) end(ctx context.Context, _ *godog.Scenario, failed error) (context.Context,
-	error,
-) {
+func (b *backendSteps) end(ctx context.Context, _ *godog.Scenario, failed error) (context.Context, error) {
 	ctx = context.WithoutCancel(ctx)
 	if b.relay == nil {
 		return ctx, nil

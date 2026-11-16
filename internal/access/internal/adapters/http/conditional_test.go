@@ -75,31 +75,15 @@ func (p *people) sortedUsers(after kernel.MemberID, limit int) []managed.User {
 	return out[:min(len(out), limit)]
 }
 
-func (p *people) Users(
-	_ context.Context,
-	_ kernel.AccountID,
-	after kernel.MemberID,
-	limit int,
-) ([]managed.User, error) {
+func (p *people) Users(_ context.Context, _ kernel.AccountID, after kernel.MemberID, limit int) ([]managed.User, error) {
 	return p.sortedUsers(after, limit), p.st.err()
 }
 
-func (p *people) User(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-) (managed.User, error) {
+func (p *people) User(_ context.Context, acct kernel.AccountID, id kernel.MemberID) (managed.User, error) {
 	return p.user(acct, id)
 }
 
-func (p *people) Invite(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	acct kernel.AccountID,
-	in managed.Invite,
-	inv managed.Invitation,
-	e kernel.AuditEntry,
-) (managed.User, error) {
+func (p *people) Invite(_ context.Context, _ kernel.OrganizationID, acct kernel.AccountID, in managed.Invite, inv managed.Invitation, e kernel.AuditEntry) (managed.User, error) {
 	u := managed.User{
 		AccountID: acct, SlackMemberID: in.SlackMemberID, Invitation: &inv, Version: 1,
 		Member: member.Member{ID: kernel.NewMemberID(), Login: in.Login, Status: member.Pending},
@@ -109,14 +93,7 @@ func (p *people) Invite(
 	return u, p.st.err()
 }
 
-func (p *people) SetSlackMemberID(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	expect kernel.Expect,
-	slack string,
-	e kernel.AuditEntry,
-) (managed.User, error) {
+func (p *people) SetSlackMemberID(_ context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, slack string, e kernel.AuditEntry) (managed.User, error) {
 	u, err := p.user(acct, id)
 	if err != nil {
 		return u, err
@@ -130,13 +107,7 @@ func (p *people) SetSlackMemberID(
 	return u, nil
 }
 
-func (p *people) Resend(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	at time.Time,
-	e kernel.AuditEntry,
-) (managed.User, error) {
+func (p *people) Resend(_ context.Context, acct kernel.AccountID, id kernel.MemberID, at time.Time, e kernel.AuditEntry) (managed.User, error) {
 	u, err := p.user(acct, id)
 	if err != nil {
 		return u, err
@@ -148,13 +119,7 @@ func (p *people) Resend(
 	return u, nil
 }
 
-func (p *people) Remove(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	expect kernel.Expect,
-	e kernel.AuditEntry,
-) ([]kernel.ULID, error) {
+func (p *people) Remove(_ context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, e kernel.AuditEntry) ([]kernel.ULID, error) {
 	u, err := p.user(acct, id)
 	if err != nil {
 		return nil, err
@@ -167,13 +132,7 @@ func (p *people) Remove(
 	return nil, nil
 }
 
-func (p *people) PersonalAPIKeys(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ kernel.MemberID,
-	_ kernel.ULID,
-	_ int,
-) ([]apikey.Key, error) {
+func (p *people) PersonalAPIKeys(_ context.Context, _ kernel.AccountID, _ kernel.MemberID, _ kernel.ULID, _ int) ([]apikey.Key, error) {
 	return []apikey.Key{{ID: kernel.NewULID(), Name: "laptop", Type: apikey.TypeSecret}},
 		p.st.err()
 }
@@ -183,12 +142,7 @@ func (p *people) RecordRequest(_ context.Context, e kernel.AuditEntry) error {
 	return p.st.err()
 }
 
-func (p *people) Groups(
-	_ context.Context,
-	_ kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]group.Group, error) {
+func (p *people) Groups(_ context.Context, _ kernel.AccountID, after kernel.ULID, limit int) ([]group.Group, error) {
 	var out []group.Group
 	for _, g := range p.groups {
 		if g.ID.String() > after.String() || after.IsZero() {
@@ -201,33 +155,18 @@ func (p *people) Groups(
 	return out[:min(len(out), limit)], p.st.err()
 }
 
-func (p *people) Group(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (group.Group, error) {
+func (p *people) Group(_ context.Context, acct kernel.AccountID, id kernel.ULID) (group.Group, error) {
 	return p.group(acct, id)
 }
 
-func (p *people) CreateGroup(
-	_ context.Context,
-	g group.Group,
-	e kernel.AuditEntry,
-) (group.Group, error) {
+func (p *people) CreateGroup(_ context.Context, g group.Group, e kernel.AuditEntry) (group.Group, error) {
 	g.Version = 1
 	p.groups[g.ID] = g
 	p.trail = append(p.trail, e)
 	return g, p.st.err()
 }
 
-func (p *people) SetDescription(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	description string,
-	e kernel.AuditEntry,
-) (group.Group, error) {
+func (p *people) SetDescription(_ context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, description string, e kernel.AuditEntry) (group.Group, error) {
 	g, err := p.group(acct, id)
 	if err != nil {
 		return g, err
@@ -241,13 +180,7 @@ func (p *people) SetDescription(
 	return g, nil
 }
 
-func (p *people) DeleteGroup(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	e kernel.AuditEntry,
-) error {
+func (p *people) DeleteGroup(_ context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, e kernel.AuditEntry) error {
 	g, err := p.group(acct, id)
 	if err != nil {
 		return err
@@ -260,25 +193,14 @@ func (p *people) DeleteGroup(
 	return nil
 }
 
-func (p *people) GroupUsers(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	after kernel.MemberID,
-	limit int,
-) ([]managed.User, error) {
+func (p *people) GroupUsers(_ context.Context, acct kernel.AccountID, id kernel.ULID, after kernel.MemberID, limit int) ([]managed.User, error) {
 	if _, err := p.group(acct, id); err != nil {
 		return nil, err
 	}
 	return p.sortedUsers(after, limit), nil
 }
 
-func (p *people) AvailableGroups(
-	_ context.Context,
-	_ kernel.AccountID,
-	after string,
-	_ int,
-) ([]string, error) {
+func (p *people) AvailableGroups(_ context.Context, _ kernel.AccountID, after string, _ int) ([]string, error) {
 	var out []string
 	for _, n := range []string{"dev", "ops"} {
 		if n > after {
@@ -290,10 +212,7 @@ func (p *people) AvailableGroups(
 
 // conditional sends a request as bearer with the If-Match ifMatch, when
 // it is not empty, and a merge patch's content type on a PATCH.
-func (w *world) conditional(
-	t *testing.T,
-	method, target, bearer, ifMatch, body string,
-) *httptest.ResponseRecorder {
+func (w *world) conditional(t *testing.T, method, target, bearer, ifMatch, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	return w.send(t, method, target, body, func(req *http.Request) {
 		req.Header.Set("Authorization", bearer)

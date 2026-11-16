@@ -15,10 +15,7 @@ import (
 // Enterprise while billing is off, which every organization then has, and
 // for an organization the operator has not given an entitlement, which
 // Allow refuses nothing.
-func (s *Service) OrganizationTier(
-	ctx context.Context,
-	org kernel.OrganizationID,
-) (features.Tier, error) {
+func (s *Service) OrganizationTier(ctx context.Context, org kernel.OrganizationID) (features.Tier, error) {
 	name := features.Enterprise
 	on, err := s.Billing(ctx)
 	if err != nil {
@@ -74,12 +71,7 @@ type Seats struct {
 // Seats are acct's seats in org with used the seats in use, which the
 // access domain counts. With billing off no limit applies, as CheckLimit
 // admits every seat, so neither is set.
-func (s *Service) Seats(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	used featuresapi.Usage,
-) (Seats, error) {
+func (s *Service) Seats(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, used featuresapi.Usage) (Seats, error) {
 	out := Seats{Organization: SeatLimit{InUse: used.Organization}}
 	on, err := s.Billing(ctx)
 	if err != nil || !on {

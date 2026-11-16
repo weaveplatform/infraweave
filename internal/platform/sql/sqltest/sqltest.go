@@ -173,11 +173,7 @@ func Server(t testing.TB, img string) (*postgres.PostgresContainer, string) {
 }
 
 // start starts a server from img with Template migrated with streams.
-func start(
-	ctx context.Context,
-	img string,
-	streams []migrate.Stream,
-) (*postgres.PostgresContainer, string, error) {
+func start(ctx context.Context, img string, streams []migrate.Stream) (*postgres.PostgresContainer, string, error) {
 	if err := reachable(ctx); err != nil {
 		return nil, "", err
 	}

@@ -31,10 +31,7 @@ func New(registry *expr.Registry, now func() time.Time) Server {
 }
 
 // ExpressionCheck checks a source against its surface and context.
-func (s Server) ExpressionCheck(
-	ctx context.Context,
-	req api.ExpressionCheckRequestObject,
-) (api.ExpressionCheckResponseObject, error) {
+func (s Server) ExpressionCheck(ctx context.Context, req api.ExpressionCheckRequestObject) (api.ExpressionCheckResponseObject, error) {
 	b := req.Body
 	c, err := s.context(ctx, b.Surface, b.Ref)
 	if err != nil {
@@ -60,10 +57,7 @@ func (s Server) ExpressionCheck(
 }
 
 // ExpressionComplete lists the items an editor may insert at the cursor.
-func (s Server) ExpressionComplete(
-	ctx context.Context,
-	req api.ExpressionCompleteRequestObject,
-) (api.ExpressionCompleteResponseObject, error) {
+func (s Server) ExpressionComplete(ctx context.Context, req api.ExpressionCompleteRequestObject) (api.ExpressionCompleteResponseObject, error) {
 	b := req.Body
 	c, err := s.context(ctx, b.Surface, b.Ref)
 	if err != nil {
@@ -100,10 +94,7 @@ func (s Server) ExpressionComplete(
 // ExpressionEvaluate evaluates a source against its context's sample
 // values, each variable the request's sample names replacing the
 // context's, and a secret variable's every key masked.
-func (s Server) ExpressionEvaluate(
-	ctx context.Context,
-	req api.ExpressionEvaluateRequestObject,
-) (api.ExpressionEvaluateResponseObject, error) {
+func (s Server) ExpressionEvaluate(ctx context.Context, req api.ExpressionEvaluateRequestObject) (api.ExpressionEvaluateResponseObject, error) {
 	b := req.Body
 	c, err := s.context(ctx, b.Surface, b.Ref)
 	if err != nil {

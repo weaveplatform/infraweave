@@ -104,20 +104,10 @@ type Store interface {
 	// InSpace reports whether a pool of acct lives in space.
 	InSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
 	// Search reads a page of acct's pools in the scope that in keeps.
-	Search(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.Input,
-		scope Scope,
-	) (search.Result[Pool], error)
+	Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope Scope) (search.Result[Pool], error)
 	// Suggest lists the values acct's pools in the scope that in keeps
 	// hold.
-	Suggest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.SuggestionsInput,
-		scope Scope,
-	) (search.Suggestions, error)
+	Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope Scope) (search.Suggestions, error)
 	// Purge deletes up to batch of the deleted account acct's pools,
 	// workers and nonces; true when none is left.
 	Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error)
@@ -232,11 +222,7 @@ func (s *Service) PreparingTimeout(p Pool) time.Duration {
 // SpaceOf is the space of acct's pool id, which the access domain's
 // middleware decides a pool's operations on; accessapi.ErrNoSubject when
 // acct lacks it.
-func (s *Service) SpaceOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id string,
-) (kernel.ULID, error) {
+func (s *Service) SpaceOf(ctx context.Context, acct kernel.AccountID, id string) (kernel.ULID, error) {
 	p, err := s.Read(ctx, acct, id)
 	if errors.Is(err, ErrNotFound) {
 		return kernel.ULID{}, accessapi.ErrNoSubject
@@ -251,12 +237,7 @@ func (s *Service) Read(ctx context.Context, acct kernel.AccountID, id string) (P
 }
 
 // get reads acct's pool id, locked FOR UPDATE when lock is set.
-func (s *Service) get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id string,
-	lock bool,
-) (Pool, error) {
+func (s *Service) get(ctx context.Context, acct kernel.AccountID, id string, lock bool) (Pool, error) {
 	ulid, err := kernel.ParseULID(id)
 	if err != nil {
 		return Pool{}, fmt.Errorf("%w: %s", ErrNotFound, id)
@@ -266,11 +247,7 @@ func (s *Service) get(
 
 // Search reads a page of the pools of p's account in the spaces it may
 // read.
-func (s *Service) Search(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.Input,
-) (search.Result[Pool], error) {
+func (s *Service) Search(ctx context.Context, p kernel.Principal, in search.Input) (search.Result[Pool], error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Result[Pool]{}, err
@@ -280,11 +257,7 @@ func (s *Service) Search(
 
 // Suggest lists the values the pools of p's account in the spaces it may
 // read hold, so no value or count names one p cannot read.
-func (s *Service) Suggest(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, p kernel.Principal, in search.SuggestionsInput) (search.Suggestions, error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -332,12 +305,7 @@ func Reach(tree []accessapi.SpaceNode, space kernel.ULID) []kernel.ULID {
 // AttachableToStack reads a page of the pools that p's account's stack
 // may use and p may read. The route has decided SPACE_READ on the
 // stack's space.
-func (s *Service) AttachableToStack(
-	ctx context.Context,
-	p kernel.Principal,
-	stack string,
-	in search.Input,
-) (search.Result[Pool], error) {
+func (s *Service) AttachableToStack(ctx context.Context, p kernel.Principal, stack string, in search.Input) (search.Result[Pool], error) {
 	s.mu.RLock()
 	stacks := s.stacks
 	s.mu.RUnlock()
@@ -357,12 +325,7 @@ func (s *Service) AttachableToStack(
 // AttachableInSpace reads a page of the pools that a stack in p's
 // account's space slug may use and p may read. The route has decided
 // SPACE_READ on the space.
-func (s *Service) AttachableInSpace(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	in search.Input,
-) (search.Result[Pool], error) {
+func (s *Service) AttachableInSpace(ctx context.Context, p kernel.Principal, slug string, in search.Input) (search.Result[Pool], error) {
 	space, err := s.spaces.Find(ctx, p.AccountID, slug)
 	if errors.Is(err, accessapi.ErrNoSpace) {
 		return search.Result[Pool]{}, &Missing{Kind: "space", ID: slug}
@@ -375,12 +338,7 @@ func (s *Service) AttachableInSpace(
 
 // attachable reads a page of the pools space reaches in the spaces p may
 // read.
-func (s *Service) attachable(
-	ctx context.Context,
-	p kernel.Principal,
-	space kernel.ULID,
-	in search.Input,
-) (search.Result[Pool], error) {
+func (s *Service) attachable(ctx context.Context, p kernel.Principal, space kernel.ULID, in search.Input) (search.Result[Pool], error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Result[Pool]{}, err
@@ -455,12 +413,7 @@ func csr(in string) (*x509.CertificateRequest, error) {
 // Create creates a pool of p's account from in, and signs its
 // certificate for the key of the request req. The route has decided
 // WORKER_POOL_CREATE on in's space.
-func (s *Service) Create(
-	ctx context.Context,
-	p kernel.Principal,
-	in Input,
-	req string,
-) (Pool, error) {
+func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input, req string) (Pool, error) {
 	if err := check(in); err != nil {
 		return Pool{}, err
 	}
@@ -532,13 +485,7 @@ func (s *Service) sign(ctx context.Context, out *Pool, key *x509.CertificateRequ
 // Update replaces the settings of p's account's pool id with in's, when
 // expect accepts its version. The route has decided WORKER_POOL_UPDATE
 // on its space; a move needs WORKER_POOL_CREATE on the new space too.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	expect kernel.Expect,
-	in Input,
-) (Pool, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, in Input) (Pool, error) {
 	if err := check(in); err != nil {
 		return Pool{}, err
 	}
@@ -583,13 +530,7 @@ func (s *Service) Reset(ctx context.Context, p kernel.Principal, id, req string)
 
 // write locks acct's pool id, checks expect against its version, has
 // change change it, and writes it with its next version.
-func (s *Service) write(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id string,
-	expect kernel.Expect,
-	change func(ctx context.Context, out *Pool) error,
-) (Pool, error) {
+func (s *Service) write(ctx context.Context, acct kernel.AccountID, id string, expect kernel.Expect, change func(ctx context.Context, out *Pool) error) (Pool, error) {
 	var out Pool
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		var err error
@@ -611,12 +552,7 @@ func (s *Service) write(
 // Delete deletes p's account's pool id with its workers, when expect
 // accepts its version, and answers it as it was. The route has decided
 // WORKER_POOL_DELETE on its space.
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	expect kernel.Expect,
-) (Pool, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect) (Pool, error) {
 	var out Pool
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		var err error
@@ -638,12 +574,7 @@ func (s *Service) Delete(
 // stack names it, or, when to is set, a move of it to the space to that
 // leaves such a stack out of reach. The pool's row is locked, so no stack
 // names it meanwhile.
-func (s *Service) inUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	to *kernel.ULID,
-) error {
+func (s *Service) inUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID, to *kernel.ULID) error {
 	s.mu.RLock()
 	guards := slices.Clone(s.guards)
 	s.mu.RUnlock()
@@ -721,12 +652,7 @@ func (s *Service) space(ctx context.Context, p kernel.Principal, slug string) (k
 }
 
 // require refuses p action in space, as a *Denied.
-func (s *Service) require(
-	ctx context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) error {
+func (s *Service) require(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) error {
 	ok, err := s.authz.Authorize(ctx, p, action, space)
 	switch {
 	case err != nil:
@@ -746,11 +672,7 @@ func (s *Service) SpaceGuard() SpaceGuard { return SpaceGuard{s} }
 
 // SpaceInUse reports whether a pool lives in space, which refuses its
 // deletion.
-func (g SpaceGuard) SpaceInUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (g SpaceGuard) SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	return g.s.store.InSpace(ctx, acct, space) //nolint:wrapcheck // the store names the read
 }
 

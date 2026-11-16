@@ -63,12 +63,7 @@ func scanUser(r pgx.Row) (user.User, error) {
 
 // Users are up to limit of acct's managed users in member ID order from
 // the first after after.
-func (s *Store) Users(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after kernel.MemberID,
-	limit int,
-) ([]user.User, error) {
+func (s *Store) Users(ctx context.Context, acct kernel.AccountID, after kernel.MemberID, limit int) ([]user.User, error) {
 	return s.users(ctx, userSelect+`
 		WHERE u.account_id = $1 AND ($2::uuid IS NULL OR u.member_id > $2)
 		ORDER BY u.member_id LIMIT $3`, acct, after, limit)
@@ -89,11 +84,7 @@ func (s *Store) users(ctx context.Context, query string, args ...any) ([]user.Us
 }
 
 // User reads the managed user id of acct.
-func (s *Store) User(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-) (user.User, error) {
+func (s *Store) User(ctx context.Context, acct kernel.AccountID, id kernel.MemberID) (user.User, error) {
 	u, err := scanUser(tx.Q(ctx, s.db).QueryRow(ctx, userSelect+`
 		WHERE u.account_id = $1 AND u.member_id = $2`, acct, id))
 	return u, read(err, "managed user", id)
@@ -104,14 +95,7 @@ func (s *Store) User(
 // member's seat, in one transaction. The organization's row lock orders
 // invites, so two cannot both create a member for one login or both pass
 // one e-mail address's pending invitation check.
-func (s *Store) Invite(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	in user.Invite,
-	inv user.Invitation,
-	e kernel.AuditEntry,
-) (user.User, error) {
+func (s *Store) Invite(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, in user.Invite, inv user.Invitation, e kernel.AuditEntry) (user.User, error) {
 	var id kernel.MemberID
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -177,10 +161,7 @@ func (s *Store) Invite(
 // picked.
 //
 // ref: decision 0006
-func invitee(ctx context.Context, q tx.Querier, org kernel.OrganizationID, in user.Invite) (
-	kernel.MemberID,
-	error,
-) {
+func invitee(ctx context.Context, q tx.Querier, org kernel.OrganizationID, in user.Invite) (kernel.MemberID, error) {
 	rows, err := q.Query(ctx, `SELECT id, status FROM members
 		WHERE organization_id = $1 AND login = $2 ORDER BY id LIMIT 2`, org, in.Login)
 	if err != nil {
@@ -214,14 +195,7 @@ func invitee(ctx context.Context, q tx.Querier, org kernel.OrganizationID, in us
 
 // SetSlackMemberID sets the managed user's Slack member, none when empty,
 // and records e, unless expect does not accept the admission's version.
-func (s *Store) SetSlackMemberID(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	expect kernel.Expect,
-	slack string,
-	e kernel.AuditEntry,
-) (user.User, error) {
+func (s *Store) SetSlackMemberID(ctx context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, slack string, e kernel.AuditEntry) (user.User, error) {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		if err := lockUser(ctx, q, acct, id, expect); err != nil {
 			return err
@@ -242,13 +216,7 @@ func (s *Store) SetSlackMemberID(
 // lockUser locks acct's admission of member id FOR UPDATE, so the version
 // expect checks is the one the change replaces; a version it does not
 // accept is kernel.ErrStale.
-func lockUser(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	expect kernel.Expect,
-) error {
+func lockUser(ctx context.Context, q tx.Querier, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect) error {
 	var version int64
 	err := q.QueryRow(ctx, `SELECT version FROM account_users
 		WHERE account_id = $1 AND member_id = $2 FOR UPDATE`, acct, id).Scan(&version)
@@ -260,13 +228,7 @@ func lockUser(
 
 // Resend moves the latest invitation's sent_at of acct's pending managed
 // user id to at and records e.
-func (s *Store) Resend(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	at time.Time,
-	e kernel.AuditEntry,
-) (user.User, error) {
+func (s *Store) Resend(ctx context.Context, acct kernel.AccountID, id kernel.MemberID, at time.Time, e kernel.AuditEntry) (user.User, error) {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		var (
 			pending bool
@@ -303,13 +265,7 @@ func (s *Store) Resend(
 // DEPROVISIONED and revokes their sessions in acct and those keys', and
 // records e, in one transaction, returning the revoked sessions; an
 // admission whose version expect does not accept stays.
-func (s *Store) Remove(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.MemberID,
-	expect kernel.Expect,
-	e kernel.AuditEntry,
-) ([]kernel.ULID, error) {
+func (s *Store) Remove(ctx context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, e kernel.AuditEntry) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		// A personal key's creation holds a share lock on the admission, so
@@ -359,13 +315,7 @@ func (s *Store) Remove(
 
 // PersonalAPIKeys are up to limit of member owner's personal keys in acct,
 // deleted ones left out, in ID order from the first after after.
-func (s *Store) PersonalAPIKeys(
-	ctx context.Context,
-	acct kernel.AccountID,
-	owner kernel.MemberID,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.Key, error) {
+func (s *Store) PersonalAPIKeys(ctx context.Context, acct kernel.AccountID, owner kernel.MemberID, after kernel.ULID, limit int) ([]apikey.Key, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+keyColumns+`
 		FROM api_keys k JOIN accounts a ON a.id = k.account_id
 		WHERE k.account_id = $1 AND k.owner_user_id = $2 AND k.deleted_at IS NULL
@@ -393,11 +343,7 @@ func (s *Store) RecordRequest(ctx context.Context, e kernel.AuditEntry) error {
 
 // recordAccount runs write, unless nil, and records e on its account's
 // trail, in one transaction.
-func (s *Store) recordAccount(
-	ctx context.Context,
-	e kernel.AuditEntry,
-	write func(context.Context, tx.Querier) error,
-) error {
+func (s *Store) recordAccount(ctx context.Context, e kernel.AuditEntry, write func(context.Context, tx.Querier) error) error {
 	//nolint:wrapcheck // the write and the trail name themselves
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		if write != nil {
@@ -426,12 +372,7 @@ func scanGroup(r pgx.Row) (group.Group, error) {
 
 // Groups are up to limit of acct's groups in ID order from the first after
 // after.
-func (s *Store) Groups(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after kernel.ULID,
-	limit int,
-) ([]group.Group, error) {
+func (s *Store) Groups(ctx context.Context, acct kernel.AccountID, after kernel.ULID, limit int) ([]group.Group, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, groupSelect+`
 		WHERE g.account_id = $1 AND ($2::uuid IS NULL OR g.id > $2) ORDER BY g.id LIMIT $3`,
 		acct, after, limit)
@@ -448,11 +389,7 @@ func (s *Store) Groups(
 }
 
 // Group reads acct's group id.
-func (s *Store) Group(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (group.Group, error) {
+func (s *Store) Group(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (group.Group, error) {
 	g, err := scanGroup(tx.Q(ctx, s.db).QueryRow(ctx, groupSelect+`
 		WHERE g.account_id = $1 AND g.id = $2`, acct, id))
 	return g, read(err, "managed user group", id)
@@ -460,11 +397,7 @@ func (s *Store) Group(
 
 // CreateGroup creates g and records e; a name another group of the
 // account holds is port.ErrSlugTaken.
-func (s *Store) CreateGroup(
-	ctx context.Context,
-	g group.Group,
-	e kernel.AuditEntry,
-) (group.Group, error) {
+func (s *Store) CreateGroup(ctx context.Context, g group.Group, e kernel.AuditEntry) (group.Group, error) {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		_, err := q.Exec(ctx, `INSERT INTO managed_user_groups
 			(account_id, id, name, description, created_at) VALUES ($1, $2, $3, $4, $5)`,
@@ -489,14 +422,7 @@ func (s *Store) CreateGroup(
 
 // SetDescription sets the description of acct's group id and records e,
 // unless expect does not accept the group's version.
-func (s *Store) SetDescription(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	description string,
-	e kernel.AuditEntry,
-) (group.Group, error) {
+func (s *Store) SetDescription(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, description string, e kernel.AuditEntry) (group.Group, error) {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		if err := lockGroup(ctx, q, acct, id, expect); err != nil {
 			return err
@@ -516,13 +442,7 @@ func (s *Store) SetDescription(
 
 // DeleteGroup deletes acct's group id and records e, unless expect does
 // not accept the group's version.
-func (s *Store) DeleteGroup(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-	e kernel.AuditEntry,
-) error {
+func (s *Store) DeleteGroup(ctx context.Context, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect, e kernel.AuditEntry) error {
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		if err := lockGroup(ctx, q, acct, id, expect); err != nil {
 			return err
@@ -549,13 +469,7 @@ func (s *Store) DeleteGroup(
 // lockGroup locks acct's group id FOR UPDATE, so the version expect
 // checks is the one the change replaces; a version it does not accept is
 // kernel.ErrStale.
-func lockGroup(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	expect kernel.Expect,
-) error {
+func lockGroup(ctx context.Context, q tx.Querier, acct kernel.AccountID, id kernel.ULID, expect kernel.Expect) error {
 	var version int64
 	err := q.QueryRow(ctx, `SELECT version FROM managed_user_groups
 		WHERE account_id = $1 AND id = $2 FOR UPDATE`, acct, id).Scan(&version)
@@ -568,13 +482,7 @@ func lockGroup(
 // GroupUsers are up to limit of the managed users of acct whose latest
 // groups hold group id's name, in member ID order from the first after
 // after.
-func (s *Store) GroupUsers(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	after kernel.MemberID,
-	limit int,
-) ([]user.User, error) {
+func (s *Store) GroupUsers(ctx context.Context, acct kernel.AccountID, id kernel.ULID, after kernel.MemberID, limit int) ([]user.User, error) {
 	return s.users(ctx, userSelect+`
 		WHERE u.account_id = $1 AND ($3::uuid IS NULL OR u.member_id > $3)
 			AND (SELECT name FROM managed_user_groups WHERE account_id = $1 AND id = $2)
@@ -584,12 +492,7 @@ func (s *Store) GroupUsers(
 
 // AvailableGroups are up to limit of the group names acct's managed users'
 // latest sign-ins reported, in name order from the first after after.
-func (s *Store) AvailableGroups(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after string,
-	limit int,
-) ([]string, error) {
+func (s *Store) AvailableGroups(ctx context.Context, acct kernel.AccountID, after string, limit int) ([]string, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT DISTINCT n FROM account_users u,
 			unnest(u.latest_groups) n
 		WHERE u.account_id = $1 AND n > $2 ORDER BY n LIMIT $3`, acct, after, limit)

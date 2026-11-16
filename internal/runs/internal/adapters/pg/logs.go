@@ -22,12 +22,7 @@ var _ logs.Store = (*Store)(nil)
 
 // Entered reads the latest state version at which acct's run entered
 // state, and false when it never did.
-func (s *Store) Entered(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-	state kernel.RunState,
-) (int64, bool, error) {
+func (s *Store) Entered(ctx context.Context, acct kernel.AccountID, run kernel.ULID, state kernel.RunState) (int64, bool, error) {
 	var v *int64
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT max(sequence) FROM run_state_transitions
 		WHERE account_id = $1 AND run_id = $2 AND state = $3`, acct, run, state).
@@ -43,13 +38,7 @@ func (s *Store) Entered(
 
 // Chunks reads up to limit of acct's run's log chunks of state version
 // version, from sequence number from on, in sequence order.
-func (s *Store) Chunks(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-	version, from int64,
-	limit int,
-) ([]report.Chunk, error) {
+func (s *Store) Chunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version, from int64, limit int) ([]report.Chunk, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT state_version, state, seq,
 		coalesce(object_key, ''), bytes, first_at, last_at, lost FROM run_log_chunks
 		WHERE account_id = $1 AND run_id = $2 AND state_version = $3 AND seq >= $4
@@ -73,12 +62,7 @@ func (s *Store) Chunks(
 // version, its line before chunk from being the last line of the chunk
 // indexed before it; lifecycle.ErrNotFound when the run has no
 // transition to version.
-func (s *Store) Extent(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-	version, from int64,
-) (logs.Extent, error) {
+func (s *Store) Extent(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version, from int64) (logs.Extent, error) {
 	var e logs.Extent
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT
 		coalesce(greatest(t.log_chunks, (SELECT max(seq) + 1 FROM run_log_chunks c
@@ -108,12 +92,7 @@ func (s *Store) Extent(
 // LockChunks reads the sequence numbers of acct's run's log chunks of
 // state version version, in order, and locks their rows until the
 // transaction ends, so a purge's delete of them waits.
-func (s *Store) LockChunks(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-	version int64,
-) ([]int64, error) {
+func (s *Store) LockChunks(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version int64) ([]int64, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT seq FROM run_log_chunks
 		WHERE account_id = $1 AND run_id = $2 AND state_version = $3
 		ORDER BY seq FOR UPDATE`, acct, run, version)
@@ -130,11 +109,7 @@ func (s *Store) LockChunks(
 // DeleteLogs deletes run's log chunks and observability artifacts,
 // records at as when its logs were deleted, and answers the objects they
 // recorded, with the compacted log of each state that had chunks.
-func (s *Store) DeleteLogs(
-	ctx context.Context,
-	run lifecycle.Run,
-	at time.Time,
-) ([]report.Object, error) {
+func (s *Store) DeleteLogs(ctx context.Context, run lifecycle.Run, at time.Time) ([]report.Object, error) {
 	q := tx.Q(ctx, s.db)
 	rows, err := q.Query(ctx, `DELETE FROM run_log_chunks WHERE account_id = $1 AND run_id = $2
 		RETURNING state, state_version, object_key`, run.Account, run.ID)

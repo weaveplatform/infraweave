@@ -203,10 +203,7 @@ func TestAccTxCancelledWhileWaiting(t *testing.T) {
 
 type failingBeginner struct{ err error }
 
-func (f failingBeginner) BeginTx(
-	context.Context,
-	pgx.TxOptions,
-) (pgx.Tx, error) {
+func (f failingBeginner) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
 	return nil, f.err
 }
 

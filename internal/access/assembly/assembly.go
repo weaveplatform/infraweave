@@ -238,11 +238,7 @@ func New(d Deps) (*Domain, error) {
 	})
 	subjects := http.NewSubjects()
 	// A request names a space by its slug, as the API's Space ID is.
-	subjects.Register(accessapi.EntitySpace, func(
-		ctx context.Context,
-		acct kernel.AccountID,
-		slug string,
-	) (kernel.ULID, error) {
+	subjects.Register(accessapi.EntitySpace, func(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
 		sp, err := store.Space(ctx, acct, slug)
 		if errors.Is(err, port.ErrNotFound) {
 			return kernel.ULID{}, accessapi.ErrNoSubject
@@ -307,10 +303,7 @@ func (d *Domain) OperatorAPI() AccessOperatorAPI {
 // OrganizationID resolves an organization's slug for another domain's
 // operator operations, which name organizations as the operator does;
 // ok is false when no organization has it.
-func (d *Domain) OrganizationID(
-	ctx context.Context,
-	slug string,
-) (id kernel.OrganizationID, ok bool, err error) {
+func (d *Domain) OrganizationID(ctx context.Context, slug string) (id kernel.OrganizationID, ok bool, err error) {
 	o, err := d.orgs.Get(ctx, slug)
 	switch {
 	case errors.Is(err, port.ErrNotFound):
@@ -324,11 +317,7 @@ func (d *Domain) OrganizationID(
 // Seats counts the seats in use in org and in acct for another domain's
 // reads: each active member and each API key holding a seat, as the seats
 // limit counts them.
-func (d *Domain) Seats(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-) (featuresapi.Usage, error) {
+func (d *Domain) Seats(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID) (featuresapi.Usage, error) {
 	return d.store.Seats(ctx, org, acct) //nolint:wrapcheck // the store names itself
 }
 
@@ -421,20 +410,11 @@ func (d *Domain) ResolveSubjects(entity string, f accessapi.SpaceOf) {
 // snapshot, a Resync drops them all, and every refreshEvery the held
 // snapshots whose account's version moved are dropped, in case a message
 // was lost. A failed comparison is logged and the next one retries.
-func (d *Domain) WatchAuthorization(
-	ctx context.Context,
-	sub *notify.Subscription,
-	log *slog.Logger,
-) {
+func (d *Domain) WatchAuthorization(ctx context.Context, sub *notify.Subscription, log *slog.Logger) {
 	watchAuthorization(ctx, d.authz, sub.C, log)
 }
 
-func watchAuthorization(
-	ctx context.Context,
-	svc *authz.Service,
-	msgs <-chan notify.Message,
-	log *slog.Logger,
-) {
+func watchAuthorization(ctx context.Context, svc *authz.Service, msgs <-chan notify.Message, log *slog.Logger) {
 	tick := time.NewTicker(refreshEvery)
 	defer tick.Stop()
 	for {
@@ -483,10 +463,7 @@ func (a accountSlugs) Slug(ctx context.Context, acct kernel.AccountID) (string, 
 // AccountOrganization is the organization that holds acct, for work
 // outside a request that knows only its account, as a queued job does;
 // the zero ID when no account acct exists.
-func (d *Domain) AccountOrganization(
-	ctx context.Context,
-	acct kernel.AccountID,
-) (kernel.OrganizationID, error) {
+func (d *Domain) AccountOrganization(ctx context.Context, acct kernel.AccountID) (kernel.OrganizationID, error) {
 	a, err := d.store.Account(ctx, acct)
 	switch {
 	case errors.Is(err, port.ErrNotFound):

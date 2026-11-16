@@ -39,10 +39,7 @@ func (r *rows) AuthzData(context.Context, kernel.AccountID) (authz.Data, error) 
 	return r.d, nil
 }
 
-func (r *rows) AuthzVersions(
-	context.Context,
-	[]kernel.AccountID,
-) (map[kernel.AccountID]int64, error) {
+func (r *rows) AuthzVersions(context.Context, []kernel.AccountID) (map[kernel.AccountID]int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.down != nil {

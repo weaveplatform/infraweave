@@ -127,63 +127,26 @@ type Invite struct {
 type Store interface {
 	// Users are up to limit of acct's managed users in member ID order
 	// from the first after after.
-	Users(
-		ctx context.Context,
-		acct kernel.AccountID,
-		after kernel.MemberID,
-		limit int,
-	) ([]User, error)
+	Users(ctx context.Context, acct kernel.AccountID, after kernel.MemberID, limit int) ([]User, error)
 	User(ctx context.Context, acct kernel.AccountID, id kernel.MemberID) (User, error)
 	// Invite admits the organization's member with in.Login to acct,
 	// creating a pending member when there is none, records inv and e,
 	// and takes the member a seat unless another account admits it, in
 	// one transaction; ErrInvalidState as the error says.
-	Invite(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-		in Invite,
-		inv Invitation,
-		e kernel.AuditEntry,
-	) (User, error)
+	Invite(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, in Invite, inv Invitation, e kernel.AuditEntry) (User, error)
 	// SetSlackMemberID sets the managed user's Slack member and records e.
-	SetSlackMemberID(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.MemberID,
-		expect kernel.Expect,
-		slack string,
-		e kernel.AuditEntry,
-	) (User, error)
+	SetSlackMemberID(ctx context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, slack string, e kernel.AuditEntry) (User, error)
 	// Resend moves the managed user's latest invitation's sentAt to at and
 	// records e; a user with no pending invitation is ErrInvalidState.
-	Resend(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.MemberID,
-		at time.Time,
-		e kernel.AuditEntry,
-	) (User, error)
+	Resend(ctx context.Context, acct kernel.AccountID, id kernel.MemberID, at time.Time, e kernel.AuditEntry) (User, error)
 	// Remove stops acct admitting the member: it deletes the admission and
 	// the member's invitations to acct, disables their personal keys in
 	// acct as DEPROVISIONED and revokes their sessions in acct and those
 	// keys', which it returns, and records e, in one transaction.
-	Remove(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.MemberID,
-		expect kernel.Expect,
-		e kernel.AuditEntry,
-	) ([]kernel.ULID, error)
+	Remove(ctx context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, e kernel.AuditEntry) ([]kernel.ULID, error)
 	// PersonalAPIKeys are up to limit of the member's personal keys in
 	// acct, deleted ones left out, in ID order from the first after after.
-	PersonalAPIKeys(
-		ctx context.Context,
-		acct kernel.AccountID,
-		owner kernel.MemberID,
-		after kernel.ULID,
-		limit int,
-	) ([]apikey.Key, error)
+	PersonalAPIKeys(ctx context.Context, acct kernel.AccountID, owner kernel.MemberID, after kernel.ULID, limit int) ([]apikey.Key, error)
 	// RecordRequest records e, a request of a managed user or a person, on
 	// the account's trail.
 	RecordRequest(ctx context.Context, e kernel.AuditEntry) error
@@ -207,12 +170,7 @@ func NewService(d Deps) *Service { return &Service{d: d} }
 
 // Users are up to limit of p's account's managed users from the first
 // after after.
-func (s *Service) Users(
-	ctx context.Context,
-	p kernel.Principal,
-	after kernel.MemberID,
-	limit int,
-) ([]User, error) {
+func (s *Service) Users(ctx context.Context, p kernel.Principal, after kernel.MemberID, limit int) ([]User, error) {
 	//nolint:wrapcheck // the store names the read
 	return s.d.Store.Users(ctx, p.AccountID, after, limit)
 }
@@ -228,12 +186,7 @@ func (s *Service) User(ctx context.Context, p kernel.Principal, id string) (User
 }
 
 // Invite invites the person in names to p's account.
-func (s *Service) Invite(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP string,
-	in Invite,
-) (User, error) {
+func (s *Service) Invite(ctx context.Context, p kernel.Principal, remoteIP string, in Invite) (User, error) {
 	if err := errors.Join(
 		organization.CheckName("username", in.Login),
 		member.CheckEmail("invitationEmail", in.Email),
@@ -251,13 +204,7 @@ func (s *Service) Invite(
 
 // Update sets the managed user's Slack member. A managed user whose
 // version expect does not accept is kernel.ErrStale and is not changed.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, id string,
-	expect kernel.Expect,
-	slack string,
-) (User, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, remoteIP, id string, expect kernel.Expect, slack string) (User, error) {
 	m, err := parse(id)
 	if err != nil {
 		return User{}, err
@@ -272,12 +219,7 @@ func (s *Service) Update(
 // Delete removes the managed user from p's account and answers them as
 // they were. A managed user whose version expect does not accept is
 // kernel.ErrStale and stays.
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, id string,
-	expect kernel.Expect,
-) (User, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, remoteIP, id string, expect kernel.Expect) (User, error) {
 	u, err := s.User(ctx, p, id)
 	if err != nil {
 		return User{}, err
@@ -296,11 +238,7 @@ func (s *Service) Delete(
 
 // Resend moves the managed user's invitation's sentAt to now, restarting
 // its InvitationTTL. Nothing is delivered.
-func (s *Service) Resend(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, id string,
-) (User, error) {
+func (s *Service) Resend(ctx context.Context, p kernel.Principal, remoteIP, id string) (User, error) {
 	m, err := parse(id)
 	if err != nil {
 		return User{}, err
@@ -312,11 +250,7 @@ func (s *Service) Resend(
 
 // RequestInvite records a request that the account's admins invite the
 // person email and name name. Nothing is delivered; the trail holds it.
-func (s *Service) RequestInvite(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, email, name string,
-) error {
+func (s *Service) RequestInvite(ctx context.Context, p kernel.Principal, remoteIP, email, name string) error {
 	emailErr := member.CheckEmail("email", email)
 	if email == "" {
 		emailErr = &organization.FieldError{Field: "email", Reason: "is empty"}
@@ -334,11 +268,7 @@ func (s *Service) RequestInvite(
 // a space of p's account that p can read, which the route table checks
 // before the request reaches the service. Nothing is delivered; the
 // trail holds it.
-func (s *Service) RequestRoleChange(
-	ctx context.Context,
-	p kernel.Principal,
-	remoteIP, space, level string,
-) error {
+func (s *Service) RequestRoleChange(ctx context.Context, p kernel.Principal, remoteIP, space, level string) error {
 	if p.Kind != kernel.PrincipalUser {
 		return ErrNotMember
 	}
@@ -356,13 +286,7 @@ func (s *Service) RequestRoleChange(
 
 // PersonalAPIKeys are up to limit of the managed user's personal keys in
 // p's account from the first after after.
-func (s *Service) PersonalAPIKeys(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.Key, error) {
+func (s *Service) PersonalAPIKeys(ctx context.Context, p kernel.Principal, id string, after kernel.ULID, limit int) ([]apikey.Key, error) {
 	u, err := s.User(ctx, p, id)
 	if err != nil {
 		return nil, err
@@ -372,12 +296,7 @@ func (s *Service) PersonalAPIKeys(
 }
 
 // entry is an audit entry of p's account at the service's clock.
-func (s *Service) entry(
-	p kernel.Principal,
-	remoteIP, action, eventType string,
-	res kernel.AuditResource,
-	body map[string]any,
-) kernel.AuditEntry {
+func (s *Service) entry(p kernel.Principal, remoteIP, action, eventType string, res kernel.AuditResource, body map[string]any) kernel.AuditEntry {
 	e := kernel.AuditEntry{
 		AccountID:        p.AccountID.ULID,
 		Actor:            kernel.AuditActor{Username: p.Login},

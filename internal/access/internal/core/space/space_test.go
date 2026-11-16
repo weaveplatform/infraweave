@@ -131,12 +131,7 @@ func (f *tree) HoldSpace(_ context.Context, acct kernel.AccountID, id kernel.ULI
 	return port.ErrNotFound
 }
 
-func (f *tree) DeleteSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	check func(context.Context, space.Space) error,
-) error {
+func (f *tree) DeleteSpace(ctx context.Context, acct kernel.AccountID, slug string, check func(context.Context, space.Space) error) error {
 	s, err := f.Space(ctx, acct, slug)
 	if err != nil {
 		return err
@@ -160,21 +155,11 @@ func (f *tree) ToggleNonAdminCreation(context.Context, kernel.AccountID) (bool, 
 // errSearched marks the store's search, which Service hands on as it is.
 var errSearched = errors.New("searched")
 
-func (f *tree) Search(
-	context.Context,
-	kernel.AccountID,
-	search.Input,
-	[]kernel.ULID,
-) (search.Result[space.Space], error) {
+func (f *tree) Search(context.Context, kernel.AccountID, search.Input, []kernel.ULID) (search.Result[space.Space], error) {
 	return search.Result[space.Space]{}, errSearched
 }
 
-func (f *tree) Suggest(
-	context.Context,
-	kernel.AccountID,
-	search.SuggestionsInput,
-	[]kernel.ULID,
-) (search.Suggestions, error) {
+func (f *tree) Suggest(context.Context, kernel.AccountID, search.SuggestionsInput, []kernel.ULID) (search.Suggestions, error) {
 	return search.Suggestions{}, errSearched
 }
 
@@ -185,12 +170,7 @@ type admins struct {
 	err error
 }
 
-func (a *admins) Authorize(
-	_ context.Context,
-	_ kernel.Principal,
-	act accessapi.Action,
-	sp kernel.ULID,
-) (bool, error) {
+func (a *admins) Authorize(_ context.Context, _ kernel.Principal, act accessapi.Action, sp kernel.ULID) (bool, error) {
 	return act == accessapi.ActionSpaceAdmin && a.on[sp], a.err
 }
 

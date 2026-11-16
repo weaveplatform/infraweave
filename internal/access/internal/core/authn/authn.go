@@ -226,11 +226,7 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 // exchangeOrganization trades the organization key id for an organization
 // token: a session of actor kind organization in no account, which only
 // the Organization tag's routes accept. Its use takes no seat.
-func (s *Service) exchangeOrganization(
-	ctx context.Context,
-	id kernel.ULID,
-	secret, ip string,
-) (Grant, error) {
+func (s *Service) exchangeOrganization(ctx context.Context, id kernel.ULID, secret, ip string) (Grant, error) {
 	if s.d.OrganizationKeys == nil {
 		return Grant{}, ErrUnauthenticated
 	}
@@ -299,12 +295,7 @@ func (s *Service) ttl(expires, now time.Time) (time.Duration, bool) {
 // exchangeOperator trades the operator key id, whose secret's SHA-256 is
 // digest, for an operator token: its aud is the operator API's, so only
 // /operator/v1 accepts it, and its session belongs to no organization.
-func (s *Service) exchangeOperator(
-	ctx context.Context,
-	id kernel.ULID,
-	digest [sha256.Size]byte,
-	secret, ip string,
-) (Grant, error) {
+func (s *Service) exchangeOperator(ctx context.Context, id kernel.ULID, digest [sha256.Size]byte, secret, ip string) (Grant, error) {
 	sum := sha256.Sum256([]byte(secret))
 	if subtle.ConstantTimeCompare(sum[:], digest[:]) != 1 || s.d.OperatorAudience == "" {
 		return Grant{}, ErrUnauthenticated
@@ -390,11 +381,7 @@ const (
 // token's kind or does not reach the route, is ErrUnauthenticated, and so
 // is an operator principal, which belongs to no organization. A store
 // that cannot be read is not.
-func (s *Service) Authenticate(
-	ctx context.Context,
-	raw string,
-	reach Reach,
-) (kernel.Principal, token.Claims, error) {
+func (s *Service) Authenticate(ctx context.Context, raw string, reach Reach) (kernel.Principal, token.Claims, error) {
 	return s.authenticate(ctx, raw, s.d.Audience, reaches(reach))
 }
 
@@ -420,10 +407,7 @@ func reaches(reach Reach) func(session.Session) bool {
 // AuthenticateOperator is the operator principal an operator token acts as
 // on /operator/v1, and the token's claims; any other token, an API
 // token among them, is ErrUnauthenticated, as Authenticate's are.
-func (s *Service) AuthenticateOperator(
-	ctx context.Context,
-	raw string,
-) (kernel.Principal, token.Claims, error) {
+func (s *Service) AuthenticateOperator(ctx context.Context, raw string) (kernel.Principal, token.Claims, error) {
 	if s.d.OperatorAudience == "" {
 		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
 	}
@@ -438,10 +422,7 @@ func (s *Service) AuthenticateOperator(
 // grant's. A token of another kind or resource, or whose grant is not
 // live, is ErrUnauthenticated; so is a token whose scope the grant no
 // longer holds.
-func (s *Service) AuthenticateGrant(
-	ctx context.Context,
-	raw, resource string,
-) (kernel.Principal, token.Claims, error) {
+func (s *Service) AuthenticateGrant(ctx context.Context, raw, resource string) (kernel.Principal, token.Claims, error) {
 	p, c, err := s.authenticate(ctx, raw, resource, func(ss session.Session) bool {
 		return ss.ClientID != "" && ss.Resource == resource && !ss.AccountID.IsZero()
 	})
@@ -462,11 +443,7 @@ func (s *Service) AuthenticateGrant(
 
 // authenticate verifies raw for audience and reads its session, which must
 // be live, of the token's kind's actor, and one route accepts.
-func (s *Service) authenticate(
-	ctx context.Context,
-	raw, audience string,
-	route func(session.Session) bool,
-) (kernel.Principal, token.Claims, error) {
+func (s *Service) authenticate(ctx context.Context, raw, audience string, route func(session.Session) bool) (kernel.Principal, token.Claims, error) {
 	c, err := s.d.Tokens.Verify(ctx, raw, audience)
 	if errors.Is(err, token.ErrToken) {
 		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
@@ -510,23 +487,14 @@ func (s *Service) principal(ctx context.Context, ss session.Session) (kernel.Pri
 
 // Sessions are up to limit of the live sessions of p's account, from the
 // first after after.
-func (s *Service) Sessions(
-	ctx context.Context,
-	p kernel.Principal,
-	after kernel.ULID,
-	limit int,
-) ([]session.Session, error) {
+func (s *Service) Sessions(ctx context.Context, p kernel.Principal, after kernel.ULID, limit int) ([]session.Session, error) {
 	return s.d.Sessions.Sessions(ctx, p.AccountID, after, limit) //nolint:wrapcheck // as above
 }
 
 // Revoke revokes the session id of p's account and returns it; one of
 // another account is port.ErrNotFound. This replica's cache drops it at
 // once, the others on its message.
-func (s *Service) Revoke(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-) (session.Session, error) {
+func (s *Service) Revoke(ctx context.Context, p kernel.Principal, id kernel.ULID) (session.Session, error) {
 	ss, err := s.d.Sessions.RevokeSession(ctx, p.AccountID, id)
 	if err != nil {
 		return session.Session{}, err //nolint:wrapcheck // as above

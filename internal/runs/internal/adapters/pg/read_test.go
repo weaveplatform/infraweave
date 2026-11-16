@@ -30,29 +30,16 @@ type fakeAccess struct {
 	err      map[string]error
 }
 
-func (f *fakeAccess) Actions(
-	context.Context,
-	kernel.Principal,
-	kernel.ULID,
-) ([]accessapi.Action, error) {
+func (f *fakeAccess) Actions(context.Context, kernel.Principal, kernel.ULID) ([]accessapi.Action, error) {
 	return f.held, f.err["Actions"]
 }
 
-func (f *fakeAccess) Authorize(
-	_ context.Context,
-	_ kernel.Principal,
-	a accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (f *fakeAccess) Authorize(_ context.Context, _ kernel.Principal, a accessapi.Action, space kernel.ULID) (bool, error) {
 	return slices.Contains(f.held, a) && !slices.Contains(f.withheld[space], a),
 		f.err["Authorize"]
 }
 
-func (f *fakeAccess) Reachable(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
-) ([]kernel.ULID, error) {
+func (f *fakeAccess) Reachable(context.Context, kernel.Principal, accessapi.Action) ([]kernel.ULID, error) {
 	return f.reach, f.err["Reachable"]
 }
 
@@ -60,11 +47,7 @@ func (f *fakeAccess) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceN
 	return f.tree, f.err["Tree"]
 }
 
-func (f *fakeStacks) InSpaces(
-	_ context.Context,
-	_ kernel.AccountID,
-	spaces []kernel.ULID,
-) ([]stacksapi.Stack, error) {
+func (f *fakeStacks) InSpaces(_ context.Context, _ kernel.AccountID, spaces []kernel.ULID) ([]stacksapi.Stack, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.err["InSpaces"]; err != nil {

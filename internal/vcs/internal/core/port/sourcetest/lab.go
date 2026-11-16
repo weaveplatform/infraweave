@@ -81,12 +81,7 @@ const advertisement = "application/x-git-upload-pack-advertisement"
 // advertisement answers, the first request of every clone. Any other
 // answer below 500 is a refusal, as hosts refuse a repository by 401,
 // 403, 404 or a sign-in page; a server error or no answer is an error.
-func Reads(
-	ctx context.Context,
-	client *http.Client,
-	cloneURL string,
-	c port.Credential,
-) (bool, error) {
+func Reads(ctx context.Context, client *http.Client, cloneURL string, c port.Credential) (bool, error) {
 	u := strings.TrimSuffix(cloneURL, "/") + "/info/refs?service=git-upload-pack"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {

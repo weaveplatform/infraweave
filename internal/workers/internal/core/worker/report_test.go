@@ -26,30 +26,22 @@ func (r *reports) seen(ctx context.Context, run kernel.ULID) {
 	r.runs, r.inTx = append(r.runs, run), tx.In(ctx)
 }
 
-func (r *reports) Report(ctx context.Context, run kernel.ULID,
-	_ workersapi.Report,
-) (workersapi.Step, error) {
+func (r *reports) Report(ctx context.Context, run kernel.ULID, _ workersapi.Report) (workersapi.Step, error) {
 	r.seen(ctx, run)
 	return r.step, r.err
 }
 
-func (r *reports) Uploads(ctx context.Context, run kernel.ULID, _ int64,
-	u []workersapi.Upload,
-) ([]workersapi.SignedUpload, error) {
+func (r *reports) Uploads(ctx context.Context, run kernel.ULID, _ int64, u []workersapi.Upload) ([]workersapi.SignedUpload, error) {
 	r.seen(ctx, run)
 	return []workersapi.SignedUpload{{Name: u[0].Name}}, r.err
 }
 
-func (r *reports) LogChunks(ctx context.Context, run kernel.ULID, _ int64,
-	_ []workersapi.LogChunk,
-) error {
+func (r *reports) LogChunks(ctx context.Context, run kernel.ULID, _ int64, _ []workersapi.LogChunk) error {
 	r.seen(ctx, run)
 	return r.err
 }
 
-func (r *reports) Artifacts(ctx context.Context, run kernel.ULID, _ int64,
-	_ []workersapi.Recorded,
-) error {
+func (r *reports) Artifacts(ctx context.Context, run kernel.ULID, _ int64, _ []workersapi.Recorded) error {
 	r.seen(ctx, run)
 	return r.err
 }

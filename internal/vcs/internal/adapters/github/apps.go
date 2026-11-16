@@ -142,9 +142,7 @@ type hookAttributes struct {
 // Manifest writes the form that creates a private App on host,
 // github.com when it is empty, asking for permissions and events. The
 // App's homepage is the host redirectURL names.
-func (p *Provider) Manifest(
-	host, owner, webhookURL, redirectURL, state string,
-) (port.Manifest, error) {
+func (p *Provider) Manifest(host, owner, webhookURL, redirectURL, state string) (port.Manifest, error) {
 	base := strings.TrimSuffix(or(host, "https://github.com"), "/")
 	if u, err := url.Parse(
 		base,

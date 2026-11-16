@@ -58,8 +58,7 @@ type Store interface {
 	// it is set: versions first, then locks, then workspaces, so no
 	// workspace goes before a row that names it. It answers the object
 	// keys of the versions it deleted, and true once none was left.
-	Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID, batch int) (
-		[]string, bool, error)
+	Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID, batch int) ([]string, bool, error)
 }
 
 // Stacks is what the state domain asks of the stacks domain;
@@ -77,8 +76,7 @@ type Objects interface {
 	// Put records key's object pending, outside any transaction, and
 	// writes size bytes of r under it, sealed, answering the plaintext's
 	// size and SHA-256.
-	Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (
-		objectstore.Object, error)
+	Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error)
 	// Commit makes key's object live in the transaction on ctx.
 	Commit(ctx context.Context, store objectstore.Name, key string) error
 	// Open streams key's live object, unsealed.
@@ -126,12 +124,7 @@ func New(d Deps) *Service {
 // deletes them with it. It answers ErrNoTransaction outside a transaction,
 // ErrWorkspaceName for a name the table refuses, and stacksapi.ErrNotFound
 // when acct lacks the stack, writing nothing.
-func (s *Service) Workspace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	name string,
-) error {
+func (s *Service) Workspace(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, name string) error {
 	if !tx.In(ctx) {
 		return ErrNoTransaction
 	}

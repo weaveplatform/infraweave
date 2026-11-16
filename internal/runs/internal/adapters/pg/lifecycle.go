@@ -98,11 +98,7 @@ func (c signalRow) signal() *lifecycle.Signal {
 }
 
 // Lock reads acct's run id and locks its row FOR UPDATE.
-func (s *Store) Lock(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (lifecycle.Run, error) {
+func (s *Store) Lock(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error) {
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND id = $2 FOR UPDATE`, acct, id))
 	switch {
@@ -170,13 +166,7 @@ func (s *Store) step(ctx context.Context, run lifecycle.Run, step lifecycle.Step
 
 // Active reads acct's oldest run of stack of type typ on commit hash and
 // local workspace workspace, none when empty, that has not ended.
-func (s *Store) Active(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	typ kernel.RunType,
-	hash, workspace string,
-) (lifecycle.Run, bool, error) {
+func (s *Store) Active(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, typ kernel.RunType, hash, workspace string) (lifecycle.Run, bool, error) {
 	var terminal []string
 	for _, st := range kernel.RunStates() {
 		if st.Terminal() {
@@ -228,12 +218,7 @@ func (s *Store) Unlock(ctx context.Context, acct kernel.AccountID, run kernel.UL
 // Projection reads stack's state, the last state of its tracked run that
 // is one of states, NONE without one, and whether a run holds its run
 // lock.
-func (s *Store) Projection(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	states []kernel.StackState,
-) (kernel.StackState, bool, error) {
+func (s *Store) Projection(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, states []kernel.StackState) (kernel.StackState, bool, error) {
 	names := make([]string, len(states))
 	for i, st := range states {
 		names[i] = string(st)
@@ -258,11 +243,7 @@ func (s *Store) Projection(
 }
 
 // Queued reads acct's stack's QUEUED runs, oldest first.
-func (s *Store) Queued(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-) ([]lifecycle.Run, error) {
+func (s *Store) Queued(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]lifecycle.Run, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND stack_id = $2 AND state = $3 ORDER BY id`,
 		acct, stack, string(kernel.RunStateQueued))

@@ -74,22 +74,14 @@ func (w *world) Access(_ context.Context, run, stack kernel.ULID) (runsapi.State
 	return g, nil
 }
 
-func (w *world) BySlug(
-	_ context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (stacksapi.Stack, error) {
+func (w *world) BySlug(_ context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	if acct != w.acct || slug != w.stack.Slug {
 		return stacksapi.Stack{}, stacksapi.ErrNotFound
 	}
 	return w.stack, nil
 }
 
-func (w *world) Settings(
-	_ context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (w *world) Settings(_ context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	switch {
 	case w.settingsErr != nil:
 		return stacksapi.Settings{}, w.settingsErr
@@ -132,11 +124,7 @@ const maxSize = 1 << 10
 
 // serve sends method on path with body as w's run, after set adjusts the
 // world and the request, through a router holding only the backend.
-func (w *world) serve(
-	t *testing.T,
-	method, path, body string,
-	set func(*world, *http.Request) *http.Request,
-) *httptest.ResponseRecorder {
+func (w *world) serve(t *testing.T, method, path, body string, set func(*world, *http.Request) *http.Request) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
 	New(w, w, w, maxSize).Routes(r)

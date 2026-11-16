@@ -225,10 +225,7 @@ func may(w http.ResponseWriter, r *http.Request, allowed bool) bool {
 // 404, so a run learns nothing of another account's stacks.
 //
 // ref: decision 0010 § "Who may call what"
-func (h *Handler) target(
-	w http.ResponseWriter,
-	r *http.Request,
-) (core.Target, runsapi.StateGrant, kernel.ULID, bool) {
+func (h *Handler) target(w http.ResponseWriter, r *http.Request) (core.Target, runsapi.StateGrant, kernel.ULID, bool) {
 	ctx := r.Context()
 	p, ok := kernel.PrincipalFrom(ctx)
 	if !ok || p.Kind != kernel.PrincipalRunner {
@@ -263,11 +260,7 @@ func (h *Handler) target(
 // grant is run's grant on the stack seg names, its canonical ULID or else
 // its slug in the run's account, and the stack's ID: stacksapi.ErrNotFound
 // when no account has the run or the run's account no stack of that slug.
-func (h *Handler) grant(
-	ctx context.Context,
-	run kernel.ULID,
-	seg string,
-) (runsapi.StateGrant, kernel.ULID, error) {
+func (h *Handler) grant(ctx context.Context, run kernel.ULID, seg string) (runsapi.StateGrant, kernel.ULID, error) {
 	id, err := kernel.ParseULID(seg)
 	if err != nil || id.String() != seg {
 		g, err := h.access.Access(ctx, run, kernel.ULID{})

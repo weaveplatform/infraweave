@@ -41,9 +41,17 @@ init:
 fmt:
 	$(GOLANGCI_LINT) fmt --config .golangci.yml ./...
 
-## lint: golangci-lint over the whole module
-lint:
+## lint: golangci-lint over the whole module, and sig-check
+lint: sig-check
 	$(GOLANGCI_LINT) run --config .golangci.yml --new=false --fix=false ./...
+
+## sig-check: no Go function signature wrapped that fits on one line of golines' max-len (internal/devtools/sigcheck)
+sig-check:
+	$(GO) run ./tools/sigcheck .
+
+## sig-join: join each Go function signature that fits on one line of golines' max-len
+sig-join:
+	$(GO) run ./tools/sigcheck -w .
 
 # The compiler's internal/ rule stops type-checking, and golangci-lint then
 # reports nothing else, so the package that breaks it is linted on its own.
@@ -232,4 +240,4 @@ docs-check:
 ## gate: everything CI runs, in order
 gate: docs-check vet lint lint-fixtures labs-cloud labs-vcs test accept verify-parity verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint lint-fixtures labs-cloud labs-vcs vet test accept accept-stress reference-fetch scaffold vendors-fixtures iac-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint sig-check sig-join lint-fixtures labs-cloud labs-vcs vet test accept accept-stress reference-fetch scaffold vendors-fixtures iac-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate

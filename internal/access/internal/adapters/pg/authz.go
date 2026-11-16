@@ -115,10 +115,7 @@ func (s *Store) AuthzData(ctx context.Context, acct kernel.AccountID) (authz.Dat
 
 // AuthzVersions reads the authz_version of each account in accts that
 // still exists.
-func (s *Store) AuthzVersions(
-	ctx context.Context,
-	accts []kernel.AccountID,
-) (map[kernel.AccountID]int64, error) {
+func (s *Store) AuthzVersions(ctx context.Context, accts []kernel.AccountID) (map[kernel.AccountID]int64, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, authz_version FROM accounts
 		WHERE id = ANY($1)`, accts)
 	if err != nil {
@@ -139,13 +136,7 @@ func (s *Store) AuthzVersions(
 }
 
 // collect runs query and scans each row with scan.
-func collect[T any](
-	ctx context.Context,
-	q tx.Querier,
-	query string,
-	acct kernel.AccountID,
-	scan func(pgx.CollectableRow) (T, error),
-) ([]T, error) {
+func collect[T any](ctx context.Context, q tx.Querier, query string, acct kernel.AccountID, scan func(pgx.CollectableRow) (T, error)) ([]T, error) {
 	rows, err := q.Query(ctx, query, acct)
 	if err != nil {
 		return nil, fmt.Errorf("access: %w", sql.Unavailable(err))

@@ -66,11 +66,7 @@ func (p parityProduct) compare(t *testing.T, served []byte) *specref.ParityRepor
 	return p.compareWith(t, served, p.registers(t))
 }
 
-func (p parityProduct) compareWith(
-	t *testing.T,
-	served []byte,
-	reg *specref.ParityRegisters,
-) *specref.ParityReport {
+func (p parityProduct) compareWith(t *testing.T, served []byte, reg *specref.ParityRegisters) *specref.ParityReport {
 	t.Helper()
 	r, err := p.product.Parity(p.reference, served, reg)
 	if err != nil {

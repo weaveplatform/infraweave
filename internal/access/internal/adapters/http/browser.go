@@ -51,10 +51,7 @@ func clearedCookie() string {
 // session, sealed to the CLI's public key. A credential that is not a
 // member's browser session answers 403; a key that cannot be sealed to
 // 422 validation-failed naming pubKey.
-func (s Server) CliConfirmationToken(
-	ctx context.Context,
-	req api.CliConfirmationTokenRequestObject,
-) (api.CliConfirmationTokenResponseObject, error) {
+func (s Server) CliConfirmationToken(ctx context.Context, req api.CliConfirmationTokenRequestObject) (api.CliConfirmationTokenResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -77,10 +74,7 @@ func (s Server) CliConfirmationToken(
 }
 
 // AuthAccounts lists the accounts that admit the caller's member.
-func (s Server) AuthAccounts(
-	ctx context.Context,
-	_ api.AuthAccountsRequestObject,
-) (api.AuthAccountsResponseObject, error) {
+func (s Server) AuthAccounts(ctx context.Context, _ api.AuthAccountsRequestObject) (api.AuthAccountsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -101,10 +95,7 @@ func (s Server) AuthAccounts(
 // and carries no jwt; a token session's carries the new token. An
 // account that does not admit the member, or one that does not exist,
 // answers 404, as the switcher would not list it.
-func (s Server) AuthSessionAccount(
-	ctx context.Context,
-	req api.AuthSessionAccountRequestObject,
-) (api.AuthSessionAccountResponseObject, error) {
+func (s Server) AuthSessionAccount(ctx context.Context, req api.AuthSessionAccountRequestObject) (api.AuthSessionAccountResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

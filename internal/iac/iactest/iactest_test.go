@@ -125,9 +125,7 @@ func TestUnitProblemsPlanFindings(t *testing.T) {
 			},
 		},
 		"keeps state between plans": {
-			v: fake{kind: iac.Terraform, validate: asObject, parse: func(
-				r io.Reader,
-			) (plan.Plan, error) {
+			v: fake{kind: iac.Terraform, validate: asObject, parse: func(r io.Reader) (plan.Plan, error) {
 				if calls.Add(1) > int64(len(planContract)) {
 					return empty(r)
 				}
@@ -141,9 +139,7 @@ func TestUnitProblemsPlanFindings(t *testing.T) {
 			},
 		},
 		"refuses with another error": {
-			v: fake{kind: iac.Terraform, validate: asObject, parse: func(io.Reader) (
-				plan.Plan, error,
-			) {
+			v: fake{kind: iac.Terraform, validate: asObject, parse: func(io.Reader) (plan.Plan, error) {
 				return plan.Plan{}, errOther
 			}},
 			plans: []PlanCase{{Name: "c", Document: []byte(`{`), Err: plan.ErrMalformed}},

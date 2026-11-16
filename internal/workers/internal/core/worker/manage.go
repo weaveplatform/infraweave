@@ -26,12 +26,7 @@ func (s *Service) pool(ctx context.Context, acct kernel.AccountID, id string) (p
 // *pool.Missing.
 //
 // ref: decision 0008 § "Worker status, drain, cycle and reset"
-func (s *Service) DrainSet(
-	ctx context.Context,
-	acct kernel.AccountID,
-	poolID, id string,
-	drain bool,
-) (Worker, error) {
+func (s *Service) DrainSet(ctx context.Context, acct kernel.AccountID, poolID, id string, drain bool) (Worker, error) {
 	p, err := s.pool(ctx, acct, poolID)
 	if err != nil {
 		return Worker{}, err
@@ -60,12 +55,7 @@ func (s *Service) Cycle(ctx context.Context, acct kernel.AccountID, poolID strin
 
 // Search reads a page of the workers of acct's pool named. The route has
 // decided SPACE_READ on the pool's space.
-func (s *Service) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	poolID string,
-	in search.Input,
-) (search.Result[Worker], error) {
+func (s *Service) Search(ctx context.Context, acct kernel.AccountID, poolID string, in search.Input) (search.Result[Worker], error) {
 	p, err := s.pool(ctx, acct, poolID)
 	if err != nil {
 		return search.Result[Worker]{}, err
@@ -76,12 +66,7 @@ func (s *Service) Search(
 
 // Suggest lists the values the workers of acct's pool named hold. The
 // route has decided SPACE_READ on the pool's space.
-func (s *Service) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	poolID string,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, acct kernel.AccountID, poolID string, in search.SuggestionsInput) (search.Suggestions, error) {
 	p, err := s.pool(ctx, acct, poolID)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -91,10 +76,6 @@ func (s *Service) Suggest(
 }
 
 // OfPools reads the workers of acct's pools, by pool, oldest first.
-func (s *Service) OfPools(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pools []kernel.ULID,
-) (map[kernel.ULID][]Worker, error) {
+func (s *Service) OfPools(ctx context.Context, acct kernel.AccountID, pools []kernel.ULID) (map[kernel.ULID][]Worker, error) {
 	return s.store.OfPools(ctx, acct, pools) //nolint:wrapcheck // the store names the read
 }

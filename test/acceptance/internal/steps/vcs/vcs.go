@@ -41,10 +41,7 @@ func (v *vcsSteps) register(sc *godog.ScenarioContext) {
 // integration writes an integration of the home account as the vcs
 // domain stores one, its credential and webhook secret sealed, since no
 // operation creates one yet, and keeps its ID as key.
-func (v *vcsSteps) integration(
-	ctx context.Context,
-	provider, name, space, isDefault, key string,
-) error {
+func (v *vcsSteps) integration(ctx context.Context, provider, name, space, isDefault, key string) error {
 	keys, pool, err := v.w.Keyring(ctx)
 	if err != nil {
 		return err

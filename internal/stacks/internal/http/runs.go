@@ -15,10 +15,7 @@ import (
 // which the runs domain names through the bound stacksapi.StackStatus.
 // The route has decided SPACE_READ on the stack's space, and answered 404
 // for a run the caller cannot see.
-func (s Server) RunStack(
-	ctx context.Context,
-	req api.RunStackRequestObject,
-) (api.RunStackResponseObject, error) {
+func (s Server) RunStack(ctx context.Context, req api.RunStackRequestObject) (api.RunStackResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

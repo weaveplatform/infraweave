@@ -26,12 +26,7 @@ var (
 
 // StateAt reads the state acct's run entered at state version version;
 // lifecycle.ErrNotFound when it has no such transition.
-func (s *Store) StateAt(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-	version int64,
-) (kernel.RunState, error) {
+func (s *Store) StateAt(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version int64) (kernel.RunState, error) {
 	var state kernel.RunState
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT state FROM run_state_transitions
 		WHERE account_id = $1 AND run_id = $2 AND sequence = $3`, acct, run, version).Scan(&state)
@@ -92,13 +87,7 @@ func (s *Store) CountChunks(ctx context.Context, run lifecycle.Run, version, n i
 
 // Recorded reports whether run recorded the object of kind named name in
 // state version version.
-func (s *Store) Recorded(
-	ctx context.Context,
-	run lifecycle.Run,
-	version int64,
-	kind workersapi.UploadKind,
-	name string,
-) (bool, error) {
+func (s *Store) Recorded(ctx context.Context, run lifecycle.Run, version int64, kind workersapi.UploadKind, name string) (bool, error) {
 	var ok bool
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM run_artifacts
 		WHERE account_id = $1 AND run_id = $2 AND state_version = $3 AND kind = $4
@@ -219,11 +208,7 @@ const stores = `CASE kind WHEN 'artifact' THEN 'run-artifacts'
 // deletes in the same transaction; none once both are empty. A state
 // whose chunks span batches names its compacted log in each, whose second
 // delete is none.
-func (s *Store) PurgeObjects(
-	ctx context.Context,
-	acct kernel.AccountID,
-	batch int,
-) ([]report.Object, error) {
+func (s *Store) PurgeObjects(ctx context.Context, acct kernel.AccountID, batch int) ([]report.Object, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `DELETE FROM run_log_chunks WHERE account_id = $1
 		AND (run_id, state_version, seq) IN (SELECT run_id, state_version, seq
 		FROM run_log_chunks WHERE account_id = $1 LIMIT $2)

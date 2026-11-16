@@ -67,14 +67,7 @@ RETURNING j.id, j.kind, j.queue, j.payload, j.account_id, j.attempt, j.max_attem
 // Claim takes up to n due jobs of queue whose kind is one of kinds, for a
 // lease of the given length, and names owner on them for diagnosis. Jobs
 // come in priority, run time and insertion order.
-func (q *Queue) Claim(
-	ctx context.Context,
-	queue Name,
-	kinds []string,
-	n int,
-	lease time.Duration,
-	owner string,
-) ([]Job, error) {
+func (q *Queue) Claim(ctx context.Context, queue Name, kinds []string, n int, lease time.Duration, owner string) ([]Job, error) {
 	rows, err := tx.Q(ctx, q.q).Query(ctx, claim, queue, kinds, owner, n, lease.Microseconds())
 	if err != nil {
 		return nil, fmt.Errorf("claim from %s: %w", queue, sql.Unavailable(err))
@@ -153,12 +146,7 @@ func (q *Queue) Fail(ctx context.Context, j Job, cause error) (dead bool, err er
 }
 
 // FailAfter is Fail with the retry delay a kind chose.
-func (q *Queue) FailAfter(
-	ctx context.Context,
-	j Job,
-	cause error,
-	delay time.Duration,
-) (dead bool, err error) {
+func (q *Queue) FailAfter(ctx context.Context, j Job, cause error, delay time.Duration) (dead bool, err error) {
 	dead = j.Attempt >= j.MaxAttempts
 	if dead {
 		return true, q.Kill(ctx, j, cause)

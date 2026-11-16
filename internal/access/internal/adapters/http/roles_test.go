@@ -32,12 +32,7 @@ func newRoleBook(st *store, acct kernel.AccountID) *roleBook {
 	return b
 }
 
-func (b *roleBook) Roles(
-	_ context.Context,
-	_ kernel.AccountID,
-	after string,
-	limit int,
-) ([]role.Role, error) {
+func (b *roleBook) Roles(_ context.Context, _ kernel.AccountID, after string, limit int) ([]role.Role, error) {
 	var out []role.Role
 	for _, r := range b.roles {
 		if r.Slug > after {
@@ -71,12 +66,7 @@ func (b *roleBook) CreateRole(_ context.Context, r role.Role) error {
 	return nil
 }
 
-func (b *roleBook) UpdateRole(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	edit func(role.Role) (role.Role, error),
-) (role.Role, error) {
+func (b *roleBook) UpdateRole(ctx context.Context, acct kernel.AccountID, slug string, edit func(role.Role) (role.Role, error)) (role.Role, error) {
 	r, err := b.Role(ctx, acct, slug)
 	if err != nil {
 		return role.Role{}, err
@@ -89,12 +79,7 @@ func (b *roleBook) UpdateRole(
 	return r, nil
 }
 
-func (b *roleBook) DeleteRole(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	check func(role.Role) error,
-) (role.Role, error) {
+func (b *roleBook) DeleteRole(ctx context.Context, acct kernel.AccountID, slug string, check func(role.Role) error) (role.Role, error) {
 	r, err := b.Role(ctx, acct, slug)
 	if err != nil {
 		return role.Role{}, err
@@ -109,11 +94,7 @@ func (b *roleBook) DeleteRole(
 	return r, nil
 }
 
-func (b *roleBook) RoleBindings(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (b *roleBook) RoleBindings(_ context.Context, _ kernel.AccountID, id kernel.ULID) ([]binding.Listed, error) {
 	for slug, r := range b.roles {
 		if r.ID == id {
 			return b.bindings[slug], b.st.err()

@@ -26,13 +26,7 @@ type ClaimStore interface {
 	// at most last that comes first by tier, then creation, then ID,
 	// among the rows no other transaction locks, and locks its row FOR
 	// UPDATE; false when there is none.
-	Next(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pool kernel.ULID,
-		states []kernel.RunState,
-		last int,
-	) (lifecycle.Run, bool, error)
+	Next(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error)
 	// Assign writes worker as run's worker.
 	Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error
 	// Waiting counts the runs in one of states of each private pool, of
@@ -67,10 +61,7 @@ func NewClaims(store ClaimStore, l *lifecycle.Lifecycle) *Claims {
 // as workersapi.Scheduler's Claim says, in the transaction ctx carries.
 // The worker's own claims are serialized by its caller, which locks the
 // worker's row first, so a worker never holds two runs.
-func (s *Claims) Claim(
-	ctx context.Context,
-	c workersapi.Claim,
-) (workersapi.Assignment, bool, error) {
+func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assignment, bool, error) {
 	if !tx.In(ctx) {
 		return workersapi.Assignment{}, false, lifecycle.ErrNoTransaction
 	}
@@ -114,11 +105,7 @@ func (s *Claims) limited(c workersapi.Claim) bool {
 // the next run of an earlier tier. The pool's drift claims take turns
 // under its drift lock, so each counts the ones committed before it and
 // two cannot pass a limit of one together.
-func (s *Claims) drift(
-	ctx context.Context,
-	c workersapi.Claim,
-	run lifecycle.Run,
-) (lifecycle.Run, bool, error) {
+func (s *Claims) drift(ctx context.Context, c workersapi.Claim, run lifecycle.Run) (lifecycle.Run, bool, error) {
 	if err := s.store.TakeDrift(ctx, c.Account, c.Pool); err != nil {
 		return lifecycle.Run{}, false, err //nolint:wrapcheck // the store names the lock
 	}

@@ -32,20 +32,13 @@ type Server struct {
 
 // New returns the partial over the service, naming spaces through
 // spaces, with each provider's details by its served VCSProvider value.
-func New(
-	svc *integration.Service,
-	spaces accessapi.Spaces,
-	describe map[string]Describe,
-) Server {
+func New(svc *integration.Service, spaces accessapi.Spaces, describe map[string]Describe) Server {
 	return Server{svc: svc, spaces: spaces, describe: describe}
 }
 
 // VcsIntegrations lists the integrations of the caller's account in the
 // spaces it may read, by name.
-func (s Server) VcsIntegrations(
-	ctx context.Context,
-	req api.VcsIntegrationsRequestObject,
-) (api.VcsIntegrationsResponseObject, error) {
+func (s Server) VcsIntegrations(ctx context.Context, req api.VcsIntegrationsRequestObject) (api.VcsIntegrationsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -85,10 +78,7 @@ func (s Server) AttachableVCSIntegrationsForProviderInSpace(
 
 // SearchVCSIntegrations searches the integrations of the caller's account
 // in the spaces it may read.
-func (s Server) SearchVCSIntegrations(
-	ctx context.Context,
-	req api.SearchVCSIntegrationsRequestObject,
-) (api.SearchVCSIntegrationsResponseObject, error) {
+func (s Server) SearchVCSIntegrations(ctx context.Context, req api.SearchVCSIntegrationsRequestObject) (api.SearchVCSIntegrationsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -130,10 +120,7 @@ func (s Server) SearchVCSIntegrationsSuggestions(
 
 // VcsIntegration answers one integration of the caller's account, with
 // its provider's details when the caller administers its space.
-func (s Server) VcsIntegration(
-	ctx context.Context,
-	req api.VcsIntegrationRequestObject,
-) (api.VcsIntegrationResponseObject, error) {
+func (s Server) VcsIntegration(ctx context.Context, req api.VcsIntegrationRequestObject) (api.VcsIntegrationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -157,12 +144,7 @@ func (s Server) VcsIntegration(
 
 // details are in's provider details as its provider's own read answers
 // them to an admin of its space; nil for a provider with none.
-func (s Server) details(
-	ctx context.Context,
-	p kernel.Principal,
-	in integration.Integration,
-	slugs map[kernel.ULID]string,
-) (*api.VCSIntegrationDetails, error) {
+func (s Server) details(ctx context.Context, p kernel.Principal, in integration.Integration, slugs map[kernel.ULID]string) (*api.VCSIntegrationDetails, error) {
 	var out api.VCSIntegrationDetails
 	var err error
 	switch in.Provider {
@@ -217,10 +199,7 @@ func (s Server) details(
 
 // VcsIntegrationTest runs the connection test of an integration's
 // provider.
-func (s Server) VcsIntegrationTest(
-	ctx context.Context,
-	req api.VcsIntegrationTestRequestObject,
-) (api.VcsIntegrationTestResponseObject, error) {
+func (s Server) VcsIntegrationTest(ctx context.Context, req api.VcsIntegrationTestRequestObject) (api.VcsIntegrationTestResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -279,11 +258,7 @@ func page(cursor *api.Cursor, limit *api.Limit) search.Input {
 }
 
 // page is res as a page of views.
-func (s Server) page(
-	ctx context.Context,
-	p kernel.Principal,
-	res search.Result[integration.Integration],
-) (api.VCSIntegrationPage, error) {
+func (s Server) page(ctx context.Context, p kernel.Principal, res search.Result[integration.Integration]) (api.VCSIntegrationPage, error) {
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return api.VCSIntegrationPage{}, err //nolint:wrapcheck // the access domain names the read

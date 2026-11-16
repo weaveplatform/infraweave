@@ -24,11 +24,7 @@ var (
 )
 
 // Get reads acct's run id.
-func (s *Store) Get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (lifecycle.Run, error) {
+func (s *Store) Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (lifecycle.Run, error) {
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND id = $2`, acct, id))
 	switch {
@@ -42,11 +38,7 @@ func (s *Store) Get(
 
 // Histories reads the transitions of acct's runs, oldest first, keyed by
 // run.
-func (s *Store) Histories(
-	ctx context.Context,
-	acct kernel.AccountID,
-	runs []kernel.ULID,
-) (map[kernel.ULID][]lifecycle.Step, error) {
+func (s *Store) Histories(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) (map[kernel.ULID][]lifecycle.Step, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT run_id, sequence, state, timestamp, until,
 		username, note, has_logs FROM run_state_transitions
 		WHERE account_id = $1 AND run_id = ANY($2) ORDER BY run_id, sequence`, acct, runs)
@@ -77,13 +69,7 @@ func (s *Store) Histories(
 // List reads up to q.Limit+1 of acct's stack's runs of types, newest
 // first: those older than q.After and q.Before when set, and, when q.To
 // is set, those created from q.From until q.To.
-func (s *Store) List(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	types []kernel.RunType,
-	q read.Query,
-) ([]lifecycle.Run, error) {
+func (s *Store) List(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, types []kernel.RunType, q read.Query) ([]lifecycle.Run, error) {
 	var from, to *time.Time
 	if !q.To.IsZero() {
 		from, to = &q.From, &q.To
@@ -191,12 +177,7 @@ func (k keyed) Scan(dest ...any) error {
 }
 
 // Search reads a page of acct's runs in scope that in keeps.
-func (s *Store) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	scope read.Scope,
-) (search.Result[lifecycle.Run], error) {
+func (s *Store) Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope read.Scope) (search.Result[lifecycle.Run], error) {
 	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), runSearch, searchScope(acct, scope), in,
 		scanFound)
 	if err != nil {
@@ -206,12 +187,7 @@ func (s *Store) Search(
 }
 
 // Count counts acct's runs in scope that in keeps.
-func (s *Store) Count(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	scope read.Scope,
-) (int, error) {
+func (s *Store) Count(ctx context.Context, acct kernel.AccountID, in search.Input, scope read.Scope) (int, error) {
 	n, err := sqlsearch.Count(ctx, tx.Q(ctx, s.db), runSearch, searchScope(acct, scope), in)
 	if err != nil {
 		return 0, fmt.Errorf("runs: %w", err)
@@ -220,12 +196,7 @@ func (s *Store) Count(
 }
 
 // Suggest lists the values acct's runs in scope that in keeps hold.
-func (s *Store) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	scope read.Scope,
-) (search.Suggestions, error) {
+func (s *Store) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope read.Scope) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), runSearch, searchScope(acct, scope), in)
 	if err != nil {
 		return out, fmt.Errorf("runs: %w", err)
@@ -235,11 +206,7 @@ func (s *Store) Suggest(
 
 // Holder reads the run that holds acct's stack's run lock, false when
 // none does.
-func (s *Store) Holder(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-) (kernel.ULID, bool, error) {
+func (s *Store) Holder(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) (kernel.ULID, bool, error) {
 	var run kernel.ULID
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT run_id FROM stack_run_locks
 		WHERE account_id = $1 AND stack_id = $2`, acct, stack).Scan(&run)
@@ -255,12 +222,7 @@ func (s *Store) Holder(
 
 // SetPriority writes run's priority, the priority_tier it puts the run
 // in, and its updated_at, at.
-func (s *Store) SetPriority(
-	ctx context.Context,
-	run lifecycle.Run,
-	p kernel.RunPriority,
-	at time.Time,
-) error {
+func (s *Store) SetPriority(ctx context.Context, run lifecycle.Run, p kernel.RunPriority, at time.Time) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs
 		SET priority = $3, priority_tier = $4, updated_at = $5
 		WHERE account_id = $1 AND id = $2`,

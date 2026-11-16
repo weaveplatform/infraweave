@@ -41,11 +41,7 @@ type stackBook struct {
 	settings map[kernel.ULID]stacksapi.Settings
 }
 
-func (s stackBook) Settings(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s stackBook) Settings(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	st, ok := s.settings[id]
 	if !ok {
 		return stacksapi.Settings{}, stacksapi.ErrNotFound
@@ -95,12 +91,7 @@ func newWorld(t *testing.T) *world {
 // integration keeps an integration of provider with token as its
 // credential and a stack on namespace/name through it, and answers the
 // stack's ID.
-func (w *world) integration(
-	provider string,
-	set port.Settings,
-	token []byte,
-	path ...string,
-) kernel.ULID {
+func (w *world) integration(provider string, set port.Settings, token []byte, path ...string) kernel.ULID {
 	w.t.Helper()
 	id := kernel.NewULID()
 	in := integration.Integration{

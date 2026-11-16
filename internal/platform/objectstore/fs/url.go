@@ -49,12 +49,7 @@ func methodByte(method string) byte {
 
 // SignURL returns <url>/blobs/<token>, which needs no header. A PUT URL
 // binds c.Size and, when given, c.SHA256.
-func (b *Bucket) SignURL(
-	_ context.Context,
-	method, key string,
-	ttl time.Duration,
-	c objectstore.Constraints,
-) (objectstore.Signed, error) {
+func (b *Bucket) SignURL(_ context.Context, method, key string, ttl time.Duration, c objectstore.Constraints) (objectstore.Signed, error) {
 	if method != http.MethodGet && method != http.MethodPut {
 		return objectstore.Signed{}, fmt.Errorf("%w: %s", objectstore.ErrMethod, method)
 	}

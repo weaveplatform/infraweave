@@ -35,13 +35,7 @@ func pool(t *testing.T) *pgxpool.Pool {
 // insertRun writes acct's run of stack with a transition, and, when
 // tracked, makes it the stack's tracked run, run lock holder and the
 // writer of an output.
-func insertRun(
-	t *testing.T,
-	db tx.Querier,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-	tracked bool,
-) kernel.ULID {
+func insertRun(t *testing.T, db tx.Querier, acct kernel.AccountID, stack kernel.ULID, tracked bool) kernel.ULID {
 	t.Helper()
 	ctx := t.Context()
 	run := kernel.NewULID()

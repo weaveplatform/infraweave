@@ -176,12 +176,7 @@ func (s *Service) Unlock(ctx context.Context, u Unlock) error {
 // domain's tables, so its locks go when its terminal run_updated arrives.
 //
 // ref: decision 0010 § "Locks"
-func (s *Service) RunEnded(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-	state kernel.RunState,
-) error {
+func (s *Service) RunEnded(ctx context.Context, acct kernel.AccountID, run kernel.ULID, state kernel.RunState) error {
 	if !state.Terminal() {
 		return nil
 	}

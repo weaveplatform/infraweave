@@ -33,22 +33,13 @@ type Server struct {
 // New returns the partial over the pools', the runner images' and the
 // workers' services, deciding allowedActions with authz and naming
 // spaces through spaces.
-func New(
-	svc *pool.Service,
-	img *images.Service,
-	wk *worker.Service,
-	authz accessapi.Authorizer,
-	spaces accessapi.Spaces,
-) Server {
+func New(svc *pool.Service, img *images.Service, wk *worker.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
 	return Server{svc: svc, images: img, workers: wk, authz: authz, spaces: spaces}
 }
 
 // WorkerPools lists the pools of the caller's account in the spaces it
 // may read, by name.
-func (s Server) WorkerPools(
-	ctx context.Context,
-	req api.WorkerPoolsRequestObject,
-) (api.WorkerPoolsResponseObject, error) {
+func (s Server) WorkerPools(ctx context.Context, req api.WorkerPoolsRequestObject) (api.WorkerPoolsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -66,10 +57,7 @@ func (s Server) WorkerPools(
 
 // StackAttachableWorkerPools lists the pools a stack may name, among the
 // spaces the caller may read.
-func (s Server) StackAttachableWorkerPools(
-	ctx context.Context,
-	req api.StackAttachableWorkerPoolsRequestObject,
-) (api.StackAttachableWorkerPoolsResponseObject, error) {
+func (s Server) StackAttachableWorkerPools(ctx context.Context, req api.StackAttachableWorkerPoolsRequestObject) (api.StackAttachableWorkerPoolsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -88,10 +76,7 @@ func (s Server) StackAttachableWorkerPools(
 
 // AttachableWorkerPoolsInSpace lists the pools a stack in a space may
 // name, among the spaces the caller may read.
-func (s Server) AttachableWorkerPoolsInSpace(
-	ctx context.Context,
-	req api.AttachableWorkerPoolsInSpaceRequestObject,
-) (api.AttachableWorkerPoolsInSpaceResponseObject, error) {
+func (s Server) AttachableWorkerPoolsInSpace(ctx context.Context, req api.AttachableWorkerPoolsInSpaceRequestObject) (api.AttachableWorkerPoolsInSpaceResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -118,11 +103,7 @@ func pageInput(cursor *api.Cursor, limit *api.Limit) search.Input {
 }
 
 // page is res as a page of views as p sees them.
-func (s Server) page(
-	ctx context.Context,
-	p kernel.Principal,
-	res search.Result[pool.Pool],
-) (api.WorkerPoolPage, error) {
+func (s Server) page(ctx context.Context, p kernel.Principal, res search.Result[pool.Pool]) (api.WorkerPoolPage, error) {
 	all := make([]pool.Pool, 0, len(res.Edges))
 	for _, e := range res.Edges {
 		all = append(all, e.Node)
@@ -182,10 +163,7 @@ func (s Server) AccountUpdateDefaultWorkerPoolRunnerImages(
 
 // SearchWorkerPools searches the pools of the caller's account in the
 // spaces it may read.
-func (s Server) SearchWorkerPools(
-	ctx context.Context,
-	req api.SearchWorkerPoolsRequestObject,
-) (api.SearchWorkerPoolsResponseObject, error) {
+func (s Server) SearchWorkerPools(ctx context.Context, req api.SearchWorkerPoolsRequestObject) (api.SearchWorkerPoolsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -208,10 +186,7 @@ func (s Server) SearchWorkerPools(
 
 // SearchWorkerPoolsSuggestions lists the values the pools of the
 // caller's account in the spaces it may read hold.
-func (s Server) SearchWorkerPoolsSuggestions(
-	ctx context.Context,
-	req api.SearchWorkerPoolsSuggestionsRequestObject,
-) (api.SearchWorkerPoolsSuggestionsResponseObject, error) {
+func (s Server) SearchWorkerPoolsSuggestions(ctx context.Context, req api.SearchWorkerPoolsSuggestionsRequestObject) (api.SearchWorkerPoolsSuggestionsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -224,10 +199,7 @@ func (s Server) SearchWorkerPoolsSuggestions(
 }
 
 // WorkerPool answers one pool of the caller's account.
-func (s Server) WorkerPool(
-	ctx context.Context,
-	req api.WorkerPoolRequestObject,
-) (api.WorkerPoolResponseObject, error) {
+func (s Server) WorkerPool(ctx context.Context, req api.WorkerPoolRequestObject) (api.WorkerPoolResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -248,10 +220,7 @@ func (s Server) WorkerPool(
 // WorkerPoolCreate creates a pool in the space its input names, from a
 // certificate signing request for the pool's key, and answers it with
 // its pool token.
-func (s Server) WorkerPoolCreate(
-	ctx context.Context,
-	req api.WorkerPoolCreateRequestObject,
-) (api.WorkerPoolCreateResponseObject, error) {
+func (s Server) WorkerPoolCreate(ctx context.Context, req api.WorkerPoolCreateRequestObject) (api.WorkerPoolCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -273,10 +242,7 @@ func (s Server) WorkerPoolCreate(
 }
 
 // WorkerPoolUpdate replaces a pool's settings with its input's.
-func (s Server) WorkerPoolUpdate(
-	ctx context.Context,
-	req api.WorkerPoolUpdateRequestObject,
-) (api.WorkerPoolUpdateResponseObject, error) {
+func (s Server) WorkerPoolUpdate(ctx context.Context, req api.WorkerPoolUpdateRequestObject) (api.WorkerPoolUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -294,13 +260,7 @@ func (s Server) WorkerPoolUpdate(
 	}, nil
 }
 
-func (s Server) update(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	expect kernel.Expect,
-	b api.WorkerPoolUpdateRequest,
-) (pool.Pool, error) {
+func (s Server) update(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, b api.WorkerPoolUpdateRequest) (pool.Pool, error) {
 	wp, err := s.svc.Update(ctx, p, id, expect, pool.Input{
 		Name: b.Name, Space: deref(b.Space), Description: deref(b.Description),
 		Labels: deref(b.Labels), PreparingTimeoutSeconds: b.PreparingTimeoutSeconds,
@@ -311,10 +271,7 @@ func (s Server) update(
 
 // WorkerPoolPatch changes the settings its merge patch names and keeps
 // the rest, writing the result as WorkerPoolUpdate writes its body.
-func (s Server) WorkerPoolPatch(
-	ctx context.Context,
-	req api.WorkerPoolPatchRequestObject,
-) (api.WorkerPoolPatchResponseObject, error) {
+func (s Server) WorkerPoolPatch(ctx context.Context, req api.WorkerPoolPatchRequestObject) (api.WorkerPoolPatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -368,10 +325,7 @@ func inputView(wp pool.Pool, space string) api.WorkerPoolUpdateRequest {
 
 // WorkerPoolDelete deletes a pool with its workers and answers it as it
 // was, marked deleted.
-func (s Server) WorkerPoolDelete(
-	ctx context.Context,
-	req api.WorkerPoolDeleteRequestObject,
-) (api.WorkerPoolDeleteResponseObject, error) {
+func (s Server) WorkerPoolDelete(ctx context.Context, req api.WorkerPoolDeleteRequestObject) (api.WorkerPoolDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -401,10 +355,7 @@ func (s Server) WorkerPoolDelete(
 // WorkerPoolReset signs a new certificate for the pool from a
 // certificate signing request and answers the pool with its new pool
 // token; registrations under the old one are refused from then on.
-func (s Server) WorkerPoolReset(
-	ctx context.Context,
-	req api.WorkerPoolResetRequestObject,
-) (api.WorkerPoolResetResponseObject, error) {
+func (s Server) WorkerPoolReset(ctx context.Context, req api.WorkerPoolResetRequestObject) (api.WorkerPoolResetResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -420,11 +371,7 @@ func (s Server) WorkerPoolReset(
 	return api.WorkerPoolReset200JSONResponse{Body: v}, nil
 }
 
-func (s Server) view(
-	ctx context.Context,
-	p kernel.Principal,
-	wp pool.Pool,
-) (api.WorkerPool, error) {
+func (s Server) view(ctx context.Context, p kernel.Principal, wp pool.Pool) (api.WorkerPool, error) {
 	vs, err := s.views(ctx, p, wp)
 	if err != nil {
 		return api.WorkerPool{}, err
@@ -434,11 +381,7 @@ func (s Server) view(
 
 // views are all as p sees them: the actions p holds in each one's space,
 // its space by slug and its workers.
-func (s Server) views(
-	ctx context.Context,
-	p kernel.Principal,
-	all ...pool.Pool,
-) ([]api.WorkerPool, error) {
+func (s Server) views(ctx context.Context, p kernel.Principal, all ...pool.Pool) ([]api.WorkerPool, error) {
 	out := make([]api.WorkerPool, 0, len(all))
 	if len(all) == 0 {
 		return out, nil

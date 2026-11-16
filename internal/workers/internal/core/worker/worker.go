@@ -143,19 +143,9 @@ type Store interface {
 	CA(ctx context.Context) ([]byte, error)
 	// Nonce records the pool's jti until expires, dropping its expired
 	// ones; false when jti is recorded already.
-	Nonce(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pool kernel.ULID,
-		jti string,
-		expires time.Time,
-	) (bool, error)
+	Nonce(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, jti string, expires time.Time) (bool, error)
 	// Count counts the registered workers of org and of acct.
-	Count(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-	) (featuresapi.Usage, error)
+	Count(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID) (featuresapi.Usage, error)
 	// Worker reads the worker id with its pool's current serial, locked
 	// FOR UPDATE when lock is set; ErrNotFound when none.
 	Worker(ctx context.Context, id kernel.ULID, lock bool) (Worker, int64, error)
@@ -185,40 +175,21 @@ type Store interface {
 	PoolTimeouts(ctx context.Context) ([]workersapi.PoolTimeout, error)
 	// Drain sets the drain flag of acct's worker id of pool and wakes the
 	// pool's held polls; ErrNotFound when the pool has no such worker.
-	Drain(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pool, id kernel.ULID,
-		drain bool,
-	) (Worker, error)
+	Drain(ctx context.Context, acct kernel.AccountID, pool, id kernel.ULID, drain bool) (Worker, error)
 	// Cycle marks every worker of acct's pool to cycle and wakes the
 	// pool's held polls.
 	Cycle(ctx context.Context, acct kernel.AccountID, pool kernel.ULID) error
 	// SearchWorkers reads a page of the workers of acct's pool, which
 	// lives in space, that in keeps.
-	SearchWorkers(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pool, space kernel.ULID,
-		in search.Input,
-	) (search.Result[Worker], error)
+	SearchWorkers(ctx context.Context, acct kernel.AccountID, pool, space kernel.ULID, in search.Input) (search.Result[Worker], error)
 	// SuggestWorkers lists the values the workers of acct's pool, which
 	// lives in space, hold.
-	SuggestWorkers(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pool, space kernel.ULID,
-		in search.SuggestionsInput,
-	) (search.Suggestions, error)
+	SuggestWorkers(ctx context.Context, acct kernel.AccountID, pool, space kernel.ULID, in search.SuggestionsInput) (search.Suggestions, error)
 	// RunnerImages reads acct's default runner images, both nil when it
 	// sets none.
 	RunnerImages(ctx context.Context, acct kernel.AccountID) (images.Images, error)
 	// OfPools reads the workers of acct's pools, by pool, oldest first.
-	OfPools(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pools []kernel.ULID,
-	) (map[kernel.ULID][]Worker, error)
+	OfPools(ctx context.Context, acct kernel.AccountID, pools []kernel.ULID) (map[kernel.ULID][]Worker, error)
 }
 
 // Tokens mints the worker session tokens registrations and polls answer,
@@ -231,13 +202,7 @@ type Tokens interface {
 // Limits admits one more registered worker, as the features domain's
 // Entitlements.CheckLimit does.
 type Limits interface {
-	CheckLimit(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-		limit string,
-		count func(context.Context) (featuresapi.Usage, error),
-	) error
+	CheckLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, count func(context.Context) (featuresapi.Usage, error)) error
 }
 
 // Deps are what the service is constructed over: the store, the pool its
@@ -458,11 +423,7 @@ func (s *Service) resume(ctx context.Context, named string, w Worker) (kernel.UL
 // verify checks that jws's x5c certificate chains to the pool CA ca, a
 // client certificate valid at now, and that it signed jws, and answers its
 // payload and certificate.
-func verify(
-	jws *jose.JSONWebSignature,
-	ca []byte,
-	now time.Time,
-) (claims, *x509.Certificate, error) {
+func verify(jws *jose.JSONWebSignature, ca []byte, now time.Time) (claims, *x509.Certificate, error) {
 	if ca == nil {
 		return claims{}, nil, refuse("the installation has no pool CA")
 	}

@@ -123,11 +123,7 @@ var phases = map[wire.WorkerState][]workflow.Key{
 // PLANNING; apply, then getOutputs with its output to o.OutputsJSON, for
 // APPLYING; and destroy for DESTROYING. A template whose evaluation fails
 // is an error naming its key.
-func (w *Workflow) Commands(
-	ctx context.Context,
-	state wire.WorkerState,
-	o Options,
-) ([]Command, error) {
+func (w *Workflow) Commands(ctx context.Context, state wire.WorkerState, o Options) ([]Command, error) {
 	keys, ok := phases[state]
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrState, state)

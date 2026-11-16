@@ -47,10 +47,7 @@ func (s Server) BitbucketCloudIntegrationCreateV2(
 
 // BitbucketCloudIntegration answers one Bitbucket Cloud integration, with
 // its webhook secret and URL when the caller administers its space.
-func (s Server) BitbucketCloudIntegration(
-	ctx context.Context,
-	req api.BitbucketCloudIntegrationRequestObject,
-) (api.BitbucketCloudIntegrationResponseObject, error) {
+func (s Server) BitbucketCloudIntegration(ctx context.Context, req api.BitbucketCloudIntegrationRequestObject) (api.BitbucketCloudIntegrationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -131,10 +128,7 @@ func (s Server) BitbucketCloudIntegrationDelete(
 
 // BitbucketCloudIntegrationTest answers whether every check of a
 // Bitbucket Cloud integration's connection test passes.
-func (s Server) BitbucketCloudIntegrationTest(
-	ctx context.Context,
-	req api.BitbucketCloudIntegrationTestRequestObject,
-) (api.BitbucketCloudIntegrationTestResponseObject, error) {
+func (s Server) BitbucketCloudIntegrationTest(ctx context.Context, req api.BitbucketCloudIntegrationTestRequestObject) (api.BitbucketCloudIntegrationTestResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -150,12 +144,7 @@ func (s Server) BitbucketCloudIntegrationTest(
 
 // bitbucketCloud is in as the Bitbucket Cloud operations answer it, with
 // its webhook secret and URL when admin is set.
-func (s Server) bitbucketCloud(
-	ctx context.Context,
-	p kernel.Principal,
-	in integration.Integration,
-	admin bool,
-) (api.BitbucketCloudIntegration, error) {
+func (s Server) bitbucketCloud(ctx context.Context, p kernel.Principal, in integration.Integration, admin bool) (api.BitbucketCloudIntegration, error) {
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return api.BitbucketCloudIntegration{}, err //nolint:wrapcheck // the access domain names the read
@@ -174,11 +163,7 @@ func (s Server) bitbucketCloud(
 // its space named by its slug in slugs, with d's webhook secret and URL
 // when d is not nil. Its username is empty: an API token authenticates
 // with the account's email, which Bitbucket Cloud's API and git both take.
-func bitbucketCloudView(
-	in integration.Integration,
-	slugs map[kernel.ULID]string,
-	d *integration.Details,
-) api.BitbucketCloudIntegration {
+func bitbucketCloudView(in integration.Integration, slugs map[kernel.ULID]string, d *integration.Details) api.BitbucketCloudIntegration {
 	labels := in.Labels
 	if labels == nil {
 		labels = []string{}

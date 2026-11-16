@@ -188,15 +188,7 @@ type Workers struct {
 // NewWorkers runs reg's handlers on q's jobs as cfg says. wake delivers
 // infraweave_jobs notifications, whose payload is a queue's name; owner
 // names this replica on the jobs it claims.
-func NewWorkers(
-	q *Queue,
-	reg *Registry,
-	cfg Config,
-	ent Entitlements,
-	wake <-chan notify.Message,
-	log *slog.Logger,
-	owner string,
-) *Workers {
+func NewWorkers(q *Queue, reg *Registry, cfg Config, ent Entitlements, wake <-chan notify.Message, log *slog.Logger, owner string) *Workers {
 	return &Workers{q: q, reg: reg, cfg: cfg, ent: ent, wake: wake, log: log, owner: owner}
 }
 

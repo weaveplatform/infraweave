@@ -46,10 +46,7 @@ func (b *bitbucketDCSteps) start() []byte {
 // VCS starts the fake for a @bitbucket-dc scenario on first use, and returns the
 // vcs settings and certificate every server of the scenario needs while
 // it runs.
-func (b *bitbucketDCSteps) VCS(
-	_ context.Context,
-	w *harness.World,
-) (map[string]any, []byte, error) {
+func (b *bitbucketDCSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
 	if slices.Contains(w.Tags, "@bitbucket-dc") && b.srv == nil {
 		return nil, b.start(), nil
 	}

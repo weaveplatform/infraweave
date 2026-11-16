@@ -180,20 +180,12 @@ type configuration struct {
 	asked     [][]kernel.ULID
 }
 
-func (c *configuration) AttachedContexts(
-	_ context.Context,
-	_ kernel.AccountID,
-	stacks []kernel.ULID,
-) (map[kernel.ULID][]stacksapi.AttachedContext, error) {
+func (c *configuration) AttachedContexts(_ context.Context, _ kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.AttachedContext, error) {
 	c.asked = append(c.asked, stacks)
 	return c.contexts, c.err
 }
 
-func (c *configuration) Config(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) (map[kernel.ULID][]stacksapi.ConfigElement, error) {
+func (c *configuration) Config(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]stacksapi.ConfigElement, error) {
 	if c.configErr != nil {
 		return nil, c.configErr
 	}

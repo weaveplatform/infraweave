@@ -35,12 +35,7 @@ type Store interface {
 	Prune(ctx context.Context, before time.Time, batch int) (int, error)
 	// Between reads acct's samples of pool taken from from up to, not
 	// including, to, oldest first.
-	Between(
-		ctx context.Context,
-		acct kernel.AccountID,
-		pool kernel.ULID,
-		from, to time.Time,
-	) ([]workersapi.Sample, error)
+	Between(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, from, to time.Time) ([]workersapi.Sample, error)
 }
 
 // Deps are the service's: its Store, Retention, worker.samples.retention,
@@ -118,12 +113,7 @@ func (s *Service) Sample(ctx context.Context) (Sampled, error) {
 
 // SamplesBetween reads acct's samples of pool taken from from up to, not
 // including, to, oldest first; an empty window has none.
-func (s *Service) SamplesBetween(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-	from, to time.Time,
-) ([]workersapi.Sample, error) {
+func (s *Service) SamplesBetween(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, from, to time.Time) ([]workersapi.Sample, error) {
 	if !from.Before(to) {
 		return nil, nil
 	}

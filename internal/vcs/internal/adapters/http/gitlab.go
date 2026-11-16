@@ -13,10 +13,7 @@ import (
 // GitlabIntegrationCreate creates a GitLab integration over an access
 // token, with a webhook secret of its own, which GitLab's project hooks
 // send as their token.
-func (s Server) GitlabIntegrationCreate(
-	ctx context.Context,
-	req api.GitlabIntegrationCreateRequestObject,
-) (api.GitlabIntegrationCreateResponseObject, error) {
+func (s Server) GitlabIntegrationCreate(ctx context.Context, req api.GitlabIntegrationCreateRequestObject) (api.GitlabIntegrationCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -47,10 +44,7 @@ func (s Server) GitlabIntegrationCreate(
 
 // GitlabIntegration answers one GitLab integration, with its webhook
 // secret and URL when the caller administers its space.
-func (s Server) GitlabIntegration(
-	ctx context.Context,
-	req api.GitlabIntegrationRequestObject,
-) (api.GitlabIntegrationResponseObject, error) {
+func (s Server) GitlabIntegration(ctx context.Context, req api.GitlabIntegrationRequestObject) (api.GitlabIntegrationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -68,10 +62,7 @@ func (s Server) GitlabIntegration(
 
 // GitlabIntegrationUpdate replaces a GitLab integration's settings,
 // keeping its hosts, token and each custom field the request leaves out.
-func (s Server) GitlabIntegrationUpdate(
-	ctx context.Context,
-	req api.GitlabIntegrationUpdateRequestObject,
-) (api.GitlabIntegrationUpdateResponseObject, error) {
+func (s Server) GitlabIntegrationUpdate(ctx context.Context, req api.GitlabIntegrationUpdateRequestObject) (api.GitlabIntegrationUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -103,10 +94,7 @@ func (s Server) GitlabIntegrationUpdate(
 
 // GitlabIntegrationDelete deletes a GitLab integration, detaching the
 // stacks bound to it, and answers it as it was, without its secret.
-func (s Server) GitlabIntegrationDelete(
-	ctx context.Context,
-	req api.GitlabIntegrationDeleteRequestObject,
-) (api.GitlabIntegrationDeleteResponseObject, error) {
+func (s Server) GitlabIntegrationDelete(ctx context.Context, req api.GitlabIntegrationDeleteRequestObject) (api.GitlabIntegrationDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -124,10 +112,7 @@ func (s Server) GitlabIntegrationDelete(
 
 // GitlabIntegrationTest answers whether every check of a GitLab
 // integration's connection test passes.
-func (s Server) GitlabIntegrationTest(
-	ctx context.Context,
-	req api.GitlabIntegrationTestRequestObject,
-) (api.GitlabIntegrationTestResponseObject, error) {
+func (s Server) GitlabIntegrationTest(ctx context.Context, req api.GitlabIntegrationTestRequestObject) (api.GitlabIntegrationTestResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -143,12 +128,7 @@ func (s Server) GitlabIntegrationTest(
 
 // gitlab is in as the GitLab operations answer it, with its webhook
 // secret and URL when admin is set.
-func (s Server) gitlab(
-	ctx context.Context,
-	p kernel.Principal,
-	in integration.Integration,
-	admin bool,
-) (api.GitlabIntegration, error) {
+func (s Server) gitlab(ctx context.Context, p kernel.Principal, in integration.Integration, admin bool) (api.GitlabIntegration, error) {
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return api.GitlabIntegration{}, err //nolint:wrapcheck // the access domain names the read
@@ -165,11 +145,7 @@ func (s Server) gitlab(
 
 // gitlabView is in as the GitLab operations answer it, its space named by
 // its slug in slugs, with d's webhook secret and URL when d is not nil.
-func gitlabView(
-	in integration.Integration,
-	slugs map[kernel.ULID]string,
-	d *integration.Details,
-) api.GitlabIntegration {
+func gitlabView(in integration.Integration, slugs map[kernel.ULID]string, d *integration.Details) api.GitlabIntegration {
 	labels := in.Labels
 	if labels == nil {
 		labels = []string{}

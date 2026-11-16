@@ -25,13 +25,7 @@ type stacks struct {
 	tracked  *[]stacksapi.Commit
 }
 
-func (s stacks) SetTracked(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ kernel.ULID,
-	head, commit *stacksapi.Commit,
-	setBy string,
-) error {
+func (s stacks) SetTracked(_ context.Context, _ kernel.AccountID, _ kernel.ULID, head, commit *stacksapi.Commit, setBy string) error {
 	if *head != *commit || setBy != "infraweave" {
 		return errOffline
 	}
@@ -39,11 +33,7 @@ func (s stacks) SetTracked(
 	return nil
 }
 
-func (s stacks) Settings(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	return s.settings, s.err
 }
 
@@ -56,11 +46,7 @@ type source struct {
 	err    error
 }
 
-func (s source) ResolveRef(
-	_ context.Context,
-	repo port.Repository,
-	_ string,
-) (vcsapi.Commit, error) {
+func (s source) ResolveRef(_ context.Context, repo port.Repository, _ string) (vcsapi.Commit, error) {
 	*s.repo = repo
 	return s.commit, s.err
 }
@@ -267,12 +253,7 @@ type integrations struct {
 	asked **kernel.ULID
 }
 
-func (i integrations) Use(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ string,
-	id *kernel.ULID,
-) (port.Integration, bool, error) {
+func (i integrations) Use(_ context.Context, _ kernel.AccountID, _ string, id *kernel.ULID) (port.Integration, bool, error) {
 	if i.asked != nil {
 		*i.asked = id
 	}

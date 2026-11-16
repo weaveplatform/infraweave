@@ -199,13 +199,7 @@ func (s *Service) StackChanged(ctx context.Context, acct kernel.AccountID, id ke
 
 // restack applies change to c, locked, as a change of what, naming stack,
 // when change reports it changed something.
-func (s *Service) restack(
-	ctx context.Context,
-	c Context,
-	what string,
-	stack kernel.ULID,
-	change func(ctx context.Context, c Context) (bool, error),
-) error {
+func (s *Service) restack(ctx context.Context, c Context, what string, stack kernel.ULID, change func(ctx context.Context, c Context) (bool, error)) error {
 	var changed bool
 	_, err := s.write(ctx, c.Account, c.Slug, kernel.Expect{}, what, &stack,
 		func(ctx context.Context, c *Context) error {

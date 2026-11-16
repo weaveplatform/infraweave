@@ -207,12 +207,7 @@ func supersededEnumValues(t *testing.T) map[string]string {
 // kept live, that a served component schema still lists. A served schema is
 // matched to its GraphQL enum by x-graphql-type, or by its own name when it
 // has none.
-func enumViolations(
-	doc *openapi3.T,
-	deprecated map[string][]string,
-	live map[string]bool,
-	superseded map[string]string,
-) []string {
+func enumViolations(doc *openapi3.T, deprecated map[string][]string, live map[string]bool, superseded map[string]string) []string {
 	var out []string
 	for name, ref := range doc.Components.Schemas {
 		s := ref.Value
@@ -353,13 +348,7 @@ func supersededFields(t *testing.T) map[string]string {
 // served schema is matched to its GraphQL type by x-graphql-type, or by its
 // own name when it has none, and a property the rename register renames is
 // read under its reference name.
-func fieldViolations(
-	doc *openapi3.T,
-	deprecated map[string][]string,
-	live map[string]bool,
-	superseded map[string]string,
-	rows []renamed,
-) []string {
+func fieldViolations(doc *openapi3.T, deprecated map[string][]string, live map[string]bool, superseded map[string]string, rows []renamed) []string {
 	var out []string
 	for name, ref := range doc.Components.Schemas {
 		s := ref.Value

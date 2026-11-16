@@ -84,41 +84,18 @@ type AccountUsage struct {
 // org, so a row of another organization is the store's not found error.
 type Store interface {
 	Organization(ctx context.Context, id kernel.OrganizationID) (organization.Organization, error)
-	RenameOrganization(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		name string,
-		e kernel.OrganizationAuditEntry,
-	) (organization.Organization, error)
+	RenameOrganization(ctx context.Context, org kernel.OrganizationID, name string, e kernel.OrganizationAuditEntry) (organization.Organization, error)
 	// IsOrganizationAdmin reports whether the member holds the
 	// organization role.
-	IsOrganizationAdmin(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		member kernel.MemberID,
-	) (bool, error)
+	IsOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID) (bool, error)
 
 	// OrganizationAccounts are up to limit of org's accounts in ID order
 	// from the first after after.
-	OrganizationAccounts(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		after kernel.AccountID,
-		limit int,
-	) ([]account.Account, error)
-	AccountBySlug(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		slug kernel.Slug,
-	) (account.Account, error)
+	OrganizationAccounts(ctx context.Context, org kernel.OrganizationID, after kernel.AccountID, limit int) ([]account.Account, error)
+	AccountBySlug(ctx context.Context, org kernel.OrganizationID, slug kernel.Slug) (account.Account, error)
 	// CreateAccount records a, claimed, admitting admin, which must be an
 	// active member of a's organization or ErrNoAdmin.
-	CreateAccount(
-		ctx context.Context,
-		a account.Account,
-		admin kernel.MemberID,
-		e kernel.OrganizationAuditEntry,
-	) error
+	CreateAccount(ctx context.Context, a account.Account, admin kernel.MemberID, e kernel.OrganizationAuditEntry) error
 	// ClaimAccount claims the unclaimed account at, admitting admin, and
 	// returns it; a claimed one is ErrInvalidState. The admitted member
 	// takes a seat in the account, which the seats limit checks.
@@ -130,93 +107,38 @@ type Store interface {
 		at time.Time,
 		e kernel.OrganizationAuditEntry,
 	) (account.Account, error)
-	RenameAccount(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-		name string,
-		e kernel.OrganizationAuditEntry,
-	) (account.Account, error)
+	RenameAccount(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, name string, e kernel.OrganizationAuditEntry) (account.Account, error)
 	// RemoveAccount deletes the account, marked for deletion or not,
 	// revoking its live sessions, which it returns; the organization's
 	// last account is ErrInvalidState.
-	RemoveAccount(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-		e kernel.OrganizationAuditEntry,
-	) ([]kernel.ULID, error)
+	RemoveAccount(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error)
 	// Seats counts the seats in use in org and in acct.
-	Seats(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		acct kernel.AccountID,
-	) (featuresapi.Usage, error)
+	Seats(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID) (featuresapi.Usage, error)
 
 	// Members are up to limit of org's members in ID order from the first
 	// after after.
-	Members(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		after kernel.MemberID,
-		limit int,
-	) ([]Member, error)
+	Members(ctx context.Context, org kernel.OrganizationID, after kernel.MemberID, limit int) ([]Member, error)
 	Member(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID) (Member, error)
 	// DeactivateMember deactivates the member, disables its personal keys
 	// as DEPROVISIONED and revokes its sessions and theirs, which it
 	// returns.
-	DeactivateMember(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		id kernel.MemberID,
-		e kernel.OrganizationAuditEntry,
-	) ([]kernel.ULID, error)
+	DeactivateMember(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error)
 	// SetOrganizationAdmin grants the role when admin is true, by the
 	// principal by names, and revokes it otherwise; either is no change
 	// when the member already stands so.
-	SetOrganizationAdmin(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		id kernel.MemberID,
-		admin bool,
-		by string,
-		e kernel.OrganizationAuditEntry,
-	) error
+	SetOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID, admin bool, by string, e kernel.OrganizationAuditEntry) error
 
-	OrganizationKeys(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		after kernel.ULID,
-		limit int,
-	) ([]apikey.OrganizationKey, error)
-	CreateOrganizationKey(
-		ctx context.Context,
-		k apikey.OrganizationKey,
-		e kernel.OrganizationAuditEntry,
-	) error
+	OrganizationKeys(ctx context.Context, org kernel.OrganizationID, after kernel.ULID, limit int) ([]apikey.OrganizationKey, error)
+	CreateOrganizationKey(ctx context.Context, k apikey.OrganizationKey, e kernel.OrganizationAuditEntry) error
 	// DisableOrganizationKey disables the key unless it is, revokes its
 	// sessions, which it returns, and returns the key as it is now.
-	DisableOrganizationKey(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		id kernel.ULID,
-		e kernel.OrganizationAuditEntry,
-	) (apikey.OrganizationKey, []kernel.ULID, error)
+	DisableOrganizationKey(ctx context.Context, org kernel.OrganizationID, id kernel.ULID, e kernel.OrganizationAuditEntry) (apikey.OrganizationKey, []kernel.ULID, error)
 	// DeleteOrganizationKey deletes the key, revoking its sessions, and
 	// returns it as it was and the sessions.
-	DeleteOrganizationKey(
-		ctx context.Context,
-		org kernel.OrganizationID,
-		id kernel.ULID,
-		e kernel.OrganizationAuditEntry,
-	) (apikey.OrganizationKey, []kernel.ULID, error)
+	DeleteOrganizationKey(ctx context.Context, org kernel.OrganizationID, id kernel.ULID, e kernel.OrganizationAuditEntry) (apikey.OrganizationKey, []kernel.ULID, error)
 	// Record runs write, a write of another domain's rows such as an
 	// account limit, and records e, in one transaction.
-	Record(
-		ctx context.Context,
-		e kernel.OrganizationAuditEntry,
-		write func(context.Context) error,
-	) error
+	Record(ctx context.Context, e kernel.OrganizationAuditEntry, write func(context.Context) error) error
 }
 
 // Deps are what the service needs.
@@ -278,11 +200,7 @@ func (s *Service) Organization(ctx context.Context, by Actor) (organization.Orga
 
 // Rename renames the caller's organization; a name it refuses is
 // organization.ErrInvalid.
-func (s *Service) Rename(
-	ctx context.Context,
-	by Actor,
-	name string,
-) (organization.Organization, error) {
+func (s *Service) Rename(ctx context.Context, by Actor, name string) (organization.Organization, error) {
 	if err := s.admit(ctx, by); err != nil {
 		return organization.Organization{}, err
 	}
@@ -302,12 +220,7 @@ func (s *Service) Rename(
 
 // Accounts are up to limit of the organization's accounts from the first
 // after after.
-func (s *Service) Accounts(
-	ctx context.Context,
-	by Actor,
-	after kernel.AccountID,
-	limit int,
-) ([]account.Account, error) {
+func (s *Service) Accounts(ctx context.Context, by Actor, after kernel.AccountID, limit int) ([]account.Account, error) {
 	if err := s.admit(ctx, by); err != nil {
 		return nil, err
 	}
@@ -318,11 +231,7 @@ func (s *Service) Accounts(
 // CreateAccount creates an account of the organization, claimed by the
 // member admin names. Invalid input is organization.ErrInvalid, naming
 // each field, and a slug in use is the store's slug taken error.
-func (s *Service) CreateAccount(
-	ctx context.Context,
-	by Actor,
-	slug, name, admin string,
-) (account.Account, error) {
+func (s *Service) CreateAccount(ctx context.Context, by Actor, slug, name, admin string) (account.Account, error) {
 	if err := s.admit(ctx, by); err != nil {
 		return account.Account{}, err
 	}
@@ -345,11 +254,7 @@ func (s *Service) CreateAccount(
 
 // Claim claims the unclaimed account slug names for the member admin
 // names; a claimed account is ErrInvalidState.
-func (s *Service) Claim(
-	ctx context.Context,
-	by Actor,
-	slug, admin string,
-) (account.Account, error) {
+func (s *Service) Claim(ctx context.Context, by Actor, slug, admin string) (account.Account, error) {
 	a, err := s.account(ctx, by, slug)
 	if err != nil {
 		return account.Account{}, err
@@ -370,11 +275,7 @@ func (s *Service) Claim(
 }
 
 // RenameAccount renames the account slug names.
-func (s *Service) RenameAccount(
-	ctx context.Context,
-	by Actor,
-	slug, name string,
-) (account.Account, error) {
+func (s *Service) RenameAccount(ctx context.Context, by Actor, slug, name string) (account.Account, error) {
 	a, err := s.account(ctx, by, slug)
 	if err != nil {
 		return account.Account{}, err
@@ -392,11 +293,7 @@ func (s *Service) RenameAccount(
 // DeleteAccount deletes the account slug names and returns it as it was;
 // the organization's last account is ErrInvalidState. Its sessions stop
 // at once on this replica and on their invalidation on the others.
-func (s *Service) DeleteAccount(
-	ctx context.Context,
-	by Actor,
-	slug string,
-) (account.Account, error) {
+func (s *Service) DeleteAccount(ctx context.Context, by Actor, slug string) (account.Account, error) {
 	a, err := s.account(ctx, by, slug)
 	if err != nil {
 		return account.Account{}, err
@@ -428,12 +325,7 @@ func (s *Service) account(ctx context.Context, by Actor, slug string) (account.A
 
 // Members are up to limit of the organization's members from the first
 // after after.
-func (s *Service) Members(
-	ctx context.Context,
-	by Actor,
-	after kernel.MemberID,
-	limit int,
-) ([]Member, error) {
+func (s *Service) Members(ctx context.Context, by Actor, after kernel.MemberID, limit int) ([]Member, error) {
 	if err := s.admit(ctx, by); err != nil {
 		return nil, err
 	}
@@ -499,12 +391,7 @@ func (s *Service) member(ctx context.Context, by Actor, id string) (Member, erro
 
 // Keys are up to limit of the organization's keys from the first after
 // after.
-func (s *Service) Keys(
-	ctx context.Context,
-	by Actor,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.OrganizationKey, error) {
+func (s *Service) Keys(ctx context.Context, by Actor, after kernel.ULID, limit int) ([]apikey.OrganizationKey, error) {
 	if err := s.admit(ctx, by); err != nil {
 		return nil, err
 	}
@@ -516,12 +403,7 @@ func (s *Service) Keys(
 // unless it is zero, and returns it with its secret, which nothing stores.
 // A name it refuses, or an expiry not in the future, is
 // organization.ErrInvalid.
-func (s *Service) CreateKey(
-	ctx context.Context,
-	by Actor,
-	name string,
-	expires time.Time,
-) (apikey.OrganizationKey, string, error) {
+func (s *Service) CreateKey(ctx context.Context, by Actor, name string, expires time.Time) (apikey.OrganizationKey, string, error) {
 	if err := s.admit(ctx, by); err != nil {
 		return apikey.OrganizationKey{}, "", err
 	}
@@ -562,20 +444,12 @@ func (s *Service) CreateKey(
 }
 
 // DisableKey disables the key id names and returns it as it is now.
-func (s *Service) DisableKey(
-	ctx context.Context,
-	by Actor,
-	id string,
-) (apikey.OrganizationKey, error) {
+func (s *Service) DisableKey(ctx context.Context, by Actor, id string) (apikey.OrganizationKey, error) {
 	return s.endKey(ctx, by, id, ActionKeyDisable, s.d.Store.DisableOrganizationKey)
 }
 
 // DeleteKey deletes the key id names and returns it as it was.
-func (s *Service) DeleteKey(
-	ctx context.Context,
-	by Actor,
-	id string,
-) (apikey.OrganizationKey, error) {
+func (s *Service) DeleteKey(ctx context.Context, by Actor, id string) (apikey.OrganizationKey, error) {
 	return s.endKey(ctx, by, id, ActionKeyDelete, s.d.Store.DeleteOrganizationKey)
 }
 
@@ -634,12 +508,7 @@ func (s *Service) Limits(ctx context.Context, by Actor) ([]Limit, error) {
 
 // Usage is up to limit of the organization's accounts from the first
 // after after, each with its use of every limit and its own limits.
-func (s *Service) Usage(
-	ctx context.Context,
-	by Actor,
-	after kernel.AccountID,
-	limit int,
-) ([]AccountUsage, error) {
+func (s *Service) Usage(ctx context.Context, by Actor, after kernel.AccountID, limit int) ([]AccountUsage, error) {
 	accts, err := s.Accounts(ctx, by, after, limit)
 	if err != nil {
 		return nil, err
@@ -658,12 +527,7 @@ func (s *Service) Usage(
 // SetAccountLimit sets the limit named limit of the account slug names to
 // value and returns the account's usage. A value the features domain
 // refuses is a *featuresapi.AccountLimitError.
-func (s *Service) SetAccountLimit(
-	ctx context.Context,
-	by Actor,
-	slug, limit string,
-	value int64,
-) (AccountUsage, error) {
+func (s *Service) SetAccountLimit(ctx context.Context, by Actor, slug, limit string, value int64) (AccountUsage, error) {
 	return s.writeLimit(ctx, by, slug, limit, ActionLimitSet,
 		map[string]any{"limit": limit, "value": value},
 		func(ctx context.Context, a account.Account) error {
@@ -677,11 +541,7 @@ func (s *Service) SetAccountLimit(
 // ClearAccountLimit clears the limit named limit of the account slug
 // names, and returns the account's usage. A name that is no limit is a
 // *featuresapi.AccountLimitError.
-func (s *Service) ClearAccountLimit(
-	ctx context.Context,
-	by Actor,
-	slug, limit string,
-) (AccountUsage, error) {
+func (s *Service) ClearAccountLimit(ctx context.Context, by Actor, slug, limit string) (AccountUsage, error) {
 	return s.writeLimit(ctx, by, slug, limit, ActionLimitClear,
 		map[string]any{"limit": limit},
 		func(ctx context.Context, a account.Account) error {
@@ -804,13 +664,7 @@ func (a Actor) name() string {
 }
 
 // entry is the trail entry of a change to r by a.
-func (a Actor) entry(
-	org kernel.OrganizationID,
-	action, eventType string,
-	r kernel.AuditResource,
-	b json.RawMessage,
-	at time.Time,
-) kernel.OrganizationAuditEntry {
+func (a Actor) entry(org kernel.OrganizationID, action, eventType string, r kernel.AuditResource, b json.RawMessage, at time.Time) kernel.OrganizationAuditEntry {
 	return kernel.OrganizationAuditEntry{
 		OrganizationID:   org,
 		ActorKind:        a.Principal.Kind,

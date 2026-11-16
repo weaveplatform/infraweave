@@ -34,12 +34,7 @@ func (a *answerSteps) register(sc *godog.ScenarioContext) {
 
 // sized sends a JSON object of exactly size bytes, whose one member no
 // schema names, with the named token.
-func (a *answerSteps) sized(
-	ctx context.Context,
-	name, method, path string,
-	size int,
-	replica string,
-) error {
+func (a *answerSteps) sized(ctx context.Context, name, method, path string, size int, replica string) error {
 	const frame = len(`{"x":""}`)
 	if size < frame {
 		return fmt.Errorf("%w: a body of %d bytes is under %d", harness.ErrStep, size, frame)

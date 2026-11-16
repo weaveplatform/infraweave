@@ -730,12 +730,7 @@ type estimator struct{}
 
 func (estimator) EstimateSize(cost.AstNode) *cost.SizeEstimate { return nil }
 
-func (estimator) EstimateCallCost(
-	string,
-	string,
-	*cost.AstNode,
-	[]cost.AstNode,
-) *cost.CallEstimate {
+func (estimator) EstimateCallCost(string, string, *cost.AstNode, []cost.AstNode) *cost.CallEstimate {
 	return nil
 }
 
@@ -856,12 +851,7 @@ func sortRanges(a *ast.AST) {
 
 // activation is the variables of one evaluation, with random.* bound to
 // its seed, and a masker of the secrets it loads, nil when it loads none.
-func (r *Registry) activation(
-	ctx context.Context,
-	p *program,
-	env *environment,
-	in Input,
-) (interpreter.Activation, *mask.Masker, error) {
+func (r *Registry) activation(ctx context.Context, p *program, env *environment, in Input) (interpreter.Activation, *mask.Masker, error) {
 	vars := map[string]any{Now: types.Timestamp{Time: in.Now.UTC()}}
 	for name, s := range env.schemas {
 		if v, ok := in.Values[name]; ok && !env.secrets[name] {
@@ -898,11 +888,7 @@ func (r *Registry) activation(
 
 // run evaluates p's parts in order under one timeout, a template's parts
 // sharing one cost budget, and returns its value.
-func (r *Registry) run(
-	ctx context.Context,
-	p *program,
-	vars interpreter.Activation,
-) (ref.Val, error) {
+func (r *Registry) run(ctx context.Context, p *program, vars interpreter.Activation) (ref.Val, error) {
 	limited, cancel := context.WithTimeout(ctx, r.cfg.Timeout)
 	defer cancel()
 	var out strings.Builder

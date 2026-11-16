@@ -48,24 +48,13 @@ func TestUnitDomain(t *testing.T) {
 // to the zero commit.
 type sources struct{}
 
-func (sources) Source(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	kernel.ULID,
-	string,
-) (runsapi.Source, error) {
+func (sources) Source(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, string) (runsapi.Source, error) {
 	return runsapi.Source{}, nil
 }
 
 func (sources) Release(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
-func (sources) Resolve(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	string,
-) (stacksapi.Commit, error) {
+func (sources) Resolve(context.Context, kernel.AccountID, kernel.ULID, string) (stacksapi.Commit, error) {
 	return stacksapi.Commit{}, nil
 }
 

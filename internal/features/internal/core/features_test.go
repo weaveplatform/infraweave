@@ -69,9 +69,7 @@ func (s *store) DeleteOrganization(context.Context, kernel.OrganizationID) error
 	return s.err
 }
 
-func (s *store) SetAccountLimit(
-	context.Context, kernel.OrganizationID, kernel.AccountID, string, int64,
-) error {
+func (s *store) SetAccountLimit(context.Context, kernel.OrganizationID, kernel.AccountID, string, int64) error {
 	s.calls = append(s.calls, "set")
 	return s.err
 }
@@ -81,11 +79,7 @@ func (s *store) DeleteAccount(context.Context, kernel.AccountID) error {
 	return s.err
 }
 
-func (s *store) Entitlement(
-	_ context.Context,
-	_ kernel.OrganizationID,
-	lock bool,
-) (featuresapi.Entitlement, error) {
+func (s *store) Entitlement(_ context.Context, _ kernel.OrganizationID, lock bool) (featuresapi.Entitlement, error) {
 	s.locked = lock
 	s.read("entitlement")
 	if s.err != nil {
@@ -99,11 +93,7 @@ func (s *store) Entitlement(
 	return e, nil
 }
 
-func (s *store) AccountLimit(
-	_ context.Context,
-	_ kernel.AccountID,
-	limit string,
-) (int64, bool, error) {
+func (s *store) AccountLimit(_ context.Context, _ kernel.AccountID, limit string) (int64, bool, error) {
 	v, ok := s.accounts[limit]
 	return v, ok, s.accountErr
 }

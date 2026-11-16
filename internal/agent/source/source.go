@@ -68,12 +68,7 @@ func New(doer wire.HttpRequestDoer, ca []byte) *Fetcher {
 //
 // ref: decision 0008 § "The run specification and its secrets"
 // ref: decision 0012 § "Source access for runs"
-func (f *Fetcher) Fetch(
-	ctx context.Context,
-	dir string,
-	spec wire.RunSpec,
-	cred *wire.RunSpecSourceCredential,
-) error {
+func (f *Fetcher) Fetch(ctx context.Context, dir string, spec wire.RunSpec, cred *wire.RunSpecSourceCredential) error {
 	err := f.fetch(ctx, dir, spec, cred)
 	if err != nil && cred != nil && cred.Token != "" {
 		err = redacted{err: err, secret: cred.Token}
@@ -81,12 +76,7 @@ func (f *Fetcher) Fetch(
 	return err
 }
 
-func (f *Fetcher) fetch(
-	ctx context.Context,
-	dir string,
-	spec wire.RunSpec,
-	cred *wire.RunSpecSourceCredential,
-) error {
+func (f *Fetcher) fetch(ctx context.Context, dir string, spec wire.RunSpec, cred *wire.RunSpecSourceCredential) error {
 	s := spec.Source
 	u, err := url.Parse(s.Url)
 	if err != nil || u.Scheme != "https" && u.Scheme != "http" || u.Host == "" ||
@@ -117,13 +107,7 @@ func (f *Fetcher) fetch(
 // the run's user, as Fetch does. No error names src.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func (f *Fetcher) Restore(
-	ctx context.Context,
-	dir, src string,
-	pool *ecdh.PrivateKey,
-	run string,
-	spec wire.RunSpec,
-) error {
+func (f *Fetcher) Restore(ctx context.Context, dir, src string, pool *ecdh.PrivateKey, run string, spec wire.RunSpec) error {
 	u, err := url.Parse(src)
 	if err != nil || u.Scheme != "https" && u.Scheme != "http" || u.Host == "" {
 		return ErrURL

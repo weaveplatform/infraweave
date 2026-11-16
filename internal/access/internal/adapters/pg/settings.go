@@ -49,11 +49,7 @@ func (s *Store) Settings(ctx context.Context, acct kernel.AccountID) (settings.S
 // SetPersonalAPIKeys records enabled and, with disable, disables the
 // account's personal keys for ACCOUNT and revokes their sessions in the
 // same transaction.
-func (s *Store) SetPersonalAPIKeys(
-	ctx context.Context,
-	acct kernel.AccountID,
-	enabled, disable bool,
-) ([]kernel.ULID, error) {
+func (s *Store) SetPersonalAPIKeys(ctx context.Context, acct kernel.AccountID, enabled, disable bool) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		// A personal key's creation holds a share lock on the account, so
@@ -119,10 +115,7 @@ func (s *Store) NonAdminKeyManagers(ctx context.Context, acct kernel.AccountID) 
 
 // ToggleNonHumanKeyManagers flips the setting in one statement, so two
 // flips at once are two flips.
-func (s *Store) ToggleNonHumanKeyManagers(
-	ctx context.Context,
-	acct kernel.AccountID,
-) (bool, error) {
+func (s *Store) ToggleNonHumanKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error) {
 	var on bool
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `
 		INSERT INTO account_settings (account_id, api_key_non_human_managers) VALUES ($1, true)
@@ -158,11 +151,7 @@ func (s *Store) SetSurvey(ctx context.Context, acct kernel.AccountID, sv setting
 
 // ToggleDeletionMark marks the account with m, or clears its mark, in one
 // statement.
-func (s *Store) ToggleDeletionMark(
-	ctx context.Context,
-	acct kernel.AccountID,
-	m settings.Mark,
-) (bool, error) {
+func (s *Store) ToggleDeletionMark(ctx context.Context, acct kernel.AccountID, m settings.Mark) (bool, error) {
 	var marked bool
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `
 		INSERT INTO account_settings (account_id, marked_at, mark_reason, mark_description)
@@ -214,11 +203,7 @@ var deleteAccount = []string{
 // DeleteAccount deletes the account once it is marked for deletion, under
 // its organization's row lock, so it counts the organization's accounts
 // with every other deletion done.
-func (s *Store) DeleteAccount(
-	ctx context.Context,
-	acct kernel.AccountID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (s *Store) DeleteAccount(ctx context.Context, acct kernel.AccountID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	return s.removeAccount(ctx, kernel.OrganizationID{}, acct, true, settings.ErrInvalidState, e)
 }
 

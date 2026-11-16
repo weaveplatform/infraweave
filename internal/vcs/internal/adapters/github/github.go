@@ -217,12 +217,7 @@ func (p *Provider) installationOf(ctx context.Context, repo port.Repository) (ap
 // which its other calls reuse, stays unnarrowed.
 //
 // ref: decision 0012 § "Source access for runs"
-func (p *Provider) Mint(
-	ctx context.Context,
-	repo port.Repository,
-	_ string,
-	_ time.Time,
-) (port.Credential, error) {
+func (p *Provider) Mint(ctx context.Context, repo port.Repository, _ string, _ time.Time) (port.Credential, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	a, id, err := p.installationOf(ctx, repo)
@@ -249,11 +244,7 @@ func (p *Provider) Revoke(context.Context, port.Repository, string) error { retu
 
 // ResolveRef resolves ref of repo to its commit, naming the tag when ref
 // is one.
-func (p *Provider) ResolveRef(
-	ctx context.Context,
-	repo port.Repository,
-	ref string,
-) (vcsapi.Commit, error) {
+func (p *Provider) ResolveRef(ctx context.Context, repo port.Repository, ref string) (vcsapi.Commit, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, h, err := p.repo(ctx, repo)
@@ -296,11 +287,7 @@ func (p *Provider) ResolveRef(
 // ReadFile reads path at ref of repo through the raw media type, reading
 // one byte past port.MaxFileSize to tell a file at the limit from one
 // over it.
-func (p *Provider) ReadFile(
-	ctx context.Context,
-	repo port.Repository,
-	ref, path string,
-) ([]byte, error) {
+func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, ref, path string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, _, err := p.repo(ctx, repo)
@@ -336,11 +323,7 @@ func (p *Provider) ReadFile(
 // AffectedFiles lists, sorted, the paths that differ between base and
 // head of repo, a renamed file under both its names. GitHub's comparison
 // lists at most 300 files.
-func (p *Provider) AffectedFiles(
-	ctx context.Context,
-	repo port.Repository,
-	base, head string,
-) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, _, err := p.repo(ctx, repo)

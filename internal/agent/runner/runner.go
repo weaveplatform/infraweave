@@ -19,13 +19,7 @@ import (
 // launcher's SIGINTs, each a stop of the run.
 //
 // ref: decision 0008 § "The launcher and the runner"
-func Run(
-	ctx context.Context,
-	in io.Reader,
-	doer wire.HttpRequestDoer,
-	log *slog.Logger,
-	stop <-chan os.Signal,
-) error {
+func Run(ctx context.Context, in io.Reader, doer wire.HttpRequestDoer, log *slog.Logger, stop <-chan os.Signal) error {
 	h, err := handoff.Read(in)
 	if err != nil {
 		return err //nolint:wrapcheck // handoff names the read

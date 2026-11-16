@@ -671,12 +671,7 @@ func installation(r *http.Request, in *Installation) map[string]any {
 
 // paged answers the page of items the request's page and per_page name,
 // linking the next page as GitHub's Link header does.
-func paged(
-	w http.ResponseWriter,
-	r *http.Request,
-	items []map[string]any,
-	body func([]map[string]any) any,
-) {
+func paged(w http.ResponseWriter, r *http.Request, items []map[string]any, body func([]map[string]any) any) {
 	q := r.URL.Query()
 	per, err := strconv.Atoi(q.Get("per_page"))
 	if err != nil || per <= 0 {

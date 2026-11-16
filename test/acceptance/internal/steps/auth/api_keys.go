@@ -205,12 +205,7 @@ func (k *keySteps) servers(ctx context.Context) error {
 
 // call sends method to path through replica with the named token, and
 // decodes a 2xx answer into out when out is not nil.
-func (k *keySteps) call(
-	ctx context.Context,
-	replica, tok, method, path string,
-	body, out any,
-	want int,
-) (harness.Response, error) {
+func (k *keySteps) call(ctx context.Context, replica, tok, method, path string, body, out any, want int) (harness.Response, error) {
 	r, err := k.w.Do(ctx, replica, tok, method, path, body)
 	if err != nil {
 		return r, err
@@ -242,11 +237,7 @@ func (k *keySteps) key(name string) (*createdKey, error) {
 	return c, nil
 }
 
-func (k *keySteps) create(
-	ctx context.Context,
-	tok, name, team, replica string,
-	expires int64,
-) error {
+func (k *keySteps) create(ctx context.Context, tok, name, team, replica string, expires int64) error {
 	body := map[string]any{
 		"name": name, "description": "created by acceptance", "teams": []string{team},
 		"machine": true,
@@ -301,10 +292,7 @@ func (k *keySteps) noSecret(name string) error {
 }
 
 // exchangeWith trades the key id for a token with secret through replica.
-func (k *keySteps) exchangeWith(
-	ctx context.Context,
-	replica, id, secret string,
-) (harness.Response, error) {
+func (k *keySteps) exchangeWith(ctx context.Context, replica, id, secret string) (harness.Response, error) {
 	return k.w.Do(ctx, replica, "", http.MethodPost, "/api/v1/auth/token",
 		map[string]string{"id": id, "secret": secret})
 }
@@ -439,10 +427,7 @@ func (k *keySteps) update(ctx context.Context, tok, name, replica, body string) 
 	return err
 }
 
-func (k *keySteps) read(
-	ctx context.Context,
-	name, replica, tok, wantName, teams, desc string,
-) error {
+func (k *keySteps) read(ctx context.Context, name, replica, tok, wantName, teams, desc string) error {
 	c, err := k.key(name)
 	if err != nil {
 		return err
@@ -575,10 +560,7 @@ func (k *keySteps) foreign(ctx context.Context, tok, name, replica string) error
 	return nil
 }
 
-func (k *keySteps) createOIDC(
-	ctx context.Context,
-	tok, name, client, subject, claim, replica string,
-) error {
+func (k *keySteps) createOIDC(ctx context.Context, tok, name, client, subject, claim, replica string) error {
 	iss, err := k.w.Suite.Deps.OIDC()
 	if err != nil {
 		return err
@@ -617,10 +599,7 @@ func (k *keySteps) issuerToken(c *createdKey, claims map[string]any) (string, er
 	return iss.Mint(all) //nolint:wrapcheck // names itself
 }
 
-func (k *keySteps) exchangeOIDC(
-	ctx context.Context,
-	name, replica, sub, aud, roles, tok string,
-) error {
+func (k *keySteps) exchangeOIDC(ctx context.Context, name, replica, sub, aud, roles, tok string) error {
 	c, err := k.key(name)
 	if err != nil {
 		return err
@@ -672,10 +651,7 @@ func (k *keySteps) oidcRefused(ctx context.Context, replica, tok, issuer string)
 	return harness.IsProblem(r, "creating an OIDC key for "+issuer, "422", "validation-failed")
 }
 
-func (k *keySteps) sendRefused(
-	ctx context.Context,
-	method, path, replica, tok, body, code, slug string,
-) error {
+func (k *keySteps) sendRefused(ctx context.Context, method, path, replica, tok, body, code, slug string) error {
 	r, err := k.call(ctx, replica, tok, method, path, json.RawMessage(body), nil, 0)
 	if err != nil {
 		return err

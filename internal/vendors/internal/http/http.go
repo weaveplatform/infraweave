@@ -20,10 +20,7 @@ type Server struct{ catalog vendorsapi.Catalog }
 func New(catalog vendorsapi.Catalog) Server { return Server{catalog: catalog} }
 
 // TerraformVersions lists the Terraform versions, newest first.
-func (s Server) TerraformVersions(
-	ctx context.Context,
-	req api.TerraformVersionsRequestObject,
-) (api.TerraformVersionsResponseObject, error) {
+func (s Server) TerraformVersions(ctx context.Context, req api.TerraformVersionsRequestObject) (api.TerraformVersionsResponseObject, error) {
 	items, next, err := s.page(ctx, vendorsapi.Terraform, req.Params.Cursor, req.Params.Limit)
 	if err != nil {
 		return nil, err
@@ -34,10 +31,7 @@ func (s Server) TerraformVersions(
 }
 
 // OpenTofuVersions lists the OpenTofu versions, newest first.
-func (s Server) OpenTofuVersions(
-	ctx context.Context,
-	req api.OpenTofuVersionsRequestObject,
-) (api.OpenTofuVersionsResponseObject, error) {
+func (s Server) OpenTofuVersions(ctx context.Context, req api.OpenTofuVersionsRequestObject) (api.OpenTofuVersionsResponseObject, error) {
 	items, next, err := s.page(ctx, vendorsapi.OpenTofu, req.Params.Cursor, req.Params.Limit)
 	if err != nil {
 		return nil, err
@@ -49,10 +43,7 @@ func (s Server) OpenTofuVersions(
 
 // TerraformEffectiveVersion resolves the constraints to a Terraform
 // version.
-func (s Server) TerraformEffectiveVersion(
-	ctx context.Context,
-	req api.TerraformEffectiveVersionRequestObject,
-) (api.TerraformEffectiveVersionResponseObject, error) {
+func (s Server) TerraformEffectiveVersion(ctx context.Context, req api.TerraformEffectiveVersionRequestObject) (api.TerraformEffectiveVersionResponseObject, error) {
 	v, err := s.catalog.Effective(ctx, vendorsapi.Terraform, req.Params.Constraints)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // a *kernel.Invalid, or the store's read
@@ -62,10 +53,7 @@ func (s Server) TerraformEffectiveVersion(
 
 // OpenTofuEffectiveVersion resolves the constraints to an OpenTofu
 // version.
-func (s Server) OpenTofuEffectiveVersion(
-	ctx context.Context,
-	req api.OpenTofuEffectiveVersionRequestObject,
-) (api.OpenTofuEffectiveVersionResponseObject, error) {
+func (s Server) OpenTofuEffectiveVersion(ctx context.Context, req api.OpenTofuEffectiveVersionRequestObject) (api.OpenTofuEffectiveVersionResponseObject, error) {
 	v, err := s.catalog.Effective(ctx, vendorsapi.OpenTofu, req.Params.Constraints)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
@@ -77,12 +65,7 @@ func (s Server) OpenTofuEffectiveVersion(
 // next when there is one. A cursor names the last version of its page, so
 // a release published between two pages appears on neither and shifts
 // nothing.
-func (s Server) page(
-	ctx context.Context,
-	kind vendorsapi.Vendor,
-	cursor *string,
-	limit *int32,
-) ([]string, *string, error) {
+func (s Server) page(ctx context.Context, kind vendorsapi.Vendor, cursor *string, limit *int32) ([]string, *string, error) {
 	list := listOf(kind)
 	var after *version.Version
 	if cursor != nil {

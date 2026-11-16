@@ -41,10 +41,7 @@ func (s *store) AuthzData(_ context.Context, acct kernel.AccountID) (authz.Data,
 	return d, nil
 }
 
-func (s *store) AuthzVersions(
-	_ context.Context,
-	accts []kernel.AccountID,
-) (map[kernel.AccountID]int64, error) {
+func (s *store) AuthzVersions(_ context.Context, accts []kernel.AccountID) (map[kernel.AccountID]int64, error) {
 	s.reads++
 	if s.verErr != nil {
 		return nil, s.verErr

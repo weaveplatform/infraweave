@@ -292,11 +292,7 @@ func path(tool, op string) string {
 }
 
 // read pages through tool's versions with token name, n at a time.
-func (c *catalogSteps) read(
-	ctx context.Context,
-	name, tool, replica string,
-	n int,
-) ([]string, error) {
+func (c *catalogSteps) read(ctx context.Context, name, tool, replica string, n int) ([]string, error) {
 	got := []string{}
 	cursor := ""
 	for range 100 {
@@ -343,12 +339,7 @@ func (c *catalogSteps) read(
 }
 
 // lists checks tool's versions, read n at a time, against the fixture's.
-func (c *catalogSteps) lists(
-	ctx context.Context,
-	name, tool, replica string,
-	n int,
-	without string,
-) error {
+func (c *catalogSteps) lists(ctx context.Context, name, tool, replica string, n int, without string) error {
 	want, err := c.want(tool, without)
 	if err != nil {
 		return err
@@ -361,10 +352,7 @@ func (c *catalogSteps) lists(
 }
 
 // eventuallyLists waits for a refresh to list the fixture's versions.
-func (c *catalogSteps) eventuallyLists(
-	ctx context.Context,
-	name, tool, replica, without string,
-) error {
+func (c *catalogSteps) eventuallyLists(ctx context.Context, name, tool, replica, without string) error {
 	return deps.Eventually(
 		ctx,
 		tool+" versions to be listed",

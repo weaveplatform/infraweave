@@ -40,10 +40,7 @@ func (s *settingsSteps) register(sc *godog.ScenarioContext) {
 	)
 }
 
-func (s *settingsSteps) answers(
-	ctx context.Context,
-	method, path, replica, tok, raw, want string,
-) error {
+func (s *settingsSteps) answers(ctx context.Context, method, path, replica, tok, raw, want string) error {
 	r, err := s.w.Do(ctx, replica, tok, method, path, harness.Body(raw))
 	if err != nil {
 		return err
@@ -51,10 +48,7 @@ func (s *settingsSteps) answers(
 	return harness.Answered(r, method+" "+path, want)
 }
 
-func (s *settingsSteps) browserAnswers(
-	ctx context.Context,
-	method, path, replica, want string,
-) error {
+func (s *settingsSteps) browserAnswers(ctx context.Context, method, path, replica, want string) error {
 	r, err := s.w.BrowserDo(ctx, replica, method, path, harness.PublicURL, nil)
 	if err != nil {
 		return err

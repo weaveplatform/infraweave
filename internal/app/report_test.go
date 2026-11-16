@@ -56,9 +56,7 @@ func (c runCalls) post(t *testing.T, call string, body any) *httptest.ResponseRe
 }
 
 // report reports ev of state at version v and checks the answer.
-func (c runCalls) report(t *testing.T, v int64, state, ev string, action workerapi.NextStepAction,
-	next string, nextVersion int64,
-) {
+func (c runCalls) report(t *testing.T, v int64, state, ev string, action workerapi.NextStepAction, next string, nextVersion int64) {
 	t.Helper()
 	rec := c.post(t, "reports", map[string]any{"stateVersion": v, "state": state, "event": ev})
 	var step workerapi.NextStep
@@ -303,9 +301,7 @@ func sealedAs(t *testing.T, artifactKey []byte, key string, body []byte) []byte 
 // openArtifactKey fetches the run's specification and opens its sealed
 // part with the pool's private key, as a launcher does, for the artifact
 // key.
-func openArtifactKey(t *testing.T, c runCalls, key *ecdsa.PrivateKey, run string,
-	version int64,
-) []byte {
+func openArtifactKey(t *testing.T, c runCalls, key *ecdsa.PrivateKey, run string, version int64) []byte {
 	t.Helper()
 	rec := c.send(t, http.MethodGet, c.path+"/spec", nil)
 	var spec workerapi.RunSpec

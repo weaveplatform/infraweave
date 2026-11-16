@@ -29,11 +29,7 @@ const needsSource = "a retry needs the run's commit, which the stack's repositor
 // answers it. A body of no character, or of more than MaxComment, is a
 // *kernel.Invalid at /body. The route has decided RUN_COMMENT on the
 // stack's space.
-func (s *Service) Comment(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw, body string,
-) (read.Comment, error) {
+func (s *Service) Comment(ctx context.Context, p kernel.Principal, slug, raw, body string) (read.Comment, error) {
 	n := utf8.RuneCountInString(body)
 	if n == 0 || n > MaxComment {
 		reason := kernel.ReasonMaxLength
@@ -52,9 +48,7 @@ func (s *Service) Comment(
 		ID: kernel.NewULID(), Username: p.Login, Body: body,
 		At: s.d.Now().UTC().Truncate(time.Microsecond),
 	}
-	err := s.in(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack,
-		r lifecycle.Run,
-	) error {
+	err := s.in(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) error {
 		return s.d.Store.Comment(ctx, r, c) //nolint:wrapcheck // the store names the write
 	})
 	if err != nil {
@@ -77,11 +71,7 @@ type Discarded struct {
 // has decided RUN_DISCARD on the stack's space.
 //
 // ref: decision 0008 § "Who drives each transition"
-func (s *Service) DiscardAll(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, note string,
-) (Discarded, error) {
+func (s *Service) DiscardAll(ctx context.Context, p kernel.Principal, slug, note string) (Discarded, error) {
 	var waiting []lifecycle.Run
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
@@ -131,14 +121,8 @@ func (s *Service) DiscardAll(
 // needs RUN_RETRY_BLOCKING there, else a *Blocked.
 //
 // ref: decision 0008 § "The state machine is the authority"
-func (s *Service) Retry(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw string,
-) (read.View, error) {
-	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (
-		lifecycle.Run, error,
-	) {
+func (s *Service) Retry(ctx context.Context, p kernel.Principal, slug, raw string) (read.View, error) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
 		if why := read.RetryBlocker(r); why != "" {
 			return r, &Refused{Run: r.ID, State: r.State, Needs: why}
 		}
@@ -192,14 +176,8 @@ func (s *Service) resolve(ctx context.Context, r lifecycle.Run) error {
 // RUN_PROMOTE on the stack's space.
 //
 // ref: report 08 § "7. Promotion, autodeploy, autoretry and the PR loop"
-func (s *Service) Promote(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, raw string,
-) (read.View, error) {
-	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (
-		lifecycle.Run, error,
-	) {
+func (s *Service) Promote(ctx context.Context, p kernel.Principal, slug, raw string) (read.View, error) {
+	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
 		settings, err := s.d.Stacks.LockForRun(ctx, p.AccountID, st.ID)
 		if err != nil {
 			return r, err //nolint:wrapcheck // the stacks domain names the read

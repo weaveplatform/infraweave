@@ -28,12 +28,7 @@ var spacesAt = time.Date(2026, 11, 8, 9, 0, 0, 0, time.UTC)
 // a tree as its account's admin.
 type everything struct{}
 
-func (everything) Authorize(
-	context.Context,
-	kernel.Principal,
-	accessapi.Action,
-	kernel.ULID,
-) (bool, error) {
+func (everything) Authorize(context.Context, kernel.Principal, accessapi.Action, kernel.ULID) (bool, error) {
 	return true, nil
 }
 
@@ -52,12 +47,7 @@ func admin(acct kernel.AccountID) kernel.Principal {
 	return kernel.Principal{Kind: kernel.PrincipalUser, ActorID: kernel.NewULID(), AccountID: acct}
 }
 
-func (a adminTree) Create(
-	ctx context.Context,
-	acct kernel.AccountID,
-	parent string,
-	in space.Space,
-) (space.Space, error) {
+func (a adminTree) Create(ctx context.Context, acct kernel.AccountID, parent string, in space.Space) (space.Space, error) {
 	return a.svc.Create(ctx, admin(acct), parent, in)
 }
 

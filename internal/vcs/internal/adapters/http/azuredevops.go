@@ -51,10 +51,7 @@ func (s Server) AzureDevOpsRepoIntegrationCreate(
 
 // AzureDevOpsRepoIntegration answers one Azure DevOps integration, with
 // its webhook password and URL when the caller administers its space.
-func (s Server) AzureDevOpsRepoIntegration(
-	ctx context.Context,
-	req api.AzureDevOpsRepoIntegrationRequestObject,
-) (api.AzureDevOpsRepoIntegrationResponseObject, error) {
+func (s Server) AzureDevOpsRepoIntegration(ctx context.Context, req api.AzureDevOpsRepoIntegrationRequestObject) (api.AzureDevOpsRepoIntegrationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -133,10 +130,7 @@ func (s Server) AzureDevOpsRepoIntegrationDelete(
 
 // AzureDevOpsRepoIntegrationTest answers whether every check of an Azure
 // DevOps integration's connection test passes.
-func (s Server) AzureDevOpsRepoIntegrationTest(
-	ctx context.Context,
-	req api.AzureDevOpsRepoIntegrationTestRequestObject,
-) (api.AzureDevOpsRepoIntegrationTestResponseObject, error) {
+func (s Server) AzureDevOpsRepoIntegrationTest(ctx context.Context, req api.AzureDevOpsRepoIntegrationTestRequestObject) (api.AzureDevOpsRepoIntegrationTestResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -152,12 +146,7 @@ func (s Server) AzureDevOpsRepoIntegrationTest(
 
 // azureDevOps is in as the Azure DevOps operations answer it, with its
 // webhook password and URL when admin is set.
-func (s Server) azureDevOps(
-	ctx context.Context,
-	p kernel.Principal,
-	in integration.Integration,
-	admin bool,
-) (api.AzureDevOpsRepoIntegration, error) {
+func (s Server) azureDevOps(ctx context.Context, p kernel.Principal, in integration.Integration, admin bool) (api.AzureDevOpsRepoIntegration, error) {
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return api.AzureDevOpsRepoIntegration{}, err //nolint:wrapcheck // the access domain names the read
@@ -175,11 +164,7 @@ func (s Server) azureDevOps(
 // azureDevOpsView is in as the Azure DevOps operations answer it, its
 // space named by its slug in slugs, with d's webhook secret, as its
 // password, and URL when d is not nil.
-func azureDevOpsView(
-	in integration.Integration,
-	slugs map[kernel.ULID]string,
-	d *integration.Details,
-) api.AzureDevOpsRepoIntegration {
+func azureDevOpsView(in integration.Integration, slugs map[kernel.ULID]string, d *integration.Details) api.AzureDevOpsRepoIntegration {
 	labels, projects := in.Labels, in.Settings.AccessibleProjects
 	if labels == nil {
 		labels = []string{}

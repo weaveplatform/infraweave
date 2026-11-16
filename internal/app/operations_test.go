@@ -46,12 +46,7 @@ func wantTyped(t *testing.T, rec *httptest.ResponseRecorder, typ problem.Type) {
 
 // wantRefused fails unless rec is 400 invalid-request naming one field
 // error, want's pointer and reason, with a detail that begins subject.
-func wantRefused(
-	t *testing.T,
-	rec *httptest.ResponseRecorder,
-	subject string,
-	want problem.FieldError,
-) {
+func wantRefused(t *testing.T, rec *httptest.ResponseRecorder, subject string, want problem.FieldError) {
 	t.Helper()
 	wantTyped(t, rec, problem.InvalidRequest)
 	var p problem.Problem

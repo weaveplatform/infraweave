@@ -43,11 +43,7 @@ func (f *spaceTree) Spaces(context.Context, kernel.AccountID) ([]space.Space, er
 	return out, f.st.err()
 }
 
-func (f *spaceTree) Space(
-	_ context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (space.Space, error) {
+func (f *spaceTree) Space(_ context.Context, acct kernel.AccountID, slug string) (space.Space, error) {
 	if err := f.st.err(); err != nil {
 		return space.Space{}, err
 	}
@@ -95,12 +91,7 @@ func (f *spaceTree) UpdateSpace(
 
 func (*spaceTree) HoldSpace(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
-func (f *spaceTree) DeleteSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	check func(context.Context, space.Space) error,
-) error {
+func (f *spaceTree) DeleteSpace(ctx context.Context, acct kernel.AccountID, slug string, check func(context.Context, space.Space) error) error {
 	s, err := f.Space(ctx, acct, slug)
 	if err != nil {
 		return err
@@ -124,12 +115,7 @@ func (f *spaceTree) ToggleNonAdminCreation(context.Context, kernel.AccountID) (b
 // Search pages through the reachable spaces by slug, each cursor its
 // slug; it checks the input against space.Fields and applies no
 // predicate.
-func (f *spaceTree) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	reachable []kernel.ULID,
-) (search.Result[space.Space], error) {
+func (f *spaceTree) Search(ctx context.Context, acct kernel.AccountID, in search.Input, reachable []kernel.ULID) (search.Result[space.Space], error) {
 	var out search.Result[space.Space]
 	if err := search.Check(space.Fields, in); err != nil {
 		return out, err
@@ -154,12 +140,7 @@ func (f *spaceTree) Search(
 
 // Suggest counts the reachable spaces and lists their slugs as the id
 // field's values.
-func (f *spaceTree) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	reachable []kernel.ULID,
-) (search.Suggestions, error) {
+func (f *spaceTree) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, reachable []kernel.ULID) (search.Suggestions, error) {
 	if err := search.CheckSuggestions(space.Fields, in); err != nil {
 		return search.Suggestions{}, err
 	}

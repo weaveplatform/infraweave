@@ -72,11 +72,7 @@ func New(db tx.Querier, seal Sealer) *Store { return &Store{db: db, seal: seal} 
 // Blockers reads which run holds the run lock of each of acct's stacks,
 // keyed by stack ID, with the run's delta while it waits in UNCONFIRMED;
 // a stack whose lock no run holds is absent.
-func (s *Store) Blockers(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stacks []kernel.ULID,
-) (map[kernel.ULID]stacksapi.Blocker, error) {
+func (s *Store) Blockers(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]stacksapi.Blocker, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT l.stack_id, l.run_id,
 		CASE WHEN r.state = 'UNCONFIRMED' THEN r.delta END
 		FROM stack_run_locks l JOIN runs r ON r.account_id = l.account_id AND r.id = l.run_id
@@ -107,11 +103,7 @@ func (s *Store) Blockers(
 }
 
 // StackOf reads the stack of acct's run, false when acct lacks it.
-func (s *Store) StackOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	run kernel.ULID,
-) (kernel.ULID, bool, error) {
+func (s *Store) StackOf(ctx context.Context, acct kernel.AccountID, run kernel.ULID) (kernel.ULID, bool, error) {
 	var stack kernel.ULID
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT stack_id FROM runs
 		WHERE account_id = $1 AND id = $2`, acct, run).Scan(&stack)

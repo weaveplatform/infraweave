@@ -20,10 +20,7 @@ import (
 const bindingsList = "stack-role-bindings"
 
 // StackRoleBinding answers one of the account's stack role bindings.
-func (s Server) StackRoleBinding(
-	ctx context.Context,
-	req api.StackRoleBindingRequestObject,
-) (api.StackRoleBindingResponseObject, error) {
+func (s Server) StackRoleBinding(ctx context.Context, req api.StackRoleBindingRequestObject) (api.StackRoleBindingResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -38,10 +35,7 @@ func (s Server) StackRoleBinding(
 }
 
 // StackRoleBindingCreate binds a stack to a role in a space.
-func (s Server) StackRoleBindingCreate(
-	ctx context.Context,
-	req api.StackRoleBindingCreateRequestObject,
-) (api.StackRoleBindingCreateResponseObject, error) {
+func (s Server) StackRoleBindingCreate(ctx context.Context, req api.StackRoleBindingCreateRequestObject) (api.StackRoleBindingCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -55,10 +49,7 @@ func (s Server) StackRoleBindingCreate(
 
 // StackRoleBindingBatchCreate binds each stack its input names, all or
 // none.
-func (s Server) StackRoleBindingBatchCreate(
-	ctx context.Context,
-	req api.StackRoleBindingBatchCreateRequestObject,
-) (api.StackRoleBindingBatchCreateResponseObject, error) {
+func (s Server) StackRoleBindingBatchCreate(ctx context.Context, req api.StackRoleBindingBatchCreateRequestObject) (api.StackRoleBindingBatchCreateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -80,10 +71,7 @@ func (s Server) StackRoleBindingBatchCreate(
 
 // StackRoleBindingUpdate moves a stack role binding to its input's role
 // and space.
-func (s Server) StackRoleBindingUpdate(
-	ctx context.Context,
-	req api.StackRoleBindingUpdateRequestObject,
-) (api.StackRoleBindingUpdateResponseObject, error) {
+func (s Server) StackRoleBindingUpdate(ctx context.Context, req api.StackRoleBindingUpdateRequestObject) (api.StackRoleBindingUpdateResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -101,10 +89,7 @@ func (s Server) StackRoleBindingUpdate(
 
 // StackRoleBindingPatch changes the role or space its merge patch names
 // and keeps the other, writing the result as StackRoleBindingUpdate does.
-func (s Server) StackRoleBindingPatch(
-	ctx context.Context,
-	req api.StackRoleBindingPatchRequestObject,
-) (api.StackRoleBindingPatchResponseObject, error) {
+func (s Server) StackRoleBindingPatch(ctx context.Context, req api.StackRoleBindingPatchRequestObject) (api.StackRoleBindingPatchResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -137,10 +122,7 @@ func (s Server) StackRoleBindingPatch(
 
 // StackRoleBindingDelete deletes a stack role binding and answers it as
 // it was.
-func (s Server) StackRoleBindingDelete(
-	ctx context.Context,
-	req api.StackRoleBindingDeleteRequestObject,
-) (api.StackRoleBindingDeleteResponseObject, error) {
+func (s Server) StackRoleBindingDelete(ctx context.Context, req api.StackRoleBindingDeleteRequestObject) (api.StackRoleBindingDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -153,10 +135,7 @@ func (s Server) StackRoleBindingDelete(
 }
 
 // StackRoleBindings lists a stack's role bindings, by ID.
-func (s Server) StackRoleBindings(
-	ctx context.Context,
-	req api.StackRoleBindingsRequestObject,
-) (api.StackRoleBindingsResponseObject, error) {
+func (s Server) StackRoleBindings(ctx context.Context, req api.StackRoleBindingsRequestObject) (api.StackRoleBindingsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -200,10 +179,7 @@ func (s Server) StackRoleBindings(
 
 // StacksWithAccessToSpace searches the stacks a space's access view
 // lists in its mode, each with the grants that reach the space for it.
-func (s Server) StacksWithAccessToSpace(
-	ctx context.Context,
-	req api.StacksWithAccessToSpaceRequestObject,
-) (api.StacksWithAccessToSpaceResponseObject, error) {
+func (s Server) StacksWithAccessToSpace(ctx context.Context, req api.StacksWithAccessToSpaceRequestObject) (api.StacksWithAccessToSpaceResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

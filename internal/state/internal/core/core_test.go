@@ -31,12 +31,7 @@ func (c *calls) Hold(ctx context.Context, _ kernel.AccountID, id kernel.ULID) er
 	return nil
 }
 
-func (c *calls) OpenWorkspace(
-	ctx context.Context,
-	_ kernel.AccountID,
-	stack kernel.ULID,
-	name string,
-) error {
+func (c *calls) OpenWorkspace(ctx context.Context, _ kernel.AccountID, stack kernel.ULID, name string) error {
 	c.log = append(c.log, "open "+stack.String()+"/"+name+inTx(ctx))
 	return c.err
 }

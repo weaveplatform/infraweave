@@ -38,10 +38,7 @@ func (f *fakes) next(mode string) (string, error) {
 
 type fakeCredential struct{ f *fakes }
 
-func (c fakeCredential) GetToken(
-	_ context.Context,
-	o policy.TokenRequestOptions,
-) (azcore.AccessToken, error) {
+func (c fakeCredential) GetToken(_ context.Context, o policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	c.f.scopes = o.Scopes
 	tok, err := c.f.next(IAMAzure)
 	return azcore.AccessToken{Token: tok, ExpiresOn: time.Now().Add(time.Hour)}, err
@@ -69,9 +66,7 @@ func useFakes(t *testing.T) *fakes {
 	awsConfig = func(context.Context) (aws.Config, error) {
 		return aws.Config{Region: "eu-west-2", Credentials: aws.AnonymousCredentials{}}, nil
 	}
-	awsToken = func(_ context.Context, endpoint, region, user string, _ aws.CredentialsProvider,
-		_ ...func(*auth.BuildAuthTokenOptions),
-	) (string, error) {
+	awsToken = func(_ context.Context, endpoint, region, user string, _ aws.CredentialsProvider, _ ...func(*auth.BuildAuthTokenOptions)) (string, error) {
 		f.endpoint, f.region, f.user = endpoint, region, user
 		return f.next(IAMAWS)
 	}

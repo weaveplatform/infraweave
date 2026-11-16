@@ -118,20 +118,10 @@ type Store interface {
 	InSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
 	// Search reads a page of acct's integrations in the scope that in
 	// keeps.
-	Search(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.Input,
-		scope Scope,
-	) (search.Result[Integration], error)
+	Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope Scope) (search.Result[Integration], error)
 	// Suggest lists the values acct's integrations in the scope that in
 	// keeps hold.
-	Suggest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.SuggestionsInput,
-		scope Scope,
-	) (search.Suggestions, error)
+	Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope Scope) (search.Suggestions, error)
 	// Purge deletes up to batch of the deleted account acct's
 	// integrations and manifest forms; true when none is left.
 	Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error)
@@ -139,12 +129,7 @@ type Store interface {
 	OpenManifest(ctx context.Context, acct kernel.AccountID, m Manifest) error
 	// TakeManifest deletes acct's manifest form id and answers it when it
 	// has not expired at now; ErrNotFound otherwise.
-	TakeManifest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		now time.Time,
-	) (Manifest, error)
+	TakeManifest(ctx context.Context, acct kernel.AccountID, id kernel.ULID, now time.Time) (Manifest, error)
 }
 
 // Deps are what the service is constructed over: the store, the pool its
@@ -216,11 +201,7 @@ func (m *Missing) Error() string { return fmt.Sprintf("vcs: no %s %q", m.Kind, m
 // SpaceOf is the space of acct's integration id, which the access
 // domain's middleware decides an integration's operations on;
 // accessapi.ErrNoSubject when acct lacks it.
-func (s *Service) SpaceOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id string,
-) (kernel.ULID, error) {
+func (s *Service) SpaceOf(ctx context.Context, acct kernel.AccountID, id string) (kernel.ULID, error) {
 	in, err := s.get(ctx, acct, id, "")
 	if errors.Is(err, ErrNotFound) {
 		return kernel.ULID{}, accessapi.ErrNoSubject
@@ -232,11 +213,7 @@ func (s *Service) SpaceOf(
 // see its provider details, which need SPACE_ADMIN in its space. The
 // route has decided SPACE_READ there; one of another provider is
 // ErrNotFound.
-func (s *Service) Read(
-	ctx context.Context,
-	p kernel.Principal,
-	id, provider string,
-) (Integration, bool, error) {
+func (s *Service) Read(ctx context.Context, p kernel.Principal, id, provider string) (Integration, bool, error) {
 	in, err := s.get(ctx, p.AccountID, id, provider)
 	if err != nil {
 		return in, false, err
@@ -246,11 +223,7 @@ func (s *Service) Read(
 }
 
 // get reads acct's integration id, of provider when it is not empty.
-func (s *Service) get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id, provider string,
-) (Integration, error) {
+func (s *Service) get(ctx context.Context, acct kernel.AccountID, id, provider string) (Integration, error) {
 	ulid, err := kernel.ParseULID(id)
 	if err != nil {
 		return Integration{}, fmt.Errorf("%w: %s", ErrNotFound, id)
@@ -267,11 +240,7 @@ func (s *Service) get(
 
 // Search reads a page of the integrations of p's account in the spaces it
 // may read.
-func (s *Service) Search(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.Input,
-) (search.Result[Integration], error) {
+func (s *Service) Search(ctx context.Context, p kernel.Principal, in search.Input) (search.Result[Integration], error) {
 	scope, err := s.scope(ctx, p, nil)
 	if err != nil {
 		return search.Result[Integration]{}, err
@@ -286,11 +255,7 @@ func (s *Service) Search(
 
 // Suggest lists the values the integrations of p's account in the spaces
 // it may read hold, so no value or count names one p cannot read.
-func (s *Service) Suggest(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, p kernel.Principal, in search.SuggestionsInput) (search.Suggestions, error) {
 	scope, err := s.scope(ctx, p, nil)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -301,12 +266,7 @@ func (s *Service) Suggest(
 // Attachable reads a page of the integrations of provider that a stack
 // in the space slug may bind and p may read: in the space or one it
 // inherits from. A space p cannot read is a *Missing.
-func (s *Service) Attachable(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, provider string,
-	in search.Input,
-) (search.Result[Integration], error) {
+func (s *Service) Attachable(ctx context.Context, p kernel.Principal, slug, provider string, in search.Input) (search.Result[Integration], error) {
 	space, err := s.readable(ctx, p, slug)
 	if err != nil {
 		return search.Result[Integration]{}, err
@@ -335,11 +295,7 @@ func (s *Service) Attachable(
 // Test runs the Tester of the provider of p's account's integration id;
 // ErrNoTester when the provider has none. The route has decided its
 // action on the integration's space.
-func (s *Service) Test(
-	ctx context.Context,
-	p kernel.Principal,
-	id, provider string,
-) ([]port.Check, error) {
+func (s *Service) Test(ctx context.Context, p kernel.Principal, id, provider string) ([]port.Check, error) {
 	in, err := s.get(ctx, p.AccountID, id, provider)
 	if err != nil {
 		return nil, err
@@ -434,12 +390,7 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Int
 }
 
 // create is Create of the integration id.
-func (s *Service) create(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-	in Input,
-) (Integration, error) {
+func (s *Service) create(ctx context.Context, p kernel.Principal, id kernel.ULID, in Input) (Integration, error) {
 	if err := s.check(in, true); err != nil {
 		return Integration{}, err
 	}
@@ -507,13 +458,7 @@ func apply(out *Integration, in Input, now time.Time) {
 // decided SPACE_ADMIN on its space. A space other than the integration's
 // is refused at space: moving one could leave a bound stack out of its
 // reach.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	expect kernel.Expect,
-	in Input,
-) (Integration, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, in Input) (Integration, error) {
 	if err := s.check(in, false); err != nil {
 		return Integration{}, err
 	}
@@ -553,11 +498,7 @@ func (s *Service) Update(
 // Delete deletes p's account's integration id of provider and detaches
 // every stack bound to it, in one transaction, answering it as it was.
 // The route has decided SPACE_ADMIN on its space.
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	id, provider string,
-) (Integration, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, id, provider string) (Integration, error) {
 	var out Integration
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		var err error
@@ -573,11 +514,7 @@ func (s *Service) Delete(
 }
 
 // locked reads acct's integration id of provider FOR UPDATE.
-func (s *Service) locked(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id, provider string,
-) (Integration, error) {
+func (s *Service) locked(ctx context.Context, acct kernel.AccountID, id, provider string) (Integration, error) {
 	ulid, err := kernel.ParseULID(id)
 	if err != nil {
 		return Integration{}, fmt.Errorf("%w: %s", ErrNotFound, id)
@@ -593,13 +530,7 @@ func (s *Service) locked(
 }
 
 // Bindable implements stacksapi.StackIntegrations.
-func (s *Service) Bindable(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	provider string,
-	id kernel.ULID,
-) error {
+func (s *Service) Bindable(ctx context.Context, acct kernel.AccountID, space kernel.ULID, provider string, id kernel.ULID) error {
 	in, err := s.store.Get(ctx, acct, id, false)
 	if errors.Is(err, ErrNotFound) || err == nil && in.Provider != provider {
 		return fmt.Errorf("%w: %s %s", stacksapi.ErrNoIntegration, provider, id)
@@ -623,12 +554,7 @@ func (s *Service) Bindable(
 // and for a provider infraweave stores no integrations of, such as raw
 // Git, without a read. A built-in provider's stack uses the operator's
 // integration, whose row holds only the account's check options.
-func (s *Service) Use(
-	ctx context.Context,
-	acct kernel.AccountID,
-	provider string,
-	id *kernel.ULID,
-) (port.Integration, bool, error) {
+func (s *Service) Use(ctx context.Context, acct kernel.AccountID, provider string, id *kernel.ULID) (port.Integration, bool, error) {
 	if use, ok := s.builtin[provider]; ok {
 		return use, true, nil
 	}
@@ -672,11 +598,7 @@ func (s *Service) Purge(ctx context.Context, acct kernel.AccountID, batch int) (
 
 // scope is what p's searches see: the spaces it may read and its
 // account's tree, read unless tree is given.
-func (s *Service) scope(
-	ctx context.Context,
-	p kernel.Principal,
-	tree []accessapi.SpaceNode,
-) (Scope, error) {
+func (s *Service) scope(ctx context.Context, p kernel.Principal, tree []accessapi.SpaceNode) (Scope, error) {
 	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
 	if err != nil {
 		return Scope{}, err //nolint:wrapcheck // the snapshot's read names itself
@@ -691,11 +613,7 @@ func (s *Service) scope(
 
 // readable is the ID of the space slug, the top space when it is empty,
 // when p may read it; a *Missing otherwise.
-func (s *Service) readable(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-) (kernel.ULID, error) {
+func (s *Service) readable(ctx context.Context, p kernel.Principal, slug string) (kernel.ULID, error) {
 	id := p.AccountID.ULID
 	if slug != "" {
 		var err error
@@ -741,11 +659,7 @@ func (s *Service) SpaceGuard() SpaceGuard { return SpaceGuard{s} }
 
 // SpaceInUse reports whether an integration lives in space, which
 // refuses its deletion.
-func (g SpaceGuard) SpaceInUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (g SpaceGuard) SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	return g.s.store.InSpace(ctx, acct, space) //nolint:wrapcheck // the store names the read
 }
 

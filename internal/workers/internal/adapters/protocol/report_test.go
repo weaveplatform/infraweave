@@ -23,9 +23,7 @@ type reports struct {
 	err     error
 }
 
-func (r *reports) Report(_ context.Context, _ kernel.ULID,
-	rep workersapi.Report,
-) (workersapi.Step, error) {
+func (r *reports) Report(_ context.Context, _ kernel.ULID, rep workersapi.Report) (workersapi.Step, error) {
 	r.report = rep
 	return workersapi.Step{
 		Action: workersapi.ActionExecute, State: kernel.RunStatePlanning,
@@ -33,9 +31,7 @@ func (r *reports) Report(_ context.Context, _ kernel.ULID,
 	}, r.err
 }
 
-func (r *reports) Uploads(_ context.Context, _ kernel.ULID, v int64,
-	u []workersapi.Upload,
-) ([]workersapi.SignedUpload, error) {
+func (r *reports) Uploads(_ context.Context, _ kernel.ULID, v int64, u []workersapi.Upload) ([]workersapi.SignedUpload, error) {
 	r.version, r.uploads = v, u
 	return []workersapi.SignedUpload{{
 		Kind: u[0].Kind, Name: u[0].Name, Key: "a/r/PLANNING-4/0", URL: "https://store.test/put",
@@ -43,16 +39,12 @@ func (r *reports) Uploads(_ context.Context, _ kernel.ULID, v int64,
 	}}, r.err
 }
 
-func (r *reports) LogChunks(_ context.Context, _ kernel.ULID, v int64,
-	c []workersapi.LogChunk,
-) error {
+func (r *reports) LogChunks(_ context.Context, _ kernel.ULID, v int64, c []workersapi.LogChunk) error {
 	r.version, r.chunks = v, c
 	return r.err
 }
 
-func (r *reports) Artifacts(_ context.Context, _ kernel.ULID, v int64,
-	rec []workersapi.Recorded,
-) error {
+func (r *reports) Artifacts(_ context.Context, _ kernel.ULID, v int64, rec []workersapi.Recorded) error {
 	r.version, r.recs = v, rec
 	return r.err
 }

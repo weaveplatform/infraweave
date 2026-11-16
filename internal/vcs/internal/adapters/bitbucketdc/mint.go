@@ -18,12 +18,7 @@ import (
 // REPO_READ, expiring after the whole days until expires, one at least,
 // as Bitbucket counts a token's life in days. A token that does not
 // administer repo mints none, port.ErrCannotMint.
-func (p *Provider) Mint(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-	expires time.Time,
-) (port.Credential, error) {
+func (p *Provider) Mint(ctx context.Context, repo port.Repository, name string, expires time.Time) (port.Credential, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)

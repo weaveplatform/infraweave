@@ -174,13 +174,7 @@ func repoPath(repo port.Repository) (string, error) {
 
 // get sends a GET of rel, an escaped path under in's REST API, with q as
 // in's token, and answers a 2xx response, classifying any other.
-func (p *Provider) get(
-	ctx context.Context,
-	in port.Integration,
-	rel string,
-	q url.Values,
-	what string,
-) (*http.Response, error) {
+func (p *Provider) get(ctx context.Context, in port.Integration, rel string, q url.Values, what string) (*http.Response, error) {
 	resp, err := p.send(ctx, in, http.MethodGet, API+rel, q, nil, what)
 	if err != nil {
 		return nil, err
@@ -195,14 +189,7 @@ func (p *Provider) get(
 // send sends method to rel, an escaped path below in's host's context
 // path, with q, and body as JSON when it is not nil, as in's token, and
 // answers the response whatever its status.
-func (p *Provider) send(
-	ctx context.Context,
-	in port.Integration,
-	method, rel string,
-	q url.Values,
-	body any,
-	what string,
-) (*http.Response, error) {
+func (p *Provider) send(ctx context.Context, in port.Integration, method, rel string, q url.Values, body any, what string) (*http.Response, error) {
 	h, err := hostOf(in.Settings)
 	if err != nil {
 		return nil, err
@@ -245,14 +232,7 @@ func (p *Provider) send(
 }
 
 // decode GETs rel with q into v.
-func (p *Provider) decode(
-	ctx context.Context,
-	in port.Integration,
-	rel string,
-	q url.Values,
-	what string,
-	v any,
-) error {
+func (p *Provider) decode(ctx context.Context, in port.Integration, rel string, q url.Values, what string, v any) error {
 	resp, err := p.get(ctx, in, rel, q, what)
 	if err != nil {
 		return err
@@ -273,14 +253,7 @@ type page[T any] struct {
 
 // all collects every page of the list at rel with q, each page starting
 // where the last one says the next does, which must be further on.
-func all[T any](
-	ctx context.Context,
-	p *Provider,
-	in port.Integration,
-	rel string,
-	q url.Values,
-	what string,
-) ([]T, error) {
+func all[T any](ctx context.Context, p *Provider, in port.Integration, rel string, q url.Values, what string) ([]T, error) {
 	q.Set("limit", limit)
 	var out []T
 	for start := 0; ; {
@@ -342,21 +315,13 @@ func out(h host, repo port.Repository, c commit) vcsapi.Commit {
 // ResolveRef resolves ref of repo to its commit: a branch, then a tag,
 // which it names, then a SHA or its prefix, as Bitbucket's commit route
 // resolves one.
-func (p *Provider) ResolveRef(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-) (vcsapi.Commit, error) {
+func (p *Provider) ResolveRef(ctx context.Context, repo port.Repository, name string) (vcsapi.Commit, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	return p.resolve(ctx, repo, name)
 }
 
-func (p *Provider) resolve(
-	ctx context.Context,
-	repo port.Repository,
-	name string,
-) (vcsapi.Commit, error) {
+func (p *Provider) resolve(ctx context.Context, repo port.Repository, name string) (vcsapi.Commit, error) {
 	rp, err := repoPath(repo)
 	if err != nil {
 		return vcsapi.Commit{}, err
@@ -410,11 +375,7 @@ func (p *Provider) resolve(
 
 // ReadFile reads path at ref of repo, resolving a ref that is not a full
 // SHA first, so a ref names the same commit ResolveRef does.
-func (p *Provider) ReadFile(
-	ctx context.Context,
-	repo port.Repository,
-	name, file string,
-) ([]byte, error) {
+func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, name, file string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
@@ -449,11 +410,7 @@ func (p *Provider) ReadFile(
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a moved file under both its names, from
 // Bitbucket's compare, which compares from head to base.
-func (p *Provider) AffectedFiles(
-	ctx context.Context,
-	repo port.Repository,
-	base, head string,
-) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
@@ -499,11 +456,7 @@ func (p *Provider) SourceURL(repo port.Repository, _ string) string {
 
 // repositories lists, sorted, the repositories in's user holds permission
 // on, REPO_READ or REPO_ADMIN, each by its project's key and its slug.
-func (p *Provider) repositories(
-	ctx context.Context,
-	in port.Integration,
-	permission string,
-) ([]port.Listed, error) {
+func (p *Provider) repositories(ctx context.Context, in port.Integration, permission string) ([]port.Listed, error) {
 	rs, err := all[struct {
 		Slug    string `json:"slug"`
 		Project struct {

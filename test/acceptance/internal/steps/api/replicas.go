@@ -63,12 +63,7 @@ func (s *servedSteps) registerReplicas(sc *godog.ScenarioContext) {
 
 // twoReplicasWithBudget starts the scenario's two servers with class's
 // budget set. A burst of 0 keeps the default budgets.
-func (s *servedSteps) twoReplicasWithBudget(
-	ctx context.Context,
-	class string,
-	burst int,
-	rate string,
-) error {
+func (s *servedSteps) twoReplicasWithBudget(ctx context.Context, class string, burst int, rate string) error {
 	var rateLimit map[string]any
 	if burst > 0 {
 		r, err := strconv.ParseFloat(rate, 64)
@@ -85,10 +80,7 @@ func (s *servedSteps) twoReplicasWithBudget(
 	return nil
 }
 
-func (s *servedSteps) throughAnswers(
-	ctx context.Context,
-	method, path, name, code, slug string,
-) error {
+func (s *servedSteps) throughAnswers(ctx context.Context, method, path, name, code, slug string) error {
 	resp, err := s.w.SendThrough(ctx, name, method, path, nil)
 	if err != nil {
 		return err
@@ -98,10 +90,7 @@ func (s *servedSteps) throughAnswers(
 
 // throughEventually waits for a replica to answer as a change in the
 // database says it should, which reaches it through a notification.
-func (s *servedSteps) throughEventually(
-	ctx context.Context,
-	method, path, name, code, slug string,
-) error {
+func (s *servedSteps) throughEventually(ctx context.Context, method, path, name, code, slug string) error {
 	return deps.Eventually(ctx, method+" "+path+" through "+name+" to answer "+code,
 		func(ctx context.Context) (bool, error) {
 			resp, err := s.w.SendThrough(ctx, name, method, path, nil)
@@ -188,10 +177,7 @@ VALUES (%s, %s, %s, 'in_flight', now() + interval '1 hour', now(), now() + inter
 	return err
 }
 
-func (s *servedSteps) keyed(
-	ctx context.Context,
-	name, path, body, key string,
-) (harness.Response, error) {
+func (s *servedSteps) keyed(ctx context.Context, name, path, body, key string) (harness.Response, error) {
 	return s.w.SendThrough(ctx, name, http.MethodPost, path, json.RawMessage(body),
 		sdk.Header{Name: sdk.IdempotencyKeyHeader, Value: key})
 }
@@ -209,10 +195,7 @@ func (s *servedSteps) replays(ctx context.Context, path, body, key, name string,
 	return nil
 }
 
-func (s *servedSteps) keyedAnswers(
-	ctx context.Context,
-	path, body, key, name, code, slug string,
-) error {
+func (s *servedSteps) keyedAnswers(ctx context.Context, path, body, key, name, code, slug string) error {
 	resp, err := s.keyed(ctx, name, path, body, key)
 	if err != nil {
 		return err

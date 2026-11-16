@@ -92,11 +92,7 @@ func (s *Store) ArtifactKey(ctx context.Context, run lifecycle.Run) (crypt.Value
 }
 
 // SetOverrides seals ovs, run's environment overrides, to its row.
-func (s *Store) SetOverrides(
-	ctx context.Context,
-	run lifecycle.Run,
-	ovs []lifecycle.Override,
-) error {
+func (s *Store) SetOverrides(ctx context.Context, run lifecycle.Run, ovs []lifecycle.Override) error {
 	// Strings alone, so never an error.
 	doc, _ := json.Marshal(ovs)
 	pk := []string{run.Account.UUID(), run.ID.UUID()}

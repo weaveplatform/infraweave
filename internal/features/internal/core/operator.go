@@ -215,11 +215,7 @@ func (s *Service) BillingState(ctx context.Context) (Billing, error) {
 
 // SetBilling sets the switch and, when defaultTier is not nil, the
 // default tier.
-func (s *Service) SetBilling(
-	ctx context.Context,
-	enabled bool,
-	defaultTier *string,
-) (Billing, error) {
+func (s *Service) SetBilling(ctx context.Context, enabled bool, defaultTier *string) (Billing, error) {
 	if err := s.store.SetBilling(ctx, enabled, defaultTier); err != nil {
 		return Billing{}, unknownTier(err) //nolint:wrapcheck // as above
 	}
@@ -237,10 +233,7 @@ func unknownTier(err error) error {
 
 // OrganizationEntitlement is org's entitlement as it applies while billing
 // is on, with its grants.
-func (s *Service) OrganizationEntitlement(
-	ctx context.Context,
-	org kernel.OrganizationID,
-) (Operated, error) {
+func (s *Service) OrganizationEntitlement(ctx context.Context, org kernel.OrganizationID) (Operated, error) {
 	e, err := s.store.Entitlement(ctx, org, false)
 	if err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
@@ -254,11 +247,7 @@ func (s *Service) OrganizationEntitlement(
 }
 
 // SetTier moves org to tier.
-func (s *Service) SetTier(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	tier string,
-) (Operated, error) {
+func (s *Service) SetTier(ctx context.Context, org kernel.OrganizationID, tier string) (Operated, error) {
 	if err := s.store.SetTier(ctx, org, tier); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}
@@ -266,11 +255,7 @@ func (s *Service) SetTier(
 }
 
 // GrantFeature grants org feature, a capability or option.
-func (s *Service) GrantFeature(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	feature string,
-) (Operated, error) {
+func (s *Service) GrantFeature(ctx context.Context, org kernel.OrganizationID, feature string) (Operated, error) {
 	if f, ok := features.Lookup(feature); !ok || !f.Gated() {
 		return Operated{}, fmt.Errorf("%w: %q is not a capability or option", ErrInvalid, feature)
 	}
@@ -281,11 +266,7 @@ func (s *Service) GrantFeature(
 }
 
 // RevokeFeature removes org's grant of feature.
-func (s *Service) RevokeFeature(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	feature string,
-) (Operated, error) {
+func (s *Service) RevokeFeature(ctx context.Context, org kernel.OrganizationID, feature string) (Operated, error) {
 	if err := s.store.RevokeFeature(ctx, org, feature); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}
@@ -293,12 +274,7 @@ func (s *Service) RevokeFeature(
 }
 
 // GrantLimit sets org's value of limit, nil lifting it.
-func (s *Service) GrantLimit(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	limit string,
-	value *int64,
-) (Operated, error) {
+func (s *Service) GrantLimit(ctx context.Context, org kernel.OrganizationID, limit string, value *int64) (Operated, error) {
 	if err := checkLimit("limit", limit); err != nil {
 		return Operated{}, err
 	}
@@ -312,11 +288,7 @@ func (s *Service) GrantLimit(
 }
 
 // RevokeLimit removes org's grant of limit, so the tier's value applies.
-func (s *Service) RevokeLimit(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	limit string,
-) (Operated, error) {
+func (s *Service) RevokeLimit(ctx context.Context, org kernel.OrganizationID, limit string) (Operated, error) {
 	if err := s.store.RevokeLimit(ctx, org, limit); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}

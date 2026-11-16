@@ -33,11 +33,7 @@ var (
 	_ holder.Evaluator = (*heldBook)(nil)
 )
 
-func (h *heldBook) Candidates(
-	_ context.Context,
-	_ kernel.AccountID,
-	list holder.List,
-) ([]holder.Candidate, error) {
+func (h *heldBook) Candidates(_ context.Context, _ kernel.AccountID, list holder.List) ([]holder.Candidate, error) {
 	if h.down {
 		return nil, errDown
 	}
@@ -48,13 +44,7 @@ func (h *heldBook) Candidates(
 	return out, nil
 }
 
-func (h *heldBook) SearchHolders(
-	_ context.Context,
-	_ kernel.AccountID,
-	list holder.List,
-	_ search.Input,
-	_ []kernel.ULID,
-) (search.Result[holder.Row], error) {
+func (h *heldBook) SearchHolders(_ context.Context, _ kernel.AccountID, list holder.List, _ search.Input, _ []kernel.ULID) (search.Result[holder.Row], error) {
 	var out search.Result[holder.Row]
 	for _, r := range h.rows[list] {
 		out.Edges = append(out.Edges, search.Edge[holder.Row]{Cursor: r.ID.String(), Node: r})
@@ -62,33 +52,18 @@ func (h *heldBook) SearchHolders(
 	return out, nil
 }
 
-func (h *heldBook) SuggestHolders(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ holder.List,
-	_ search.SuggestionsInput,
-	ids []kernel.ULID,
-) (search.Suggestions, error) {
+func (h *heldBook) SuggestHolders(_ context.Context, _ kernel.AccountID, _ holder.List, _ search.SuggestionsInput, ids []kernel.ULID) (search.Suggestions, error) {
 	if h.down {
 		return search.Suggestions{}, errDown
 	}
 	return search.Suggestions{Count: len(ids)}, nil
 }
 
-func (h *heldBook) HolderGroups(
-	context.Context,
-	kernel.AccountID,
-	[]kernel.ULID,
-) ([]holder.Row, error) {
+func (h *heldBook) HolderGroups(context.Context, kernel.AccountID, []kernel.ULID) ([]holder.Row, error) {
 	return h.groups, nil
 }
 
-func (h *heldBook) Holders(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	...binding.ActorKind,
-) ([]authz.Holder, error) {
+func (h *heldBook) Holders(context.Context, kernel.AccountID, kernel.ULID, ...binding.ActorKind) ([]authz.Holder, error) {
 	out := make([]authz.Holder, 0, len(h.rows[holder.Groups]))
 	for _, r := range h.rows[holder.Groups] {
 		out = append(out, authz.Holder{ID: r.ID, Grants: h.grants[r.ID]})
@@ -96,12 +71,7 @@ func (h *heldBook) Holders(
 	return out, nil
 }
 
-func (h *heldBook) ExplainEach(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ kernel.ULID,
-	whos []authz.Who,
-) ([][]authz.Grant, error) {
+func (h *heldBook) ExplainEach(_ context.Context, _ kernel.AccountID, _ kernel.ULID, whos []authz.Who) ([][]authz.Grant, error) {
 	out := make([][]authz.Grant, len(whos))
 	for i, w := range whos {
 		out[i] = h.grants[w.Actor]

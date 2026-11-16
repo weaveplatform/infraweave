@@ -23,12 +23,7 @@ import (
 var _ orgadmin.Store = (*Store)(nil)
 
 // RenameOrganization renames the organization org and records e.
-func (s *Store) RenameOrganization(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	name string,
-	e kernel.OrganizationAuditEntry,
-) (organization.Organization, error) {
+func (s *Store) RenameOrganization(ctx context.Context, org kernel.OrganizationID, name string, e kernel.OrganizationAuditEntry) (organization.Organization, error) {
 	var o organization.Organization
 	err := s.record(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		return read(q.QueryRow(ctx, `UPDATE organizations SET name = $2 WHERE id = $1
@@ -43,11 +38,7 @@ func (s *Store) RenameOrganization(
 
 // IsOrganizationAdmin reports whether the member holds organization-admin
 // in org.
-func (s *Store) IsOrganizationAdmin(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	member kernel.MemberID,
-) (bool, error) {
+func (s *Store) IsOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID) (bool, error) {
 	var ok bool
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM organization_admins
 		WHERE organization_id = $1 AND member_id = $2)`, org, member).Scan(&ok); err != nil {
@@ -73,12 +64,7 @@ func scanAccount(r pgx.Row) (account.Account, error) {
 
 // OrganizationAccounts are up to limit of org's accounts in ID order from
 // the first after after.
-func (s *Store) OrganizationAccounts(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	after kernel.AccountID,
-	limit int,
-) ([]account.Account, error) {
+func (s *Store) OrganizationAccounts(ctx context.Context, org kernel.OrganizationID, after kernel.AccountID, limit int) ([]account.Account, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+accountColumns+` FROM accounts
 		WHERE organization_id = $1 AND ($2::uuid IS NULL OR id > $2) ORDER BY id LIMIT $3`,
 		org, after, limit)
@@ -96,11 +82,7 @@ func (s *Store) OrganizationAccounts(
 
 // AccountBySlug reads org's account slug; another organization's is not
 // found.
-func (s *Store) AccountBySlug(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	slug kernel.Slug,
-) (account.Account, error) {
+func (s *Store) AccountBySlug(ctx context.Context, org kernel.OrganizationID, slug kernel.Slug) (account.Account, error) {
 	a, err := scanAccount(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+accountColumns+`
 		FROM accounts WHERE organization_id = $1 AND slug = $2`, org, slug))
 	return a, read(err, "account", slug)
@@ -109,12 +91,7 @@ func (s *Store) AccountBySlug(
 // CreateAccount records a, claimed, admitting admin with space-admin on its
 // top space, and records e, in one transaction. The seats limit checks the
 // admission.
-func (s *Store) CreateAccount(
-	ctx context.Context,
-	a account.Account,
-	admin kernel.MemberID,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *Store) CreateAccount(ctx context.Context, a account.Account, admin kernel.MemberID, e kernel.OrganizationAuditEntry) error {
 	err := s.record(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		if _, err := q.Exec(ctx, `INSERT INTO accounts (organization_id, id, slug, name,
 				claimed_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -180,13 +157,7 @@ func (s *Store) ClaimAccount(
 // admit admits the member admin to org's account acct. The member must be
 // active in org, or orgadmin.ErrNoAdmin, and with the features domain held
 // the admission's seat is checked against the seats limit.
-func (s *Store) admit(
-	ctx context.Context,
-	q tx.Querier,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	admin kernel.MemberID,
-) error {
+func (s *Store) admit(ctx context.Context, q tx.Querier, org kernel.OrganizationID, acct kernel.AccountID, admin kernel.MemberID) error {
 	var seated bool
 	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM account_users
 			WHERE organization_id = $1 AND member_id = $2)
@@ -211,12 +182,7 @@ func (s *Store) admit(
 // checkSeat checks the seat admitting a member to acct takes against the
 // seats limit while the features domain is held; seated is whether
 // another account of org admits the member already.
-func (s *Store) checkSeat(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	seated bool,
-) error {
+func (s *Store) checkSeat(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, seated bool) error {
 	if s.features == nil {
 		return nil
 	}
@@ -235,13 +201,7 @@ func (s *Store) checkSeat(
 }
 
 // RenameAccount renames org's account acct and records e.
-func (s *Store) RenameAccount(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	name string,
-	e kernel.OrganizationAuditEntry,
-) (account.Account, error) {
+func (s *Store) RenameAccount(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, name string, e kernel.OrganizationAuditEntry) (account.Account, error) {
 	var a account.Account
 	err := s.record(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		var err error
@@ -257,12 +217,7 @@ func (s *Store) RenameAccount(
 
 // RemoveAccount deletes org's account acct whether or not it is marked for
 // deletion; the organization's last account is orgadmin.ErrInvalidState.
-func (s *Store) RemoveAccount(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (s *Store) RemoveAccount(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	return s.removeAccount(ctx, org, acct, false, orgadmin.ErrInvalidState, e)
 }
 
@@ -280,12 +235,7 @@ func scanMember(r pgx.Row) (orgadmin.Member, error) {
 
 // Members are up to limit of org's members in ID order from the first
 // after after.
-func (s *Store) Members(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	after kernel.MemberID,
-	limit int,
-) ([]orgadmin.Member, error) {
+func (s *Store) Members(ctx context.Context, org kernel.OrganizationID, after kernel.MemberID, limit int) ([]orgadmin.Member, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+memberColumns+` FROM members m
 		WHERE m.organization_id = $1 AND ($2::uuid IS NULL OR m.id > $2)
 		ORDER BY m.id LIMIT $3`, org, after, limit)
@@ -302,11 +252,7 @@ func (s *Store) Members(
 }
 
 // Member reads org's member id.
-func (s *Store) Member(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	id kernel.MemberID,
-) (orgadmin.Member, error) {
+func (s *Store) Member(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID) (orgadmin.Member, error) {
 	m, err := scanMember(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+memberColumns+`
 		FROM members m WHERE m.organization_id = $1 AND m.id = $2`, org, id))
 	return m, read(err, "member", id.ULID)
@@ -315,12 +261,7 @@ func (s *Store) Member(
 // DeactivateMember deactivates org's member id, disables its personal keys
 // as DEPROVISIONED, revokes its sessions and those keys', and records e,
 // in one transaction. It returns the revoked sessions.
-func (s *Store) DeactivateMember(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	id kernel.MemberID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (s *Store) DeactivateMember(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := s.record(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		tag, err := q.Exec(ctx, `UPDATE members SET status = 'deactivated'
@@ -356,14 +297,7 @@ func (s *Store) DeactivateMember(
 
 // SetOrganizationAdmin grants org's member id organization-admin, by the
 // principal by names, or revokes it, and records e, in one transaction.
-func (s *Store) SetOrganizationAdmin(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	id kernel.MemberID,
-	admin bool,
-	by string,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *Store) SetOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID, admin bool, by string, e kernel.OrganizationAuditEntry) error {
 	err := s.record(ctx, e, func(ctx context.Context, q tx.Querier) error {
 		var exists bool
 		if err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM members
@@ -419,12 +353,7 @@ func scanOrgKey(r pgx.Row) (apikey.OrganizationKey, error) {
 
 // OrganizationKeys are up to limit of org's keys in ID order from the
 // first after after.
-func (s *Store) OrganizationKeys(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	after kernel.ULID,
-	limit int,
-) ([]apikey.OrganizationKey, error) {
+func (s *Store) OrganizationKeys(ctx context.Context, org kernel.OrganizationID, after kernel.ULID, limit int) ([]apikey.OrganizationKey, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+orgKeyColumns+` FROM organization_keys
 		WHERE organization_id = $1 AND ($2::uuid IS NULL OR id > $2) ORDER BY id LIMIT $3`,
 		org, after, limit)
@@ -442,10 +371,7 @@ func (s *Store) OrganizationKeys(
 
 // OrganizationKey reads the organization key id, whatever its
 // organization, as the exchange must before it knows the organization.
-func (s *Store) OrganizationKey(
-	ctx context.Context,
-	id kernel.ULID,
-) (apikey.OrganizationKey, error) {
+func (s *Store) OrganizationKey(ctx context.Context, id kernel.ULID) (apikey.OrganizationKey, error) {
 	k, err := scanOrgKey(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+orgKeyColumns+`
 		FROM organization_keys WHERE id = $1`, id))
 	return k, read(err, "organization key", id)
@@ -464,11 +390,7 @@ func (s *Store) TouchOrganizationKey(ctx context.Context, id kernel.ULID) error 
 }
 
 // CreateOrganizationKey inserts k and records e.
-func (s *Store) CreateOrganizationKey(
-	ctx context.Context,
-	k apikey.OrganizationKey,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (s *Store) CreateOrganizationKey(ctx context.Context, k apikey.OrganizationKey, e kernel.OrganizationAuditEntry) error {
 	var creator *kernel.MemberID
 	if !k.CreatorMemberID.IsZero() {
 		creator = &k.CreatorMemberID
@@ -544,20 +466,12 @@ func (s *Store) endOrgKey(
 }
 
 // Record runs write and records e in one transaction.
-func (s *Store) Record(
-	ctx context.Context,
-	e kernel.OrganizationAuditEntry,
-	write func(context.Context) error,
-) error {
+func (s *Store) Record(ctx context.Context, e kernel.OrganizationAuditEntry, write func(context.Context) error) error {
 	return s.record(ctx, e, func(ctx context.Context, _ tx.Querier) error { return write(ctx) })
 }
 
 // record runs write, then records e, in one transaction.
-func (s *Store) record(
-	ctx context.Context,
-	e kernel.OrganizationAuditEntry,
-	write func(context.Context, tx.Querier) error,
-) error {
+func (s *Store) record(ctx context.Context, e kernel.OrganizationAuditEntry, write func(context.Context, tx.Querier) error) error {
 	//nolint:wrapcheck // the write and the trail name themselves
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		if err := write(ctx, tx.Q(ctx, s.db)); err != nil {

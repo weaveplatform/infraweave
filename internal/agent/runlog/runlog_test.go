@@ -309,9 +309,7 @@ func TestUnitLogGivesUp(t *testing.T) {
 // noURL answers each declaration with no upload URL.
 type noURL struct{ API }
 
-func (noURL) UploadURLs(context.Context, string, string, wire.UploadURLsRequest) (
-	[]wire.SignedUpload, error,
-) {
+func (noURL) UploadURLs(context.Context, string, string, wire.UploadURLsRequest) ([]wire.SignedUpload, error) {
 	return nil, nil
 }
 

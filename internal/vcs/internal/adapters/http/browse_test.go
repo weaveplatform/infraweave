@@ -49,34 +49,21 @@ type users struct {
 	fail error
 }
 
-func (u *users) SearchUsers(
-	_ context.Context,
-	_ kernel.Principal,
-	use stacksapi.Use,
-	_ search.Input,
-) (search.Result[stacksapi.Stack], error) {
+func (u *users) SearchUsers(_ context.Context, _ kernel.Principal, use stacksapi.Use, _ search.Input) (search.Result[stacksapi.Stack], error) {
 	u.got = use
 	return search.Result[stacksapi.Stack]{Edges: []search.Edge[stacksapi.Stack]{{
 		Cursor: "c", Node: stacksapi.Stack{Slug: "infra", Name: "Infra", Space: u.top},
 	}}}, u.fail
 }
 
-func (u *users) SuggestUsers(
-	_ context.Context,
-	_ kernel.Principal,
-	use stacksapi.Use,
-	_ search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (u *users) SuggestUsers(_ context.Context, _ kernel.Principal, use stacksapi.Use, _ search.SuggestionsInput) (search.Suggestions, error) {
 	u.got = use
 	return search.Suggestions{}, u.fail
 }
 
 func ptr[T any](v T) *T { return &v }
 
-func (f fixture) repositories(
-	ctx context.Context,
-	params api.RepositoriesParams,
-) (api.RepositoryPage, error) {
+func (f fixture) repositories(ctx context.Context, params api.RepositoriesParams) (api.RepositoryPage, error) {
 	res, err := f.srv.Repositories(ctx, api.RepositoriesRequestObject{Params: params})
 	if err != nil {
 		return api.RepositoryPage{}, err
@@ -84,10 +71,7 @@ func (f fixture) repositories(
 	return res.(api.Repositories200JSONResponse).Body, nil
 }
 
-func (f fixture) branches(
-	ctx context.Context,
-	params api.BranchesParams,
-) (api.BranchesPage, error) {
+func (f fixture) branches(ctx context.Context, params api.BranchesParams) (api.BranchesPage, error) {
 	res, err := f.srv.Branches(ctx, api.BranchesRequestObject{Params: params})
 	if err != nil {
 		return api.BranchesPage{}, err

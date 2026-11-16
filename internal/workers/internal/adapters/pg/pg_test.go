@@ -88,20 +88,11 @@ type authz struct {
 	err    error
 }
 
-func (a authz) Authorize(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (a authz) Authorize(_ context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error) {
 	return slices.Contains(a.grants[p.Login][space], action), a.err
 }
 
-func (a authz) Reachable(
-	_ context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-) ([]kernel.ULID, error) {
+func (a authz) Reachable(_ context.Context, p kernel.Principal, action accessapi.Action) ([]kernel.ULID, error) {
 	var out []kernel.ULID
 	for space, actions := range a.grants[p.Login] {
 		if slices.Contains(actions, action) {
@@ -359,11 +350,7 @@ type findOnly struct {
 	extra accessapi.SpaceNode
 }
 
-func (s findOnly) Find(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (kernel.ULID, error) {
+func (s findOnly) Find(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
 	if slug == s.extra.Slug {
 		return s.extra.ID, nil
 	}
@@ -431,12 +418,7 @@ func (holdFails) Hold(context.Context, kernel.AccountID, kernel.ULID) error { re
 // moveFails fails the check of WORKER_POOL_CREATE alone.
 type moveFails struct{ authz }
 
-func (m moveFails) Authorize(
-	ctx context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) (bool, error) {
+func (m moveFails) Authorize(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error) {
 	if action == accessapi.ActionWorkerPoolCreate {
 		return false, errDown
 	}
@@ -716,11 +698,7 @@ type guard struct {
 	err  error
 }
 
-func (g guard) PoolInUse(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-) ([]workersapi.PoolUse, error) {
+func (g guard) PoolInUse(context.Context, kernel.AccountID, kernel.ULID) ([]workersapi.PoolUse, error) {
 	return g.uses, g.err
 }
 

@@ -49,10 +49,7 @@ func (s Server) BitbucketDatacenterIntegrationCreate(
 // BitbucketDatacenterIntegration answers one Bitbucket Data Center
 // integration, with its webhook secret and URL when the caller
 // administers its space.
-func (s Server) BitbucketDatacenterIntegration(
-	ctx context.Context,
-	req api.BitbucketDatacenterIntegrationRequestObject,
-) (api.BitbucketDatacenterIntegrationResponseObject, error) {
+func (s Server) BitbucketDatacenterIntegration(ctx context.Context, req api.BitbucketDatacenterIntegrationRequestObject) (api.BitbucketDatacenterIntegrationResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -153,12 +150,7 @@ func (s Server) BitbucketDatacenterIntegrationTest(
 
 // bitbucketDC is in as the Bitbucket Data Center operations answer it,
 // with its webhook secret and URL when admin is set.
-func (s Server) bitbucketDC(
-	ctx context.Context,
-	p kernel.Principal,
-	in integration.Integration,
-	admin bool,
-) (api.BitbucketDatacenterIntegration, error) {
+func (s Server) bitbucketDC(ctx context.Context, p kernel.Principal, in integration.Integration, admin bool) (api.BitbucketDatacenterIntegration, error) {
 	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 	if err != nil {
 		return api.BitbucketDatacenterIntegration{}, err //nolint:wrapcheck // the access domain names the read
@@ -176,11 +168,7 @@ func (s Server) bitbucketDC(
 // bitbucketDCView is in as the Bitbucket Data Center operations answer
 // it, its space named by its slug in slugs, with d's webhook secret and
 // URL when d is not nil.
-func bitbucketDCView(
-	in integration.Integration,
-	slugs map[kernel.ULID]string,
-	d *integration.Details,
-) api.BitbucketDatacenterIntegration {
+func bitbucketDCView(in integration.Integration, slugs map[kernel.ULID]string, d *integration.Details) api.BitbucketDatacenterIntegration {
 	labels := in.Labels
 	if labels == nil {
 		labels = []string{}

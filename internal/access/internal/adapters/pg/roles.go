@@ -44,13 +44,7 @@ func (s *Store) seedAccount(ctx context.Context, q tx.Querier, a account.Account
 // admin, the account admin that claiming or creating acct names, made by
 // the organization admin e records. It is an ordinary binding, which
 // account admins may later remove.
-func bindAccountAdmin(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	admin kernel.MemberID,
-	e kernel.OrganizationAuditEntry,
-) error {
+func bindAccountAdmin(ctx context.Context, q tx.Querier, acct kernel.AccountID, admin kernel.MemberID, e kernel.OrganizationAuditEntry) error {
 	if _, err := q.Exec(ctx, `INSERT INTO role_bindings (account_id, id, actor_kind, actor_id,
 			role_id, space_id, origin, created_by)
 		SELECT $1, $2, $3, $4, id, $1, $5, $6 FROM roles WHERE account_id = $1 AND slug = $7`,
@@ -84,12 +78,7 @@ func scanRole(row pgx.Row) (role.Role, error) {
 }
 
 // Roles reads up to limit of acct's roles after the slug after, by slug.
-func (s *Store) Roles(
-	ctx context.Context,
-	acct kernel.AccountID,
-	after string,
-	limit int,
-) ([]role.Role, error) {
+func (s *Store) Roles(ctx context.Context, acct kernel.AccountID, after string, limit int) ([]role.Role, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+roleColumns+` FROM roles r
 		WHERE r.account_id = $1 AND r.slug > $2 ORDER BY r.slug LIMIT $3`, acct, after, limit)
 	if err != nil {
@@ -134,12 +123,7 @@ func (s *Store) CreateRole(ctx context.Context, r role.Role) error {
 // UpdateRole changes acct's role slug as edit answers. edit sees the role
 // read under its row's lock, so the version it checks is the one the
 // change replaces.
-func (s *Store) UpdateRole(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	edit func(role.Role) (role.Role, error),
-) (role.Role, error) {
+func (s *Store) UpdateRole(ctx context.Context, acct kernel.AccountID, slug string, edit func(role.Role) (role.Role, error)) (role.Role, error) {
 	var out role.Role
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -172,12 +156,7 @@ func (s *Store) UpdateRole(
 
 // DeleteRole deletes acct's role slug and its actions when check accepts
 // it and it has no bindings.
-func (s *Store) DeleteRole(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	check func(role.Role) error,
-) (role.Role, error) {
+func (s *Store) DeleteRole(ctx context.Context, acct kernel.AccountID, slug string, check func(role.Role) error) (role.Role, error) {
 	var cur role.Role
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -208,11 +187,7 @@ func (s *Store) DeleteRole(
 
 // RoleBindings reads the bindings of acct's role id to users, groups and
 // API keys, oldest first.
-func (s *Store) RoleBindings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) ([]binding.Listed, error) {
+func (s *Store) RoleBindings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]binding.Listed, error) {
 	return s.bindings(ctx, `b.account_id = $1 AND b.role_id = $2 AND b.actor_kind = ANY($3)`,
 		acct, id, []string{
 			string(binding.ActorUser), string(binding.ActorGroup), string(binding.ActorAPIKey),
@@ -220,12 +195,7 @@ func (s *Store) RoleBindings(
 }
 
 // lockRole reads acct's role slug and locks its row.
-func lockRole(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	slug string,
-) (role.Role, error) {
+func lockRole(ctx context.Context, q tx.Querier, acct kernel.AccountID, slug string) (role.Role, error) {
 	r, err := scanRole(q.QueryRow(ctx, `SELECT `+roleColumns+` FROM roles r
 		WHERE r.account_id = $1 AND r.slug = $2 FOR UPDATE`, acct, slug))
 	return r, read(err, "role", slug)

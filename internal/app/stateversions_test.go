@@ -111,13 +111,7 @@ func applying(t *testing.T, w *claimWorld) string {
 
 // write sends size bytes of body to target as Terraform's http backend
 // writes a state, with md5 as its Content-MD5 when it is set.
-func (c stateCalls) write(
-	t *testing.T,
-	target string,
-	body io.Reader,
-	size int64,
-	md5 string,
-) *httptest.ResponseRecorder {
+func (c stateCalls) write(t *testing.T, target string, body io.Reader, size int64, md5 string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, target, body)
 	req.ContentLength = size

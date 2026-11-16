@@ -16,12 +16,7 @@ type grants struct{ svc *authz.Service }
 
 // Stacks explains each stack as a run of it: its own bindings and its
 // implicit read of the space it lives in.
-func (g grants) Stacks(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-	stacks []accessapi.StackHome,
-) ([][]accessapi.StackGrant, error) {
+func (g grants) Stacks(ctx context.Context, acct kernel.AccountID, space kernel.ULID, stacks []accessapi.StackHome) ([][]accessapi.StackGrant, error) {
 	whos := make([]authz.Who, len(stacks))
 	for i, st := range stacks {
 		whos[i] = authz.Who{Kind: kernel.PrincipalRun, Stack: st.Stack, StackHome: st.Space}

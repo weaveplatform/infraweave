@@ -58,21 +58,14 @@ func (s *Service) StackGuard() StackGuard { return StackGuard{s} }
 
 // SpaceInUse reports whether a context lives in space, which refuses its
 // deletion.
-func (g SpaceGuard) SpaceInUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (g SpaceGuard) SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	return g.s.store.InSpace(ctx, acct, space) //nolint:wrapcheck // the store names the read
 }
 
 // LostOnMove lists each attachment m would cut off. A move changes the
 // ancestors of the spaces it moves alone, so only a stack in one of them
 // can lose a context, and only one in an ancestor it reaches today.
-func (g SpaceGuard) LostOnMove(
-	ctx context.Context,
-	m accessapi.SpaceMove,
-) ([]accessapi.LostReach, error) {
+func (g SpaceGuard) LostOnMove(ctx context.Context, m accessapi.SpaceMove) ([]accessapi.LostReach, error) {
 	s := g.s
 	ids, err := s.store.AttachedStacks(ctx, m.Account)
 	if err != nil || len(ids) == 0 {
@@ -249,11 +242,7 @@ func manual(as []Attachment) []Attachment {
 // their hooks and elements: those attached by hand by priority, lowest
 // first, then by slug, and then those attached automatically, by name; a
 // write-only element's value is left out.
-func (s *Service) AttachedContexts(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stacks []kernel.ULID,
-) (map[kernel.ULID][]stacksapi.AttachedContext, error) {
+func (s *Service) AttachedContexts(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.AttachedContext, error) {
 	out := map[kernel.ULID][]stacksapi.AttachedContext{}
 	if len(stacks) == 0 {
 		return out, nil
@@ -311,11 +300,7 @@ func (s *Service) AttachedContexts(
 }
 
 // Config reads each of stacks' own config elements, by ID.
-func (s *Service) Config(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stacks []kernel.ULID,
-) (map[kernel.ULID][]stacksapi.ConfigElement, error) {
+func (s *Service) Config(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.ConfigElement, error) {
 	out := map[kernel.ULID][]stacksapi.ConfigElement{}
 	if len(stacks) == 0 {
 		return out, nil

@@ -39,11 +39,7 @@ func (s *Store) SetTargets(ctx context.Context, run lifecycle.Run, targets []str
 }
 
 // Comments reads the comments on acct's runs, oldest first.
-func (s *Store) Comments(
-	ctx context.Context,
-	acct kernel.AccountID,
-	runs []kernel.ULID,
-) (map[kernel.ULID][]read.Comment, error) {
+func (s *Store) Comments(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) (map[kernel.ULID][]read.Comment, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT run_id, id, username, body, created_at
 		FROM run_comments WHERE account_id = $1 AND run_id = ANY($2) ORDER BY run_id, id`,
 		acct, runs)
@@ -71,11 +67,7 @@ func (s *Store) Comments(
 
 // Discardable reads acct's stack's runs in QUEUED, READY or UNCONFIRMED,
 // oldest first.
-func (s *Store) Discardable(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack kernel.ULID,
-) ([]lifecycle.Run, error) {
+func (s *Store) Discardable(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]lifecycle.Run, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND stack_id = $2 AND state IN ('QUEUED', 'READY', 'UNCONFIRMED')
 		ORDER BY created_at, id`, acct, stack)

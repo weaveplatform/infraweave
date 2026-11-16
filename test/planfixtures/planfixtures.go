@@ -181,13 +181,7 @@ var ErrArch = errors.New("no GOARCH for the Docker daemon's architecture")
 // dir/<tool>/<scenario>.json, indented, with a README naming the
 // releases, running each tool's pinned Linux binary in a container with
 // no network. d fetches and checks the binaries.
-func Record(
-	ctx context.Context,
-	d *deps.Dependencies,
-	tools []deps.Tool,
-	scenarios []Scenario,
-	dir string,
-) error {
+func Record(ctx context.Context, d *deps.Dependencies, tools []deps.Tool, scenarios []Scenario, dir string) error {
 	cli, err := testcontainers.NewDockerClientWithOpts(ctx)
 	if err != nil {
 		return fmt.Errorf("docker: %w", err)
@@ -232,12 +226,7 @@ func Record(
 
 // record applies s.Before and plans s.After with bin in a fresh
 // workspace, and answers the plan's JSON, indented.
-func record(
-	ctx context.Context,
-	cli *testcontainers.DockerClient,
-	bin string,
-	s Scenario,
-) ([]byte, error) {
+func record(ctx context.Context, cli *testcontainers.DockerClient, bin string, s Scenario) ([]byte, error) {
 	// Under the system's temporary directory, which Docker Desktop shares
 	// with its virtual machine, so the container mounts it.
 	ws, err := os.MkdirTemp("", "infraweave-plan-")
@@ -298,12 +287,7 @@ func write(dir string, files map[string]string) error {
 
 // run runs bin with args in a container whose workspace is ws, as the
 // host's user so it can write there, and answers its standard output.
-func run(
-	ctx context.Context,
-	cli *testcontainers.DockerClient,
-	bin, ws string,
-	args []string,
-) ([]byte, error) {
+func run(ctx context.Context, cli *testcontainers.DockerClient, bin, ws string, args []string) ([]byte, error) {
 	c, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
 			Image:      image,

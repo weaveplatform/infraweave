@@ -58,13 +58,7 @@ type harness struct {
 
 // start runs reg's handlers with cfg on a database of its own, woken by a
 // real listener unless quiet, until stop or the test's end.
-func start(
-	t *testing.T,
-	cfg queue.Config,
-	reg *queue.Registry,
-	ent queue.Entitlements,
-	quiet bool,
-) *harness {
+func start(t *testing.T, cfg queue.Config, reg *queue.Registry, ent queue.Entitlements, quiet bool) *harness {
 	t.Helper()
 	db := sqltest.Open(t)
 	h := &harness{q: queue.New(db.Primary()), pool: db.Primary(), logs: &logs{}}
@@ -117,13 +111,7 @@ func state(t *testing.T, pool *pgxpool.Pool, id int64) func() bool {
 	}
 }
 
-func register(
-	t *testing.T,
-	r *queue.Registry,
-	k queue.Kind,
-	h queue.Handler,
-	o queue.HandlerOptions,
-) {
+func register(t *testing.T, r *queue.Registry, k queue.Kind, h queue.Handler, o queue.HandlerOptions) {
 	t.Helper()
 	if err := r.Register(k, h, o); err != nil {
 		t.Fatal(err)

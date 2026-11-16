@@ -52,12 +52,7 @@ type destroyed struct {
 	finished bool
 }
 
-func (f *fakeStacks) Destroyed(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-	finished bool,
-) error {
+func (f *fakeStacks) Destroyed(_ context.Context, _ kernel.AccountID, id kernel.ULID, finished bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.err["Destroyed"]; err != nil {
@@ -67,11 +62,7 @@ func (f *fakeStacks) Destroyed(
 	return nil
 }
 
-func (f *fakeStacks) Get(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Stack, error) {
+func (f *fakeStacks) Get(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.err["Get"]; err != nil {
@@ -80,11 +71,7 @@ func (f *fakeStacks) Get(
 	return f.settings[id].Stack, nil
 }
 
-func (f *fakeStacks) BySlug(
-	_ context.Context,
-	_ kernel.AccountID,
-	slug string,
-) (stacksapi.Stack, error) {
+func (f *fakeStacks) BySlug(_ context.Context, _ kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, st := range f.settings {
@@ -95,11 +82,7 @@ func (f *fakeStacks) BySlug(
 	return stacksapi.Stack{}, stacksapi.ErrNotFound
 }
 
-func (f *fakeStacks) Settings(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (f *fakeStacks) Settings(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.err["Settings"]; err != nil {
@@ -108,11 +91,7 @@ func (f *fakeStacks) Settings(
 	return f.settings[id], nil
 }
 
-func (f *fakeStacks) LockForRun(
-	ctx context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (f *fakeStacks) LockForRun(ctx context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	f.mu.Lock()
 	err := f.err["LockForRun"]
 	st, ok := f.settings[id]
@@ -130,13 +109,7 @@ func (f *fakeStacks) LockForRun(
 	return st, nil
 }
 
-func (f *fakeStacks) SetRunState(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-	state kernel.StackState,
-	blocked bool,
-) error {
+func (f *fakeStacks) SetRunState(_ context.Context, _ kernel.AccountID, id kernel.ULID, state kernel.StackState, blocked bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.err["SetRunState"]; err != nil {
@@ -167,12 +140,7 @@ type fakeSources struct {
 	err      error
 }
 
-func (f *fakeSources) Resolve(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ kernel.ULID,
-	ref string,
-) (stacksapi.Commit, error) {
+func (f *fakeSources) Resolve(_ context.Context, _ kernel.AccountID, _ kernel.ULID, ref string) (stacksapi.Commit, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if c, ok := f.commits[ref]; ok {
@@ -181,13 +149,7 @@ func (f *fakeSources) Resolve(
 	return stacksapi.Commit{}, stacksapi.ErrRefNotFound
 }
 
-func (*fakeSources) Source(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	kernel.ULID,
-	string,
-) (runsapi.Source, error) {
+func (*fakeSources) Source(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, string) (runsapi.Source, error) {
 	return runsapi.Source{}, nil
 }
 
@@ -212,11 +174,7 @@ type failing struct {
 
 var errInjected = errors.New("injected")
 
-func (f failing) Lock(
-	ctx context.Context,
-	a kernel.AccountID,
-	id kernel.ULID,
-) (lifecycle.Run, error) {
+func (f failing) Lock(ctx context.Context, a kernel.AccountID, id kernel.ULID) (lifecycle.Run, error) {
 	if f.fail == "Lock" {
 		return lifecycle.Run{}, errInjected
 	}
@@ -237,13 +195,7 @@ func (f failing) Insert(ctx context.Context, run lifecycle.Run, step lifecycle.S
 	return f.Store.Insert(ctx, run, step)
 }
 
-func (f failing) Active(
-	ctx context.Context,
-	a kernel.AccountID,
-	stack kernel.ULID,
-	typ kernel.RunType,
-	hash, workspace string,
-) (lifecycle.Run, bool, error) {
+func (f failing) Active(ctx context.Context, a kernel.AccountID, stack kernel.ULID, typ kernel.RunType, hash, workspace string) (lifecycle.Run, bool, error) {
 	if f.fail == "Active" {
 		return lifecycle.Run{}, false, errInjected
 	}
@@ -264,12 +216,7 @@ func (f failing) Unlock(ctx context.Context, a kernel.AccountID, run kernel.ULID
 	return f.Store.Unlock(ctx, a, run)
 }
 
-func (f failing) Projection(
-	ctx context.Context,
-	a kernel.AccountID,
-	stack kernel.ULID,
-	states []kernel.StackState,
-) (kernel.StackState, bool, error) {
+func (f failing) Projection(ctx context.Context, a kernel.AccountID, stack kernel.ULID, states []kernel.StackState) (kernel.StackState, bool, error) {
 	if f.fail == "Projection" {
 		return "", false, errInjected
 	}
@@ -290,12 +237,7 @@ func (f failing) Append(ctx context.Context, ev outbox.Event) (outbox.Event, err
 	return f.events.Append(ctx, ev)
 }
 
-func (f failing) EnqueueTx(
-	ctx context.Context,
-	k queue.Kind,
-	payload any,
-	opts ...queue.Option,
-) (int64, error) {
+func (f failing) EnqueueTx(ctx context.Context, k queue.Kind, payload any, opts ...queue.Option) (int64, error) {
 	if f.fail == "EnqueueTx" || f.fail == "EnqueueTx "+k.Name {
 		return 0, errInjected
 	}
@@ -343,11 +285,7 @@ func newWorld(t *testing.T) *world {
 }
 
 // lifecycle is a lifecycle of w's over store, events and jobs.
-func (w *world) lifecycle(
-	store lifecycle.Store,
-	events lifecycle.Events,
-	jobs lifecycle.Jobs,
-) *lifecycle.Lifecycle {
+func (w *world) lifecycle(store lifecycle.Store, events lifecycle.Events, jobs lifecycle.Jobs) *lifecycle.Lifecycle {
 	lc := lifecycle.New(lifecycle.Deps{
 		Store: store, Stacks: w.stacks, Events: events, Jobs: jobs,
 		Now: func() time.Time { return w.now },
@@ -373,11 +311,7 @@ func taskOf(typ kernel.RunType) *kernel.Task {
 
 // create creates a run of w's stack of typ on commit hash by alice, a
 // task running taskOf's command.
-func (w *world) create(
-	t *testing.T,
-	typ kernel.RunType,
-	hash string,
-) (lifecycle.Run, bool, error) {
+func (w *world) create(t *testing.T, typ kernel.RunType, hash string) (lifecycle.Run, bool, error) {
 	t.Helper()
 	var (
 		run     lifecycle.Run
@@ -401,13 +335,7 @@ func (w *world) create(
 
 // move takes run from its version to the state to by driver, with the
 // guards checked.
-func (w *world) move(
-	t *testing.T,
-	run lifecycle.Run,
-	to kernel.RunState,
-	driver machine.Driver,
-	checked ...machine.Guard,
-) (lifecycle.Run, error) {
+func (w *world) move(t *testing.T, run lifecycle.Run, to kernel.RunState, driver machine.Driver, checked ...machine.Guard) (lifecycle.Run, error) {
 	t.Helper()
 	var moved lifecycle.Run
 	err := w.in(t, func(ctx context.Context) error {
@@ -422,13 +350,7 @@ func (w *world) move(
 }
 
 // mustMove is move that fails the test on an error.
-func (w *world) mustMove(
-	t *testing.T,
-	run lifecycle.Run,
-	to kernel.RunState,
-	driver machine.Driver,
-	checked ...machine.Guard,
-) lifecycle.Run {
+func (w *world) mustMove(t *testing.T, run lifecycle.Run, to kernel.RunState, driver machine.Driver, checked ...machine.Guard) lifecycle.Run {
 	t.Helper()
 	moved, err := w.move(t, run, to, driver, checked...)
 	if err != nil {

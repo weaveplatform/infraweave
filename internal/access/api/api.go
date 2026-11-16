@@ -116,12 +116,7 @@ const (
 //
 // ref: decision 0007
 type Authorizer interface {
-	Authorize(
-		ctx context.Context,
-		p kernel.Principal,
-		action Action,
-		space kernel.ULID,
-	) (bool, error)
+	Authorize(ctx context.Context, p kernel.Principal, action Action, space kernel.ULID) (bool, error)
 	Reachable(ctx context.Context, p kernel.Principal, action Action) ([]kernel.ULID, error)
 	Holds(ctx context.Context, p kernel.Principal, action Action) (bool, error)
 	Actions(ctx context.Context, p kernel.Principal, space kernel.ULID) ([]Action, error)
@@ -247,43 +242,12 @@ type RoleBinding struct {
 //
 // ref: decision 0007 § "Bindings"
 type Bindings interface {
-	Bind(
-		ctx context.Context,
-		p kernel.Principal,
-		actor string,
-		pointer string,
-		reqs []BindingRequest,
-	) ([]RoleBinding, error)
-	Binding(
-		ctx context.Context,
-		acct kernel.AccountID,
-		actor string,
-		id kernel.ULID,
-	) (RoleBinding, error)
-	Rebind(
-		ctx context.Context,
-		p kernel.Principal,
-		actor string,
-		id kernel.ULID,
-		expect kernel.Expect,
-		req BindingRequest,
-		check func(RoleBinding) error,
-	) (RoleBinding, error)
-	Unbind(
-		ctx context.Context,
-		acct kernel.AccountID,
-		actor string,
-		id kernel.ULID,
-		expect kernel.Expect,
-		check func(RoleBinding) error,
-	) (RoleBinding, error)
+	Bind(ctx context.Context, p kernel.Principal, actor string, pointer string, reqs []BindingRequest) ([]RoleBinding, error)
+	Binding(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) (RoleBinding, error)
+	Rebind(ctx context.Context, p kernel.Principal, actor string, id kernel.ULID, expect kernel.Expect, req BindingRequest, check func(RoleBinding) error) (RoleBinding, error)
+	Unbind(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID, expect kernel.Expect, check func(RoleBinding) error) (RoleBinding, error)
 	UnbindActor(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) error
-	ByActor(
-		ctx context.Context,
-		acct kernel.AccountID,
-		actor string,
-		id kernel.ULID,
-	) ([]RoleBinding, error)
+	ByActor(ctx context.Context, acct kernel.AccountID, actor string, id kernel.ULID) ([]RoleBinding, error)
 	BySpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) ([]RoleBinding, error)
 }
 
@@ -315,12 +279,7 @@ type StackGrant struct {
 //
 // ref: decision 0007 § "Evaluation"
 type Grants interface {
-	Stacks(
-		ctx context.Context,
-		acct kernel.AccountID,
-		space kernel.ULID,
-		stacks []StackHome,
-	) ([][]StackGrant, error)
+	Stacks(ctx context.Context, acct kernel.AccountID, space kernel.ULID, stacks []StackHome) ([][]StackGrant, error)
 }
 
 // SpaceMove is a proposed move of Space, with every space below it, to a

@@ -83,11 +83,7 @@ type Store interface {
 	// whose member the account no longer admits, is port.ErrNotFound;
 	// a spent code revokes the grant it issued and is ErrReused. An
 	// error from grant leaves the code unspent.
-	Redeem(
-		ctx context.Context,
-		hash []byte,
-		grant func(Request, Owner) (session.Session, error),
-	) (session.Session, error)
+	Redeem(ctx context.Context, hash []byte, grant func(Request, Owner) (session.Session, error)) (session.Session, error)
 	// Refresh rotates the grant whose current refresh token hashes to
 	// hash: rotate answers the grant's next state, which the store
 	// writes, keeping hash as spent, in one transaction that holds the
@@ -96,11 +92,7 @@ type Store interface {
 	// and is ErrReused; a grant whose member the account no longer
 	// admits is revoked and port.ErrNotFound. An error from rotate
 	// changes nothing.
-	Refresh(
-		ctx context.Context,
-		hash []byte,
-		rotate func(session.Session, Owner) (session.Session, error),
-	) (session.Session, error)
+	Refresh(ctx context.Context, hash []byte, rotate func(session.Session, Owner) (session.Session, error)) (session.Session, error)
 	// ExpireOAuth deletes the requests that ended before requests and
 	// the clients last used before clients.
 	ExpireOAuth(ctx context.Context, requests, clients time.Time) error
@@ -346,11 +338,7 @@ func Redirect(uri, state string, e error, params ...string) string {
 // ConsentRequest is the request id as p's consent page shows it: one
 // that is decided or past its end is port.ErrNotFound, and a caller who
 // is not a member is ErrNotMember.
-func (s *Service) ConsentRequest(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-) (Request, error) {
+func (s *Service) ConsentRequest(ctx context.Context, p kernel.Principal, id kernel.ULID) (Request, error) {
 	if p.Kind != kernel.PrincipalUser || p.MemberID.IsZero() {
 		return Request{}, ErrNotMember
 	}
@@ -368,12 +356,7 @@ func (s *Service) ConsentRequest(
 // must admit them, and answers the client's redirect URI with a code that
 // lives CodeTTL. A redirect URI that is not loopback must match acct's
 // oauthRedirectAllowedHosts, else ErrRedirectHost.
-func (s *Service) Approve(
-	ctx context.Context,
-	p kernel.Principal,
-	id kernel.ULID,
-	acct kernel.AccountID,
-) (string, error) {
+func (s *Service) Approve(ctx context.Context, p kernel.Principal, id kernel.ULID, acct kernel.AccountID) (string, error) {
 	r, err := s.ConsentRequest(ctx, p, id)
 	if err != nil {
 		return "", err
@@ -570,12 +553,7 @@ func (s *Service) refresh(ctx context.Context, t TokenParams) (Tokens, error) {
 
 // issue signs the grant ss's access token for scopes, for AccessTTL and
 // never past the grant's end, and answers it with refresh.
-func (s *Service) issue(
-	ctx context.Context,
-	ss session.Session,
-	scopes []string,
-	refresh string,
-) (Tokens, error) {
+func (s *Service) issue(ctx context.Context, ss session.Session, scopes []string, refresh string) (Tokens, error) {
 	scope := strings.Join(scopes, " ")
 	ttl := min(s.d.AccessTTL, ss.ExpiresAt.Sub(s.d.Now())).Truncate(time.Second)
 	raw, _, err := s.d.Tokens.Issue(ctx, token.Request{

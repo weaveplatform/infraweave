@@ -19,12 +19,7 @@ type recorder struct {
 	ttl   time.Duration
 }
 
-func (r *recorder) Put(
-	_ context.Context,
-	key string,
-	_ io.Reader,
-	size int64,
-) (objectstore.Object, error) {
+func (r *recorder) Put(_ context.Context, key string, _ io.Reader, size int64) (objectstore.Object, error) {
 	r.calls = append(r.calls, "put "+key)
 	return objectstore.Object{Size: size}, nil
 }
@@ -44,12 +39,7 @@ func (r *recorder) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-func (r *recorder) SignURL(
-	_ context.Context,
-	method, key string,
-	ttl time.Duration,
-	_ objectstore.Constraints,
-) (objectstore.Signed, error) {
+func (r *recorder) SignURL(_ context.Context, method, key string, ttl time.Duration, _ objectstore.Constraints) (objectstore.Signed, error) {
 	r.calls = append(r.calls, "sign "+method+" "+key)
 	r.ttl = ttl
 	return objectstore.Signed{URL: r.name + "/" + key}, nil

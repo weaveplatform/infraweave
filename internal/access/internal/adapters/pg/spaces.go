@@ -162,12 +162,7 @@ var spaceSearch = func() sqlsearch.Entity {
 }()
 
 // Search reads a page of acct's spaces among reachable that in keeps.
-func (s *Store) Search(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.Input,
-	reachable []kernel.ULID,
-) (search.Result[space.Space], error) {
+func (s *Store) Search(ctx context.Context, acct kernel.AccountID, in search.Input, reachable []kernel.ULID) (search.Result[space.Space], error) {
 	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), spaceSearch, sqlsearch.Scope{
 		Where: "s.account_id = $1", Args: []any{acct}, Reachable: reachable,
 	}, in, scanSpace)
@@ -179,12 +174,7 @@ func (s *Store) Search(
 
 // Suggest lists the values acct's spaces among reachable that in keeps
 // hold.
-func (s *Store) Suggest(
-	ctx context.Context,
-	acct kernel.AccountID,
-	in search.SuggestionsInput,
-	reachable []kernel.ULID,
-) (search.Suggestions, error) {
+func (s *Store) Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, reachable []kernel.ULID) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), spaceSearch, sqlsearch.Scope{
 		Where: "s.account_id = $1", Args: []any{acct}, Reachable: reachable,
 	}, in)
@@ -195,11 +185,7 @@ func (s *Store) Suggest(
 }
 
 // Space reads acct's space slug.
-func (s *Store) Space(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (space.Space, error) {
+func (s *Store) Space(ctx context.Context, acct kernel.AccountID, slug string) (space.Space, error) {
 	sp, err := scanSpace(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+spaceColumns+`
 		FROM spaces s WHERE s.account_id = $1 AND s.slug = $2`, acct, slug))
 	return sp, read(err, "space", slug)
@@ -301,11 +287,7 @@ func (s *Store) UpdateSpace(
 
 // move is the move of moved's subtree below parent, refused when parent
 // is inside it.
-func move(
-	ctx context.Context,
-	q tx.Querier,
-	moved, parent space.Space,
-) (*accessapi.SpaceMove, error) {
+func move(ctx context.Context, q tx.Querier, moved, parent space.Space) (*accessapi.SpaceMove, error) {
 	m := accessapi.SpaceMove{Account: moved.AccountID, Space: moved.ID}
 	var err error
 	if m.Subtree, err = ids(ctx, q, `SELECT descendant_id FROM space_closure
@@ -328,12 +310,7 @@ func move(
 }
 
 // reparent moves the subtree of acct's space id below parent.
-func reparent(
-	ctx context.Context,
-	q tx.Querier,
-	acct kernel.AccountID,
-	id, parent kernel.ULID,
-) error {
+func reparent(ctx context.Context, q tx.Querier, acct kernel.AccountID, id, parent kernel.ULID) error {
 	for _, stmt := range []struct {
 		sql  string
 		args []any
@@ -365,12 +342,7 @@ func reparent(
 
 // DeleteSpace deletes acct's space slug once check allows it and it has
 // no children. Only its own closure row remains by then.
-func (s *Store) DeleteSpace(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-	check func(ctx context.Context, sp space.Space) error,
-) error {
+func (s *Store) DeleteSpace(ctx context.Context, acct kernel.AccountID, slug string, check func(ctx context.Context, sp space.Space) error) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
 		if err := lockTree(ctx, q, acct); err != nil {

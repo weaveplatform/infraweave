@@ -62,14 +62,7 @@ func segment(t *testing.T, raw string, i int) map[string]any {
 
 // forge signs claims with the private half of the key kid, or with key
 // when it is set, under alg.
-func forge(
-	t *testing.T,
-	s *memStore,
-	kid string,
-	alg jose.SignatureAlgorithm,
-	key any,
-	claims any,
-) string {
+func forge(t *testing.T, s *memStore, kid string, alg jose.SignatureAlgorithm, key any, claims any) string {
 	t.Helper()
 	if key == nil {
 		id, err := kernel.ParseULID(kid)

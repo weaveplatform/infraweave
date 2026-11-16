@@ -207,12 +207,7 @@ ORDER BY 1, 2, 3`
 // stream alone on the platform's.
 //
 // ref: decision 0004
-func schemaDependencyProblems(
-	t *testing.T,
-	empty func(testing.TB) string,
-	streams []migrate.Stream,
-	graph map[string][]string,
-) []string {
+func schemaDependencyProblems(t *testing.T, empty func(testing.TB) string, streams []migrate.Stream, graph map[string][]string) []string {
 	t.Helper()
 	out := graphProblems(streams, graph)
 	ctx := t.Context()

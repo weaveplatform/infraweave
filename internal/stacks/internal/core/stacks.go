@@ -95,21 +95,11 @@ type Store interface {
 	// SetTracked sets acct's stack id's branch head and tracked commit,
 	// leaving either unchanged when nil; stacksapi.ErrNotFound when acct
 	// lacks it.
-	SetTracked(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		head, commit *stacksapi.Commit,
-		setBy string,
-	) error
+	SetTracked(ctx context.Context, acct kernel.AccountID, id kernel.ULID, head, commit *stacksapi.Commit, setBy string) error
 	// Get reads acct's stack id; stacksapi.ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error)
 	// ByIDs reads those of acct's stacks ids that it has, keyed by ID.
-	ByIDs(
-		ctx context.Context,
-		acct kernel.AccountID,
-		ids []kernel.ULID,
-	) (map[kernel.ULID]stacksapi.Stack, error)
+	ByIDs(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]stacksapi.Stack, error)
 	// Read reads acct's stack id whole, locking its row FOR UPDATE when
 	// lock is set; stacksapi.ErrNotFound when acct lacks it.
 	Read(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (Stack, error)
@@ -118,12 +108,7 @@ type Store interface {
 	BySlug(ctx context.Context, acct kernel.AccountID, slug string, lock bool) (Stack, error)
 	// ByRepository lists acct's stacks that track branch of repository
 	// through integration, nil for none, by slug.
-	ByRepository(
-		ctx context.Context,
-		acct kernel.AccountID,
-		integration *kernel.ULID,
-		repository, branch string,
-	) ([]stacksapi.Stack, error)
+	ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]stacksapi.Stack, error)
 	// Create writes a new stack with its hooks and labels; a *SlugTaken
 	// when another stack of its account holds its slug.
 	Create(ctx context.Context, st Stack) error
@@ -136,76 +121,38 @@ type Store interface {
 	// SetStar stars or unstars acct's stack id for the actor.
 	SetStar(ctx context.Context, acct kernel.AccountID, id kernel.ULID, actor Actor, on bool) error
 	// Starred is which of acct's stacks ids the actor has starred.
-	Starred(
-		ctx context.Context,
-		acct kernel.AccountID,
-		ids []kernel.ULID,
-		actor Actor,
-	) (map[kernel.ULID]bool, error)
+	Starred(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID, actor Actor) (map[kernel.ULID]bool, error)
 	// SpaceInUse reports whether a stack of acct lives in space.
 	SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
 	// PoolInUse lists acct's stacks that name the worker pool id, by
 	// slug.
-	PoolInUse(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-	) ([]workersapi.PoolUse, error)
+	PoolInUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]workersapi.PoolUse, error)
 	// Hold locks acct's stack id FOR KEY SHARE until the context's
 	// transaction ends; stacksapi.ErrNotFound when acct lacks it.
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 	// SetRunState writes acct's stack id's state and blocked, leaving its
 	// settings and version as they are; stacksapi.ErrNotFound when acct
 	// lacks it.
-	SetRunState(
-		ctx context.Context,
-		acct kernel.AccountID,
-		id kernel.ULID,
-		state kernel.StackState,
-		blocked bool,
-	) error
+	SetRunState(ctx context.Context, acct kernel.AccountID, id kernel.ULID, state kernel.StackState, blocked bool) error
 	// SetDeleting marks acct's stack id deleting, or clears the mark,
 	// leaving its settings and version as they are;
 	// stacksapi.ErrNotFound when acct lacks it.
 	SetDeleting(ctx context.Context, acct kernel.AccountID, id kernel.ULID, on bool) error
 	// Find lists acct's stacks in spaces that carry any of labels, by
 	// slug.
-	Find(
-		ctx context.Context,
-		acct kernel.AccountID,
-		spaces []kernel.ULID,
-		labels []string,
-	) ([]stacksapi.Stack, error)
+	Find(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]stacksapi.Stack, error)
 	// InSpaces lists acct's stacks in spaces, by slug.
-	InSpaces(
-		ctx context.Context,
-		acct kernel.AccountID,
-		spaces []kernel.ULID,
-	) ([]stacksapi.Stack, error)
+	InSpaces(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID) ([]stacksapi.Stack, error)
 	// Labels reads the labels of acct's stacks ids, sorted, keyed by ID;
 	// a stack with none is left out.
-	Labels(
-		ctx context.Context,
-		acct kernel.AccountID,
-		ids []kernel.ULID,
-	) (map[kernel.ULID][]string, error)
+	Labels(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID][]string, error)
 	// Search reads a page of acct's stacks in the scope that in keeps, by
 	// Fields; an input they cannot answer is a *search.Invalid.
-	Search(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.Input,
-		scope Scope,
-	) (search.Result[Stack], error)
+	Search(ctx context.Context, acct kernel.AccountID, in search.Input, scope Scope) (search.Result[Stack], error)
 	// Suggest lists the values of Fields that acct's stacks in the scope
 	// that in keeps hold, and counts them; predicates they cannot answer
 	// are a *search.Invalid.
-	Suggest(
-		ctx context.Context,
-		acct kernel.AccountID,
-		in search.SuggestionsInput,
-		scope Scope,
-	) (search.Suggestions, error)
+	Suggest(ctx context.Context, acct kernel.AccountID, in search.SuggestionsInput, scope Scope) (search.Suggestions, error)
 }
 
 // Actor is who stars a stack: a principal's kind and actor ID.
@@ -335,30 +282,18 @@ type SpaceError struct{ Slug string }
 func (e *SpaceError) Error() string { return fmt.Sprintf("stacks: no space %q", e.Slug) }
 
 // Get reads acct's stack id.
-func (s *Service) Get(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Stack, error) {
+func (s *Service) Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error) {
 	return s.store.Get(ctx, acct, id) //nolint:wrapcheck // the store names the read
 }
 
 // BySlug reads acct's stack slug.
-func (s *Service) BySlug(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (stacksapi.Stack, error) {
+func (s *Service) BySlug(ctx context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	st, err := s.store.BySlug(ctx, acct, slug, false)
 	return st.Stack, err //nolint:wrapcheck // the store names the read
 }
 
 // ByIDs reads those of acct's stacks ids that it has.
-func (s *Service) ByIDs(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID]stacksapi.Stack, error) {
+func (s *Service) ByIDs(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]stacksapi.Stack, error) {
 	if len(ids) == 0 {
 		return map[kernel.ULID]stacksapi.Stack{}, nil
 	}
@@ -366,23 +301,13 @@ func (s *Service) ByIDs(
 }
 
 // SetTracked sets acct's stack id's branch head and tracked commit.
-func (s *Service) SetTracked(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	head, commit *stacksapi.Commit,
-	setBy string,
-) error {
+func (s *Service) SetTracked(ctx context.Context, acct kernel.AccountID, id kernel.ULID, head, commit *stacksapi.Commit, setBy string) error {
 	//nolint:wrapcheck // the store names the write
 	return s.store.SetTracked(ctx, acct, id, head, commit, setBy)
 }
 
 // DetachVCS detaches acct's stacks bound to integration.
-func (s *Service) DetachVCS(
-	ctx context.Context,
-	acct kernel.AccountID,
-	integration kernel.ULID,
-) error {
+func (s *Service) DetachVCS(ctx context.Context, acct kernel.AccountID, integration kernel.ULID) error {
 	return s.store.DetachVCS(ctx, acct, integration) //nolint:wrapcheck // the store names the write
 }
 
@@ -402,11 +327,7 @@ func (s *Service) SyncCommit(ctx context.Context, p kernel.Principal, slug strin
 // SetCurrentCommit sets p's account's stack slug's tracked commit to sha,
 // once it resolves on the stack's repository, set by p. The route has
 // decided STACK_SET_CURRENT_COMMIT on the stack's space.
-func (s *Service) SetCurrentCommit(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, sha string,
-) (Stack, error) {
+func (s *Service) SetCurrentCommit(ctx context.Context, p kernel.Principal, slug, sha string) (Stack, error) {
 	return s.track(ctx, p, slug, sha, nameOf(p))
 }
 
@@ -414,11 +335,7 @@ func (s *Service) SetCurrentCommit(
 // when it is not empty, and sets the stack's branch head and its tracked
 // commit, sha's when given, the head's otherwise, set by setBy. The
 // resolves reach the provider outside any transaction.
-func (s *Service) track(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, sha, setBy string,
-) (Stack, error) {
+func (s *Service) track(ctx context.Context, p kernel.Principal, slug, sha, setBy string) (Stack, error) {
 	st, err := s.store.BySlug(ctx, p.AccountID, slug, false)
 	if err != nil {
 		return Stack{}, err //nolint:wrapcheck // the store names the read
@@ -465,34 +382,21 @@ func (s *Service) track(
 }
 
 // Settings reads acct's stack id's settings.
-func (s *Service) Settings(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s *Service) Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	st, err := s.store.Read(ctx, acct, id, false)
 	return st.Settings, err //nolint:wrapcheck // as above
 }
 
 // ByRepository lists acct's stacks that track branch of repository
 // through integration.
-func (s *Service) ByRepository(
-	ctx context.Context,
-	acct kernel.AccountID,
-	integration *kernel.ULID,
-	repository, branch string,
-) ([]stacksapi.Stack, error) {
+func (s *Service) ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]stacksapi.Stack, error) {
 	//nolint:wrapcheck // as above
 	return s.store.ByRepository(ctx, acct, integration, repository, branch)
 }
 
 // LockForRun reads acct's stack id's settings, locking its row in the
 // context's transaction.
-func (s *Service) LockForRun(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) (stacksapi.Settings, error) {
+func (s *Service) LockForRun(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	st, err := s.store.Read(ctx, acct, id, true)
 	return st.Settings, err //nolint:wrapcheck // as above
 }
@@ -507,13 +411,7 @@ func (s *Service) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 // SetRunState writes the runs domain's projection of acct's stack id:
 // its tracked run's state, and whether a run blocks it. A state outside
 // kernel.StackStates is refused before any write.
-func (s *Service) SetRunState(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	state kernel.StackState,
-	blocked bool,
-) error {
+func (s *Service) SetRunState(ctx context.Context, acct kernel.AccountID, id kernel.ULID, state kernel.StackState, blocked bool) error {
 	if !state.Valid() {
 		return fmt.Errorf("%w: %q", ErrStackState, state)
 	}
@@ -525,12 +423,7 @@ func (s *Service) SetRunState(
 var ErrStackState = errors.New("stacks: not a stack state")
 
 // Find lists acct's stacks in spaces that carry any of labels.
-func (s *Service) Find(
-	ctx context.Context,
-	acct kernel.AccountID,
-	spaces []kernel.ULID,
-	labels []string,
-) ([]stacksapi.Stack, error) {
+func (s *Service) Find(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]stacksapi.Stack, error) {
 	if len(spaces) == 0 || len(labels) == 0 {
 		return nil, nil
 	}
@@ -538,11 +431,7 @@ func (s *Service) Find(
 }
 
 // InSpaces lists every stack of acct in spaces.
-func (s *Service) InSpaces(
-	ctx context.Context,
-	acct kernel.AccountID,
-	spaces []kernel.ULID,
-) ([]stacksapi.Stack, error) {
+func (s *Service) InSpaces(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID) ([]stacksapi.Stack, error) {
 	if len(spaces) == 0 {
 		return nil, nil
 	}
@@ -551,11 +440,7 @@ func (s *Service) InSpaces(
 
 // Labels reads the labels of acct's stacks ids, an empty list for a stack
 // with none.
-func (s *Service) Labels(
-	ctx context.Context,
-	acct kernel.AccountID,
-	ids []kernel.ULID,
-) (map[kernel.ULID][]string, error) {
+func (s *Service) Labels(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID][]string, error) {
 	out := make(map[kernel.ULID][]string, len(ids))
 	if len(ids) == 0 {
 		return out, nil
@@ -576,11 +461,7 @@ func (s *Service) Labels(
 // SpaceOf is the space of acct's stack slug, which the access domain's
 // middleware decides a stack's operations on; accessapi.ErrNoSubject when
 // acct lacks it.
-func (s *Service) SpaceOf(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (kernel.ULID, error) {
+func (s *Service) SpaceOf(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
 	st, err := s.store.BySlug(ctx, acct, slug, false)
 	if errors.Is(err, stacksapi.ErrNotFound) {
 		return kernel.ULID{}, accessapi.ErrNoSubject
@@ -596,11 +477,7 @@ func (s *Service) Stack(ctx context.Context, acct kernel.AccountID, slug string)
 // Search reads a page of the stacks of p's account in the spaces it may
 // read, which the query leaves the others out of, so every page before
 // the last is full.
-func (s *Service) Search(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.Input,
-) (search.Result[Stack], error) {
+func (s *Service) Search(ctx context.Context, p kernel.Principal, in search.Input) (search.Result[Stack], error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Result[Stack]{}, err
@@ -611,11 +488,7 @@ func (s *Service) Search(
 // Suggest lists the values the stacks of p's account in the spaces it may
 // read hold, under in's predicates, so no value or count names a stack p
 // cannot read.
-func (s *Service) Suggest(
-	ctx context.Context,
-	p kernel.Principal,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) Suggest(ctx context.Context, p kernel.Principal, in search.SuggestionsInput) (search.Suggestions, error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -625,12 +498,7 @@ func (s *Service) Suggest(
 
 // SearchUsers reads a page of the stacks of p's account in the spaces it
 // may read that use u, as Search reads them.
-func (s *Service) SearchUsers(
-	ctx context.Context,
-	p kernel.Principal,
-	u stacksapi.Use,
-	in search.Input,
-) (search.Result[stacksapi.Stack], error) {
+func (s *Service) SearchUsers(ctx context.Context, p kernel.Principal, u stacksapi.Use, in search.Input) (search.Result[stacksapi.Stack], error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Result[stacksapi.Stack]{}, err
@@ -652,12 +520,7 @@ func (s *Service) SearchUsers(
 
 // SuggestUsers lists the values the stacks of p's account in the spaces
 // it may read that use u hold, under in's predicates.
-func (s *Service) SuggestUsers(
-	ctx context.Context,
-	p kernel.Principal,
-	u stacksapi.Use,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Service) SuggestUsers(ctx context.Context, p kernel.Principal, u stacksapi.Use, in search.SuggestionsInput) (search.Suggestions, error) {
 	scope, err := s.scope(ctx, p)
 	if err != nil {
 		return search.Suggestions{}, err
@@ -681,11 +544,7 @@ func (s *Service) scope(ctx context.Context, p kernel.Principal) (Scope, error) 
 }
 
 // Starred is which of stacks p has starred.
-func (s *Service) Starred(
-	ctx context.Context,
-	p kernel.Principal,
-	stacks []Stack,
-) (map[kernel.ULID]bool, error) {
+func (s *Service) Starred(ctx context.Context, p kernel.Principal, stacks []Stack) (map[kernel.ULID]bool, error) {
 	ids := make([]kernel.ULID, len(stacks))
 	for i, st := range stacks {
 		ids[i] = st.ID
@@ -698,13 +557,7 @@ func (s *Service) Starred(
 // when manageState is set. The route has decided
 // STACK_CREATE on in's space. Its refusals point into stackCreate's body,
 // where in is input.
-func (s *Service) Create(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	manageState bool,
-	in Input,
-) (Stack, error) {
+func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, manageState bool, in Input) (Stack, error) {
 	if err := check("/input", in); err != nil {
 		return Stack{}, err
 	}
@@ -742,13 +595,7 @@ func (s *Service) Create(
 // the stack's space; a move to another space also needs STACK_CREATE
 // there, and is refused when a registered guard names an entity the stack
 // would no longer reach.
-func (s *Service) Update(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-	in Input,
-) (Stack, error) {
+func (s *Service) Update(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect, in Input) (Stack, error) {
 	if err := check("", in); err != nil {
 		return Stack{}, err
 	}
@@ -785,13 +632,7 @@ func (s *Service) Update(
 // for the transaction; a refusal points at at's workerPool. The
 // integration must be of st's provider and in st's space or one it
 // inherits from; a refusal points at at's vcsIntegrationId.
-func (s *Service) bind(
-	ctx context.Context,
-	acct kernel.AccountID,
-	st *Stack,
-	in Input,
-	at string,
-) error {
+func (s *Service) bind(ctx context.Context, acct kernel.AccountID, st *Stack, in Input, at string) error {
 	if err := s.bindPool(ctx, acct, st, in, at); err != nil {
 		return err
 	}
@@ -826,13 +667,7 @@ func (s *Service) bind(
 
 // bindPool binds st to the worker pool in names, held for the
 // transaction when st's space reaches it.
-func (s *Service) bindPool(
-	ctx context.Context,
-	acct kernel.AccountID,
-	st *Stack,
-	in Input,
-	at string,
-) error {
+func (s *Service) bindPool(ctx context.Context, acct kernel.AccountID, st *Stack, in Input, at string) error {
 	if in.WorkerPool == nil {
 		return nil
 	}
@@ -872,12 +707,7 @@ func (s *Service) Reslug(ctx context.Context, p kernel.Principal, slug string) (
 }
 
 // SetDisabled disables or enables p's account's stack slug.
-func (s *Service) SetDisabled(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	disabled bool,
-) (Stack, error) {
+func (s *Service) SetDisabled(ctx context.Context, p kernel.Principal, slug string, disabled bool) (Stack, error) {
 	change := stacksapi.ChangeEnabled
 	if disabled {
 		change = stacksapi.ChangeDisabled
@@ -962,13 +792,7 @@ var ErrDeleting = errors.New("stacks: the stack is being deleted")
 // its destroy run is still to end.
 //
 // ref: decision 0008 § "Destroy on delete"
-func (s *Service) Delete(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	expect kernel.Expect,
-	destroy bool,
-) (Stack, error) {
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, slug string, expect kernel.Expect, destroy bool) (Stack, error) {
 	var st Stack
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		var err error
@@ -1019,12 +843,7 @@ func (s *Service) destroy(ctx context.Context, p kernel.Principal, st *Stack) er
 // in the transaction ctx carries, which the run's terminal transition
 // holds: deleting the stack when the run finished, else clearing the
 // mark.
-func (s *Service) Destroyed(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-	finished bool,
-) error {
+func (s *Service) Destroyed(ctx context.Context, acct kernel.AccountID, id kernel.ULID, finished bool) error {
 	//nolint:wrapcheck // each step in the transaction names itself
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		st, err := s.store.Read(ctx, acct, id, true)
@@ -1060,12 +879,7 @@ func (s *Service) remove(ctx context.Context, st *Stack) error {
 }
 
 // SetStar stars or unstars p's account's stack slug for p alone.
-func (s *Service) SetStar(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	on bool,
-) (Stack, error) {
+func (s *Service) SetStar(ctx context.Context, p kernel.Principal, slug string, on bool) (Stack, error) {
 	st, err := s.store.BySlug(ctx, p.AccountID, slug, false)
 	if err != nil {
 		return Stack{}, err //nolint:wrapcheck // as above
@@ -1078,21 +892,13 @@ func (s *Service) SetStar(
 
 // PoolInUse lists the stacks that name acct's worker pool id, which
 // refuses its delete and a move that leaves one out of reach.
-func (s *Service) PoolInUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	id kernel.ULID,
-) ([]workersapi.PoolUse, error) {
+func (s *Service) PoolInUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]workersapi.PoolUse, error) {
 	return s.store.PoolInUse(ctx, acct, id) //nolint:wrapcheck // the store names the read
 }
 
 // SpaceInUse reports whether a stack lives in space, which refuses its
 // deletion.
-func (s *Service) SpaceInUse(
-	ctx context.Context,
-	acct kernel.AccountID,
-	space kernel.ULID,
-) (bool, error) {
+func (s *Service) SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
 	return s.store.SpaceInUse(ctx, acct, space) //nolint:wrapcheck // as above
 }
 
@@ -1205,12 +1011,7 @@ func (s *Service) space(ctx context.Context, p kernel.Principal, slug string) (k
 }
 
 // require refuses p action in space, as a *Denied.
-func (s *Service) require(
-	ctx context.Context,
-	p kernel.Principal,
-	action accessapi.Action,
-	space kernel.ULID,
-) error {
+func (s *Service) require(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) error {
 	ok, err := s.authz.Authorize(ctx, p, action, space)
 	switch {
 	case err != nil:

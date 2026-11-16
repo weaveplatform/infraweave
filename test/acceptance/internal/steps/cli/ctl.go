@@ -38,12 +38,7 @@ func (c *ctlSteps) register(sc *godog.ScenarioContext) {
 
 // run runs infraweavectl with args, stdin as standard input and env over
 // an environment that sets none of its variables.
-func (c *ctlSteps) run(
-	ctx context.Context,
-	stdin string,
-	env []string,
-	args ...string,
-) (string, error) {
+func (c *ctlSteps) run(ctx context.Context, stdin string, env []string, args ...string) (string, error) {
 	bin, err := harness.CtlBinary(ctx)
 	if err != nil {
 		return "", err

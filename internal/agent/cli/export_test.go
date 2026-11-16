@@ -7,10 +7,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
-func LauncherCmd(
-	doer wire.HttpRequestDoer,
-	engine func(config.Docker) (Engine, error),
-) *cobra.Command {
+func LauncherCmd(doer wire.HttpRequestDoer, engine func(config.Docker) (Engine, error)) *cobra.Command {
 	return launcherCmd(deps{doer: doer, engine: engine})
 }
 

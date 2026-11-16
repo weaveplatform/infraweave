@@ -61,11 +61,7 @@ func NewAuthenticator(auth *authn.Service, publicURL string) Authenticator {
 // over auth.
 func NewOperatorAuthenticator(auth *authn.Service) Authenticator {
 	return Authenticator{
-		token: func(
-			ctx context.Context,
-			raw string,
-			_ authn.Reach,
-		) (kernel.Principal, token.Claims, error) {
+		token: func(ctx context.Context, raw string, _ authn.Reach) (kernel.Principal, token.Claims, error) {
 			return auth.AuthenticateOperator(ctx, raw)
 		},
 	}
@@ -76,11 +72,7 @@ func NewOperatorAuthenticator(auth *authn.Service) Authenticator {
 // accessapi.Bearer on the request's context beside the principal.
 func NewWorkerAuthenticator(auth *authn.Service) Authenticator {
 	return Authenticator{
-		token: func(
-			ctx context.Context,
-			raw string,
-			_ authn.Reach,
-		) (kernel.Principal, token.Claims, error) {
+		token: func(ctx context.Context, raw string, _ authn.Reach) (kernel.Principal, token.Claims, error) {
 			return auth.AuthenticateWorker(ctx, raw)
 		},
 		runner: auth.AuthenticateRunner,
@@ -140,9 +132,7 @@ func from(ctx context.Context) request {
 // client retries rather than discards a good credential.
 //
 // ref: decision 0006 § "Sessions"
-func (a Authenticator) Middleware(
-	access func(*http.Request) accessapi.Access,
-) func(http.Handler) http.Handler {
+func (a Authenticator) Middleware(access func(*http.Request) accessapi.Access) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			rec := request{addr: ratelimit.ClientAddr(r)}

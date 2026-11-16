@@ -83,12 +83,7 @@ type Status struct {
 // its own made from cfg, and returns each stream's status after it. It
 // refuses, applying nothing, when Inspect would report ErrRefused. release
 // is recorded in schema_state for each stream it changes.
-func Up(
-	ctx context.Context,
-	cfg *pgx.ConnConfig,
-	release string,
-	streams []Stream,
-) ([]Status, error) {
+func Up(ctx context.Context, cfg *pgx.ConnConfig, release string, streams []Stream) ([]Status, error) {
 	loaded, err := loadAll(streams)
 	if err != nil {
 		return nil, err
@@ -265,12 +260,7 @@ func read(ctx context.Context, conn *pgx.Conn) (map[string]*record, error) {
 	return out, nil
 }
 
-func inspect(
-	ctx context.Context,
-	conn *pgx.Conn,
-	streams []Stream,
-	loaded [][]File,
-) ([]Status, error) {
+func inspect(ctx context.Context, conn *pgx.Conn, streams []Stream, loaded [][]File) ([]Status, error) {
 	records, err := read(ctx, conn)
 	if err != nil {
 		return nil, err

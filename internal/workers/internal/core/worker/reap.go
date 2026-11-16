@@ -125,11 +125,7 @@ func (s *Service) lose(ctx context.Context, before time.Time) (int, bool, error)
 // ended fails run, whose container on the worker ended as exit, when the
 // worker still holds it, as a poll that is not busy reports. A nil exit
 // is a container whose end the launcher did not learn.
-func (s *Service) ended(
-	ctx context.Context,
-	worker, run kernel.ULID,
-	exit *workersapi.Exit,
-) error {
+func (s *Service) ended(ctx context.Context, worker, run kernel.ULID, exit *workersapi.Exit) error {
 	if s.liveness == nil {
 		return nil
 	}

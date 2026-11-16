@@ -25,10 +25,7 @@ const queueStatsList = "message-queue-stats"
 // is short and fixed, so a cursor holds the position of a page's last queue.
 //
 // ref: decision 0011
-func (s apiServer) MessageQueueStats(
-	ctx context.Context,
-	req api.MessageQueueStatsRequestObject,
-) (api.MessageQueueStatsResponseObject, error) {
+func (s apiServer) MessageQueueStats(ctx context.Context, req api.MessageQueueStatsRequestObject) (api.MessageQueueStatsResponseObject, error) {
 	from := 0
 	if req.Params.Cursor != nil {
 		c, err := page.Decode[int](queueStatsList, *req.Params.Cursor)

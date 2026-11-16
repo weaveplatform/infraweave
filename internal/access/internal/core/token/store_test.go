@@ -58,11 +58,7 @@ func (m *memStore) Signer(_ context.Context, id kernel.ULID) (signer.Signer, err
 	return m.signers[id], nil
 }
 
-func (m *memStore) Rotate(
-	_ context.Context,
-	p token.Purpose,
-	plan func([]token.Key) []token.Step,
-) error {
+func (m *memStore) Rotate(_ context.Context, p token.Purpose, plan func([]token.Key) []token.Step) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.err != nil {

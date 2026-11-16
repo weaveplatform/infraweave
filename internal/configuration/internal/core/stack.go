@@ -12,11 +12,7 @@ import (
 
 // StackElement reads the element name of acct's stack slug. The route has
 // decided SPACE_READ on the stack's space.
-func (s *Service) StackElement(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug, name string,
-) (Element, error) {
+func (s *Service) StackElement(ctx context.Context, acct kernel.AccountID, slug, name string) (Element, error) {
 	st, err := s.stack(ctx, acct, slug)
 	if err != nil {
 		return Element{}, err
@@ -30,13 +26,7 @@ func (s *Service) StackElement(
 // stack so a delete of it waits. The route has decided STACK_ADD_CONFIG
 // on the stack's space. Refusals point under at, the element's place in
 // the request body, and its name at at+name.
-func (s *Service) SetStackElement(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	in ElementInput,
-	at, name string,
-) (Element, bool, error) {
+func (s *Service) SetStackElement(ctx context.Context, p kernel.Principal, slug string, in ElementInput, at, name string) (Element, bool, error) {
 	if errs := checkElement(at, name, in); len(errs) > 0 {
 		return Element{}, false, &kernel.Invalid{
 			Detail: "The config element is refused.",
@@ -59,11 +49,7 @@ func (s *Service) SetStackElement(
 // DeleteStackElement deletes the element name of p's account's stack slug
 // and answers it as it was. The route has decided STACK_DELETE_CONFIG on
 // the stack's space.
-func (s *Service) DeleteStackElement(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, name string,
-) (Element, error) {
+func (s *Service) DeleteStackElement(ctx context.Context, p kernel.Principal, slug, name string) (Element, error) {
 	var e Element
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		owner, err := s.stackOwner(ctx, p.AccountID, slug)
@@ -83,12 +69,7 @@ func (s *Service) DeleteStackElement(
 // may attach that p may read: those of its space and of each space it
 // reaches while each inherits. The route has decided SPACE_READ on the
 // stack's space.
-func (s *Service) StackAttachable(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	in search.Input,
-) (search.Result[Context], error) {
+func (s *Service) StackAttachable(ctx context.Context, p kernel.Principal, slug string, in search.Input) (search.Result[Context], error) {
 	st, err := s.stack(ctx, p.AccountID, slug)
 	if err != nil {
 		return search.Result[Context]{}, err
@@ -102,11 +83,7 @@ func (s *Service) StackAttachable(
 }
 
 // stack reads acct's stack slug; a *Missing when acct lacks it.
-func (s *Service) stack(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (stacksapi.Stack, error) {
+func (s *Service) stack(ctx context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error) {
 	st, err := s.stacks.BySlug(ctx, acct, slug)
 	if errors.Is(err, stacksapi.ErrNotFound) {
 		return stacksapi.Stack{}, &Missing{Kind: "stack", ID: slug}
@@ -118,11 +95,7 @@ func (s *Service) stack(
 // held and its elements locked for the caller's transaction: a stack's
 // row is the stacks domain's, so no row lock orders two writers of one
 // element as a context's row does.
-func (s *Service) stackOwner(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (Owner, error) {
+func (s *Service) stackOwner(ctx context.Context, acct kernel.AccountID, slug string) (Owner, error) {
 	st, err := s.stack(ctx, acct, slug)
 	if err != nil {
 		return Owner{}, err

@@ -47,13 +47,7 @@ func (s *Store) CA(ctx context.Context) ([]byte, error) {
 
 // Nonce records the pool's jti until expires, after dropping the pool's
 // expired ones, so a jti seen again once it expired is fresh again.
-func (s *Store) Nonce(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool kernel.ULID,
-	jti string,
-	expires time.Time,
-) (bool, error) {
+func (s *Store) Nonce(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, jti string, expires time.Time) (bool, error) {
 	q := tx.Q(ctx, s.db)
 	if _, err := q.Exec(ctx, `DELETE FROM worker_nonces
 		WHERE account_id = $1 AND pool_id = $2 AND expires_at < now()`, acct, pool); err != nil {
@@ -68,11 +62,7 @@ func (s *Store) Nonce(
 }
 
 // Count counts the registered workers of org and of acct.
-func (s *Store) Count(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	acct kernel.AccountID,
-) (featuresapi.Usage, error) {
+func (s *Store) Count(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID) (featuresapi.Usage, error) {
 	var u featuresapi.Usage
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE account_id = $2)
 		FROM workers WHERE organization_id = $1`, org, acct).Scan(&u.Organization, &u.Account)
@@ -109,11 +99,7 @@ func workerError(id kernel.ULID, err error) error {
 }
 
 // Worker reads the worker id with its pool's current serial.
-func (s *Store) Worker(
-	ctx context.Context,
-	id kernel.ULID,
-	lock bool,
-) (worker.Worker, int64, error) {
+func (s *Store) Worker(ctx context.Context, id kernel.ULID, lock bool) (worker.Worker, int64, error) {
 	query := `SELECT ` + workerColumns + `, p.serial FROM workers w
 		JOIN worker_pools p ON p.account_id = w.account_id AND p.id = w.pool_id
 		WHERE w.id = $1`
@@ -181,12 +167,7 @@ func (s *Store) Resume(ctx context.Context, w worker.Worker) error {
 // Seen marks the worker id seen at now with busy, and no longer offline.
 // available_at is set when the worker becomes idle and cleared while it
 // is busy.
-func (s *Store) Seen(
-	ctx context.Context,
-	id kernel.ULID,
-	busy bool,
-	now time.Time,
-) (worker.Worker, int64, error) {
+func (s *Store) Seen(ctx context.Context, id kernel.ULID, busy bool, now time.Time) (worker.Worker, int64, error) {
 	var serial int64
 	w, err := scanWorker(tx.Q(ctx, s.db).QueryRow(ctx, `UPDATE workers w SET last_seen_at = $2,
 			busy = $3, offline = false,
@@ -289,12 +270,7 @@ func (s *Store) wake(ctx context.Context, pool kernel.ULID) error {
 
 // Drain sets the drain flag of acct's worker id of pool and wakes the
 // pool's held polls.
-func (s *Store) Drain(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool, id kernel.ULID,
-	drain bool,
-) (worker.Worker, error) {
+func (s *Store) Drain(ctx context.Context, acct kernel.AccountID, pool, id kernel.ULID, drain bool) (worker.Worker, error) {
 	w, err := scanWorker(tx.Q(ctx, s.db).QueryRow(ctx, `UPDATE workers w SET drained = $4
 		WHERE w.account_id = $1 AND w.pool_id = $2 AND w.id = $3
 		RETURNING `+workerColumns, acct, pool, id, drain))
@@ -315,11 +291,7 @@ func (s *Store) Cycle(ctx context.Context, acct kernel.AccountID, pool kernel.UL
 }
 
 // OfPools reads the workers of acct's pools, by pool, oldest first.
-func (s *Store) OfPools(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pools []kernel.ULID,
-) (map[kernel.ULID][]worker.Worker, error) {
+func (s *Store) OfPools(ctx context.Context, acct kernel.AccountID, pools []kernel.ULID) (map[kernel.ULID][]worker.Worker, error) {
 	out := map[kernel.ULID][]worker.Worker{}
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+workerColumns+` FROM workers w
 		WHERE w.account_id = $1 AND w.pool_id = ANY($2) ORDER BY w.created_at, w.id`, acct, pools)
@@ -379,12 +351,7 @@ func workerScope(acct kernel.AccountID, pool, space kernel.ULID) sqlsearch.Scope
 }
 
 // SearchWorkers reads a page of the workers of acct's pool that in keeps.
-func (s *Store) SearchWorkers(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool, space kernel.ULID,
-	in search.Input,
-) (search.Result[worker.Worker], error) {
+func (s *Store) SearchWorkers(ctx context.Context, acct kernel.AccountID, pool, space kernel.ULID, in search.Input) (search.Result[worker.Worker], error) {
 	out, err := sqlsearch.Find(ctx, tx.Q(ctx, s.db), workerSearch, workerScope(acct, pool, space),
 		in, scanWorker)
 	if err != nil {
@@ -394,12 +361,7 @@ func (s *Store) SearchWorkers(
 }
 
 // SuggestWorkers lists the values the workers of acct's pool hold.
-func (s *Store) SuggestWorkers(
-	ctx context.Context,
-	acct kernel.AccountID,
-	pool, space kernel.ULID,
-	in search.SuggestionsInput,
-) (search.Suggestions, error) {
+func (s *Store) SuggestWorkers(ctx context.Context, acct kernel.AccountID, pool, space kernel.ULID, in search.SuggestionsInput) (search.Suggestions, error) {
 	out, err := sqlsearch.Suggest(ctx, tx.Q(ctx, s.db), workerSearch,
 		workerScope(acct, pool, space), in)
 	if err != nil {

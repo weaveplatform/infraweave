@@ -43,13 +43,7 @@ func (o *orgs) err() error {
 	return nil
 }
 
-func (o *orgs) CreateOrganization(
-	_ context.Context,
-	org organization.Organization,
-	first account.Account,
-	bg *breakglass.Credential,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (o *orgs) CreateOrganization(_ context.Context, org organization.Organization, first account.Account, bg *breakglass.Credential, e kernel.OrganizationAuditEntry) error {
 	if err := o.err(); err != nil {
 		return err
 	}
@@ -65,11 +59,7 @@ func (o *orgs) CreateOrganization(
 	return nil
 }
 
-func (o *orgs) Organizations(
-	_ context.Context,
-	after kernel.OrganizationID,
-	limit int,
-) ([]operator.Organization, error) {
+func (o *orgs) Organizations(_ context.Context, after kernel.OrganizationID, limit int) ([]operator.Organization, error) {
 	var out []operator.Organization
 	for _, x := range o.byID {
 		if after.IsZero() || x.ID.String() > after.String() {
@@ -82,10 +72,7 @@ func (o *orgs) Organizations(
 	return out[:min(len(out), limit)], o.err()
 }
 
-func (o *orgs) OrganizationBySlug(
-	_ context.Context,
-	slug kernel.Slug,
-) (operator.Organization, error) {
+func (o *orgs) OrganizationBySlug(_ context.Context, slug kernel.Slug) (operator.Organization, error) {
 	if err := o.err(); err != nil {
 		return operator.Organization{}, err
 	}
@@ -97,22 +84,13 @@ func (o *orgs) OrganizationBySlug(
 	return operator.Organization{}, port.ErrNotFound
 }
 
-func (o *orgs) DeleteOrganization(
-	_ context.Context,
-	id kernel.OrganizationID,
-	e kernel.OrganizationAuditEntry,
-) ([]kernel.ULID, error) {
+func (o *orgs) DeleteOrganization(_ context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error) {
 	delete(o.byID, id)
 	o.entries = append(o.entries, e)
 	return nil, nil
 }
 
-func (o *orgs) SetBreakGlass(
-	_ context.Context,
-	id kernel.OrganizationID,
-	c breakglass.Credential,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (o *orgs) SetBreakGlass(_ context.Context, id kernel.OrganizationID, c breakglass.Credential, e kernel.OrganizationAuditEntry) error {
 	x := o.byID[id]
 	x.BreakGlass = &c
 	o.byID[id] = x
@@ -120,11 +98,7 @@ func (o *orgs) SetBreakGlass(
 	return nil
 }
 
-func (o *orgs) DeleteBreakGlass(
-	_ context.Context,
-	id kernel.OrganizationID,
-	e kernel.OrganizationAuditEntry,
-) error {
+func (o *orgs) DeleteBreakGlass(_ context.Context, id kernel.OrganizationID, e kernel.OrganizationAuditEntry) error {
 	x := o.byID[id]
 	x.BreakGlass = nil
 	o.byID[id] = x
@@ -256,12 +230,7 @@ func (w *opWorld) create(t *testing.T, bearer, slug string) *httptest.ResponseRe
 			`"breakGlass":{"login":"admin","passwordHash":%q}}`, slug, w.hash))
 }
 
-func wantProblem(
-	t *testing.T,
-	rec *httptest.ResponseRecorder,
-	code int,
-	slug string,
-) problem.Problem {
+func wantProblem(t *testing.T, rec *httptest.ResponseRecorder, code int, slug string) problem.Problem {
 	t.Helper()
 	p := decode[problem.Problem](t, rec)
 	if rec.Code != code || !strings.HasSuffix(p.Type, ":"+slug) {

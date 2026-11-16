@@ -326,8 +326,6 @@ func TestUnitWorkspaceBounds(t *testing.T) {
 // failing refuses every write.
 type failing struct{}
 
-func (failing) Write(
-	[]byte,
-) (int, error) {
+func (failing) Write([]byte) (int, error) {
 	return 0, errors.New("disk full")
 } //nolint:err113 // a test double

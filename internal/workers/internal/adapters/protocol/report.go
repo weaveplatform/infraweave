@@ -17,10 +17,7 @@ import (
 // answers what the worker does next.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
-func (s Server) WorkerRunReport(
-	ctx context.Context,
-	req gen.WorkerRunReportRequestObject,
-) (gen.WorkerRunReportResponseObject, error) {
+func (s Server) WorkerRunReport(ctx context.Context, req gen.WorkerRunReportRequestObject) (gen.WorkerRunReportResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err
@@ -62,10 +59,7 @@ func count(n *int32) int {
 // declares.
 //
 // ref: decision 0008 § "Logs and artifacts"
-func (s Server) WorkerRunUploadURLs(
-	ctx context.Context,
-	req gen.WorkerRunUploadURLsRequestObject,
-) (gen.WorkerRunUploadURLsResponseObject, error) {
+func (s Server) WorkerRunUploadURLs(ctx context.Context, req gen.WorkerRunUploadURLsRequestObject) (gen.WorkerRunUploadURLsResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err
@@ -94,10 +88,7 @@ func (s Server) WorkerRunUploadURLs(
 }
 
 // WorkerRunLogChunks indexes uploaded log chunks.
-func (s Server) WorkerRunLogChunks(
-	ctx context.Context,
-	req gen.WorkerRunLogChunksRequestObject,
-) (gen.WorkerRunLogChunksResponseObject, error) {
+func (s Server) WorkerRunLogChunks(ctx context.Context, req gen.WorkerRunLogChunksRequestObject) (gen.WorkerRunLogChunksResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err
@@ -120,10 +111,7 @@ func (s Server) WorkerRunLogChunks(
 
 // WorkerRunArtifacts records uploaded artifacts, workspaces and
 // observability artifacts.
-func (s Server) WorkerRunArtifacts(
-	ctx context.Context,
-	req gen.WorkerRunArtifactsRequestObject,
-) (gen.WorkerRunArtifactsResponseObject, error) {
+func (s Server) WorkerRunArtifacts(ctx context.Context, req gen.WorkerRunArtifactsRequestObject) (gen.WorkerRunArtifactsResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err
@@ -141,10 +129,7 @@ func (s Server) WorkerRunArtifacts(
 
 // WorkerRunWorkspace redirects to a pre-signed GET of the run's saved
 // workspace.
-func (s Server) WorkerRunWorkspace(
-	ctx context.Context,
-	req gen.WorkerRunWorkspaceRequestObject,
-) (gen.WorkerRunWorkspaceResponseObject, error) {
+func (s Server) WorkerRunWorkspace(ctx context.Context, req gen.WorkerRunWorkspaceRequestObject) (gen.WorkerRunWorkspaceResponseObject, error) {
 	b, err := bearer(ctx)
 	if err != nil {
 		return nil, err

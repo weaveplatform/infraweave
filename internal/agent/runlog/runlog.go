@@ -56,11 +56,7 @@ var errAnswer = errors.New("the worker API answered no upload URL")
 
 // API is the worker API's side of a run's log; *client.Client is one.
 type API interface {
-	UploadURLs(
-		ctx context.Context,
-		token, run string,
-		in wire.UploadURLsRequest,
-	) ([]wire.SignedUpload, error)
+	UploadURLs(ctx context.Context, token, run string, in wire.UploadURLsRequest) ([]wire.SignedUpload, error)
 	Put(ctx context.Context, u wire.SignedUpload, body []byte) error
 	LogChunks(ctx context.Context, token, run string, in wire.LogChunksRequest) error
 }
@@ -486,13 +482,7 @@ func (l *Log) lose(ctx context.Context, commit wire.LogChunksRequest, err error)
 
 // send takes one chunk through the worker API: its declaration and PUT,
 // unless uploaded says they were taken, and its commit.
-func (l *Log) send(
-	ctx context.Context,
-	decl wire.UploadURLsRequest,
-	commit wire.LogChunksRequest,
-	body []byte,
-	uploaded *bool,
-) error {
+func (l *Log) send(ctx context.Context, decl wire.UploadURLsRequest, commit wire.LogChunksRequest, body []byte, uploaded *bool) error {
 	if !*uploaded {
 		ups, err := l.d.API.UploadURLs(ctx, l.d.Token, l.d.Run, decl)
 		if err != nil {

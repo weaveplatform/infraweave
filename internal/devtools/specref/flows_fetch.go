@@ -103,12 +103,7 @@ func readOverlay(ctx context.Context, dir string) (openapi3.Schemas, error) {
 	return ParseFlowsOverlay(ctx, data)
 }
 
-func fetchFlowsClients(
-	ctx context.Context,
-	o FlowsFetchOptions,
-	lock *FlowsLock,
-	files map[string][]byte,
-) error {
+func fetchFlowsClients(ctx context.Context, o FlowsFetchOptions, lock *FlowsLock, files map[string][]byte) error {
 	providerTGZ, err := o.Fetcher.Get(
 		ctx,
 		fmt.Sprintf("%s/%s/tar.gz/%s", o.Codeload, o.ProviderRepo, o.ProviderRef),
@@ -194,11 +189,7 @@ type flowTemplate struct {
 	Flow string `json:"flow"`
 }
 
-func fetchTemplates(
-	ctx context.Context,
-	o FlowsFetchOptions,
-	overlay openapi3.Schemas,
-) (LockTemplates, error) {
+func fetchTemplates(ctx context.Context, o FlowsFetchOptions, overlay openapi3.Schemas) (LockTemplates, error) {
 	out := LockTemplates{Index: o.Templates, Flows: map[string]string{}}
 	data, err := o.Fetcher.Get(ctx, o.Templates)
 	if err != nil {

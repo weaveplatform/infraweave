@@ -18,12 +18,7 @@ import (
 // outputs, which views reads from the configuration and runs domains. The fields
 // later phases own read their empty values: no other attachments, no
 // dependencies and no managed resources.
-func viewOf(
-	st core.Stack,
-	space string,
-	held []accessapi.Action,
-	starred bool,
-) (api.Stack, error) {
+func viewOf(st core.Stack, space string, held []accessapi.Action, starred bool) (api.Stack, error) {
 	vendor, err := vendorView(st)
 	if err != nil {
 		return api.Stack{}, err

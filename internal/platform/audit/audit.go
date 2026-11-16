@@ -84,10 +84,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, nullif($10, ''), $11)`
 // transaction on ctx, as Record does an account's entry: it refuses an
 // entry without its organization, actor, action, event type or affected
 // resource (ErrEntry) or made outside a transaction (ErrNoTransaction).
-func RecordOrganization(
-	ctx context.Context,
-	e kernel.OrganizationAuditEntry,
-) (kernel.OrganizationAuditEntry, error) {
+func RecordOrganization(ctx context.Context, e kernel.OrganizationAuditEntry) (kernel.OrganizationAuditEntry, error) {
 	if e.OrganizationID.IsZero() || e.ActorKind == "" || e.ActorID == "" || e.Action == "" ||
 		e.EventType == "" || e.AffectedResource.Type == "" || e.AffectedResource.ID == "" {
 		return kernel.OrganizationAuditEntry{}, fmt.Errorf(

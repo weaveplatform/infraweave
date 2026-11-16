@@ -75,10 +75,7 @@ func TestUnitOrigin(t *testing.T) {
 
 // member gives w a member's browser session in acct, admitted to admits,
 // and answers it with its cookie value.
-func (w *world) member(
-	acct kernel.AccountID,
-	admits ...session.Admitted,
-) (session.Session, string) {
+func (w *world) member(acct kernel.AccountID, admits ...session.Admitted) (session.Session, string) {
 	secret, hash := session.NewSecret()
 	ss := session.Session{
 		ID: kernel.NewULID(), OrganizationID: kernel.NewOrganizationID(), AccountID: acct,
@@ -166,10 +163,7 @@ func (w *world) withBreakGlass(slug, login string) organization.Organization {
 }
 
 // signIn posts the login form with origin, and answers the response.
-func (w *world) signIn(
-	t *testing.T,
-	slug, login, password, origin string,
-) *httptest.ResponseRecorder {
+func (w *world) signIn(t *testing.T, slug, login, password, origin string) *httptest.ResponseRecorder {
 	t.Helper()
 	form := url.Values{"login": {login}, "password": {password}}.Encode()
 	return w.send(t, http.MethodPost, "/admin-login/"+slug, "", func(req *http.Request) {

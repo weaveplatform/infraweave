@@ -75,13 +75,7 @@ func AccessLog(log *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func logRequest(
-	log *slog.Logger,
-	r *http.Request,
-	ww middleware.WrapResponseWriter,
-	start time.Time,
-	finished bool,
-) {
+func logRequest(log *slog.Logger, r *http.Request, ww middleware.WrapResponseWriter, start time.Time, finished bool) {
 	status := ww.Status()
 	switch {
 	case !finished:

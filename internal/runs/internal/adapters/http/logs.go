@@ -25,10 +25,7 @@ type position struct {
 
 // RunLogs answers a page of a state's log of one run of the caller's
 // account. The route has decided SPACE_READ on its stack's space.
-func (s Server) RunLogs(
-	ctx context.Context,
-	req api.RunLogsRequestObject,
-) (api.RunLogsResponseObject, error) {
+func (s Server) RunLogs(ctx context.Context, req api.RunLogsRequestObject) (api.RunLogsResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -83,10 +80,7 @@ func (s Server) RunLogs(
 // RunLogsDownloadURL answers where a state's whole log of one run of the
 // caller's account downloads from. The route has decided SPACE_READ on
 // its stack's space.
-func (s Server) RunLogsDownloadURL(
-	ctx context.Context,
-	req api.RunLogsDownloadURLRequestObject,
-) (api.RunLogsDownloadURLResponseObject, error) {
+func (s Server) RunLogsDownloadURL(ctx context.Context, req api.RunLogsDownloadURLRequestObject) (api.RunLogsDownloadURLResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -106,10 +100,7 @@ func (s Server) RunLogsDownloadURL(
 // RunCpuProfileDownloadURL answers where the CPU profile of a state of
 // one run of the caller's account downloads from. The route has decided
 // SPACE_READ on the run's stack's space.
-func (s Server) RunCpuProfileDownloadURL(
-	ctx context.Context,
-	req api.RunCpuProfileDownloadURLRequestObject,
-) (api.RunCpuProfileDownloadURLResponseObject, error) {
+func (s Server) RunCpuProfileDownloadURL(ctx context.Context, req api.RunCpuProfileDownloadURLRequestObject) (api.RunCpuProfileDownloadURLResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -133,10 +124,7 @@ func downloadOf(d logs.Download) api.LogsDownloadURL {
 // RunLogRetentionDays answers how many days a run's logs are kept, which
 // the server's configuration sets for every account. The route has
 // decided the caller is authenticated.
-func (s Server) RunLogRetentionDays(
-	ctx context.Context,
-	_ api.RunLogRetentionDaysRequestObject,
-) (api.RunLogRetentionDaysResponseObject, error) {
+func (s Server) RunLogRetentionDays(ctx context.Context, _ api.RunLogRetentionDaysRequestObject) (api.RunLogRetentionDaysResponseObject, error) {
 	if _, err := principal(ctx); err != nil {
 		return nil, err
 	}

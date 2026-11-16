@@ -20,13 +20,7 @@ type tracked struct {
 	setBy  string
 }
 
-func (f *fakeStacks) SetTracked(
-	_ context.Context,
-	_ kernel.AccountID,
-	id kernel.ULID,
-	head, commit *stacksapi.Commit,
-	setBy string,
-) error {
+func (f *fakeStacks) SetTracked(_ context.Context, _ kernel.AccountID, id kernel.ULID, head, commit *stacksapi.Commit, setBy string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.err["SetTracked"]; err != nil {

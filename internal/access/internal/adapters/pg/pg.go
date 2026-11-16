@@ -107,12 +107,7 @@ func (s *Store) WithSnapshots(forget func(kernel.AccountID)) *Store {
 // deleted has every replica forget the snapshot of each of org's accounts
 // accts, and appends an accessapi.Deleted for each, with whole set when
 // the organization goes with them.
-func (s *Store) deleted(
-	ctx context.Context,
-	org kernel.OrganizationID,
-	accts []kernel.AccountID,
-	whole bool,
-) error {
+func (s *Store) deleted(ctx context.Context, org kernel.OrganizationID, accts []kernel.AccountID, whole bool) error {
 	for _, acct := range accts {
 		if err := s.forgetAuthz(ctx, tx.Q(ctx, s.db), acct); err != nil {
 			return err
@@ -141,10 +136,7 @@ func (s *Store) deleted(
 }
 
 // Organization reads the organization id.
-func (s *Store) Organization(
-	ctx context.Context,
-	id kernel.OrganizationID,
-) (organization.Organization, error) {
+func (s *Store) Organization(ctx context.Context, id kernel.OrganizationID) (organization.Organization, error) {
 	var o organization.Organization
 	err := tx.Q(ctx, s.db).QueryRow(ctx,
 		`SELECT id, slug, name, created_at FROM organizations WHERE id = $1`, id).

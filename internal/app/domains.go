@@ -73,15 +73,7 @@ type Objects interface {
 // registered, and subscribe their purges there, logging to log. It fails
 // on a setting a domain reads a file for, and on an outbox whose purges
 // are already subscribed.
-func newDomains(
-	c config.Config,
-	db *sql.DB,
-	keys *crypt.Keyring,
-	objects Objects,
-	kms []signer.KMS,
-	events *outbox.Outbox,
-	log *slog.Logger,
-) (Domains, error) {
+func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Objects, kms []signer.KMS, events *outbox.Outbox, log *slog.Logger) (Domains, error) {
 	features := featuresassembly.New(featuresassembly.Deps{
 		DB:       db.Primary(),
 		Settings: c.Features,

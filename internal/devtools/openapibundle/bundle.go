@@ -244,12 +244,7 @@ func mergePaths(dst, src *yaml.Node, frag string, seen map[string]string) error 
 	return nil
 }
 
-func mergeComponents(
-	dst map[string]*yaml.Node,
-	src *yaml.Node,
-	frag string,
-	seen map[string]string,
-) error {
+func mergeComponents(dst map[string]*yaml.Node, src *yaml.Node, frag string, seen map[string]string) error {
 	if src.Kind != yaml.MappingNode {
 		return fmt.Errorf("%w: %s components", ErrNotMapping, frag)
 	}
@@ -304,9 +299,7 @@ func sortedKeys(m map[string]*yaml.Node) []string {
 
 func mapping() *yaml.Node { return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"} }
 
-func scalar(
-	v string,
-) *yaml.Node {
+func scalar(v string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: v}
 }
 

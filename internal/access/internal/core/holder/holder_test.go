@@ -25,11 +25,7 @@ type book struct {
 	fail     string
 }
 
-func (b *book) Candidates(
-	_ context.Context,
-	_ kernel.AccountID,
-	list holder.List,
-) ([]holder.Candidate, error) {
+func (b *book) Candidates(_ context.Context, _ kernel.AccountID, list holder.List) ([]holder.Candidate, error) {
 	if b.fail == "candidates" {
 		return nil, errDown
 	}
@@ -48,35 +44,19 @@ func (b *book) page(ids []kernel.ULID) search.Result[holder.Row] {
 	return out
 }
 
-func (b *book) SearchHolders(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ holder.List,
-	_ search.Input,
-	ids []kernel.ULID,
-) (search.Result[holder.Row], error) {
+func (b *book) SearchHolders(_ context.Context, _ kernel.AccountID, _ holder.List, _ search.Input, ids []kernel.ULID) (search.Result[holder.Row], error) {
 	if b.fail == "search" {
 		return search.Result[holder.Row]{}, errDown
 	}
 	return b.page(ids), nil
 }
 
-func (b *book) SuggestHolders(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ holder.List,
-	_ search.SuggestionsInput,
-	ids []kernel.ULID,
-) (search.Suggestions, error) {
+func (b *book) SuggestHolders(_ context.Context, _ kernel.AccountID, _ holder.List, _ search.SuggestionsInput, ids []kernel.ULID) (search.Suggestions, error) {
 	b.searched = ids
 	return search.Suggestions{Count: len(ids)}, nil
 }
 
-func (b *book) HolderGroups(
-	_ context.Context,
-	_ kernel.AccountID,
-	ids []kernel.ULID,
-) ([]holder.Row, error) {
+func (b *book) HolderGroups(_ context.Context, _ kernel.AccountID, ids []kernel.ULID) ([]holder.Row, error) {
 	if b.fail == "groups" {
 		return nil, errDown
 	}
@@ -94,24 +74,14 @@ type judge struct {
 	fail   bool
 }
 
-func (j *judge) Holders(
-	context.Context,
-	kernel.AccountID,
-	kernel.ULID,
-	...binding.ActorKind,
-) ([]authz.Holder, error) {
+func (j *judge) Holders(context.Context, kernel.AccountID, kernel.ULID, ...binding.ActorKind) ([]authz.Holder, error) {
 	if j.fail {
 		return nil, errDown
 	}
 	return j.groups, nil
 }
 
-func (j *judge) ExplainEach(
-	_ context.Context,
-	_ kernel.AccountID,
-	_ kernel.ULID,
-	whos []authz.Who,
-) ([][]authz.Grant, error) {
+func (j *judge) ExplainEach(_ context.Context, _ kernel.AccountID, _ kernel.ULID, whos []authz.Who) ([][]authz.Grant, error) {
 	if j.fail {
 		return nil, errDown
 	}

@@ -29,13 +29,8 @@ var ErrLocalPreview = errors.New("runs: the stack does not enable local previews
 // blobs.Objects is one.
 type Objects interface {
 	Begin(ctx context.Context, store objectstore.Name, key string, size int64, sum []byte) error
-	SignPut(ctx context.Context, store objectstore.Name, key string, size int64,
-		sum []byte) (objectstore.Signed, error)
-	CommitUpload(
-		ctx context.Context,
-		store objectstore.Name,
-		key string,
-	) (objectstore.Object, error)
+	SignPut(ctx context.Context, store objectstore.Name, key string, size int64, sum []byte) (objectstore.Signed, error)
+	CommitUpload(ctx context.Context, store objectstore.Name, key string) (objectstore.Object, error)
 	Live(ctx context.Context, store objectstore.Name, key string) (bool, error)
 }
 
@@ -55,13 +50,7 @@ type Upload struct {
 // with the uploads store's retention, one day by default.
 //
 // ref: decision 0005 § "The stores of 0003"
-func (s *Service) UploadWorkspace(
-	ctx context.Context,
-	p kernel.Principal,
-	slug string,
-	size int64,
-	sum []byte,
-) (Upload, error) {
+func (s *Service) UploadWorkspace(ctx context.Context, p kernel.Principal, slug string, size int64, sum []byte) (Upload, error) {
 	if err := declared(size, sum); err != nil {
 		return Upload{}, err
 	}
@@ -100,12 +89,7 @@ func (s *Service) UploadWorkspace(
 // ErrLocalPreview.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func (s *Service) ProposeWorkspace(
-	ctx context.Context,
-	p kernel.Principal,
-	slug, upload string,
-	ovs []lifecycle.Override,
-) (read.View, error) {
+func (s *Service) ProposeWorkspace(ctx context.Context, p kernel.Principal, slug, upload string, ovs []lifecycle.Override) (read.View, error) {
 	if err := CheckOverrides(ovs); err != nil {
 		return read.View{}, err
 	}
@@ -143,11 +127,7 @@ func (s *Service) ProposeWorkspace(
 
 // previewable reads acct's stack slug's settings, refusing a stack that
 // does not enable local previews.
-func (s *Service) previewable(
-	ctx context.Context,
-	acct kernel.AccountID,
-	slug string,
-) (stacksapi.Settings, error) {
+func (s *Service) previewable(ctx context.Context, acct kernel.AccountID, slug string) (stacksapi.Settings, error) {
 	st, err := s.d.Stacks.BySlug(ctx, acct, slug)
 	if err != nil {
 		return stacksapi.Settings{}, err //nolint:wrapcheck // the stacks domain names the read

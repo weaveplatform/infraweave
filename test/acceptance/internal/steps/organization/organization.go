@@ -249,14 +249,7 @@ func (o *orgSteps) namesNoAccountData() error {
 
 // usage reads the organization's usage in the browser and checks two
 // accounts' seats in use.
-func (o *orgSteps) usage(
-	ctx context.Context,
-	replica string,
-	n1 int64,
-	a1 string,
-	n2 int64,
-	a2 string,
-) error {
+func (o *orgSteps) usage(ctx context.Context, replica string, n1 int64, a1 string, n2 int64, a2 string) error {
 	if err := o.w.SendAs(ctx, "the browser", http.MethodGet, "/api/v1/organization/usage", "",
 		replica); err != nil {
 		return err

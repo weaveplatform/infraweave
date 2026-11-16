@@ -56,10 +56,7 @@ func settingError(err error) error {
 // personal API keys.
 //
 //nolint:revive // the generated interface names it
-func (s Server) PersonalApiKeysEnabled(
-	ctx context.Context,
-	_ api.PersonalApiKeysEnabledRequestObject,
-) (api.PersonalApiKeysEnabledResponseObject, error) {
+func (s Server) PersonalApiKeysEnabled(ctx context.Context, _ api.PersonalApiKeysEnabledRequestObject) (api.PersonalApiKeysEnabledResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -109,10 +106,7 @@ func (s Server) AccountRequestPersonalApiKeysEnabling(
 // keys.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeysManageableByNonHumans(
-	ctx context.Context,
-	_ api.ApiKeysManageableByNonHumansRequestObject,
-) (api.ApiKeysManageableByNonHumansResponseObject, error) {
+func (s Server) ApiKeysManageableByNonHumans(ctx context.Context, _ api.ApiKeysManageableByNonHumansRequestObject) (api.ApiKeysManageableByNonHumansResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -143,10 +137,7 @@ func (s Server) AccountToggleAPIKeyManagementFromNonHumans(
 // setting.
 //
 //nolint:revive // the generated interface names it
-func (s Server) ApiKeysManagedByNonAdmins(
-	ctx context.Context,
-	_ api.ApiKeysManagedByNonAdminsRequestObject,
-) (api.ApiKeysManagedByNonAdminsResponseObject, error) {
+func (s Server) ApiKeysManagedByNonAdmins(ctx context.Context, _ api.ApiKeysManagedByNonAdminsRequestObject) (api.ApiKeysManagedByNonAdminsResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -155,10 +146,7 @@ func (s Server) ApiKeysManagedByNonAdmins(
 }
 
 // SecurityEmail answers the account's security contact.
-func (s Server) SecurityEmail(
-	ctx context.Context,
-	_ api.SecurityEmailRequestObject,
-) (api.SecurityEmailResponseObject, error) {
+func (s Server) SecurityEmail(ctx context.Context, _ api.SecurityEmailRequestObject) (api.SecurityEmailResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -167,10 +155,7 @@ func (s Server) SecurityEmail(
 }
 
 // AccountUpdateSecurityEmail sets the account's security contact.
-func (s Server) AccountUpdateSecurityEmail(
-	ctx context.Context,
-	req api.AccountUpdateSecurityEmailRequestObject,
-) (api.AccountUpdateSecurityEmailResponseObject, error) {
+func (s Server) AccountUpdateSecurityEmail(ctx context.Context, req api.AccountUpdateSecurityEmailRequestObject) (api.AccountUpdateSecurityEmailResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -185,10 +170,7 @@ func (s Server) AccountUpdateSecurityEmail(
 // OauthRedirectAllowedHosts lists the account's OAuth redirect allowlist
 // in the order it was set. A cursor names the last host of its page, so a
 // host removed since answers 400 invalid-cursor.
-func (s Server) OauthRedirectAllowedHosts(
-	ctx context.Context,
-	req api.OauthRedirectAllowedHostsRequestObject,
-) (api.OauthRedirectAllowedHostsResponseObject, error) {
+func (s Server) OauthRedirectAllowedHosts(ctx context.Context, req api.OauthRedirectAllowedHostsRequestObject) (api.OauthRedirectAllowedHostsResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -239,10 +221,7 @@ func (s Server) AccountSetOAuthRedirectAllowlist(
 }
 
 // AwarenessSourceSurvey answers the account's survey answer.
-func (s Server) AwarenessSourceSurvey(
-	ctx context.Context,
-	_ api.AwarenessSourceSurveyRequestObject,
-) (api.AwarenessSourceSurveyResponseObject, error) {
+func (s Server) AwarenessSourceSurvey(ctx context.Context, _ api.AwarenessSourceSurveyRequestObject) (api.AwarenessSourceSurveyResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -273,10 +252,7 @@ func (s Server) AccountUpdateAwarenessSourceSurvey(
 }
 
 // MarkedForDeletion answers whether the account is marked for deletion.
-func (s Server) MarkedForDeletion(
-	ctx context.Context,
-	_ api.MarkedForDeletionRequestObject,
-) (api.MarkedForDeletionResponseObject, error) {
+func (s Server) MarkedForDeletion(ctx context.Context, _ api.MarkedForDeletionRequestObject) (api.MarkedForDeletionResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -286,10 +262,7 @@ func (s Server) MarkedForDeletion(
 
 // AccountToggleDeletionMark marks the account for deletion, or clears the
 // mark, and answers whether it is now marked.
-func (s Server) AccountToggleDeletionMark(
-	ctx context.Context,
-	req api.AccountToggleDeletionMarkRequestObject,
-) (api.AccountToggleDeletionMarkResponseObject, error) {
+func (s Server) AccountToggleDeletionMark(ctx context.Context, req api.AccountToggleDeletionMarkRequestObject) (api.AccountToggleDeletionMarkResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
@@ -307,10 +280,7 @@ func (s Server) AccountToggleDeletionMark(
 
 // AccountCanBeDeleted answers whether accountConfirmDelete would delete
 // the account now.
-func (s Server) AccountCanBeDeleted(
-	ctx context.Context,
-	_ api.AccountCanBeDeletedRequestObject,
-) (api.AccountCanBeDeletedResponseObject, error) {
+func (s Server) AccountCanBeDeleted(ctx context.Context, _ api.AccountCanBeDeletedRequestObject) (api.AccountCanBeDeletedResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -320,10 +290,7 @@ func (s Server) AccountCanBeDeleted(
 
 // AccountCanBeDeletedAt answers the time of the account's deletion mark in
 // Unix seconds, from which it may be deleted; 0 while it is not marked.
-func (s Server) AccountCanBeDeletedAt(
-	ctx context.Context,
-	_ api.AccountCanBeDeletedAtRequestObject,
-) (api.AccountCanBeDeletedAtResponseObject, error) {
+func (s Server) AccountCanBeDeletedAt(ctx context.Context, _ api.AccountCanBeDeletedAtRequestObject) (api.AccountCanBeDeletedAtResponseObject, error) {
 	_, st, err := s.current(ctx)
 	if err != nil {
 		return nil, err
@@ -337,10 +304,7 @@ func (s Server) AccountCanBeDeletedAt(
 
 // AccountConfirmDelete deletes the caller's account, which must be marked
 // and not its organization's last; the caller's own session goes with it.
-func (s Server) AccountConfirmDelete(
-	ctx context.Context,
-	_ api.AccountConfirmDeleteRequestObject,
-) (api.AccountConfirmDeleteResponseObject, error) {
+func (s Server) AccountConfirmDelete(ctx context.Context, _ api.AccountConfirmDeleteRequestObject) (api.AccountConfirmDeleteResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err

@@ -21,11 +21,7 @@ import (
 
 // stopped runs the world's run with stop as its Stop and log as its log,
 // in the background, and answers Run's error once it returns.
-func (w *world) stopped(
-	reports exec.Reporter,
-	stop <-chan os.Signal,
-	log slog.Handler,
-) <-chan error {
+func (w *world) stopped(reports exec.Reporter, stop <-chan os.Signal, log slog.Handler) <-chan error {
 	done := make(chan error, 1)
 	go func() {
 		done <- exec.Run(w.t.Context(), w.h, exec.Deps{
@@ -199,9 +195,7 @@ type stopAfter struct {
 	decided <-chan struct{}
 }
 
-func (s stopAfter) Report(
-	ctx context.Context, token, run string, r wire.RunReport,
-) (wire.NextStep, error) {
+func (s stopAfter) Report(ctx context.Context, token, run string, r wire.RunReport) (wire.NextStep, error) {
 	if r.State == s.state && r.Event == s.event {
 		s.stop <- os.Interrupt
 		select {

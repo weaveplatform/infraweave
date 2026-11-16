@@ -35,10 +35,7 @@ func (s *Service) VerifyWorker(ctx context.Context, raw string) (accessapi.Beare
 // worker API reads the expiry; any other token is ErrUnauthenticated.
 //
 // ref: decision 0006 § "Token kinds"
-func (s *Service) AuthenticateWorker(
-	ctx context.Context,
-	raw string,
-) (kernel.Principal, token.Claims, error) {
+func (s *Service) AuthenticateWorker(ctx context.Context, raw string) (kernel.Principal, token.Claims, error) {
 	b, err := s.VerifyWorker(ctx, raw)
 	if errors.Is(err, accessapi.ErrInvalidToken) {
 		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
@@ -69,10 +66,7 @@ func (s *Service) VerifyRun(ctx context.Context, raw string) (accessapi.Bearer, 
 // worker is the worker API's to decide, since only the runs domain knows.
 //
 // ref: decision 0006 § "The principal"
-func (s *Service) AuthenticateRunner(
-	ctx context.Context,
-	raw string,
-) (kernel.Principal, token.Claims, error) {
+func (s *Service) AuthenticateRunner(ctx context.Context, raw string) (kernel.Principal, token.Claims, error) {
 	b, err := s.VerifyRun(ctx, raw)
 	if errors.Is(err, accessapi.ErrInvalidToken) {
 		return kernel.Principal{}, token.Claims{}, ErrUnauthenticated
@@ -86,13 +80,7 @@ func (s *Service) AuthenticateRunner(
 
 // bare issues a token of kind for audience naming id, with no session
 // row: its jti is a fresh ULID that nothing records.
-func (s *Service) bare(
-	ctx context.Context,
-	kind token.Kind,
-	audience string,
-	id kernel.ULID,
-	ttl time.Duration,
-) (accessapi.Token, error) {
+func (s *Service) bare(ctx context.Context, kind token.Kind, audience string, id kernel.ULID, ttl time.Duration) (accessapi.Token, error) {
 	raw, c, err := s.d.Tokens.Issue(ctx, token.Request{
 		Kind:     kind,
 		Subject:  id.String(),
@@ -108,12 +96,7 @@ func (s *Service) bare(
 
 // verifyBare is the ID a bare token of kind for audience names and its
 // expiry; any other token is accessapi.ErrInvalidToken.
-func (s *Service) verifyBare(
-	ctx context.Context,
-	raw string,
-	kind token.Kind,
-	audience string,
-) (accessapi.Bearer, error) {
+func (s *Service) verifyBare(ctx context.Context, raw string, kind token.Kind, audience string) (accessapi.Bearer, error) {
 	c, err := s.d.Tokens.Verify(ctx, raw, audience)
 	if errors.Is(err, token.ErrToken) {
 		return accessapi.Bearer{}, accessapi.ErrInvalidToken
@@ -134,10 +117,7 @@ func (s *Service) verifyBare(
 // authenticates only while the bound Runs finds the run live.
 //
 // ref: decision 0006 § "In-run API token"
-func (s *Service) InRunToken(
-	ctx context.Context,
-	r accessapi.InRunRequest,
-) (accessapi.Token, error) {
+func (s *Service) InRunToken(ctx context.Context, r accessapi.InRunRequest) (accessapi.Token, error) {
 	if r.Slug == "" || r.Run.IsZero() || r.Account.IsZero() {
 		return accessapi.Token{}, fmt.Errorf("%w: %+v", token.ErrRequest, r)
 	}

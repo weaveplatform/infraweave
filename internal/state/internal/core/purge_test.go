@@ -28,12 +28,7 @@ type purger struct {
 	failDelete, failEnqueue error
 }
 
-func (p *purger) Purge(
-	ctx context.Context,
-	acct kernel.AccountID,
-	stack *kernel.ULID,
-	batch int,
-) ([]string, bool, error) {
+func (p *purger) Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID, batch int) ([]string, bool, error) {
 	at := acct.String()
 	if stack != nil {
 		at += "/" + stack.String()
@@ -58,12 +53,7 @@ func (p *purger) Delete(ctx context.Context, store objectstore.Name, key string)
 	return p.failDelete
 }
 
-func (p *purger) EnqueueTx(
-	_ context.Context,
-	k queue.Kind,
-	payload any,
-	_ ...queue.Option,
-) (int64, error) {
+func (p *purger) EnqueueTx(_ context.Context, k queue.Kind, payload any, _ ...queue.Option) (int64, error) {
 	p.enqueued = append(p.enqueued, k.Name, payload)
 	return 1, p.failEnqueue
 }

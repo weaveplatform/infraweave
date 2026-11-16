@@ -139,8 +139,7 @@ func TestUnitStateAuthenticator(t *testing.T) {
 		got, _ = kernel.PrincipalFrom(r.Context())
 		w.WriteHeader(http.StatusNoContent)
 	})
-	send := func(a Authenticator, acc accessapi.Access, set func(*http.Request)) *httptest.
-		ResponseRecorder {
+	send := func(a Authenticator, acc accessapi.Access, set func(*http.Request)) *httptest.ResponseRecorder {
 		got = kernel.Principal{}
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequestWithContext(t.Context(), "LOCK", "/", nil)
