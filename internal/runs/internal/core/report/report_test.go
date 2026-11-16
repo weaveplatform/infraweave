@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
 	"strings"
@@ -31,13 +32,14 @@ import (
 var errDown = errors.New("down")
 
 // store holds one run, the states it entered by state version, its
-// indexed chunks, recorded objects, the key of the plan's JSON it
-// recorded while planning, kept deltas and its stack's outputs; the
-// named method in fail fails.
+// indexed chunks and their counts by state version, recorded objects, the
+// key of the plan's JSON it recorded while planning, kept deltas and its
+// stack's outputs; the named method in fail fails.
 type store struct {
 	run      lifecycle.Run
 	states   map[int64]kernel.RunState
 	chunks   map[int64]report.Chunk
+	counts   map[int64]int64
 	recorded map[string]report.Artifact
 	plan     string
 	deltas   []kernel.PlanDelta
@@ -103,6 +105,14 @@ func (s *store) IndexChunk(_ context.Context, _ lifecycle.Run, c report.Chunk) e
 		return err
 	}
 	s.chunks[c.Seq] = c
+	return nil
+}
+
+func (s *store) CountChunks(_ context.Context, _ lifecycle.Run, version, n int64) error {
+	if err := s.err("CountChunks"); err != nil {
+		return err
+	}
+	s.counts[version] = n
 	return nil
 }
 
@@ -279,6 +289,7 @@ func newWorld(typ kernel.RunType, state kernel.RunState) *world {
 		},
 		states:   map[int64]kernel.RunState{1: kernel.RunStateReady, 2: state},
 		chunks:   map[int64]report.Chunk{},
+		counts:   map[int64]int64{},
 		recorded: map[string]report.Artifact{},
 	}
 	o := &objects{
@@ -393,6 +404,42 @@ func TestUnitReport(t *testing.T) {
 	}
 	if len(w.m.reqs) != 3 {
 		t.Errorf("moves %+v", w.m.reqs)
+	}
+}
+
+// TestUnitReportCountsChunks checks that a report of a phase's end
+// records how many log chunks the worker cut at the state version it
+// ends; that a started report, one naming another state and one behind
+// record none; and that a failing write refuses the report.
+func TestUnitReportCountsChunks(t *testing.T) {
+	w := newWorld(kernel.RunTypeTracked, kernel.RunStateInitializing)
+	n := func(v int64) *int64 { return &v }
+	report := func(v int64, state kernel.RunState, ev workersapi.ReportEvent, chunks int64) (
+		workersapi.Step, error,
+	) {
+		return w.send(t, workersapi.Report{
+			StateVersion: v, State: state, Event: ev, LogChunks: n(chunks),
+		})
+	}
+	if _, err := report(2, kernel.RunStateInitializing, workersapi.ReportStarted, 9); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := report(2, kernel.RunStateApplying, workersapi.ReportFailed, 8); !errors.Is(err,
+		workersapi.ErrReportRefused) {
+		t.Fatalf("a report of another state: %v", err)
+	}
+	w.s.fail = "CountChunks"
+	if _, err := report(2, kernel.RunStateInitializing, workersapi.ReportSucceeded,
+		3); !errors.Is(err, errDown) {
+		t.Errorf("a failing count: %v", err)
+	}
+	w.s.fail = ""
+	got, err := report(2, kernel.RunStateInitializing, workersapi.ReportSucceeded, 3)
+	want(t, got, err, workersapi.ActionExecute, kernel.RunStatePlanning, 3)
+	got, err = report(2, kernel.RunStateInitializing, workersapi.ReportSucceeded, 5)
+	want(t, got, err, workersapi.ActionExecute, kernel.RunStatePlanning, 3)
+	if !maps.Equal(w.s.counts, map[int64]int64{2: 3}) {
+		t.Errorf("counted %v", w.s.counts)
 	}
 }
 
@@ -923,7 +970,8 @@ func TestUnitUploads(t *testing.T) {
 }
 
 // TestUnitLogChunks checks that a chunk is committed and indexed with its
-// upload's size, once, and the chunks and failures it refuses.
+// upload's size, once, that a lost chunk is indexed with no object, and
+// the chunks and failures it refuses.
 func TestUnitLogChunks(t *testing.T) {
 	w := newWorld(kernel.RunTypeTracked, kernel.RunStatePlanning)
 	prefix := w.s.run.Account.String() + "/" + w.s.run.ID.String() + "/PLANNING-2/"
@@ -944,6 +992,12 @@ func TestUnitLogChunks(t *testing.T) {
 	}
 	if err := chunks(2, zero); err != nil {
 		t.Errorf("a chunk indexed again: %v", err)
+	}
+	if err := chunks(2, workersapi.LogChunk{Seq: 5, FirstAt: at, LastAt: at, Lost: true}); err != nil {
+		t.Fatal(err)
+	}
+	if c := w.s.chunks[5]; !c.Lost || c.Key != "" || c.Bytes != 0 || !c.FirstAt.Equal(at) {
+		t.Errorf("indexed the lost chunk as %+v", c)
 	}
 	for name, tc := range map[string]struct {
 		c    workersapi.LogChunk

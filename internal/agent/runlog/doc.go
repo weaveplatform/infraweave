@@ -15,8 +15,12 @@
 // chunks in order: it declares each through upload-urls as a log-chunk
 // named by its sequence number, PUTs it to the pre-signed URL and commits
 // it through log-chunks, retrying a step the worker API or the store
-// could not take for now and dropping, with a warning, a chunk it cannot
-// send.
+// could not take for now, and a PUT the store refused as a signature it
+// does not accept from a new declaration, within one budget an outage
+// spends once, and committing as lost, with a warning, a chunk it cannot
+// send. Chunks is how many chunks a state was cut into, which the state's
+// report names, so a reader of the ended state finds a line in place of
+// each chunk lost or never committed.
 //
 // End writes a barrier, a line holding a nonce of the runner's, to the
 // pipe and waits for the reader to read it, so every line a step wrote

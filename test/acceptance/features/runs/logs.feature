@@ -6,9 +6,12 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
   read the run reads a state's lines a page at a time, in sequence order,
   while the run is in the state and after it leaves, each line stamped
   with when its chunk began. A page ends before a chunk not yet indexed,
-  and its nextToken reads on. Once the run leaves the state, the state's
-  chunks are written to one object, whose signed URL the download
-  answers. Here the scenario is the worker. The run's in-run API token
+  and its nextToken reads on. A chunk the worker could not store is
+  committed as lost, and once the run leaves the state, a lost chunk and
+  one below the count the state's report names that was never committed
+  each read as one line saying part of the log could not be stored. Once
+  the run leaves the state, the state's chunks are written to one object,
+  whose signed URL the download answers. Here the scenario is the worker. The run's in-run API token
   reads neither its run nor its logs. The release indexes serve the
   recorded fixtures, so the run's specification names a Terraform release.
   An account's space admin deletes a run's logs ahead of their
@@ -103,6 +106,23 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
     And the answer's ongoing is 'false'
     When token "h" sends "GET /api/v1/runs/{run}/logs-download-url?state=APPLYING" through B
     Then the answer's expired is 'true'
+
+  @op:runLogs @op:runLogsDownloadURL @case:success
+  Scenario: A chunk the worker lost, and one its report counts but it never committed, each read and download as a line that says so
+    When token "rt" writes log chunk 0 of the run "run" in state version 5 at 1800000010 holding "Plan: 1 to add\n" through A
+    And token "rt" writes log chunk 2 of the run "run" in state version 5 at 1800000012 holding "done\n" through B
+    And token "rt" sends "POST /worker/v1/runs/{run}/log-chunks" with '{"stateVersion":5,"chunks":[{"seq":1,"firstAt":1800000011,"lastAt":1800000011,"lost":true}]}' through A
+    Then it answers 204
+    When token "h" sends "GET /api/v1/runs/{run}/logs?state=PLANNING" through B
+    Then the answer's messages is '[{"message":"Plan: 1 to add","timestamp":1800000010},{"message":"infraweave: part of this log could not be stored.","timestamp":1800000011},{"message":"done","timestamp":1800000012}]'
+    And the answer's ongoing is 'true'
+    When token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"PLANNING","stateVersion":5,"logChunks":4,"delta":{"add":1,"change":0,"delete":0,"import":0,"outputs":false}}' through B
+    And the answer's state is '"UNCONFIRMED"'
+    And token "h" sends "GET /api/v1/runs/{run}/logs?state=PLANNING" through A
+    Then the answer's messages is '[{"message":"Plan: 1 to add","timestamp":1800000010},{"message":"infraweave: part of this log could not be stored.","timestamp":1800000011},{"message":"done","timestamp":1800000012},{"message":"infraweave: part of this log could not be stored.","timestamp":1800000012}]'
+    And the answer's finished is 'true'
+    When token "h" eventually reads a download URL of the run "run"'s PLANNING log through B
+    Then the answer's url downloads "Plan: 1 to add\ninfraweave: part of this log could not be stored.\ndone\ninfraweave: part of this log could not be stored.\n"
 
   @op:runLogs @op:runLogsDownloadURL @op:run @case:denial
   Scenario: The run's own in-run API token reads its stack while the run plans, but neither the run nor its logs

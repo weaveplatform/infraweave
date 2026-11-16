@@ -63,9 +63,9 @@ func (s *Store) Indexed(ctx context.Context, run lifecycle.Run, version, seq int
 func (s *Store) IndexChunk(ctx context.Context, run lifecycle.Run, c report.Chunk) error {
 	q := tx.Q(ctx, s.db)
 	if _, err := q.Exec(ctx, `INSERT INTO run_log_chunks (account_id, run_id,
-		state_version, seq, state, object_key, bytes, first_at, last_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, run.Account, run.ID, c.Version, c.Seq,
-		c.State, c.Key, c.Bytes, c.FirstAt, c.LastAt); err != nil {
+		state_version, seq, state, object_key, bytes, first_at, last_at, lost)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, $9, $10)`, run.Account, run.ID,
+		c.Version, c.Seq, c.State, c.Key, c.Bytes, c.FirstAt, c.LastAt, c.Lost); err != nil {
 		return fmt.Errorf("runs: index run %s's log chunk %d: %w", run.ID, c.Seq,
 			sql.Unavailable(err))
 	}
@@ -73,6 +73,18 @@ func (s *Store) IndexChunk(ctx context.Context, run lifecycle.Run, c report.Chun
 		WHERE account_id = $1 AND run_id = $2 AND sequence = $3 AND NOT has_logs`,
 		run.Account, run.ID, c.Version); err != nil {
 		return fmt.Errorf("runs: mark run %s's state %d as having logs: %w", run.ID, c.Version,
+			sql.Unavailable(err))
+	}
+	return nil
+}
+
+// CountChunks records n as how many chunks run's worker cut its log of
+// state version version into.
+func (s *Store) CountChunks(ctx context.Context, run lifecycle.Run, version, n int64) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE run_state_transitions SET log_chunks = $4
+		WHERE account_id = $1 AND run_id = $2 AND sequence = $3`, run.Account, run.ID, version,
+		n); err != nil {
+		return fmt.Errorf("runs: count run %s's log chunks of %d: %w", run.ID, version,
 			sql.Unavailable(err))
 	}
 	return nil
@@ -202,10 +214,11 @@ const stores = `CASE kind WHEN 'artifact' THEN 'run-artifacts'
 
 // PurgeObjects deletes up to batch of the deleted account acct's log
 // chunks, or, once it has none, of its other recorded objects, and
-// answers the objects they recorded, with the compacted log of each state
-// whose chunks it deleted, which the caller deletes in the same
-// transaction; none once both are empty. A state whose chunks span
-// batches names its compacted log in each, whose second delete is none.
+// answers the objects they recorded, none for a lost chunk, with the
+// compacted log of each state whose chunks it deleted, which the caller
+// deletes in the same transaction; none once both are empty. A state
+// whose chunks span batches names its compacted log in each, whose second
+// delete is none.
 func (s *Store) PurgeObjects(
 	ctx context.Context,
 	acct kernel.AccountID,
@@ -218,27 +231,30 @@ func (s *Store) PurgeObjects(
 	if err != nil {
 		return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct, sql.Unavailable(err))
 	}
-	var compacted []report.Object
-	objs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (report.Object, error) {
+	var compacted, objs []report.Object
+	_, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (struct{}, error) {
 		var (
 			run     kernel.ULID
 			state   kernel.RunState
 			version int64
+			key     *string
 		)
-		o := report.Object{Store: objectstore.RunLogs}
-		err := r.Scan(&run, &state, &version, &o.Key)
+		err := r.Scan(&run, &state, &version, &key)
 		k := report.Object{
 			Store: objectstore.RunLogs, Key: report.LogKey(acct, run, state, version),
 		}
 		if err == nil && !slices.Contains(compacted, k) {
 			compacted = append(compacted, k)
 		}
-		return o, err //nolint:wrapcheck // the purge names the read
+		if err == nil && key != nil {
+			objs = append(objs, report.Object{Store: objectstore.RunLogs, Key: *key})
+		}
+		return struct{}{}, err //nolint:wrapcheck // the purge names the read
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runs: purge account %s's objects: %w", acct, sql.Unavailable(err))
 	}
-	if len(objs) > 0 {
+	if len(compacted) > 0 {
 		return append(objs, compacted...), nil
 	}
 	rows, err = tx.Q(ctx, s.db).Query(ctx, `DELETE FROM run_artifacts WHERE account_id = $1
