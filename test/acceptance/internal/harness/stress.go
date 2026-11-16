@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -110,10 +114,17 @@ const maxDrain = 16 << 20
 // and its run containers reach it under stress: a reverse proxy on
 // loopback, which the URLs the servers sign name, recording each call.
 // It holds each request for the stress's latency, and refuses its share
-// of signed uploads, each a PUT whose query carries the signature, with
-// the 403 RequestTimeTooSkewed a skewed store answers. Refusals are
-// spread evenly, so a share of 0.2 refuses every fifth upload. It passes
-// each request on with its Host, which the request's signature covers.
+// of signed requests, each one whose query carries the signature, with
+// the 403 RequestTimeTooSkewed a skewed store answers: of uploads, and,
+// counted apart, of the launcher's reads, a saved workspace or a local
+// preview's archive. A log or a profile a step reads through a URL the
+// API signed for its client passes, since only that client could ask
+// for a URL signed afresh. Refusals are spread evenly, so a share of 0.2
+// refuses every fifth upload from the fifth, and every fifth read from
+// the first: a scenario's launcher reads one or two objects, which a
+// spread from the fifth would never reach, while its first upload may be
+// a step's own, which nothing signs afresh. It passes each request on
+// with its Host, which the request's signature covers.
 type StoreRelay struct {
 	// URL is the relay's base URL; Port is its port.
 	URL, Port string
@@ -121,8 +132,25 @@ type StoreRelay struct {
 	proxy     *httputil.ReverseProxy
 	stress    Stress
 	mu        sync.Mutex
-	uploads   int
+	refusals  Refusals
 	calls     []Call
+}
+
+// Refusals counts the signed requests a store relay may refuse, uploads
+// and the launcher's reads, and how many of each it refused. A stressed
+// run that passes leaves no other trace that its refusals happened.
+type Refusals struct {
+	Uploads        int `json:"uploads"`
+	UploadsRefused int `json:"uploadsRefused"`
+	Reads          int `json:"reads"`
+	ReadsRefused   int `json:"readsRefused"`
+}
+
+func (a Refusals) add(b Refusals) Refusals {
+	return Refusals{
+		Uploads: a.Uploads + b.Uploads, UploadsRefused: a.UploadsRefused + b.UploadsRefused,
+		Reads: a.Reads + b.Reads, ReadsRefused: a.ReadsRefused + b.ReadsRefused,
+	}
 }
 
 // StartStoreRelay starts a relay under stress to the object store at
@@ -168,7 +196,7 @@ func (r *StoreRelay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	if req.Method == http.MethodPut && req.URL.Query().Has("X-Amz-Signature") && r.refuses() {
+	if r.refuses(req) {
 		_, _ = io.Copy(io.Discard, io.LimitReader(req.Body, maxDrain))
 		r.record(req.Method, req.URL.Path, http.StatusForbidden)
 		w.Header().Set("Content-Type", "application/xml")
@@ -179,14 +207,82 @@ func (r *StoreRelay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.proxy.ServeHTTP(w, req)
 }
 
-// refuses reports whether the relay refuses the next signed upload: the
-// n-th is refused when the share's multiples pass a whole number at it.
-func (r *StoreRelay) refuses() bool {
+// launcherReads are the stores a launcher reads through a pre-signed URL:
+// a saved workspace and a local preview's uploaded archive.
+var launcherReads = []string{"workspaces", "uploads"}
+
+// refuses reports whether the relay refuses req: a signed upload or a
+// signed read of launcherReads is the n-th of its kind, and the n-th is
+// refused when the share's multiples pass a whole number at it, rounded
+// down for an upload and up for a read, so reads are refused from the
+// first. A path is /<bucket>/<store>/<key>.
+func (r *StoreRelay) refuses(req *http.Request) bool {
+	if !req.URL.Query().Has("X-Amz-Signature") {
+		return false
+	}
 	r.mu.Lock()
-	n := float64(r.uploads)
-	r.uploads++
-	r.mu.Unlock()
-	return math.Floor((n+1)*r.stress.Refuse) > math.Floor(n*r.stress.Refuse)
+	defer r.mu.Unlock()
+	var seen, refused *int
+	round := math.Floor
+	switch store := strings.SplitN(req.URL.Path, "/", 4); {
+	case req.Method == http.MethodPut:
+		seen, refused = &r.refusals.Uploads, &r.refusals.UploadsRefused
+	case req.Method == http.MethodGet && len(store) == 4 && slices.Contains(launcherReads, store[2]):
+		seen, refused, round = &r.refusals.Reads, &r.refusals.ReadsRefused, math.Ceil
+	default:
+		return false
+	}
+	n := float64(*seen)
+	*seen++
+	if round((n+1)*r.stress.Refuse) == round(n*r.stress.Refuse) {
+		return false
+	}
+	*refused++
+	return true
+}
+
+// Refusals are the relay's counts so far.
+func (r *StoreRelay) Refusals() Refusals {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.refusals
+}
+
+// RefusalsFile is the file in the evidence directory where a stressed
+// run's refusals land, each scenario's and their total, whether or not
+// the run passes.
+const RefusalsFile = "store-refusals.json"
+
+// scenarioRefusals are one scenario's refusals.
+type scenarioRefusals struct {
+	Scenario string `json:"scenario"`
+	Refusals
+}
+
+// writeRefusals writes RefusalsFile to out: the total of each scenario's
+// refusals in scenarios, and the scenarios sorted by name.
+func writeRefusals(out string, scenarios []scenarioRefusals) (Refusals, error) {
+	var total Refusals
+	for _, s := range scenarios {
+		total = total.add(s.Refusals)
+	}
+	sorted := slices.SortedFunc(slices.Values(scenarios), func(a, b scenarioRefusals) int {
+		return strings.Compare(a.Scenario, b.Scenario)
+	})
+	data, err := json.MarshalIndent(struct {
+		Total     Refusals           `json:"total"`
+		Scenarios []scenarioRefusals `json:"scenarios"`
+	}{total, sorted}, "", "  ")
+	if err == nil {
+		err = os.MkdirAll(out, 0o750)
+	}
+	if err == nil {
+		err = os.WriteFile(filepath.Join(out, RefusalsFile), data, 0o600)
+	}
+	if err != nil {
+		return total, fmt.Errorf("store refusals: %w", err)
+	}
+	return total, nil
 }
 
 func (r *StoreRelay) record(method, path string, status int) {

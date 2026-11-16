@@ -19,8 +19,10 @@
 // holding reports or UNLOCK calls on demand. Stress is what EnvStress
 // puts a run under: an @objectstore scenario's StoreRelay holds each
 // object store request for a latency and refuses a share of signed
-// uploads as a skewed store does, and each run container is capped at a
-// CPU count. A failed scenario leaves its evidence in out/<scenario>/.
+// uploads and of the launcher's signed reads as a skewed store does,
+// counting both into out/store-refusals.json, and each run container is
+// capped at a CPU count. A failed scenario leaves its evidence in
+// out/<scenario>/.
 //
 // ref: decision 0016
 //
@@ -32,7 +34,8 @@
 // Docker daemon's builder, serves the pinned tool releases to launchers
 // as a tool mirror, reaches their listeners over loopback HTTP, queries
 // the scenario's database, and writes godog's cucumber report, the
-// subprocesses' coverage and a failed scenario's evidence. Under a CPU
+// subprocesses' coverage, a failed scenario's evidence and a stressed
+// run's store refusals. Under a CPU
 // stress it watches the daemon's container events and updates each run
 // container's CPU limit.
 //

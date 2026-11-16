@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -101,7 +102,19 @@ type fakeSources struct {
 	dirs     []string
 	creds    []*wire.RunSpecSourceCredential
 	restored []string
-	err      error
+	// errs fail the first fetches and restores, in order, and err every
+	// later one.
+	errs []error
+	err  error
+}
+
+func (f *fakeSources) next() error {
+	if len(f.errs) > 0 {
+		err := f.errs[0]
+		f.errs = f.errs[1:]
+		return err
+	}
+	return f.err
 }
 
 func (f *fakeSources) Fetch(
@@ -119,7 +132,7 @@ func (f *fakeSources) Fetch(
 	if err := os.WriteFile(filepath.Join(dir, "main.tf"), nil, 0o600); err != nil {
 		return err
 	}
-	return f.err
+	return f.next()
 }
 
 func (f *fakeSources) Restore(
@@ -141,7 +154,7 @@ func (f *fakeSources) Restore(
 	if err := os.WriteFile(filepath.Join(dir, "main.tf"), nil, 0o600); err != nil {
 		return err
 	}
-	return f.err
+	return f.next()
 }
 
 var errNoPool = errors.New("no pool key")
@@ -566,6 +579,89 @@ func TestUnitLauncherFetchesTheRunsSource(t *testing.T) {
 		entries, err := os.ReadDir(filepath.Join(w.dir, "workspaces"))
 		if err != nil || len(entries) != 0 || len(w.exec.Jobs()) != 2 {
 			t.Fatalf("workspaces left: %v, %v", entries, err)
+		}
+		r.stop(t)
+	})
+}
+
+// skewed is a store's refusal of a pre-signed URL's signature.
+var skewed = client.Signed(errors.New(
+	"fetch the archive from store.example.com: the download failed: answered 403 Forbidden"))
+
+// TestUnitLauncherFetchesAgainARefusedSignature checks that a source or a
+// saved workspace whose pre-signed URL the store refuses is fetched again
+// into a fresh directory after 1 and then 2 seconds, the specification
+// asked for again, which signs a source afresh; that a refusal lasting
+// past ten minutes fails the run with the store's answer; and that the
+// specification's refusal on the way fails it with that.
+func TestUnitLauncherFetchesAgainARefusedSignature(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		ws := filepath.Join(w.dir, "workspaces", "run-1")
+		w.sources.errs = []error{skewed, skewed}
+		w.assign(t, "run-1", wire.AssignmentStatePREPARING, "")
+		<-time.After(3 * time.Second)
+		synctest.Wait()
+		dirs, _ := w.sources.fetched()
+		if !slices.Equal(dirs, []string{ws, ws, ws}) || len(w.exec.Jobs()) != 1 ||
+			w.exec.Jobs()[0].Workspace != ws {
+			t.Fatalf("fetched into %v, started %d jobs", dirs, len(w.exec.Jobs()))
+		}
+		for _, wait := range []string{"retry_in=1s", "retry_in=2s"} {
+			if !strings.Contains(w.log.String(),
+				`msg="the store refused the workspace's signed URL" run=run-1`) ||
+				!strings.Contains(w.log.String(), wait) {
+				t.Fatalf("no warning of a retry %s: %s", wait, w.log.String())
+			}
+		}
+		w.exec.Container("worker-1").End(ended(0, wire.Exited))
+		synctest.Wait()
+		w.answer(wire.PollResult{})
+
+		w.srv.SaveWorkspace("run-2", 3, []byte("sealed"))
+		w.sources.errs = []error{skewed}
+		w.assign(t, "run-2", wire.AssignmentStatePREPARINGAPPLY, "")
+		<-time.After(time.Second)
+		synctest.Wait()
+		applied := filepath.Join(w.dir, "workspaces", "run-2")
+		from := applied + " from " + agenttest.Endpoint + "/store/workspace/run-2/3/workspace"
+		if !slices.Equal(w.sources.restored, []string{from, from}) || len(w.exec.Jobs()) != 2 {
+			t.Fatalf("restored %v, started %d jobs", w.sources.restored, len(w.exec.Jobs()))
+		}
+		w.exec.Container("worker-1").End(ended(0, wire.Exited))
+		synctest.Wait()
+		w.answer(wire.PollResult{})
+
+		w.sources.err = skewed
+		w.assign(t, "run-3", wire.AssignmentStatePREPARING, "")
+		<-time.After(10*time.Minute - 31*time.Second)
+		synctest.Wait()
+		if reps := w.srv.Reports(); len(reps) != 0 {
+			t.Fatalf("gave up within ten minutes: %+v", reps)
+		}
+		<-time.After(32 * time.Second)
+		synctest.Wait()
+		reps := w.srv.Reports()
+		if len(reps) != 1 || reps[0].Run != "run-3" || *reps[0].Report.Details != skewed.Error() {
+			t.Fatalf("a signature refused for ten minutes: %+v", reps)
+		}
+		if _, err := os.Stat(filepath.Join(w.dir, "workspaces", "run-3")); !errors.Is(
+			err, fs.ErrNotExist) {
+			t.Fatalf("a failed run's workspace: %v", err)
+		}
+		w.answer(wire.PollResult{})
+
+		w.sources.err = nil
+		w.sources.errs = []error{skewed}
+		w.assign(t, "run-4", wire.AssignmentStatePREPARING, "")
+		w.srv.Refuse("spec", http.StatusConflict, 1)
+		<-time.After(time.Second)
+		synctest.Wait()
+		reps = w.srv.Reports()
+		if len(reps) != 2 || reps[1].Run != "run-4" || *reps[1].Report.Details !=
+			"fetch the run's specification: 409 the run is not on a worker" {
+			t.Fatalf("the specification refused on a retry: %+v", reps)
 		}
 		r.stop(t)
 	})

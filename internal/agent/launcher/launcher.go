@@ -79,10 +79,14 @@ const toolOS = "linux"
 
 // The bounds of a launcher's calls: callTimeout for each call but the
 // poll, which may take its hold and callTimeout more; a failed call is
-// retried after a backoff that doubles up to maxBackoff.
+// retried after a backoff that doubles up to maxBackoff. A workspace whose
+// pre-signed URL the store refuses is fetched again from a URL signed
+// afresh for up to transferRetry, the ten minutes the runner's uploads
+// take.
 const (
-	callTimeout = 30 * time.Second
-	maxBackoff  = 30 * time.Second
+	callTimeout   = 30 * time.Second
+	maxBackoff    = 30 * time.Second
+	transferRetry = 10 * time.Minute
 )
 
 // maxDetails is the longest details a report carries, the worker API's
@@ -600,9 +604,14 @@ var errNoWorkspace = errors.New("the run saved no workspace to apply or replan f
 // workspace writes a fresh workspace directory and answers it: a's
 // source, or, for a run that applies or replans after its plan was
 // confirmed, the workspace its planning saved, which the worker API
-// answers as a pre-signed URL and the pool's private key opens.
+// answers as a pre-signed URL and the pool's private key opens. When the
+// store refuses a pre-signed URL's signature, a local preview's archive
+// or the saved workspace, it asks again for the specification or the
+// saved workspace, which the worker API signs afresh, and fetches again
+// after a backoff, for up to transferRetry.
 //
 // ref: decision 0008 § "The launcher and the runner"
+// ref: decision 0008 § "Logs and artifacts"
 func (l *Launcher) workspace(
 	ctx context.Context,
 	a wire.Assignment,
@@ -616,13 +625,34 @@ func (l *Launcher) workspace(
 	if err := os.MkdirAll(filepath.Dir(dir), 0o700); err != nil {
 		return "", fmt.Errorf("the workspace: %w", err)
 	}
-	if err := os.RemoveAll(dir); err != nil {
-		return "", fmt.Errorf("the workspace: %w", err)
-	}
-	if a.State == wire.AssignmentStatePREPARING {
-		err = l.d.Sources.Fetch(ctx, dir, spec, cred)
-	} else {
-		err = l.restore(ctx, a, dir, spec)
+	deadline := l.d.Now().Add(transferRetry)
+	var backoff time.Duration
+	for {
+		if err := os.RemoveAll(dir); err != nil {
+			return "", fmt.Errorf("the workspace: %w", err)
+		}
+		if a.State == wire.AssignmentStatePREPARING {
+			err = l.d.Sources.Fetch(ctx, dir, spec, cred)
+		} else {
+			err = l.restore(ctx, a, dir, spec)
+		}
+		backoff = min(max(2*backoff, time.Second), maxBackoff)
+		if !errors.Is(err, client.ErrSigned) || l.d.Now().Add(backoff).After(deadline) {
+			break
+		}
+		l.d.Log.WarnContext(ctx, "the store refused the workspace's signed URL", "run", a.Run,
+			"error", err, "retry_in", backoff)
+		if !sleep(ctx, backoff) {
+			break
+		}
+		if a.State == wire.AssignmentStatePREPARING {
+			cctx, cancel := context.WithTimeout(ctx, callTimeout)
+			spec, err = l.api.Spec(cctx, a.RunToken, a.Run)
+			cancel()
+			if err != nil {
+				break
+			}
+		}
 	}
 	if err != nil {
 		l.dropWorkspace(ctx, a.Run, nil)

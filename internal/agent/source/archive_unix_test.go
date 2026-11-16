@@ -6,12 +6,15 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/ecdh"
+	"crypto/rand"
 	"errors"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -19,6 +22,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
@@ -291,6 +295,37 @@ func TestUnitFetchArchive(t *testing.T) {
 	if err := fetcher().Fetch(ctx, ws, archiveSpec(u.url(), nil), nil); err == nil ||
 		!strings.Contains(err.Error(), "the workspace: ") {
 		t.Fatalf("a workspace that is there: %v", err)
+	}
+}
+
+// TestUnitFetchSignedRefusal checks that a store's 400 or 403 to an
+// archive's or a saved workspace's pre-signed URL is marked
+// client.ErrSigned, for the launcher to ask for a URL signed afresh,
+// with the store's answer as its message, and that a 404 is not.
+func TestUnitFetchSignedRefusal(t *testing.T) {
+	u := newUploads(t)
+	pool, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for status, signed := range map[int]bool{
+		http.StatusBadRequest: true, http.StatusForbidden: true, http.StatusNotFound: false,
+	} {
+		u.serve(nil, status)
+		f := New(http.DefaultClient, nil)
+		for step, err := range map[string]error{
+			"fetch the archive": f.Fetch(t.Context(), filepath.Join(t.TempDir(), "ws"),
+				archiveSpec(u.url(), nil), nil),
+			"restore the saved workspace": f.Restore(t.Context(),
+				filepath.Join(t.TempDir(), "ws"), u.url(), pool, "run-1", archiveSpec("", nil)),
+		} {
+			if errors.Is(err, client.ErrSigned) != signed || !errors.Is(err, ErrDownload) ||
+				!strings.HasPrefix(err.Error(), step+" from ") ||
+				!strings.HasSuffix(err.Error(), "answered "+strconv.Itoa(status)+" "+
+					http.StatusText(status)) {
+				t.Errorf("%s answered %d: %v", step, status, err)
+			}
+		}
 	}
 }
 

@@ -18,7 +18,11 @@
 // credential, and one that applies or replans after its plan's
 // confirmation gets the workspace its planning saved, whose pre-signed
 // URL the worker API answers as a redirect the launcher does not follow,
-// opened with the pool's private key. It starts the container with the
+// opened with the pool's private key. A source or saved workspace whose
+// signed URL the store refuses is fetched again into a fresh directory,
+// from the specification or the workspace's location asked for again,
+// after a backoff that doubles from 1 to 30 seconds, for ten minutes. It
+// starts the container with the
 // workspace at /mnt/workspace, the tool's binary mounted read-only at
 // /bin/<tool>, and the handoff, which carries the pool's public key, so
 // the opened secrets reach the runner without touching the host's disk; a
@@ -62,8 +66,8 @@
 // worker.json, the tool binaries and the runs' workspaces in
 // launcher.cache_dir. It logs registration, each run's
 // start, signals, timeout kills and end, each line of the runner's output
-// as "runner output", each workspace it cannot remove, and each failed
-// call with its retry.
+// as "runner output", each workspace it cannot remove, each failed call
+// with its retry, and each signed URL the store refuses with its retry.
 //
 // # Dependencies
 //

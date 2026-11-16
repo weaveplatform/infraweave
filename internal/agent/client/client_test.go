@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -32,6 +33,31 @@ func TestUnitClientBase(t *testing.T) {
 	}
 	if _, err := c.Workspace(t.Context(), "t", "r"); err == nil || client.Status(err) != 0 {
 		t.Fatalf("a workspace from a base that is no URL: %v", err)
+	}
+}
+
+// TestUnitClientSignedRefusal checks that a store's 400 or 403 to a
+// pre-signed upload is marked ErrSigned with the store's answer as its
+// message, that the store's other refusals are not, and that neither is
+// the worker API's own 400 or 403.
+func TestUnitClientSignedRefusal(t *testing.T) {
+	for status, signed := range map[int]bool{
+		http.StatusBadRequest: true, http.StatusForbidden: true, http.StatusNotFound: false,
+		http.StatusTooManyRequests: false, http.StatusServiceUnavailable: false,
+	} {
+		c := client.New("http://iw.invalid/worker/v1", doer(
+			func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: status, Body: http.NoBody}, nil
+			}))
+		err := c.Put(t.Context(), wire.SignedUpload{Name: "0", Url: "http://store.invalid/k"}, nil)
+		if errors.Is(err, client.ErrSigned) != signed || client.Status(err) != status ||
+			err.Error() != fmt.Sprintf("upload 0: %d %s", status, http.StatusText(status)) {
+			t.Errorf("a store's %d: %v, ErrSigned %t", status, err, errors.Is(err, client.ErrSigned))
+		}
+		if err := c.Deregister(t.Context(), "s"); errors.Is(err, client.ErrSigned) ||
+			client.Status(err) != status {
+			t.Errorf("the worker API's %d: %v", status, err)
+		}
 	}
 }
 
