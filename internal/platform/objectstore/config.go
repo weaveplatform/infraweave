@@ -96,7 +96,10 @@ type Buckets struct {
 
 // Retention holds each store's retention. deliveries and flows-events
 // have none here: their bodies live exactly as long as their rows, under
-// their owners' settings.
+// their owners' settings. states and modules are alike but keep their
+// keys, so Validate refuses a setting and says why, where the strict
+// decode would report only an unknown key and the setting's environment
+// variable would go unread.
 type Retention struct {
 	RunLogs          time.Duration `mapstructure:"run-logs"`
 	RunArtifacts     time.Duration `mapstructure:"run-artifacts"`
@@ -163,8 +166,9 @@ var ErrConfig = errors.New("invalid objectstore configuration")
 
 // Validate rejects a setting the store could not run with: an unknown
 // driver, a driver without its bucket or directory, a part below S3's
-// minimum, a negative retention, a store's own bucket on fs. Errors name
-// the key. No driver is valid here; Require refuses it.
+// minimum, a negative retention, a retention on a store that does not
+// expire, a store's own bucket on fs. Errors name the key. No driver is
+// valid here; Require refuses it.
 func (c Config) Validate() error {
 	var errs []error
 	bad := func(format string, args ...any) {
@@ -216,7 +220,10 @@ func (c Config) Validate() error {
 		bad("objectstore.signed_url_ttl must be positive, got %s", c.SignedURLTTL)
 	}
 	for _, n := range Names() {
-		if c.Retention.Of(n) < 0 {
+		switch d := c.Retention.Of(n); {
+		case d != 0 && !n.Expires():
+			bad("objectstore.retention.%s must not be set: the store's objects live as long as their rows", n)
+		case d < 0:
 			bad("objectstore.retention.%s must not be negative", n)
 		}
 	}
