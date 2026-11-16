@@ -376,19 +376,23 @@ works.
   problem `unauthenticated`, with `WWW-Authenticate: Bearer`. A token with
   the wrong `aud` (a worker or run token on the public API, an MCP access
   token anywhere but its resource) is treated as no credential, and so is a
-  member session with no account on an account route. The one cross-audience
-  acceptance is `/mcp`, which also takes an API token, unnarrowed, as
-  Spacelift's takes spacectl tokens ([0019](0019-ai-provider-boundary.md)),
-  because a token already able to call every operation gains nothing
-  there.
+  member session with no account on an account route. Two surfaces accept a
+  credential of another audience. `/mcp` also takes an API token, unnarrowed,
+  as Spacelift's takes spacectl tokens ([0019](0019-ai-provider-boundary.md)),
+  because a token already able to call every operation gains nothing there.
+  `/state/v1` takes the API's tokens and API keys for reads alone
+  ([0010](0010-state-backend.md)), because `terraform_remote_state` and
+  `terraform state pull` send HTTP Basic credentials alone.
 - Worker tokens are accepted only on `/worker/v1`, which has its own
   middleware owned by [0008](0008-run-execution-and-worker-protocol.md). Run
   tokens are accepted there and on the state backend, `/state/v1`
   ([0010](0010-state-backend.md)), where Terraform sends them as the HTTP Basic
   password with the username `run`.
-- `/state/v1` also accepts a user API token, a session token or an in-run API
-  token as the Basic password, for read-only external state access; which of
-  them may read which stack is [0010](0010-state-backend.md)'s.
+- `/state/v1` also accepts, under the Basic username `api`, an API key as
+  `<id>:<secret>` or an API, CLI, Terraform CLI or in-run token as the
+  password, for read-only external state access, and answers a run token used
+  on another stack's state as the run's stack would be answered; which of them
+  may read which stack is [0010](0010-state-backend.md)'s.
 
 ### The OAuth authorization server for MCP
 
@@ -446,8 +450,9 @@ server.
 - Valid only while its run is in one of those three states: the middleware
   checks the run's state on every request, from the same cache as sessions.
 - Its rights are the stack's grants narrowed by 0007's in-run restriction: no
-  state, run, task or log access, and no write-only values; a stack with no
-  role binding gets read-only access.
+  state access but a read of another stack's state through `/state/v1`
+  ([0010](0010-state-backend.md)), no run, task or log access, and no
+  write-only values; a stack with no role binding gets read-only access.
 - `sub` is `<stack or module slug>/<run ULID>`, so the directory part is the
   caller ID, as the Spacelift provider's `spacelift_current_stack` reads it.
 

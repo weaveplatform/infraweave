@@ -42,7 +42,9 @@ behind the controls every API surface shares, and depart from them only where de
 
 - `{stack}` is the stack's ULID, or its slug when the segment is not a canonical upper-case
   ULID. Runs always receive the ULID, so a reslug never breaks a running run.
-- `{workspace}` is the unit's workspace name, URL-encoded, at most 512 bytes.
+- `{workspace}` is a Terragrunt unit's workspace name: the unit's path from the project
+  root with `/` separators, escaped as one path segment (`/` as `%2F`), at most 512 bytes
+  unescaped. A unit at the project root uses the default workspace, the stack's own URL.
 - `DELETE` and any other method answer `405`. Terraform's `http` backend has no workspace
   support of its own, so nothing calls them.
 
@@ -54,6 +56,18 @@ behind the controls every API surface shares, and depart from them only where de
   `unlock_address` (all the stack URL), `lock_method = "LOCK"` and
   `unlock_method = "UNLOCK"`. Code that declares its own backend fails initialization, as
   in Spacelift ([16 section 1.1](../reference/16-state-management.md#11-how-a-run-reaches-it)).
+- **Terragrunt units.** For a Terragrunt stack, the runner writes the same file into each
+  unit's directory, naming the unit's workspace URL
+  ([16 section 8](../reference/16-state-management.md#8-terragrunt-units-and-workspace-locks)).
+  Terragrunt copies a unit's directory into its cache before it runs the tool, so the file
+  goes with it. A unit that declares its own backend or `remote_state`, or whose name is
+  over 512 bytes, fails initialization naming the unit.
+- **Which stacks manage state.** A stack manages state when created with `manageState`.
+  For a Terragrunt stack, `useStateManagement` decides when it is set and `manageState`
+  when it is null, as the Terraform provider documents
+  ([16 section 2.1](../reference/16-state-management.md#21-where-the-flag-lives)); the
+  stack answers the effective value. Either is fixed at creation:
+  `terragrunt.use_state_management` in a run's runtime configuration changes nothing.
 - **Credentials.** The username is `run` and the password is the run token (decision
   [0006](0006-authentication-and-tokens.md)), passed through `TF_HTTP_USERNAME` and
   `TF_HTTP_PASSWORD` in the phase environment, never written into the workspace, so the
@@ -67,25 +81,46 @@ behind the controls every API surface shares, and depart from them only where de
 
 ### Who may call what
 
-A request authenticates with HTTP Basic. The password is either a run token or a credential
-decision [0006](0006-authentication-and-tokens.md) accepts as a bearer (user API token,
-session token, in-run API token).
+A request authenticates with HTTP Basic, and the username names what the password
+carries:
+
+- **`run`**: a run token (decision [0006](0006-authentication-and-tokens.md)).
+- **`api`**: an API key as `<id>:<secret>`, or a bearer token decision 0006 accepts on the
+  API: an API, CLI, Terraform CLI or in-run token. An API key is exchanged for a token as
+  the registry exchanges one (decision 0014), and the token is cached in memory until
+  30 seconds before it expires, so a revoked key stops reading within 30 seconds.
+
+Any other username, or a password that is neither, answers `401`.
 
 | Caller | `GET` | `LOCK`, `UNLOCK` | `POST` |
 |---|---|---|---|
 | Run token, run in `INITIALIZING`, `PLANNING` | yes | shared lock | no |
 | Run token, run in `APPLYING`, `DESTROYING`, `PERFORMING` | yes | exclusive lock | yes, holding the exclusive lock |
 | Run token, any other state, or a terminal run | no | no | no |
-| Run token for another stack | no | no | no |
-| Other credential, stack with external access on, caller holds `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` on the stack's space (decision [0007](0007-authorization-spaces-and-roles.md)) | yes | no | no |
-| Other credential, any other case | no | no | no |
+| In-run token, the run's own stack | no | no | no |
+| Run token or in-run token of a run on another stack, run in one of the states above, stack with external access on, the run's stack holding `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` on the stack's space through its role bindings | yes | no | no |
+| Run token or in-run token of a run on another stack, any other case | no | no | no |
+| API key or bearer token, stack with external access on, caller holds `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` on the stack's space (decision [0007](0007-authorization-spaces-and-roles.md)) | yes | no | no |
+| API key or bearer token, any other case | no | no | no |
 
 - The run's state is read on every request, so a run that ends or is stopped loses access
   at once, whatever the token's expiry ([16 section 1.1](../reference/16-state-management.md#11-how-a-run-reaches-it)).
 - External access is read-only and requires managed state
-  ([16 section 3](../reference/16-state-management.md#3-external-state-access)). A
-  `terraform_remote_state` data source uses `backend = "http"` with the stack URL and the
-  caller's token as password.
+  ([16 section 3](../reference/16-state-management.md#3-external-state-access)). A user's
+  `terraform_remote_state` data source uses `backend = "http"` with the stack URL, the
+  username `api` and an API key's `<id>:<secret>`, or a token, as password.
+- **A run reads another stack's state as its stack.** The stack's role bindings in the
+  target's space decide, as they decide its in-run token's API calls (decision 0007), and
+  the target's owner opts in with external access. Both of the run's tokens get the same
+  answer, so a `terraform_remote_state` with `backend = "http"` and no credentials in the
+  code reads in a run: the `http` backend takes `TF_HTTP_USERNAME` and
+  `TF_HTTP_PASSWORD`, which the runner sets to the run token, as its defaults. No run locks
+  or writes another stack's state.
+- **Answers to every caller but a run on its own stack**, in order: `401` for a missing or
+  invalid credential or another username; `404` for a stack the caller cannot see
+  (decision 0007) or one without managed state; `403` when external access is off or
+  either action is missing.
+- The same rules hold on a Terragrunt unit's workspace path.
 
 ### Locks
 
@@ -134,21 +169,33 @@ session token, in-run API token).
   run never keeps a lock.
 - **Operator release.** `tofuWorkspaceUnlock` and `tofuWorkspaceUnlockAll`
   ([16 section 8](../reference/16-state-management.md#8-terragrunt-units-and-workspace-locks))
-  delete lock rows for one workspace or every workspace of a stack, and need
-  `STACK_WORKSPACE_UNLOCK`.
+  need `STACK_WORKSPACE_UNLOCK` on the stack's space and delete, in one transaction,
+  every lock row of one workspace or of every locked workspace of a stack. Unlocking a
+  free workspace answers it unchanged, and `tofuWorkspaceUnlockAll` answers in
+  `unlockedWorkspaces` only those it unlocked. Each release records the audit action
+  `stack.state_lock_break` (decision 0015) with the caller as actor, the workspace's ID and
+  each released `LockInfo`. The holding run's next write, and its own `UNLOCK`, answer
+  `423`.
 
 ### Storage
 
-- **Table `state_workspaces`**: `(account_id, stack_id, name)` unique, `name` empty for the
-  stack's default workspace; `current_version_id`; `created_at`. It is the `TofuWorkspace`
-  entity, with `isLocked` and `lockedBy` derived from `state_locks`.
+- **Table `state_workspaces`**: `id` (ULID, set when the first `LOCK` creates the row);
+  `(account_id, stack_id, name)` unique, `name` empty for the stack's default workspace;
+  `current_version_id`; `created_at`. It is the `TofuWorkspace` entity:
+  - the default workspace answers the name `default`;
+  - `isLocked` and `lockedBy` are derived from `state_locks`, `lockedBy` naming the login
+    of the user, or the API key, that triggered the holding run, or the oldest holder's
+    when shared locks overlap;
+  - a `tofu_workspace` subject resolves to its stack's space for authorization
+    (decision 0007).
 - **Table `managed_state_versions`** (report [28 section 12.3](../reference/28-data-model.md#123-stacks-and-runs)):
   `id` (ULID), `account_id`, `stack_id`, `workspace`, `object_key`, `size`, `sha256`,
-  `serial`, `lineage`, `client_encrypted`, `run_id` (null for imports), `rollback`,
+  `serial`, `lineage`, `client_encrypted`, `run_id` (null for imports; a rollback copies
+  its target's), `rollback`,
   `rollback_username`, `rolled_back_from`, `imported`, `imported_username`,
   `imported_at`, `created_at` (answered as `lastModified`). Index
-  `(account_id, stack_id, workspace, created_at)` serves `searchManagedStateVersions` and
-  the version's key to its workspace.
+  `(account_id, stack_id, workspace, created_at)` serves `stackSearchManagedStateVersions`
+  and the version's key to its workspace.
 - **Objects.** Each version is its own object in the `states` store (decision
   [0005](0005-persistence-postgresql.md)) under
   `<account>/<stack ulid>/<sha256 of workspace name>/<version ulid>`, written once and
@@ -206,46 +253,103 @@ does (decision [0003](0003-api-conventions.md)).
 
 ### Upload, import and download URLs
 
+- **The tokens.** A URL's token is `kind | data key ID | account | subject | target |
+  expiry`, signed with HMAC-SHA-256 under a key derived for its kind
+  ([0013](0013-secrets-at-rest.md)): `crypt.DeriveKey("state-upload-url")` for uploads, whose
+  target is the object ID and whose subject is the principal that asked; and
+  `crypt.DeriveKey("state-download-url")` for downloads, whose target is the stack and the
+  version current when the URL was signed. A token verifies through `crypt.DerivedKey`,
+  so one signed before a data key's rotation works until it expires, which is 15 minutes
+  after signing (`objectstore.signed_url_ttl`). A bad, expired or other-kind token
+  answers `403`, problem `forbidden`, as `/blobs/{token}` does.
 - **`stateUploadUrl`** answers `objectId` (a ULID), `url` (`/state/v1/uploads/{token}`,
-  absolute) and an empty `uploadHeaders`. The token is `(objectId, account,
-  expiry)`, signed with HMAC-SHA256 under `crypt.DeriveKey("state-upload-url")`
-  ([0013](0013-secrets-at-rest.md)) and valid 15 minutes. The upload seals into the `uploads` store; an upload not
-  imported within a day expires through `blob.expire`.
+  absolute) and an empty `uploadHeaders`.
+  - The `PUT` declares its `Content-Length` and is at most 100 MiB (`413`,
+    `payload-too-large`); any `Content-Type` is accepted, since the Terraform provider
+    sends `application/json` and the body is checked at import.
+  - `state` seals the body under the account's data key as it streams, and hashes it, then
+    writes it to the `uploads` store, so a state's plaintext never rests in `uploads`,
+    which stays unsealed for local-preview archives sealed to their pool
+    ([0013](0013-secrets-at-rest.md)).
+  - A token takes one complete upload: a `PUT` after the object completed answers `409`,
+    `invalid-state`, and an upload cut short may be repeated until the token expires.
+  - An upload not imported within a day expires through `blob.expire`.
 - **Import** (`stackCreate` with `stackObjectID`, `stackManagedStateImport`) checks, in
   order:
 
-  | Check | Failure |
-  |---|---|
-  | The caller holds `STACK_MANAGED_STATE_IMPORT` | `403`, problem `forbidden` |
-  | The stack manages state | `409`, problem `invalid-state` |
-  | The stack is locked (`stackLock`), except at creation | `409`, problem `invalid-state` |
-  | No non-terminal tracked run, task or destroy run on the stack, except at creation | `409`, problem `invalid-state` |
-  | The upload exists and is at most 100 MiB | `422`, problem `validation-failed` |
-  | It is a JSON state with `version` 4, or a client-encrypted envelope | `422`, problem `validation-failed` |
+  | Check | At creation | Later |
+  |---|---|---|
+  | The caller holds `STACK_MANAGED_STATE_IMPORT` on the stack's space | `403`, `forbidden` | `403`, `forbidden` |
+  | The stack manages state | `422`, `validation-failed`, `/stackObjectID`, reason `rule` | `409`, `invalid-state` |
+  | The caller holds the stack's lock (`stackLock`) | not checked | `409`, `invalid-state` |
+  | No tracked run, task or destroy run on the stack has ended yet; proposed runs write no state and do not count | not checked | `409`, `invalid-state`, the run in the `detail` |
+  | The upload exists and the caller asked for it | `422`, `/stackObjectID`, reason `not-found` | `422`, `/state`, reason `not-found` |
+  | It is at most 100 MiB | `422`, reason `maximum` | `422`, reason `maximum` |
+  | It is a JSON state with `version` 4, or a client-encrypted envelope | `422`, reason `rule` | `422`, reason `rule` |
 
-  It reseals the file into `states` as a new version with `imported` set, then deletes the
-  upload ([16 section 5](../reference/16-state-management.md#5-importing-state)). The
-  problem slugs are those of decision [0022](0022-api-errors-and-update-semantics.md);
-  the `detail` names the failed check.
-- **`stateDownloadUrl`** needs external access on and both state permissions, and answers a
-  signed `/state/v1/download/{token}` URL valid 15 minutes for the current version. A
-  `version` argument answers `422`, problem `validation-failed`, as Spacelift's schema
-  documents.
+  - **At creation**, `stacksapi` declares a state-import port, which `state` implements
+    and the assembly wires in, as `stacksapi.StackGuard` is
+    ([0004](0004-repository-architecture.md)). `stackCreate` calls it inside the
+    creation's transaction, so a failed check fails the create and nothing is created.
+  - **Later**, the checks and the version's insert run in one transaction that holds the
+    stack's row `FOR UPDATE`, which waits for `stacksapi.Hold` and keeps a run from being
+    created until the import commits. The idle check reads `runsapi`'s list of a stack's
+    runs that have not ended, with their types.
+  - An import acts on the default workspace. It reseals the file into `states` as a new
+    version with `imported`, `imported_username` and `imported_at` set, even when it
+    matches the current version, since an import is a user's act and is recorded as one.
+    It then deletes the upload
+    ([16 section 5](../reference/16-state-management.md#5-importing-state)).
+  - It records the audit action `stack.state_import` (decision 0015).
+  - The problem slugs are those of decision [0022](0022-api-errors-and-update-semantics.md);
+    the `detail` names the failed check.
+- **`stateDownloadUrl`** needs `STACK_STATE_READ` and `STACK_STATE_DOWNLOAD` on the stack's
+  space, managed state and external access on, and answers a signed
+  `/state/v1/download/{token}` URL for the default workspace's current version.
+  - A `version` argument answers `422`, problem `validation-failed`, as Spacelift's schema
+    documents.
+  - The `GET` checks again that the stack exists, manages state and has external access
+    on, but not the caller's actions, which the signature carries. It streams the signed
+    version unsealed, or answers `404` when retention has deleted it.
+- **No idempotency key.** The two URL operations ignore `Idempotency-Key`: each call
+  signs a new URL, and a replay would answer one that may have expired
+  ([0003](0003-api-conventions.md)).
 
-### Rollback and retention
+### Rollback, searches and retention
 
-- **`stackManagedStateRollback`** checks `STACK_MANAGED_STATE_ROLLBACK` and the same
-  locked, idle conditions as import, then unseals the target version, reseals it as a new
-  object and inserts a version with `rollback`, `rollback_username`, `rolled_back_from`
-  and the target's `run_id` ([16 section 6](../reference/16-state-management.md#6-state-history-and-rollback)).
-  `Stack.isStateRollback` is true while the current version has `rollback` set; the next
-  write clears it.
-- **Retention.** Non-current versions are deleted once `state.noncurrent_retention` has
-  passed since they stopped being current (default 90 days; `0` keeps them forever). The
-  `state.retention` periodic task (daily, decision [0011](0011-persistent-work-queue.md))
-  deletes their rows and objects. The current version and versions referenced by a
-  non-terminal run are never deleted. Rolling back to a deleted version answers `404`,
-  problem `not-found`.
+- **`stackManagedStateRollback`** checks, in order: `STACK_MANAGED_STATE_ROLLBACK` (`403`),
+  managed state, the caller's stack lock and an idle stack as import does (`409`), that the
+  target version exists (`404`, `not-found`, also once retention has deleted it), and that
+  it is not the current version (`409`, `invalid-state`). In the same transaction as
+  import's, it unseals the target, reseals it as a new object and inserts a version that
+  copies the target's `run_id`, `serial`, `lineage`, `imported`, `imported_username` and
+  `imported_at`, with `rollback`, `rollback_username` and `rolled_back_from` set
+  ([16 section 6](../reference/16-state-management.md#6-state-history-and-rollback)).
+  A rollback to an imported version therefore answers its `importedTimestamp`. It records
+  the audit action `stack.state_rollback`.
+- **`Stack.isStateRollback`** is true while the default workspace's current version has
+  `rollback` set; the next write clears it. `stacksapi` declares a read port that `state`
+  implements, so the `Stack` view answers it with no edge from `stacks` to `state`.
+- **Searches.** Each takes `SearchInput` with cursor paging, the `expensive` class and
+  `SPACE_READ` reach (decision 0007):
+  - `stackSearchManagedStateVersions` searches the default workspace's versions by
+    `createdAt` (the default order, newest first), `run`, `rollback` and `imported`.
+  - `searchTofuWorkspaces` searches by `name` (the default order, ascending), `stack` and
+    `isLocked`; `searchTofuWorkspacesSuggestions` suggests `name` and `stack`. The Tofu
+    Workspaces tag is gated by the `tofu-workspaces` feature (decision 0021).
+- **Retention.** Non-current versions are deleted once `state.noncurrent_retention` (a
+  duration, default `2160h`, 90 days; `0` keeps them forever) has passed since they
+  stopped being current, which is the next version's `created_at`, so no column records
+  it.
+  - The `state.retention` periodic task (decision [0011](0011-persistent-work-queue.md))
+    runs daily for the installation on the maintenance queue, deleting rows and then
+    objects in batches of 500, as `state.purge` does.
+  - It never deletes a workspace's current version, or a version whose `run_id` names a
+    run that has not ended.
+  - Rolling back to, or downloading, a deleted version answers `404`, problem
+    `not-found`.
+  - The `states` store takes no `objectstore.retention.states`: a store-wide expiry would
+    delete current versions ([0005](0005-persistence-postgresql.md)).
 - **Stack deletion.** `state` registers its `stacksapi.StackGuard` with the `stacks` domain
   ([0004](0004-repository-architecture.md)). A stack's delete enqueues a `state.purge` job
   in its own transaction, so a delete that rolls back enqueues nothing, and the job deletes
@@ -263,8 +367,8 @@ conflict, whose body Terraform reads:
 | `200` | success | state, or empty |
 | `204` | `GET` with no state | empty |
 | `400` | `POST` without `Content-Length`, bad `Content-MD5` (not under `fips140=only`), body not a plain or client-encrypted state, a body cut short, `LockInfo` not JSON | problem `invalid-request` |
-| `401` | missing or invalid credentials, or another surface's credential, with `WWW-Authenticate: Basic realm="infraweave-state"` | problem `unauthenticated` |
-| `403` | valid credentials without the right in the table above, or an empty-body `UNLOCK` or an `UNLOCK` of another run's lock from a caller not granted the exclusive lock | problem `forbidden` |
+| `401` | missing or invalid credentials, a username other than `run` or `api`, or another surface's credential, with `WWW-Authenticate: Basic realm="infraweave-state"` | problem `unauthenticated` |
+| `403` | valid credentials without the right in the table above, external access off, or an empty-body `UNLOCK` or an `UNLOCK` of another run's lock from a caller not granted the exclusive lock | problem `forbidden` |
 | `404` | unknown stack or workspace, or the stack does not manage state | problem `not-found` |
 | `405` | any other method | problem `method-not-allowed` |
 | `413` | body over `state.max_size`, or a `LockInfo` over 16 KiB | problem `payload-too-large` |
@@ -273,8 +377,12 @@ conflict, whose body Terraform reads:
 The shared controls' own refusals, such as `429` and a panic's `500`, are problems here as
 on every surface.
 
-The public API operations (import, rollback, the URL operations, workspace unlock) are
-ordinary REST operations and answer the problem details of decision
+The signed routes answer problems too: `403` for a bad, expired or other-kind token, `409`
+`invalid-state` for a second complete upload, `413` for an upload over 100 MiB or without
+`Content-Length` (`400`), and `404` for a download whose version retention deleted.
+
+The public API operations (import, rollback, the URL operations, the searches, workspace
+unlock) are ordinary REST operations and answer the problem details of decision
 [0022](0022-api-errors-and-update-semantics.md).
 
 ## Rationale
@@ -300,6 +408,34 @@ ordinary REST operations and answer the problem details of decision
   report 27 advises against ([27 section 3.4](../reference/27-reference-materials.md#34-do-not-copy)).
   The `http` backend with a token already serves `terraform_remote_state` and offline
   `terraform state pull`.
+- **An API key as the Basic password.** A `terraform_remote_state` block keeps its
+  credentials for as long as the code exists, and an API key's exchanged token lives
+  10 hours (decision 0006), so the key itself is accepted and exchanged on the server, as
+  the registry does for `terraform login`'s stored credentials.
+- **A run reads another stack's state as its stack.** Spacelift lets a stack holding both
+  state actions read another's state
+  ([16 section 3](../reference/16-state-management.md#3-external-state-access)), and a
+  run's tool sends the run token it already has. Evaluating that token as the run's stack
+  keeps one rule for the stack's reach, its role bindings, rather than a second credential
+  stored in a context, and the target's external access keeps the owner's opt-in. Only
+  `GET` is granted, so the in-run restriction of decision 0007 still keeps every run from
+  changing another stack's state.
+- **Import at creation inside `stackCreate`.** A bad upload then fails the create with
+  `422` and leaves no stack without the state it was meant to start from; importing from
+  an event afterwards would let the create succeed and a first run plan against no state.
+  A port that `state` implements keeps `stacks` from depending on `state`
+  ([0004](0004-repository-architecture.md)).
+- **Import and rollback need the caller's lock.** The lock is how a user takes a stack out
+  of everyone else's hands (report [07](../reference/07-stack-model.md)); a lock another user
+  holds means that user is working on the stack, so the state is not swapped under them.
+- **An upload URL serves the principal that asked for it.** An object ID seen by another
+  member of the account, in a log or a shared script, cannot import a state that member
+  never saw.
+- **Uploads bounded on the server, not declared.** Every URL infraweave signs for the
+  object store binds a declared size and SHA-256, because a pre-signed `PUT` cannot bound
+  what it is not told. A state upload reaches infraweave itself, which bounds it at
+  100 MiB and hashes it as it streams, so `stateUploadUrl` keeps Spacelift's empty input
+  and the Terraform provider's upload works unchanged.
 - **Rejected: locks in the object store.** Conditional writes differ across S3-compatible
   stores and do not exist on local disk; PostgreSQL row locks are already the
   serialization point for runs.
@@ -332,6 +468,8 @@ ordinary REST operations and answer the problem details of decision
   - Under `GODEBUG=fips140=only`, `Content-MD5` is accepted and not checked, and reads
     never send it.
   - History does not rely on bucket versioning.
+  - A Terragrunt unit reads another stack's state as any run of its stack does, where
+    Spacelift's units cannot.
 
 ## Constraints
 
@@ -339,8 +477,14 @@ ordinary REST operations and answer the problem details of decision
   change to `backend = "http"` when moving to infraweave.
 - **Client-side encrypted OpenTofu state** is stored opaquely: outputs, the resources view
   and anything else that parses state see nothing for those versions.
-- **Unverified in Spacelift and decided here:** which run states may read and write, and
-  what counts as a pending run for import and rollback.
+- **Unverified in Spacelift and decided here:** which run states may read and write; what
+  counts as a pending run for import and rollback (C109); that `stackObjectID` and external
+  access need managed state (C107); the URLs' 15 minutes and the upload's day (C108);
+  rollback past retention and when `isStateRollback` clears (C110); that the backend's
+  locks are the Tofu workspaces' and every stack lists its default workspace (C111); a
+  Terragrunt stack's `useStateManagement` deciding over `manageState` (C113); and state
+  management fixed at creation whatever a run's runtime configuration says (C114). The
+  scenarios assert these until the captures are recorded.
 - **The KEK of decision [0013](0013-secrets-at-rest.md) is required to read any state.** A
   database and bucket backup without it restores no state.
 - **A force-unlock breaks a running run's lock.** That run's own `UNLOCK` then answers
@@ -360,13 +504,17 @@ ordinary REST operations and answer the problem details of decision
   current pointer, orphan collection through `pending` `blob_objects` rows, retention.
 - Gherkin acceptance with real Terraform and OpenTofu in testcontainers:
   `state/backend.feature` (init, plan, apply through the backend; a second apply blocked by
-  `423` until the first ends), `state/external_access.feature` (`terraform_remote_state`
-  with and without the permissions and the stack switch), `state/import.feature`,
-  `state/rollback.feature`, `state/terragrunt_units.feature` with workspace unlock, and
+  `423` until the first ends), `state/urls.feature` (the signed upload and download),
+  `state/external_access.feature` (`terraform_remote_state` with an API key and a bearer
+  token, a run of another stack reading with no credentials in its code, and each refusal),
+  `state/import.feature` (at creation and later, client-encrypted included),
+  `state/rollback.feature` (rollback, `isStateRollback`, the version search and retention),
+  `state/terragrunt_units.feature` (a workspace per unit, listed and unlocked), and
   `state/force_unlock.feature` (`terraform force-unlock` from a task releases a lock left
   by a killed run).
-- A retention test on a fake clock: a non-current version is deleted after 90 days, the
-  current version and a version a pending run references are kept.
+- A retention test in virtual time (decision 0016): a non-current version is deleted once
+  its retention passes, and the current version and a version a run that has not ended
+  wrote are kept.
 - A sealing test writes a state with a known secret output and asserts the bytes in the
   object store do not contain it.
 

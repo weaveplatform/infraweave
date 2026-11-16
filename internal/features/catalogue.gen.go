@@ -81,7 +81,7 @@ var catalogue = []Feature{
 	{Name: "vendor-opentofu", Kind: "option", Phase: "P5", LowestTier: "Free"},
 	{Name: "vendor-pulumi", Kind: "option", Phase: "P20", LowestTier: "Free"},
 	{Name: "vendor-terraform", Kind: "option", Phase: "P5", LowestTier: "Free"},
-	{Name: "vendor-terragrunt", Kind: "option", Phase: "P20", LowestTier: "Free"},
+	{Name: "vendor-terragrunt", Kind: "option", Phase: "P11", LowestTier: "Free"},
 	{Name: "version-catalog", Kind: "capability", Phase: "P5", LowestTier: "Free"},
 	{Name: "viewer", Kind: "capability", Phase: "P3", LowestTier: "Free"},
 	{Name: "webhooks", Kind: "capability", Phase: "P18", LowestTier: "Starter", TierFeatures: []string{"RUN_STATE_CHANGE_WEBHOOKS"}},

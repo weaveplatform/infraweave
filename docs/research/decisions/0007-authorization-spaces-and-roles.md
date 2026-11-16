@@ -325,9 +325,13 @@ sets.
 
 **In-run restriction.** A `run` principal can never perform the actions in
 `authz.RunDenied`: `STACK_STATE_READ`, `STACK_STATE_DOWNLOAD`, every
-`RUN_*` action, `TASK_CREATE`, and reads of runs, tasks and logs. A stack with
-no binding gets only its implicit read. Write-only values are never readable
-by anyone (decision [0013](0013-secrets-at-rest.md)).
+`RUN_*` action, `TASK_CREATE`, and reads of runs, tasks and logs. The one
+exception is a `GET` of another stack's state on `/state/v1`, which the two
+state actions decide as the run's stack holds them
+([0010](0010-state-backend.md)): a run can read the state another stack's owner
+opened with external access, and never lock or write it. A stack with no
+binding gets only its implicit read. Write-only values are never readable by
+anyone (decision [0013](0013-secrets-at-rest.md)).
 
 **Grant views** (`Space.accessLevel`, `Space.allowedActions`, `User.actions`,
 `usersWithAccessToSpace`, `stacksWithAccessToSpace` and their siblings) call

@@ -139,6 +139,7 @@ everywhere, and the reason names where the contract checks it instead.
 | `@objectstore` | RustFS container, used through the `s3` driver | state, logs, uploads, module and provider archives |
 | `@terraform` | a pinned Terraform release, fetched once and checked against its SHA-256 | a real run (below) |
 | `@tofu` | a pinned OpenTofu release, checked the same way | a real run (below) |
+| `@terragrunt` | a pinned Terragrunt release, checked against its signed `SHA256SUMS`, beside `@terraform` or `@tofu` | a Terragrunt stack's run and its units' workspaces |
 | `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
 | `@vault` | Vault in dev mode, with the Transit engine mounted and a Transit key per scenario | the `vault` KEK provider: rewrapping the data keys to Vault, and servers that run on it ([0013](0013-secrets-at-rest.md)) |
 | `@vcs` | Gitea container, with a repository seeded per scenario, and each provider's chi fake | real webhooks, commit statuses, pull request comments; each provider's own shapes (decision 0012) |
@@ -398,7 +399,7 @@ coverage it would contribute is not waived.
 |---|---|---|---|---|
 | `unit` | `ubuntu-latest`, `macos-latest`, `windows-latest` | `make test` | 15 min | yes |
 | `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc`, `@vault` | 20 min | yes |
-| `accept-runs` | `ubuntu-latest` | `@docker`, `@terraform`, `@tofu`, `@kubernetes`, `@flows-agent` | 30 min | yes |
+| `accept-runs` | `ubuntu-latest` | `@docker`, `@terraform`, `@tofu`, `@terragrunt`, `@kubernetes`, `@flows-agent` | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
 | `parity` | `ubuntu-latest` | `make verify-parity` and the state check | 5 min | yes |
@@ -602,6 +603,12 @@ coverage it would contribute is not waived.
   reap and the preparing timeout by moving time on for one run or
   worker; `TestAccCaptures` skips the six captures it stands in for as
   awaited.
+- `test/acceptance/features/state/` holds `backend.feature` and the state
+  management features: `urls.feature`, `import.feature`,
+  `rollback.feature`, `external_access.feature` and
+  `terragrunt_units.feature`, each with real Terraform and OpenTofu, and
+  the last with Terragrunt. `TestAccCaptures` skips C106, C107, C108, C109,
+  C110, C112, C113 and C114 as awaited against them.
 - `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
   `TestUnitWriteRefusals` and `TestUnitParseStress`
   (`test/acceptance/internal/harness`) prove the stress: a refusal share
