@@ -1206,9 +1206,12 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `timer`, and two concurrent passes ending each run once.
 - Gherkin acceptance with PostgreSQL, RustFS and Docker:
   `test/acceptance/features/workers/protocol.feature`,
-  `runs/lifecycle.feature` (proposed, tracked with confirm, autodeploy, task,
-  destroy on delete, targeted replan, stop, kill, no-log timeout, offline
-  worker, lost run, timers on a fake clock),
+  `runs/lifecycle.feature` (proposed with its retry, tracked with confirm,
+  autodeploy, a task and one that skips initialization, destroy on delete,
+  targeted replan and one whose handover stalls in `PREPARING_REPLAN`, stop,
+  kill, no-log timeout, offline worker, lost run, and the timers, each run's
+  history and `run_updated` events read; time passes for the timers and the
+  reap on the run or worker alone, whose timestamps move back),
   `runs/runner_image.feature` (a Spacelift public runner image runs unchanged) and
   `runs/signed.feature`. `runs/terraform.feature` and `runs/tofu.feature`
   run a tracked run from a Gitea commit through `runConfirm` to `FINISHED`

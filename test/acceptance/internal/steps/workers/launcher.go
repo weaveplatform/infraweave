@@ -67,7 +67,7 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 		l.servers)
 	sc.Step(
 		`^token "(\w+)" starts the launcher "(\w+)" of the pool "(\w+)" with the key of "(\w+)"`+
-			`(, which keeps sensitive outputs' values,)? through ([AB])$`,
+			`(, which keeps sensitive outputs' values,)?(?:, whose no-log timeout is (\d+s),)? through ([AB])$`,
 		l.start,
 	)
 	sc.Step(`^the launcher "(\w+)" is killed$`, l.kill)
@@ -98,10 +98,11 @@ func (l *launcherSteps) servers(ctx context.Context, raw string) error {
 // start starts a launcher of the pool kept as pool, with the private key
 // of the request kept as csr, through the relay to replica, which it
 // starts on first use; keeps, when not empty, turns its
-// sensitive_output_upload on. The pool token token reads names the relay
+// sensitive_output_upload on, and quiet, when not empty, is its
+// log_timeout. The pool token token reads names the relay
 // as its endpoint, as a pool token names the server a launcher reaches.
 // The launcher's worker is kept as name once it registers.
-func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps, replica string) error {
+func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps, quiet, replica string) error {
 	w := l.w
 	host, err := w.Suite.Launchers(ctx)
 	if err != nil {
@@ -152,6 +153,9 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps
 	}
 	if keeps != "" {
 		settings["sensitive_output_upload"] = true
+	}
+	if quiet != "" {
+		settings["log_timeout"] = quiet
 	}
 	for _, t := range scenarioTools {
 		if !slices.Contains(w.Tags, t.tag) {

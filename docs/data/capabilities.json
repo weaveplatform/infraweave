@@ -1786,7 +1786,8 @@
         "lowestTier": "Free",
         "apiPhase": "P9",
         "providerPhase": "P24",
-        "state": "stub"
+        "state": "partial",
+        "notes": "`runTrigger`, the one operation it calls, is served with its success, denial and failure evidenced (P10); the resource itself lands with the provider (P24)"
       }
     },
     {
@@ -2045,7 +2046,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P10",
         "providerPhase": "P24",
-        "state": "stub"
+        "state": "partial",
+        "notes": "`taskCreate`, the one operation it calls, is served with its success, denial and failure evidenced (P10); the resource itself lands with the provider (P24)"
       }
     },
     {
@@ -3163,7 +3165,7 @@
         "lowestTier": "Free",
         "apiPhase": "P10",
         "providerPhase": "P24",
-        "state": "stub",
+        "state": "partial",
         "notes": "A stack's read answers the outputs its last applied tracked run recorded, each value sealed to its row, with no value for a sensitive output (P10); a sensitive output's value is kept only where both the stack's `enableSensitiveOutputUpload` and its launcher's `launcher.sensitive_output_upload` allow it, and is otherwise in no object or row (P10); the data source itself lands with the provider (P24)"
       }
     },
