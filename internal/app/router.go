@@ -55,9 +55,9 @@ type apiServer struct {
 	stacksassembly.StacksAPI
 	configurationassembly.ConfigurationAPI
 	runsassembly.RunsAPI
+	stateassembly.StateAPI
 	vcsassembly.VCSAPI
 	expressionsassembly.ExpressionsAPI
-	stateassembly.StateAPI
 	unimplemented
 	queues QueueStats
 	blobs  *blobs.Objects
@@ -131,9 +131,9 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 			StacksAPI:        d.Stacks.API(),
 			ConfigurationAPI: d.Configuration.API(),
 			RunsAPI:          d.Runs.API(),
+			StateAPI:         d.State.API(),
 			VCSAPI:           d.VCS.API(),
 			ExpressionsAPI:   d.Expressions.API(),
-			StateAPI:         d.State.API(),
 			queues:           p.Queues,
 			blobs:            b.Objects,
 		},

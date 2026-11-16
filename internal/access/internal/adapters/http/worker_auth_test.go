@@ -35,7 +35,8 @@ func (subjects) Verify(_ context.Context, raw, aud string) (token.Claims, error)
 // TestUnitWorkerAuthenticator checks that the worker API's authenticator
 // admits a worker session token on a worker route and a run token on a
 // runner route, putting the worker's or the run's principal and bearer on
-// the context, and refuses each on the other's routes and an API token on
+// the context with the client's address, which a public route's request
+// carries too, and refuses each on the other's routes and an API token on
 // both; and that neither authenticator admits a credential on the other's
 // routes.
 func TestUnitWorkerAuthenticator(t *testing.T) {
@@ -55,16 +56,18 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got struct {
-		p kernel.Principal
-		b accessapi.Bearer
+		p    kernel.Principal
+		b    accessapi.Bearer
+		addr string
 	}
 	seen := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got.p, _ = kernel.PrincipalFrom(r.Context())
 		got.b, _ = accessapi.BearerFrom(r.Context())
+		got.addr = accessapi.ClientAddr(r.Context())
 		w.WriteHeader(http.StatusNoContent)
 	})
 	send := func(a Authenticator, acc accessapi.Access, bearer string) int {
-		got.p, got.b = kernel.Principal{}, accessapi.Bearer{}
+		got.p, got.b, got.addr = kernel.Principal{}, accessapi.Bearer{}, ""
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 		if bearer != "" {
@@ -74,18 +77,21 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 		return rec.Code
 	}
 	workers := NewWorkerAuthenticator(auth)
+	// httptest's requests come from 192.0.2.1, which the middleware
+	// carries without its port.
 	if code := send(workers, accessapi.Worker, tok.Raw); code != http.StatusNoContent ||
 		got.p.Kind != kernel.PrincipalWorker || got.p.ActorID != worker ||
-		got.b.ID != worker || !got.b.Expires.Equal(tok.Expires) {
-		t.Errorf("worker token = %d, %+v, %+v", code, got.p, got.b)
+		got.b.ID != worker || !got.b.Expires.Equal(tok.Expires) || got.addr != "192.0.2.1" {
+		t.Errorf("worker token = %d, %+v, %+v from %q", code, got.p, got.b, got.addr)
 	}
 	if code := send(workers, accessapi.Runner, runTok.Raw); code != http.StatusNoContent ||
 		got.p.Kind != kernel.PrincipalRunner || got.p.ActorID != run ||
 		got.b.ID != run || !got.b.Expires.Equal(runTok.Expires) {
 		t.Errorf("run token = %d, %+v, %+v", code, got.p, got.b)
 	}
-	if code := send(workers, accessapi.Public, ""); code != http.StatusNoContent {
-		t.Errorf("public route = %d", code)
+	if code := send(workers, accessapi.Public, ""); code != http.StatusNoContent ||
+		got.addr != "192.0.2.1" {
+		t.Errorf("public route = %d from %q", code, got.addr)
 	}
 	for name, tc := range map[string]struct {
 		a      Authenticator

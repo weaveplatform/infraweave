@@ -29,7 +29,7 @@ func (st *stackSearchSteps) register(sc *godog.ScenarioContext) {
 		st.searches,
 	)
 	sc.Step(
-		`^the answer suggests the (\w+) values "([^"]*)" of (\d+) (?:stacks?|contexts?|integrations?|worker pools?)$`,
+		`^the answer suggests the (\w+) values "([^"]*)" of (\d+) (?:stacks?|contexts?|integrations?|worker pools?|Tofu workspaces?)$`,
 		st.suggests,
 	)
 	sc.Step(

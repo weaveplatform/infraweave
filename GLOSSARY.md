@@ -243,7 +243,7 @@ Where a run's Terraform or OpenTofu reads, locks and writes its stack's managed 
 _Avoid_: state server
 
 **Workspace**:
-One separately locked and versioned state of a stack: its default state, or one Terragrunt unit's.
+One separately locked and versioned state of a stack: its default state, which a stack with managed state has from its creation, or one Terragrunt unit's. The API names it a Tofu workspace.
 _Avoid_: Terraform workspace, which is a CLI feature infraweave does not use
 
 **State version**:
@@ -257,6 +257,10 @@ _Avoid_: stack lock, which is a person's hold on the whole stack
 **Force-unlock**:
 Releasing every lock on a workspace at once, which only a run that could take the exclusive lock may do, and which the audit trail records.
 _Avoid_: unlock
+
+**Workspace unlock**:
+A person's release of every lock on one workspace, or on each of a stack's, which needs `STACK_WORKSPACE_UNLOCK` and which the audit trail records; the run whose lock goes is refused its next write and its own release of the lock.
+_Avoid_: force-unlock, which a run sends through the state backend
 
 ### Access
 

@@ -35,9 +35,10 @@ func Stream() migrate.Stream {
 }
 
 // Held are the state columns that hold other domains' rows: a workspace's
-// account, the stack each workspace, lock and version names, and the run
-// that holds each lock and wrote each version. A lock's and a version's
-// account is its workspace's, which they go with.
+// account, the stack each workspace, lock, broken lock and version names,
+// and the run that holds each lock, held each broken lock and wrote each
+// version. A lock's, a broken lock's and a version's account is its
+// workspace's, which they go with.
 func Held() []integrity.Held {
 	stack := []string{"account_id", "stack_id"}
 	run := []string{"account_id", "run_id"}
@@ -45,8 +46,10 @@ func Held() []integrity.Held {
 		{Entity: "account", Table: "state_workspaces", Columns: []string{"account_id"}},
 		{Entity: "stack", Table: "state_workspaces", Columns: stack},
 		{Entity: "stack", Table: "state_locks", Columns: stack},
+		{Entity: "stack", Table: "state_broken_locks", Columns: stack},
 		{Entity: "stack", Table: "managed_state_versions", Columns: stack},
 		{Entity: "run", Table: "state_locks", Columns: run},
+		{Entity: "run", Table: "state_broken_locks", Columns: run},
 		{Entity: "run", Table: "managed_state_versions", Columns: run},
 	}
 }
@@ -57,12 +60,13 @@ type Store struct{ db tx.Querier }
 // New returns the store over db.
 func New(db tx.Querier) *Store { return &Store{db: db} }
 
-// OpenWorkspace makes acct's stack's workspace name exist, in the
-// context's transaction, leaving one that exists as it is.
+// OpenWorkspace makes acct's stack's workspace name exist under a new
+// ID, in the context's transaction, leaving one that exists as it is.
 func (s *Store) OpenWorkspace(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, name string) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO state_workspaces
-		(account_id, stack_id, name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-		acct, stack, name); err != nil {
+		(account_id, id, stack_id, name) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (account_id, stack_id, name) DO NOTHING`,
+		acct, kernel.NewULID(), stack, name); err != nil {
 		return fmt.Errorf("state: open workspace %q of stack %s: %w", name, stack,
 			sql.Unavailable(err))
 	}
@@ -89,8 +93,8 @@ func (s *Store) LockWorkspace(ctx context.Context, t core.Target) (bool, error) 
 // Locks are the locks held on t's workspace, oldest first, in the order
 // of their IDs within one instant.
 func (s *Store) Locks(ctx context.Context, t core.Target) ([]core.Lock, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT lock_id, mode, run_id, info, created_at
-		FROM state_locks WHERE account_id = $1 AND stack_id = $2 AND workspace = $3
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT lock_id, mode, run_id, triggered_by, info,
+		created_at FROM state_locks WHERE account_id = $1 AND stack_id = $2 AND workspace = $3
 		ORDER BY created_at, lock_id`, t.Account, t.Stack, t.Workspace)
 	if err != nil {
 		return nil, fmt.Errorf("state: read the locks of workspace %q of stack %s: %w",
@@ -98,7 +102,7 @@ func (s *Store) Locks(ctx context.Context, t core.Target) ([]core.Lock, error) {
 	}
 	locks, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (core.Lock, error) {
 		var l core.Lock
-		err := row.Scan(&l.ID, &l.Mode, &l.Run, &l.Info, &l.CreatedAt)
+		err := row.Scan(&l.ID, &l.Mode, &l.Run, &l.TriggeredBy, &l.Info, &l.CreatedAt)
 		return l, err //nolint:wrapcheck // CollectRows' caller names the read
 	})
 	if err != nil {
@@ -111,9 +115,10 @@ func (s *Store) Locks(ctx context.Context, t core.Target) ([]core.Lock, error) {
 // AddLock records l on t's workspace.
 func (s *Store) AddLock(ctx context.Context, t core.Target, l core.Lock) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO state_locks
-		(account_id, stack_id, workspace, lock_id, mode, run_id, info)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		t.Account, t.Stack, t.Workspace, l.ID, l.Mode, l.Run, string(l.Info)); err != nil {
+		(account_id, stack_id, workspace, lock_id, mode, run_id, triggered_by, info)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		t.Account, t.Stack, t.Workspace, l.ID, l.Mode, l.Run, l.TriggeredBy,
+		string(l.Info)); err != nil {
 		return fmt.Errorf("state: lock workspace %q of stack %s: %w", t.Workspace, t.Stack,
 			sql.Unavailable(err))
 	}
@@ -131,10 +136,44 @@ func (s *Store) RemoveLocks(ctx context.Context, t core.Target, ids []string) er
 	return nil
 }
 
-// ReleaseRun deletes every lock run holds in acct.
+// BreakLocks records each of locks, released on t's workspace from under
+// its run, by its ID and run, keeping one already recorded.
+func (s *Store) BreakLocks(ctx context.Context, t core.Target, locks []core.Lock) error {
+	ids := make([]string, len(locks))
+	runs := make([]kernel.ULID, len(locks))
+	for i, l := range locks {
+		ids[i], runs[i] = l.ID, l.Run
+	}
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO state_broken_locks
+		(account_id, stack_id, workspace, lock_id, run_id)
+		SELECT $1, $2, $3, b.lock_id, b.run_id FROM unnest($4::text[], $5::uuid[])
+			AS b(lock_id, run_id)
+		ON CONFLICT DO NOTHING`, t.Account, t.Stack, t.Workspace, ids, runs); err != nil {
+		return fmt.Errorf("state: record the broken locks of workspace %q of stack %s: %w",
+			t.Workspace, t.Stack, sql.Unavailable(err))
+	}
+	return nil
+}
+
+// Broken reports whether run's lock id on t's workspace was released from
+// under it.
+func (s *Store) Broken(ctx context.Context, t core.Target, id string, run kernel.ULID) (bool, error) {
+	var broken bool
+	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM state_broken_locks
+		WHERE account_id = $1 AND stack_id = $2 AND workspace = $3 AND lock_id = $4
+		AND run_id = $5)`, t.Account, t.Stack, t.Workspace, id, run).Scan(&broken); err != nil {
+		return false, fmt.Errorf("state: read the broken locks of workspace %q of stack %s: %w",
+			t.Workspace, t.Stack, sql.Unavailable(err))
+	}
+	return broken, nil
+}
+
+// ReleaseRun deletes every lock run holds in acct, and the record of each
+// lock released from under it.
 func (s *Store) ReleaseRun(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error {
-	if _, err := tx.Q(ctx, s.db).Exec(ctx,
-		`DELETE FROM state_locks WHERE account_id = $1 AND run_id = $2`, acct, run); err != nil {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, `WITH broken AS (
+			DELETE FROM state_broken_locks WHERE account_id = $1 AND run_id = $2)
+		DELETE FROM state_locks WHERE account_id = $1 AND run_id = $2`, acct, run); err != nil {
 		return fmt.Errorf("state: release the locks of run %s: %w", run, sql.Unavailable(err))
 	}
 	return nil
@@ -210,6 +249,7 @@ func (s *Store) Audit(ctx context.Context, e kernel.AuditEntry) error {
 var purged = []struct{ table, key, returning string }{
 	{"managed_state_versions", "id", "object_key"},
 	{"state_locks", "stack_id, workspace, lock_id", "''"},
+	{"state_broken_locks", "stack_id, workspace, lock_id, run_id", "''"},
 	{"state_workspaces", "stack_id, name", "''"},
 }
 

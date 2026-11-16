@@ -125,8 +125,9 @@ Any other username, or a password that is neither, answers `401`.
 ### Locks
 
 - **Table `state_locks`**: `(account_id, stack_id, workspace, lock_id)` key, `mode` (`shared` or
-  `exclusive`), `run_id`, `info` (the `LockInfo` JSON Terraform sent, at most 16 KiB),
-  `created_at`. The lock ID is the `ID` field of the `LockInfo` body.
+  `exclusive`), `run_id`, `triggered_by` (who triggered the run), `info` (the `LockInfo`
+  JSON Terraform sent, at most 16 KiB), `created_at`. The lock ID is the `ID` field of the
+  `LockInfo` body.
 - **Taking a lock** runs in one transaction that locks the `state_workspaces` row
   `FOR UPDATE`, then:
 
@@ -143,7 +144,8 @@ Any other username, or a password that is neither, answers `401`.
   to the user.
 - **Releasing.** `UNLOCK` deletes the row whose `lock_id` matches the body's `ID`. When
   locks are held and none has that ID, it answers `423` with the holder's `LockInfo`; when
-  none is held, `200`, so a repeated release is idempotent. A client sends back the
+  none is held, `200`, so a repeated release is idempotent, unless the lock was broken
+  from under the run that sends it (below), which answers `423` with `{}`. A client sends back the
   `LockInfo` of the lock it took. `tofu force-unlock <id>` sends a `LockInfo` carrying the
   given ID. Releasing a lock that another run holds, by its ID, needs the exclusive grant,
   as a force-unlock does; any other caller gets `403`, so a planning run cannot release an
@@ -158,6 +160,13 @@ Any other username, or a password that is neither, answers `401`.
 - **Audit.** Releasing a lock that another run holds, by an empty body or by
   `tofu force-unlock <id>`, records an audit entry (decision 0015) naming the caller, the
   workspace and each released `LockInfo`.
+- **Broken locks.** A lock released from under the run that holds it, by a force-unlock
+  or by the operator release below, is recorded in table `state_broken_locks`:
+  `(account_id, stack_id, workspace, lock_id, run_id)` key, `created_at`, cascading with
+  its workspace. That run's own `UNLOCK` of it answers `423` with `{}`, so the run learns
+  that it no longer held the lock it wrote under, while an `UNLOCK` of a lock no one ever
+  held still answers `200`. The rows go with the run's locks when its terminal
+  `run_updated` arrives, and with the stack and the account in their purges.
 - **Writes under a lock.** `POST` carries the lock ID in the `ID` query parameter, as
   Terraform sends it. A `POST` whose ID does not name an exclusive lock held by the same run
   answers `423` with the holder's `LockInfo`, or `{}` when no lock is held, both before
@@ -173,13 +182,16 @@ Any other username, or a password that is neither, answers `401`.
   every lock row of one workspace or of every locked workspace of a stack. Unlocking a
   free workspace answers it unchanged, and `tofuWorkspaceUnlockAll` answers in
   `unlockedWorkspaces` only those it unlocked. Each release records the audit action
-  `stack.state_lock_break` (decision 0015) with the caller as actor, the workspace's ID and
-  each released `LockInfo`. The holding run's next write, and its own `UNLOCK`, answer
-  `423`.
+  `stack.state_lock_break` (decision 0015) with the caller as actor, the caller's address
+  as the entry's remote IP, the workspace's ID and each released `LockInfo`. Each released
+  lock is recorded as broken, so the holding run's next write, and its own `UNLOCK`,
+  answer `423`.
 
 ### Storage
 
-- **Table `state_workspaces`**: `id` (ULID, set when the first `LOCK` creates the row);
+- **Table `state_workspaces`**: `id` (ULID, set when the stack is created with managed
+  state, in the creation's transaction, or when a Terragrunt unit's first `LOCK` creates
+  its row);
   `(account_id, stack_id, name)` unique, `name` empty for the stack's default workspace;
   `current_version_id`; `created_at`. It is the `TofuWorkspace` entity:
   - the default workspace answers the name `default`;
@@ -292,10 +304,12 @@ does (decision [0003](0003-api-conventions.md)).
   | It is at most 100 MiB | `422`, reason `maximum` | `422`, reason `maximum` |
   | It is a JSON state with `version` 4, or a client-encrypted envelope | `422`, reason `rule` | `422`, reason `rule` |
 
-  - **At creation**, `stacksapi` declares a state-import port, which `state` implements
-    and the assembly wires in, as `stacksapi.StackGuard` is
-    ([0004](0004-repository-architecture.md)). `stackCreate` calls it inside the
-    creation's transaction, so a failed check fails the create and nothing is created.
+  - **At creation**, the checks run through `stacksapi.ManagedState`, the one port through
+    which `stackCreate` reaches `state`, and which opens the default workspace
+    (§ "Storage"). `state` implements it and the assembly wires it in, as
+    `stacksapi.StackGuard` is ([0004](0004-repository-architecture.md)). `stackCreate`
+    calls it inside the creation's transaction, so a failed check fails the create and
+    nothing is created.
   - **Later**, the checks and the version's insert run in one transaction that holds the
     stack's row `FOR UPDATE`, which waits for `stacksapi.Hold` and keeps a run from being
     created until the import commits. The idle check reads `runsapi`'s list of a stack's
@@ -492,7 +506,8 @@ unlock) are ordinary REST operations and answer the problem details of decision
   counts as a pending run for import and rollback (C109); that `stackObjectID` and external
   access need managed state (C107); the URLs' 15 minutes and the upload's day (C108);
   rollback past retention and when `isStateRollback` clears (C110); that the backend's
-  locks are the Tofu workspaces' and every stack lists its default workspace (C111); a
+  locks are the Tofu workspaces', that every stack with managed state lists its default
+  workspace from its creation, and that a stack without it lists none (C111); a
   Terragrunt stack's `useStateManagement` deciding over `manageState` (C113); and state
   management fixed at creation whatever a run's runtime configuration says (C114). The
   scenarios assert these until the captures are recorded.
@@ -504,7 +519,8 @@ unlock) are ordinary REST operations and answer the problem details of decision
 ## Verification
 
 - `internal/state` unit tests: the authorization table per run state; every lock
-  row of the conflict table; lock release on a run's terminal `run_updated`; every shared
+  row of the conflict table; lock release on a run's terminal `run_updated`; `423` for a
+  run's `UNLOCK` of a lock broken from under it and `200` for a lock never held; every shared
   control of decision 0003 on `/state/v1`, but the deviations it records; empty-body `UNLOCK`
   allowed for an exclusive-lock caller with an audit entry and refused with `403` for any
   other; `Content-MD5` mismatch answering `400`, and the same request accepted under

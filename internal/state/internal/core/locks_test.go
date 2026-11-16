@@ -9,28 +9,42 @@ import (
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 var errDown = errors.New("down")
 
 // mem is an in-memory Store and Stacks: the workspaces that exist, each
-// one's locks oldest first and current version, and the audit entries
-// recorded. fail names the one method that fails with errDown.
+// one's locks oldest first, the locks released from under their runs and
+// current version, the workspaces that have an ID, the stacks, and the
+// audit entries recorded. fail names the one method that fails with
+// errDown.
 type mem struct {
 	workspaces map[Target]bool
 	locks      map[Target][]Lock
+	broken     map[Target][]Lock
 	current    map[Target]Version
 	versions   map[kernel.ULID]Version
+	named      map[kernel.ULID]Target
+	stacks     []stacksapi.Stack
 	audits     []kernel.AuditEntry
 	fail       string
+	// searched is the last search's or suggestion's input and scope.
+	searched struct {
+		in      any
+		scope   WorkspaceScope
+		account kernel.AccountID
+	}
 }
 
 func newMem() *mem {
 	return &mem{
 		workspaces: map[Target]bool{},
 		locks:      map[Target][]Lock{},
+		broken:     map[Target][]Lock{},
 		current:    map[Target]Version{},
 		versions:   map[kernel.ULID]Version{},
+		named:      map[kernel.ULID]Target{},
 	}
 }
 
@@ -77,13 +91,33 @@ func (m *mem) RemoveLocks(_ context.Context, t Target, ids []string) error {
 	return nil
 }
 
+func (m *mem) BreakLocks(_ context.Context, t Target, locks []Lock) error {
+	if err := m.failing("BreakLocks"); err != nil {
+		return err
+	}
+	m.broken[t] = append(m.broken[t], locks...)
+	return nil
+}
+
+func (m *mem) Broken(_ context.Context, t Target, id string, run kernel.ULID) (bool, error) {
+	return slices.ContainsFunc(m.broken[t], func(l Lock) bool {
+		return l.ID == id && l.Run == run
+	}), m.failing("Broken")
+}
+
 func (m *mem) ReleaseRun(_ context.Context, acct kernel.AccountID, run kernel.ULID) error {
 	if err := m.failing("ReleaseRun"); err != nil {
 		return err
 	}
+	mine := func(l Lock) bool { return l.Run == run }
 	for t := range m.locks {
 		if t.Account == acct {
-			m.locks[t] = slices.DeleteFunc(m.locks[t], func(l Lock) bool { return l.Run == run })
+			m.locks[t] = slices.DeleteFunc(m.locks[t], mine)
+		}
+	}
+	for t := range m.broken {
+		if t.Account == acct {
+			m.broken[t] = slices.DeleteFunc(m.broken[t], mine)
 		}
 	}
 	return nil
@@ -130,6 +164,17 @@ func ids(locks []Lock) []string {
 	out := make([]string, 0, len(locks))
 	for _, l := range locks {
 		out = append(out, l.ID)
+	}
+	return out
+}
+
+// lockList are those of locks whose IDs are among of, in order.
+func lockList(locks []Lock, of []string) []Lock {
+	var out []Lock
+	for _, l := range locks {
+		if slices.Contains(of, l.ID) {
+			out = append(out, l)
+		}
 	}
 	return out
 }
@@ -224,21 +269,27 @@ func TestUnitLockConflicts(t *testing.T) {
 }
 
 // TestUnitUnlock checks releasing a run's own lock by its ID, a
-// mismatched ID answering the holder, an ID nothing holds, a workspace no
-// lock was taken on, and releasing another run's lock or every lock:
-// allowed with Break and audited naming the caller, the workspace and
-// each LockInfo of another run, refused with ErrBreak without it.
+// mismatched ID answering the holder, an ID nothing holds, a lock of the
+// caller's run released from under it answering a conflict with no
+// holder, which another run's or another ID's release does not, a
+// workspace no lock was taken on, and releasing another run's lock or
+// every lock: allowed with Break, recorded as broken and audited naming
+// the caller, the workspace and each LockInfo of another run, refused
+// with ErrBreak without it.
 //
 // ref: decision 0010 § "Locks"
+// ref: decision 0010 § "Constraints"
 func TestUnitUnlock(t *testing.T) {
 	me, other := kernel.NewULID(), kernel.NewULID()
 	for _, tc := range []struct {
 		name     string
 		held     []Lock
+		broken   []Lock
 		id       string
 		brk      bool
 		err      error
 		holder   string
+		noHolder bool
 		after    []string
 		released []string
 	}{
@@ -252,6 +303,23 @@ func TestUnitUnlock(t *testing.T) {
 			id: "3", holder: "2", after: []string{"1", "2"},
 		},
 		{name: "an ID nothing holds", id: "3", after: []string{}},
+		{
+			name: "my lock, broken", broken: []Lock{lockOf("3", Shared, me)}, id: "3",
+			noHolder: true, after: []string{},
+		},
+		{
+			name: "another run's lock, broken", broken: []Lock{lockOf("3", Shared, other)},
+			id: "3", after: []string{},
+		},
+		{
+			name: "another of my locks, broken", broken: []Lock{lockOf("4", Shared, me)},
+			id: "3", after: []string{},
+		},
+		{
+			name: "my lock, broken, with another held", id: "3",
+			held: []Lock{lockOf("1", Shared, other)}, broken: []Lock{lockOf("3", Shared, me)},
+			holder: "1", after: []string{"1"},
+		},
 		{
 			name: "another run's lock, breaking", held: []Lock{lockOf("1", Exclusive, other)},
 			id: "1", brk: true, after: []string{}, released: []string{"1"},
@@ -279,6 +347,7 @@ func TestUnitUnlock(t *testing.T) {
 			s := New(Deps{DB: db{}, Store: m, Stacks: m})
 			at := Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID(), Workspace: "w"}
 			m.workspaces[at], m.locks[at] = true, slices.Clone(tc.held)
+			m.broken[at] = slices.Clone(tc.broken)
 			err := s.Unlock(t.Context(), Unlock{
 				Target: at, Run: me, ID: tc.id, Break: tc.brk, RemoteIP: "192.0.2.1",
 			})
@@ -288,11 +357,19 @@ func TestUnitUnlock(t *testing.T) {
 				if !ok || conflict.Holder.ID != tc.holder {
 					t.Errorf("Unlock = %v, want a conflict with %s", err, tc.holder)
 				}
+			case tc.noHolder:
+				if !ok || conflict.Holder.ID != "" || string(conflict.Holder.Info) != "{}" {
+					t.Errorf("Unlock = %v, want a conflict with no holder", err)
+				}
 			case !errors.Is(err, tc.err):
 				t.Errorf("Unlock = %v, want %v", err, tc.err)
 			}
 			if got := ids(m.locks[at]); !slices.Equal(got, tc.after) {
 				t.Errorf("held %v, want %v", got, tc.after)
+			}
+			if got, want := ids(m.broken[at]), ids(append(slices.Clone(tc.broken),
+				lockList(tc.held, tc.released)...)); !slices.Equal(got, want) {
+				t.Errorf("broken %v, want %v", got, want)
 			}
 			if tc.released == nil {
 				if len(m.audits) != 0 {
@@ -337,7 +414,8 @@ func TestUnitUnlock(t *testing.T) {
 }
 
 // TestUnitRunEnded checks that a terminal state releases the run's locks
-// in its account alone, and any other state none.
+// in its account alone, and the record of those released from under it,
+// and any other state none.
 func TestUnitRunEnded(t *testing.T) {
 	m := newMem()
 	s := New(Deps{DB: db{}, Store: m, Stacks: m})
@@ -346,14 +424,17 @@ func TestUnitRunEnded(t *testing.T) {
 	theirs := Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID()}
 	m.locks[mine] = []Lock{lockOf("1", Shared, run), lockOf("2", Shared, other)}
 	m.locks[theirs] = []Lock{lockOf("3", Shared, run)}
+	m.broken[mine] = []Lock{lockOf("4", Shared, run), lockOf("5", Shared, other)}
 	if err := s.RunEnded(t.Context(), acct, run, kernel.RunStatePlanning); err != nil ||
-		len(m.locks[mine]) != 2 {
-		t.Errorf("a planning run = %v, held %v", err, ids(m.locks[mine]))
+		len(m.locks[mine]) != 2 || len(m.broken[mine]) != 2 {
+		t.Errorf("a planning run = %v, held %v, broken %v", err, ids(m.locks[mine]),
+			ids(m.broken[mine]))
 	}
 	if err := s.RunEnded(t.Context(), acct, run, kernel.RunStateFailed); err != nil ||
-		!slices.Equal(ids(m.locks[mine]), []string{"2"}) || len(m.locks[theirs]) != 1 {
-		t.Errorf("a failed run = %v, held %v and %v", err, ids(m.locks[mine]),
-			ids(m.locks[theirs]))
+		!slices.Equal(ids(m.locks[mine]), []string{"2"}) || len(m.locks[theirs]) != 1 ||
+		!slices.Equal(ids(m.broken[mine]), []string{"5"}) {
+		t.Errorf("a failed run = %v, held %v and %v, broken %v", err, ids(m.locks[mine]),
+			ids(m.locks[theirs]), ids(m.broken[mine]))
 	}
 }
 
@@ -373,7 +454,7 @@ func TestUnitLocksDown(t *testing.T) {
 			t.Errorf("Lock with %s failing = %v, held %v", method, err, ids(m.locks[at]))
 		}
 	}
-	for _, method := range []string{"LockWorkspace", "Locks", "RemoveLocks", "Audit"} {
+	for _, method := range []string{"LockWorkspace", "Locks", "RemoveLocks", "BreakLocks", "Audit"} {
 		m := newMem()
 		m.fail = method
 		m.workspaces[at], m.locks[at] = true, []Lock{lockOf("1", Shared, other)}
@@ -385,6 +466,12 @@ func TestUnitLocksDown(t *testing.T) {
 		}
 	}
 	m := newMem()
+	m.fail, m.workspaces[at] = "Broken", true
+	if err := New(Deps{DB: db{}, Store: m, Stacks: m}).Unlock(t.Context(),
+		Unlock{Target: at, Run: me, ID: "1"}); !errors.Is(err, errDown) {
+		t.Errorf("Unlock with Broken failing = %v", err)
+	}
+	m = newMem()
 	m.fail = "ReleaseRun"
 	if err := New(
 		Deps{DB: db{}, Store: m, Stacks: m},

@@ -2,7 +2,7 @@
 // /state/v1 for the run each request's run token names: LOCK and UNLOCK
 // take and release a workspace's locks through the state domain's core,
 // shared or exclusive as the runs domain's StateAccess grants the run on
-// the stack. GET streams the workspace's current state, unsealed, with no
+// the stack, each naming who triggered the run. GET streams the workspace's current state, unsealed, with no
 // Content-MD5, or answers 204 when it has none; POST writes a version
 // under the exclusive lock its ID query parameter names, its body of a
 // declared Content-Length of at most the handler's maxSize. Each read of

@@ -11,6 +11,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
@@ -21,6 +22,7 @@ import (
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	"github.com/weaveplatform/infraweave/internal/state/internal/backend"
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
+	workspaces "github.com/weaveplatform/infraweave/internal/state/internal/http"
 	"github.com/weaveplatform/infraweave/internal/state/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/state/internal/signed"
 	"github.com/weaveplatform/infraweave/internal/state/internal/urls"
@@ -70,13 +72,14 @@ type Objects = core.Objects
 
 // Deps are what the state domain takes from the platform and the domains
 // before it: DB; Stacks, which holds a stack while its workspace is
-// written and names a stack by its slug; Access, the runs domain's
-// decision of what a run token may do with its stack's state; Authz, the
-// access domain's decisions of a caller's actions; Objects, which hold
-// each version's object and each upload's; Jobs, which enqueues a deleted
-// stack's purge; Keys, which derive the signed URLs' keys; PublicURL,
-// server.public_url, and URLTTL, objectstore.signed_url_ttl, of the signed
-// URLs; and Settings.
+// written, names a stack by its slug and lists the stacks of the spaces a
+// workspace search reads; Access, the runs domain's decision of what a
+// run token may do with its stack's state; Authz, the access domain's
+// decisions of a caller's actions and of the spaces it may read; Objects,
+// which hold each version's object and each upload's; Jobs, which
+// enqueues a deleted stack's purge; Keys, which derive the signed URLs'
+// keys; PublicURL, server.public_url, and URLTTL,
+// objectstore.signed_url_ttl, of the signed URLs; and Settings.
 type Deps struct {
 	DB        DB
 	Stacks    stacksapi.Stacks
@@ -100,7 +103,8 @@ type Domain struct {
 // New constructs the domain over d.
 func New(d Deps) *Domain {
 	svc := core.New(core.Deps{
-		DB: d.DB, Store: pg.New(d.DB), Stacks: d.Stacks, Objects: d.Objects, Jobs: d.Jobs,
+		DB: d.DB, Store: pg.New(d.DB), Stacks: d.Stacks, Authz: d.Authz, Objects: d.Objects,
+		Jobs: d.Jobs,
 	})
 	return &Domain{
 		state:   svc,
@@ -113,9 +117,16 @@ func New(d Deps) *Domain {
 }
 
 // StateAPI is the domain's partial of the API's strict server, which
-// internal/app embeds under this alias: stateUploadUrl and
-// stateDownloadUrl.
-type StateAPI = urls.Server
+// internal/app embeds once: the signed URLs' stateUploadUrl and
+// stateDownloadUrl, served by the domain's urls adapter, and the Tofu
+// Workspaces operations, served by its http adapter. It forwards each
+// operation to its adapter rather than embedding the two, since an
+// embedded adapter's methods would sit at the depth of the API's 501
+// stubs, which then make each ambiguous.
+type StateAPI struct {
+	urls       urls.Server
+	workspaces workspaces.Server
+}
 
 // API is the domain's partial of the API's strict server; a nil domain's
 // is the zero partial, for tests that construct none.
@@ -123,11 +134,56 @@ func (d *Domain) API() StateAPI {
 	if d == nil {
 		return StateAPI{}
 	}
-	return d.urls
+	return StateAPI{urls: d.urls, workspaces: workspaces.New(d.state)}
+}
+
+// StateUploadUrl signs a URL to upload a state to.
+func (a StateAPI) StateUploadUrl(ctx context.Context, req api.StateUploadUrlRequestObject) (api.StateUploadUrlResponseObject, error) {
+	return a.urls.StateUploadUrl(ctx, req) //nolint:wrapcheck // the adapter answers it
+}
+
+// StateDownloadUrl signs a URL to download a stack's current state from.
+func (a StateAPI) StateDownloadUrl(ctx context.Context, req api.StateDownloadUrlRequestObject) (api.StateDownloadUrlResponseObject, error) {
+	return a.urls.StateDownloadUrl(ctx, req) //nolint:wrapcheck // the adapter answers it
+}
+
+// SearchTofuWorkspaces searches the workspaces the caller may read.
+func (a StateAPI) SearchTofuWorkspaces(ctx context.Context, req api.SearchTofuWorkspacesRequestObject) (api.SearchTofuWorkspacesResponseObject, error) {
+	return a.workspaces.SearchTofuWorkspaces(ctx, req) //nolint:wrapcheck // as above
+}
+
+// SearchTofuWorkspacesSuggestions suggests the values of the workspaces
+// the caller may read.
+func (a StateAPI) SearchTofuWorkspacesSuggestions(
+	ctx context.Context,
+	req api.SearchTofuWorkspacesSuggestionsRequestObject,
+) (api.SearchTofuWorkspacesSuggestionsResponseObject, error) {
+	return a.workspaces.SearchTofuWorkspacesSuggestions(ctx, req) //nolint:wrapcheck // as above
+}
+
+// TofuWorkspaceUnlock releases every lock held on a workspace.
+func (a StateAPI) TofuWorkspaceUnlock(ctx context.Context, req api.TofuWorkspaceUnlockRequestObject) (api.TofuWorkspaceUnlockResponseObject, error) {
+	return a.workspaces.TofuWorkspaceUnlock(ctx, req) //nolint:wrapcheck // as above
+}
+
+// TofuWorkspaceUnlockAll releases every lock held on each workspace of a
+// stack.
+func (a StateAPI) TofuWorkspaceUnlockAll(ctx context.Context, req api.TofuWorkspaceUnlockAllRequestObject) (api.TofuWorkspaceUnlockAllResponseObject, error) {
+	return a.workspaces.TofuWorkspaceUnlockAll(ctx, req) //nolint:wrapcheck // as above
 }
 
 // Versions are what other domains read of a stack's managed state.
 func (d *Domain) Versions() stateapi.Versions { return d.state }
+
+// Entity is the name the access domain resolves a Tofu workspace's space
+// by, for an operation whose x-infraweave-subject names it.
+//
+// ref: decision 0010 § "Storage"
+const Entity = "tofu_workspace"
+
+// SpaceOf finds the space of a Tofu workspace's stack by the workspace's
+// ID, which internal/app registers with the access domain for Entity.
+func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.state.SpaceOf }
 
 // Routes adds the state backend's routes and the signed URLs' to r, the
 // API listener's router, under stateapi.BaseURL; on a nil domain, each
@@ -146,6 +202,11 @@ func (d *Domain) Routes(r chi.Router) {
 // the purge of its state; internal/app registers it with the stacks
 // domain.
 func (d *Domain) StackGuard() stacksapi.StackGuard { return d.state }
+
+// ManagedState is the domain's part in a stack's creation, which
+// internal/app binds to the stacks domain, so a stack whose state
+// infraweave keeps lists its default workspace from its creation.
+func (d *Domain) ManagedState() stacksapi.ManagedState { return d.state }
 
 // StackPurge is the job that purges a deleted stack's state.
 var StackPurge = core.PurgeKind

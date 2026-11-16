@@ -117,16 +117,16 @@ func (s *Store) StackOf(ctx context.Context, acct kernel.AccountID, run kernel.U
 	return stack, true, nil
 }
 
-// RunOf reads run's account, stack and state, whichever account has it,
-// without locking its row, so a state request never waits on a move;
-// false when no account does.
+// RunOf reads run's account, stack, state and trigger, whichever account
+// has it, without locking its row, so a state request never waits on a
+// move; false when no account does.
 func (s *Store) RunOf(ctx context.Context, run kernel.ULID) (core.Run, bool, error) {
 	var (
 		r     core.Run
 		state string
 	)
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT account_id, stack_id, state FROM runs
-		WHERE id = $1`, run).Scan(&r.Account, &r.Stack, &state)
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT account_id, stack_id, state, triggered_by
+		FROM runs WHERE id = $1`, run).Scan(&r.Account, &r.Stack, &state, &r.TriggeredBy)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return core.Run{}, false, nil

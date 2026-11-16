@@ -18,6 +18,8 @@ import (
 func (b *backendSteps) registerChecks(sc *godog.ScenarioContext) {
 	sc.Step(`^the relay (holds|releases) the state backend's unlocks$`, b.unlocks)
 	sc.Step(`^the relay holds (\d+) unlocks? of the state of the run "(\w+)"$`, b.heldUnlocks)
+	sc.Step(`^the relay (holds|releases) the state backend's writes$`, b.writes)
+	sc.Step(`^the relay holds (\d+) writes? of the state of the run "(\w+)"$`, b.heldWrites)
 	sc.Step(
 		`^the relay passed an? (GET|POST|LOCK|UNLOCK) of the state of the run "(\w+)" answered (\d+)$`,
 		b.passed,
@@ -63,6 +65,32 @@ func (b *backendSteps) heldUnlocks(ctx context.Context, n int, run string) error
 	//nolint:wrapcheck // names what it waited for
 	return deps.Eventually(ctx, fmt.Sprintf("the relay to hold %d unlocks", n),
 		func(context.Context) (bool, error) { return b.relay.HeldUnlocks(tr.path) == n, nil })
+}
+
+// writes makes the relay hold the backend's POST calls from now on, or
+// pass the held ones on.
+func (b *backendSteps) writes(what string) error {
+	if b.relay == nil {
+		return fmt.Errorf("%w: no relay, since the worker took over no run", harness.ErrStep)
+	}
+	if what == "holds" {
+		b.relay.HoldWrites()
+	} else {
+		b.relay.ReleaseWrites()
+	}
+	return nil
+}
+
+// heldWrites waits until the relay holds n POST calls of the state the
+// run kept as run reaches.
+func (b *backendSteps) heldWrites(ctx context.Context, n int, run string) error {
+	tr, err := b.run(run)
+	if err != nil {
+		return err
+	}
+	//nolint:wrapcheck // names what it waited for
+	return deps.Eventually(ctx, fmt.Sprintf("the relay to hold %d writes", n),
+		func(context.Context) (bool, error) { return b.relay.HeldWrites(tr.path) == n, nil })
 }
 
 // passed checks that the relay passed a call of method to the state the
