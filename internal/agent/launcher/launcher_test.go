@@ -448,8 +448,10 @@ var errRefused = errors.New(
 
 // TestUnitLauncherMountsTheRunsTool checks that a run whose specification
 // names a tool to download gets its binary for Linux at the worker's
-// architecture, mounted read-only at /bin/<tool>; that one whose download
-// is false mounts nothing; and that a refused release fails the run in its
+// architecture, mounted read-only at /bin/<tool>, and a Terragrunt
+// stack's run the Terragrunt that drives it at /bin/terragrunt beside it;
+// that a binary whose download is false is not mounted; and that a
+// refused release, the tool's or Terragrunt's, fails the run in its
 // preparing state with the refusal as its note, starting no container.
 func TestUnitLauncherMountsTheRunsTool(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
@@ -469,7 +471,7 @@ func TestUnitLauncherMountsTheRunsTool(t *testing.T) {
 			t.Fatalf("mounts: %+v", got)
 		}
 		if got := w.tools.fetched(); !slices.Equal(got, []tools.Release{
-			{Tool: wire.Tofu, Version: "1.13.9", OS: "linux", Arch: "arm64"},
+			{Tool: tools.Tofu, Version: "1.13.9", OS: "linux", Arch: "arm64"},
 		}) {
 			t.Fatalf("fetched: %+v", got)
 		}
@@ -482,18 +484,82 @@ func TestUnitLauncherMountsTheRunsTool(t *testing.T) {
 		}
 		end()
 
-		w.tools.err = errRefused
-		w.assignTool(t, "run-3", wire.AssignmentStatePREPARING, "",
-			&wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2", Download: true})
-		reps := w.srv.Reports()
-		if rep := reps[len(reps)-1]; rep.Run != "run-3" || rep.Report.Event != wire.Failed ||
-			*rep.Report.Details != errRefused.Error() || len(w.exec.Jobs()) != 2 {
-			t.Fatalf("a refused release: %+v, %d jobs", rep, len(w.exec.Jobs()))
+		w.assignTerragrunt(t, "run-3",
+			&wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2", Download: true},
+			&wire.RunSpecTerragrunt{Version: "1.2.2", Download: true})
+		want = []executor.Mount{
+			{
+				Source: "/cache/terraform/1.17.2/linux_arm64", Target: "/bin/terraform",
+				ReadOnly: true,
+			},
+			{
+				Source: "/cache/terragrunt/1.2.2/linux_arm64", Target: "/bin/terragrunt",
+				ReadOnly: true,
+			},
 		}
-		w.wantPoll(t, false, "", nil)
+		if got := w.exec.Jobs()[2].Mounts; !slices.Equal(got, want) {
+			t.Fatalf("a Terragrunt run's mounts: %+v", got)
+		}
+		if got := w.tools.fetched()[1:]; !slices.Equal(got, []tools.Release{
+			{Tool: tools.Terraform, Version: "1.17.2", OS: "linux", Arch: "arm64"},
+			{Tool: tools.Terragrunt, Version: "1.2.2", OS: "linux", Arch: "arm64"},
+		}) {
+			t.Fatalf("a Terragrunt run fetched: %+v", got)
+		}
+		end()
+
+		w.assignTerragrunt(t, "run-4", &wire.RunSpecTool{Name: wire.Tofu, Version: "1.13.9"},
+			&wire.RunSpecTerragrunt{Version: "1.2.2"})
+		if got := w.exec.Jobs()[3].Mounts; got != nil || len(w.tools.fetched()) != 3 {
+			t.Fatalf("a Terragrunt run that downloads nothing: mounts %+v, fetched %+v", got,
+				w.tools.fetched())
+		}
+		end()
+
+		for _, c := range []struct {
+			run  string
+			spec func(*agenttest.Run)
+			err  error
+		}{
+			{"run-5", func(r *agenttest.Run) {
+				r.Spec.Tool = &wire.RunSpecTool{
+					Name: wire.Terraform, Version: "1.17.2", Download: true,
+				}
+			}, errRefused},
+			{"run-6", func(r *agenttest.Run) {
+				r.Spec.Tool = &wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2"}
+				r.Spec.Terragrunt = &wire.RunSpecTerragrunt{Version: "1.2.2", Download: true}
+			}, errTampered},
+		} {
+			w.tools.err = c.err
+			run := newRun(c.run, wire.AssignmentStatePREPARING, "")
+			c.spec(&run)
+			w.queue(t, run)
+			reps := w.srv.Reports()
+			if rep := reps[len(reps)-1]; rep.Run != c.run || rep.Report.Event != wire.Failed ||
+				rep.Report.State != wire.WorkerStatePREPARING ||
+				*rep.Report.Details != c.err.Error() || len(w.exec.Jobs()) != 4 {
+				t.Fatalf("a refused release: %+v, %d jobs", rep, len(w.exec.Jobs()))
+			}
+			w.wantPoll(t, false, "", nil)
+		}
 		r.stop(t)
 	})
 }
+
+// assignTerragrunt assigns a run preparing its first phase, of a
+// Terragrunt stack whose specification names tool and terragrunt.
+func (w *world) assignTerragrunt(t *testing.T, run string, tool *wire.RunSpecTool, terragrunt *wire.RunSpecTerragrunt) {
+	t.Helper()
+	r := newRun(run, wire.AssignmentStatePREPARING, "")
+	r.Spec.Tool, r.Spec.Terragrunt = tool, terragrunt
+	w.queue(t, r)
+}
+
+var errTampered = errors.New(
+	"terragrunt 1.2.2 for linux/arm64: download terragrunt_linux_arm64: " +
+		"the SHA-256 is not the signed one",
+)
 
 // TestUnitLauncherFetchesTheRunsSource checks that a run being prepared
 // gets its source fetched with its credential into a fresh workspace

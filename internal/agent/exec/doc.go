@@ -15,7 +15,22 @@
 // phase environment: the container's, the
 // specification's variables with their write-only values opened, the
 // in-run API token, the backend's credentials, TF_IN_AUTOMATION and
-// TF_INPUT. One sh session runs every phase, so a variable a hook exports
+// TF_INPUT.
+//
+// A Terragrunt stack's run, whose specification names terragrunt, runs
+// Terragrunt's built-in workflow, each command through terragrunt run
+// --all across the stack's units, and writes the backend's file into each
+// unit, naming its workspace; a unit the backend cannot hold fails
+// initialization naming it. Its environment adds TG_TF_PATH, the tool
+// the launcher mounts at /bin/<tool>, or the image's own when the
+// specification does not download it, and TG_NON_INTERACTIVE. Its plan
+// command runs with TG_JSON_OUT_DIR naming a directory of the temporary
+// directory, set for that command alone, under which Terragrunt writes
+// each unit's plan's JSON; planning reports their deltas summed, failing
+// on a plan that does not parse, naming its unit, or on none. Its
+// planning saves only the workspace, its applying runs apply alone, which
+// plans again, and reads and saves no outputs: the server reads no plan,
+// changes or outputs of a Terragrunt run. One sh session runs every phase, so a variable a hook exports
 // is set in every later hook and command. A phase sets
 // TF_VAR_infraweave_run_state, then runs its before-hooks, its workflow's
 // commands, rendered then with the run's parameters, and its after-hooks, each in a group of its own with no

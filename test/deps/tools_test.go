@@ -13,16 +13,28 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 )
 
 // TestUnitToolsPinned checks that each tool pins the SHA-256 of its Linux
-// archive for both architectures a Docker daemon runs, for its version.
+// build for both architectures a Docker daemon runs, for its version, and
+// names its files as its vendor does.
 func TestUnitToolsPinned(t *testing.T) {
+	for tool, want := range map[*Tool][]string{
+		&Terraform:  {"terraform_1.17.2_linux_arm64.zip", "terraform_1.17.2_SHA256SUMS"},
+		&Terragrunt: {"terragrunt_linux_arm64", "SHA256SUMS"},
+	} {
+		v := *tool
+		v.Version = "1.17.2"
+		if got := []string{v.Archive("arm64"), v.Sums()}; !slices.Equal(got, want) {
+			t.Errorf("%s names %q, want %q", tool.Name, got, want)
+		}
+	}
 	sum := regexp.MustCompile(`^[0-9a-f]{64}$`)
-	for _, tool := range []Tool{Terraform, OpenTofu} {
+	for _, tool := range []Tool{Terraform, OpenTofu, Terragrunt} {
 		if tool.Signature == "" {
 			t.Errorf("%s names no signature of its SHA256SUMS", tool.Name)
 		}
@@ -158,6 +170,62 @@ func TestUnitTool(t *testing.T) {
 				t.Errorf("Tool = %v, want %v", err, tc.want)
 			}
 		})
+	}
+}
+
+// TestUnitToolBare checks that a tool whose builds are bare binaries is
+// used as downloaded, each version cached apart though its build's name
+// holds none, and that its release's files keep the vendor's names.
+func TestUnitToolBare(t *testing.T) {
+	sums := func(body string) string { return hexSHA256([]byte(body)) + "  tool_linux_amd64\n" }
+	srv, n := release(t, map[string][]byte{
+		"/1.0.0/tool_linux_amd64":  []byte("binary 1"),
+		"/1.0.0/SHA256SUMS":        []byte(sums("binary 1")),
+		"/1.0.0/SHA256SUMS.gpgsig": []byte("signature 1"),
+		"/2.0.0/tool_linux_amd64":  []byte("binary 2"),
+		"/2.0.0/SHA256SUMS":        []byte(sums("binary 2")),
+		"/2.0.0/SHA256SUMS.gpgsig": []byte("signature 2"),
+	})
+	tool := func(v string) Tool {
+		return Tool{
+			Name: "tool", Version: v, Download: srv.URL + "/%s/", Signature: ".gpgsig",
+			Build: "tool_linux_{arch}", SumsFile: "SHA256SUMS", Bare: true,
+			SHA256: map[string]string{"tool_linux_amd64": hexSHA256([]byte("binary " + v[:1]))},
+		}
+	}
+	d := &Dependencies{ToolCache: t.TempDir()}
+	t.Cleanup(func() { _ = d.Close(context.Background()) })
+	for _, v := range []string{"1.0.0", "2.0.0"} {
+		bin, err := d.Tool(t.Context(), tool(v), "amd64")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if b, err := os.ReadFile(bin); err != nil || string(b) != "binary "+v[:1] {
+			t.Errorf("%s's binary holds %q, %v", v, b, err)
+		}
+		if fi, err := os.Stat(bin); err != nil ||
+			runtime.GOOS != "windows" && fi.Mode().Perm()&0o100 == 0 {
+			t.Errorf("%s's binary is not executable: %v, %v", v, fi, err)
+		}
+	}
+	got, err := d.Release(t.Context(), tool("1.0.0"), "amd64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{
+		"tool_linux_amd64": "binary 1", "SHA256SUMS": sums("binary 1"),
+		"SHA256SUMS.gpgsig": "signature 1",
+	} {
+		if b, err := os.ReadFile(got[name]); err != nil || string(b) != want {
+			t.Errorf("%s holds %q, %v", name, b, err)
+		}
+	}
+	if len(got) != 3 || n.Load() != 4 {
+		t.Errorf("%d files after %d downloads: %v", len(got), n.Load(), got)
+	}
+	if err := copyBinary(filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(),
+		"bin")); err == nil {
+		t.Error("a missing binary was copied")
 	}
 }
 

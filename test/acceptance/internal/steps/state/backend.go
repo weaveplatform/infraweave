@@ -181,7 +181,7 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 		Spec: spec, Secrets: secrets, StateLockTimeout: stateLockTimeout,
 		PoolKey: pool.PublicKey().Bytes(),
 	}
-	env, err := backend.Configure(dir, h)
+	env, err := backend.Configure(dir, dir, h)
 	if err != nil {
 		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}

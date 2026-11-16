@@ -460,7 +460,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   ```
 
   The archive leaves out each `.terraform/providers`, which `init`
-  installs again from the lock file, and leaves out and logs a link that
+  installs again from the lock file, those in a Terragrunt unit's
+  `.terragrunt-cache` too, which it otherwise keeps, and leaves out and
+  logs a link that
   leaves the workspace, a device, a pipe or a socket. A file, link or name
   that holds the run token or the source credential fails the planning,
   naming the path but never the value, as does a sealed workspace over
@@ -508,13 +510,24 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
     example when a timer ended the run, and the runner exits without further
     reports.
 - **A Terragrunt run** writes each unit's backend file in `INITIALIZING`
-  ([0010](0010-state-backend.md)) and runs each phase's tool commands as
-  `terragrunt run --all -- <command>`, with `TG_TF_PATH` naming the mounted
-  tool. After planning it reads each unit's plan from `--json-out-dir` and
-  reports their summed `delta`. It uploads no `plan.json`, `changes.json` or
-  outputs, and the specification marks the run so the server expects none;
-  the changes view, outputs and the plan policy input of a Terragrunt run
-  are P20's.
+  ([0010](0010-state-backend.md)), failing the phase with a note that names
+  the first unit the backend cannot hold, and runs each phase's tool
+  commands as `terragrunt run --all -- <command>`, with `TG_TF_PATH` naming
+  the mounted tool, or the image's own when the specification does not
+  download it, and `TG_NON_INTERACTIVE` set. Its plan command runs with
+  `TG_JSON_OUT_DIR`, the variable of `--json-out-dir`, naming a directory
+  of the runner's temporary directory for that command alone, and saves
+  each unit's plan as `tfplan.tfplan` (`planFileName`), the name
+  Terragrunt reads to write the plan's JSON. After planning the runner
+  reads each unit's plan from that directory and reports their summed
+  `delta`, failing on a plan that does not parse, naming its unit, or on
+  none. Terragrunt approves `apply` and `destroy` itself, and `apply`
+  plans again rather than reading the saved plan, as the refused
+  `skipReplan` says. A tracked run whose plan changes something saves its
+  workspace for the confirmation, Terragrunt's cache of each unit with it.
+  It uploads no `plan.json`, `changes.json` or outputs, and the
+  specification marks the run so the server expects none; the changes
+  view, outputs and the plan policy input of a Terragrunt run are P20's.
 - **After planning** the runner uploads two sealed artifacts: `plan.json`,
   the tool's `show -json` of the plan, and `changes.json`, the changes
   `internal/iac` parses from it, which the server reads for the run's
@@ -896,7 +909,9 @@ has failed":
   ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
 - **Tool binaries.** The launcher downloads the requested version of Terraform,
   OpenTofu, Terragrunt or kubectl, verifies it and mounts it read-only at
-  `/bin/<tool>`, such as `/bin/terraform` or `/bin/tofu`
+  `/bin/<tool>`, such as `/bin/terraform` or `/bin/tofu`; a Terragrunt
+  stack's run mounts both Terragrunt, at `/bin/terragrunt`, and the tool it
+  drives
   ([20 section 3.5](../reference/20-vendors.md#35-version-management)):
 
   | Tool | Verification |
@@ -909,7 +924,9 @@ has failed":
   Binaries are cached at `<cache_dir>/binaries/<tool>/<version>/<os>_<arch>` and
   reused. Each is written beside its path and renamed into place, so
   launchers that share a cache never see a partial one. Archives are
-  bounded at 256 MiB, and only the tool's binary is extracted.
+  bounded at 256 MiB, and only the tool's binary is extracted; Terragrunt
+  publishes each build as a bare binary, `terragrunt_<os>_<arch>`, bounded
+  at 512 MiB and listed in one `SHA256SUMS` per release.
   `launcher.tool_mirror` points downloads at a mirror for air-gapped
   installations, which serves each release's files under
   `<tool_mirror>/<tool>/<version>/` with the vendor's file names, the layout

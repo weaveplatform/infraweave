@@ -89,6 +89,7 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@postgres", "@terraform"}, "runs"},
 		{[]string{"@vcs", "@postgres"}, "integrations"},
 		{[]string{"@vcs", "@tofu"}, "runs"},
+		{[]string{"@postgres", "@vcs", "@terragrunt"}, "runs"},
 		{[]string{"@postgres", "@vcs", "@docker"}, "runs"},
 		{[]string{"@ai"}, "integrations"},
 		{[]string{"@provider:resource:spacelift_stack", "@terraform"}, "runs"},
@@ -113,10 +114,10 @@ func TestUnitTagExpression(t *testing.T) {
 	for name, want := range map[string]string{
 		"":        "~@vcs-lab",
 		"vcs-lab": "@vcs-lab",
-		"runs":    "~@vcs-lab && @docker,@terraform,@tofu,@kubernetes,@flows-agent",
-		"integrations": "~@vcs-lab && ~@docker && ~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && " +
+		"runs":    "~@vcs-lab && @docker,@terraform,@tofu,@terragrunt,@kubernetes,@flows-agent",
+		"integrations": "~@vcs-lab && ~@docker && ~@terraform && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && " +
 			"@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai",
-		"core": "~@vcs-lab && ~@docker && ~@terraform && ~@tofu && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
+		"core": "~@vcs-lab && ~@docker && ~@terraform && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
 	} {
 		got, err := harness.TagExpression(name)
 		if err != nil || got != want {

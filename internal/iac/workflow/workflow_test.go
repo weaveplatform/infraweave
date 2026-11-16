@@ -84,7 +84,8 @@ func TestUnitWorkflowParseRefuses(t *testing.T) {
 }
 
 // TestUnitWorkflowDefaults are the built-in templates under each binary,
-// and the variables are the run parameters, each with a schema.
+// and a Terragrunt run's through run --all, and the variables are the run
+// parameters, each with a schema.
 func TestUnitWorkflowDefaults(t *testing.T) {
 	for _, bin := range []string{"terraform", "tofu"} {
 		d := workflow.Defaults(bin)
@@ -95,6 +96,15 @@ func TestUnitWorkflowDefaults(t *testing.T) {
 			if !strings.HasPrefix(d[k], bin+" ") {
 				t.Errorf("%s %s: %s", bin, k, d[k])
 			}
+		}
+	}
+	tg := workflow.Terragrunt()
+	if len(tg) != len(workflow.Keys) {
+		t.Errorf("terragrunt: %d templates", len(tg))
+	}
+	for _, k := range workflow.Keys {
+		if !strings.HasPrefix(tg[k], "terragrunt run --all -- ") {
+			t.Errorf("terragrunt %s: %s", k, tg[k])
 		}
 	}
 	values := workflow.Params{

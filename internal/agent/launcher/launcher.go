@@ -681,24 +681,25 @@ func (l *Launcher) dropWorkspace(ctx context.Context, run string, c executor.Con
 	}
 }
 
-// container fetches the tool a's specification names and starts the
-// run's container with ws as its workspace, the tool's binary mounted
-// read-only at /bin/<tool>, and the handoff, which holds the opened
-// secrets in memory alone. A specification whose tool download is false
-// mounts none, so the image's own binary runs.
+// container fetches the tool a's specification names, and the Terragrunt
+// that drives it for a Terragrunt stack's run, and starts the run's
+// container with ws as its workspace, each binary mounted read-only at
+// /bin/<tool>, and the handoff, which holds the opened secrets in memory
+// alone. A binary whose download is false is not mounted, so the image's
+// own runs.
 //
 // ref: decision 0008 § "Runner images"
 func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.RunSpec, secrets wire.RunSpecSecrets, ws string, out *lines) (executor.Container, error) {
 	var mounts []executor.Mount
-	if t := spec.Tool; t != nil && t.Download {
+	for _, b := range binaries(spec) {
 		bin, err := l.d.Tools.Binary(ctx, tools.Release{
-			Tool: t.Name, Version: t.Version, OS: toolOS, Arch: l.d.Arch,
+			Tool: b.Tool, Version: b.Version, OS: toolOS, Arch: l.d.Arch,
 		})
 		if err != nil {
 			return nil, err //nolint:wrapcheck // tools names the release and the step
 		}
 		mounts = append(mounts, executor.Mount{
-			Source: bin, Target: "/bin/" + string(t.Name), ReadOnly: true,
+			Source: bin, Target: "/bin/" + string(b.Tool), ReadOnly: true,
 		})
 	}
 	image := l.d.Config.DefaultRunnerImage
@@ -725,6 +726,19 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 		return nil, err //nolint:wrapcheck // the executor names the step
 	}
 	return c, nil
+}
+
+// binaries are the releases spec mounts, each without its platform: the
+// tool, then the Terragrunt that drives it, each that downloads.
+func binaries(spec wire.RunSpec) []tools.Release {
+	var out []tools.Release
+	if t := spec.Tool; t != nil && t.Download {
+		out = append(out, tools.Release{Tool: tools.Tool(t.Name), Version: t.Version})
+	}
+	if t := spec.Terragrunt; t != nil && t.Download {
+		out = append(out, tools.Release{Tool: tools.Terragrunt, Version: t.Version})
+	}
+	return out
 }
 
 // fail reports a's run failed in its preparing state, with why. A report

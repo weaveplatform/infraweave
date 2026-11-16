@@ -11,8 +11,10 @@
 // that ended since the last poll; a container that ends cuts a held poll
 // short. An assignment is prepared: the launcher fetches the run's
 // specification with the run token, opens its sealed part with the pool's
-// private key, fetches the release of the tool the specification names
-// through internal/agent/tools, unless its download is false, and writes
+// private key, fetches the release of the tool the specification names,
+// and for a Terragrunt stack's run the Terragrunt release that drives it,
+// through internal/agent/tools, each unless its download is false, and
+// writes
 // <cache_dir>/workspaces/<run> through internal/agent/source: a run
 // preparing its first phase gets its source, presenting the opened source
 // credential, and one that applies or replans after its plan's
@@ -23,12 +25,14 @@
 // from the specification or the workspace's location asked for again,
 // after a backoff that doubles from 1 to 30 seconds, for ten minutes. It
 // starts the container with the
-// workspace at /mnt/workspace, the tool's binary mounted read-only at
-// /bin/<tool>, and the handoff, which carries the pool's public key, so
+// workspace at /mnt/workspace, each binary mounted read-only at
+// /bin/<tool>, such as /bin/terraform and /bin/terragrunt, and the
+// handoff, which carries the pool's public key, so
 // the opened secrets reach the runner without touching the host's disk; a
-// preparation that fails, including an apply with no workspace saved,
-// reports the run failed in its preparing state, with the error as its
-// note, and removes the workspace. The workspace is removed when the run
+// preparation that fails, including an apply with no workspace saved and
+// a release whose signature or checksum does not verify, reports the run
+// failed in its preparing state, with the error as its note, and removes
+// the workspace. The workspace is removed when the run
 // ends, is discarded, or is lost, before its container, which hands it
 // back first when a killed runner left it closed.
 // stop and kill reach the run's container, cycle exits once the launcher

@@ -16,22 +16,36 @@ import (
 const PlanFile = workflow.PlanFile
 
 // Command is one command of a phase: the workflow key it renders, its
-// shell line, and Stdout, a file its standard output is written to
-// instead of the log; empty for the log.
+// shell line, Stdout, a file its standard output is written to instead
+// of the log, empty for the log, and Env, the variables set for it alone,
+// each NAME=value.
 type Command struct {
 	Key    workflow.Key
 	Line   string
 	Stdout string
+	Env    []string
 }
 
 // Options are what a phase's commands take from the run: the run
 // parameters its templates read, the file planning writes the plan's
-// JSON to, and the file applying writes the outputs' JSON to.
+// JSON to, and the file applying writes the outputs' JSON to. UnitPlans,
+// set for a Terragrunt run alone, is the directory its plan command
+// writes each unit's plan's JSON under, which TG_JSON_OUT_DIR names to
+// that command; such a run's planning runs plan alone, and its applying
+// apply alone, since it records neither the plan's JSON nor outputs.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
 type Options struct {
 	Params      workflow.Params
 	PlanJSON    string
 	OutputsJSON string
+	UnitPlans   string
 }
+
+// UnitPlansVariable is the variable through which a Terragrunt run's plan
+// command names the directory of its units' plans' JSON, the variable of
+// terragrunt run's --json-out-dir.
+const UnitPlansVariable = "TG_JSON_OUT_DIR"
 
 // Errors of a workflow that cannot be had or used.
 var (
@@ -64,6 +78,12 @@ func Defaults(tool wire.RunSpecToolName) (*Workflow, error) {
 		return nil, fmt.Errorf("%w %q", ErrTool, tool)
 	}
 	return New(workflow.Defaults(string(tool)), nil)
+}
+
+// Terragrunt is the built-in workflow of a Terragrunt run, which runs
+// each command across the stack's units through terragrunt run --all.
+func Terragrunt() (*Workflow, error) {
+	return New(workflow.Terragrunt(), nil)
 }
 
 // Read is the workflow a workflow file's data holds.
@@ -117,14 +137,27 @@ var phases = map[wire.WorkerState][]workflow.Key{
 	wire.WorkerStateDESTROYING:   {workflow.Destroy},
 }
 
+// unitPhases are the keys each state's phase of a Terragrunt run runs.
+var unitPhases = map[wire.WorkerState][]workflow.Key{
+	wire.WorkerStateINITIALIZING: {workflow.Init},
+	wire.WorkerStatePLANNING:     {workflow.Plan},
+	wire.WorkerStateAPPLYING:     {workflow.Apply},
+	wire.WorkerStateDESTROYING:   {workflow.Destroy},
+}
+
 // Commands are the commands of state's phase, in the order they run,
 // each rendered with o's parameters when the phase runs: init for
 // INITIALIZING; plan, then showPlan with its output to o.PlanJSON, for
 // PLANNING; apply, then getOutputs with its output to o.OutputsJSON, for
-// APPLYING; and destroy for DESTROYING. A template whose evaluation fails
-// is an error naming its key.
+// APPLYING; and destroy for DESTROYING. A Terragrunt run, whose o names
+// UnitPlans, plans with UnitPlansVariable naming it and runs no showPlan
+// or getOutputs. A template whose evaluation fails is an error naming its
+// key.
 func (w *Workflow) Commands(ctx context.Context, state wire.WorkerState, o Options) ([]Command, error) {
 	keys, ok := phases[state]
+	if o.UnitPlans != "" {
+		keys, ok = unitPhases[state]
+	}
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrState, state)
 	}
@@ -141,11 +174,13 @@ func (w *Workflow) Commands(ctx context.Context, state wire.WorkerState, o Optio
 		}
 		line, _ := res.Value.(string)
 		out[i] = Command{Key: k, Line: line}
-		switch k {
-		case workflow.ShowPlan:
+		switch {
+		case k == workflow.ShowPlan:
 			out[i].Stdout = o.PlanJSON
-		case workflow.GetOutputs:
+		case k == workflow.GetOutputs:
 			out[i].Stdout = o.OutputsJSON
+		case k == workflow.Plan && o.UnitPlans != "":
+			out[i].Env = []string{UnitPlansVariable + "=" + o.UnitPlans}
 		}
 	}
 	return out, nil

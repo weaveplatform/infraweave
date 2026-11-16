@@ -38,7 +38,7 @@ var Labs = []Partition{
 var Partitions = []Partition{
 	{
 		Name: "runs",
-		Tags: []string{"@docker", "@terraform", "@tofu", "@kubernetes", "@flows-agent"},
+		Tags: []string{"@docker", "@terraform", "@tofu", "@terragrunt", "@kubernetes", "@flows-agent"},
 	},
 	{
 		Name: "integrations",

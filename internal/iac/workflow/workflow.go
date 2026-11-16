@@ -139,6 +139,36 @@ func Defaults(bin string) Templates {
 	}
 }
 
+// TerragruntPlanFile is planFileName's value in a Terragrunt run: the
+// name Terragrunt gives the plan it saves in each unit's working
+// directory when it writes the units' plans as JSON, so a plan command
+// that names it writes the plan Terragrunt reads.
+const TerragruntPlanFile = "tfplan.tfplan"
+
+// Terragrunt are the built-in templates of a Terragrunt run: each runs
+// the command Defaults would through terragrunt run --all, across the
+// stack's units in their dependency order, with the tool TG_TF_PATH
+// names. Terragrunt adds -auto-approve to apply and destroy, so apply
+// plans again rather than reading a saved plan.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
+func Terragrunt() Templates {
+	const all = "terragrunt run --all -- "
+	return Templates{
+		Init:            all + "init -input=false -lock-timeout=${{ lockTimeout }}",
+		WorkspaceSelect: all + "workspace select ${{ workspaceName }}",
+		WorkspaceNew:    all + "workspace new -lock-timeout=${{ lockTimeout }} ${{ workspaceName }}",
+		Plan: all + "plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} " +
+			`${{ refresh ? [] : ["-refresh=false"] }} -out=${{ planFileName }} ` +
+			`${{ targets.map(t, "-target=" + t) }}`,
+		ShowState:  all + "show -json",
+		ShowPlan:   all + "show -json ${{ planFileName }}",
+		GetOutputs: all + "output -json",
+		Apply:      all + "apply -input=false -lock-timeout=${{ lockTimeout }}",
+		Destroy:    all + "destroy -input=false -lock-timeout=${{ lockTimeout }}",
+	}
+}
+
 // ErrFile is a workflow file that cannot be used.
 var ErrFile = errors.New("the file is not a workflow")
 
