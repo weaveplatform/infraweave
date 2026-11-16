@@ -55,6 +55,11 @@
       "azureIntegrationAttachmentUpdate",
       "azureIntegrationDetach"
     ],
+    "spacelift_azure_integration_consent": [
+      "azureIntegration",
+      "azureIntegrationConsentClear",
+      "azureIntegrationConsentConfirm"
+    ],
     "spacelift_bitbucket_datacenter_integration": [
       "bitbucketDatacenterIntegration",
       "bitbucketDatacenterIntegrationCreate",
