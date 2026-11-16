@@ -137,7 +137,10 @@ breaking change to retrofit once clients exist:
   `Idempotency-Key` request header
   ([draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)).
   The key is an opaque string of 1 to 255 characters; clients typically send a
-  UUID.
+  UUID. An operation that ignores it, as the API surfaces table records, declares
+  neither the header nor its conflicts: the route table knows a search, the worker
+  API and the state backend by their paths, and any other such operation carries
+  `x-infraweave-idempotency: ignored`.
 - **Scope and lifetime.** Keys are scoped to the caller, the authenticated
   principal that decision [0006](0006-authentication-and-tokens.md) defines. A key
   is kept for 24 hours by default; the lifetime is configurable.

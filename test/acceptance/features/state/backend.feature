@@ -16,12 +16,14 @@ Feature: Terraform and OpenTofu keep their state in infraweave
   process asks for one. A run that initializes or plans holds a shared
   lock, a run that applies the exclusive one, and a run that ended holds
   none and is refused. The servers keep their objects in the scenario's
-  RustFS bucket, each state version sealed. Stack infra keeps its state
-  in infraweave, deploys automatically and runs on the pool; its
-  configuration has a terraform_data resource and outputs, one of them
-  sensitive, so no provider is downloaded. The release indexes serve the
-  recorded fixtures, so the run's specification names a Terraform
-  release. The home key is space-admin on the account's top space.
+  RustFS bucket, each state version sealed, and a download URL the home
+  key signs reads the current version back unsealed, with no credential.
+  Stack infra keeps its state in infraweave with external state access
+  on, deploys automatically and runs on the pool; its configuration has
+  a terraform_data resource and outputs, one of them sensitive, so no
+  provider is downloaded. The release indexes serve the recorded
+  fixtures, so the run's specification names a Terraform release. The
+  home key is space-admin on the account's top space.
   ref: decision 0010
   ref: decision 0016
 
@@ -37,10 +39,10 @@ Feature: Terraform and OpenTofu keep their state in infraweave
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "pool"
     And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "cert"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":true}' through B
     And the launcher "w" registers with the key of "csr" and the certificate "cert" through A
 
-  @case:success
+  @op:stateDownloadUrl @case:success
   Scenario Outline: A tracked run's init, plan and apply keep its state in infraweave, and a second apply waits on the first's lock
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "run"
@@ -70,6 +72,10 @@ Feature: Terraform and OpenTofu keep their state in infraweave
     And the run "run" wrote 1 state version
     And <tool> "state pull" of the run "run" exits 0
     And the current state version is the run "run"'s, with the serial and lineage of its last output
+    When token "h" sends "POST /api/v1/stacks/infra/state/download-url" with '{}' through A
+    Then it answers 200
+    And the answer's url is kept as "dl"
+    And the URL "dl" read with no credential through B is the current state version of the run "run", holding "plain-s3cret-0451"
     And <tool> "output -raw token" of the run "run" exits 0
     And the last output of the run "run" is "plain-s3cret-0451"
     And no object in the scenario's bucket holds "plain-s3cret-0451", of at least 1 object

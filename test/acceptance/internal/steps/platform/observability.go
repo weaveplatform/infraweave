@@ -280,7 +280,7 @@ func (s *observeSteps) inFlight(ctx context.Context, path string) error {
 	// The connection outlives the step; the deadline bounds a server that
 	// never answers.
 	_ = conn.SetDeadline(time.Now().Add(deps.WaitLimit))
-	body := `{"name":"in-flight","space":"root"}`
+	body := `{"dependencies":[]}`
 	half := body[:len(body)/2]
 	if _, err := fmt.Fprintf(
 		conn,
@@ -375,7 +375,7 @@ const unavailableKey = "while-postgres-is-down"
 
 // post sends an idempotent POST through c.
 func post(ctx context.Context, c *sdk.Client, path string) harness.Response {
-	resp, err := c.Do(ctx, http.MethodPost, path, map[string]any{"name": "unavailable"},
+	resp, err := c.Do(ctx, http.MethodPost, path, map[string]any{"dependencies": []any{}},
 		sdk.Header{Name: "Idempotency-Key", Value: unavailableKey})
 	if resp == nil {
 		return harness.Response{Err: err}

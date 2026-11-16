@@ -10,4 +10,5 @@ import (
 // World w.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&backendSteps{w: w}).register(sc)
+	(&urlSteps{w: w}).register(sc)
 }

@@ -51,6 +51,8 @@ type Store interface {
 	// Current reads the current version of t's workspace; false when the
 	// workspace has none or does not exist.
 	Current(ctx context.Context, t Target) (Version, bool, error)
+	// Version reads acct's version id; false when acct has none.
+	Version(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Version, bool, error)
 	// AddVersion records v in acct and makes it its workspace's current
 	// version.
 	AddVersion(ctx context.Context, acct kernel.AccountID, v Version) error
@@ -70,13 +72,17 @@ type Stacks interface {
 	Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
 }
 
-// Objects are the objects of the states store, as blob_objects records
-// them; blobs.Objects is one.
+// Objects are the objects of the states store, and the state files
+// uploaded for import to the uploads store, as blob_objects records them;
+// blobs.Objects is one.
 type Objects interface {
 	// Put records key's object pending, outside any transaction, and
 	// writes size bytes of r under it, sealed, answering the plaintext's
 	// size and SHA-256.
 	Put(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error)
+	// PutSealed is Put, sealed whatever the store, for a state file kept
+	// in uploads until it is imported.
+	PutSealed(ctx context.Context, store objectstore.Name, key string, r io.Reader, size int64) (objectstore.Object, error)
 	// Commit makes key's object live in the transaction on ctx.
 	Commit(ctx context.Context, store objectstore.Name, key string) error
 	// Open streams key's live object, unsealed.

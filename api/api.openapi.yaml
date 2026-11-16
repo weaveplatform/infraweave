@@ -16596,6 +16596,7 @@ paths:
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_STATE_DOWNLOAD
       x-infraweave-subject: path:stackId:stack
+      x-infraweave-idempotency: ignored
       parameters:
         - description: ID of the stack to download state from.
           in: path
@@ -16604,7 +16605,6 @@ paths:
           schema:
             type: string
           x-graphql-arg: input.stackId
-        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         content:
           application/json:
@@ -16629,10 +16629,6 @@ paths:
               $ref: '#/components/headers/RateLimitReset'
         "404":
           $ref: '#/components/responses/NotFound'
-        "409":
-          $ref: '#/components/responses/IdempotencyConflict'
-        "422":
-          $ref: '#/components/responses/IdempotencyMismatch'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -16649,7 +16645,6 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
-        - idempotency-key
         - rate-limit
       x-rest-style: override
   /stacks/{stackId}/sync-commit:
@@ -17153,8 +17148,7 @@ paths:
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_MANAGED_STATE_IMPORT
       x-infraweave-subject: any
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      x-infraweave-idempotency: ignored
       responses:
         "200":
           content:
@@ -17169,10 +17163,6 @@ paths:
               $ref: '#/components/headers/RateLimitRemaining'
             X-RateLimit-Reset:
               $ref: '#/components/headers/RateLimitReset'
-        "409":
-          $ref: '#/components/responses/IdempotencyConflict'
-        "422":
-          $ref: '#/components/responses/IdempotencyMismatch'
         "429":
           $ref: '#/components/responses/TooManyRequests'
         "503":
@@ -17189,7 +17179,6 @@ paths:
         type: Mutation
       x-infraweave-cost: standard
       x-infraweave-divergence:
-        - idempotency-key
         - rate-limit
       x-rest-style: override
   /terraform-effective-version:
