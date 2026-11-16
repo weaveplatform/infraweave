@@ -293,6 +293,37 @@ func TestUnitServiceRefusal(t *testing.T) {
 	}
 }
 
+// TestUnitServiceStateRead checks the service's state read: the missing
+// action at the snapshot's version, the read granted since it once the
+// version moves, nothing for a principal of no account, and a version
+// that cannot be read failing the refusal.
+func TestUnitServiceStateRead(t *testing.T) {
+	ctx := t.Context()
+	x := newAccount()
+	m := kernel.NewMemberID()
+	f := &store{x: x}
+	svc := authz.NewService(f)
+	p := kernel.Principal{Kind: kernel.PrincipalUser, AccountID: x.id, ActorID: m.ULID, MemberID: m}
+	stack := kernel.NewULID()
+	if missing, err := svc.StateRead(ctx, p, stack, x.spaces["a"]); err != nil ||
+		missing != accessapi.ActionSpaceRead {
+		t.Errorf("an unbound member = %q, %v", missing, err)
+	}
+	x.bind(binding.ActorUser, m.ULID, role.SpaceWriter, "a")
+	f.version = 1
+	if missing, err := svc.StateRead(ctx, p, stack, x.spaces["a"]); err != nil || missing != "" {
+		t.Errorf("a writer bound since the snapshot = %q, %v", missing, err)
+	}
+	if missing, err := svc.StateRead(ctx, kernel.Principal{}, stack, x.spaces["a"]); err != nil ||
+		missing != accessapi.ActionSpaceRead {
+		t.Errorf("a principal of no account = %q, %v", missing, err)
+	}
+	f.verErr = errors.New("database down")
+	if _, err := svc.StateRead(ctx, p, stack, x.spaces["legacy"]); !errors.Is(err, f.verErr) {
+		t.Errorf("a refusal with the version unread = %v", err)
+	}
+}
+
 func TestUnitKey(t *testing.T) {
 	acct := kernel.NewAccountID()
 	if got, ok := authz.ParseKey(authz.Key(acct)); !ok || got != acct {

@@ -170,6 +170,24 @@ func (s *Service) Authorize(ctx context.Context, p kernel.Principal, action acce
 	})
 }
 
+// StateRead is the first of SPACE_READ, STACK_STATE_READ and
+// STACK_STATE_DOWNLOAD p may not perform in space for a read of stack's
+// state from outside its own runs, or empty when it may perform all
+// three, as Snapshot.StateRead decides, rechecked as Authorize's refusals
+// are.
+func (s *Service) StateRead(ctx context.Context, p kernel.Principal, stack, space kernel.ULID) (accessapi.Action, error) {
+	missing := accessapi.ActionSpaceRead
+	ok, err := check(ctx, s, p, func(snap *Snapshot, w Who) bool {
+		var ok bool
+		missing, ok = snap.StateRead(w, stack, space)
+		return ok
+	})
+	if err != nil || ok {
+		return "", err
+	}
+	return missing, nil
+}
+
 // Reachable is every space of p's account in which p may perform action.
 func (s *Service) Reachable(ctx context.Context, p kernel.Principal, action accessapi.Action) ([]kernel.ULID, error) {
 	return decide(ctx, s, p, func(snap *Snapshot, w Who) []kernel.ULID {

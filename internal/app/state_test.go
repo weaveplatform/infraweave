@@ -69,16 +69,17 @@ func (s stateWorld) Settings(_ context.Context, acct kernel.AccountID, id kernel
 	return stacksapi.Settings{ManagesState: true}, nil
 }
 
-func (s stateWorld) Access(_ context.Context, run, stack kernel.ULID) (runsapi.StateGrant, error) {
+func (s stateWorld) Access(_ context.Context, run, _ kernel.ULID) (runsapi.StateGrant, error) {
 	if run == s.panics {
 		panic("the access read panicked")
 	}
 	if run == s.writes {
 		return runsapi.StateGrant{
-			Account: s.acct, Read: true, Lock: runsapi.StateLockExclusive, Write: true,
+			Account: s.acct, Stack: s.stack, Read: true, Lock: runsapi.StateLockExclusive,
+			Write: true,
 		}, nil
 	}
-	return runsapi.StateGrant{Account: s.acct, Read: stack == s.stack}, nil
+	return runsapi.StateGrant{Account: s.acct, Stack: s.stack, Read: true}, nil
 }
 
 // TestUnitStateSurface checks the API's controls on /state/v1 through

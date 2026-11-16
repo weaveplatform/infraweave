@@ -2,8 +2,9 @@
 // runs domain: the core that opens a stack's workspace under the stack's
 // hold, takes and releases its locks and writes and reads its versions,
 // over the domain's pg adapter and Objects, and the backend Routes adds
-// to the API listener under /state/v1, which decides each request
-// through the runs domain's StateAccess and bounds a version by
+// to the API listener under /state/v1, which decides a run's request on
+// its own stack through the runs domain's StateAccess and any other read
+// through the access domain's StateReader, and bounds a version by
 // Settings.MaxSize, state.max_size. API is the domain's partial of the
 // API's strict server, StateAPI, which embeds two: stateUploadUrl and
 // stateDownloadUrl, which sign URLs under the installation's keyring,
@@ -28,9 +29,9 @@
 // # Input and output
 //
 // None of its own: the domain reaches PostgreSQL, the stacks domain, the
-// access domain, the runs domain, the states store's objects and the job
-// queue through Deps, and serves HTTP through the routes it adds and its
-// partial of the API.
+// access domain's decisions, the runs domain, the states store's objects
+// and the job queue through Deps, and serves HTTP through the routes it
+// adds and its partial of the API.
 //
 // # Dependencies
 //

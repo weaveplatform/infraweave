@@ -39,7 +39,8 @@
 // middleware internal/app puts in front of the API,
 // OperatorAuthenticator the one in front of the operator API,
 // WorkerAuthenticator the one in front of the worker API and
-// StateAuthenticator the one in front of the state backend; Tokens
+// StateAuthenticator the one in front of the state backend, which keeps
+// the tokens of the API keys its clients send for this replica; Tokens
 // mints the worker protocol's tokens, and BindRuns binds the runs an
 // in-run API token's authentication reads; Routes
 // mounts the break-glass login at accessapi.LoginPattern and the
@@ -47,7 +48,8 @@
 // HashPassword and VerifyPassword are the break-glass password hash, which infraweave auth hash-password prints; WatchSessions keeps the
 // replica's session cache in step with infraweave_invalidate.
 // Authorizer is the authorization evaluator for every domain, from the
-// replica's per-account snapshots; Requirer is the middleware deciding
+// replica's per-account snapshots, and StateReader its decision on a read
+// of a stack's state from outside the stack's runs; Requirer is the middleware deciding
 // each API operation's action on its subject, finding a space by its slug,
 // a role binding's by its ID under its actor's kind, and another domain's
 // entity through the lookup ResolveSubjects

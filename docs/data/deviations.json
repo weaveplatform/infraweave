@@ -293,7 +293,7 @@
       "id": "DV-032",
       "group": "State and queue: decisions 0010 and 0011",
       "spacelift": "External state access uses the Terraform `remote` backend",
-      "infraweave": "External access uses the Terraform `http` backend with a token",
+      "infraweave": "External access uses the Terraform `http` backend, with HTTP Basic credentials of the user `api` and an API key's `<id>:<secret>` or a token, and serves no Terraform Cloud API",
       "why": "The `remote` API is a second surface with its own JSON:API shapes and login flow; `http` already serves `terraform_remote_state` and `terraform state pull`",
       "impact": "Configurations that read state from outside change to `backend \"http\"`",
       "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale)"

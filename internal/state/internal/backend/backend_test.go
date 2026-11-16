@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
@@ -23,20 +24,27 @@ import (
 )
 
 // world is one run granted grant on stack, a sibling stack of the same
-// account the run is not of, the workspace's current state, empty for
-// none, and the locks and versions the backend asked the core to take,
-// release and write, each write's body as it read it. It is the
-// backend's StateAccess, Stacks and State.
+// account the run is not of, in a space of its own, the workspace's
+// current state, empty for none, and the locks and versions the backend
+// asked the core to take, release and write, each write's body as it read
+// it. Both stacks keep their state unless unkept, with external access as
+// external says; the access domain answers missing to every state read
+// and keeps each principal it was asked for. It is the backend's
+// StateAccess, StateReader, Stacks and State.
 type world struct {
-	acct    kernel.AccountID
-	run     kernel.ULID
-	stack   stacksapi.Stack
-	sibling kernel.ULID
-	grant   runsapi.StateGrant
-	unkept  bool
-	state   string
+	acct         kernel.AccountID
+	run          kernel.ULID
+	stack        stacksapi.Stack
+	sibling      kernel.ULID
+	siblingSpace kernel.ULID
+	grant        runsapi.StateGrant
+	unkept       bool
+	external     bool
+	missing      accessapi.Action
+	asked        []kernel.Principal
+	state        string
 
-	accessErr, settingsErr, lockErr, writeErr, readErr error
+	accessErr, settingsErr, getErr, readerErr, lockErr, writeErr, readErr error
 
 	locked   []locked
 	unlocked []core.Unlock
@@ -52,11 +60,14 @@ type locked struct {
 func newWorld() *world {
 	acct := kernel.NewAccountID()
 	return &world{
-		acct:    acct,
-		run:     kernel.NewULID(),
-		stack:   stacksapi.Stack{ID: kernel.NewULID(), Account: acct, Slug: "one"},
-		sibling: kernel.NewULID(),
-		grant:   runsapi.StateGrant{Read: true, Lock: runsapi.StateLockShared},
+		acct: acct,
+		run:  kernel.NewULID(),
+		stack: stacksapi.Stack{
+			ID: kernel.NewULID(), Account: acct, Slug: "one", Space: kernel.NewULID(),
+		},
+		sibling:      kernel.NewULID(),
+		siblingSpace: kernel.NewULID(),
+		grant:        runsapi.StateGrant{Read: true, Lock: runsapi.StateLockShared},
 	}
 }
 
@@ -67,11 +78,29 @@ func (w *world) Access(_ context.Context, run, stack kernel.ULID) (runsapi.State
 	case run != w.run:
 		return runsapi.StateGrant{}, nil
 	case stack != w.stack.ID:
-		return runsapi.StateGrant{Account: w.acct}, nil
+		return runsapi.StateGrant{Account: w.acct, Stack: w.stack.ID, Read: w.grant.Read}, nil
 	}
 	g := w.grant
-	g.Account = w.acct
+	g.Account, g.Stack = w.acct, w.stack.ID
 	return g, nil
+}
+
+func (w *world) StateRead(_ context.Context, p kernel.Principal, stack, space kernel.ULID) (accessapi.Action, error) {
+	w.asked = append(w.asked, p)
+	if (stack == w.sibling) != (space == w.siblingSpace) {
+		return "", errors.New("the stack is not in that space")
+	}
+	return w.missing, w.readerErr
+}
+
+func (w *world) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Stack, error) {
+	switch {
+	case w.getErr != nil:
+		return stacksapi.Stack{}, w.getErr
+	case acct != w.acct || id != w.stack.ID:
+		return stacksapi.Stack{}, stacksapi.ErrNotFound
+	}
+	return w.stack, nil
 }
 
 func (w *world) BySlug(_ context.Context, acct kernel.AccountID, slug string) (stacksapi.Stack, error) {
@@ -88,7 +117,11 @@ func (w *world) Settings(_ context.Context, acct kernel.AccountID, id kernel.ULI
 	case acct != w.acct || (id != w.stack.ID && id != w.sibling):
 		return stacksapi.Settings{}, stacksapi.ErrNotFound
 	}
-	return stacksapi.Settings{ManagesState: !w.unkept}, nil
+	st := stacksapi.Stack{ID: id, Account: acct, Space: w.siblingSpace}
+	if id == w.stack.ID {
+		st = w.stack
+	}
+	return stacksapi.Settings{Stack: st, ManagesState: !w.unkept, ExternalStateAccess: w.external}, nil
 }
 
 func (w *world) Lock(_ context.Context, t core.Target, want core.Lock) error {
@@ -127,7 +160,7 @@ const maxSize = 1 << 10
 func (w *world) serve(t *testing.T, method, path, body string, set func(*world, *http.Request) *http.Request) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
-	New(w, w, w, maxSize).Routes(r)
+	New(w, w, w, w, maxSize).Routes(r)
 	req := httptest.NewRequestWithContext(t.Context(), method, path, strings.NewReader(body))
 	req = req.WithContext(kernel.WithPrincipal(req.Context(),
 		kernel.Principal{Kind: kernel.PrincipalRunner, ActorID: w.run}))
@@ -188,12 +221,12 @@ func TestUnitBackend(t *testing.T) {
 			status: http.StatusUnauthorized,
 		},
 		{
-			name: "an API key", method: http.MethodGet, path: "/state/v1/stacks/one",
+			name: "an API key of no account", method: http.MethodGet, path: "/state/v1/stacks/one",
 			set: func(_ *world, r *http.Request) *http.Request {
 				return r.WithContext(kernel.WithPrincipal(r.Context(),
 					kernel.Principal{Kind: kernel.PrincipalAPIKey, ActorID: kernel.NewULID()}))
 			},
-			status: http.StatusUnauthorized,
+			status: http.StatusNotFound,
 		},
 		{
 			name: "a slug", method: http.MethodGet, path: "/state/v1/stacks/one",
@@ -594,5 +627,186 @@ func TestUnitUnserved(t *testing.T) {
 		"/state/v1/stacks/one", nil))
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("PUT = %d", rec.Code)
+	}
+}
+
+// TestUnitExternal checks the reads of a stack's state by every caller
+// but a run token on its own stack: an API key's and an in-run token's
+// principal decided as it is, and a run token's as its run's stack, with
+// its stack's home space; and each refusal in order, 404 before any 403,
+// none reaching the core.
+func TestUnitExternal(t *testing.T) {
+	failed := errors.New("down")
+	key := func(w *world, r *http.Request) *http.Request {
+		w.external = true
+		return r.WithContext(kernel.WithPrincipal(r.Context(), kernel.Principal{
+			Kind: kernel.PrincipalAPIKey, AccountID: w.acct, ActorID: kernel.NewULID(),
+		}))
+	}
+	inRun := func(w *world, r *http.Request) *http.Request {
+		w.external = true
+		return r.WithContext(kernel.WithPrincipal(r.Context(), kernel.Principal{
+			Kind: kernel.PrincipalRun, AccountID: w.acct, ActorID: w.run,
+			StackID: w.stack.ID, StackSpaceID: w.stack.Space,
+		}))
+	}
+	runToken := func(w *world, r *http.Request) *http.Request {
+		w.external = true
+		return r
+	}
+	and := func(first func(*world, *http.Request) *http.Request, then func(*world)) func(*world, *http.Request) *http.Request {
+		return func(w *world, r *http.Request) *http.Request {
+			r = first(w, r)
+			then(w)
+			return r
+		}
+	}
+	cases := []struct {
+		name, method, path string
+		set                func(*world, *http.Request) *http.Request
+		status             int
+		action             string
+	}{
+		{name: "an API key by slug", path: "/state/v1/stacks/one", set: key, status: http.StatusOK},
+		{name: "an API key by ID", path: "/state/v1/stacks/{sibling}", set: key, status: http.StatusOK},
+		{
+			name: "an API key with no state yet", path: "/state/v1/stacks/one",
+			set: and(key, func(w *world) { w.state = "" }), status: http.StatusNoContent,
+		},
+		{
+			name: "an API key on a workspace", path: "/state/v1/stacks/one/workspaces/blue",
+			set: key, status: http.StatusOK,
+		},
+		{
+			name: "an API key on another account's stack",
+			path: "/state/v1/stacks/" + kernel.NewULID().String(), set: key,
+			status: http.StatusNotFound,
+		},
+		{
+			name: "a stack the caller cannot see", path: "/state/v1/stacks/one",
+			set:    and(key, func(w *world) { w.missing = accessapi.ActionSpaceRead }),
+			status: http.StatusNotFound,
+		},
+		{
+			name: "a stack whose state is not kept", path: "/state/v1/stacks/one",
+			set: and(key, func(w *world) { w.unkept = true }), status: http.StatusNotFound,
+		},
+		{
+			name: "a write", method: http.MethodPost, path: "/state/v1/stacks/one", set: key,
+			status: http.StatusForbidden,
+		},
+		{
+			name: "a lock", method: "LOCK", path: "/state/v1/stacks/one", set: key,
+			status: http.StatusForbidden,
+		},
+		{
+			name: "an unlock", method: "UNLOCK", path: "/state/v1/stacks/one", set: key,
+			status: http.StatusForbidden,
+		},
+		{
+			name: "a lock by a run of another stack", method: "LOCK",
+			path: "/state/v1/stacks/{sibling}", set: runToken, status: http.StatusForbidden,
+		},
+		{
+			name: "external access off", path: "/state/v1/stacks/one",
+			set: and(key, func(w *world) { w.external = false }), status: http.StatusForbidden,
+		},
+		{
+			name: "no STACK_STATE_READ", path: "/state/v1/stacks/one",
+			set:    and(key, func(w *world) { w.missing = accessapi.ActionStackStateRead }),
+			status: http.StatusForbidden, action: "STACK_STATE_READ",
+		},
+		{
+			name: "no STACK_STATE_DOWNLOAD", path: "/state/v1/stacks/one",
+			set:    and(key, func(w *world) { w.missing = accessapi.ActionStackStateDownload }),
+			status: http.StatusForbidden, action: "STACK_STATE_DOWNLOAD",
+		},
+		{
+			name: "the decision fails", path: "/state/v1/stacks/one",
+			set:    and(key, func(w *world) { w.readerErr = failed }),
+			status: http.StatusInternalServerError,
+		},
+		{
+			name: "a run token on another stack", path: "/state/v1/stacks/{sibling}",
+			set: runToken, status: http.StatusOK,
+		},
+		{
+			name:   "a run token on another stack in a state allowing no read",
+			path:   "/state/v1/stacks/{sibling}",
+			set:    and(runToken, func(w *world) { w.grant = runsapi.StateGrant{} }),
+			status: http.StatusForbidden,
+		},
+		{
+			name: "a run token whose own stack is gone", path: "/state/v1/stacks/{sibling}",
+			set:    and(runToken, func(w *world) { w.getErr = stacksapi.ErrNotFound }),
+			status: http.StatusNotFound,
+		},
+		{
+			name: "a run token whose own stack cannot be read", path: "/state/v1/stacks/{sibling}",
+			set:    and(runToken, func(w *world) { w.getErr = failed }),
+			status: http.StatusInternalServerError,
+		},
+		{
+			name: "an in-run token on another stack", path: "/state/v1/stacks/{sibling}",
+			set: inRun, status: http.StatusOK,
+		},
+		{
+			name: "an in-run token on its own stack", path: "/state/v1/stacks/one",
+			set: inRun, status: http.StatusForbidden,
+		},
+		{
+			name: "an in-run token of a run no account has", path: "/state/v1/stacks/one",
+			set: and(inRun, func(w *world) { w.run = kernel.NewULID() }), status: http.StatusNotFound,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := newWorld()
+			w.state = `{"version":4}`
+			method := c.method
+			if method == "" {
+				method = http.MethodGet
+			}
+			path := strings.ReplaceAll(c.path, "{sibling}", w.sibling.String())
+			rec := w.serve(t, method, path, lockBody, c.set)
+			if rec.Code != c.status {
+				t.Fatalf("%s %s = %d %s, want %d", method, path, rec.Code, rec.Body, c.status)
+			}
+			var p problem.Problem
+			if c.status >= 400 && (json.Unmarshal(rec.Body.Bytes(), &p) != nil || p.Action != c.action) {
+				t.Errorf("the problem = %s, want action %q", rec.Body, c.action)
+			}
+			if len(w.locked)+len(w.unlocked)+len(w.written) > 0 {
+				t.Errorf("an external call reached the core: %v %v %v", w.locked, w.unlocked,
+					w.written)
+			}
+		})
+	}
+}
+
+// TestUnitExternalPrincipal checks the principal each caller's read is
+// decided as: an API key's and an in-run token's as they are, and a run
+// token's as a run of its stack, in its stack's home space, so its
+// stack's bindings and its read of that space decide.
+func TestUnitExternalPrincipal(t *testing.T) {
+	w := newWorld()
+	w.external = true
+	path := "/state/v1/stacks/" + w.sibling.String()
+	if rec := w.serve(t, http.MethodGet, path, "", nil); rec.Code != http.StatusNoContent {
+		t.Fatalf("a run token = %d %s", rec.Code, rec.Body)
+	}
+	want := kernel.Principal{
+		Kind: kernel.PrincipalRun, AccountID: w.acct, ActorID: w.run,
+		StackID: w.stack.ID, StackSpaceID: w.stack.Space,
+	}
+	if len(w.asked) != 1 || !reflect.DeepEqual(w.asked[0], want) {
+		t.Errorf("a run token decided as %+v, want %+v", w.asked, want)
+	}
+	key := kernel.Principal{Kind: kernel.PrincipalAPIKey, AccountID: w.acct, ActorID: kernel.NewULID()}
+	rec := w.serve(t, http.MethodGet, path, "", func(_ *world, r *http.Request) *http.Request {
+		return r.WithContext(kernel.WithPrincipal(r.Context(), key))
+	})
+	if rec.Code != http.StatusNoContent || len(w.asked) != 2 || !reflect.DeepEqual(w.asked[1], key) {
+		t.Errorf("an API key = %d, decided as %+v", rec.Code, w.asked)
 	}
 }
