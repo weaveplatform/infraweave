@@ -372,7 +372,7 @@ decision 0009 as `TestUnitPolicyLibrary`.
 | No `time.Sleep` in tests | forbidigo pattern on `_test.go` files in `.golangci.yml` |
 | Waiting on asynchronous work polls a condition with a deadline, through one helper (`deps.Eventually`), never a fixed delay | review; the helper reports what it waited for |
 | Unit tests use virtual time | `internal/clock` and `testing/synctest` |
-| An acceptance scenario reaches a server's timer without waiting for it: time passes for one run or worker by moving its timestamps back, and the periodic task that reads them falls due | review; the runs steps age a run's or worker's rows, since a real server's clock cannot be moved |
+| An acceptance scenario reaches a server's timer without waiting for it: time passes for one run, worker or stack's state versions by moving its timestamps back, and the periodic task that reads them falls due | review; the runs and state steps age a run's, worker's or stack's versions' rows, since a real server's clock cannot be moved |
 | No test depends on order | `-shuffle=on`; godog runs scenarios in random order with a printed seed |
 | No shared mutable state across scenarios | per-scenario database, bucket prefix and server |
 | No network beyond the containers | Terraform, OpenTofu and providers come from checksummed caches; Gitea replaces hosted VCS |
@@ -607,7 +607,9 @@ coverage it would contribute is not waived.
   management features: `urls.feature`, `import.feature`,
   `rollback.feature`, `external_access.feature` and
   `terragrunt_units.feature`, each with real Terraform and OpenTofu, and
-  the last with Terragrunt. `TestAccCaptures` skips C106, C107, C108, C109,
+  the last with Terragrunt, and `retention.feature`, with real Terraform,
+  which moves time on for a stack's state versions as the runs steps do
+  for a run. `TestAccCaptures` skips C106, C107, C108, C109,
   C110, C112, C113 and C114 as awaited against them.
 - `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
   `TestUnitWriteRefusals` and `TestUnitParseStress`

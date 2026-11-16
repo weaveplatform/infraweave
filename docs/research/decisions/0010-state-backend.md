@@ -393,14 +393,28 @@ does (decision [0003](0003-api-conventions.md)).
 - **Retention.** Non-current versions are deleted once `state.noncurrent_retention` (a
   duration, default `2160h`, 90 days; `0` keeps them forever) has passed since they
   stopped being current, which is the next version's `created_at`, so no column records
-  it.
+  it. Versions are ordered by `created_at`, then by ID within one instant; the next
+  version is the oldest newer one, so a version may go once any newer version of its
+  workspace is older than the retention, by the database's clock.
   - The `state.retention` periodic task (decision [0011](0011-persistent-work-queue.md))
     runs daily for the installation on the maintenance queue, deleting rows and then
-    objects in batches of 500, as `state.purge` does.
-  - It never deletes a workspace's current version, or a version whose `run_id` names a
-    run that has not ended.
+    objects in batches of 500, as `state.purge` does. A pass walks the versions once, in
+    the order of their account and ID, so the versions it keeps never hold up the rest.
+    Each batch is one transaction: it reads the versions past their retention, asks
+    `runsapi.RunEnds`, the runs domain's answer of which of an account's runs have not
+    ended, about their runs, deletes the others' rows, and marks their objects
+    `deleting` with `blob.delete` enqueued. An object therefore goes only once its row
+    has, and a pass stopped part way leaves no row without its object: its last batch
+    rolls back whole, and `blob.delete` removes the objects of the batches that
+    committed.
+  - It never deletes a workspace's current version, which the delete itself checks
+    again, or a version whose `run_id` names a run that has not ended; a pass after the
+    run ends deletes it. A version that may be deleted stays so: no write makes an older
+    version current again, and an ended run never runs again, so a run that writes while
+    a pass runs only adds a version too new to delete, and one that ends after its batch
+    was read keeps its versions until the next pass.
   - Rolling back to, or downloading, a deleted version answers `404`, problem
-    `not-found`.
+    `not-found`, and the version search no longer lists it.
   - The `states` store takes no `objectstore.retention.states`: a store-wide expiry would
     delete current versions ([0005](0005-persistence-postgresql.md)).
 - **Stack deletion.** `state` registers its `stacksapi.StackGuard` with the `stacks` domain
@@ -563,13 +577,18 @@ unlock) are ordinary REST operations and answer the problem details of decision
   `state/external_access.feature` (`terraform_remote_state` with an API key and a bearer
   token, a run of another stack reading with no credentials in its code, and each refusal),
   `state/import.feature` (at creation and later, client-encrypted included),
-  `state/rollback.feature` (rollback, `isStateRollback`, the version search and retention),
+  `state/rollback.feature` (rollback, `isStateRollback` and the version search),
+  `state/retention.feature` (imports and a run's versions deleted past an hour's
+  retention, row and object, the current version, a recent one and a running run's
+  kept, and a rollback to a deleted version answering `404`),
   `state/terragrunt_units.feature` (a workspace per unit, listed and unlocked), and
   `state/force_unlock.feature` (`terraform force-unlock` from a task releases a lock left
   by a killed run).
-- A retention test in virtual time (decision 0016): a non-current version is deleted once
-  its retention passes, and the current version and a version a run that has not ended
-  wrote are kept.
+- Retention tests: unit tests of the pass's batches, its question about runs and a
+  failure part way; store tests on PostgreSQL of the selection over versions with chosen
+  `created_at`s, of `0`, and of a pass stopped in its second batch, which leaves no row
+  without its object; and the acceptance feature above, which moves time on by moving
+  the versions' `created_at` back (decision 0016).
 - A sealing test writes a state with a known secret output and asserts the bytes in the
   object store do not contain it.
 

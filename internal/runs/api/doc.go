@@ -7,9 +7,11 @@
 // a stack's managed state, the read, lock and write the state domain
 // allows the run on its own stack, with who triggered the run, and the
 // read alone on another's, which the access domain then decides as the
-// run's stack; and StackRuns, which lists a stack's runs that have not
+// run's stack; StackRuns, which lists a stack's runs that have not
 // ended, each an UnendedRun with its type, for a domain that changes the
-// stack only while it is idle.
+// stack only while it is idle; and RunEnds, which answers which of an
+// account's runs have not ended, for a domain that keeps what a run wrote
+// until the run ends.
 //
 // # Input and output
 //
@@ -19,5 +21,6 @@
 //
 // It imports the standard library and internal/kernel. The domains above
 // runs in the declared graph import it, the vcs domain implements
-// RunSources, and the runs domain implements StateAccess and StackRuns.
+// RunSources, and the runs domain implements StateAccess, StackRuns and
+// RunEnds.
 package api

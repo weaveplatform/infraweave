@@ -50,13 +50,20 @@
 // default workspace in its transaction and imports the state file the
 // creation names; Purge deletes a stack's or
 // a deleted account's state PurgeBatch rows at a time, handing each
-// version's object to Objects. Store is its storage port.
+// version's object to Objects in the transaction that deletes its row.
+// Retain, RetentionKind's pass, deletes the same way each version a newer
+// version of its workspace replaced more than the retention ago, walking
+// them once in the order of their accounts and IDs, but never a
+// workspace's current version or a version whose run the runs domain
+// answers has not ended; a retention of 0 keeps every version. Store is
+// its storage port.
 //
 // # Input and output
 //
 // It reads a version's body as it streams and a stored state's outputs;
 // otherwise it reaches storage through Store, the stacks domain through
-// Stacks, the runs domain through runsapi.StackRuns, the access domain's
+// Stacks, the runs domain through runsapi.StackRuns and runsapi.RunEnds,
+// the access domain's
 // decisions through Authorizer, the states and uploads stores' objects
 // through Objects and the job queue through Jobs, and reads the time an
 // import records from the clock it is given.
@@ -67,6 +74,7 @@
 // stacksapi, stateapi, platform/objectstore, platform/queue, platform/tx,
 // and crypto/fips140 and crypto/md5 for the Content-MD5 check. The state
 // domain's assembly constructs it over the domain's pg adapter,
-// stacksapi.Stacks, the runs domain's StackRuns, the access domain's
-// Authorizer, the blob records and the queue.
+// stacksapi.Stacks, the runs domain's StackRuns and RunEnds, the access
+// domain's Authorizer, the blob records, the queue and
+// state.noncurrent_retention.
 package core

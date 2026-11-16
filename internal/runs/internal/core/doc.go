@@ -8,9 +8,10 @@
 // granting a run reads and a shared lock on its stack's state while it
 // plans, and writes under an exclusive lock while it applies, destroys or
 // performs a task, from the state it reads the run in on each call, each
-// lock it grants naming who triggered the run, and the domain's
+// lock it grants naming who triggered the run, the domain's
 // runsapi.StackRuns, listing a stack's runs that have not ended with
-// their types. Store is its storage port.
+// their types, and its runsapi.RunEnds, answering which of an account's
+// runs have not ended. Store is its storage port.
 //
 // # Input and output
 //

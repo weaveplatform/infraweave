@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -38,25 +40,40 @@ func Held() []integrity.Held { return pg.Held() }
 
 // Settings are the state domain's, under state in the configuration:
 // MaxSize, state.max_size, is the largest state version in bytes a write
-// may carry.
+// may carry; NoncurrentRetention, state.noncurrent_retention, is how long
+// a version is kept once a newer version of its workspace replaces it, a
+// duration such as 2160h, where 0 keeps every version.
 //
 // ref: decision 0010 § "Writing a version"
+// ref: decision 0010 § "Rollback, searches and retention"
 type Settings struct {
-	MaxSize int64 `mapstructure:"max_size"`
+	MaxSize             int64         `mapstructure:"max_size"`
+	NoncurrentRetention time.Duration `mapstructure:"noncurrent_retention"`
 }
 
-// DefaultSettings bound a state version at 512 MiB.
-func DefaultSettings() Settings { return Settings{MaxSize: core.DefaultMaxSize} }
+// DefaultSettings bound a state version at 512 MiB and keep a version 90
+// days once it is no longer current.
+func DefaultSettings() Settings {
+	return Settings{MaxSize: core.DefaultMaxSize, NoncurrentRetention: core.DefaultRetention}
+}
 
 // ErrConfig reports a state setting the server could not start with.
 var ErrConfig = errors.New("invalid state configuration")
 
-// Validate rejects a state.max_size that is not positive.
+// Validate rejects a state.max_size that is not positive and a negative
+// state.noncurrent_retention.
 func (s Settings) Validate() error {
+	var errs []error
 	if s.MaxSize <= 0 {
-		return fmt.Errorf("%w: state.max_size must be positive, got %d", ErrConfig, s.MaxSize)
+		errs = append(errs, fmt.Errorf("%w: state.max_size must be positive, got %d", ErrConfig,
+			s.MaxSize))
 	}
-	return nil
+	if s.NoncurrentRetention < 0 {
+		errs = append(errs, fmt.Errorf(
+			"%w: state.noncurrent_retention must be 0 or more, got %s", ErrConfig,
+			s.NoncurrentRetention))
+	}
+	return errors.Join(errs...)
 }
 
 // DB is the database the state domain stores workspaces, locks and
@@ -76,7 +93,9 @@ type Objects = core.Objects
 // workspace search reads; Access, the runs domain's decision of what a
 // run token may do with its stack's state; Runs, the runs domain's list
 // of a stack's runs that have not ended, which an import refuses a stack
-// with a tracked run, task or destroy run among; Authz, the access
+// with a tracked run, task or destroy run among; Ends, the runs domain's
+// answer of which runs have not ended, whose versions retention keeps;
+// Authz, the access
 // domain's decisions of a caller's actions and of the spaces it may read;
 // Objects, which hold each version's object and each upload's; Jobs,
 // which enqueues a deleted stack's purge; Keys, which derive the signed
@@ -87,6 +106,7 @@ type Deps struct {
 	Stacks    stacksapi.Stacks
 	Access    runsapi.StateAccess
 	Runs      runsapi.StackRuns
+	Ends      runsapi.RunEnds
 	Authz     accessapi.Authorizer
 	Reader    accessapi.StateReader
 	Objects   Objects
@@ -108,7 +128,7 @@ type Domain struct {
 func New(d Deps) *Domain {
 	svc := core.New(core.Deps{
 		DB: d.DB, Store: pg.New(d.DB), Stacks: d.Stacks, Authz: d.Authz, Objects: d.Objects,
-		Jobs: d.Jobs, Runs: d.Runs,
+		Jobs: d.Jobs, Runs: d.Runs, Ends: d.Ends, Retention: d.Settings.NoncurrentRetention,
 	})
 	return &Domain{
 		state:   svc,
@@ -249,6 +269,28 @@ var StackPurge = core.PurgeKind
 // StackPurge's.
 func (d *Domain) Jobs() []queue.Registration {
 	return []queue.Registration{{Kind: StackPurge, Handler: d.state.Purged}}
+}
+
+// Retention is the periodic task that deletes the versions whose
+// retention has passed.
+var Retention = core.RetentionKind
+
+// Cron is the domain's periodic task: Retention, daily, which deletes
+// each version that a newer one replaced more than
+// state.noncurrent_retention ago, its row and then its object, and logs
+// to log how many a pass deleted.
+func (d *Domain) Cron(log *slog.Logger) []cron.Task {
+	return []cron.Task{{
+		Kind:  Retention,
+		Every: core.RetentionEvery,
+		Handler: func(ctx context.Context, _ queue.Job) error {
+			n, err := d.state.Retain(ctx)
+			if n > 0 {
+				log.InfoContext(ctx, "non-current state versions deleted", "versions", n)
+			}
+			return err //nolint:wrapcheck // the store, the runs domain or blobs names it
+		},
+	}}
 }
 
 // Purge deletes the deleted account acct's state, its versions' objects

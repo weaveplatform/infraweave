@@ -356,6 +356,11 @@ func (d *Domain) StateAccess() runsapi.StateAccess { return d.runs }
 // refuses a stack with a tracked run, task or destroy run under way.
 func (d *Domain) StackRuns() runsapi.StackRuns { return d.runs }
 
+// RunEnds answers which of an account's runs have not ended, the forward
+// edge internal/app hands the state domain, whose retention keeps the
+// versions of a run under way.
+func (d *Domain) RunEnds() runsapi.RunEnds { return d.runs }
+
 // RunsAPI is the domain's partial of the API's strict server, which
 // internal/app embeds under this alias.
 type RunsAPI = http.Server

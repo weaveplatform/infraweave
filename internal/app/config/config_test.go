@@ -246,19 +246,37 @@ run:
 	}
 }
 
-// TestUnitLoadState checks that state.max_size is 512 MiB by default and
-// decodes from the file and, over it, the environment.
+// TestUnitLoadState checks that state.max_size is 512 MiB and
+// state.noncurrent_retention 2160h by default, that each decodes from the
+// file and, over it, the environment, and that a retention of 0, which
+// keeps every version, decodes as a duration or as a number.
 func TestUnitLoadState(t *testing.T) {
-	if got := Defaults().State.MaxSize; got != 512<<20 {
-		t.Errorf("default state.max_size %d", got)
+	if got := Defaults().State; got.MaxSize != 512<<20 ||
+		got.NoncurrentRetention != 2160*time.Hour {
+		t.Errorf("default state %+v", got)
 	}
 	t.Setenv("INFRAWEAVE_STATE_MAX_SIZE", "2048")
-	c, err := loadArgs(t, "--config", writeFile(t, "state:\n  max_size: 1024\n"))
+	t.Setenv("INFRAWEAVE_STATE_NONCURRENT_RETENTION", "720h")
+	c, err := loadArgs(t, "--config",
+		writeFile(t, "state:\n  max_size: 1024\n  noncurrent_retention: 1h\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.State.MaxSize != 2048 {
-		t.Errorf("state.max_size %d, want the environment's 2048", c.State.MaxSize)
+	if c.State.MaxSize != 2048 || c.State.NoncurrentRetention != 720*time.Hour {
+		t.Errorf("state %+v, want the environment's 2048 and 720h", c.State)
+	}
+	t.Setenv("INFRAWEAVE_STATE_NONCURRENT_RETENTION", "")
+	for _, tc := range []struct {
+		file string
+		want time.Duration
+	}{{"noncurrent_retention: 1h", time.Hour}, {"noncurrent_retention: 0", 0}} {
+		c, err := loadArgs(t, "--config", writeFile(t, "state:\n  "+tc.file+"\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.State.NoncurrentRetention != tc.want {
+			t.Errorf("%s decoded as %s", tc.file, c.State.NoncurrentRetention)
+		}
 	}
 }
 
@@ -398,6 +416,19 @@ func TestUnitLoadRejects(t *testing.T) {
 		},
 		{"unknown timer", "run:\n  timers:\n    forever: 1h\n", nil, "forever"},
 		{"no state bound", "state:\n  max_size: 0\n", nil, "state.max_size"},
+		{
+			"negative retention",
+			"state:\n  noncurrent_retention: -1h\n",
+			nil,
+			"state.noncurrent_retention",
+		},
+		{
+			"retention not a duration",
+			"state:\n  noncurrent_retention: ninety\n",
+			nil,
+			"'state.noncurrent_retention' time: invalid duration",
+		},
+		{"unknown state key", "state:\n  retention: 1h\n", nil, "retention"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

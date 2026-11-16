@@ -183,6 +183,21 @@ func (s *Store) Unended(ctx context.Context, acct kernel.AccountID, stack kernel
 	return out, nil
 }
 
+// NotEnded reads those of acct's runs that have not ended, in the order
+// of their IDs, in the context's transaction.
+func (s *Store) NotEnded(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) ([]kernel.ULID, error) {
+	// A failed Query returns rows that carry its error to CollectRows.
+	rows, _ := tx.Q(ctx, s.db).Query(ctx, `SELECT id FROM runs
+		WHERE account_id = $1 AND id = ANY($2) AND state <> ALL($3)
+		ORDER BY id`, acct, runs, terminalStates())
+	out, err := pgx.CollectRows(rows, pgx.RowTo[kernel.ULID])
+	if err != nil {
+		return nil, fmt.Errorf("runs: read which of %d runs have not ended: %w", len(runs),
+			sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 // terminalStates are the run states a run that has ended is in.
 func terminalStates() []string {
 	var out []string

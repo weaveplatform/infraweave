@@ -181,6 +181,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Stacks:    stacks.Stacks(),
 		Access:    runs.StateAccess(),
 		Runs:      runs.StackRuns(),
+		Ends:      runs.RunEnds(),
 		Authz:     access.Authorizer(),
 		Reader:    access.StateReader(),
 		Objects:   objects,
@@ -276,5 +277,5 @@ func newKinds() *outbox.Kinds {
 // over q, which the scheduler role runs, logging to log.
 func (d Domains) cron(q tx.Querier, log *slog.Logger) []cron.Task {
 	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), d.Workers.Cron(),
-		d.Runs.Cron(log), []cron.Task{orphansTask(q, log)})
+		d.Runs.Cron(log), d.State.Cron(log), []cron.Task{orphansTask(q, log)})
 }

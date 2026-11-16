@@ -35,8 +35,10 @@
 // deletes its runs in the same transaction; StateAccess is the
 // runsapi.StateAccess internal/app hands the state domain, a forward edge
 // that decides a run token's access to its stack's state from the run's
-// current state, and StackRuns the runsapi.StackRuns it hands there too,
-// which lists a stack's runs that have not ended; RunAccess is the accessapi.Runs internal/app binds in
+// current state, StackRuns the runsapi.StackRuns it hands there too,
+// which lists a stack's runs that have not ended, and RunEnds the
+// runsapi.RunEnds it hands there as well, which answers which of an
+// account's runs have not ended; RunAccess is the accessapi.Runs internal/app binds in
 // the access domain, the back edge an in-run API token's authentication
 // reads its run's stack, space and liveness through; API is its partial
 // of the

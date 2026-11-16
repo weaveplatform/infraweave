@@ -24,7 +24,8 @@
 // worker.samples.retention, the workers domain's assembly Settings; Run holds run.lost_after,
 // run.preparing_timeout_default and run.timers.*, the runs domain's assembly Settings, and
 // Load rejects a run.lost_after no greater than worker.offline_after;
-// State holds state.max_size, the state domain's assembly Settings.
+// State holds state.max_size and state.noncurrent_retention, the state
+// domain's assembly Settings, where a retention of 0 keeps every version.
 // Defaults are what an empty configuration
 // means, Validate rejects a setting the server could not start with,
 // ServeFlags declares the flags of the modes that serve the API, AdminFlags

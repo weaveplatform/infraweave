@@ -114,6 +114,18 @@ type StackRuns interface {
 	Unended(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]UnendedRun, error)
 }
 
+// RunEnds tells which runs have not ended, for a domain that keeps what a
+// run wrote until the run ends, such as state retention, which never
+// deletes a version a run under way wrote; a forward edge internal/app
+// hands the state domain.
+type RunEnds interface {
+	// NotEnded answers those of acct's runs that have not ended, in the
+	// order of their IDs, in the transaction ctx carries. A run acct
+	// lacks has ended, since only its stack's or its account's deletion
+	// removes a run.
+	NotEnded(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) ([]kernel.ULID, error)
+}
+
 // UnendedRun is a run that has not ended: its ID, its type, which tells a
 // run that takes its stack's exclusive lock from one that never does, and
 // its state.

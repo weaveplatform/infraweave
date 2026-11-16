@@ -328,10 +328,10 @@
     {
       "id": "DV-036",
       "group": "State and queue: decisions 0010 and 0011",
-      "spacelift": "SaaS keeps non-current state versions for 30 days",
-      "infraweave": "Non-current versions are kept 90 days by default (`state.noncurrent_retention`; `0` keeps them forever)",
+      "spacelift": "SaaS keeps non-current state versions for 30 days ([16 section 6.2](../research/reference/16-state-management.md#62-behaviour)); self-hosted documents the states bucket's retention as infinite ([16 section 1.2](../research/reference/16-state-management.md#12-self-hosted-storage))",
+      "infraweave": "Non-current versions are kept 90 days by default (`state.noncurrent_retention`, a duration; `0` keeps them forever), counted from when the next version was written. The daily `state.retention` task deletes each one past it, row and then object, but never a workspace's current version or a version a run that has not ended wrote; a rollback to a deleted version answers `404`, and the version search no longer lists it",
       "why": "Long enough to roll back past a quarter's changes, while storage stays bounded",
-      "impact": "Rollback reaches further back than on SaaS; an operator may shorten or lengthen it",
+      "impact": "Rollback reaches further back than on SaaS; an operator may shorten or lengthen it, or keep every version as self-hosted Spacelift does",
       "source": "[0010 Rationale](../research/decisions/0010-state-backend.md#rationale)"
     },
     {
