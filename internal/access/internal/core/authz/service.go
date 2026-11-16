@@ -100,12 +100,12 @@ func decide[T any](
 	return f(snap, whoOf(p)), nil
 }
 
-// decideIn is decide for a check of space. A snapshot that does not hold
+// decideIn is decide for a view of space. A snapshot that does not hold
 // space is older than the space when the account's authz_version has
 // moved since it was built, whether because this replica created the
 // space or another did and its message has not arrived, so it is rebuilt
 // before f reads it; otherwise a caller that has just created a space
-// would be refused it until the message arrived.
+// would see none of it until the message arrived.
 func decideIn[T any](
 	ctx context.Context,
 	s *Service,
@@ -122,18 +122,65 @@ func decideIn[T any](
 		return zero, err
 	}
 	if !snap.holds(space) {
-		versions, err := s.store.AuthzVersions(ctx, []kernel.AccountID{p.AccountID})
-		if err != nil {
-			return zero, fmt.Errorf("authorization version of account %s: %w", p.AccountID, err)
-		}
-		if v, ok := versions[p.AccountID]; !ok || v != snap.version {
-			s.Drop(p.AccountID)
-			if snap, err = s.Snapshot(ctx, p.AccountID); err != nil {
-				return zero, err
-			}
+		if snap, _, err = s.recheck(ctx, p.AccountID, snap); err != nil {
+			return zero, err
 		}
 	}
 	return f(snap, whoOf(p)), nil
+}
+
+// check is f, a decision, for p, false for a principal with no account. A
+// refusal stands only once the snapshot is compared with the account's
+// authz_version, and is decided again on a rebuilt snapshot when the
+// version has moved: a grant, or a space, committed on another replica
+// whose message has not arrived would otherwise be refused here, so the
+// replica a request reaches would decide it. An allowed decision is not
+// compared, so a revocation applies on its message or at Refresh; a
+// refusal costs one read of the version and rebuilds nothing while the
+// version stands.
+func check(
+	ctx context.Context,
+	s *Service,
+	p kernel.Principal,
+	f func(*Snapshot, Who) bool,
+) (bool, error) {
+	if p.AccountID.IsZero() {
+		return false, nil
+	}
+	snap, err := s.Snapshot(ctx, p.AccountID)
+	if err != nil {
+		return false, err
+	}
+	if f(snap, whoOf(p)) {
+		return true, nil
+	}
+	snap, moved, err := s.recheck(ctx, p.AccountID, snap)
+	if err != nil || !moved {
+		return false, err
+	}
+	return f(snap, whoOf(p)), nil
+}
+
+// recheck compares snap, acct's snapshot, with the account's
+// authz_version, and answers it rebuilt when the version has moved or the
+// account is gone, and whether it was.
+func (s *Service) recheck(
+	ctx context.Context,
+	acct kernel.AccountID,
+	snap *Snapshot,
+) (*Snapshot, bool, error) {
+	versions, err := s.store.AuthzVersions(ctx, []kernel.AccountID{acct})
+	if err != nil {
+		return nil, false, fmt.Errorf("authorization version of account %s: %w", acct, err)
+	}
+	if v, ok := versions[acct]; ok && v == snap.version {
+		return snap, false, nil
+	}
+	s.Drop(acct)
+	if snap, err = s.Snapshot(ctx, acct); err != nil {
+		return nil, false, err
+	}
+	return snap, true, nil
 }
 
 // Authorize decides whether p may perform action in space.
@@ -143,7 +190,7 @@ func (s *Service) Authorize(
 	action accessapi.Action,
 	space kernel.ULID,
 ) (bool, error) {
-	return decideIn(ctx, s, p, space, func(snap *Snapshot, w Who) bool {
+	return check(ctx, s, p, func(snap *Snapshot, w Who) bool {
 		return snap.Authorize(w, action, space)
 	})
 }
@@ -221,7 +268,7 @@ func (s *Service) Holds(
 	p kernel.Principal,
 	action accessapi.Action,
 ) (bool, error) {
-	return decide(ctx, s, p, func(snap *Snapshot, w Who) bool { return snap.Holds(w, action) })
+	return check(ctx, s, p, func(snap *Snapshot, w Who) bool { return snap.Holds(w, action) })
 }
 
 // Actions is every assignable action p may perform in space.
@@ -237,7 +284,7 @@ func (s *Service) Actions(
 
 // Admin reports whether p is an account admin of its account.
 func (s *Service) Admin(ctx context.Context, p kernel.Principal) (bool, error) {
-	return decide(ctx, s, p, (*Snapshot).Admin)
+	return check(ctx, s, p, (*Snapshot).Admin)
 }
 
 // Drop forgets acct's snapshot, so the next check rebuilds it.

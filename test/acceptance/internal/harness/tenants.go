@@ -144,11 +144,19 @@ func (t Tenant) Seed(ctx context.Context, db Querier) error {
 
 // AuthzChanged is the SQL that marks the account's authorization changed,
 // as the access domain's writes do: its version moves and authz:<account>
-// goes out, so every replica drops the snapshot it holds at once.
+// goes out, so every replica drops the snapshot it holds once the message
+// arrives.
 func AuthzChanged(account string) string {
+	return AuthzMoved(account) + fmt.Sprintf(`
+		SELECT pg_notify('infraweave_invalidate', 'authz:%s');`, account)
+}
+
+// AuthzMoved is AuthzChanged with no message: the account's version
+// moves, and each replica holds its snapshot as when the message is lost
+// or not yet delivered.
+func AuthzMoved(account string) string {
 	return fmt.Sprintf(`
-		UPDATE accounts SET authz_version = authz_version + 1 WHERE id = '%s';
-		SELECT pg_notify('infraweave_invalidate', 'authz:%s');`, UUIDOf(account), account)
+		UPDATE accounts SET authz_version = authz_version + 1 WHERE id = '%s';`, UUIDOf(account))
 }
 
 // Exchange trades t's key for an API token at POST /auth/token.

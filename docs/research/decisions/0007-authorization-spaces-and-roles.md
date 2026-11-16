@@ -375,10 +375,15 @@ kind.
   on the message, and also compares the version every 5 seconds in case a
   message was lost. Deleting an account sends `authz:<account>` alone, as
   no version is left to move. The replica that writes drops its own
-  snapshot on commit, so the change's answer reflects it, and a check of a
-  space the snapshot lacks compares the version at once and rebuilds when
-  it has moved, so a space created on another replica is usable before
-  its message arrives.
+  snapshot on commit, so the change's answer reflects it. A refusal, of an
+  action in a space or of the space itself, and a view of a space the
+  snapshot lacks, compare the version at once and decide again on a
+  rebuilt snapshot when it has moved, so a grant or a space committed on
+  another replica holds at the caller's next request on any replica,
+  before its message arrives. A refusal costs one read of the version and
+  rebuilds nothing while the version stands. An allowed check compares
+  nothing, so a revocation applies on its message, or within the 5-second
+  comparison when the message is lost.
 - Under `MANAGED_USERS` this makes binding and role changes apply to live
   sessions at once, as Spacelift does since 2026-03-19.
 
