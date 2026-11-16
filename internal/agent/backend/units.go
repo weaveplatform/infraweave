@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -351,7 +352,14 @@ func (p *project) include(dir string, body *hclsyntax.Body) (string, bool) {
 		return "", false
 	}
 	name := filepath.FromSlash(v.AsString())
-	if !filepath.IsAbs(name) {
+	switch {
+	case filepath.IsAbs(name):
+	case path.IsAbs(v.AsString()):
+		// A path rooted at / names the root of dir's volume, as Windows
+		// resolves it: filepath.IsAbs wants a volume there, and joining
+		// would put the path under dir.
+		name = filepath.VolumeName(dir) + name
+	default:
 		name = filepath.Join(dir, name)
 	}
 	return filepath.Clean(name), true
