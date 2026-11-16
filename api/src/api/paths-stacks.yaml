@@ -1559,16 +1559,16 @@ components:
           description: True if the state has been manually imported
           type: boolean
         importedTimestamp:
-          description: When the version is a rollback to a manually imported state this will be set to imported state timestamp
+          description: Unix timestamp of the import, for an imported version and for a rollback to one
           format: int32
           nullable: true
           type: integer
         importedUsername:
-          description: The username that initiated the import
+          description: The username that initiated the import, for an imported version and for a rollback to one
           nullable: true
           type: string
         lastModified:
-          description: Unix timestamp of the last time the state has been modified
+          description: Unix timestamp of when the version was written
           format: int32
           type: integer
         rollback:
@@ -1593,7 +1593,7 @@ components:
       type: object
       x-graphql-type: ManagedStateVersion
     ManagedStateVersionConnection:
-      description: ManagedStateVersionConnection represents a single worker pool in a page of results.
+      description: ManagedStateVersionConnection represents a single state version in a page of results.
       properties:
         cursor:
           type: string
@@ -5722,6 +5722,9 @@ components:
       description: The arguments of stackManagedStateRollback not carried in the path.
       properties:
         managedStateVersionId:
+          description: >-
+            The ID of the state version of the stack's default workspace to
+            roll back to, as stackSearchManagedStateVersions answers it.
           type: string
       required:
         - managedStateVersionId
@@ -8611,6 +8614,21 @@ paths:
       x-rest-style: action
   /stacks/{stackId}/managed-state-rollback:
     post:
+      description: >-
+        Roll the stack's default workspace back to an earlier state version,
+        named by its ID in `managedStateVersionId`, by writing a copy of it as
+        the new current version, marked as a rollback by the caller. The copy
+        keeps the earlier version's run and, for an imported version, who
+        imported it and when. The stack must have its state managed by
+        infraweave, the caller must hold the stack's lock, and no tracked run,
+        task or destroy run on the stack may be under way; otherwise the
+        rollback answers 409. A version the stack's default workspace does not
+        hold, or no longer holds, answers 404, and the current version answers
+        409. Only the state changes, never the infrastructure: the next run
+        plans against the restored state, and the stack's isStateRollback is
+        true until a run or an import writes a newer version. No run is
+        created on the stack while the rollback runs, and the rollback is
+        recorded on the audit trail. It answers the new version.
       operationId: stackManagedStateRollback
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_MANAGED_STATE_ROLLBACK
@@ -8627,7 +8645,7 @@ paths:
         content:
           application/json:
             example:
-              managedStateVersionId: STATE_VERSION_ID_HERE
+              managedStateVersionId: 01JCQ6V1Z8K4X7N2P5R9T3W6YB
             schema:
               $ref: '#/components/schemas/StackManagedStateRollbackRequest'
         required: true
@@ -10547,7 +10565,11 @@ paths:
       x-rest-style: field
   /stacks/{stackId}/search-managed-state-versions:
     get:
-      description: Returns managed state versions
+      description: >-
+        Search the state versions of the stack's default workspace, filtering
+        by createdAt, run, rollback and imported, newest first unless the
+        search names an order. A rollback names the run of the version it
+        copies, and an imported version names no run.
       operationId: stackSearchManagedStateVersions
       x-infraweave-feature: stacks
       x-infraweave-action: SPACE_READ
@@ -10596,7 +10618,7 @@ paths:
         field: searchManagedStateVersions
         operation: query
         type: Stack
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: field

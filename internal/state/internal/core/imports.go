@@ -23,9 +23,10 @@ const ActionImport = "stack.state_import"
 // field names the check that refused it.
 const invalidDetail = "The state file cannot be imported."
 
-// Blocked reports an import the stack's state refuses: the stack keeps
-// no managed state, the caller does not hold its lock, or a run that may
-// write its state is under way. Detail names what blocks it.
+// Blocked reports an import or a rollback the stack's state refuses: the
+// stack keeps no managed state, the caller does not hold its lock, a run
+// that may write its state is under way, or a rollback's target is the
+// current version. Detail names what blocks it.
 type Blocked struct{ Detail string }
 
 func (b *Blocked) Error() string { return "state: " + b.Detail }
@@ -78,26 +79,37 @@ func (s *Service) Import(ctx context.Context, p kernel.Principal, remoteIP, slug
 		if err != nil {
 			return err
 		}
-		if err := s.idle(ctx, p, set); err != nil {
+		if err := s.idle(ctx, p, set, importing); err != nil {
 			return err
 		}
 		return s.importFile(ctx, p, remoteIP, set.Stack, object, "/state")
 	})
 }
 
-// idle refuses an import into set's stack unless it keeps its state, p
-// holds its lock and no run that may write its state is under way: a
-// proposed run writes none, so it does not count.
-func (s *Service) idle(ctx context.Context, p kernel.Principal, set stacksapi.Settings) error {
+// change names a change of a stack's state that idle guards, as its
+// refusals word it: the change under way, what its maker does, and the
+// change itself.
+type change struct{ doing, does, do string }
+
+var (
+	importing   = change{doing: "importing", does: "imports", do: "import"}
+	rollingBack = change{doing: "rolling back", does: "rolls back", do: "roll back"}
+)
+
+// idle refuses c of set's stack's state unless the stack keeps its
+// state, p holds its lock and no run that may write its state is under
+// way: a proposed run writes none, so it does not count.
+func (s *Service) idle(ctx context.Context, p kernel.Principal, set stacksapi.Settings, c change) error {
 	switch {
 	case !set.ManagesState:
 		return &Blocked{Detail: "The stack's state is not managed by infraweave."}
 	case set.Lock == nil:
-		return &Blocked{Detail: "The stack is not locked; lock it before importing its state."}
+		return &Blocked{Detail: fmt.Sprintf(
+			"The stack is not locked; lock it before %s its state.", c.doing)}
 	case set.Lock.Holder != p.Caller():
 		return &Blocked{Detail: fmt.Sprintf(
-			"The stack is locked by %s; only the holder of its lock imports its state.",
-			set.Lock.By)}
+			"The stack is locked by %s; only the holder of its lock %s its state.",
+			set.Lock.By, c.does)}
 	}
 	runs, err := s.runs.Unended(ctx, set.Account, set.ID)
 	if err != nil {
@@ -106,8 +118,8 @@ func (s *Service) idle(ctx context.Context, p kernel.Principal, set stacksapi.Se
 	for _, r := range runs {
 		if r.Type.Blocking() {
 			return &Blocked{Detail: fmt.Sprintf(
-				"The stack's %s run %s has not finished; import its state once it has.",
-				r.Type, r.ID)}
+				"The stack's %s run %s has not finished; %s its state once it has.",
+				r.Type, r.ID, c.do)}
 		}
 	}
 	return nil

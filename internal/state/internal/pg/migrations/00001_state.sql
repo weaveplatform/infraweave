@@ -78,10 +78,12 @@ CREATE INDEX state_broken_locks_run ON state_broken_locks (account_id, run_id);
 -- <account>/<stack>/<sha256 of workspace name>/<version>, and size and
 -- sha256 its plaintext's. serial and lineage are the state's, absent for
 -- a client-encrypted state the server never parses. run_id is the run
--- that wrote it, absent for an import or a rollback, with no foreign key,
--- as in state_locks; rolled_back_from is the version a rollback copied.
--- imported_username and imported_at name who imported an imported
--- version and when, and only an imported version has them.
+-- that wrote it, absent for an import, with no foreign key, as in
+-- state_locks. A rollback copies the version rolled_back_from names, its
+-- run_id and its import's columns with it, and rollback_username names
+-- who rolled back; only a rollback has them. imported_username and
+-- imported_at name who imported an imported version and when, and only
+-- an imported version, or a rollback to one, has them.
 CREATE TABLE managed_state_versions (
     account_id        uuid        NOT NULL,
     id                uuid        NOT NULL,
@@ -106,7 +108,8 @@ CREATE TABLE managed_state_versions (
         REFERENCES state_workspaces (account_id, stack_id, name) ON DELETE CASCADE,
     CHECK (size >= 0 AND octet_length(sha256) = 32),
     CHECK (client_encrypted OR (serial IS NOT NULL AND lineage IS NOT NULL)),
-    CHECK (imported = (imported_username IS NOT NULL AND imported_at IS NOT NULL))
+    CHECK (imported = (imported_username IS NOT NULL AND imported_at IS NOT NULL)),
+    CHECK (rollback = (rollback_username IS NOT NULL AND rolled_back_from IS NOT NULL))
 );
 
 -- A stack's version search lists a workspace's versions by when they were
@@ -114,6 +117,7 @@ CREATE TABLE managed_state_versions (
 CREATE INDEX managed_state_versions_search
     ON managed_state_versions (account_id, stack_id, workspace, created_at);
 
--- A run's versions, which the orphan count and a run's view read.
+-- A run's versions, which the orphan count and a run's view read; a
+-- rollback is among its target's run's.
 CREATE INDEX managed_state_versions_run ON managed_state_versions (account_id, run_id)
     WHERE run_id IS NOT NULL;

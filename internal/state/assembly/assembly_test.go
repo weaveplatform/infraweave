@@ -26,14 +26,15 @@ import (
 
 // TestUnitDomain checks that the domain constructs its core and backend,
 // declares its stream and held columns, its stack guard, its purge job,
-// its versions, its API partial and its workspace resolver, subscribes
+// its versions, its reader of rolled-back stacks, its API partial and its
+// workspace resolver, subscribes
 // its lock release once, and that its routes need a run on a domain and
 // answer 501 on none.
 func TestUnitDomain(t *testing.T) {
 	d := New(Deps{})
 	if d == nil || d.state == nil || d.backend == nil || d.Versions() == nil ||
-		d.SpaceOf() == nil {
-		t.Fatal("the domain has no core, backend, versions or resolver")
+		d.SpaceOf() == nil || d.StateRollbacks() == nil {
+		t.Fatal("the domain has no core, backend, versions, rollbacks or resolver")
 	}
 	if partial := d.API(); reflect.ValueOf(partial.urls).IsZero() ||
 		reflect.ValueOf(partial.workspaces).IsZero() {

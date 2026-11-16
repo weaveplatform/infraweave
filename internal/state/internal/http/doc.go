@@ -1,6 +1,8 @@
 // Package http is the state domain's HTTP adapter for the API: Server,
 // the domain's partial of the API's strict server, which serves the Tofu
-// Workspaces operations and stackManagedStateImport. searchTofuWorkspaces pages the workspaces of the
+// Workspaces operations, stackManagedStateImport,
+// stackManagedStateRollback and stackSearchManagedStateVersions.
+// searchTofuWorkspaces pages the workspaces of the
 // stacks in the spaces the caller may read, and
 // searchTofuWorkspacesSuggestions suggests their names and stacks;
 // tofuWorkspaceUnlock releases every lock on one workspace and answers
@@ -11,7 +13,13 @@
 // into the stack's default workspace, recording the caller's address,
 // and answers true; a stack whose managed state, lock or runs refuse it
 // answers 409 invalid-state naming what blocks it, and an upload refused
-// 422 pointing at /state. Each workspace
+// 422 pointing at /state. stackManagedStateRollback rolls the default
+// workspace back to the version the body names and answers the new
+// version; a stack refused as import refuses, or a target that is the
+// current version, answers 409 invalid-state, and a version the stack
+// lacks 404. stackSearchManagedStateVersions pages the default
+// workspace's versions, each answering its ID, size, when it was
+// written, its run, its import and its rollback. Each workspace
 // answers its ID, its name,
 // default for a stack's default workspace, its creation in Unix seconds,
 // whether a lock is held and lockedBy, who triggered the run whose lock

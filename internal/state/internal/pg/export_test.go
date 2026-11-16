@@ -14,3 +14,10 @@ var WorkspaceSearch = workspaceSearch
 func WorkspaceSearchScope(acct kernel.AccountID, scope core.WorkspaceScope) sqlsearch.Scope {
 	return workspaceScope(acct, scope)
 }
+
+// VersionSearch is the version entity, which the external tests fuzz.
+var VersionSearch = versionSearch
+
+// VersionSearchScope is the scope a search of scope's versions compiles
+// under.
+func VersionSearchScope(scope core.VersionScope) sqlsearch.Scope { return versionScope(scope) }

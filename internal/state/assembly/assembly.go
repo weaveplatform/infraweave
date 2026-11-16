@@ -123,8 +123,9 @@ func New(d Deps) *Domain {
 // StateAPI is the domain's partial of the API's strict server, which
 // internal/app embeds once: the signed URLs' stateUploadUrl and
 // stateDownloadUrl, served by the domain's urls adapter, and the Tofu
-// Workspaces operations and stackManagedStateImport, served by its http
-// adapter. It forwards each
+// Workspaces operations, stackManagedStateImport,
+// stackManagedStateRollback and stackSearchManagedStateVersions, served
+// by its http adapter. It forwards each
 // operation to its adapter rather than embedding the two, since an
 // embedded adapter's methods would sit at the depth of the API's 501
 // stubs, which then make each ambiguous.
@@ -183,6 +184,21 @@ func (a StateAPI) StackManagedStateImport(ctx context.Context, req api.StackMana
 	return a.workspaces.StackManagedStateImport(ctx, req) //nolint:wrapcheck // as above
 }
 
+// StackManagedStateRollback rolls a stack's default workspace back to an
+// earlier version.
+func (a StateAPI) StackManagedStateRollback(ctx context.Context, req api.StackManagedStateRollbackRequestObject) (api.StackManagedStateRollbackResponseObject, error) {
+	return a.workspaces.StackManagedStateRollback(ctx, req) //nolint:wrapcheck // as above
+}
+
+// StackSearchManagedStateVersions searches the versions of a stack's
+// default workspace.
+func (a StateAPI) StackSearchManagedStateVersions(
+	ctx context.Context,
+	req api.StackSearchManagedStateVersionsRequestObject,
+) (api.StackSearchManagedStateVersionsResponseObject, error) {
+	return a.workspaces.StackSearchManagedStateVersions(ctx, req) //nolint:wrapcheck // as above
+}
+
 // Versions are what other domains read of a stack's managed state.
 func (d *Domain) Versions() stateapi.Versions { return d.state }
 
@@ -219,6 +235,12 @@ func (d *Domain) StackGuard() stacksapi.StackGuard { return d.state }
 // infraweave keeps lists its default workspace from its creation, with
 // the state file its creation imports as the first version.
 func (d *Domain) ManagedState() stacksapi.ManagedState { return d.state }
+
+// StateRollbacks is the domain's reader of which stacks are rolled back,
+// which internal/app binds to the stacks domain, so a stack answers
+// isStateRollback while its default workspace's current version is a
+// rollback.
+func (d *Domain) StateRollbacks() stacksapi.StateRollbacks { return d.state }
 
 // StackPurge is the job that purges a deleted stack's state.
 var StackPurge = core.PurgeKind

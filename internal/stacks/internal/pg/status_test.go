@@ -110,3 +110,65 @@ func TestAccHandlersStatus(t *testing.T) {
 		t.Errorf("a view whose blocker fails = %v", err)
 	}
 }
+
+// rollbacks is the state domain's answer of which stacks are rolled
+// back, failing with err.
+type rollbacks struct {
+	back map[kernel.ULID]bool
+	err  error
+}
+
+func (r rollbacks) RolledBack(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]bool, error) {
+	return r.back, r.err
+}
+
+// TestAccHandlersStateRollback checks that a stack's view, alone and in
+// a list, answers isStateRollback from the bound reader, false before
+// one is bound and for a stack it leaves out, and that it fails when the
+// state domain does.
+//
+// ref: decision 0010 § "Rollback, searches and retention"
+func TestAccHandlersStateRollback(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
+	handed := s
+	admin := kernel.WithPrincipal(ctx, f.admin)
+	infra, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Create(ctx, f.admin, "", false, "", input("Web")); err != nil {
+		t.Fatal(err)
+	}
+	read := func() (api.Stack, error) {
+		got, err := handed.Stack(admin, api.StackRequestObject{StackId: "infra"})
+		if err != nil {
+			return api.Stack{}, err
+		}
+		return got.(api.Stack200JSONResponse).Body, nil
+	}
+	if v, err := read(); err != nil || v.IsStateRollback {
+		t.Errorf("a stack with no reader bound: isStateRollback %v, %v", v.IsStateRollback, err)
+	}
+	s.BindStateRollbacks(rollbacks{back: map[kernel.ULID]bool{infra.ID: true}})
+	if v, err := read(); err != nil || !v.IsStateRollback {
+		t.Errorf("a rolled-back stack: isStateRollback %v, %v", v.IsStateRollback, err)
+	}
+	res, err := handed.Stacks(admin, api.StacksRequestObject{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, v := range res.(api.Stacks200JSONResponse).Body.Items {
+		got[v.Id] = v.IsStateRollback
+	}
+	if len(got) != 2 || !got["infra"] || got["web"] {
+		t.Errorf("a list's isStateRollback = %v", got)
+	}
+	down := errors.New("state down")
+	s.BindStateRollbacks(rollbacks{err: down})
+	if _, err := read(); !errors.Is(err, down) {
+		t.Errorf("a view whose rollback read fails = %v", err)
+	}
+}

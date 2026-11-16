@@ -192,6 +192,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	})
 	stacks.GuardStacks(state.StackGuard())
 	stacks.BindManagedState(state.ManagedState())
+	stacks.BindStateRollbacks(state.StateRollbacks())
 	access.ResolveSubjects(stateassembly.Entity, state.SpaceOf())
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:       db.Primary(),

@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -15,20 +16,23 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 )
 
 // fake answers each call with its fields and records the principal,
 // address and argument it was given.
 type fake struct {
-	result  search.Result[core.Workspace]
-	suggest search.Suggestions
-	one     core.Workspace
-	many    []core.Workspace
-	err     error
-	who     kernel.Principal
-	addr    string
-	arg     any
+	result   search.Result[core.Workspace]
+	suggest  search.Suggestions
+	one      core.Workspace
+	many     []core.Workspace
+	version  core.Version
+	versions search.Result[core.Version]
+	err      error
+	who      kernel.Principal
+	addr     string
+	arg      any
 }
 
 func (f *fake) SearchWorkspaces(_ context.Context, p kernel.Principal, in search.Input) (search.Result[core.Workspace], error) {
@@ -56,6 +60,19 @@ func (f *fake) Import(_ context.Context, p kernel.Principal, addr, slug, object 
 	return f.err
 }
 
+func (f *fake) Rollback(_ context.Context, p kernel.Principal, addr, slug, version string) (core.Version, error) {
+	f.who, f.addr, f.arg = p, addr, slug+" "+version
+	return f.version, f.err
+}
+
+func (f *fake) SearchVersions(_ context.Context, p kernel.Principal, slug string, in search.Input) (search.Result[core.Version], error) {
+	f.who, f.arg = p, slug
+	if in.First != nil {
+		f.arg = slug + " " + strconv.Itoa(int(*in.First))
+	}
+	return f.versions, f.err
+}
+
 var (
 	created = time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC)
 	held    = core.Workspace{
@@ -63,6 +80,41 @@ var (
 	}
 	free = core.Workspace{ID: kernel.NewULID(), Name: "blue", CreatedAt: created}
 )
+
+// TestUnitVersionView checks a version as the API answers it: written
+// at lastModified, naming its run, and a rollback to an imported version
+// naming who imported it and when, as an import does.
+func TestUnitVersionView(t *testing.T) {
+	run, from := kernel.NewULID(), kernel.NewULID()
+	imported := created.Add(-time.Hour)
+	alice, bob := "alice", "bob"
+	written := core.Version{Version: stateapi.Version{
+		ID: kernel.NewULID(), Size: 42, Run: &run, CreatedAt: created,
+	}}
+	back := core.Version{Version: stateapi.Version{
+		ID: kernel.NewULID(), Size: math.MaxInt32 + 1, CreatedAt: created, Imported: true,
+		ImportedUsername: &alice, ImportedAt: &imported, Rollback: true, RollbackUsername: &bob,
+		RolledBackFrom: &from,
+	}}
+	for _, tc := range []struct {
+		v    core.Version
+		want api.ManagedStateVersion
+	}{
+		{written, api.ManagedStateVersion{
+			Id: written.ID.String(), Size: 42, LastModified: int32(created.Unix()),
+			Run: &api.RunRef{Id: run.String()},
+		}},
+		{back, api.ManagedStateVersion{
+			Id: back.ID.String(), Size: math.MaxInt32, LastModified: int32(created.Unix()),
+			Imported: true, ImportedUsername: &alice, ImportedTimestamp: new(int32(imported.Unix())),
+			Rollback: true, RollbackUsername: &bob,
+		}},
+	} {
+		if got := versionView(tc.v); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("versionView(%+v) = %+v, want %+v", tc.v, got, tc.want)
+		}
+	}
+}
 
 // TestUnitView checks a workspace as the API answers it: the default
 // workspace named default, its creation in Unix seconds, and lockedBy
@@ -153,6 +205,39 @@ func TestUnitHandlers(t *testing.T) {
 		f.arg != "app obj" || f.addr != "192.0.2.1" || f.who.Login != "dave" {
 		t.Errorf("StackManagedStateImport = %+v, %v", ires, err)
 	}
+
+	f.version = core.Version{Version: stateapi.Version{ID: kernel.NewULID(), Rollback: true}}
+	rres, err := s.StackManagedStateRollback(ctx, api.StackManagedStateRollbackRequestObject{
+		StackId: "app", Body: &api.StackManagedStateRollbackJSONRequestBody{ManagedStateVersionId: "v1"},
+	})
+	if rout, _ := rres.(api.StackManagedStateRollback200JSONResponse); err != nil ||
+		rout.Body.Id != f.version.ID.String() || !rout.Body.Rollback || f.arg != "app v1" ||
+		f.addr != "192.0.2.1" || f.who.Login != "dave" {
+		t.Errorf("StackManagedStateRollback = %+v, %v", rres, err)
+	}
+
+	f.versions = search.Result[core.Version]{
+		Edges: []search.Edge[core.Version]{{Cursor: "v2", Node: f.version}}, Start: "v2", End: "v2",
+		HasPrevious: true,
+	}
+	vres, err := s.StackSearchManagedStateVersions(ctx, api.StackSearchManagedStateVersionsRequestObject{
+		StackId: "app", Params: api.StackSearchManagedStateVersionsParams{
+			Input: api.SearchInput{First: &first},
+		},
+	})
+	vout, _ := vres.(api.StackSearchManagedStateVersions200JSONResponse)
+	if err != nil || len(vout.Body.Edges) != 1 || vout.Body.Edges[0].Cursor != "v2" ||
+		vout.Body.Edges[0].Node.Id != f.version.ID.String() || !vout.Body.PageInfo.HasPreviousPage ||
+		f.arg != "app 2" || f.who.Login != "dave" {
+		t.Errorf("StackSearchManagedStateVersions = %+v, %v", vres, err)
+	}
+	f.versions = search.Result[core.Version]{}
+	vres, err = s.StackSearchManagedStateVersions(ctx,
+		api.StackSearchManagedStateVersionsRequestObject{StackId: "app"})
+	if vout, _ := vres.(api.StackSearchManagedStateVersions200JSONResponse); err != nil ||
+		vout.Body.Edges == nil {
+		t.Errorf("a stack with no version = %+v, %v", vres, err)
+	}
 }
 
 // TestUnitRefusals checks that a call without a principal is refused, a
@@ -189,6 +274,17 @@ func TestUnitRefusals(t *testing.T) {
 			})
 			return err
 		},
+		"rollback": func(ctx context.Context) error {
+			_, err := s.StackManagedStateRollback(ctx, api.StackManagedStateRollbackRequestObject{
+				Body: &api.StackManagedStateRollbackJSONRequestBody{},
+			})
+			return err
+		},
+		"versions": func(ctx context.Context) error {
+			_, err := s.StackSearchManagedStateVersions(ctx,
+				api.StackSearchManagedStateVersionsRequestObject{})
+			return err
+		},
 	}
 	for name, call := range calls {
 		if p, ok := errors.AsType[*problem.Error](call(bare)); !ok ||
@@ -214,13 +310,33 @@ func TestUnitRefusals(t *testing.T) {
 	if err := importing(New(&fake{err: inv})); !errors.Is(err, inv) {
 		t.Errorf("a refused upload = %v", err)
 	}
-	for _, err := range []error{core.ErrNotFound, stacksapi.ErrNotFound} {
+	rolling := func(s Server) error {
+		_, err := s.StackManagedStateRollback(ctx, api.StackManagedStateRollbackRequestObject{
+			StackId: "s", Body: &api.StackManagedStateRollbackJSONRequestBody{ManagedStateVersionId: "v"},
+		})
+		return err
+	}
+	err = rolling(New(&fake{err: &core.Blocked{Detail: "The state version v is current."}}))
+	if p, ok := errors.AsType[*problem.Error](err); !ok || p.Problem.Status != http.StatusConflict ||
+		p.Problem.Type != problem.TypePrefix+problem.InvalidState.Slug ||
+		p.Problem.Detail != "The state version v is current." {
+		t.Errorf("a blocked rollback = %v", err)
+	}
+	searching := func(s Server) error {
+		_, err := s.StackSearchManagedStateVersions(ctx,
+			api.StackSearchManagedStateVersionsRequestObject{StackId: "s"})
+		return err
+	}
+	for _, err := range []error{core.ErrNotFound, stacksapi.ErrNotFound, core.ErrNoVersion} {
 		s := New(&fake{err: err})
 		_, uerr := s.TofuWorkspaceUnlock(ctx, api.TofuWorkspaceUnlockRequestObject{TofuWorkspaceId: "w"})
 		_, aerr := s.TofuWorkspaceUnlockAll(ctx, api.TofuWorkspaceUnlockAllRequestObject{StackId: "s"})
 		got := []error{uerr, aerr}
-		if errors.Is(err, stacksapi.ErrNotFound) {
-			got = append(got, importing(s))
+		switch {
+		case errors.Is(err, stacksapi.ErrNotFound):
+			got = append(got, importing(s), rolling(s), searching(s))
+		case errors.Is(err, core.ErrNoVersion):
+			got = []error{rolling(s)}
 		}
 		for _, got := range got {
 			if p, ok := errors.AsType[*problem.Error](got); !ok ||

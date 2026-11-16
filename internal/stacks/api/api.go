@@ -297,6 +297,19 @@ type ManagedState interface {
 	Created(ctx context.Context, p kernel.Principal, st Stack, object string) error
 }
 
+// StateRollbacks is what the stack view reads of the state domain, which
+// is constructed after stacks and implements it: which of the account's
+// stacks are rolled back, those whose default workspace's current state
+// version is a rollback, keyed by stack ID, with any other absent, which
+// isStateRollback answers. The stacks domain declares it, so the back
+// edge internal/app binds after construction adds no import.
+//
+// ref: decision 0004
+// ref: decision 0010 § "Rollback, searches and retention"
+type StateRollbacks interface {
+	RolledBack(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]bool, error)
+}
+
 // StackMove is a proposed move of a stack from the space it lives in to
 // To.
 type StackMove struct {

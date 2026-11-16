@@ -67,6 +67,13 @@ type Store interface {
 	// AddVersion records v in acct and makes it its workspace's current
 	// version.
 	AddVersion(ctx context.Context, acct kernel.AccountID, v Version) error
+	// SearchVersions reads a page of the versions of scope's workspace
+	// that in keeps, by VersionFields; an input they cannot answer is a
+	// *search.Invalid.
+	SearchVersions(ctx context.Context, in search.Input, scope VersionScope) (search.Result[Version], error)
+	// RolledBack lists those of acct's stacks whose default workspace's
+	// current version is a rollback.
+	RolledBack(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) ([]kernel.ULID, error)
 	// Purge deletes up to batch of acct's state rows, of stack alone when
 	// it is set: versions first, then locks, then workspaces, so no
 	// workspace goes before a row that names it. It answers the object
@@ -142,12 +149,12 @@ type Jobs interface {
 
 // Deps are what the service takes: DB, which it opens its transactions
 // on; Store; Stacks, which holds a stack while its workspace is written,
-// locks one an import writes and names the stacks a workspace search
-// reads; Authz, which names the spaces a caller may read; Objects, which
-// hold each version's object; Jobs, which enqueues a deleted stack's
-// purge; Runs, which lists the runs under way on a stack an import
-// writes; and Now, the clock an import's time is read from, time.Now
-// when nil.
+// locks one an import or a rollback writes and names the stacks a
+// workspace search reads; Authz, which names the spaces a caller may
+// read; Objects, which hold each version's object; Jobs, which enqueues a
+// deleted stack's purge; Runs, which lists the runs under way on a stack
+// an import or a rollback writes; and Now, the clock an import's time is
+// read from, time.Now when nil.
 type Deps struct {
 	DB      tx.Beginner
 	Store   Store

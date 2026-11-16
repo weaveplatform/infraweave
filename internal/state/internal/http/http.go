@@ -23,6 +23,8 @@ type State interface {
 	UnlockWorkspace(ctx context.Context, p kernel.Principal, remoteIP, raw string) (core.Workspace, error)
 	UnlockStack(ctx context.Context, p kernel.Principal, remoteIP, slug string) ([]core.Workspace, error)
 	Import(ctx context.Context, p kernel.Principal, remoteIP, slug, object string) error
+	Rollback(ctx context.Context, p kernel.Principal, remoteIP, slug, version string) (core.Version, error)
+	SearchVersions(ctx context.Context, p kernel.Principal, slug string, in search.Input) (search.Result[core.Version], error)
 }
 
 // Server is the state domain's partial of the API's strict server. The
@@ -127,6 +129,85 @@ func (s Server) StackManagedStateImport(ctx context.Context, req api.StackManage
 		return nil, refusal(err, req.StackId)
 	}
 	return api.StackManagedStateImport200JSONResponse{Body: true}, nil
+}
+
+// StackManagedStateRollback writes a copy of the version the body names
+// as the stack's default workspace's new current version, marked as the
+// caller's rollback, recording the caller's address with it, and answers
+// the new version. A stack whose state, lock or runs refuse it, or whose
+// current version the body names, answers 409 invalid-state naming what
+// blocks it; a version the workspace does not hold answers 404. The route
+// has decided STACK_MANAGED_STATE_ROLLBACK on the stack's space.
+//
+// ref: decision 0010 § "Rollback, searches and retention"
+func (s Server) StackManagedStateRollback(ctx context.Context, req api.StackManagedStateRollbackRequestObject) (api.StackManagedStateRollbackResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	v, err := s.state.Rollback(ctx, p, accessapi.ClientAddr(ctx), req.StackId,
+		req.Body.ManagedStateVersionId)
+	if b, ok := errors.AsType[*core.Blocked](err); ok {
+		return nil, problem.InvalidState.Error(b.Detail) //nolint:wrapcheck // a problem, answered as it is
+	}
+	if errors.Is(err, core.ErrNoVersion) {
+		//nolint:wrapcheck // as above
+		return nil, problem.NotFound.Error(fmt.Sprintf("No state version %q of stack %q.",
+			req.Body.ManagedStateVersionId, req.StackId))
+	}
+	if err != nil {
+		return nil, refusal(err, req.StackId)
+	}
+	return api.StackManagedStateRollback200JSONResponse{Body: versionView(v)}, nil
+}
+
+// StackSearchManagedStateVersions searches the versions of the stack's
+// default workspace. The route has decided SPACE_READ on the stack's
+// space.
+//
+// ref: decision 0010 § "Rollback, searches and retention"
+func (s Server) StackSearchManagedStateVersions(
+	ctx context.Context,
+	req api.StackSearchManagedStateVersionsRequestObject,
+) (api.StackSearchManagedStateVersionsResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.state.SearchVersions(ctx, p, req.StackId, apisearch.Input(req.Params.Input))
+	if err != nil {
+		return nil, refusal(err, req.StackId)
+	}
+	out := api.ManagedStateVersionOutput{
+		Edges:    make([]api.ManagedStateVersionConnection, len(res.Edges)),
+		PageInfo: apisearch.PageInfo(res),
+	}
+	for i, e := range res.Edges {
+		out.Edges[i] = api.ManagedStateVersionConnection{Cursor: e.Cursor, Node: versionView(e.Node)}
+	}
+	return api.StackSearchManagedStateVersions200JSONResponse{Body: out}, nil
+}
+
+// versionView is v as the API answers it: lastModified when it was
+// written, run the run it names, a rollback's its target's, and
+// importedTimestamp and importedUsername the import of an imported
+// version or of a rollback to one.
+//
+// ref: decision 0010 § "Rollback, searches and retention"
+func versionView(v core.Version) api.ManagedStateVersion {
+	out := api.ManagedStateVersion{
+		Id: v.ID.String(), Size: int32(min(max(v.Size, 0), math.MaxInt32)), //nolint:gosec // clamped
+		LastModified: unix(v.CreatedAt.Unix()), Imported: v.Imported,
+		ImportedUsername: v.ImportedUsername, Rollback: v.Rollback,
+		RollbackUsername: v.RollbackUsername,
+	}
+	if v.Run != nil {
+		out.Run = &api.RunRef{Id: v.Run.String()}
+	}
+	if v.ImportedAt != nil {
+		out.ImportedTimestamp = new(unix(v.ImportedAt.Unix()))
+	}
+	return out
 }
 
 // view is w as the API answers it: the default workspace named default,
