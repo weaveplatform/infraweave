@@ -3,6 +3,7 @@ package harness
 import (
 	"context"
 	"crypto"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -70,8 +71,10 @@ type World struct {
 	// which every server of the scenario keeps its objects in.
 	Bucket string
 	// storePort is an @objectstore scenario's port of the object store on
-	// the host's loopback, which the URLs its servers sign name.
-	storePort string
+	// the host's loopback, which the URLs its servers sign name: its
+	// storeRelay's under stress.
+	storePort  string
+	storeRelay *StoreRelay
 	// env is what every process mode of the scenario runs with beyond
 	// the test binary's environment: the object store's keys and what
 	// Setenv adds.
@@ -98,8 +101,9 @@ func Slug(name string) string {
 
 // evidence writes what a failed scenario leaves for its reader to
 // out/<scenario>/: each server's output and configuration, the first's at
-// the top and each later one's in server-<n>/, and, for a scenario that
-// took a database, a dump of it.
+// the top and each later one's in server-<n>/, for a scenario that
+// took a database, a dump of it, and under stress, the store relay's
+// calls.
 //
 // ref: decision 0016
 func (w *World) evidence(ctx context.Context) error {
@@ -123,6 +127,11 @@ func (w *World) evidence(ctx context.Context) error {
 			dumpErr,
 			os.WriteFile(filepath.Join(dir, "pg_dump.sql"), []byte(dump), 0o600),
 		)
+	}
+	if w.storeRelay != nil {
+		calls, jsonErr := json.MarshalIndent(w.storeRelay.Calls(), "", "  ")
+		err = errors.Join(err, jsonErr,
+			os.WriteFile(filepath.Join(dir, "store-calls.json"), calls, 0o600))
 	}
 	fmt.Printf("acceptance: evidence of %q is in %s\n", w.Name, dir)
 	return err
@@ -189,8 +198,9 @@ func (w *World) StartServer(ctx context.Context, settings map[string]any) (*Serv
 // objectStore is config with, for an @objectstore scenario, the s3 driver
 // on the scenario's Bucket, which it creates on first use, and the
 // store's keys in the environment its servers start with, where the
-// driver reads them. Every other scenario keeps the fs driver under
-// Objects.
+// driver reads them; under a stress of the store, the driver's endpoint
+// is the scenario's store relay, which it starts on first use. Every
+// other scenario keeps the fs driver under Objects.
 //
 // ref: decision 0016
 func (w *World) objectStore(ctx context.Context, config []byte) ([]byte, error) {
@@ -201,7 +211,16 @@ func (w *World) objectStore(ctx context.Context, config []byte) ([]byte, error) 
 	if err != nil {
 		return nil, err //nolint:wrapcheck // names @objectstore
 	}
-	u, err := url.Parse(store.Endpoint)
+	endpoint := store.Endpoint
+	if w.Suite.Stress.store() {
+		if w.storeRelay == nil {
+			if w.storeRelay, err = StartStoreRelay(ctx, endpoint, w.Suite.Stress); err != nil {
+				return nil, err
+			}
+		}
+		endpoint = w.storeRelay.URL
+	}
+	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("the object store's endpoint: %w", err)
 	}
@@ -220,7 +239,7 @@ func (w *World) objectStore(ctx context.Context, config []byte) ([]byte, error) 
 	return withSection(config, "objectstore", map[string]any{
 		"driver": "s3",
 		"s3": map[string]any{
-			"bucket": w.Bucket, "endpoint": store.Endpoint, "region": deps.ObjectStoreRegion,
+			"bucket": w.Bucket, "endpoint": endpoint, "region": deps.ObjectStoreRegion,
 			"path_style": true,
 		},
 	})

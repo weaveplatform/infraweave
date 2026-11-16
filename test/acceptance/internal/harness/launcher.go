@@ -71,6 +71,11 @@ type Launchers struct {
 	// own, so a build never holds up a download.
 	mirrorMu sync.Mutex
 	mirror   *mirror
+	// stopCaps stops capRuns's watch, which capped waits for; capErrs is
+	// what it could not cap.
+	stopCaps context.CancelFunc
+	capped   sync.WaitGroup
+	capErrs  error
 }
 
 // prepare builds what the launchers need into dir, from the module at
@@ -221,17 +226,22 @@ func (l *Launchers) Remove(ctx context.Context, key, value string) error {
 	return nil
 }
 
-// Close stops the tool mirror, removes RunnerImage and closes the
-// client.
+// Close stops the tool mirror and the run containers' caps, removes
+// RunnerImage and closes the client, returning each run container it
+// could not cap.
 func (l *Launchers) Close(ctx context.Context) error {
 	if l.mirror != nil {
 		l.mirror.srv.Close()
 	}
+	if l.stopCaps != nil {
+		l.stopCaps()
+		l.capped.Wait()
+	}
 	if l.cli == nil {
-		return nil
+		return l.capErrs
 	}
 	_, err := l.cli.ImageRemove(ctx, RunnerImage, client.ImageRemoveOptions{Force: true})
-	return errors.Join(err, l.cli.Close())
+	return errors.Join(l.capErrs, err, l.cli.Close())
 }
 
 // Call is one request a relay passed on and the status it answered.

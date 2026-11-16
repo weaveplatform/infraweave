@@ -6,16 +6,31 @@ name: go | Nightly acceptance
 # @terraform and @tofu scenarios exist (P9), this is where they run on the
 # newest Terraform and OpenTofu releases; until then it runs the suite as the
 # quality gate does.
+#
+# Once a week, and on demand, the stress job runs the runs partition under
+# make accept-stress instead: refused signed uploads, a slow object store and
+# capped run containers. It is informational too, and its failures are
+# triaged as product defects or harness assumptions.
 # ref: decision 0016
 on:
   schedule:
     - cron: '41 3 * * *'
+    # The weekly stress run; the jobs' conditions name this expression.
+    - cron: '17 5 * * 6'
   workflow_dispatch:
     inputs:
       force-failure:
         description: 'Fail accept-core on purpose, to exercise the issue report'
         type: boolean
         default: false
+      stress:
+        description: 'Run the runs partition under stress instead of every partition'
+        type: boolean
+        default: false
+      stress-settings:
+        description: 'INFRAWEAVE_ACCEPT_STRESS for the stress run; empty takes make accept-stress''s default'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -36,6 +51,7 @@ env:
 jobs:
   accept:
     name: 'nightly accept-${{ matrix.partition }}'
+    if: ${{ !inputs.stress && github.event.schedule != '17 5 * * 6' }}
     strategy:
       fail-fast: false
       matrix:
@@ -93,11 +109,62 @@ jobs:
           path: test/acceptance/out
           retention-days: 14
 
-  # One open issue tracks a failing nightly: the first failure opens it, and
-  # each later one comments on it until a person closes it.
+  stress:
+    name: 'stress accept-runs'
+    if: ${{ inputs.stress || github.event.schedule == '17 5 * * 6' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      # An empty setting leaves make accept-stress's default, which an
+      # empty INFRAWEAVE_ACCEPT_STRESS in the environment would replace.
+      - name: The runs partition under stress
+        env:
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+          SETTINGS: ${{ inputs.stress-settings }}
+        run: |
+          if [ -n "$SETTINGS" ]; then
+            make accept-stress PARTITION=runs INFRAWEAVE_ACCEPT_STRESS="$SETTINGS"
+          else
+            make accept-stress PARTITION=runs
+          fi
+
+      - name: Report the partition's scenarios
+        if: success()
+        run: |
+          n=$(jq '[.[].elements[]?] | length' cover/accept/cucumber.json)
+          line="accept-runs under stress ran ${n} scenarios."
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload failed-scenario evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: stress-evidence-runs
+          path: test/acceptance/out
+          retention-days: 14
+
+  # One open issue tracks a failing nightly, and another a failing stress
+  # run: the first failure opens it, and each later one comments on it until
+  # a person closes it.
   report:
     name: 'Report a failed nightly'
-    needs: [accept]
+    needs: [accept, stress]
     if: ${{ failure() }}
     runs-on: ubuntu-latest
     permissions:
@@ -114,10 +181,16 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SHA: ${{ github.sha }}
+          STRESS: ${{ needs.stress.result }}
         run: |
           set -euo pipefail
-          title="Nightly acceptance failed"
-          body="The nightly acceptance run failed on ${SHA}: ${RUN_URL}. Each failed partition uploads its scenarios' evidence as an artefact of the run."
+          if [ "$STRESS" = "failure" ]; then
+            title="Stress acceptance failed"
+            body="The runs partition failed under stress on ${SHA}: ${RUN_URL}. Its scenarios' evidence, with each object store call, is an artefact of the run; triage each failure as a product defect or a harness assumption."
+          else
+            title="Nightly acceptance failed"
+            body="The nightly acceptance run failed on ${SHA}: ${RUN_URL}. Each failed partition uploads its scenarios' evidence as an artefact of the run."
+          fi
           number=$(gh issue list --state open --search "\"${title}\" in:title" --json number,title \
             -q ".[] | select(.title == \"${title}\") | .number" | head -n 1)
           if [ -z "$number" ]; then
