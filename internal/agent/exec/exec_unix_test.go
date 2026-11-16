@@ -57,10 +57,11 @@ const planJSON = `{"format_version":"1.2","resource_changes":[` +
 // delta on any report but planning's success, as the server does, and
 // can lose answers. After a success it executes the state then names for
 // the reported one, as the server does for the run's type.
-// It takes the run's log chunks and artifacts, and keeps the order in
-// which it took them and the reports; it refuses every declaration with
-// uploads, a declaration of an upload of kind refuseKind with 422, and
-// signs other names than declared with rename.
+// It refuses each report from the refuseAt-th on, counting from 1, with
+// refuse. It takes the run's log chunks and artifacts, and keeps the
+// order in which it took them and the reports; it refuses every
+// declaration with uploads, a declaration of an upload of kind refuseKind
+// with 422, and signs other names than declared with rename.
 type worker struct {
 	mu         sync.Mutex
 	version    int64
@@ -68,6 +69,7 @@ type worker struct {
 	then       map[wire.WorkerState]string
 	lose       int
 	refuse     int
+	refuseAt   int
 	uploads    error
 	refuseKind wire.UploadKind
 	rename     bool
@@ -160,7 +162,7 @@ func (w *worker) Report(
 	if token != "run-token" || run != runID {
 		return wire.NextStep{}, &client.Error{Op: "report", Status: 401}
 	}
-	if w.refuse != 0 {
+	if w.refuse != 0 && len(w.reports) >= w.refuseAt {
 		return wire.NextStep{}, &client.Error{Op: "report", Status: w.refuse}
 	}
 	if (r.Delta != nil) != (r.State == wire.WorkerStatePLANNING && r.Event == wire.Succeeded) {
@@ -808,8 +810,9 @@ func TestUnitExecPreparationFails(t *testing.T) {
 
 // TestUnitExecReports checks a lost answer sent again with the same body,
 // which moves the run once; a 409, which ends the runner with no further
-// report; another refusal, which Run answers; and a phase the runner has
-// no commands for.
+// report, whether it answers the first report or a phase's end; another
+// refusal, which Run answers, of either; and a phase the runner has no
+// commands for.
 func TestUnitExecReports(t *testing.T) {
 	w := newWorld(t)
 	w.w.lose = 1
@@ -832,6 +835,20 @@ func TestUnitExecReports(t *testing.T) {
 	}
 	equal(t, "moved on", w.events(), []string{"INITIALIZING started 3"})
 	equal(t, "moved on trace", w.traced(), nil)
+
+	for _, status := range []int{409, 400} {
+		w = newWorld(t)
+		w.h.Spec.Hooks = map[string][]string{"after_run": {hook("after_run")}}
+		w.w.refuse, w.w.refuseAt = status, 2
+		err := w.run()
+		if status == 409 && err != nil || status == 400 && client.Status(err) != 400 {
+			t.Errorf("a phase's end refused %d: %v", status, err)
+		}
+		equal(t, "a phase's end refused", w.events(),
+			[]string{"INITIALIZING started 3", "INITIALIZING succeeded 4"})
+		equal(t, "a phase's end refused trace", w.traced(),
+			[]string{"init -input=false -lock-timeout=5m0s"})
+	}
 
 	w = newWorld(t)
 	w.h.Secrets.SourceCredential = &wire.RunSpecSourceCredential{Username: "x", Token: "y"}

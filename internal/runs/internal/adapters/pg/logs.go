@@ -179,5 +179,5 @@ func (s *Store) DeleteLogs(
 		WHERE account_id = $1 AND id = $2`, run.Account, run.ID, at); err != nil {
 		return nil, fmt.Errorf("runs: delete run %s's logs: %w", run.ID, sql.Unavailable(err))
 	}
-	return append(append(objs, compacted...), observed...), nil
+	return slices.Concat(objs, compacted, observed), nil
 }
