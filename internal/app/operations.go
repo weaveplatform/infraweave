@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -98,6 +99,10 @@ type Operation struct {
 	// handler decodes leniently. A PATCH beside an update PUT checks its
 	// merge patch against patchSchema of the PUT's input.
 	Body *openapi3.RequestBody
+	// Path is the operation's path parameters with a schema, which
+	// strictPaths checks before the handler as strictQueries checks the
+	// query; empty for an operation that takes none.
+	Path openapi3.Parameters
 	// Query is the operation's query parameters with a schema, a scalar's
 	// or the JSON object's of one such as a search's input, which
 	// strictQueries checks before the handler as strictBodies checks a
@@ -182,7 +187,8 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				Organization:      org,
 				OrganizationAdmin: admin,
 				Body:              strictBody(body),
-				Query:             strictQuery(op),
+				Path:              strictParams(op, openapi3.ParameterInPath),
+				Query:             strictParams(op, openapi3.ParameterInQuery),
 				Gate:              gate,
 				Required:          required,
 			}
@@ -215,7 +221,8 @@ func workerOperationsOf(doc *openapi3.T, base string) (Operations, error) {
 				Worker: true,
 				Runner: runToken(op.Security),
 				Body:   strictBody(mediaOf(op)),
-				Query:  strictQuery(op),
+				Path:   strictParams(op, openapi3.ParameterInPath),
+				Query:  strictParams(op, openapi3.ParameterInQuery),
 			}
 		}
 	}
@@ -359,12 +366,14 @@ func strictBody(mt *bodyMedia) *openapi3.RequestBody {
 	}
 }
 
-// strictQuery is op's query parameters with a schema, a scalar's or the
-// JSON object's one carries.
-func strictQuery(op *openapi3.Operation) openapi3.Parameters {
+// strictParams is op's parameters in in, the path or the query, with a
+// schema, a scalar's or the JSON object's one carries. The served
+// documents declare every parameter on its operation, none on its path,
+// which TestUnitAPIParameters holds them to.
+func strictParams(op *openapi3.Operation, in string) openapi3.Parameters {
 	var out openapi3.Parameters
 	for _, p := range op.Parameters {
-		if p.Value == nil || p.Value.In != openapi3.ParameterInQuery {
+		if p.Value == nil || p.Value.In != in {
 			continue
 		}
 		if p.Value.Schema != nil {
@@ -682,6 +691,18 @@ func Guarded(
 				op, ok := resolve(req)
 				return ok && !op.Search && !op.Worker && !op.State
 			}, log),
+		strictPaths(func(req *http.Request) (openapi3.Parameters, map[string]string) {
+			pattern, rctx := find(req)
+			op := ops[req.Method+" "+pattern]
+			if len(op.Path) == 0 {
+				return nil, nil
+			}
+			values := map[string]string{}
+			for i, k := range rctx.URLParams.Keys {
+				values[k] = rctx.URLParams.Values[i]
+			}
+			return op.Path, values
+		}),
 		strictQueries(func(req *http.Request) openapi3.Parameters {
 			op, _ := resolve(req)
 			return op.Query
@@ -768,6 +789,50 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 			if err := openapi3filter.ValidateRequestBody(r.Context(), in, rb); err != nil {
 				strictError(w, r, err, "", "The body")
 				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// strictPaths checks each of a request's path parameters with a schema
+// against it, as strictQueries checks the query: 400 invalid-request for
+// a value its maxLength, pattern, enum, format or bounds refuses, or not
+// of its type, before the generated binding decodes it. Each value is
+// checked as the binding decodes it, unescaped, and as it is when it does
+// not unescape, which the binding refuses too. The refused value is named
+// by its pointer under #/path/ and the parameter's name. The path check
+// runs before the handler's own, so a worker API run ID longer than any
+// run's answers 400 here, not 401 as another run's: the same value
+// answers the same on every surface.
+//
+// ref: decision 0022
+func strictPaths(
+	path func(*http.Request) (openapi3.Parameters, map[string]string),
+) func(http.Handler) http.Handler {
+	opts := &openapi3filter.Options{SkipSettingDefaults: true}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			params, values := path(r)
+			if len(params) == 0 {
+				next.ServeHTTP(w, r)
+				return
+			}
+			for k, v := range values {
+				if u, err := url.PathUnescape(v); err == nil {
+					values[k] = u
+				}
+			}
+			in := &openapi3filter.RequestValidationInput{
+				Request: r, PathParams: values, Options: opts,
+			}
+			for _, p := range params {
+				err := openapi3filter.ValidateParameter(r.Context(), in, p.Value)
+				if err != nil {
+					strictError(w, r, err, "#/path/"+p.Value.Name,
+						"The path parameter "+p.Value.Name)
+					return
+				}
 			}
 			next.ServeHTTP(w, r)
 		})
@@ -882,11 +947,13 @@ func refusedField(err error, root string) (problem.FieldError, bool) {
 	return problem.FieldError{}, false
 }
 
-// missing reports whether re refuses a required parameter its request
-// lacks, which kin-openapi gives no sentinel error for when the parameter
-// carries JSON.
+// missing reports whether re refuses a required query parameter its
+// request lacks, which kin-openapi gives no sentinel error for when the
+// parameter carries JSON. A path parameter is never missing from a route
+// that matched.
 func missing(re *openapi3filter.RequestError) bool {
-	return re.Parameter.Required && re.Input != nil && re.Input.Request != nil &&
+	return re.Parameter.In == openapi3.ParameterInQuery && re.Parameter.Required &&
+		re.Input != nil && re.Input.Request != nil &&
 		!re.Input.Request.URL.Query().Has(re.Parameter.Name)
 }
 

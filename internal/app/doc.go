@@ -24,9 +24,10 @@
 // answers 403 forbidden to a route the router serves and no operation
 // names and runs the access domain's Requirer on each API operation's
 // x-infraweave-action and x-infraweave-subject, then the operator switch, the rate limits
-// and idempotency keys in front of each route, and last strictQueries and
-// strictBodies, which answer 400 invalid-request to a query parameter or
-// a body its operation's schema refuses, naming the refused value by its
+// and idempotency keys in front of each route, and last strictPaths,
+// strictQueries and strictBodies, which answer 400 invalid-request to a
+// path parameter, a query parameter or a body its operation's schema
+// refuses, naming the refused value by its
 // pointer with the refusing keyword's reason, a member no strict schema
 // lists with reason unknown-field, and check a PATCH's
 // merge patch against its PUT's input with every member optional and

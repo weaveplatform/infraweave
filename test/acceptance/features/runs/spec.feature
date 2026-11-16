@@ -10,6 +10,9 @@ Feature: A run's specification names its source, tool and masking
   runs its image's own binary; and whether the runner masks well-known
   secrets. A constraint no listed release meets refuses the specification
   with 422 naming the constraint, which the launcher fails the run with.
+  A run ID longer than any run's is refused 400 at its path, as any value
+  its schema refuses is, before the run token is compared with it; a
+  well-formed ID of another run answers 401.
   The release indexes serve the recorded fixtures. The home key is
   space-admin on the account's top space. Stacks live in legacy and run on
   the pool.
@@ -67,3 +70,22 @@ Feature: A run's specification names its source, tool and masking
     When token "rt" sends "GET /worker/v1/runs/{run}/spec" through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/terraformVersion" as "rule"
+
+  @case:failure
+  Scenario: A run ID longer than any run's is refused naming its path, and another run's ID as another run's
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "READY" through A
+    And token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    Then the answer assigns the run "run", its run token kept as "rt"
+    When token "rt" sends "GET /worker/v1/runs/{run}0/spec" through A
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "#/path/run" as "max-length"
+    When token "rt" sends "POST /worker/v1/runs/{run}0/reports" with '{"event":"started","state":"INITIALIZING","stateVersion":3}' through B
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "#/path/run" as "max-length"
+    When token "rt" sends "GET /worker/v1/runs/01JBQ6Q4V2ZK5Y3W8N7M6P5R4T/spec" through A
+    Then it answers a 401 problem "unauthenticated"
+    When token "rt" sends "GET /worker/v1/runs/{run}/spec" through B
+    Then it answers 200
