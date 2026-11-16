@@ -40,8 +40,9 @@ func local(t testing.TB) config.Config {
 	// No test reaches the vendors' real indexes: a refresh here fails at
 	// once against a closed port and keeps the empty catalogue.
 	c.Vendors = vendorsassembly.Settings{
-		TerraformIndex: "http://127.0.0.1:1/terraform",
-		OpenTofuIndex:  "http://127.0.0.1:1/opentofu",
+		TerraformIndex:  "http://127.0.0.1:1/terraform",
+		OpenTofuIndex:   "http://127.0.0.1:1/opentofu",
+		TerragruntIndex: "http://127.0.0.1:1/terragrunt",
 	}
 	return c
 }

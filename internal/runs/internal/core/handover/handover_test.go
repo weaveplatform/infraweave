@@ -123,27 +123,43 @@ func (t *tokens) InRunToken(_ context.Context, r accessapi.InRunRequest) (access
 	return accessapi.Token{Raw: "in-run", Expires: time.Unix(2e9, 0)}, t.err
 }
 
-// catalog lists versions, newest first, for every vendor, and answers
-// Effective with effective, recording each constraint it is asked;
-// err fails both.
+// catalog lists versions, newest first, for every vendor but refused,
+// and answers Effective with the vendor's release in releases, else
+// effective, recording each constraint and vendor it is asked; err fails
+// both.
 type catalog struct {
 	versions  []string
 	effective string
-	asked     []string
-	invalid   bool
-	err       error
+	// releases answers a vendor's resolution in place of effective, where
+	// it names the vendor.
+	releases map[vendorsapi.Vendor]string
+	asked    []string
+	// vendors are the vendors resolved, in order.
+	vendors []vendorsapi.Vendor
+	invalid bool
+	// refused is a vendor that lists no release, so no constraint resolves.
+	refused vendorsapi.Vendor
+	err     error
 }
 
-func (c *catalog) Versions(context.Context, vendorsapi.Vendor) ([]string, error) {
+func (c *catalog) Versions(_ context.Context, v vendorsapi.Vendor) ([]string, error) {
+	c.vendors = append(c.vendors, v)
+	if v == c.refused {
+		return nil, c.err
+	}
 	return c.versions, c.err
 }
 
-func (c *catalog) Effective(_ context.Context, _ vendorsapi.Vendor, constraints string) (string, error) {
+func (c *catalog) Effective(_ context.Context, v vendorsapi.Vendor, constraints string) (string, error) {
 	c.asked = append(c.asked, constraints)
-	if c.invalid {
+	c.vendors = append(c.vendors, v)
+	if c.invalid || v == c.refused {
 		return "", &kernel.Invalid{Detail: "none", Errors: []kernel.FieldError{{
 			Pointer: "#/query/constraints", Reason: kernel.ReasonRule,
 		}}}
+	}
+	if r, ok := c.releases[v]; ok {
+		return r, c.err
 	}
 	return c.effective, c.err
 }
@@ -874,5 +890,101 @@ func TestUnitHandoverSourceAndTool(t *testing.T) {
 	w.svc.BindSources(nil)
 	if _, err := w.handover(t, w.run.ID); err == nil || len(w.tokens.got) != minted {
 		t.Errorf("no sources bound = %v, tokens %v", err, w.tokens.got)
+	}
+}
+
+// TestUnitHandoverTerragrunt checks a Terragrunt stack's run: it mounts
+// the tool its tool setting drives, at the release the stack's
+// terraformVersion, else its settings' terraformVersion, allows, and
+// Terragrunt at the release its terragruntVersion allows, each the newest
+// listed when it sets none and each run from the image when the stack
+// skips the download; a constraint either way that no release meets is a
+// *kernel.Invalid naming its setting; and a stack of another vendor mounts
+// no Terragrunt.
+func TestUnitHandoverTerragrunt(t *testing.T) {
+	w := newWorld(t)
+	w.sources.src = runsapi.Source{URL: "https://example.com/infra.git"}
+	w.stacks.settings.Vendor, w.stacks.settings.TerraformVersion = "terragrunt", nil
+	w.stacks.settings.VendorConfig = json.RawMessage(`{"tool":"OPEN_TOFU",
+		"terragruntVersion":"~> 0.93.0","terraformVersion":"~> 1.10.0","useRunAll":true}`)
+	w.catalog.releases = map[vendorsapi.Vendor]string{
+		vendorsapi.OpenTofu: "1.10.7", vendorsapi.Terragrunt: "0.93.3", vendorsapi.Terraform: "1.13.4",
+	}
+	w.catalog.asked, w.catalog.vendors = nil, nil
+	h, err := w.handover(t, w.run.ID)
+	if err != nil || h.Spec.Tool == nil || h.Spec.Terragrunt == nil ||
+		*h.Spec.Tool != (workersapi.SpecTool{Name: "tofu", Version: "1.10.7", Download: true}) ||
+		*h.Spec.Terragrunt != (workersapi.SpecTerragrunt{Version: "0.93.3", Download: true}) ||
+		!slices.Equal(w.catalog.asked, []string{"~> 1.10.0", "~> 0.93.0"}) ||
+		!slices.Equal(w.catalog.vendors, []vendorsapi.Vendor{
+			vendorsapi.OpenTofu,
+			vendorsapi.Terragrunt,
+		}) || h.Spec.Stack.Vendor != "terragrunt" {
+		t.Fatalf("an OpenTofu Terragrunt stack = tool %+v, terragrunt %+v, %v; asked %v of %v",
+			h.Spec.Tool, h.Spec.Terragrunt, err, w.catalog.asked, w.catalog.vendors)
+	}
+
+	top := "1.13.4"
+	w.stacks.settings.TerraformVersion = &top
+	w.stacks.settings.SkipVendorBinaryDownload = true
+	w.stacks.settings.VendorConfig = json.RawMessage(`{"terragruntVersion":" ","terraformVersion":"~> 1.14.0"}`)
+	w.catalog.versions = []string{"0.99.0"}
+	w.catalog.asked, w.catalog.vendors = nil, nil
+	h, err = w.handover(t, w.run.ID)
+	if err != nil ||
+		*h.Spec.Tool != (workersapi.SpecTool{Name: "terraform", Version: "1.13.4"}) ||
+		*h.Spec.Terragrunt != (workersapi.SpecTerragrunt{Version: "0.99.0"}) ||
+		!slices.Equal(w.catalog.asked, []string{"1.13.4"}) ||
+		!slices.Equal(w.catalog.vendors, []vendorsapi.Vendor{
+			vendorsapi.Terraform,
+			vendorsapi.Terragrunt,
+		}) {
+		t.Errorf("a Terraform Terragrunt stack = tool %+v, terragrunt %+v, %v; asked %v of %v",
+			h.Spec.Tool, h.Spec.Terragrunt, err, w.catalog.asked, w.catalog.vendors)
+	}
+
+	for _, tc := range []struct {
+		name, settings, pointer string
+		refused                 vendorsapi.Vendor
+	}{
+		{
+			"a Terragrunt constraint no release meets", `{"terragruntVersion":"~> 0.50.0"}`,
+			"/vendorConfig/terragrunt/terragruntVersion", vendorsapi.Terragrunt,
+		},
+		{
+			"no Terragrunt release listed", `{}`,
+			"/vendorConfig/terragrunt/terragruntVersion", vendorsapi.Terragrunt,
+		},
+		{
+			"a tool constraint no release meets", `{"tool":"OPEN_TOFU","terraformVersion":"2.0.0"}`,
+			"/vendorConfig/terragrunt/terraformVersion", vendorsapi.OpenTofu,
+		},
+	} {
+		w.stacks.settings.TerraformVersion = nil
+		w.stacks.settings.VendorConfig = json.RawMessage(tc.settings)
+		w.catalog.refused = tc.refused
+		_, err := w.handover(t, w.run.ID)
+		inv, ok := errors.AsType[*kernel.Invalid](err)
+		if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != tc.pointer {
+			t.Errorf("%s = %v", tc.name, err)
+		}
+	}
+
+	// A tool no table holds mounts none, and a catalogue that fails fails
+	// Terragrunt's resolution, whether a constraint is set or not.
+	w.catalog.refused, w.catalog.err = "", errors.New("catalogue down")
+	for _, settings := range []string{
+		`{"tool":"MANUALLY_PROVISIONED"}`,
+		`{"tool":"MANUALLY_PROVISIONED","terragruntVersion":"0.93.3"}`,
+	} {
+		w.stacks.settings.VendorConfig = json.RawMessage(settings)
+		if _, err := w.handover(t, w.run.ID); !errors.Is(err, w.catalog.err) {
+			t.Errorf("%s while the catalogue fails = %v", settings, err)
+		}
+	}
+	w.catalog.err = nil
+	w.stacks.settings.Vendor, w.stacks.settings.VendorConfig = "terraform", nil
+	if h, err := w.handover(t, w.run.ID); err != nil || h.Spec.Terragrunt != nil {
+		t.Errorf("a Terraform stack mounts Terragrunt %+v, %v", h.Spec.Terragrunt, err)
 	}
 }

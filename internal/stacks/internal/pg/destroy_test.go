@@ -143,7 +143,7 @@ func TestAccServiceDestroy(t *testing.T) {
 func TestAccHandlerDestroy(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	s := http.New(f.svc, f.authz, f.spaces)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	admin := kernel.WithPrincipal(ctx, f.admin)
 	if _, err := f.svc.Create(ctx, f.admin, "", false, input("Infra")); err != nil {
 		t.Fatal(err)

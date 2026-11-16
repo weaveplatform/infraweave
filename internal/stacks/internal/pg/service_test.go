@@ -7,6 +7,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/iac/version"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -23,6 +25,7 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/pg"
+	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -124,6 +127,7 @@ type fixture struct {
 	authz                 authz
 	ledger                *ledger
 	pools                 *pools
+	catalog               *catalog
 	acct                  kernel.AccountID
 	team, hidden          kernel.ULID
 	admin, writer, reader kernel.Principal
@@ -164,10 +168,46 @@ func newFixture(t *testing.T) fixture {
 		Events: outbox.New(db, queue.New(db), kinds),
 		Now:    func() time.Time { return time.Unix(1_800_000_000, 0) },
 	})
+	cat := &catalog{listed: map[vendorsapi.Vendor][]string{
+		vendorsapi.Terragrunt: {"0.93.3", "0.93.2", "0.92.1"},
+		vendorsapi.OpenTofu:   {"1.11.2", "1.10.7"},
+		vendorsapi.Terraform:  {"1.14.0", "1.13.4"},
+	}}
 	return fixture{
-		db: db, svc: svc, spaces: sp, authz: az, ledger: l, pools: wp, acct: acct, team: team,
-		hidden: hidden, admin: admin, writer: writer, reader: reader,
+		db: db, svc: svc, spaces: sp, authz: az, ledger: l, pools: wp, catalog: cat, acct: acct,
+		team: team, hidden: hidden, admin: admin, writer: writer, reader: reader,
 	}
+}
+
+// catalog lists each vendor's releases newest first and resolves a
+// constraint to the newest it allows, as the vendors domain does,
+// counting its reads; err fails every read.
+type catalog struct {
+	listed map[vendorsapi.Vendor][]string
+	reads  int
+	err    error
+}
+
+func (c *catalog) Versions(_ context.Context, v vendorsapi.Vendor) ([]string, error) {
+	c.reads++
+	return c.listed[v], c.err
+}
+
+func (c *catalog) Effective(_ context.Context, v vendorsapi.Vendor, constraints string) (string, error) {
+	c.reads++
+	if c.err != nil {
+		return "", c.err
+	}
+	cs, err := version.ParseConstraints(constraints)
+	if err != nil {
+		return "", &kernel.Invalid{Detail: err.Error()}
+	}
+	for _, listed := range c.listed[v] {
+		if r, _ := version.Parse(listed); cs.Allows(r) {
+			return listed, nil
+		}
+	}
+	return "", &kernel.Invalid{Detail: "none"}
 }
 
 // changes are the Changed events of the account's stack slug's ID, in
@@ -250,6 +290,31 @@ func TestAccServiceCreate(t *testing.T) {
 	if err != nil || plain.Slug != "custom-1" || plain.Space != f.acct.ULID ||
 		plain.Vendor != "terraform" {
 		t.Errorf("Create in the top space = %+v, %v", plain, err)
+	}
+	// A Terragrunt stack's useStateManagement decides over manageState
+	// when it is set, and an update leaves the decision as it was made.
+	for slug, c := range map[string]struct {
+		config string
+		manage bool
+		want   bool
+	}{
+		"tg-off": {`{"terragrunt":{"useStateManagement":false}}`, true, false},
+		"tg-on":  {`{"terragrunt":{"useStateManagement":true}}`, false, true},
+		"tg-nil": {`{"terragrunt":{"useStateManagement":null}}`, true, true},
+	} {
+		in := input("Terragrunt " + slug)
+		in.VendorConfig = json.RawMessage(c.config)
+		st, err := f.svc.Create(ctx, f.admin, slug, c.manage, in)
+		if err != nil || st.Vendor != "terragrunt" || st.ManagesState != c.want {
+			t.Errorf("%s: created %+v, %v; want ManagesState %t", slug, st.Settings, err, c.want)
+			continue
+		}
+		in.VendorConfig = json.RawMessage(`{"terragrunt":{"useStateManagement":` +
+			strconv.FormatBool(!c.want) + `}}`)
+		updated, err := f.svc.Update(ctx, f.admin, slug, kernel.Expect{}, in)
+		if err != nil || updated.ManagesState != c.want {
+			t.Errorf("%s: updated %+v, %v; want ManagesState %t", slug, updated.Settings, err, c.want)
+		}
 	}
 	if _, err := f.svc.Create(
 		ctx,

@@ -28,20 +28,22 @@ const fixtures = "../../internal/vendors/internal/index/testdata/"
 
 // catalogSteps drive the Version Catalog over a chi server that serves
 // the recorded indexes as the vendors serve them: HashiCorp's a page at a
-// time, OpenTofu's whole.
+// time, OpenTofu's whole, and Terragrunt's GitHub releases as one page,
+// which names no next.
 type catalogSteps struct {
 	w *harness.World
 
 	mu sync.Mutex
-	// terraform and opentofu are the recorded indexes' bodies.
-	terraform []map[string]any
-	opentofu  json.RawMessage
+	// terraform, opentofu and terragrunt are the recorded indexes' bodies.
+	terraform  []map[string]any
+	opentofu   json.RawMessage
+	terragrunt json.RawMessage
 	// withheld is the Terraform release the index does not list yet.
 	withheld string
 	// down answers every request for the Terraform index 503.
 	down bool
 	// reads counts each index's whole reads: a request for HashiCorp's
-	// first page, or for OpenTofu's document.
+	// first page, or for OpenTofu's or Terragrunt's document.
 	reads map[string]int
 	srv   *httptest.Server
 }
@@ -89,13 +91,13 @@ func (c *catalogSteps) switchOff(names string) error {
 
 // serve starts the index server for the scenario's servers to read,
 // Terraform's without its newest release when without is set, and keeps
-// the newest release of each it lists as {terraform.newest} and
-// {opentofu.newest}.
+// the newest release of each it lists as {terraform.newest},
+// {opentofu.newest} and {terragrunt.newest}.
 func (c *catalogSteps) serve(without string) error {
-	var tf, tofu struct {
+	var tf, tofu, tg struct {
 		Body json.RawMessage `json:"body"`
 	}
-	for name, into := range map[string]any{"terraform": &tf, "opentofu": &tofu} {
+	for name, into := range map[string]any{"terraform": &tf, "opentofu": &tofu, "terragrunt": &tg} {
 		raw, err := os.ReadFile(fixtures + name + ".json")
 		if err != nil {
 			return fmt.Errorf("%w: %w", harness.ErrStep, err)
@@ -107,7 +109,7 @@ func (c *catalogSteps) serve(without string) error {
 	if err := json.Unmarshal(tf.Body, &c.terraform); err != nil {
 		return fmt.Errorf("%w: terraform fixture: %w", harness.ErrStep, err)
 	}
-	c.opentofu, c.reads = tofu.Body, map[string]int{}
+	c.opentofu, c.terragrunt, c.reads = tofu.Body, tg.Body, map[string]int{}
 	newest, err := stableReleases("terraform", tf.Body)
 	if err != nil {
 		return err
@@ -120,6 +122,9 @@ func (c *catalogSteps) serve(without string) error {
 	if c.w.IDs["opentofu.newest"], err = Newest("opentofu"); err != nil {
 		return err
 	}
+	if c.w.IDs["terragrunt.newest"], err = Newest("terragrunt"); err != nil {
+		return err
+	}
 
 	r := chi.NewRouter()
 	r.Get("/terraform", c.hashicorp)
@@ -127,9 +132,14 @@ func (c *catalogSteps) serve(without string) error {
 		c.count("opentofu")
 		_, _ = w.Write(c.opentofu) // a client gone has no answer
 	})
+	r.Get("/terragrunt", func(w http.ResponseWriter, _ *http.Request) {
+		c.count("terragrunt")
+		_, _ = w.Write(c.terragrunt) // as above
+	})
 	c.srv = httptest.NewServer(r)
 	c.w.Settings["vendors"] = map[string]any{
 		"terraform_index": c.srv.URL + "/terraform", "opentofu_index": c.srv.URL + "/opentofu",
+		"terragrunt_index": c.srv.URL + "/terragrunt",
 	}
 	return nil
 }
@@ -195,8 +205,8 @@ func (c *catalogSteps) stop() error {
 }
 
 // Newest is the newest stable release the recorded index name,
-// terraform or opentofu, lists: the release a stack that sets no version
-// runs.
+// terraform, opentofu or terragrunt, lists: the release a stack that sets
+// no version runs.
 func Newest(name string) (string, error) {
 	raw, err := os.ReadFile(fixtures + name + ".json")
 	if err != nil {
@@ -222,7 +232,22 @@ func Newest(name string) (string, error) {
 // body, newest first, as the catalogue lists them.
 func stableReleases(name string, body json.RawMessage) ([]string, error) {
 	var raw []string
-	if name == "terraform" {
+	switch name {
+	case "terragrunt":
+		var rels []struct {
+			Tag        string `json:"tag_name"` //nolint:tagliatelle // GitHub's spelling
+			Prerelease bool   `json:"prerelease"`
+			Draft      bool   `json:"draft"`
+		}
+		if err := json.Unmarshal(body, &rels); err != nil {
+			return nil, fmt.Errorf("%w: %w", harness.ErrStep, err)
+		}
+		for _, r := range rels {
+			if !r.Prerelease && !r.Draft {
+				raw = append(raw, strings.TrimPrefix(r.Tag, "v"))
+			}
+		}
+	case "terraform":
 		var rels []struct {
 			Version    string `json:"version"`
 			Prerelease bool   `json:"is_prerelease"` //nolint:tagliatelle // HashiCorp's spelling
@@ -238,7 +263,7 @@ func stableReleases(name string, body json.RawMessage) ([]string, error) {
 				raw = append(raw, r.Version)
 			}
 		}
-	} else {
+	default:
 		var idx struct {
 			Versions []struct {
 				ID string `json:"id"`
@@ -365,17 +390,23 @@ func (c *catalogSteps) eventuallyLists(ctx context.Context, name, tool, replica,
 
 // readOnce checks that both servers' startups read each index once
 // between them: the periodic task fires once a period across replicas.
-func (c *catalogSteps) readOnce() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.reads["terraform"] != 1 || c.reads["opentofu"] != 1 {
-		return fmt.Errorf(
-			"%w: the indexes were read %v times, want once each",
-			harness.ErrStep,
-			c.reads,
-		)
-	}
-	return nil
+// The refresh reads the indexes in turn, Terragrunt's last, so it waits
+// for every index to be read before it counts.
+func (c *catalogSteps) readOnce(ctx context.Context) error {
+	return deps.Eventually(ctx, "each release index to be read",
+		func(context.Context) (bool, error) {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			if c.reads["terraform"] > 1 || c.reads["opentofu"] > 1 || c.reads["terragrunt"] > 1 {
+				return false, fmt.Errorf("%w: %w: the indexes were read %v times, want once each",
+					deps.ErrPermanent, harness.ErrStep, c.reads)
+			}
+			if c.reads["terraform"] == 1 && c.reads["opentofu"] == 1 && c.reads["terragrunt"] == 1 {
+				return true, nil
+			}
+			return false, fmt.Errorf("%w: the indexes were read %v times, want once each",
+				harness.ErrStep, c.reads)
+		})
 }
 
 // resolve asks for tool's effective version under constraints.

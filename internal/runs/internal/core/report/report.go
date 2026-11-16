@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/iac"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
@@ -334,9 +335,12 @@ func applied(run lifecycle.Run, r workersapi.Report) bool {
 // one a runner kept against the stack's setting, or kept before the
 // setting was turned off. A run that recorded no outputs the server
 // reads is ErrNoOutputs, since its runner records them before its
-// report.
+// report, unless its stack is a Terragrunt stack: its runner records
+// none, as its specification marks it, and its stack then has none, as
+// any outputs an earlier run kept no longer describe what it applied.
 //
 // ref: decision 0008 § "Logs and artifacts"
+// ref: decision 0008 § "Phases, reports and the plan decision"
 func (s *Service) keepOutputs(ctx context.Context, run lifecycle.Run) error {
 	ok, err := s.d.Store.Recorded(ctx, run, run.Version, workersapi.UploadArtifact,
 		OutputsDocument)
@@ -344,6 +348,14 @@ func (s *Service) keepOutputs(ctx context.Context, run lifecycle.Run) error {
 		return err //nolint:wrapcheck // the store names the read
 	}
 	if !ok {
+		st, err := s.d.Stacks.Settings(ctx, run.Account, run.Stack)
+		if err != nil {
+			return err //nolint:wrapcheck // the stacks domain names the read
+		}
+		if st.Vendor == string(iac.Terragrunt) {
+			//nolint:wrapcheck // the store names the write
+			return s.d.Store.ReplaceOutputs(ctx, run, map[string]plan.Output{})
+		}
 		return fmt.Errorf("%w: run %s", workersapi.ErrNoOutputs, run.ID)
 	}
 	var outs map[string]plan.Output

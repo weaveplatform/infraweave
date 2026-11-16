@@ -96,6 +96,18 @@ func (c *Checker) decode(name string, v any, kind string) bool {
 	return true
 }
 
+// Unsupported refuses name when it holds unsupported, a value the
+// vendor's input schema allows but infraweave does not run, with
+// message. A value of another type is Bool's or Enum's to refuse, so it
+// is not refused twice.
+func (c *Checker) Unsupported(name string, unsupported any, message string) {
+	var v any
+	if raw, ok := c.fields[name]; !ok || json.Unmarshal(raw, &v) != nil || v != unsupported {
+		return
+	}
+	c.refuse(name, kernel.ReasonRule, message)
+}
+
 func (c *Checker) refuse(name, reason, message string) {
 	c.errs = append(
 		c.errs,

@@ -94,6 +94,11 @@ type Spec struct {
 	// Tool is the infrastructure tool the run's launcher mounts, nil for a
 	// vendor with none.
 	Tool *SpecTool
+	// Terragrunt is the Terragrunt the run's launcher mounts beside Tool,
+	// which drives it, for a Terragrunt stack's run alone; nil for every
+	// other vendor. Its presence marks a run that records no plan, changes
+	// or outputs documents.
+	Terragrunt *SpecTerragrunt
 	// Task is what a TASK run performs, nil for every other type.
 	Task *kernel.Task
 	// Targets are the resource addresses a targeted replan plans, for a
@@ -166,6 +171,14 @@ type SpecTool struct {
 	Version      string
 	Download     bool
 	CPUProfiling bool
+}
+
+// SpecTerragrunt is the Terragrunt a Spec's launcher mounts: Version, the
+// release, and Download, false when the runner image's own binary runs
+// instead.
+type SpecTerragrunt struct {
+	Version  string
+	Download bool
 }
 
 // StateBackend is a Spec's managed state backend: Path is where the
