@@ -13,9 +13,13 @@ Feature: Terraform and OpenTofu keep their state in infraweave
   deploy/images. The container reaches the server through
   the scenario's relay, which records each call and each 423's body, and
   can hold the backend's UNLOCK calls so a lock stays held while another
-  process asks for one. A run that initializes or plans holds a shared
+  process asks for one, or its writes so an apply holds its lock with its
+  write still to come. A run that initializes or plans holds a shared
   lock, a run that applies the exclusive one, and a run that ended holds
-  none and is refused. The servers keep their objects in the scenario's
+  none and is refused. The backend's locks are the stack's Tofu
+  workspaces', which the first lock a run takes on one creates: an
+  operator searches them and releases a stuck one, and the run whose lock
+  goes is refused its next write. The servers keep their objects in the scenario's
   RustFS bucket, each state version sealed. Stack infra keeps its state
   in infraweave, deploys automatically and runs on the pool; its
   configuration has a terraform_data resource and outputs, one of them
@@ -140,3 +144,135 @@ Feature: Terraform and OpenTofu keep their state in infraweave
     Examples: OpenTofu
       | tool |
       | tofu |
+
+  @case:success @op:searchTofuWorkspaces @op:searchTofuWorkspacesSuggestions @op:tofuWorkspaceUnlock
+  Scenario Outline: An apply's lock is its stack's default Tofu workspace's, and an operator's release of it refuses the apply's write
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "READY" through A
+    And token "w" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    And the answer assigns the run "run", its run token kept as "rt"
+    And the worker takes over the run "run" with token "rt" and the key of "csr", checking out "infra", through A
+    And the worker reports the run "run" started in INITIALIZING through B
+    Then <tool> "init" of the run "run" exits 0
+    When the worker reports the run "run" succeeded in INITIALIZING through A
+    Then the report's answer is to execute in PLANNING
+    And <tool> "plan" of the run "run" exits 0
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"stack","constraint":{"stringEquals":["infra"]}}]}' through B
+    Then the answer's Tofu workspaces are "default"
+    When the worker reports the run "run" succeeded in PLANNING with the delta '{"add":1,"change":0,"delete":0,"import":0,"outputs":true}' through A
+    Then the report's answer is to execute in APPLYING
+    When the relay holds the state backend's writes
+    And <tool> "apply -auto-approve" of the run "run" starts as "apply"
+    And the relay holds 1 write of the state of the run "run"
+    And token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"isLocked","constraint":{"booleanEquals":[true]}}]}' through A
+    Then the answer's Tofu workspaces are "default locked by the home key"
+    And the answer's Tofu workspace "default" names "ws"
+    And the state of the run "run" is held by the exclusive locks of the runs "run"
+    When token "h" sends "POST /api/v1/tofu-workspaces/search/suggestions" with '{"fields":["name","stack"]}' through B
+    Then the answer suggests the name values "default:1" of 1 Tofu workspace
+    And the answer suggests the stack values "infra:1" of 1 Tofu workspace
+    When token "h" sends "POST /api/v1/tofu-workspaces/{ws}/unlock" through B
+    Then the answer's Tofu workspaces are "default"
+    And the audit trail holds 1 release of the Tofu workspace "ws" by the home key
+    When token "h" sends "POST /api/v1/tofu-workspaces/{ws}/unlock" through A
+    Then the answer's Tofu workspaces are "default"
+    And the audit trail holds 1 release of the Tofu workspace "ws" by the home key
+    When the relay releases the state backend's writes
+    Then the process "apply" exits 1
+    And the relay passed a POST of the state of the run "run" answered 423
+    And the run "run" wrote 0 state versions
+
+    @terraform
+    Examples: Terraform
+      | tool      |
+      | terraform |
+
+    @tofu
+    Examples: OpenTofu
+      | tool |
+      | tofu |
+
+  @terraform @case:success @op:tofuWorkspaceUnlockAll
+  Scenario: Releasing a stack's Tofu workspaces frees a planning run's shared lock and answers the workspace it held
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "READY" through B
+    And token "w" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through A
+    And the answer assigns the run "run", its run token kept as "rt"
+    And the worker takes over the run "run" with token "rt" and the key of "csr", checking out "infra", through B
+    And the worker reports the run "run" started in INITIALIZING through A
+    And terraform "init" of the run "run" exits 0
+    And the worker reports the run "run" succeeded in INITIALIZING through B
+    And the relay holds the state backend's unlocks
+    And terraform "plan" of the run "run" starts as "plan"
+    And the relay holds 1 unlock of the state of the run "run"
+    When token "h" sends "POST /api/v1/stacks/infra/tofu-workspaces/unlock" through A
+    Then the answer's Tofu workspaces are "default"
+    And the answer's Tofu workspace "default" names "ws"
+    And the audit trail holds 1 release of the Tofu workspace "ws" by the home key
+    When token "h" sends "POST /api/v1/stacks/infra/tofu-workspaces/unlock" through B
+    Then the answer's unlockedWorkspaces is '[]'
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"isLocked","constraint":{"booleanEquals":[true]}}]}' through A
+    Then the answer's Tofu workspaces are ""
+    When the relay releases the state backend's unlocks
+    Then the process "plan" exits 0
+    And the audit trail holds 1 release of the Tofu workspace "ws" by the home key
+
+  @terraform @case:denial @op:searchTofuWorkspaces @op:searchTofuWorkspacesSuggestions @op:tofuWorkspaceUnlock @op:tofuWorkspaceUnlockAll
+  Scenario: A caller who reads no space sees no Tofu workspace, and a space writer releases neither one nor its stack's
+    Given the member key is exchanged through A for token "m"
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "READY" through A
+    And token "w" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    And the answer assigns the run "run", its run token kept as "rt"
+    And the worker takes over the run "run" with token "rt" and the key of "csr", checking out "infra", through A
+    And the worker reports the run "run" started in INITIALIZING through B
+    And terraform "init" of the run "run" exits 0
+    And the worker reports the run "run" succeeded in INITIALIZING through A
+    And the relay holds the state backend's unlocks
+    And terraform "plan" of the run "run" starts as "plan"
+    And the relay holds 1 unlock of the state of the run "run"
+    And token "h" sends "POST /api/v1/tofu-workspaces/search" with '{}' through B
+    And the answer's Tofu workspace "default" names "ws"
+    When token "m" sends "POST /api/v1/tofu-workspaces/search" with '{}' through A
+    Then the answer's Tofu workspaces are ""
+    When token "m" sends "POST /api/v1/tofu-workspaces/search/suggestions" with '{"fields":["name"]}' through B
+    Then the answer suggests the name values "" of 0 Tofu workspaces
+    When token "m" sends "POST /api/v1/tofu-workspaces/{ws}/unlock" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "POST /api/v1/stacks/infra/tofu-workspaces/unlock" through B
+    Then it answers a 404 problem "not-found"
+    Given the member key is space-writer on the space "legacy"
+    When token "m" sends "POST /api/v1/tofu-workspaces/search" with '{}' through A
+    Then the answer's Tofu workspaces are "default locked by the home key"
+    When token "m" sends "POST /api/v1/tofu-workspaces/{ws}/unlock" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"STACK_WORKSPACE_UNLOCK"'
+    When token "m" sends "POST /api/v1/stacks/infra/tofu-workspaces/unlock" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"STACK_WORKSPACE_UNLOCK"'
+    And the state of the run "run" is held by the shared locks of the runs "run"
+    When the relay releases the state backend's unlocks
+    Then the process "plan" exits 0
+
+  @case:failure @op:searchTofuWorkspaces @op:searchTofuWorkspacesSuggestions @op:tofuWorkspaceUnlock @op:tofuWorkspaceUnlockAll
+  Scenario: A Tofu workspace or stack the account lacks answers 404, and a search of a field workspaces lack is refused
+    When token "h" sends "POST /api/v1/tofu-workspaces/01KACME0000000000000000ZZZ/unlock" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/tofu-workspaces/not-a-workspace/unlock" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/stacks/gone/tofu-workspaces/unlock" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"owner","constraint":{"stringEquals":["x"]}}]}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/predicates/0/field" as "unknown-field"
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"isLocked","constraint":{"stringEquals":["yes"]}}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/predicates/0/constraint/stringEquals" as "rule"
+    When token "h" sends "POST /api/v1/tofu-workspaces/search/suggestions" with '{"predicates":[{"field":"owner","constraint":{"stringEquals":["x"]}}]}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/predicates/0/field" as "unknown-field"
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"after":"not-a-cursor"}' through A
+    Then it answers a 400 problem "invalid-cursor"

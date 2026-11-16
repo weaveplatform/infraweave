@@ -23,6 +23,7 @@ import (
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
+	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 	vendorsassembly "github.com/weaveplatform/infraweave/internal/vendors/assembly"
 	workersassembly "github.com/weaveplatform/infraweave/internal/workers/assembly"
@@ -54,6 +55,7 @@ type apiServer struct {
 	stacksassembly.StacksAPI
 	configurationassembly.ConfigurationAPI
 	runsassembly.RunsAPI
+	stateassembly.StateAPI
 	vcsassembly.VCSAPI
 	expressionsassembly.ExpressionsAPI
 	unimplemented
@@ -129,6 +131,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 			StacksAPI:        d.Stacks.API(),
 			ConfigurationAPI: d.Configuration.API(),
 			RunsAPI:          d.Runs.API(),
+			StateAPI:         d.State.API(),
 			VCSAPI:           d.VCS.API(),
 			ExpressionsAPI:   d.Expressions.API(),
 			queues:           p.Queues,

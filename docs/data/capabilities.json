@@ -833,7 +833,7 @@
         "phase": "P22",
         "also": "each suggestion operation lands with its search, from P4",
         "state": "partial",
-        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4), and the suggestions of the user, group, API key, session and stack grant views with them (P4b), counting a space's holders alone; each other suggestion operation lands with its search"
+        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4), and the suggestions of the user, group, API key, session and stack grant views with them (P4b), counting a space's holders alone, and `searchTofuWorkspacesSuggestions` with `searchTofuWorkspaces` (P11), listing names and stacks; each other suggestion operation lands with its search"
       }
     },
     {
@@ -968,7 +968,8 @@
         "feature": "`tofu-workspaces`",
         "lowestTier": "Free",
         "phase": "P11",
-        "state": "missing"
+        "state": "implemented",
+        "notes": "`searchTofuWorkspaces` pages the workspaces of the stacks in spaces the caller reads, by `name`, `stack` and `isLocked`, its suggestions with it; `tofuWorkspaceUnlock` and `tofuWorkspaceUnlockAll` release every lock in one transaction under `STACK_WORKSPACE_UNLOCK`, each release on the audit trail, and the holding run's next write answers 423. `lockedBy` names the run's `triggeredBy`, an API key's ID for a non-personal key"
       }
     },
     {

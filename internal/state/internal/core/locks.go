@@ -28,14 +28,16 @@ const (
 const MaxLockInfo = 16 << 10
 
 // Lock is a lock held on a workspace: ID is its LockInfo's ID, Run the
-// run that took it, and Info the LockInfo as the client sent it, which a
-// conflict answers.
+// run that took it, TriggeredBy the login or trigger that created that
+// run, which the workspace's lockedBy answers, and Info the LockInfo as
+// the client sent it, which a conflict answers.
 type Lock struct {
-	ID        string
-	Mode      Mode
-	Run       kernel.ULID
-	Info      json.RawMessage
-	CreatedAt time.Time
+	ID          string
+	Mode        Mode
+	Run         kernel.ULID
+	TriggeredBy string
+	Info        json.RawMessage
+	CreatedAt   time.Time
 }
 
 // Conflict is a lock that cannot be taken or released, or a write that

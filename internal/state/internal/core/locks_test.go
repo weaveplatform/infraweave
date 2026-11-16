@@ -9,19 +9,29 @@ import (
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 var errDown = errors.New("down")
 
 // mem is an in-memory Store and Stacks: the workspaces that exist, each
-// one's locks oldest first and current version, and the audit entries
-// recorded. fail names the one method that fails with errDown.
+// one's locks oldest first and current version, the workspaces that have
+// an ID, the stacks, and the audit entries recorded. fail names the one
+// method that fails with errDown.
 type mem struct {
 	workspaces map[Target]bool
 	locks      map[Target][]Lock
 	current    map[Target]Version
+	named      map[kernel.ULID]Target
+	stacks     []stacksapi.Stack
 	audits     []kernel.AuditEntry
 	fail       string
+	// searched is the last search's or suggestion's input and scope.
+	searched struct {
+		in      any
+		scope   WorkspaceScope
+		account kernel.AccountID
+	}
 }
 
 func newMem() *mem {
@@ -29,6 +39,7 @@ func newMem() *mem {
 		workspaces: map[Target]bool{},
 		locks:      map[Target][]Lock{},
 		current:    map[Target]Version{},
+		named:      map[kernel.ULID]Target{},
 	}
 }
 

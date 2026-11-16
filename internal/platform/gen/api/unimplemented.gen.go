@@ -1250,6 +1250,10 @@ func (UnimplementedStrict) TaskCreate(context.Context, TaskCreateRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "taskCreate", Route: "POST /stacks/{stackId}/tasks"}
 }
 
+func (UnimplementedStrict) TofuWorkspaceUnlockAll(context.Context, TofuWorkspaceUnlockAllRequestObject) (TofuWorkspaceUnlockAllResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tofuWorkspaceUnlockAll", Route: "POST /stacks/{stackId}/tofu-workspaces/unlock"}
+}
+
 func (UnimplementedStrict) StackUnlock(context.Context, StackUnlockRequestObject) (StackUnlockResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackUnlock", Route: "POST /stacks/{stackId}/unlock"}
 }
@@ -1288,6 +1292,18 @@ func (UnimplementedStrict) Tier(context.Context, TierRequestObject) (TierRespons
 
 func (UnimplementedStrict) TierFeatures(context.Context, TierFeaturesRequestObject) (TierFeaturesResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "tierFeatures", Route: "GET /tier-features"}
+}
+
+func (UnimplementedStrict) SearchTofuWorkspaces(context.Context, SearchTofuWorkspacesRequestObject) (SearchTofuWorkspacesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchTofuWorkspaces", Route: "POST /tofu-workspaces/search"}
+}
+
+func (UnimplementedStrict) SearchTofuWorkspacesSuggestions(context.Context, SearchTofuWorkspacesSuggestionsRequestObject) (SearchTofuWorkspacesSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchTofuWorkspacesSuggestions", Route: "POST /tofu-workspaces/search/suggestions"}
+}
+
+func (UnimplementedStrict) TofuWorkspaceUnlock(context.Context, TofuWorkspaceUnlockRequestObject) (TofuWorkspaceUnlockResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "tofuWorkspaceUnlock", Route: "POST /tofu-workspaces/{tofuWorkspaceId}/unlock"}
 }
 
 func (UnimplementedStrict) Type(context.Context, TypeRequestObject) (TypeResponseObject, error) {

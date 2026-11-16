@@ -118,13 +118,14 @@ func TestAccOrphans(t *testing.T) {
 	}
 
 	gone := kernel.NewULID()
-	if _, err := q.Exec(ctx, `INSERT INTO state_workspaces (account_id, stack_id, name)
-		VALUES ($1, $2, '')`, acct, gone); err != nil {
+	if _, err := q.Exec(ctx, `INSERT INTO state_workspaces (account_id, id, stack_id, name)
+		VALUES ($1, gen_random_uuid(), $2, '')`, acct, gone); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := q.Exec(ctx, `INSERT INTO state_locks
-		(account_id, stack_id, workspace, lock_id, mode, run_id, info)
-		VALUES ($1, $2, '', 'a', 'shared', $3, '{}')`, acct, gone, kernel.NewULID()); err != nil {
+		(account_id, stack_id, workspace, lock_id, mode, run_id, triggered_by, info)
+		VALUES ($1, $2, '', 'a', 'shared', $3, 'alice', '{}')`, acct, gone,
+		kernel.NewULID()); err != nil {
 		t.Fatal(err)
 	}
 	lines := run()

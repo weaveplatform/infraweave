@@ -57,12 +57,13 @@ type Store struct{ db tx.Querier }
 // New returns the store over db.
 func New(db tx.Querier) *Store { return &Store{db: db} }
 
-// OpenWorkspace makes acct's stack's workspace name exist, in the
-// context's transaction, leaving one that exists as it is.
+// OpenWorkspace makes acct's stack's workspace name exist under a new
+// ID, in the context's transaction, leaving one that exists as it is.
 func (s *Store) OpenWorkspace(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, name string) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO state_workspaces
-		(account_id, stack_id, name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-		acct, stack, name); err != nil {
+		(account_id, id, stack_id, name) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (account_id, stack_id, name) DO NOTHING`,
+		acct, kernel.NewULID(), stack, name); err != nil {
 		return fmt.Errorf("state: open workspace %q of stack %s: %w", name, stack,
 			sql.Unavailable(err))
 	}
@@ -89,8 +90,8 @@ func (s *Store) LockWorkspace(ctx context.Context, t core.Target) (bool, error) 
 // Locks are the locks held on t's workspace, oldest first, in the order
 // of their IDs within one instant.
 func (s *Store) Locks(ctx context.Context, t core.Target) ([]core.Lock, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT lock_id, mode, run_id, info, created_at
-		FROM state_locks WHERE account_id = $1 AND stack_id = $2 AND workspace = $3
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT lock_id, mode, run_id, triggered_by, info,
+		created_at FROM state_locks WHERE account_id = $1 AND stack_id = $2 AND workspace = $3
 		ORDER BY created_at, lock_id`, t.Account, t.Stack, t.Workspace)
 	if err != nil {
 		return nil, fmt.Errorf("state: read the locks of workspace %q of stack %s: %w",
@@ -98,7 +99,7 @@ func (s *Store) Locks(ctx context.Context, t core.Target) ([]core.Lock, error) {
 	}
 	locks, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (core.Lock, error) {
 		var l core.Lock
-		err := row.Scan(&l.ID, &l.Mode, &l.Run, &l.Info, &l.CreatedAt)
+		err := row.Scan(&l.ID, &l.Mode, &l.Run, &l.TriggeredBy, &l.Info, &l.CreatedAt)
 		return l, err //nolint:wrapcheck // CollectRows' caller names the read
 	})
 	if err != nil {
@@ -111,9 +112,10 @@ func (s *Store) Locks(ctx context.Context, t core.Target) ([]core.Lock, error) {
 // AddLock records l on t's workspace.
 func (s *Store) AddLock(ctx context.Context, t core.Target, l core.Lock) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO state_locks
-		(account_id, stack_id, workspace, lock_id, mode, run_id, info)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		t.Account, t.Stack, t.Workspace, l.ID, l.Mode, l.Run, string(l.Info)); err != nil {
+		(account_id, stack_id, workspace, lock_id, mode, run_id, triggered_by, info)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		t.Account, t.Stack, t.Workspace, l.ID, l.Mode, l.Run, l.TriggeredBy,
+		string(l.Info)); err != nil {
 		return fmt.Errorf("state: lock workspace %q of stack %s: %w", t.Workspace, t.Stack,
 			sql.Unavailable(err))
 	}

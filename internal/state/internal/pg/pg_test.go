@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
@@ -90,8 +91,8 @@ func TestAccSchema(t *testing.T) {
 	}
 	lock := func(id, mode, info string) error {
 		_, err := db.Exec(ctx, `INSERT INTO state_locks
-			(account_id, stack_id, workspace, lock_id, mode, run_id, info)
-			VALUES ($1, $2, '', $3, $4, $5, $6)`,
+			(account_id, stack_id, workspace, lock_id, mode, run_id, triggered_by, info)
+			VALUES ($1, $2, '', $3, $4, $5, 'alice', $6)`,
 			acct, stack, id, mode, kernel.NewULID(), info)
 		return err //nolint:wrapcheck // the test reads it as it is
 	}
@@ -122,8 +123,9 @@ func TestAccSchema(t *testing.T) {
 		"over 16 KiB of LockInfo": lock("e", "shared", `"`+strings.Repeat("x", 16384)+`"`),
 		"a lock of no workspace": func() error {
 			_, err := db.Exec(ctx, `INSERT INTO state_locks
-				(account_id, stack_id, workspace, lock_id, mode, run_id, info)
-				VALUES ($1, $2, 'none', 'f', 'shared', $3, '{}')`, acct, stack, kernel.NewULID())
+				(account_id, stack_id, workspace, lock_id, mode, run_id, triggered_by, info)
+				VALUES ($1, $2, 'none', 'f', 'shared', $3, 'alice', '{}')`, acct, stack,
+				kernel.NewULID())
 			return err //nolint:wrapcheck // as above
 		}(),
 		"a short digest":             version(31, serial, lineage, false),
@@ -146,8 +148,8 @@ func TestAccSchema(t *testing.T) {
 	}
 }
 
-// anyStack holds every stack.
-type anyStack struct{}
+// anyStack holds every stack; the purge and the locks read no other.
+type anyStack struct{ core.Stacks }
 
 func (anyStack) Hold(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
@@ -288,10 +290,11 @@ func TestAccStorePurge(t *testing.T) {
 	seed := func(acct kernel.AccountID, stack kernel.ULID) {
 		t.Helper()
 		for _, stmt := range []string{
-			`INSERT INTO state_workspaces (account_id, stack_id, name)
-				VALUES ($1, $2, ''), ($1, $2, 'blue')`,
-			`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id, info)
-				SELECT $1, $2, 'blue', 'l' || i, 'shared', gen_random_uuid(), '{}'
+			`INSERT INTO state_workspaces (account_id, id, stack_id, name)
+				VALUES ($1, gen_random_uuid(), $2, ''), ($1, gen_random_uuid(), $2, 'blue')`,
+			`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id,
+				triggered_by, info)
+				SELECT $1, $2, 'blue', 'l' || i, 'shared', gen_random_uuid(), 'alice', '{}'
 				FROM generate_series(1, 3) AS i`,
 			`INSERT INTO managed_state_versions (account_id, id, stack_id, workspace, object_key,
 				size, sha256, serial, lineage)
@@ -390,6 +393,20 @@ func TestAccStoreUnavailable(t *testing.T) {
 	}
 	if err := s.AddVersion(ctx, at.Account, core.Version{}); err == nil {
 		t.Error("AddVersion on a closed pool succeeded")
+	}
+	if _, _, err := s.WorkspaceByID(ctx, at.Account, kernel.NewULID()); err == nil {
+		t.Error("WorkspaceByID on a closed pool succeeded")
+	}
+	if _, err := s.LockStackWorkspaces(ctx, at.Account, at.Stack); err == nil {
+		t.Error("LockStackWorkspaces on a closed pool succeeded")
+	}
+	if _, err := s.SearchWorkspaces(ctx, at.Account, search.Input{},
+		core.WorkspaceScope{}); err == nil {
+		t.Error("SearchWorkspaces on a closed pool succeeded")
+	}
+	if _, err := s.SuggestWorkspaces(ctx, at.Account, search.SuggestionsInput{},
+		core.WorkspaceScope{}); err == nil {
+		t.Error("SuggestWorkspaces on a closed pool succeeded")
 	}
 }
 

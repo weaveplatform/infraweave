@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -19,6 +20,7 @@ import (
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	"github.com/weaveplatform/infraweave/internal/state/internal/backend"
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
+	"github.com/weaveplatform/infraweave/internal/state/internal/http"
 	"github.com/weaveplatform/infraweave/internal/state/internal/pg"
 )
 
@@ -66,13 +68,16 @@ type Objects = core.Objects
 
 // Deps are what the state domain takes from the platform and the domains
 // before it: DB; Stacks, which holds a stack while its workspace is
-// written and names a stack by its slug; Access, the runs domain's
-// decision of what a run token may do with its stack's state; Objects,
-// which hold each version's object; Jobs, which enqueues a deleted
-// stack's purge; and Settings.
+// written, names a stack by its slug and lists the stacks of the spaces a
+// workspace search reads; Authz, the access domain's decision of the
+// spaces a caller may read; Access, the runs domain's decision of what a
+// run token may do with its stack's state; Objects, which hold each
+// version's object; Jobs, which enqueues a deleted stack's purge; and
+// Settings.
 type Deps struct {
 	DB       DB
 	Stacks   stacksapi.Stacks
+	Authz    accessapi.Authorizer
 	Access   runsapi.StateAccess
 	Objects  Objects
 	Jobs     core.Jobs
@@ -88,13 +93,38 @@ type Domain struct {
 // New constructs the domain over d.
 func New(d Deps) *Domain {
 	svc := core.New(core.Deps{
-		DB: d.DB, Store: pg.New(d.DB), Stacks: d.Stacks, Objects: d.Objects, Jobs: d.Jobs,
+		DB: d.DB, Store: pg.New(d.DB), Stacks: d.Stacks, Authz: d.Authz, Objects: d.Objects,
+		Jobs: d.Jobs,
 	})
 	return &Domain{state: svc, backend: backend.New(d.Access, d.Stacks, svc, d.Settings.MaxSize)}
 }
 
 // Versions are what other domains read of a stack's managed state.
 func (d *Domain) Versions() stateapi.Versions { return d.state }
+
+// Entity is the name the access domain resolves a Tofu workspace's space
+// by, for an operation whose x-infraweave-subject names it.
+//
+// ref: decision 0010 § "Storage"
+const Entity = "tofu_workspace"
+
+// SpaceOf finds the space of a Tofu workspace's stack by the workspace's
+// ID, which internal/app registers with the access domain for Entity.
+func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.state.SpaceOf }
+
+// StateAPI is the domain's partial of the API's strict server, which
+// internal/app embeds under this alias.
+type StateAPI = http.Server
+
+// API is the domain's partial of the API's strict server, which serves
+// the Tofu Workspaces operations; a nil domain's is the zero partial, for
+// tests that construct none.
+func (d *Domain) API() StateAPI {
+	if d == nil {
+		return StateAPI{}
+	}
+	return http.New(d.state)
+}
 
 // Routes adds the state backend's routes to r, the API listener's router,
 // under stateapi.BaseURL; on a nil domain, each answers 501.

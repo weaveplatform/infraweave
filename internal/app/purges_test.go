@@ -124,10 +124,13 @@ func TestAccPurges(t *testing.T) {
 			{`INSERT INTO worker_pool_samples (account_id, worker_pool_id, sampled_at,
 				busy_workers, registered_workers, queued_runs)
 				VALUES ($1, $2, now(), 0, 1, 0)`, []any{pool}},
-			{`INSERT INTO state_workspaces (account_id, stack_id, name)
-				VALUES ($1, $2, '')`, []any{stack}},
-			{`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id,
-				info) VALUES ($1, $2, '', 'l', 'shared', $3, '{}')`, []any{stack, kernel.NewULID()}},
+			{`INSERT INTO state_workspaces (account_id, id, stack_id, name)
+				VALUES ($1, gen_random_uuid(), $2, '')`, []any{stack}},
+			{
+				`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id,
+				triggered_by, info) VALUES ($1, $2, '', 'l', 'shared', $3, 'alice', '{}')`,
+				[]any{stack, kernel.NewULID()},
+			},
 		} {
 			if _, err := q.Exec(ctx, stmt.sql, append([]any{x.acct}, stmt.args...)...); err != nil {
 				t.Fatal(err)

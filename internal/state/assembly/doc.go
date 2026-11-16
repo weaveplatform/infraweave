@@ -4,8 +4,12 @@
 // over the domain's pg adapter and Objects, and the backend Routes adds
 // to the API listener under /state/v1, which decides each request
 // through the runs domain's StateAccess and bounds a version by
-// Settings.MaxSize, state.max_size. Versions is what other domains read
-// of a stack's managed state. Subscribe
+// Settings.MaxSize, state.max_size. API is the domain's partial of the
+// API's strict server, StateAPI, which serves the Tofu Workspaces
+// operations through the domain's http adapter, reading the spaces a
+// caller may read through Authz; SpaceOf resolves the Entity subject, a
+// Tofu workspace, to its stack's space. Versions is what other domains
+// read of a stack's managed state. Subscribe
 // subscribes LockRelease, which releases a run's locks once its
 // run_updated names a terminal state. StackGuard is the guard internal/app
 // registers with the stacks domain, whose stack delete enqueues
@@ -18,12 +22,13 @@
 // # Input and output
 //
 // None of its own: the domain reaches PostgreSQL, the stacks domain, the
-// runs domain, the states store's objects and the job queue through Deps,
-// and serves HTTP through the routes it adds.
+// access domain, the runs domain, the states store's objects and the job
+// queue through Deps, and serves HTTP through the routes it adds and its
+// partial of the API.
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, stateapi, the domain's backend, core and pg
-// packages, chi, platform/outbox, platform/queue, platform/sql/integrity,
+// It imports accessapi, runsapi, stacksapi, stateapi, the domain's
+// backend, core, http and pg packages, chi, platform/outbox, platform/queue, platform/sql/integrity,
 // platform/sql/migrate and platform/tx. Only internal/app imports it.
 package assembly

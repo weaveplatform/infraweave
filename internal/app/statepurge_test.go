@@ -73,10 +73,13 @@ func TestAccStatePurge(t *testing.T) {
 	// of the default one, each with its live object, and answers their
 	// keys.
 	seed := func(stack kernel.ULID) []string {
-		exec(`INSERT INTO state_workspaces (account_id, stack_id, name)
-			VALUES ($1, $2, ''), ($1, $2, 'blue')`, w.acct, stack)
-		exec(`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id, info)
-			VALUES ($1, $2, '', 'a', 'shared', $3, '{}'), ($1, $2, 'blue', 'b', 'exclusive', $3, '{}')`,
+		exec(`INSERT INTO state_workspaces (account_id, id, stack_id, name)
+			VALUES ($1, gen_random_uuid(), $2, ''), ($1, gen_random_uuid(), $2, 'blue')`,
+			w.acct, stack)
+		exec(`INSERT INTO state_locks (account_id, stack_id, workspace, lock_id, mode, run_id,
+			triggered_by, info)
+			VALUES ($1, $2, '', 'a', 'shared', $3, 'alice', '{}'),
+			($1, $2, 'blue', 'b', 'exclusive', $3, 'alice', '{}')`,
 			w.acct, stack, kernel.NewULID())
 		keys := make([]string, 0, 3)
 		for range 3 {

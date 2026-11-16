@@ -178,12 +178,14 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	state := stateassembly.New(stateassembly.Deps{
 		DB:       db.Primary(),
 		Stacks:   stacks.Stacks(),
+		Authz:    access.Authorizer(),
 		Access:   runs.StateAccess(),
 		Objects:  objects,
 		Jobs:     queue.New(db.Primary()),
 		Settings: c.State,
 	})
 	stacks.GuardStacks(state.StackGuard())
+	access.ResolveSubjects(stateassembly.Entity, state.SpaceOf())
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:       db.Primary(),
 		Keys:     keys,

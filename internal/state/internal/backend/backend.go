@@ -167,7 +167,7 @@ var verbs = map[string]string{
 }
 
 // lock takes the lock r's LockInfo names, shared or exclusive as the
-// run's grant says.
+// run's grant says, naming who triggered the run.
 func (h *Handler) lock(w http.ResponseWriter, r *http.Request) {
 	t, g, run, ok := h.target(w, r)
 	if !ok || !may(w, r, g.Lock != runsapi.StateLockNone) {
@@ -185,7 +185,9 @@ func (h *Handler) lock(w http.ResponseWriter, r *http.Request) {
 	if g.Lock == runsapi.StateLockExclusive {
 		mode = core.Exclusive
 	}
-	answer(w, h.state.Lock(r.Context(), t, core.Lock{ID: id, Mode: mode, Run: run, Info: info}))
+	answer(w, h.state.Lock(r.Context(), t, core.Lock{
+		ID: id, Mode: mode, Run: run, TriggeredBy: g.TriggeredBy, Info: info,
+	}))
 }
 
 // unlock releases the lock r's LockInfo names, or with an empty body

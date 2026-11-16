@@ -5,7 +5,12 @@
 // a workspace's shared and exclusive locks one caller at a time under the
 // workspace row's lock, answers a Conflict naming the holder, records an
 // audit entry when a caller releases another run's lock, and releases a
-// run's locks once it ends. Write stores a state version for a run that
+// run's locks once it ends. Each lock records who triggered its run, which
+// a workspace answers as lockedBy. SearchWorkspaces and SuggestWorkspaces
+// read the workspaces of the stacks in the spaces a caller may read, by
+// Fields; UnlockWorkspace and UnlockStack release every lock on one
+// workspace or each of a stack's, auditing each release, and SpaceOf
+// resolves a workspace's ID to its stack's space. Write stores a state version for a run that
 // holds the workspace's exclusive lock under the write's ID, checked
 // before the body streams and again as it commits: the body streams once
 // through a Content-MD5 check, skipped under fips140=only, and a scan of
@@ -23,14 +28,15 @@
 //
 // It reads a version's body as it streams and a stored state's outputs;
 // otherwise it reaches storage through Store, the stacks domain through
-// Stacks, the states store's objects through Objects and the job queue
-// through Jobs.
+// Stacks, the access domain's decisions through Authorizer, the states
+// store's objects through Objects and the job queue through Jobs.
 //
 // # Dependencies
 //
-// It imports internal/kernel, stacksapi, stateapi, platform/objectstore,
-// platform/queue, platform/tx, and crypto/fips140 and crypto/md5 for the
-// Content-MD5 check. The state domain's assembly constructs
-// it over the domain's pg adapter, stacksapi.Stacks, the blob records and
+// It imports internal/kernel, kernel/search, accessapi, stacksapi,
+// stateapi, platform/objectstore, platform/queue, platform/tx, and
+// crypto/fips140 and crypto/md5 for the Content-MD5 check. The state
+// domain's assembly constructs it over the domain's pg adapter,
+// stacksapi.Stacks, the access domain's Authorizer, the blob records and
 // the queue.
 package core
