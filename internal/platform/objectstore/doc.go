@@ -16,9 +16,12 @@
 // as S3's signed x-amz-checksum-sha256 or Blob Storage's x-ms-blob-type.
 // Writer is the Store without Delete, as serve holds it; WriterOnly wraps
 // a Store so it cannot be asserted back. ReadPart and AtEnd are the
-// drivers' size checks for writes sent in parts. Config is the objectstore
-// settings: Validate names a bad key, and Require refuses a missing
-// driver, which every process mode needs.
+// drivers' size checks for writes sent in parts. Expires reports whether
+// objectstore.retention expires a store's objects; states, modules,
+// deliveries and flows-events live as long as their rows. Config is the
+// objectstore settings: Validate names a bad key, among them a retention
+// on a store that does not expire, and Require refuses a missing driver,
+// which every process mode needs.
 //
 // ref: decision 0005
 //

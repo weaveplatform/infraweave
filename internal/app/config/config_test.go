@@ -579,7 +579,8 @@ secrets:
 
 // TestUnitLoadObjectStore checks the objectstore keys from the file and
 // the environment, a store's hyphenated retention key among them, and
-// that Load refuses a setting objectstore refuses.
+// that Load refuses a setting objectstore refuses, a retention on states
+// or modules from the file or the environment among them.
 func TestUnitLoadObjectStore(t *testing.T) {
 	file := writeFile(t, `
 objectstore:
@@ -621,6 +622,21 @@ objectstore:
 	); err == nil ||
 		!strings.Contains(err.Error(), "objectstore.driver") {
 		t.Errorf("an unknown driver: %v", err)
+	}
+	for _, store := range []string{"states", "modules"} {
+		key := "objectstore.retention." + store
+		if _, err := loadArgs(
+			t,
+			"--config",
+			writeFile(t, "objectstore:\n  retention:\n    "+store+": 24h\n"),
+		); err == nil || !strings.Contains(err.Error(), key+" must not be set") {
+			t.Errorf("%s in the file: %v", key, err)
+		}
+	}
+	t.Setenv("INFRAWEAVE_OBJECTSTORE_RETENTION_STATES", "24h")
+	if _, err := loadArgs(t); err == nil ||
+		!strings.Contains(err.Error(), "objectstore.retention.states must not be set") {
+		t.Errorf("objectstore.retention.states in the environment: %v", err)
 	}
 }
 

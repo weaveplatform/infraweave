@@ -46,6 +46,23 @@ func Names() []Name {
 // ref: decision 0013
 func (n Name) Sealed() bool { return n == States || n == PolicyInputs || n == RunArtifacts }
 
+// Expires reports whether objectstore.retention expires the store's
+// objects. Every other store's objects live exactly as long as the rows
+// that reference them, which only their owners delete: an expiry there
+// would remove a stack's current state version or a published module's
+// archive from under its row. The list names the stores that expire, so
+// a store added to Names expires nothing until it is named here.
+//
+// ref: decision 0005
+func (n Name) Expires() bool {
+	switch n {
+	case RunLogs, RunArtifacts, Workspaces, PolicyInputs, Uploads, Inbox, RunObservability:
+		return true
+	default:
+		return false
+	}
+}
+
 // Object is what a write stored: its size and the SHA-256 of its bytes,
 // which blob_objects records.
 type Object struct {

@@ -294,7 +294,7 @@ To bootstrap an installation:
 | `objectstore.azureblob.account_url`, `.container` | | `INFRAWEAVE_OBJECTSTORE_AZUREBLOB_ACCOUNT_URL`, `INFRAWEAVE_OBJECTSTORE_AZUREBLOB_CONTAINER` | `azidentity`'s default chain |
 | `objectstore.fs.root`, `.url` | | `INFRAWEAVE_OBJECTSTORE_FS_ROOT`, `INFRAWEAVE_OBJECTSTORE_FS_URL` | a directory every replica shares, and the API listener's public URL for signed URLs |
 | `objectstore.buckets.<store>` | | `INFRAWEAVE_OBJECTSTORE_BUCKETS_RUN_LOGS` and so on | the driver's bucket; not with `fs` |
-| `objectstore.retention.<store>` | | `INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS` and so on | `run-logs` and `run-observability` `1440h`, `run-artifacts` `720h`, `workspaces` and `policy-inputs` `168h`, `inbox` `48h`, `uploads` `24h`; `0` keeps objects |
+| `objectstore.retention.<store>` | | `INFRAWEAVE_OBJECTSTORE_RETENTION_RUN_LOGS` and so on | `run-logs` and `run-observability` `1440h`, `run-artifacts` `720h`, `workspaces` and `policy-inputs` `168h`, `inbox` `48h`, `uploads` `24h`; `0` keeps objects; `states` and `modules` take none and fail startup when set, since their objects live as long as their rows |
 | `objectstore.part_size` | | `INFRAWEAVE_OBJECTSTORE_PART_SIZE` | `16777216` (16 MiB; at least 5 MiB) |
 | `objectstore.signed_url_ttl` | | `INFRAWEAVE_OBJECTSTORE_SIGNED_URL_TTL` | `15m` |
 | `vcs.ca_file` | | `INFRAWEAVE_VCS_CA_FILE` | none: a PEM file of certificate authorities trusted beside the system's when reaching a repository's host, for a host under a private CA; read at start |
