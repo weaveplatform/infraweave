@@ -110,11 +110,16 @@ build:
 # accept-core also runs the TestAcc suites beside the code; the other
 # partitions hold Gherkin scenarios alone. With no PARTITION, every
 # scenario runs but vcs-lab's, which need the scheduled job's labs.
+# Every partition at once, as fips-only runs it, takes about go test's
+# default ten minutes, so it gets 30m: under fips-only's 45-minute job, so
+# a hang still ends in a goroutine dump rather than the job's kill. One
+# partition keeps the default, under its own job's timeout.
 # ref: decision 0016
 ACCEPT_FEATURES_ONLY = $(filter runs integrations vcs-lab,$(PARTITION))
+ACCEPT_TIMEOUT ?= $(if $(PARTITION),10m,30m)
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
-	INFRAWEAVE_ACCEPT_PARTITION=$(PARTITION) $(GO) test -count=1 -run '$(if $(ACCEPT_FEATURES_ONLY),^TestAccFeatures$$,^TestAcc)' -covermode=atomic -cover -coverpkg=$(MODULE)/... $(if $(ACCEPT_FEATURES_ONLY),./test/acceptance,./...) -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
+	INFRAWEAVE_ACCEPT_PARTITION=$(PARTITION) $(GO) test -count=1 -timeout $(ACCEPT_TIMEOUT) -run '$(if $(ACCEPT_FEATURES_ONLY),^TestAccFeatures$$,^TestAcc)' -covermode=atomic -cover -coverpkg=$(MODULE)/... $(if $(ACCEPT_FEATURES_ONLY),./test/acceptance,./...) -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
 
 ## accept-stress: make accept under the stress INFRAWEAVE_ACCEPT_STRESS names, by default a fifth of the signed uploads refused, 500ms on each object store request and half a CPU for each run container (make accept-stress PARTITION=runs)
 # The default applies only here: a variable this file sets is not exported,
