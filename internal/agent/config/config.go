@@ -65,6 +65,11 @@ type Launcher struct {
 	// LogTimeout is how long a run's container may go without a line on
 	// its output before the launcher kills it and the run fails.
 	LogTimeout time.Duration `mapstructure:"log_timeout"`
+	// SensitiveOutputUpload lets a run keep its sensitive outputs' values
+	// where its stack's enableSensitiveOutputUpload allows it too, as
+	// SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED does; off, the runner
+	// records each sensitive output with no value. The handoff carries it.
+	SensitiveOutputUpload bool `mapstructure:"sensitive_output_upload"`
 	// MaskEnvs names the run's variables whose values the runner masks in
 	// its log, whether or not they are secret, as SPACELIFT_MASK_ENVS
 	// does; the handoff carries the names.

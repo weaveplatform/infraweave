@@ -344,9 +344,14 @@ func applied(run lifecycle.Run, r workersapi.Report) bool {
 // keepOutputs replaces the outputs of run's stack, in the report's
 // transaction, with those its apply recorded at its state version, each
 // with its description from the plan's JSON the run recorded while
-// planning, or none once the store's retention removed it. A run that
-// recorded no outputs the server reads is ErrNoOutputs, since its runner
-// records them before its report.
+// planning, or none once the store's retention removed it. A sensitive
+// output keeps a value only while the stack's
+// EnableSensitiveOutputUpload allows it: the runner drops one its
+// launcher or its specification's stack does not allow, and this drops
+// one a runner kept against the stack's setting, or kept before the
+// setting was turned off. A run that recorded no outputs the server
+// reads is ErrNoOutputs, since its runner records them before its
+// report.
 //
 // ref: decision 0008 § "Logs and artifacts"
 func (s *Service) keepOutputs(ctx context.Context, run lifecycle.Run) error {
@@ -364,6 +369,16 @@ func (s *Service) keepOutputs(ctx context.Context, run lifecycle.Run) error {
 		return err //nolint:wrapcheck // plan names the document
 	}); err != nil {
 		return fmt.Errorf("%w: run %s: %w", workersapi.ErrNoOutputs, run.ID, err)
+	}
+	st, err := s.d.Stacks.Settings(ctx, run.Account, run.Stack)
+	if err != nil {
+		return err //nolint:wrapcheck // the stacks domain names the read
+	}
+	for name, o := range outs {
+		if o.Sensitive && !st.EnableSensitiveOutputUpload {
+			o.Value = nil
+			outs[name] = o
+		}
 	}
 	planned, ok, err := s.d.Store.Planned(ctx, run, PlanDocument)
 	if err != nil {

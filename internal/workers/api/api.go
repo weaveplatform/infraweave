@@ -122,7 +122,8 @@ type SpecRun struct {
 // SpecStack is a Spec's stack: Slug, and Space as its slug, as the API
 // names them; ProjectRoot is nil for the repository's root.
 // EnableWellKnownSecretMasking turns on the runner's well-known secret
-// patterns.
+// patterns, and EnableSensitiveOutputUpload lets the runner keep the
+// sensitive outputs' values where its launcher allows it too.
 type SpecStack struct {
 	Slug                         string
 	Name                         string
@@ -134,6 +135,7 @@ type SpecStack struct {
 	Vendor                       string
 	VendorConfig                 json.RawMessage
 	EnableWellKnownSecretMasking bool
+	EnableSensitiveOutputUpload  bool
 }
 
 // The kinds of a SpecSource: SourceGit is an HTTPS Git URL of the stack's

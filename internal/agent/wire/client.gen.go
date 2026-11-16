@@ -784,6 +784,9 @@ type RunSpecStack struct {
 	// Branch The branch the stack tracks.
 	Branch string `json:"branch"`
 
+	// EnableSensitiveOutputUpload Whether the stack lets a run keep its sensitive outputs' values. The runner keeps them only when its launcher allows it too, and otherwise records each sensitive output with no value.
+	EnableSensitiveOutputUpload bool `json:"enableSensitiveOutputUpload"`
+
 	// EnableWellKnownSecretMasking Whether the runner also masks values that match well-known secret patterns, such as cloud access keys and private keys.
 	EnableWellKnownSecretMasking bool `json:"enableWellKnownSecretMasking"`
 

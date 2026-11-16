@@ -6,7 +6,7 @@
 // run's changes, whose document it writes from internal/iac's recorded
 // plans and seals and commits as a worker does; and it checks that a
 // value, such as an override's, is named in no answer and no server's
-// log.
+// log, and whether an output a run kept holds a sealed value.
 //
 // # Input and output
 //

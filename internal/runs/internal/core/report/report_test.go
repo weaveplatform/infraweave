@@ -480,11 +480,13 @@ func TestUnitReportEdges(t *testing.T) {
 // TestUnitReportOutputs checks that a tracked run's succeeded apply
 // replaces its stack's outputs with those it recorded, each with its
 // description from the plan's JSON it recorded while planning, before
-// the run moves on; that a plan the store no longer holds leaves them
-// without descriptions; that an apply which recorded no outputs the
-// server reads is refused, as is any read or write that fails, without
-// moving the run; and that a failed apply, and a test case's apply,
-// keep no outputs.
+// the run moves on; that a sensitive output keeps its value only while
+// the stack allows it, and one recorded with no value is kept with none;
+// that a plan the store no longer holds leaves them without
+// descriptions; that an apply which recorded no outputs the server reads
+// is refused, as is any read or write that fails, without moving the
+// run; and that a failed apply, and a test case's apply, keep no
+// outputs.
 //
 // ref: decision 0008 § "Logs and artifacts"
 func TestUnitReportOutputs(t *testing.T) {
@@ -513,6 +515,7 @@ func TestUnitReportOutputs(t *testing.T) {
 	}
 
 	w := newApply(kernel.RunTypeTracked, outputs)
+	w.st.settings.EnableSensitiveOutputUpload = true
 	got, err := apply(w, workersapi.ReportSucceeded)
 	want(t, got, err, workersapi.ActionExit, kernel.RunStateFinished, 3)
 	if !reflect.DeepEqual(w.s.outputs, map[string]plan.Output{
@@ -520,6 +523,25 @@ func TestUnitReportOutputs(t *testing.T) {
 		"password": {Value: []byte(`"hunter2"`), Sensitive: true},
 	}) {
 		t.Errorf("the stack's outputs = %+v", w.s.outputs)
+	}
+
+	for name, doc := range map[string]string{
+		"the stack does not allow it": outputs,
+		"recorded with none": `{
+			"name": {"sensitive": false, "value": "web"},
+			"password": {"sensitive": true}
+		}`,
+	} {
+		w = newApply(kernel.RunTypeTracked, doc)
+		w.st.settings.EnableSensitiveOutputUpload = name == "recorded with none"
+		got, err = apply(w, workersapi.ReportSucceeded)
+		want(t, got, err, workersapi.ActionExit, kernel.RunStateFinished, 3)
+		if !reflect.DeepEqual(w.s.outputs, map[string]plan.Output{
+			"name":     {Value: []byte(`"web"`), Description: "The server's name"},
+			"password": {Sensitive: true},
+		}) {
+			t.Errorf("%s: the stack's outputs = %+v", name, w.s.outputs)
+		}
 	}
 
 	w = newApply(kernel.RunTypeTracked, outputs)
@@ -564,6 +586,7 @@ func TestUnitReportOutputs(t *testing.T) {
 			func(w *world) { w.o.contents["run-artifacts/"+w.s.plan] = `[` },
 			plan.ErrMalformed,
 		},
+		"settings":        {func(w *world) { w.st.err = errDown }, errDown},
 		"recorded":        {func(w *world) { w.s.fail = "Recorded" }, errDown},
 		"planned":         {func(w *world) { w.s.fail = "Planned" }, errDown},
 		"open":            {func(w *world) { w.o.fail = "Open" }, errDown},

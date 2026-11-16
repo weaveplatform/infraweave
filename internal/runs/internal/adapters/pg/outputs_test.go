@@ -16,9 +16,10 @@ import (
 
 // TestAccOutputs checks that a run's outputs replace its stack's, each
 // value sealed, and read back by name with the value of each that is not
-// sensitive; that a later run's outputs replace them all, none clearing
-// them; that a value copied to another stack or name does not open; and
-// that another account reads none.
+// sensitive; that a later run's outputs replace them all, a sensitive one
+// with no value kept with none and none clearing them; that only a
+// sensitive output may have no value; that a value copied to another
+// stack or name does not open; and that another account reads none.
 //
 // ref: decision 0013 § "Sealed columns"
 func TestAccOutputs(t *testing.T) {
@@ -99,17 +100,29 @@ func TestAccOutputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := s.ReplaceOutputs(ctx, second, map[string]plan.Output{
-		"name": {Value: json.RawMessage(`"api"`)},
+		"name":  {Value: json.RawMessage(`"api"`)},
+		"token": {Sensitive: true},
 	}); err != nil {
 		t.Fatal(err)
+	}
+	var held int
+	if err := db.QueryRow(ctx, `SELECT count(*) FROM stack_outputs WHERE account_id = $1
+		AND stack_id = $2 AND value_sealed IS NOT NULL`, acct, stack).Scan(&held); err != nil ||
+		held != 1 {
+		t.Errorf("%d values held, %v, want the one that is not sensitive", held, err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO stack_outputs (account_id, stack_id, name, run_id)
+		VALUES ($1, $2, 'bare', $3)`, acct, stack, second.ID); err == nil {
+		t.Error("an output that is not sensitive was kept with no value")
 	}
 	var writer kernel.ULID
 	if err := db.QueryRow(ctx, `SELECT run_id FROM stack_outputs WHERE account_id = $1
 		AND stack_id = $2`, acct, stack).Scan(&writer); err != nil || writer != second.ID {
 		t.Errorf("the outputs' run = %s, %v, want %s", writer, err, second.ID)
 	}
-	if got := read(); len(got) != 1 || got[0].Name != "name" || string(got[0].Value) != `"api"` ||
-		got[0].Description != "" {
+	if got := read(); len(got) != 2 || got[0].Name != "name" || string(got[0].Value) != `"api"` ||
+		got[0].Description != "" ||
+		got[1].Name != "token" || got[1].Value != nil || !got[1].Sensitive {
 		t.Errorf("the outputs a later apply replaced = %+v", got)
 	}
 	if got, err := s.Outputs(ctx, kernel.NewAccountID(), []kernel.ULID{stack}); err != nil ||

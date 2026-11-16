@@ -713,7 +713,8 @@ func (l *Launcher) container(
 		Endpoint: client.Base(l.id.endpoint), Run: a.Run, RunToken: a.RunToken,
 		Assigned: a.State, StateVersion: a.StateVersion, Spec: spec, Secrets: secrets,
 		StateLockTimeout: l.d.Config.StateLockTimeout, MaskEnvs: l.d.Config.MaskEnvs,
-		PoolKey: l.id.open.PublicKey().Bytes(),
+		SensitiveOutputUpload: l.d.Config.SensitiveOutputUpload,
+		PoolKey:               l.id.open.PublicKey().Bytes(),
 	}); err != nil {
 		return nil, err //nolint:wrapcheck // handoff names the write
 	}

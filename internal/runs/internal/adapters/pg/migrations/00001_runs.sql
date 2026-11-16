@@ -187,17 +187,20 @@ CREATE INDEX stack_run_state_run ON stack_run_state (account_id, tracked_run_id)
 -- The outputs of each stack's last applied run, by name, with the run that
 -- wrote them. stack_id has no foreign key, as in runs. value_sealed is the
 -- output's value as JSON, sealed to its row whether or not it is
--- sensitive.
+-- sensitive. A sensitive output's is NULL unless both its stack and the
+-- launcher that applied it allow its value to be kept, so no row holds a
+-- value they did not allow, sealed or not.
 CREATE TABLE stack_outputs (
     account_id   uuid    NOT NULL,
     stack_id     uuid    NOT NULL,
     name         text    NOT NULL,
     run_id       uuid    NOT NULL,
-    value_sealed bytea   NOT NULL,
+    value_sealed bytea,
     sensitive    boolean NOT NULL DEFAULT false,
     description  text,
     PRIMARY KEY (account_id, stack_id, name),
-    FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
+    FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE,
+    CHECK (value_sealed IS NOT NULL OR sensitive)
 );
 
 CREATE INDEX stack_outputs_run ON stack_outputs (account_id, run_id);

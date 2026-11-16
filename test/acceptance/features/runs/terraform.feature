@@ -9,29 +9,33 @@ Feature: Runs of a Terraform stack end to end
   UNCONFIRMED; once confirmed, a new container restores the workspace,
   initializes again and applies, and the run finishes, its outputs kept as
   the stack's, each with its description from the plan and a sensitive one
-  with no value. Its hooks run in one shell session per container, so a
-  variable a hook exports before initialization is set again after the
-  restore. A write-only variable and a write-only mounted file reach the
-  run, and the log masks each where a hook prints it; no object of the
-  store holds either in the clear. A discarded run releases its stack's
-  lock to the next run. A targeted replan of one of a run's two changes
-  restores its workspace in a new container and plans that change alone,
-  and its confirmation applies it alone. A local preview plans an uploaded
-  workspace that holds uncommitted code. A task performs its command after
-  initialization, reading the state's output; one that fails fails in
-  PERFORMING, its output masked, and one that skips initialization runs no
-  init. A stack deleted with its resources destroys them in a destroy run,
-  whose after-destroy hook finds no resource left in the state, and is
-  deleted when that run finishes. In a run's environment a per-run
-  override wins over the stack's variable, which wins over an attached
-  context's; a stack variable that names a computed TF_VAR_infraweave_
-  variable replaces it; a ${{ … }} template renders against the winning
-  values and the stack's computed fields; and a name keeps an ro_ prefix.
-  Every run gets INFRAWEAVE_API_TOKEN, on a stack with no role too, whose
-  subject is the stack's slug and the run's ID, and with which a hook
-  reads its own stack and space. The release indexes serve the recorded
-  fixtures; the home key is space-admin on the account's top space. Stacks
-  live in legacy, keep their state in infraweave and run on the pool; the
+  with no value. The launcher keeps sensitive outputs' values, so a
+  sensitive output's value is kept, sealed, where the stack enables
+  sensitive output upload too, and no read answers it; where the stack
+  does not, the output is kept with no value. Its hooks run in one shell
+  session per container, so a variable a hook exports before
+  initialization is set again after the restore. A write-only variable and
+  a write-only mounted file reach the run, and the log masks each where a
+  hook prints it; no object of the store holds either in the clear. A
+  discarded run releases its stack's lock to the next run. A targeted
+  replan of one of a run's two changes restores its workspace in a new
+  container and plans that change alone, and its confirmation applies it
+  alone. A local preview plans an uploaded workspace that holds
+  uncommitted code. A task performs its command after initialization,
+  reading the state's output; one that fails fails in PERFORMING, its
+  output masked, and one that skips initialization runs no init. A stack
+  deleted with its resources destroys them in a destroy run, whose
+  after-destroy hook finds no resource left in the state, and is deleted
+  when that run finishes. In a run's environment a per-run override wins
+  over the stack's variable, which wins over an attached context's; a
+  stack variable that names a computed TF_VAR_infraweave_ variable
+  replaces it; a ${{ … }} template renders against the winning values and
+  the stack's computed fields; and a name keeps an ro_ prefix. Every run
+  gets INFRAWEAVE_API_TOKEN, on a stack with no role too, whose subject is
+  the stack's slug and the run's ID, and with which a hook reads its own
+  stack and space. The release indexes serve the recorded fixtures; the
+  home key is space-admin on the account's top space. Stacks live in
+  legacy, keep their state in infraweave and run on the pool; the
   repository's configuration has terraform_data resources and outputs
   alone, so no provider is downloaded.
   ref: decision 0006
@@ -51,7 +55,7 @@ Feature: Runs of a Terraform stack end to end
     And the head of "main" of "infra" is kept as "seed"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "pool"
-    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr", which keeps sensitive outputs' values, through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 
   @op:runTrigger @op:runConfirm @op:runLogs @op:runChangesV3 @case:success
@@ -80,6 +84,8 @@ Feature: Runs of a Terraform stack end to end
     And the current state version is the run "run"'s, with the serial and lineage its APPLYING log names after "state pull: ", as token "h" reads it through A
     When token "h" sends "GET /api/v1/stacks/infra" through B
     Then the answer's outputs is '[{"id":"name","description":"The input of terraform_data.this","sensitive":false,"value":"\"one\""},{"id":"secret","sensitive":true}]'
+    And the run "run" kept its stack's output "name" with a sealed value
+    And the run "run" kept its stack's output "secret" with no sealed value
     And token "h" eventually reads a download URL of the run "run"'s PLANNING log through B
     And the answer's url downloads a log that holds "secret: *****" and not "s3cr3t"
     And no object in the scenario's bucket holds "s3cr3t-pl4n", of at least 6 objects
@@ -190,11 +196,14 @@ Feature: Runs of a Terraform stack end to end
 
   @op:stackDelete @case:success
   Scenario: A stack deleted with its resources destroys them in a destroy run that leaves its state empty, and is deleted when the run finishes
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{}},"afterDestroy":["test -z \"$(terraform state list)\""]},"manageState":true}' through B
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"enableSensitiveOutputUpload":true,"vendorConfig":{"terraform":{}},"afterDestroy":["test -z \"$(terraform state list)\""]},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "FINISHED" through B
     And the run "run" wrote 1 state version
+    And the run "run" kept its stack's output "secret" with a sealed value
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then the answer's outputs is '[{"id":"name","description":"The input of terraform_data.this","sensitive":false,"value":"\"one\""},{"id":"secret","sensitive":true}]'
     When token "h" sends "DELETE /api/v1/stacks/infra?destroyResources=true" through A
     Then it answers 200
     And the answer's deleting is 'true'

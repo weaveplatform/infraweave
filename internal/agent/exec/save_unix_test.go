@@ -205,23 +205,42 @@ func applying(t *testing.T) *world {
 
 // TestUnitExecSaveOutputs checks that applying saves the outputs' JSON,
 // which the server opens with the run's artifact key, before its
-// succeeded report, and that the sensitive value reaches no log.
+// succeeded report; that the sensitive output keeps its value only when
+// both the launcher and the stack allow it, and otherwise has none while
+// the other output keeps its own; and that the sensitive value reaches
+// no log and no object in plaintext.
 func TestUnitExecSaveOutputs(t *testing.T) {
-	w := applying(t)
-	if err := w.run(); err != nil {
-		t.Fatal(err)
-	}
-	equal(t, "reports", w.events(), []string{"APPLYING started 8", "APPLYING succeeded 9"})
-	equal(t, "taken", w.w.taken[len(w.w.taken)-2:], []string{
-		"artifacts 9: artifact outputs.json", "report APPLYING succeeded",
-	})
-	if got := string(w.openedIn(kernel.RunStateApplying, 9, exec.OutputsArtifact)); got !=
-		outputsJSON {
-		t.Errorf("outputs.json = %q", got)
-	}
-	if bytes.Contains(w.w.recorded[exec.OutputsArtifact], []byte("hunter2")) ||
-		strings.Contains(w.out.String(), "hunter2") {
-		t.Error("the sensitive output is in plaintext")
+	dropped := `{"name":{"sensitive":false,"type":"string","value":"web"},` +
+		`"password":{"sensitive":true,"type":"string"}}` + "\n"
+	for name, c := range map[string]struct {
+		launcher, stack bool
+		want            string
+	}{
+		"neither allows it":  {want: dropped},
+		"the launcher alone": {launcher: true, want: dropped},
+		"the stack alone":    {stack: true, want: dropped},
+		"both allow it":      {launcher: true, stack: true, want: outputsJSON},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := applying(t)
+			w.h.SensitiveOutputUpload = c.launcher
+			w.h.Spec.Stack.EnableSensitiveOutputUpload = c.stack
+			if err := w.run(); err != nil {
+				t.Fatal(err)
+			}
+			equal(t, "reports", w.events(), []string{"APPLYING started 8", "APPLYING succeeded 9"})
+			equal(t, "taken", w.w.taken[len(w.w.taken)-2:], []string{
+				"artifacts 9: artifact outputs.json", "report APPLYING succeeded",
+			})
+			if got := string(w.openedIn(kernel.RunStateApplying, 9, exec.OutputsArtifact)); got !=
+				c.want {
+				t.Errorf("outputs.json = %q, want %q", got, c.want)
+			}
+			if bytes.Contains(w.w.recorded[exec.OutputsArtifact], []byte("hunter2")) ||
+				strings.Contains(w.out.String(), "hunter2") {
+				t.Error("the sensitive output is in plaintext")
+			}
+		})
 	}
 }
 

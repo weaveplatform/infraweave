@@ -1,7 +1,7 @@
 // Package workers holds the acceptance steps of features/workers: worker
 // pools and the worker protocol, from registration and run assignment to
 // the run specification a worker reads and the launchers that run it in
-// Docker.
+// Docker, one of which may keep sensitive outputs' values.
 //
 // # Input and output
 //

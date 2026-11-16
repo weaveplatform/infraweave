@@ -3164,7 +3164,7 @@
         "apiPhase": "P10",
         "providerPhase": "P24",
         "state": "stub",
-        "notes": "A stack's read answers the outputs its last applied tracked run recorded, each value sealed to its row, with no value for a sensitive output (P10); the data source itself lands with the provider (P24)"
+        "notes": "A stack's read answers the outputs its last applied tracked run recorded, each value sealed to its row, with no value for a sensitive output (P10); a sensitive output's value is kept only where both the stack's `enableSensitiveOutputUpload` and its launcher's `launcher.sensitive_output_upload` allow it, and is otherwise in no object or row (P10); the data source itself lands with the provider (P24)"
       }
     },
     {

@@ -402,7 +402,7 @@ func TestUnitHandover(t *testing.T) {
 	if st := spec.Stack; st.Slug != "infra" || st.Space != "legacy" ||
 		!slices.Equal(st.Labels, []string{"a", "b"}) || *st.ProjectRoot != "run-root" ||
 		st.Vendor != "terraform" || string(st.VendorConfig) != `{"version":"1.9"}` ||
-		st.EnableWellKnownSecretMasking {
+		st.EnableWellKnownSecretMasking || st.EnableSensitiveOutputUpload {
 		t.Errorf("stack = %+v", st)
 	}
 	if *spec.RunnerImage != "ghcr.io/acme/run" || spec.Commit.Hash != "abc" ||
@@ -836,8 +836,8 @@ func TestUnitHandoverCPUProfiling(t *testing.T) {
 // TestUnitHandoverSourceAndTool checks a raw Git source, with no
 // credential and not narrowed; an OpenTofu stack's tofu at the release
 // its terraformVersion resolves to, over its settings' version, run from
-// the image when the stack skips the download; masking as the stack sets
-// it; no tool for a vendor that mounts none; that a constraint no release
+// the image when the stack skips the download; masking and sensitive
+// output upload as the stack sets them; no tool for a vendor that mounts none; that a constraint no release
 // meets is a *kernel.Invalid naming the setting it comes from, and a
 // catalogue that lists none one naming /terraformVersion; and that a
 // handover refused for its tool, or with no sources bound, mints neither
@@ -849,13 +849,14 @@ func TestUnitHandoverSourceAndTool(t *testing.T) {
 	w.stacks.settings.Vendor, w.stacks.settings.TerraformVersion = "opentofu", &constraint
 	w.stacks.settings.SkipVendorBinaryDownload = true
 	w.stacks.settings.EnableWellKnownSecretMasking = true
+	w.stacks.settings.EnableSensitiveOutputUpload = true
 	h, err := w.handover(t, w.run.ID)
 	if err != nil || h.Spec.Source.Narrowed ||
 		h.Spec.Source.URL != "https://example.com/infra.git" ||
 		h.Spec.Tool == nil ||
 		*h.Spec.Tool != (workersapi.SpecTool{Name: "tofu", Version: "1.9.8"}) ||
 		!slices.Equal(w.catalog.asked, []string{" ~> 1.9 "}) ||
-		!h.Spec.Stack.EnableWellKnownSecretMasking {
+		!h.Spec.Stack.EnableWellKnownSecretMasking || !h.Spec.Stack.EnableSensitiveOutputUpload {
 		t.Fatalf("an OpenTofu stack on raw Git = %+v, %v; asked %v", h.Spec, err, w.catalog.asked)
 	}
 	if strings.Contains(string(h.Secrets.Reveal()), "sourceCredential") {

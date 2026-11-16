@@ -76,6 +76,7 @@ func (w *world) config() config.Launcher {
 	c.Token, c.PrivateKey, c.CacheDir = w.pool.Token, observe.Secret(w.pool.Key), w.dir
 	c.Metadata = map[string]string{"zone": "a"}
 	c.MaskEnvs = []string{"DB_PASSWORD"}
+	c.SensitiveOutputUpload = true
 	return c
 }
 
@@ -387,7 +388,7 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 			h.StateVersion != 4 || h.Secrets.ApiToken != "api-run-1" ||
 			h.Secrets.Environment["TF_VAR_x"] != "1" || h.Spec.Sealed != nil ||
 			h.Spec.Hooks["before_init"][0] != "echo hi" ||
-			!slices.Equal(h.MaskEnvs, []string{"DB_PASSWORD"}) ||
+			!slices.Equal(h.MaskEnvs, []string{"DB_PASSWORD"}) || !h.SensitiveOutputUpload ||
 			!bytes.Equal(h.PoolKey, poolKey(t, w.pool).Bytes()) {
 			t.Fatalf("handoff: %+v", h)
 		}

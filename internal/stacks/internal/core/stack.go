@@ -18,13 +18,12 @@ import (
 // settings leaves as they are.
 type Stack struct {
 	stacksapi.Settings
-	Description                 *string
-	Labels                      []string
-	ProtectFromDeletion         bool
-	EnableSensitiveOutputUpload bool
-	CreatedAt                   time.Time
-	State                       kernel.StackState
-	Blocked                     bool
+	Description         *string
+	Labels              []string
+	ProtectFromDeletion bool
+	CreatedAt           time.Time
+	State               kernel.StackState
+	Blocked             bool
 }
 
 // DefaultProvider is the VCS provider of a stack whose input names none.

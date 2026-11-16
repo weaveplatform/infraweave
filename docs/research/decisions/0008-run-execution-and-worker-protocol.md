@@ -388,6 +388,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   preparation with that detail.
 - **Masking.** `stack.enableWellKnownSecretMasking` is the stack's flag,
   which turns on the well-known patterns ([0013](0013-secrets-at-rest.md#masking)).
+- **Sensitive outputs.** `stack.enableSensitiveOutputUpload` is the
+  stack's flag, which lets the run keep its sensitive outputs' values
+  where its launcher's `launcher.sensitive_output_upload` allows it too
+  (see Outputs under "Logs and artifacts").
 - **The run's work.** A `TASK` run's clear part carries
   `task: {command, skipInitialization}`, and a run claimed from
   `REPLAN_REQUESTED` carries `targets`, the resource addresses
@@ -597,24 +601,36 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   of the run's most recently recorded workspace, which the launcher
   downloads for `PREPARING_APPLY` and `PREPARING_REPLAN`, or `404`
   `not-found` when the run recorded none.
-- **Outputs.** `APPLYING` runs `apply`, then `getOutputs`, whose stdout
-  is the tool's `output -json`. The runner refuses a document that is not
+- **Outputs.** `APPLYING` runs `apply`, then `getOutputs`, whose stdout is
+  the tool's `output -json`. The runner refuses a document that is not
   one, runs the `after_apply` hooks, then seals it as `outputs.json` and
-  records it before the phase's report. The server opens it in that
-  report's transaction, before the run moves on. Each output's
-  description comes from the configuration in the `plan.json` the run
-  recorded last while planning, since an apply in a later container may
-  not hold the plan's JSON; there are none once retention has removed
-  it. The server then replaces the stack's `stack_outputs`, each value
-  sealed in `value_sealed` to its row ([0013](0013-secrets-at-rest.md)),
-  beside `sensitive` and `description`. A tracked run's succeeded
-  `APPLYING` report whose `outputs.json` is not recorded, or cannot be
-  read, is refused with `400` `invalid-request`. A failed apply leaves the
-  previous outputs. A `DESTROY` run's `FINISHED` transition deletes the
-  stack, and its outputs with it. The stack's read answers them through
-  `stacksapi.StackStatus`, which `runs` implements. A value is the JSON
-  of the tool's output, as a string, and a sensitive output's value is
-  never opened or answered.
+  records it before the phase's report. A sensitive output keeps its value
+  there only when both the stack's `enableSensitiveOutputUpload` and the
+  launcher's `launcher.sensitive_output_upload` allow it, as Spacelift's
+  stack setting and `SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED` do;
+  otherwise the runner writes it with its name, type and `sensitive` and
+  no value, so no object holds the value, sealed or not. Both are off by
+  default. The server opens the document in that report's transaction,
+  before the run moves on, and drops any sensitive value the stack's
+  setting does not allow, whether a runner kept it against the
+  specification or the setting was turned off after the run's handover.
+  Each output's description comes from the configuration in the
+  `plan.json` the run recorded last while planning, since an apply in a
+  later container may not hold the plan's JSON; there are none once
+  retention has removed it. The server then replaces the stack's
+  `stack_outputs`, each value sealed in `value_sealed` to its row
+  ([0013](0013-secrets-at-rest.md)), beside `sensitive` and `description`.
+  A sensitive output with no value has a `NULL` `value_sealed`, which a
+  `CHECK` allows for sensitive rows alone. `NULL` rather than a sealed
+  JSON `null`: `null` is a value an output can have, and a row with no
+  ciphertext has nothing a later reader, such as an output reference,
+  could open. A tracked run's succeeded `APPLYING` report whose
+  `outputs.json` is not recorded, or cannot be read, is refused with `400`
+  `invalid-request`. A failed apply leaves the previous outputs. A
+  `DESTROY` run's `FINISHED` transition deletes the stack, and its outputs
+  with it. The stack's read answers them through `stacksapi.StackStatus`,
+  which `runs` implements. A value is the JSON of the tool's output, as a
+  string, and a sensitive output's value is never opened or answered.
 - **CPU profiles.** On a stack whose OpenTofu settings enable CPU
   profiling, with OpenTofu 1.11 or later, the runner points
   `TOFU_CPU_PROFILE` at a fresh file for each tool command, merges a
@@ -977,14 +993,15 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `launcher.state_lock_timeout` (5m),
   `launcher.log.*`, `launcher.default_runner_image`,
   `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
-  `launcher.mask_envs`, `launcher.whitelist_envs`, `launcher.tool_mirror`,
+  `launcher.mask_envs`, `launcher.whitelist_envs`,
+  `launcher.sensitive_output_upload` (off), `launcher.tool_mirror`,
   `launcher.ca_file`, `launcher.docker.config_dir`, `.network`, `.runtime`, `.runner_binary`,
   `.extra_mounts`, `.ro_extra_mounts` and `.wo_extra_mounts`. Environment variables are
   `INFRAWEAVE_LAUNCHER_*`. Every Spacelift launcher variable of
   [10 section 5.1](../reference/10-workers-and-execution.md#51-launcher-environment-variables)
-  has an equivalent here except the transport selectors and four this record
-  leaves open: `SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED`,
-  `SPACELIFT_RUN_LOGS_ON_STANDARD_OUTPUT_ENABLED`, `SPACELIFT_DEBUG` and
+  has an equivalent here except the transport selectors and three this
+  record leaves open: `SPACELIFT_RUN_LOGS_ON_STANDARD_OUTPUT_ENABLED`,
+  `SPACELIFT_DEBUG` and
   `SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT`, whose deadline the pool's
   preparing timeout bounds.
 

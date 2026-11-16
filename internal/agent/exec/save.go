@@ -100,8 +100,10 @@ func (r *run) save(ctx context.Context, version int64, p plan.Plan) string {
 
 // saveOutputs keeps applying's outputs at version before its succeeded
 // report: the outputs' JSON, sealed with the run's artifact key, which the
-// server opens and keeps as the stack's outputs. It answers the note of
-// what failed, empty when nothing did.
+// server opens and keeps as the stack's outputs. A sensitive output keeps
+// its value only when both the launcher and the run's stack allow it, and
+// otherwise has none, so no object holds it. It answers the note of what
+// failed, empty when nothing did.
 //
 // ref: decision 0008 § "Logs and artifacts"
 func (r *run) saveOutputs(ctx context.Context, version int64) string {
@@ -109,8 +111,17 @@ func (r *run) saveOutputs(ctx context.Context, version int64) string {
 	if note != "" {
 		return note
 	}
+	keep := r.h.SensitiveOutputUpload && r.h.Spec.Stack.EnableSensitiveOutputUpload
 	u, err := r.sealArtifact(key(OutputsArtifact), OutputsArtifact, func(w io.Writer) error {
-		return copyFile(w, r.options.OutputsJSON)
+		if keep {
+			return copyFile(w, r.options.OutputsJSON)
+		}
+		f, err := os.Open(r.options.OutputsJSON)
+		if err != nil {
+			return err //nolint:wrapcheck // names the path
+		}
+		defer f.Close()
+		return plan.WithoutSensitiveValues(w, f) //nolint:wrapcheck // plan names the document
 	})
 	if err != nil {
 		return fmt.Sprintf("The outputs could not be sealed: %v.", err)

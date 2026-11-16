@@ -12,8 +12,9 @@ import (
 )
 
 // trackedSteps check what a run a real launcher ran leaves in the
-// database: its run_updated events in the outbox, and the state version
-// it wrote, against the state its own hook pulled.
+// database: its run_updated events in the outbox, the state version it
+// wrote, against the state its own hook pulled, and whether each output
+// it kept holds a sealed value.
 type trackedSteps struct {
 	w *harness.World
 }
@@ -24,6 +25,23 @@ func (t *trackedSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the current state version is the run "(\w+)"'s, with the serial and lineage its `+
 		`([A-Z_]+) log names after "`+pulled+`", as token "(\w+)" reads it through ([AB])$`,
 		t.current)
+	sc.Step(`^the run "(\w+)" kept its stack's output "(\w+)" with (a|no) sealed value$`, t.kept)
+}
+
+// kept checks whether the output name the run kept as run wrote to its
+// stack's outputs holds a sealed value, as want, "a" or "no", says.
+func (t *trackedSteps) kept(ctx context.Context, run, name, want string) error {
+	var held bool
+	if err := t.w.Row(ctx, `SELECT value_sealed IS NOT NULL FROM stack_outputs
+		WHERE run_id = $1 AND name = $2`, []any{harness.UUIDOf(t.w.IDs[run]), name},
+		&held); err != nil {
+		return err //nolint:wrapcheck // names the query
+	}
+	if held != (want == "a") {
+		return fmt.Errorf("%w: the output %s holds a sealed value: %t", harness.ErrStep, name,
+			held)
+	}
+	return nil
 }
 
 // events checks the states of the run_updated events the outbox holds of

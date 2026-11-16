@@ -65,6 +65,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 				Branch: "main", ProjectRoot: &root, Vendor: "terraform",
 				VendorConfig:                 json.RawMessage(`{"version":"1.9"}`),
 				EnableWellKnownSecretMasking: true,
+				EnableSensitiveOutputUpload:  true,
 			},
 			Commit: workersapi.SpecCommit{
 				Hash: "abc", URL: "https://example.com/abc", Message: "Fix", AuthorName: "Alice",
@@ -126,6 +127,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			"repository": "infra", "branch": "main", "projectRoot": "infra",
 			"vendor": "terraform", "vendorConfig": map[string]any{"version": "1.9"},
 			"enableWellKnownSecretMasking": true,
+			"enableSensitiveOutputUpload":  true,
 		},
 		"commit": map[string]any{
 			"hash": "abc", "url": "https://example.com/abc", "message": "Fix",

@@ -160,6 +160,7 @@ components:
         - vendor
         - vendorConfig
         - enableWellKnownSecretMasking
+        - enableSensitiveOutputUpload
       properties:
         id:
           type: string
@@ -198,6 +199,12 @@ components:
           description: >-
             Whether the runner also masks values that match well-known
             secret patterns, such as cloud access keys and private keys.
+        enableSensitiveOutputUpload:
+          type: boolean
+          description: >-
+            Whether the stack lets a run keep its sensitive outputs' values.
+            The runner keeps them only when its launcher allows it too, and
+            otherwise records each sensitive output with no value.
     RunSpecSource:
       description: >-
         Where the worker fetches the run's source, directly from the

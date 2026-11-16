@@ -223,6 +223,7 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 			Repository: st.Repository, Branch: st.Branch, ProjectRoot: st.ProjectRoot,
 			Vendor: st.Vendor, VendorConfig: object(st.VendorConfig),
 			EnableWellKnownSecretMasking: st.EnableWellKnownSecretMasking,
+			EnableSensitiveOutputUpload:  st.EnableSensitiveOutputUpload,
 		},
 		Commit: gen.RunSpecCommit{
 			Hash: c.Hash, Tag: optional(c.Tag), Url: optional(c.URL), Message: c.Message,

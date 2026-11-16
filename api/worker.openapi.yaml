@@ -1060,6 +1060,7 @@ components:
         - vendor
         - vendorConfig
         - enableWellKnownSecretMasking
+        - enableSensitiveOutputUpload
       properties:
         id:
           type: string
@@ -1096,6 +1097,10 @@ components:
           type: boolean
           description: >-
             Whether the runner also masks values that match well-known secret patterns, such as cloud access keys and private keys.
+        enableSensitiveOutputUpload:
+          type: boolean
+          description: >-
+            Whether the stack lets a run keep its sensitive outputs' values. The runner keeps them only when its launcher allows it too, and otherwise records each sensitive output with no value.
     RunSpecStateBackend:
       description: >-
         The stack's managed state backend, present only when infraweave keeps the stack's state. The runner points the infrastructure tool's HTTP backend at it, authenticating with the user name run and the run token as the password.
