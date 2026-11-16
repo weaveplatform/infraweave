@@ -647,10 +647,7 @@ func TestUnitExternal(t *testing.T) {
 		w.external = true
 		return r
 	}
-	and := func(
-		first func(*world, *http.Request) *http.Request,
-		then func(*world),
-	) func(*world, *http.Request) *http.Request {
+	and := func(first func(*world, *http.Request) *http.Request, then func(*world)) func(*world, *http.Request) *http.Request {
 		return func(w *world, r *http.Request) *http.Request {
 			r = first(w, r)
 			then(w)
