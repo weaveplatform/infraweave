@@ -13,6 +13,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
+	"github.com/weaveplatform/infraweave/internal/iac/terragrunt"
 	"github.com/weaveplatform/infraweave/internal/iac/version"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
@@ -221,6 +222,10 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if err != nil {
 		return workersapi.Handover{}, err
 	}
+	tg, err := s.terragrunt(ctx, st)
+	if err != nil {
+		return workersapi.Handover{}, err
+	}
 	spec := workersapi.Spec{
 		Run: workersapi.SpecRun{
 			Account: r.Account, ID: r.ID, Type: r.Type, State: r.State, StateVersion: r.Version,
@@ -236,6 +241,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		RuntimeConfig: r.RuntimeConfig,
 		RunnerImage:   cmp.Or(rc.RunnerImage, st.RunnerImage),
 		Tool:          tool,
+		Terragrunt:    tg,
 		Task:          r.Task,
 		Hooks:         resolved.Hooks,
 	}
@@ -313,7 +319,8 @@ func (s *Service) source(ctx context.Context, r lifecycle.Run, spec *workersapi.
 
 // tools are the infrastructure tool each stack vendor's runs mount: the
 // vendor the catalogue lists its releases under, and the binary the
-// runner calls. A vendor absent here mounts none.
+// runner calls. A vendor absent here mounts none; a Terragrunt stack's
+// runs mount the one its tool setting drives.
 var tools = map[string]struct {
 	vendor vendorsapi.Vendor
 	binary string
@@ -322,9 +329,13 @@ var tools = map[string]struct {
 	string(vendorsapi.OpenTofu):  {vendorsapi.OpenTofu, "tofu"},
 }
 
-// versionPointer is the stack's top-level version constraint, for both
-// vendors.
+// versionPointer is the stack's top-level version constraint, for every
+// vendor.
 const versionPointer = "/terraformVersion"
+
+// terragruntPointer is a Terragrunt stack's constraint of its Terragrunt
+// release.
+const terragruntPointer = "/vendorConfig/terragrunt/terragruntVersion"
 
 // tool is the infrastructure tool st's runs mount, nil for a vendor with
 // none: the catalogue's newest release that st's constraint allows, or
@@ -334,7 +345,11 @@ const versionPointer = "/terraformVersion"
 //
 // ref: decision 0008 § "The run specification and its secrets"
 func (s *Service) tool(ctx context.Context, st stacksapi.Settings) (*workersapi.SpecTool, error) {
-	t, ok := tools[st.Vendor]
+	vendor := st.Vendor
+	if vendor == string(vendorsapi.Terragrunt) {
+		vendor = terragrunt.Read(st.VendorConfig).Driven()
+	}
+	t, ok := tools[vendor]
 	if !ok {
 		return nil, nil //nolint:nilnil // a vendor that mounts no tool
 	}
@@ -350,6 +365,32 @@ func (s *Service) tool(ctx context.Context, st stacksapi.Settings) (*workersapi.
 		Name: t.binary, Version: version, Download: !st.SkipVendorBinaryDownload,
 		CPUProfiling: profiles(st, t.vendor, version),
 	}, nil
+}
+
+// terragrunt is the Terragrunt a Terragrunt stack's runs mount beside
+// their tool, nil for a stack of another vendor: the catalogue's newest
+// Terragrunt release that st's terragruntVersion allows, or its newest
+// when st sets none, which the catalogue lists without alpha, beta or
+// release-candidate builds. A release that does not resolve is a
+// *kernel.Invalid naming terragruntVersion, as tool's names its setting.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+func (s *Service) terragrunt(ctx context.Context, st stacksapi.Settings) (*workersapi.SpecTerragrunt, error) {
+	if st.Vendor != string(vendorsapi.Terragrunt) {
+		return nil, nil //nolint:nilnil // a vendor that mounts no Terragrunt
+	}
+	constraints := terragrunt.Read(st.VendorConfig).TerragruntVersion
+	if constraints != nil && strings.TrimSpace(*constraints) == "" {
+		constraints = nil
+	}
+	version, err := s.version(ctx, vendorsapi.Terragrunt, constraints)
+	if inv, ok := errors.AsType[*kernel.Invalid](err); ok {
+		return nil, at(inv, terragruntPointer)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &workersapi.SpecTerragrunt{Version: version, Download: !st.SkipVendorBinaryDownload}, nil
 }
 
 // cpuProfiling is the first OpenTofu release that writes a CPU profile to
@@ -379,22 +420,28 @@ func profiles(st stacksapi.Settings, vendor vendorsapi.Vendor, release string) b
 
 // constraint is st's version constraint and the pointer of the setting
 // it comes from: terraformVersion, which takes precedence as the stack
-// input has it, else the vendor settings' version; nil, at
-// versionPointer, when neither sets one.
+// input has it, else the vendor settings' version, which Terragrunt's
+// settings name terraformVersion; nil, at versionPointer, when neither
+// sets one.
 func constraint(st stacksapi.Settings) (*string, string) {
 	if st.TerraformVersion != nil && strings.TrimSpace(*st.TerraformVersion) != "" {
 		return st.TerraformVersion, versionPointer
 	}
 	var c struct {
-		Version *string `json:"version"`
+		Version          *string `json:"version"`
+		TerraformVersion *string `json:"terraformVersion"`
 	}
 	// The stack's write checked its settings, so a document that does not
 	// decode sets no version.
-	if json.Unmarshal(st.VendorConfig, &c) != nil || c.Version == nil ||
-		strings.TrimSpace(*c.Version) == "" {
+	_ = json.Unmarshal(st.VendorConfig, &c)
+	field, v := "version", c.Version
+	if st.Vendor == string(vendorsapi.Terragrunt) {
+		field, v = "terraformVersion", c.TerraformVersion
+	}
+	if v == nil || strings.TrimSpace(*v) == "" {
 		return nil, versionPointer
 	}
-	return c.Version, "/vendorConfig/" + st.Vendor + "/version"
+	return v, "/vendorConfig/" + st.Vendor + "/" + field
 }
 
 // version is the catalogue's newest release of vendor that constraints

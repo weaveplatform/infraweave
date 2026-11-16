@@ -20,6 +20,8 @@ func TestUnitValidateSettingsAccepts(t *testing.T) {
 		"opentofu, the rest null": {VendorConfig: json.RawMessage(
 			`{"terraform": null, "opentofu": {"workflowTool": "OPENTOFU"}, "pulumi": null}`)},
 		"terraformVersion": {TerraformVersion: &version},
+		"terragrunt": {VendorConfig: json.RawMessage(
+			`{"terragrunt": {"tool": "OPEN_TOFU", "useRunAll": true, "useSmartSanitization": false}}`)},
 	} {
 		if err := iac.ValidateSettings(in); err != nil {
 			t.Errorf("%s: ValidateSettings = %v, want nil", name, err)
@@ -93,8 +95,8 @@ func TestUnitValidateSettingsRefuses(t *testing.T) {
 
 func TestUnitRegistry(t *testing.T) {
 	vendors := iac.Vendors()
-	if len(vendors) != 2 || vendors[0].Kind() != iac.Terraform ||
-		vendors[1].Kind() != iac.OpenTofu {
+	if len(vendors) != 3 || vendors[0].Kind() != iac.Terraform ||
+		vendors[1].Kind() != iac.OpenTofu || vendors[2].Kind() != iac.Terragrunt {
 		t.Fatalf("Vendors = %v", vendors)
 	}
 	vendors[0] = nil
@@ -103,5 +105,30 @@ func TestUnitRegistry(t *testing.T) {
 	}
 	if v, ok := iac.Lookup("pulumi"); ok || v != nil {
 		t.Errorf("Lookup(pulumi) = %v, %v; want none", v, ok)
+	}
+}
+
+// TestUnitManagesState keeps manageState for every vendor but Terragrunt,
+// whose useStateManagement decides when it is set.
+func TestUnitManagesState(t *testing.T) {
+	for _, c := range []struct {
+		kind     iac.Kind
+		settings string
+		manage   bool
+		want     bool
+	}{
+		{iac.Terraform, `{}`, true, true},
+		{iac.OpenTofu, `{"useStateManagement": false}`, true, true},
+		{iac.Terraform, `{}`, false, false},
+		{iac.Terragrunt, `{"useStateManagement": false}`, true, false},
+		{iac.Terragrunt, `{"useStateManagement": true}`, false, true},
+		{iac.Terragrunt, `{"useStateManagement": null}`, true, true},
+		{iac.Terragrunt, `{}`, false, false},
+	} {
+		v, _ := iac.Lookup(c.kind)
+		if got := v.ManagesState(json.RawMessage(c.settings), c.manage); got != c.want {
+			t.Errorf("%s %s with manageState %t: %t, want %t", c.kind, c.settings, c.manage,
+				got, c.want)
+		}
 	}
 }

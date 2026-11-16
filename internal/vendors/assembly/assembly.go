@@ -28,16 +28,20 @@ func Stream() migrate.Stream { return pg.Stream() }
 // Settings are the vendors settings: the release index each vendor's
 // versions are read from, the vendors' public ones by default, so an
 // installation without the internet can serve a mirror of its own.
+// Terragrunt's is a repository's releases in the layout of GitHub's REST
+// API.
 type Settings struct {
-	TerraformIndex string `mapstructure:"terraform_index"`
-	OpenTofuIndex  string `mapstructure:"opentofu_index"`
+	TerraformIndex  string `mapstructure:"terraform_index"`
+	OpenTofuIndex   string `mapstructure:"opentofu_index"`
+	TerragruntIndex string `mapstructure:"terragrunt_index"`
 }
 
 // DefaultSettings read the vendors' public indexes.
 func DefaultSettings() Settings {
 	return Settings{
-		TerraformIndex: index.DefaultTerraformURL,
-		OpenTofuIndex:  index.DefaultOpenTofuURL,
+		TerraformIndex:  index.DefaultTerraformURL,
+		OpenTofuIndex:   index.DefaultOpenTofuURL,
+		TerragruntIndex: index.DefaultTerragruntURL,
 	}
 }
 
@@ -49,8 +53,9 @@ var ErrConfig = errors.New("invalid vendors configuration")
 func (s Settings) Validate() error {
 	var errs []error
 	for key, raw := range map[string]string{
-		"vendors.terraform_index": s.TerraformIndex,
-		"vendors.opentofu_index":  s.OpenTofuIndex,
+		"vendors.terraform_index":  s.TerraformIndex,
+		"vendors.opentofu_index":   s.OpenTofuIndex,
+		"vendors.terragrunt_index": s.TerragruntIndex,
 	} {
 		if u, err := url.Parse(raw); err != nil || (u.Scheme != "https" && u.Scheme != "http") ||
 			u.Host == "" {
@@ -85,8 +90,9 @@ const indexTimeout = time.Minute
 func New(d Deps) *Domain {
 	client := &http.Client{Timeout: indexTimeout}
 	svc := core.New(pg.New(d.DB), map[vendorsapi.Vendor]index.Reader{
-		vendorsapi.Terraform: index.HashiCorp{URL: d.Settings.TerraformIndex, Client: client},
-		vendorsapi.OpenTofu:  index.OpenTofu{URL: d.Settings.OpenTofuIndex, Client: client},
+		vendorsapi.Terraform:  index.HashiCorp{URL: d.Settings.TerraformIndex, Client: client},
+		vendorsapi.OpenTofu:   index.OpenTofu{URL: d.Settings.OpenTofuIndex, Client: client},
+		vendorsapi.Terragrunt: index.GitHub{URL: d.Settings.TerragruntIndex, Client: client},
 	})
 	return &Domain{catalog: svc, api: vhttp.New(svc)}
 }
@@ -100,8 +106,8 @@ var Refresh = queue.Kind{Name: "vendors.refresh", Queue: queue.Maintenance, Poli
 
 // RefreshEvery is how often the catalogue is refreshed: the vendors
 // publish a few releases a month, so an hour shows a release the day it
-// ships while reading HashiCorp's paged index two dozen times an hour at
-// most across every replica.
+// ships while reading HashiCorp's paged index two dozen times an hour, and
+// GitHub's ten, at most across every replica.
 const RefreshEvery = time.Hour
 
 // Cron is the domain's periodic tasks: Refresh every RefreshEvery,

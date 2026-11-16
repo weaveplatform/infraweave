@@ -24,7 +24,8 @@
 // while planning, none once retention removed it, and a sensitive one
 // with no value unless the stack's EnableSensitiveOutputUpload allows
 // it; a run that recorded no outputs the server reads is refused with
-// workersapi.ErrNoOutputs.
+// workersapi.ErrNoOutputs, but for a Terragrunt stack's, whose runner
+// records none, which leaves its stack none.
 //
 // Uploads are keyed <account>/<run>/<state>-<stateVersion>/<name> in
 // their kind's store, recorded pending in blob_objects before their PUT
@@ -51,9 +52,8 @@
 //
 // # Dependencies
 //
-// It imports the workers and stacks api packages, internal/iac/plan,
-// internal/kernel,
-// platform/crypt, platform/objectstore and its blobs, platform/seal,
+// It imports the workers and stacks api packages, internal/iac and
+// iac/plan, internal/kernel, platform/crypt, platform/objectstore and its blobs, platform/seal,
 // platform/tx and the domain's lifecycle and machine packages. The
 // domain's assembly constructs it over the pg adapter and the stacks
 // domain's Stacks.

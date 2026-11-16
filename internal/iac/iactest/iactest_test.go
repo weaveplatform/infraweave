@@ -32,6 +32,8 @@ func (f fake) ParsePlan(r io.Reader) (plan.Plan, error) {
 	return f.parse(r)
 }
 
+func (fake) ManagesState(_ json.RawMessage, manageState bool) bool { return manageState }
+
 // recorded are Terraform's recorded plans, which the fake's plan.Parse
 // answers as Recorded says it must.
 func recorded(t *testing.T) []PlanCase {

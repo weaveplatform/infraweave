@@ -565,9 +565,12 @@ func (s *Service) Starred(ctx context.Context, p kernel.Principal, stacks []Stac
 
 // Create creates a stack of p's account from in, slugged slug when it is
 // not empty and from in's name otherwise, whose state infraweave keeps
-// when manageState is set, with its default workspace open from the
-// start. The route has decided STACK_CREATE on in's space. Its refusals
-// point into stackCreate's body, where in is input.
+// when manageState is set, or, for a Terragrunt stack, when its
+// useStateManagement is set and manageState only when it is null, with
+// its default workspace open from the start. Either is decided here
+// alone: an update keeps the stack's state management as it was created.
+// The route has decided STACK_CREATE on in's space. Its refusals point
+// into stackCreate's body, where in is input.
 //
 // When object is not empty, the state file p uploaded under that object
 // ID becomes the workspace's first version, in the creation's
@@ -576,6 +579,7 @@ func (s *Service) Starred(ctx context.Context, p kernel.Principal, stacks []Stac
 // stack that does not keep its state is refused, pointing at
 // stackObjectID, before anything is written.
 //
+// ref: decision 0010 § "How a run reaches it"
 // ref: decision 0010 § "Upload, import and download URLs"
 func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, manageState bool, object string, in Input) (Stack, error) {
 	if err := check("/input", in); err != nil {
@@ -595,13 +599,13 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 		if err != nil {
 			return err
 		}
-		if err := s.importable(ctx, p, space, manageState, object); err != nil {
-			return err
-		}
 		st = Stack{CreatedAt: s.now(), State: kernel.StackStateNone}
-		st.ManagesState = manageState
 		st.ID, st.Account, st.Slug, st.Version = kernel.NewULID(), p.AccountID, slug, 1
 		apply(&st, space, in)
+		st.ManagesState = managesState(st.Settings, manageState)
+		if err := s.importable(ctx, p, space, st.ManagesState, object); err != nil {
+			return err
+		}
 		if err := checkExternal("/input", &st); err != nil {
 			return err
 		}
@@ -621,18 +625,19 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, slug string, m
 
 // importable refuses a stack's creation from the state file uploaded as
 // object, when it is set, unless p holds STACK_MANAGED_STATE_IMPORT on
-// space, the new stack's, and the stack keeps its state, which is the
-// only state an import fills.
+// space, the new stack's, and the stack keeps its state, as manages
+// says once its vendor has decided, which is the only state an import
+// fills.
 //
 // ref: decision 0010 § "Upload, import and download URLs"
-func (s *Service) importable(ctx context.Context, p kernel.Principal, space kernel.ULID, manageState bool, object string) error {
+func (s *Service) importable(ctx context.Context, p kernel.Principal, space kernel.ULID, manages bool, object string) error {
 	if object == "" {
 		return nil
 	}
 	if err := s.require(ctx, p, accessapi.ActionStackManagedStateImport, space); err != nil {
 		return err
 	}
-	if !manageState {
+	if !manages {
 		return &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
 			Pointer: "/stackObjectID", Reason: kernel.ReasonRule,
 			Message: "A state file is imported into a stack whose state infraweave manages, " +

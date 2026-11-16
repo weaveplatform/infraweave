@@ -311,7 +311,8 @@ does (decision [0003](0003-api-conventions.md)).
   - **At creation**, `stackCreate` decides the first two checks itself, in its
     transaction before it writes the stack: `STACK_MANAGED_STATE_IMPORT` on the new
     stack's space beside the route's `STACK_CREATE`, as a move decides its second action,
-    and `manageState`. The upload's checks and the import run through
+    and that the stack keeps its state, as `manageState` or a Terragrunt stack's
+    `useStateManagement` decides. The upload's checks and the import run through
     `stacksapi.ManagedState`, the one port through which `stackCreate` reaches `state`,
     and which opens the default workspace (§ "Storage"), with the caller and the object
     ID. `state` implements it and the assembly wires it in, as `stacksapi.StackGuard` is
@@ -324,7 +325,9 @@ does (decision [0003](0003-api-conventions.md)).
     runs domain's list of a stack's runs that have not ended, with their types.
   - Either way the import locks the upload's `blob_objects` row `FOR UPDATE` before it
     reads it, so of two imports of one upload the second waits and then finds it gone.
-    A refused file leaves its resealed object `pending`, for `blob.expire`.
+    A refused file leaves its resealed object `pending`, for `blob.expire`: the refusal
+    rolls back the import's transaction, which a deletion would join, while the pending
+    row is written outside it.
   - An import acts on the default workspace. It reseals the file into `states` as a new
     version with `imported`, `imported_username` (the caller's login, or its actor's ID
     without one) and `imported_at` set, even when it matches the current version, since an

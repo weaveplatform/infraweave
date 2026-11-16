@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/stacks/internal/core"
+	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
 )
 
 // Server is the stacks domain's partial of the API's strict server. The
@@ -24,19 +25,21 @@ import (
 // or on the space a create names, before its handler runs, and answered
 // 404 for a stack the caller cannot read.
 type Server struct {
-	stacks *core.Service
-	authz  accessapi.Authorizer
-	spaces accessapi.Spaces
-	edges  *edges
+	stacks  *core.Service
+	authz   accessapi.Authorizer
+	spaces  accessapi.Spaces
+	catalog vendorsapi.Catalog
+	edges   *edges
 }
 
 // New returns the partial over the service, deciding allowedActions with
-// authz and naming spaces through spaces. Its stacks have no configuration
-// until BindConfiguration binds a reader, and no blocker until
-// SetStackStatus binds one.
-func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
+// authz, naming spaces through spaces and resolving a Terragrunt stack's
+// effective versions in catalog. Its stacks have no configuration until
+// BindConfiguration binds a reader, and no blocker until SetStackStatus
+// binds one.
+func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces, catalog vendorsapi.Catalog) Server {
 	return Server{
-		stacks: svc, authz: authz, spaces: spaces,
+		stacks: svc, authz: authz, spaces: spaces, catalog: catalog,
 		edges: &edges{config: unbound{}, status: unbound{}},
 	}
 }
@@ -361,7 +364,8 @@ func (s Server) view(ctx context.Context, p kernel.Principal, st core.Stack) (ap
 // views are all as p sees them: the actions p holds in each one's space,
 // whether p has starred it, its space by slug, its attached contexts and
 // config elements, the run blocking it and its outputs, read for all at
-// once.
+// once, and a Terragrunt stack's effective versions, each vendor and
+// constraint resolved once.
 func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack) ([]api.Stack, error) {
 	out := make([]api.Stack, 0, len(all))
 	if len(all) == 0 {
@@ -402,8 +406,15 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
+	releases := resolver{catalog: s.catalog, seen: map[resolution]*string{}}
 	for _, st := range all {
-		v, err := viewOf(st, slugs[st.Space], held[st.Space], starred[st.ID])
+		var versions api.EffectiveTerragruntVersionResult
+		if iac.Kind(st.Vendor) == iac.Terragrunt {
+			if versions, err = releases.terragrunt(ctx, st); err != nil {
+				return nil, err
+			}
+		}
+		v, err := viewOf(st, slugs[st.Space], held[st.Space], starred[st.ID], versions)
 		if err != nil {
 			return nil, err
 		}

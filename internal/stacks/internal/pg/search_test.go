@@ -57,7 +57,7 @@ func TestUnitStackFields(t *testing.T) {
 		}
 	}
 	if v, _ := search.Lookup(core.Fields, "vendor"); !slices.Equal(
-		v.Values, []string{"terraform", "opentofu"},
+		v.Values, []string{"terraform", "opentofu", "terragrunt"},
 	) {
 		t.Errorf("vendor's values = %v", v.Values)
 	}

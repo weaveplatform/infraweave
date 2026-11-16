@@ -2,6 +2,7 @@ package pg_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"testing"
@@ -97,11 +98,25 @@ func TestAccServiceImportAtCreation(t *testing.T) {
 		"/stackObjectID", kernel.ReasonRule) || len(m.created) != 0 {
 		t.Errorf("an import into a stack without managed state = %v, asking %v", err, m.created)
 	}
+	// A Terragrunt stack's useStateManagement, not manageState, decides.
+	off := input("Terragrunt Off")
+	off.VendorConfig = json.RawMessage(`{"terragrunt":{"useStateManagement":false}}`)
+	if _, err := f.svc.Create(ctx, f.admin, "", true, "obj", off); !invalidAt(err,
+		"/stackObjectID", kernel.ReasonRule) || len(m.created) != 0 {
+		t.Errorf("an import into an unmanaged Terragrunt stack = %v, asking %v", err, m.created)
+	}
 	st, err := f.svc.Create(ctx, f.admin, "", true, "obj", input("Imported"))
 	if err != nil || !slices.Equal(m.created, []kernel.ULID{st.ID}) ||
 		!slices.Equal(m.inTx, []bool{true}) || !slices.Equal(m.imports, []string{"admin obj"}) {
 		t.Errorf("an import = %v, asking %v in a transaction %v, importing %v", err, m.created,
 			m.inTx, m.imports)
+	}
+
+	on := input("Terragrunt On")
+	on.VendorConfig = json.RawMessage(`{"terragrunt":{"useStateManagement":true}}`)
+	tg, err := f.svc.Create(ctx, f.admin, "", false, "obj", on)
+	if err != nil || !tg.ManagesState || !slices.Contains(m.created, tg.ID) {
+		t.Errorf("an import into a managed Terragrunt stack = %v, asking %v", err, m.created)
 	}
 
 	m.err = &kernel.Invalid{Errors: []kernel.FieldError{{
@@ -114,7 +129,7 @@ func TestAccServiceImportAtCreation(t *testing.T) {
 	if _, err := f.svc.Stack(ctx, f.acct, "missing"); !errors.Is(err, stacksapi.ErrNotFound) {
 		t.Errorf("the refused stack reads %v", err)
 	}
-	for _, slug := range []string{"unbound", "denied", "plain"} {
+	for _, slug := range []string{"unbound", "denied", "plain", "terragrunt-off"} {
 		if _, err := f.svc.Stack(ctx, f.acct, slug); !errors.Is(err, stacksapi.ErrNotFound) {
 			t.Errorf("the refused stack %s reads %v", slug, err)
 		}

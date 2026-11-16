@@ -8,8 +8,9 @@ type Vendor string
 
 // The vendors the catalogue lists.
 const (
-	Terraform Vendor = "terraform"
-	OpenTofu  Vendor = "opentofu"
+	Terraform  Vendor = "terraform"
+	OpenTofu   Vendor = "opentofu"
+	Terragrunt Vendor = "terragrunt"
 )
 
 // Catalog is the version catalogue: the stable releases each vendor's

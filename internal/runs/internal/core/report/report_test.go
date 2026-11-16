@@ -585,6 +585,18 @@ func TestUnitReportOutputs(t *testing.T) {
 		t.Errorf("the outputs of a run that recorded no plan = %+v", w.s.outputs)
 	}
 
+	// A Terragrunt stack's apply records no outputs, and leaves its stack
+	// none.
+	w = newApply(kernel.RunTypeTracked, outputs)
+	delete(w.s.recorded, "artifact/"+report.OutputsDocument)
+	w.s.outputs = map[string]plan.Output{"earlier": {Value: []byte(`1`)}}
+	w.st.settings.Vendor = "terragrunt"
+	got, err = apply(w, workersapi.ReportSucceeded)
+	want(t, got, err, workersapi.ActionExit, kernel.RunStateFinished, 3)
+	if w.s.outputs == nil || len(w.s.outputs) != 0 {
+		t.Errorf("a Terragrunt apply kept %+v", w.s.outputs)
+	}
+
 	for name, tc := range map[string]struct {
 		setup func(w *world)
 		want  error
@@ -611,7 +623,15 @@ func TestUnitReportOutputs(t *testing.T) {
 			func(w *world) { w.o.contents["run-artifacts/"+w.s.plan] = `[` },
 			plan.ErrMalformed,
 		},
-		"settings":        {func(w *world) { w.st.err = errDown }, errDown},
+		"settings": {func(w *world) { w.st.err = errDown }, errDown},
+		"settings with none recorded": {func(w *world) {
+			delete(w.s.recorded, "artifact/"+report.OutputsDocument)
+			w.st.err = errDown
+		}, errDown},
+		"terragrunt replace outputs": {func(w *world) {
+			delete(w.s.recorded, "artifact/"+report.OutputsDocument)
+			w.st.settings.Vendor, w.s.fail = "terragrunt", "ReplaceOutputs"
+		}, errDown},
 		"recorded":        {func(w *world) { w.s.fail = "Recorded" }, errDown},
 		"planned":         {func(w *world) { w.s.fail = "Planned" }, errDown},
 		"open":            {func(w *world) { w.o.fail = "Open" }, errDown},

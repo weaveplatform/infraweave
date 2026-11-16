@@ -152,6 +152,14 @@ func checkExternal(at string, st *Stack) error {
 	}}}
 }
 
+// managesState reports whether a stack created with st's vendor settings
+// and manageState keeps its state, as its vendor decides. check has
+// refused a vendor the registry lacks, so the lookup finds one.
+func managesState(st stacksapi.Settings, manageState bool) bool {
+	v, ok := iac.Lookup(iac.Kind(st.Vendor))
+	return ok && v.ManagesState(st.VendorConfig, manageState)
+}
+
 // apply sets st's settings from in, the space's ID already resolved, as
 // a PUT replaces them: a setting in leaves out takes its default.
 func apply(st *Stack, space kernel.ULID, in Input) {

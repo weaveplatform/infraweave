@@ -1,7 +1,8 @@
 // Package api is what other domains call of the vendors domain: Catalog,
-// which lists each Vendor's Terraform or OpenTofu versions a stack may use,
-// newest first, and resolves a version constraint to the newest of them it
-// allows, as runs pick a stack's tool and templates check theirs.
+// which lists each Vendor's Terraform, OpenTofu or Terragrunt versions a
+// stack may use, newest first, and resolves a version constraint to the
+// newest of them it allows, as runs pick a stack's tools, a Terragrunt
+// stack's view answers its effective versions and templates check theirs.
 //
 // # Input and output
 //

@@ -199,7 +199,7 @@ func (c *configuration) Config(context.Context, kernel.AccountID, []kernel.ULID)
 // configuration domain does.
 func TestAccHandlersConfiguration(t *testing.T) {
 	f := newFixture(t)
-	s := http.New(f.svc, f.authz, f.spaces)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	// handed is a copy made before the binding, as internal/app hands the
 	// server to the router, which still reads what is bound later.
 	handed := s

@@ -20,7 +20,12 @@
 // one is bound, with the blocker's plan delta while it waits in
 // UNCONFIRMED, its outputs from the same StackStatus, each value the
 // JSON of the tool's output as a string and none for a sensitive output,
-// and the members later phases own at their empty values.
+// and the members later phases own at their empty values. A Terragrunt
+// stack reads back as Terragrunt, its useStateManagement whether
+// infraweave keeps its state and its effectiveVersions the Terragrunt and
+// tool releases its runs' handover would resolve from the
+// vendorsapi.Catalog, each vendor and constraint read once a page, null
+// where none is listed that the constraint allows.
 // The service's errors answer as problems: a missing action 403 naming it, a
 // stack locked by another 409 resource-locked naming the holder, a commit
 // operation on a stack whose VCS integration was deleted 409
@@ -37,8 +42,9 @@
 //
 // # Dependencies
 //
-// It imports accessapi, stacksapi, the domain's core package,
-// internal/iac, internal/kernel, kernel/search, platform/gen/api,
+// It imports accessapi, stacksapi, vendorsapi, the domain's core package,
+// internal/iac, iac/terragrunt, internal/kernel, kernel/search,
+// platform/gen/api,
 // platform/httpkit/apidelta, platform/httpkit/apisearch,
 // platform/httpkit/page,
 // platform/httpkit/problem and platform/httpkit/strict. The stacks

@@ -40,7 +40,7 @@ func (s status) Outputs(context.Context, kernel.AccountID, []kernel.ULID) (map[k
 func TestAccHandlersStatus(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
-	s := http.New(f.svc, f.authz, f.spaces)
+	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	handed := s
 	admin := kernel.WithPrincipal(ctx, f.admin)
 	infra, err := f.svc.Create(ctx, f.admin, "", false, "", input("Infra"))
