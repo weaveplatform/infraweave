@@ -5,7 +5,9 @@
 // searchTofuWorkspacesSuggestions suggests their names and stacks;
 // tofuWorkspaceUnlock releases every lock on one workspace and answers
 // it, and tofuWorkspaceUnlockAll every lock on a stack's workspaces,
-// answering those it unlocked. Each workspace answers its ID, its name,
+// answering those it unlocked, each recording the caller's address, which
+// the access domain's authentication put on the request. Each workspace
+// answers its ID, its name,
 // default for a stack's default workspace, its creation in Unix seconds,
 // whether a lock is held and lockedBy, who triggered the run whose lock
 // holds it. The route table has decided each operation's action and
@@ -19,7 +21,7 @@
 //
 // # Dependencies
 //
-// It imports internal/kernel, kernel/search, stacksapi, the domain's
-// core, platform/gen/api, platform/httpkit/apisearch and
+// It imports accessapi, internal/kernel, kernel/search, stacksapi, the
+// domain's core, platform/gen/api, platform/httpkit/apisearch and
 // platform/httpkit/problem. The state domain's assembly constructs it.
 package http

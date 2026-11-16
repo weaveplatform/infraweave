@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
@@ -17,8 +18,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/state/internal/core"
 )
 
-// fake answers each call with its fields and records the principal and
-// argument it was given.
+// fake answers each call with its fields and records the principal,
+// address and argument it was given.
 type fake struct {
 	result  search.Result[core.Workspace]
 	suggest search.Suggestions
@@ -26,6 +27,7 @@ type fake struct {
 	many    []core.Workspace
 	err     error
 	who     kernel.Principal
+	addr    string
 	arg     any
 }
 
@@ -39,13 +41,13 @@ func (f *fake) SuggestWorkspaces(_ context.Context, p kernel.Principal, in searc
 	return f.suggest, f.err
 }
 
-func (f *fake) UnlockWorkspace(_ context.Context, p kernel.Principal, raw string) (core.Workspace, error) {
-	f.who, f.arg = p, raw
+func (f *fake) UnlockWorkspace(_ context.Context, p kernel.Principal, addr, raw string) (core.Workspace, error) {
+	f.who, f.addr, f.arg = p, addr, raw
 	return f.one, f.err
 }
 
-func (f *fake) UnlockStack(_ context.Context, p kernel.Principal, slug string) ([]core.Workspace, error) {
-	f.who, f.arg = p, slug
+func (f *fake) UnlockStack(_ context.Context, p kernel.Principal, addr, slug string) ([]core.Workspace, error) {
+	f.who, f.addr, f.arg = p, addr, slug
 	return f.many, f.err
 }
 
@@ -83,11 +85,12 @@ func TestUnitView(t *testing.T) {
 	}
 }
 
-// TestUnitHandlers checks that each operation hands the core the caller
-// and its argument and answers what the core answers.
+// TestUnitHandlers checks that each operation hands the core the caller,
+// an unlock the caller's address too, and its argument, and answers what
+// the core answers.
 func TestUnitHandlers(t *testing.T) {
 	p := kernel.Principal{Kind: kernel.PrincipalUser, AccountID: kernel.NewAccountID(), Login: "dave"}
-	ctx := kernel.WithPrincipal(t.Context(), p)
+	ctx := kernel.WithPrincipal(accessapi.WithClientAddr(t.Context(), "192.0.2.1"), p)
 	f := &fake{
 		result: search.Result[core.Workspace]{
 			Edges: []search.Edge[core.Workspace]{{Cursor: "c1", Node: held}, {Cursor: "c2", Node: free}},
@@ -121,14 +124,14 @@ func TestUnitHandlers(t *testing.T) {
 
 	ures, err := s.TofuWorkspaceUnlock(ctx, api.TofuWorkspaceUnlockRequestObject{TofuWorkspaceId: "w1"})
 	uout, _ := ures.(api.TofuWorkspaceUnlock200JSONResponse)
-	if err != nil || uout.Body.Id != free.ID.String() || f.arg != "w1" {
+	if err != nil || uout.Body.Id != free.ID.String() || f.arg != "w1" || f.addr != "192.0.2.1" {
 		t.Errorf("TofuWorkspaceUnlock = %+v, %v", ures, err)
 	}
 
 	ares, err := s.TofuWorkspaceUnlockAll(ctx, api.TofuWorkspaceUnlockAllRequestObject{StackId: "app"})
 	aout, _ := ares.(api.TofuWorkspaceUnlockAll200JSONResponse)
 	if err != nil || len(aout.Body.UnlockedWorkspaces) != 1 ||
-		aout.Body.UnlockedWorkspaces[0].Name != "blue" || f.arg != "app" {
+		aout.Body.UnlockedWorkspaces[0].Name != "blue" || f.arg != "app" || f.addr != "192.0.2.1" {
 		t.Errorf("TofuWorkspaceUnlockAll = %+v, %v", ares, err)
 	}
 	f.many = []core.Workspace{}

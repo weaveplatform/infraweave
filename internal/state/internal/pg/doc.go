@@ -4,12 +4,13 @@
 // ID the Tofu Workspaces operations name it by and the version a read
 // answers; state_locks holds the shared or exclusive locks runs hold on a
 // workspace, with the LockInfo each was taken with and who triggered its
-// run, and
-// managed_state_versions each version written to it, by its object in the
-// states store. No table carries a foreign key to a stack or a run, since
+// run, state_broken_locks each lock released from under its run, by its
+// ID and run, until the run ends, and managed_state_versions each version
+// written to it, by its object in the states store. No table carries a foreign key to a stack or a run, since
 // they belong to the stacks and runs domains. Store makes a workspace
 // exist, locks its row while its locks are taken or released, records and
-// deletes locks and audit entries, reads a workspace's current version
+// deletes locks and audit entries, records and reads broken locks,
+// deleting a run's with its locks, reads a workspace's current version
 // and adds one, pointing the workspace at it, and purges a stack's or an
 // account's rows a batch at a time, versions first and workspaces last.
 // It reads a workspace by its ID with the lock that holds it, locks a

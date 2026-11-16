@@ -173,7 +173,7 @@ func writer(held []Lock, w Write) *Conflict {
 		}
 	}
 	if len(held) == 0 {
-		return &Conflict{Holder: Lock{Info: json.RawMessage(`{}`)}}
+		return noHolder()
 	}
 	return &Conflict{Holder: holder(held)}
 }

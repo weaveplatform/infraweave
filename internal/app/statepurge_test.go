@@ -69,9 +69,9 @@ func TestAccStatePurge(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// seed gives stack two workspaces with a lock each and three versions
-	// of the default one, each with its live object, and answers their
-	// keys.
+	// seed gives stack two workspaces with a lock each, a broken lock on
+	// the default one and three versions of it, each with its live object,
+	// and answers their keys.
 	seed := func(stack kernel.ULID) []string {
 		exec(`INSERT INTO state_workspaces (account_id, id, stack_id, name)
 			VALUES ($1, gen_random_uuid(), $2, ''), ($1, gen_random_uuid(), $2, 'blue')`,
@@ -81,6 +81,8 @@ func TestAccStatePurge(t *testing.T) {
 			VALUES ($1, $2, '', 'a', 'shared', $3, 'alice', '{}'),
 			($1, $2, 'blue', 'b', 'exclusive', $3, 'alice', '{}')`,
 			w.acct, stack, kernel.NewULID())
+		exec(`INSERT INTO state_broken_locks (account_id, stack_id, workspace, lock_id, run_id)
+			VALUES ($1, $2, '', 'c', $3)`, w.acct, stack, kernel.NewULID())
 		keys := make([]string, 0, 3)
 		for range 3 {
 			id := kernel.NewULID()
@@ -107,6 +109,7 @@ func TestAccStatePurge(t *testing.T) {
 	rows := func(stack kernel.ULID) int {
 		return count(`SELECT (SELECT count(*) FROM state_workspaces WHERE stack_id = $1)
 			+ (SELECT count(*) FROM state_locks WHERE stack_id = $1)
+			+ (SELECT count(*) FROM state_broken_locks WHERE stack_id = $1)
 			+ (SELECT count(*) FROM managed_state_versions WHERE stack_id = $1)`, stack)
 	}
 	deleting := func(keys []string) int {
@@ -134,7 +137,7 @@ func TestAccStatePurge(t *testing.T) {
 		api.StackDeleteRequestObject{StackId: "gone"}); err != nil {
 		t.Fatal(err)
 	}
-	if purges() != 1 || rows(stacks["gone"]) != 7 || stateOrphans(t, w.q) == 0 {
+	if purges() != 1 || rows(stacks["gone"]) != 8 || stateOrphans(t, w.q) == 0 {
 		t.Fatalf("after the delete: %d purges, %d rows, %d orphans", purges(),
 			rows(stacks["gone"]), stateOrphans(t, w.q))
 	}
@@ -165,7 +168,7 @@ func TestAccStatePurge(t *testing.T) {
 		case <-tick.C:
 		}
 	}
-	if deleting(goneKeys) != 3 || deleting(keptKeys) != 0 || rows(stacks["kept"]) != 7 ||
+	if deleting(goneKeys) != 3 || deleting(keptKeys) != 0 || rows(stacks["kept"]) != 8 ||
 		stateOrphans(t, w.q) != 0 {
 		t.Errorf("after the stack's purge: %d and %d objects deleting, %d rows kept, %d orphans",
 			deleting(goneKeys), deleting(keptKeys), rows(stacks["kept"]), stateOrphans(t, w.q))

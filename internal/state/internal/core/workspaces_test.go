@@ -190,20 +190,29 @@ func TestUnitWorkspaceLockedBy(t *testing.T) {
 }
 
 // TestUnitUnlockWorkspace checks that releasing a workspace deletes every
-// lock on it and records one entry naming the caller, the workspace and
-// each LockInfo released; that a free workspace answers as it is and
-// records nothing; that an in-run caller acts as its run; and that a
-// workspace the account lacks, or no workspace ID, is ErrNotFound.
+// lock on it, records each as broken, so its run's own release answers a
+// conflict, and records one entry naming the caller, its address, the
+// workspace and each LockInfo released; that a free workspace answers as
+// it is and records nothing; that an in-run caller acts as its run; and
+// that a workspace the account lacks, or no workspace ID, is ErrNotFound.
 //
 // ref: decision 0010 § "Locks"
 func TestUnitUnlockWorkspace(t *testing.T) {
 	f := newFixture()
-	w, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), f.def.String())
+	w, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), "192.0.2.1", f.def.String())
 	if err != nil || w.ID != f.def || w.Locked || w.LockedBy() != nil || w.DisplayName() != DefaultName {
 		t.Fatalf("UnlockWorkspace = %+v, %v", w, err)
 	}
 	if held := f.m.locks[f.target("")]; len(held) != 0 {
 		t.Errorf("%v outlive the release", ids(held))
+	}
+	if broken := ids(f.m.broken[f.target("")]); !slices.Equal(broken, []string{"a", "b"}) {
+		t.Errorf("broken %v, want a and b", broken)
+	}
+	if _, ok := errors.AsType[*Conflict](f.s.Unlock(t.Context(), Unlock{
+		Target: f.target(""), Run: f.m.broken[f.target("")][0].Run, ID: "a",
+	})); !ok {
+		t.Error("the run whose lock was released releases it unrefused")
 	}
 	if len(f.m.audits) != 1 {
 		t.Fatalf("%d entries, want one", len(f.m.audits))
@@ -215,17 +224,18 @@ func TestUnitUnlockWorkspace(t *testing.T) {
 		e.AffectedResource.Type != ResourceStack || e.AffectedResource.ID != f.st.ID.String() ||
 		!strings.Contains(meta, `"workspaceId":"`+f.def.String()+`"`) ||
 		!strings.Contains(meta, `"workspace":""`) ||
-		!strings.Contains(meta, `{"ID":"a"}`) || !strings.Contains(meta, `{"ID":"b"}`) {
+		!strings.Contains(meta, `{"ID":"a"}`) || !strings.Contains(meta, `{"ID":"b"}`) ||
+		e.RemoteIP != "192.0.2.1" {
 		t.Errorf("the release recorded %+v with %s", e, meta)
 	}
 
-	again, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), f.def.String())
+	again, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), "192.0.2.1", f.def.String())
 	if err != nil || again != w || len(f.m.audits) != 1 {
 		t.Errorf("a free workspace = %+v, %v after %d entries", again, err, len(f.m.audits))
 	}
 
 	run := kernel.Principal{Kind: kernel.PrincipalRun, AccountID: f.st.Account, ActorID: kernel.NewULID()}
-	if _, err := f.s.UnlockWorkspace(t.Context(), run, f.grn.String()); err != nil {
+	if _, err := f.s.UnlockWorkspace(t.Context(), run, "192.0.2.1", f.grn.String()); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.m.audits[len(f.m.audits)-1].Actor; got != (kernel.AuditActor{
@@ -244,19 +254,20 @@ func TestUnitUnlockWorkspace(t *testing.T) {
 		{f.user("dave"), "not-an-id"},
 		{stranger, f.blue.String()},
 	} {
-		if _, err := f.s.UnlockWorkspace(t.Context(), tc.p, tc.raw); !errors.Is(err, ErrNotFound) {
+		if _, err := f.s.UnlockWorkspace(t.Context(), tc.p, "192.0.2.1", tc.raw); !errors.Is(err, ErrNotFound) {
 			t.Errorf("workspace %q of another account or none = %v", tc.raw, err)
 		}
 	}
 	delete(f.m.workspaces, f.target("blue"))
-	if _, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), f.blue.String()); !errors.Is(err,
+	if _, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), "192.0.2.1", f.blue.String()); !errors.Is(err,
 		ErrNotFound) {
 		t.Errorf("a workspace deleted after its read = %v", err)
 	}
 }
 
 // TestUnitUnlockStack checks that releasing a stack's workspaces deletes
-// every lock on each, records an entry for each one released, and answers
+// every lock on each, records each as broken and an entry for each
+// workspace released, with the caller's address, and answers
 // those it unlocked by name, leaving the free one out; that a stack with
 // none locked answers an empty list; and that a stack the account lacks
 // is stacksapi.ErrNotFound.
@@ -264,7 +275,7 @@ func TestUnitUnlockWorkspace(t *testing.T) {
 // ref: decision 0010 § "Locks"
 func TestUnitUnlockStack(t *testing.T) {
 	f := newFixture()
-	got, err := f.s.UnlockStack(t.Context(), f.user("dave"), "app")
+	got, err := f.s.UnlockStack(t.Context(), f.user("dave"), "192.0.2.1", "app")
 	names := make([]string, len(got))
 	for i, w := range got {
 		names[i] = w.DisplayName()
@@ -281,15 +292,18 @@ func TestUnitUnlockStack(t *testing.T) {
 		}
 	}
 	if len(f.m.audits) != 2 || !strings.Contains(string(f.m.audits[1].AffectedResource.Metadata),
-		`"workspaceId":"`+f.grn.String()+`"`) {
+		`"workspaceId":"`+f.grn.String()+`"`) || f.m.audits[1].RemoteIP != "192.0.2.1" {
 		t.Errorf("the releases recorded %+v", f.m.audits)
 	}
+	if broken := ids(f.m.broken[f.target("green")]); !slices.Equal(broken, []string{"x"}) {
+		t.Errorf("broken %v on green, want x", broken)
+	}
 
-	again, err := f.s.UnlockStack(t.Context(), f.user("dave"), "app")
+	again, err := f.s.UnlockStack(t.Context(), f.user("dave"), "192.0.2.1", "app")
 	if err != nil || again == nil || len(again) != 0 || len(f.m.audits) != 2 {
 		t.Errorf("a stack with no lock = %v, %v", again, err)
 	}
-	if _, err := f.s.UnlockStack(t.Context(), f.user("dave"), "gone"); !errors.Is(err,
+	if _, err := f.s.UnlockStack(t.Context(), f.user("dave"), "192.0.2.1", "gone"); !errors.Is(err,
 		stacksapi.ErrNotFound) {
 		t.Errorf("a stack the account lacks = %v", err)
 	}
@@ -378,18 +392,22 @@ func TestUnitSearchWorkspaces(t *testing.T) {
 // TestUnitWorkspacesDown checks that each failing method fails a release
 // that reaches it, answering nothing.
 func TestUnitWorkspacesDown(t *testing.T) {
-	for _, method := range []string{"WorkspaceByID", "LockWorkspace", "Locks", "RemoveLocks", "Audit"} {
+	for _, method := range []string{
+		"WorkspaceByID", "LockWorkspace", "Locks", "RemoveLocks", "BreakLocks", "Audit",
+	} {
 		f := newFixture()
 		f.m.fail = method
-		if w, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), f.def.String()); !errors.Is(err,
+		if w, err := f.s.UnlockWorkspace(t.Context(), f.user("dave"), "192.0.2.1", f.def.String()); !errors.Is(err,
 			errDown) || w != (Workspace{}) {
 			t.Errorf("UnlockWorkspace with %s failing = %+v, %v", method, w, err)
 		}
 	}
-	for _, method := range []string{"BySlug", "LockStackWorkspaces", "Locks", "RemoveLocks", "Audit"} {
+	for _, method := range []string{
+		"BySlug", "LockStackWorkspaces", "Locks", "RemoveLocks", "BreakLocks", "Audit",
+	} {
 		f := newFixture()
 		f.m.fail = method
-		if _, err := f.s.UnlockStack(t.Context(), f.user("dave"), "app"); !errors.Is(err, errDown) {
+		if _, err := f.s.UnlockStack(t.Context(), f.user("dave"), "192.0.2.1", "app"); !errors.Is(err, errDown) {
 			t.Errorf("UnlockStack with %s failing = %v", method, err)
 		}
 	}

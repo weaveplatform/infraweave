@@ -16834,7 +16834,7 @@ paths:
   /stacks/{stackId}/tofu-workspaces/unlock:
     post:
       description: >-
-        Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state. Each released workspace is recorded on the audit trail.
+        Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
       operationId: tofuWorkspaceUnlockAll
       x-infraweave-feature: tofu-workspaces
       parameters:
@@ -17531,7 +17531,7 @@ paths:
   /tofu-workspaces/{tofuWorkspaceId}/unlock:
     post:
       description: >-
-        Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state, and the release is recorded on the audit trail.
+        Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
       operationId: tofuWorkspaceUnlock
       x-infraweave-feature: tofu-workspaces
       parameters:

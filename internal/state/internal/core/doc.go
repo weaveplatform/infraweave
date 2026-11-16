@@ -3,13 +3,16 @@
 // workspace exist in the caller's transaction, so the stack's delete waits
 // for the write and then deletes it with the stack. It takes and releases
 // a workspace's shared and exclusive locks one caller at a time under the
-// workspace row's lock, answers a Conflict naming the holder, records an
-// audit entry when a caller releases another run's lock, and releases a
-// run's locks once it ends. Each lock records who triggered its run, which
+// workspace row's lock, answers a Conflict naming the holder, records a
+// lock a caller releases from under another run as broken, with an audit
+// entry, so that run's own release of it answers a Conflict naming no
+// holder, and releases a run's locks and their broken records once it
+// ends. Each lock records who triggered its run, which
 // a workspace answers as lockedBy. SearchWorkspaces and SuggestWorkspaces
 // read the workspaces of the stacks in the spaces a caller may read, by
 // Fields; UnlockWorkspace and UnlockStack release every lock on one
-// workspace or each of a stack's, auditing each release, and SpaceOf
+// workspace or each of a stack's, recording each as broken and auditing
+// each release with the caller's address, and SpaceOf
 // resolves a workspace's ID to its stack's space. Write stores a state version for a run that
 // holds the workspace's exclusive lock under the write's ID, checked
 // before the body streams and again as it commits: the body streams once

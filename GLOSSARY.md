@@ -259,7 +259,7 @@ Releasing every lock on a workspace at once, which only a run that could take th
 _Avoid_: unlock
 
 **Workspace unlock**:
-A person's release of every lock on one workspace, or on each of a stack's, which needs `STACK_WORKSPACE_UNLOCK` and which the audit trail records; the run whose lock goes is refused its next write.
+A person's release of every lock on one workspace, or on each of a stack's, which needs `STACK_WORKSPACE_UNLOCK` and which the audit trail records; the run whose lock goes is refused its next write and its own release of the lock.
 _Avoid_: force-unlock, which a run sends through the state backend
 
 ### Access

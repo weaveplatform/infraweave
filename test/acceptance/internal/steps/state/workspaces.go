@@ -115,8 +115,8 @@ func (s *workspaceSteps) names(name, id string) error {
 }
 
 // audited waits until the home account's audit trail holds n releases of
-// the workspace kept as ws, each by the tenant's API key and naming at
-// least one released LockInfo.
+// the workspace kept as ws, each by the tenant's API key, from the
+// caller's address, and naming at least one released LockInfo.
 func (s *workspaceSteps) audited(ctx context.Context, n int, ws, tenant string) error {
 	id, ok := s.w.IDs[ws]
 	if !ok {
@@ -129,7 +129,8 @@ func (s *workspaceSteps) audited(ctx context.Context, n int, ws, tenant string) 
 			err := s.w.Row(ctx, `SELECT count(*) FROM audit_trail_entries
 				WHERE account_id = $1 AND action = 'stack.state_lock_break'
 				AND actor_username = $2 AND affected_metadata::jsonb->>'workspaceId' = $3
-				AND jsonb_array_length(affected_metadata::jsonb->'released') > 0`,
+				AND jsonb_array_length(affected_metadata::jsonb->'released') > 0
+				AND coalesce(remote_ip, '') <> ''`,
 				[]any{harness.UUIDOf(harness.Home.Account), harness.Tenants[tenant].Key, id}, &got)
 			return got == n, err
 		})

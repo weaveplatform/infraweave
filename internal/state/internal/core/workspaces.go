@@ -175,12 +175,13 @@ func (s *Service) workspace(ctx context.Context, acct kernel.AccountID, raw stri
 // UnlockWorkspace releases every lock held on p's account's workspace
 // raw, in one transaction under the workspace row's lock, and answers the
 // workspace, free. A free workspace answers as it is, recording nothing;
-// releasing any lock records an audit entry naming p and each LockInfo
-// released. A run whose lock goes this way gets 423 on its next write.
-// The route has decided STACK_WORKSPACE_UNLOCK on the stack's space.
+// releasing any lock records an audit entry naming p, calling from
+// remoteIP, and each LockInfo released. A run whose lock goes this way
+// gets 423 on its next write and on its own release of it. The route has
+// decided STACK_WORKSPACE_UNLOCK on the stack's space.
 //
 // ref: decision 0010 § "Locks"
-func (s *Service) UnlockWorkspace(ctx context.Context, p kernel.Principal, raw string) (Workspace, error) {
+func (s *Service) UnlockWorkspace(ctx context.Context, p kernel.Principal, remoteIP, raw string) (Workspace, error) {
 	var out Workspace
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		w, err := s.workspace(ctx, p.AccountID, raw)
@@ -194,7 +195,7 @@ func (s *Service) UnlockWorkspace(ctx context.Context, p kernel.Principal, raw s
 		case !ok:
 			return fmt.Errorf("%w: %s", ErrNotFound, w.ID)
 		}
-		if _, err := s.release(ctx, p, w); err != nil {
+		if _, err := s.release(ctx, p, remoteIP, w); err != nil {
 			return err
 		}
 		w.Locked, w.TriggeredBy = false, ""
@@ -212,7 +213,7 @@ func (s *Service) UnlockWorkspace(ctx context.Context, p kernel.Principal, raw s
 // STACK_WORKSPACE_UNLOCK on the stack's space.
 //
 // ref: decision 0010 § "Locks"
-func (s *Service) UnlockStack(ctx context.Context, p kernel.Principal, slug string) ([]Workspace, error) {
+func (s *Service) UnlockStack(ctx context.Context, p kernel.Principal, remoteIP, slug string) ([]Workspace, error) {
 	st, err := s.stacks.BySlug(ctx, p.AccountID, slug)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the stacks domain names the read
@@ -225,7 +226,7 @@ func (s *Service) UnlockStack(ctx context.Context, p kernel.Principal, slug stri
 			return err //nolint:wrapcheck // the store names the read
 		}
 		for _, w := range all {
-			released, err := s.release(ctx, p, w)
+			released, err := s.release(ctx, p, remoteIP, w)
 			if err != nil {
 				return err
 			}
@@ -243,9 +244,12 @@ func (s *Service) UnlockStack(ctx context.Context, p kernel.Principal, slug stri
 }
 
 // release deletes every lock held on w, whose row the context's
-// transaction has locked, and records p's break of them on the trail;
-// false when none was held.
-func (s *Service) release(ctx context.Context, p kernel.Principal, w Workspace) (bool, error) {
+// transaction has locked, records each as broken, so its run's own
+// release answers 423, and records p's break of them from remoteIP on the
+// trail; false when none was held.
+//
+// ref: decision 0010 § "Locks"
+func (s *Service) release(ctx context.Context, p kernel.Principal, remoteIP string, w Workspace) (bool, error) {
 	t := w.target(p.AccountID)
 	held, err := s.store.Locks(ctx, t)
 	if err != nil || len(held) == 0 {
@@ -258,15 +262,19 @@ func (s *Service) release(ctx context.Context, p kernel.Principal, w Workspace) 
 	if err := s.store.RemoveLocks(ctx, t, ids); err != nil {
 		return false, err //nolint:wrapcheck // the store names the write
 	}
-	return true, s.store.Audit(ctx, unlocked(p, w, held)) //nolint:wrapcheck // the store names it
+	if err := s.store.BreakLocks(ctx, t, held); err != nil {
+		return false, err //nolint:wrapcheck // the store names the write
+	}
+	//nolint:wrapcheck // the store names the write
+	return true, s.store.Audit(ctx, unlocked(p, remoteIP, w, held))
 }
 
-// unlocked is the audit entry of p releasing held, the locks on w, with p
-// as the actor: a run's in-run token acts as the administrative run it
-// is, under Actor.
+// unlocked is the audit entry of p releasing held, the locks on w, from
+// remoteIP, with p as the actor: a run's in-run token acts as the
+// administrative run it is, under Actor.
 //
 // ref: decision 0015 § "Audit trail"
-func unlocked(p kernel.Principal, w Workspace, held []Lock) kernel.AuditEntry {
+func unlocked(p kernel.Principal, remoteIP string, w Workspace, held []Lock) kernel.AuditEntry {
 	released := make([]json.RawMessage, len(held))
 	for i, l := range held {
 		released[i] = l.Info
@@ -290,5 +298,6 @@ func unlocked(p kernel.Principal, w Workspace, held []Lock) kernel.AuditEntry {
 		AffectedResource: kernel.AuditResource{
 			Type: ResourceStack, ID: w.Stack.String(), Metadata: meta,
 		},
+		RemoteIP: remoteIP,
 	}
 }

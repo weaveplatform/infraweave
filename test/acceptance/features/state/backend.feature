@@ -19,7 +19,8 @@ Feature: Terraform and OpenTofu keep their state in infraweave
   none and is refused. The backend's locks are the stack's Tofu
   workspaces', its default one there from the stack's creation: an
   operator searches them and releases a stuck one, and the run whose lock
-  goes is refused its next write. The servers keep their objects in the scenario's
+  goes is refused its next write and its own release of the lock. The
+  servers keep their objects in the scenario's
   RustFS bucket, each state version sealed. Stack infra keeps its state
   in infraweave, deploys automatically and runs on the pool; its
   configuration has a terraform_data resource and outputs, one of them
@@ -146,7 +147,7 @@ Feature: Terraform and OpenTofu keep their state in infraweave
       | tofu |
 
   @case:success @op:searchTofuWorkspaces @op:searchTofuWorkspacesSuggestions @op:tofuWorkspaceUnlock
-  Scenario Outline: A new stack lists its default Tofu workspace, an apply's lock is that workspace's, and an operator's release of it refuses the apply's write
+  Scenario Outline: A new stack lists its default Tofu workspace, an apply's lock is that workspace's, and an operator's release of it refuses the apply's write and release
     When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"stack","constraint":{"stringEquals":["infra"]}}]}' through A
     Then the answer's Tofu workspaces are "default"
     And the answer's Tofu workspace "default" names "ws"
@@ -183,6 +184,7 @@ Feature: Terraform and OpenTofu keep their state in infraweave
     When the relay releases the state backend's writes
     Then the process "apply" exits 1
     And the relay passed a POST of the state of the run "run" answered 423
+    And the relay passed an UNLOCK of the state of the run "run" answered 423
     And the run "run" wrote 0 state versions
 
     @terraform
@@ -196,7 +198,7 @@ Feature: Terraform and OpenTofu keep their state in infraweave
       | tofu |
 
   @terraform @case:success @op:tofuWorkspaceUnlockAll
-  Scenario: Releasing a stack's Tofu workspaces frees a planning run's shared lock and answers the workspace it held
+  Scenario: Releasing a stack's Tofu workspaces frees a planning run's shared lock, answers the workspace it held and refuses the plan's own release
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "READY" through B
@@ -218,7 +220,8 @@ Feature: Terraform and OpenTofu keep their state in infraweave
     When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"isLocked","constraint":{"booleanEquals":[true]}}]}' through A
     Then the answer's Tofu workspaces are ""
     When the relay releases the state backend's unlocks
-    Then the process "plan" exits 0
+    Then the process "plan" exits 1
+    And the relay passed an UNLOCK of the state of the run "run" answered 423
     And the audit trail holds 1 release of the Tofu workspace "ws" by the home key
 
   @terraform @case:denial @op:searchTofuWorkspaces @op:searchTofuWorkspacesSuggestions @op:tofuWorkspaceUnlock @op:tofuWorkspaceUnlockAll

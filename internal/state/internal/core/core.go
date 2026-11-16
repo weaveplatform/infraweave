@@ -46,7 +46,14 @@ type Store interface {
 	AddLock(ctx context.Context, t Target, l Lock) error
 	// RemoveLocks deletes the locks on t's workspace whose IDs ids holds.
 	RemoveLocks(ctx context.Context, t Target, ids []string) error
-	// ReleaseRun deletes every lock run holds in acct.
+	// BreakLocks records each of locks, released on t's workspace from
+	// under its run, by its ID and run.
+	BreakLocks(ctx context.Context, t Target, locks []Lock) error
+	// Broken reports whether run's lock id on t's workspace was released
+	// from under it.
+	Broken(ctx context.Context, t Target, id string, run kernel.ULID) (bool, error)
+	// ReleaseRun deletes every lock run holds in acct, and the record of
+	// each lock released from under it.
 	ReleaseRun(ctx context.Context, acct kernel.AccountID, run kernel.ULID) error
 	// Audit records e on its account's trail.
 	Audit(ctx context.Context, e kernel.AuditEntry) error

@@ -281,18 +281,21 @@ func TestAccStoreWorkspaces(t *testing.T) {
 		t.Errorf("LockStackWorkspaces = %v, %v", order, err)
 	}
 
-	unlocked, err := s.UnlockStack(ctx, p, "app")
+	unlocked, err := s.UnlockStack(ctx, p, "192.0.2.9", "app")
 	if err != nil || len(unlocked) != 2 || unlocked[0].ID != def || unlocked[1].Name != "green" {
 		t.Errorf("UnlockStack = %+v, %v", unlocked, err)
 	}
-	var left, entries int
+	var left, broken, entries int
 	if err := db.QueryRow(ctx, `SELECT
 		(SELECT count(*) FROM state_locks WHERE account_id = $1 AND stack_id = $2),
+		(SELECT count(*) FROM state_broken_locks WHERE account_id = $1 AND stack_id = $2),
 		(SELECT count(*) FROM audit_trail_entries WHERE account_id = $1
-			AND action = $3 AND actor_username = 'dave' AND affected_id = $4)`,
-		acct, app.ID, core.ActionBreakLock, app.ID.String()).Scan(&left, &entries); err != nil ||
-		left != 0 || entries != 2 {
-		t.Errorf("%d locks left and %d entries, want none and two (%v)", left, entries, err)
+			AND action = $3 AND actor_username = 'dave' AND affected_id = $4
+			AND remote_ip = '192.0.2.9')`,
+		acct, app.ID, core.ActionBreakLock, app.ID.String()).Scan(&left, &broken,
+		&entries); err != nil || left != 0 || broken != 3 || entries != 2 {
+		t.Errorf("%d locks left, %d broken and %d entries, want none, three and two (%v)",
+			left, broken, entries, err)
 	}
 	if res := find(where("isLocked", search.Constraint{BooleanEquals: []bool{true}})); len(res.Edges) != 0 {
 		t.Errorf("%v locked after the release", names(res))

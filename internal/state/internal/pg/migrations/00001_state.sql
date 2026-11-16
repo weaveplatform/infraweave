@@ -51,6 +51,26 @@ CREATE TABLE state_locks (
 
 CREATE INDEX state_locks_run ON state_locks (account_id, run_id);
 
+-- The locks released from under the run that held them, by a person's
+-- workspace unlock or another run's force-unlock, by the LockInfo ID and
+-- the run, so that run's own UNLOCK of one answers 423, as its writes do,
+-- rather than the 200 of a lock no one held. run_id has no foreign key,
+-- as in state_locks: the run's terminal run_updated deletes its rows with
+-- its locks.
+CREATE TABLE state_broken_locks (
+    account_id uuid        NOT NULL,
+    stack_id   uuid        NOT NULL,
+    workspace  text        NOT NULL,
+    lock_id    text        NOT NULL,
+    run_id     uuid        NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, stack_id, workspace, lock_id, run_id),
+    FOREIGN KEY (account_id, stack_id, workspace)
+        REFERENCES state_workspaces (account_id, stack_id, name) ON DELETE CASCADE
+);
+
+CREATE INDEX state_broken_locks_run ON state_broken_locks (account_id, run_id);
+
 -- Each version written to a workspace, never overwritten. object_key is
 -- its sealed object's key in the states store,
 -- <account>/<stack>/<sha256 of workspace name>/<version>, and size and

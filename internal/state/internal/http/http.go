@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
@@ -19,8 +20,8 @@ import (
 type Workspaces interface {
 	SearchWorkspaces(ctx context.Context, p kernel.Principal, in search.Input) (search.Result[core.Workspace], error)
 	SuggestWorkspaces(ctx context.Context, p kernel.Principal, in search.SuggestionsInput) (search.Suggestions, error)
-	UnlockWorkspace(ctx context.Context, p kernel.Principal, raw string) (core.Workspace, error)
-	UnlockStack(ctx context.Context, p kernel.Principal, slug string) ([]core.Workspace, error)
+	UnlockWorkspace(ctx context.Context, p kernel.Principal, remoteIP, raw string) (core.Workspace, error)
+	UnlockStack(ctx context.Context, p kernel.Principal, remoteIP, slug string) ([]core.Workspace, error)
 }
 
 // Server is the state domain's partial of the API's strict server. The
@@ -70,14 +71,15 @@ func (s Server) SearchTofuWorkspacesSuggestions(
 	return api.SearchTofuWorkspacesSuggestions200JSONResponse{Body: apisearch.Suggestions(got)}, nil
 }
 
-// TofuWorkspaceUnlock releases every lock held on the workspace. The
-// route has decided STACK_WORKSPACE_UNLOCK on its stack's space.
+// TofuWorkspaceUnlock releases every lock held on the workspace, recording
+// the caller's address with the release. The route has decided
+// STACK_WORKSPACE_UNLOCK on its stack's space.
 func (s Server) TofuWorkspaceUnlock(ctx context.Context, req api.TofuWorkspaceUnlockRequestObject) (api.TofuWorkspaceUnlockResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
 	}
-	w, err := s.workspaces.UnlockWorkspace(ctx, p, req.TofuWorkspaceId)
+	w, err := s.workspaces.UnlockWorkspace(ctx, p, accessapi.ClientAddr(ctx), req.TofuWorkspaceId)
 	if err != nil {
 		return nil, refusal(err, req.TofuWorkspaceId)
 	}
@@ -85,14 +87,14 @@ func (s Server) TofuWorkspaceUnlock(ctx context.Context, req api.TofuWorkspaceUn
 }
 
 // TofuWorkspaceUnlockAll releases every lock held on each workspace of
-// the stack. The route has decided STACK_WORKSPACE_UNLOCK on the stack's
-// space.
+// the stack, recording the caller's address with each release. The route
+// has decided STACK_WORKSPACE_UNLOCK on the stack's space.
 func (s Server) TofuWorkspaceUnlockAll(ctx context.Context, req api.TofuWorkspaceUnlockAllRequestObject) (api.TofuWorkspaceUnlockAllResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ws, err := s.workspaces.UnlockStack(ctx, p, req.StackId)
+	ws, err := s.workspaces.UnlockStack(ctx, p, accessapi.ClientAddr(ctx), req.StackId)
 	if err != nil {
 		return nil, refusal(err, req.StackId)
 	}

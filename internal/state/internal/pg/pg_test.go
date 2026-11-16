@@ -128,6 +128,12 @@ func TestAccSchema(t *testing.T) {
 				kernel.NewULID())
 			return err //nolint:wrapcheck // as above
 		}(),
+		"a broken lock of no workspace": func() error {
+			_, err := db.Exec(ctx, `INSERT INTO state_broken_locks
+				(account_id, stack_id, workspace, lock_id, run_id)
+				VALUES ($1, $2, 'none', 'f', $3)`, acct, stack, kernel.NewULID())
+			return err //nolint:wrapcheck // as above
+		}(),
 		"a short digest":             version(31, serial, lineage, false),
 		"a plain version no serial":  version(32, nil, lineage, false),
 		"a plain version no lineage": version(32, serial, nil, false),
@@ -137,11 +143,16 @@ func TestAccSchema(t *testing.T) {
 		}
 	}
 
+	if _, err := db.Exec(ctx, `INSERT INTO state_broken_locks
+		(account_id, stack_id, workspace, lock_id, run_id) VALUES ($1, $2, '', 'a', $3)`,
+		acct, stack, kernel.NewULID()); err != nil {
+		t.Errorf("a broken lock = %v", err)
+	}
 	if _, err := db.Exec(ctx, `DELETE FROM state_workspaces WHERE account_id = $1`,
 		acct); err != nil {
 		t.Fatal(err)
 	}
-	for _, table := range []string{"state_locks", "managed_state_versions"} {
+	for _, table := range []string{"state_locks", "state_broken_locks", "managed_state_versions"} {
 		if n := count(t, db, table, acct); n != 0 {
 			t.Errorf("%d rows of %s outlive their workspace", n, table)
 		}
@@ -164,7 +175,9 @@ func info(id string) json.RawMessage {
 // granted; shared locks are held together, refuse an exclusive one with
 // the oldest's LockInfo as it was sent, and are granted again to their
 // run; another run's lock is released only by a breaking caller, which
-// the trail records; and a run's end releases its locks.
+// the trail records, and the run it was released from under is refused
+// its own release of it until it ends; and a run's end releases its
+// locks.
 func TestAccStoreLocks(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -172,23 +185,24 @@ func TestAccStoreLocks(t *testing.T) {
 	at := core.Target{Account: kernel.NewAccountID(), Stack: kernel.NewULID(), Workspace: "blue"}
 
 	const racers = 8
-	errs := make([]error, racers)
+	errs, runs := make([]error, racers), make([]kernel.ULID, racers)
 	var wg sync.WaitGroup
 	for i := range racers {
+		runs[i] = kernel.NewULID()
 		wg.Go(func() {
 			id := fmt.Sprintf("x%d", i)
 			errs[i] = s.Lock(ctx, at, core.Lock{
-				ID: id, Mode: core.Exclusive, Run: kernel.NewULID(), Info: info(id),
+				ID: id, Mode: core.Exclusive, Run: runs[i], Info: info(id),
 			})
 		})
 	}
 	wg.Wait()
-	granted, winner := 0, ""
+	granted, winner, won := 0, "", kernel.ULID{}
 	for i, err := range errs {
 		switch c, ok := errors.AsType[*core.Conflict](err); {
 		case err == nil:
 			granted++
-			winner = fmt.Sprintf("x%d", i)
+			winner, won = fmt.Sprintf("x%d", i), runs[i]
 		case !ok:
 			t.Fatalf("racer %d = %v", i, err)
 		case c.Holder.Mode != core.Exclusive:
@@ -217,6 +231,21 @@ func TestAccStoreLocks(t *testing.T) {
 	if !strings.Contains(meta, `"ID": "`+winner+`"`) || !strings.Contains(meta, `"blue"`) ||
 		ip != "192.0.2.7" || by != breaker {
 		t.Errorf("the break recorded %s from %q by %s", meta, ip, by)
+	}
+	for range 2 {
+		err := s.Unlock(ctx, core.Unlock{Target: at, Run: won, ID: winner})
+		if c, ok := errors.AsType[*core.Conflict](err); !ok || string(c.Holder.Info) != "{}" {
+			t.Errorf("the broken run's release = %v, want a conflict with no holder", err)
+		}
+	}
+	if err := s.Unlock(ctx, core.Unlock{Target: at, Run: breaker, ID: winner}); err != nil {
+		t.Errorf("another run's release of the broken lock = %v", err)
+	}
+	if err := s.RunEnded(ctx, at.Account, won, kernel.RunStateFailed); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, db, "state_broken_locks", at.Account); n != 0 {
+		t.Errorf("%d broken locks outlive their run", n)
 	}
 
 	planA, planB := kernel.NewULID(), kernel.NewULID()
@@ -296,6 +325,8 @@ func TestAccStorePurge(t *testing.T) {
 				triggered_by, info)
 				SELECT $1, $2, 'blue', 'l' || i, 'shared', gen_random_uuid(), 'alice', '{}'
 				FROM generate_series(1, 3) AS i`,
+			`INSERT INTO state_broken_locks (account_id, stack_id, workspace, lock_id, run_id)
+				SELECT $1, $2, '', 'b' || i, gen_random_uuid() FROM generate_series(1, 2) AS i`,
 			`INSERT INTO managed_state_versions (account_id, id, stack_id, workspace, object_key,
 				size, sha256, serial, lineage)
 				SELECT $1, gen_random_uuid(), $2, '', $2::uuid::text || '/' || i, 1,
@@ -316,6 +347,7 @@ func TestAccStorePurge(t *testing.T) {
 		if err := db.QueryRow(ctx, `SELECT
 			(SELECT count(*) FROM state_workspaces WHERE account_id = $1 AND stack_id = $2)
 			+ (SELECT count(*) FROM state_locks WHERE account_id = $1 AND stack_id = $2)
+			+ (SELECT count(*) FROM state_broken_locks WHERE account_id = $1 AND stack_id = $2)
 			+ (SELECT count(*) FROM managed_state_versions WHERE account_id = $1 AND stack_id = $2)`,
 			acct, stack).Scan(&n); err != nil {
 			t.Fatal(err)
@@ -324,13 +356,13 @@ func TestAccStorePurge(t *testing.T) {
 	}
 
 	first, done, err := store.Purge(ctx, acct, &gone, 2)
-	if err != nil || done || len(first) != 2 || rows(acct, gone) != 8 {
+	if err != nil || done || len(first) != 2 || rows(acct, gone) != 10 {
 		t.Fatalf("one batch = %v %v %v, %d rows left", first, done, err, rows(acct, gone))
 	}
 	if err := s.Purge(ctx, acct, &gone); err != nil {
 		t.Fatal(err)
 	}
-	if rows(acct, gone) != 0 || rows(acct, kept) != 10 || rows(other, gone) != 10 ||
+	if rows(acct, gone) != 0 || rows(acct, kept) != 12 || rows(other, gone) != 12 ||
 		len(objects.keys) != 3 {
 		t.Errorf("after the stack's purge: %d, %d and %d rows, objects %v", rows(acct, gone),
 			rows(acct, kept), rows(other, gone), objects.keys)
@@ -347,7 +379,7 @@ func TestAccStorePurge(t *testing.T) {
 	if err := s.Purge(ctx, acct, nil); err != nil {
 		t.Fatal(err)
 	}
-	if rows(acct, kept) != 0 || rows(other, gone) != 10 || len(objects.keys) != 8 {
+	if rows(acct, kept) != 0 || rows(other, gone) != 12 || len(objects.keys) != 8 {
 		t.Errorf("after the account's purge: %d and %d rows, %d objects", rows(acct, kept),
 			rows(other, gone), len(objects.keys))
 	}
@@ -378,6 +410,12 @@ func TestAccStoreUnavailable(t *testing.T) {
 	}
 	if err := s.RemoveLocks(ctx, at, []string{"a"}); err == nil {
 		t.Error("RemoveLocks on a closed pool succeeded")
+	}
+	if err := s.BreakLocks(ctx, at, []core.Lock{{ID: "a"}}); err == nil {
+		t.Error("BreakLocks on a closed pool succeeded")
+	}
+	if _, err := s.Broken(ctx, at, "a", kernel.NewULID()); err == nil {
+		t.Error("Broken on a closed pool succeeded")
 	}
 	if err := s.ReleaseRun(ctx, at.Account, kernel.NewULID()); err == nil {
 		t.Error("ReleaseRun on a closed pool succeeded")
@@ -472,8 +510,10 @@ func TestUnitHeld(t *testing.T) {
 		"account state_workspaces(account_id)",
 		"stack state_workspaces(account_id, stack_id)",
 		"stack state_locks(account_id, stack_id)",
+		"stack state_broken_locks(account_id, stack_id)",
 		"stack managed_state_versions(account_id, stack_id)",
 		"run state_locks(account_id, run_id)",
+		"run state_broken_locks(account_id, run_id)",
 		"run managed_state_versions(account_id, run_id)",
 	}
 	held := pg.Held()

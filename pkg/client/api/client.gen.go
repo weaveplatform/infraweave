@@ -18316,7 +18316,7 @@ type ClientInterface interface {
 
 	// TofuWorkspaceUnlockAll Unlock All Tofu Workspaces
 	//
-	// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state. Each released workspace is recorded on the audit trail.
+	// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
 	//
 	// Corresponds with POST /stacks/{stackId}/tofu-workspaces/unlock (the `TofuWorkspaceUnlockAll` operationId).
 	TofuWorkspaceUnlockAll(ctx context.Context, stackId string, params *TofuWorkspaceUnlockAllParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -18462,7 +18462,7 @@ type ClientInterface interface {
 
 	// TofuWorkspaceUnlock Unlock Tofu Workspace
 	//
-	// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state, and the release is recorded on the audit trail.
+	// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
 	//
 	// Corresponds with POST /tofu-workspaces/{tofuWorkspaceId}/unlock (the `TofuWorkspaceUnlock` operationId).
 	TofuWorkspaceUnlock(ctx context.Context, tofuWorkspaceId string, params *TofuWorkspaceUnlockParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -27036,7 +27036,7 @@ func (c *Client) TaskCreate(ctx context.Context, stackId string, params *TaskCre
 
 // TofuWorkspaceUnlockAll Unlock All Tofu Workspaces
 //
-// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state. Each released workspace is recorded on the audit trail.
+// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
 //
 // Corresponds with POST /stacks/{stackId}/tofu-workspaces/unlock (the `TofuWorkspaceUnlockAll` operationId).
 func (c *Client) TofuWorkspaceUnlockAll(ctx context.Context, stackId string, params *TofuWorkspaceUnlockAllParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -27362,7 +27362,7 @@ func (c *Client) SearchTofuWorkspacesSuggestions(ctx context.Context, body Searc
 
 // TofuWorkspaceUnlock Unlock Tofu Workspace
 //
-// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state, and the release is recorded on the audit trail.
+// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
 //
 // Corresponds with POST /tofu-workspaces/{tofuWorkspaceId}/unlock (the `TofuWorkspaceUnlock` operationId).
 func (c *Client) TofuWorkspaceUnlock(ctx context.Context, tofuWorkspaceId string, params *TofuWorkspaceUnlockParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -52417,7 +52417,7 @@ type ClientWithResponsesInterface interface {
 
 	// TofuWorkspaceUnlockAllWithResponse Unlock All Tofu Workspaces
 	//
-	// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state. Each released workspace is recorded on the audit trail.
+	// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -52579,7 +52579,7 @@ type ClientWithResponsesInterface interface {
 
 	// TofuWorkspaceUnlockWithResponse Unlock Tofu Workspace
 	//
-	// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state, and the release is recorded on the audit trail.
+	// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -96920,7 +96920,7 @@ func (c *ClientWithResponses) TaskCreateWithResponse(ctx context.Context, stackI
 
 // TofuWorkspaceUnlockAllWithResponse Unlock All Tofu Workspaces
 //
-// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state. Each released workspace is recorded on the audit trail.
+// Release every lock held on each workspace of the stack, in one transaction, and answer the workspaces that were locked. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock. Each released workspace is recorded on the audit trail.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -97190,7 +97190,7 @@ func (c *ClientWithResponses) SearchTofuWorkspacesSuggestionsWithResponse(ctx co
 
 // TofuWorkspaceUnlockWithResponse Unlock Tofu Workspace
 //
-// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state, and the release is recorded on the audit trail.
+// Release every lock held on the workspace, such as one a stopped run left, in one transaction, and answer the workspace. A free workspace answers as it is. A run whose lock is released gets 423 on its next write of the state and on its own release of the lock, and the release is recorded on the audit trail.
 //
 // Returns a wrapper object for the known response body format(s).
 //
