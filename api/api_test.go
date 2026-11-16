@@ -528,11 +528,11 @@ func TestUnitServedNames(t *testing.T) {
 	})
 }
 
-// TestUnitAPIStrictInputs fails when a request body reaches an object
-// schema that does not set additionalProperties: false, so a misspelt field
-// is refused instead of ignored. The MergePatch body of a PATCH beside an
-// update PUT names no members; the route table checks it against its PUT's
-// input.
+// TestUnitAPIStrictInputs fails when a request body, or a JSON object a
+// query parameter carries, reaches an object schema that does not set
+// additionalProperties: false, so a misspelt field is refused instead of
+// ignored. The MergePatch body of a PATCH beside an update PUT names no
+// members; the route table checks it against its PUT's input.
 //
 // ref: decision 0022
 func TestUnitAPIStrictInputs(t *testing.T) {
@@ -545,7 +545,8 @@ func TestUnitAPIStrictInputs(t *testing.T) {
 	}
 }
 
-// checkStrictInputs checks every object schema doc's request bodies reach.
+// checkStrictInputs checks every object schema doc's request bodies and
+// JSON query parameters reach.
 func checkStrictInputs(t *testing.T, file string, doc *openapi3.T) {
 	t.Helper()
 	var merge *openapi3.Schema
@@ -580,6 +581,13 @@ func checkStrictInputs(t *testing.T, file string, doc *openapi3.T) {
 	}
 	for path, item := range doc.Paths.Map() {
 		for method, op := range item.Operations() {
+			for _, p := range op.Parameters {
+				if p.Value != nil && p.Value.In == openapi3.ParameterInQuery {
+					for typ, mt := range p.Value.Content {
+						walk(file+" "+method+" "+path+" ?"+p.Value.Name+" "+typ, mt.Schema)
+					}
+				}
+			}
 			if op.RequestBody == nil || op.RequestBody.Value == nil {
 				continue
 			}

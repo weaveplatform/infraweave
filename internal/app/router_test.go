@@ -95,15 +95,16 @@ func TestUnitAPIRoutes(t *testing.T) {
 	}
 }
 
-// registered reports whether p, but for the instance wantProblem checks,
-// is exactly what its register type builds, so an untyped problem, or one
-// whose title strays from the register, fails.
+// registered reports whether p, but for the instance wantProblem checks
+// and the field errors it names, is exactly what its register type
+// builds, so an untyped problem, or one whose title strays from the
+// register, fails.
 func registered(p problem.Problem) bool {
 	return slices.ContainsFunc(
 		problem.Types(),
 		func(t problem.Type) bool {
 			want := t.New(p.Detail)
-			want.Instance = p.Instance
+			want.Instance, want.Errors = p.Instance, p.Errors
 			return reflect.DeepEqual(want, p)
 		},
 	)

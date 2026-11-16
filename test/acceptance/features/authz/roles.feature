@@ -5,8 +5,8 @@ Feature: Roles
   custom role's slug is made from its name when it is created and kept
   through every rename. A role never holds a disabled or deprecated
   action: the service refuses a disabled one with 422, and the request's
-  validation refuses a deprecated one with 400, since the Action enum
-  leaves it out. A role with bindings is not deleted. Any principal of the
+  validation refuses a deprecated one with 400 at its pointer, since the
+  Action enum leaves it out. A role with bindings is not deleted. Any principal of the
   account reads the roles; only an account admin changes them. The home
   key is space-admin on the account's top space; the member key holds
   only the bindings a scenario gives it.
@@ -77,7 +77,7 @@ Feature: Roles
     And the problem refuses the field "/actions/1" naming "STACK_AWS_INTEGRATION_ATTACH"
     When token "h" sends "POST /api/v1/roles" with '{"name":"Bad","actions":["UPDATE_BLUEPRINT_DEPLOYMENT"]}' through B
     Then it answers a 400 problem "invalid-request"
-    And the problem's detail names "UPDATE_BLUEPRINT_DEPLOYMENT"
+    And the problem refuses the field "/actions/0" as "enum"
     When token "h" sends "POST /api/v1/roles" with '{"name":"Ops","actions":["SPACE_READ"]}' through A
     Then it answers 201
     When token "h" sends "POST /api/v1/roles" with '{"name":"OPS","actions":[]}' through B
