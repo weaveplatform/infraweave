@@ -178,10 +178,7 @@ func (a StateAPI) TofuWorkspaceUnlockAll(ctx context.Context, req api.TofuWorksp
 
 // StackManagedStateImport imports an uploaded state file into a stack's
 // default workspace.
-func (a StateAPI) StackManagedStateImport(
-	ctx context.Context,
-	req api.StackManagedStateImportRequestObject,
-) (api.StackManagedStateImportResponseObject, error) {
+func (a StateAPI) StackManagedStateImport(ctx context.Context, req api.StackManagedStateImportRequestObject) (api.StackManagedStateImportResponseObject, error) {
 	return a.workspaces.StackManagedStateImport(ctx, req) //nolint:wrapcheck // as above
 }
 

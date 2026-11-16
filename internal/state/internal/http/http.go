@@ -114,10 +114,7 @@ func (s Server) TofuWorkspaceUnlockAll(ctx context.Context, req api.TofuWorkspac
 // on the stack's space.
 //
 // ref: decision 0010 § "Upload, import and download URLs"
-func (s Server) StackManagedStateImport(
-	ctx context.Context,
-	req api.StackManagedStateImportRequestObject,
-) (api.StackManagedStateImportResponseObject, error) {
+func (s Server) StackManagedStateImport(ctx context.Context, req api.StackManagedStateImportRequestObject) (api.StackManagedStateImportResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
