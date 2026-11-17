@@ -106,6 +106,7 @@ Feature: A trigger checks and applies its custom runtime configuration
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}","runtimeConfig":<configuration>}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "<pointer>" as "<reason>"
+    And neither the answer nor a server's log names "runtime-alias-secret-566"
     When token "h" sends "GET /api/v1/stacks/infra/runs" through B
     Then the answer's items are the runs ""
 
@@ -114,6 +115,11 @@ Feature: A trigger checks and applies its custom runtime configuration
       | {"yaml":"before_plan: [bad"} | /runtimeConfig/yaml | format |
       | {"yaml":"before_plan: \"x\""} | /runtimeConfig/yaml | format |
       | {"yaml":"befor_plan: []"} | /runtimeConfig/yaml | unknown-field |
+      | {"yaml":"{environment: {TOKEN: &s runtime-alias-secret-566}, before_plan: [*s]}"} | /runtimeConfig/yaml | rule |
+      | {"yaml":"{before_plan: [&s runtime-alias-secret-566], environment: {TOKEN: *s}}"} | /runtimeConfig/yaml | rule |
+      | {"yaml":"{&s runtime-alias-secret-566: kept, environment: {TOKEN: *s}}"} | /runtimeConfig/yaml | rule |
+      | {"yaml":"{&s runtime-alias-secret-566: kept, runtime-alias-secret-566: again, environment: {TOKEN: *s}}"} | /runtimeConfig/yaml | rule |
+      | {"yaml":"{environment: {&env environment: baseline}, <<: { *env : {TOKEN: &s runtime-alias-secret-566}}, before_plan: [*s]}"} | /runtimeConfig/yaml | rule |
       | {"beforePlan":"x"} | /runtimeConfig/beforePlan | type |
       | {"beforPlan":[]} | /runtimeConfig/beforPlan | unknown-field |
       | {"beforPlan":null} | /runtimeConfig/beforPlan | unknown-field |
