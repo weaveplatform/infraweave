@@ -219,7 +219,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"<yaml>"}}' through A
     Then it answers a 422 problem "validation-failed"
-    And the problem refuses the field "/runtimeConfig/yaml" as "rule"
+    And the problem refuses the field "/runtimeConfig/yaml" as "format"
     When token "h" sends "GET /api/v1/stacks/infra/runs" through B
     Then the answer's items is '[]'
 
@@ -257,10 +257,11 @@ Feature: Terragrunt runs select the root unit or all units and their state works
     And the run "run" wrote 1 state version
     And the state workspaces of the run "run"'s stack are "default", each at a version the run wrote
 
-  @op:runTrigger @case:success
-  Scenario: Another vendor leaves a runtime Terragrunt block unread even when it is malformed
+  @op:runTrigger @case:failure
+  Scenario: Every vendor refuses malformed custom runtime YAML before a run exists
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{}}},"manageState":true}' through B
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt: ["}}' through A
-    And the answer's id names "run"
-    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
-    And the run "run" wrote 1 state version
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/runtimeConfig/yaml" as "format"
+    When token "h" sends "GET /api/v1/stacks/infra/runs" through B
+    Then the answer's items are the runs ""

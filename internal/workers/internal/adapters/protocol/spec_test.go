@@ -76,6 +76,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			StateBackend:  &workersapi.StateBackend{Path: "/state/v1/stacks/" + run.String()},
 			Source: workersapi.SpecSource{
 				Kind: workersapi.SourceGit, URL: "https://git.example.com/a.git", Narrowed: true,
+				SparsePaths: []string{"infra", "modules"},
 			},
 			Tool: &workersapi.SpecTool{
 				Name: "tofu", Version: "1.11.2", Download: true, CPUProfiling: true,
@@ -140,6 +141,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		"stateBackend":  map[string]any{"path": "/state/v1/stacks/" + run.String()},
 		"source": map[string]any{
 			"kind": "git", "url": "https://git.example.com/a.git", "narrowed": true,
+			"sparsePaths": []any{"infra", "modules"},
 		},
 		"tool": map[string]any{
 			"name": "tofu", "version": "1.11.2", "download": true, "enableCPUProfiling": true,

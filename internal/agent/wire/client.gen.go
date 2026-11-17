@@ -637,7 +637,7 @@ type RunSpec struct {
 	// RunnerImage The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's default: its own default runner image when set, else the stack's vendor's image.
 	RunnerImage *string `json:"runnerImage,omitempty"`
 
-	// RuntimeConfig The runtime configuration the run's trigger gave, which overrides the stack's hooks, environment and checkout for this run. Absent when the trigger gave none.
+	// RuntimeConfig The trigger's configuration for reference, with variable values redacted. The specification's own hooks, environment, tools and source fields already apply it; the runner reads those fields. Absent when the trigger gave none.
 	RuntimeConfig *map[string]interface{} `json:"runtimeConfig,omitempty"`
 
 	// Sealed RunSpecSecrets as JSON, sealed to the pool's P-256 public key: the byte 0x01, an ephemeral P-256 public key (65 bytes, uncompressed), a 12-byte nonce, and the AES-256-GCM ciphertext and tag. The AES-256 key is HKDF-SHA256 of the ECDH shared secret, with an empty salt and the info infraweave/pool-envelope/v1 followed by the ephemeral and the pool public keys. The associated data is 0x01, the run ID's length (uint16, big-endian), the run ID, and run.stateVersion (uint64, big-endian), so the launcher refuses a specification issued for another run or another of its states.
@@ -771,6 +771,9 @@ type RunSpecSource struct {
 
 	// Narrowed Whether the credential reads the stack's repository alone and expires when the run ends, rather than being the integration's own token.
 	Narrowed bool `json:"narrowed"`
+
+	// SparsePaths Directories included in a Git checkout, relative to its root. Absent for a full checkout. Archives are always extracted whole.
+	SparsePaths *[]string `json:"sparsePaths,omitempty"`
 
 	// Url The URL the worker fetches from.
 	Url string `json:"url"`

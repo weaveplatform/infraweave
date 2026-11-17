@@ -14,10 +14,12 @@ import (
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -25,8 +27,10 @@ import (
 // triggerer is a trigger service of w's, with w's sources bound when
 // bound is set.
 func (w *world) triggerer(bound bool) *trigger.Service {
+	authz := w.access()
+	authz.held = append(slices.Clone(authz.held), accessapi.ActionRunTriggerWithCustomRuntimeConfig)
 	s := trigger.New(trigger.Deps{
-		DB: w.db, Stacks: w.stacks, Lifecycle: w.lc, Views: w.reader(w.access()),
+		DB: w.db, Stacks: w.stacks, Authz: authz, Lifecycle: w.lc, Views: w.reader(authz),
 	})
 	if bound {
 		s.BindSources(w.sources)
@@ -187,6 +191,75 @@ func TestAccTrigger(t *testing.T) {
 		CommitSHA: "named",
 	}); !errors.Is(err, lifecycle.ErrDisabled) {
 		t.Errorf("a disabled stack = %v, want ErrDisabled", err)
+	}
+}
+
+func TestAccTriggerRuntimeConfiguration(t *testing.T) {
+	w := newWorld(t)
+	s := w.triggerer(true)
+	st := w.stacks.settings[w.stack]
+	st.Vendor = "terraform"
+	st.TrackedCommit = &stacksapi.Commit{Hash: "tracked"}
+	w.stacks.settings[w.stack] = st
+	plain, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{
+		`{}`,
+		`{"beforePlan":["echo custom"],"environment":[{"key":"TOKEN","value":"runtime-secret"}]}`,
+		`{"yaml":"before_plan: [echo custom]\nenvironment: {TOKEN: runtime-secret}\n"}`,
+	} {
+		first, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(raw)})
+		if err != nil || first.Run.ID == plain.Run.ID {
+			t.Fatalf("custom configuration creates a fresh tracked run: %s, %v", first.Run.ID, err)
+		}
+		second, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(raw)})
+		if err != nil || first.Run.ID == second.Run.ID {
+			t.Fatalf("repeated custom configuration creates a fresh run: %s, %v", second.Run.ID, err)
+		}
+		var stored, sealed []byte
+		if err := w.db.QueryRow(t.Context(), `SELECT runtime_config, env_overrides_sealed FROM runs
+			WHERE account_id = $1 AND id = $2`, w.acct, first.Run.ID).Scan(&stored, &sealed); err != nil ||
+			bytes.Contains(stored, []byte("runtime-secret")) || bytes.Contains(sealed, []byte("runtime-secret")) {
+			t.Fatalf("stored custom configuration %s, sealed %x, %v", stored, sealed, err)
+		}
+		in, err := runtimeconfig.Read(stored)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ovs, err := w.store.Overrides(t.Context(), first.Run)
+		if err != nil || len(ovs) != len(in.Environment) {
+			t.Fatalf("sealed variables: %+v, %v", ovs, err)
+		}
+		if raw != `{}` && (len(ovs) != 1 || ovs[0].Name != "TOKEN" || ovs[0].Value != "runtime-secret" ||
+			len(in.Environment) != 1 || in.Environment[0].Value != "" || sealed == nil) {
+			t.Fatalf("runtime values not separated from typed config: %+v, %+v", in, ovs)
+		}
+	}
+	if again, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{}); err != nil || again.Run.ID != plain.Run.ID {
+		t.Fatalf("plain trigger retains active-run reuse: %s, %v", again.Run.ID, err)
+	}
+	var before, after int
+	if err := w.db.QueryRow(t.Context(), `SELECT count(*) FROM runs WHERE account_id = $1`, w.acct).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{`{"beforePlan":"wrong"}`, `{"yaml":"unknown: value"}`,
+		`{"environment":[{"key":"TF_APPEND_USER_AGENT","value":"bad"}]}`} {
+		if _, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(raw)}); err == nil {
+			t.Fatalf("invalid configuration %s accepted", raw)
+		}
+	}
+	authz := w.access()
+	denied := trigger.New(trigger.Deps{DB: w.db, Stacks: w.stacks, Authz: authz, Lifecycle: w.lc, Views: w.reader(authz)})
+	if _, err := denied.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(`{}`)}); err == nil {
+		t.Fatal("custom permission refusal missing")
+	} else if refusal, ok := errors.AsType[*trigger.RuntimeConfigDenied](err); !ok ||
+		refusal.Action != accessapi.ActionRunTriggerWithCustomRuntimeConfig {
+		t.Fatalf("custom permission refusal: %v", err)
+	}
+	if err := w.db.QueryRow(t.Context(), `SELECT count(*) FROM runs WHERE account_id = $1`, w.acct).Scan(&after); err != nil || before != after {
+		t.Fatalf("refused configurations created a run: %d -> %d, %v", before, after, err)
 	}
 }
 

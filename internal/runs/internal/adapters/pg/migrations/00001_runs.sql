@@ -11,12 +11,13 @@
 -- never both move a run; commit is the commit the run works on, as the
 -- API's Commit, with the branch the run was created for; triggered_by is
 -- the login or the trigger that created it; priority is low, normal or
--- high; runtime_config is the runtime configuration its trigger gave,
+-- high; runtime_config is the trigger's typed runtime configuration, with
+-- variable values redacted and supplied through env_overrides_sealed,
 -- which overrides the stack's, and force_apply_mode SINGLE or CASCADE when
 -- it applies with no changes. resolved_config is the immutable envelope of its public
 -- runtime configuration and private execution settings, written at its first
 -- successful specification transaction, with its token, key and sealed
--- answer. The earlier claim is separate. It holds no variables,
+-- answer. The earlier claim is separate. It holds only variable keys, no values,
 -- mounted files, identity or credentials; NULL until that handover succeeds.
 -- local_workspace is the key, in the uploads
 -- store, of the local workspace a run proposed from one previews instead
@@ -34,10 +35,10 @@
 -- artifact_key_sealed is the run's 256-bit artifact key, sealed by the
 -- keyring, made the first time the run's specification is handed over;
 -- the runner seals the run's artifacts with it.
--- env_overrides_sealed is a proposed run's environment variable
--- overrides, a JSON array of {name, value}, sealed by the keyring as
--- they may hold secrets; NULL for a run without overrides, which alone
--- an equal trigger answers instead of creating another.
+-- env_overrides_sealed holds a proposed run's environment variable overrides
+-- or a trigger's runtime configuration variables: a JSON array of {name, value},
+-- sealed by the keyring as they may hold secrets. A plain trigger alone may
+-- reuse an equal active run; custom configuration always creates another.
 -- command and skip_initialization are a task's: the command it performs,
 -- and whether it performs it without initializing the tool first. A TASK
 -- run alone has a command.

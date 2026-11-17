@@ -106,6 +106,10 @@ type Operation struct {
 	// handler decodes leniently. A PATCH beside an update PUT checks its
 	// merge patch against patchSchema of the PUT's input.
 	Body *openapi3.RequestBody
+	// SemanticBodyFields names body subtrees whose type and unknown-field
+	// refusals are operation validation (422). Other schema refusals keep
+	// their normal 400, including missing required fields.
+	SemanticBodyFields []string
 	// Path is the operation's path parameters with a schema, which
 	// strictPaths checks before the handler as strictQueries checks the
 	// query; empty for an operation that takes none.
@@ -196,18 +200,24 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 					return nil, fmt.Errorf("%w: %s %s %w", errSpec, method, path, errRunCost)
 				}
 			}
+			var semanticBodyFields []string
+			// The embedded generated spec capitalizes operation IDs.
+			if op.OperationID == "runTrigger" || op.OperationID == "RunTrigger" {
+				semanticBodyFields = []string{"/runtimeConfig"}
+			}
 			ops[method+" "+base+path] = Operation{
-				Cost:              cost,
-				Search:            style == "search" || strings.HasSuffix(path, "/search"),
-				Unkeyed:           unkeyed,
-				Public:            op.Security != nil && len(*op.Security) == 0,
-				Organization:      org,
-				OrganizationAdmin: admin,
-				Body:              strictBody(body),
-				Path:              strictParams(op, openapi3.ParameterInPath),
-				Query:             strictParams(op, openapi3.ParameterInQuery),
-				Gate:              gate,
-				Required:          required,
+				Cost:               cost,
+				Search:             style == "search" || strings.HasSuffix(path, "/search"),
+				Unkeyed:            unkeyed,
+				Public:             op.Security != nil && len(*op.Security) == 0,
+				Organization:       org,
+				OrganizationAdmin:  admin,
+				Body:               strictBody(body),
+				SemanticBodyFields: semanticBodyFields,
+				Path:               strictParams(op, openapi3.ParameterInPath),
+				Query:              strictParams(op, openapi3.ParameterInQuery),
+				Gate:               gate,
+				Required:           required,
 			}
 		}
 	}
@@ -727,9 +737,9 @@ func Guarded(log *slog.Logger, c config.Server, ops Operations, g Guards, auth a
 			op, _ := resolve(req)
 			return op.Query
 		}),
-		strictBodies(func(req *http.Request) *openapi3.RequestBody {
+		strictBodies(func(req *http.Request) Operation {
 			op, _ := resolve(req)
-			return op.Body
+			return op
 		}),
 		extendHeld(log, c.Timeouts.Write, func(req *http.Request) time.Duration {
 			op, _ := resolve(req)
@@ -783,15 +793,17 @@ func (o Operation) access() accessapi.Access {
 // strictBodies checks the body of a request whose operation has a strict
 // one against its schema, answering 400 invalid-request for an unknown
 // field, a missing required one or a wrong type before the handler decodes
-// it. A body with no Content-Type is checked as the operation's one media
+// it. An operation's semantic-body policy promotes only its named fields'
+// type and unknown-field refusals to 422 validation-failed. A body with no Content-Type is checked as the operation's one media
 // type, JSON or a merge patch, as the generated handler decodes it.
 //
 // ref: decision 0022
-func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Handler) http.Handler {
+func strictBodies(operation func(*http.Request) Operation) func(http.Handler) http.Handler {
 	opts := &openapi3filter.Options{SkipSettingDefaults: true}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rb := body(r)
+			op := operation(r)
+			rb := op.Body
 			if rb == nil {
 				next.ServeHTTP(w, r)
 				return
@@ -803,12 +815,36 @@ func strictBodies(body func(*http.Request) *openapi3.RequestBody) func(http.Hand
 			}
 			in := &openapi3filter.RequestValidationInput{Request: r, Options: opts}
 			if err := openapi3filter.ValidateRequestBody(r.Context(), in, rb); err != nil {
+				if semanticBodyError(w, err, op.SemanticBodyFields) {
+					return
+				}
 				strictError(w, r, err, "", "The body")
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// semanticBodyError applies only the operation's explicit validation policy,
+// retaining the schema's precise pointer without exposing the rejected value.
+func semanticBodyError(w http.ResponseWriter, err error, fields []string) bool {
+	if len(fields) == 0 {
+		return false
+	}
+	field, ok := refusedField(err, "")
+	if !ok || field.Reason != kernel.ReasonType && field.Reason != kernel.ReasonUnknownField {
+		return false
+	}
+	for _, prefix := range fields {
+		if field.Pointer == prefix || strings.HasPrefix(field.Pointer, prefix+"/") {
+			p := problem.ValidationFailed.New("The request's configuration is refused.")
+			p.Errors = []problem.FieldError{field}
+			problem.Write(w, p)
+			return true
+		}
+	}
+	return false
 }
 
 // strictPaths checks each of a request's path parameters with a schema

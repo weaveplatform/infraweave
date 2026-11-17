@@ -1,9 +1,22 @@
 package http
 
 import (
+	"encoding/json"
 	api "github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 )
+
+// customOf projects the validated typed trigger input without its sealed values.
+func customOf(raw json.RawMessage) *api.RuntimeConfig {
+	if len(raw) == 0 {
+		return nil
+	}
+	input, err := runtimeconfig.Read(raw)
+	if err != nil {
+		return nil
+	}
+	return resolvedOf(&runtimeconfig.Record{Configuration: input.Public()})
+}
 
 // resolvedOf projects only the public configuration. Execution metadata is
 // an internal storage detail and never enters a run read or its YAML.

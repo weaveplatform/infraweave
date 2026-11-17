@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"gopkg.in/yaml.v3"
-
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -66,7 +64,8 @@ type Configuration struct {
 	YAML                   string      `json:"yaml"                   yaml:"-"`
 }
 
-// Variable is a runtime variable's public key and redacted value.
+// Variable is a runtime configuration variable. Stored and served
+// representations leave its value empty.
 type Variable struct {
 	Key   string `json:"key"   yaml:"key"`
 	Value string `json:"value" yaml:"value"`
@@ -108,8 +107,12 @@ type Terragrunt struct {
 // New captures spec's resolved execution configuration. Variables, mounted
 // files, run identity, source and tokens are deliberately not copied.
 func New(spec workersapi.Spec, managesState bool) (*Record, error) {
+	input, err := Read(spec.RuntimeConfig)
+	if err != nil {
+		return nil, err
+	}
 	c := Configuration{
-		Environment: []Variable{}, GitSparseCheckoutPaths: []string{},
+		Environment: input.Keys(), GitSparseCheckoutPaths: clone(spec.Source.SparsePaths),
 		TerraformWorkflowTool: "TERRAFORM_FOSS",
 	}
 	c.setHooks(spec.Hooks)
@@ -177,13 +180,7 @@ func New(spec workersapi.Spec, managesState bool) (*Record, error) {
 			e.TerragruntDownload = spec.Terragrunt.Download
 		}
 	}
-	// Configuration contains only strings, booleans and slices of strings;
-	// its YAML cannot fail and excludes the private execution metadata.
-	doc, _ := yaml.Marshal(struct {
-		Configuration `yaml:",inline"`
-		Environment   map[string]string `yaml:"environment"`
-	}{Configuration: c, Environment: map[string]string{}})
-	c.YAML = string(doc)
+	c.YAML = c.RuntimeYAML()
 	return &Record{Configuration: c, Execution: e}, nil
 }
 
@@ -203,6 +200,10 @@ func (r *Record) Apply(spec *workersapi.Spec) {
 	spec.Stack.EnableWellKnownSecretMasking = e.EnableWellKnownSecretMasking
 	spec.Stack.EnableSensitiveOutputUpload = e.EnableSensitiveOutputUpload
 	spec.Hooks = c.Hooks()
+	spec.Source.SparsePaths = nil
+	if len(c.GitSparseCheckoutPaths) > 0 {
+		spec.Source.SparsePaths = clone(c.GitSparseCheckoutPaths)
+	}
 	spec.Tool, spec.Terragrunt = nil, nil
 	spec.StateBackend = nil
 	if e.Tool != nil {

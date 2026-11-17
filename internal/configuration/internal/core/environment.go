@@ -185,7 +185,15 @@ func winners(all []source) []Opened {
 // the outermost wraps the phase.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func resolve(stack source, attached []source) configapi.Resolved {
+func resolve(stack source, attached []source, hooks map[string][]string) configapi.Resolved {
+	if len(hooks) > 0 {
+		own := make(map[string][]string, len(stack.hooks)+len(hooks))
+		maps.Copy(own, stack.hooks)
+		for phase, cmds := range hooks {
+			own[phase] = slices.Clone(cmds)
+		}
+		stack.hooks = own
+	}
 	rank := append([]source{stack}, ranked(attached)...)
 	out := configapi.Resolved{Elements: []configapi.Element{}, Hooks: map[string][]string{}}
 	from := map[string]source{}
@@ -232,11 +240,17 @@ func resolve(stack source, attached []source) configapi.Resolved {
 //
 // ref: decision 0013 "Delivery to runs"
 func (s *Service) Resolve(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (configapi.Resolved, error) {
+	return s.ResolveWithHooks(ctx, acct, id, nil)
+}
+
+// ResolveWithHooks substitutes the run's explicitly supplied stack phases before
+// resolving context wrapping, preserving the guard hooks of every context.
+func (s *Service) ResolveWithHooks(ctx context.Context, acct kernel.AccountID, id kernel.ULID, hooks map[string][]string) (configapi.Resolved, error) {
 	sources, _, err := s.sources(ctx, acct, id, true)
 	if err != nil {
 		return configapi.Resolved{}, err
 	}
-	return resolve(sources[0], sources[1:]), nil
+	return resolve(sources[0], sources[1:], hooks), nil
 }
 
 // sources are acct's stack id's sources, the stack's first, with its

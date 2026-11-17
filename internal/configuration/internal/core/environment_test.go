@@ -59,7 +59,7 @@ func TestUnitEnvironmentPrecedence(t *testing.T) {
 			elements: vars("A", "c", "B", "c"), hooks: hooked("c"),
 		},
 	}
-	got := resolve(stack, attached)
+	got := resolve(stack, attached, nil)
 	type won struct{ name, value, source, context string }
 	elements := make([]won, 0, len(got.Elements))
 	for _, e := range got.Elements {
@@ -83,7 +83,7 @@ func TestUnitEnvironmentPrecedence(t *testing.T) {
 
 	stack.elements = nil
 	stack.hooks = nil
-	got = resolve(stack, attached[:2])
+	got = resolve(stack, attached[:2], nil)
 	if len(got.Elements) != 4 || string(got.Elements[0].Value.Reveal()) != "d" ||
 		got.Elements[0].Context != "context-d" {
 		t.Errorf("with the stack's element deleted, %+v", got.Elements)
@@ -97,7 +97,7 @@ func TestUnitEnvironmentPrecedence(t *testing.T) {
 	) {
 		t.Errorf("hooks without the stack's %v, want %v", got.Hooks, want)
 	}
-	if got := resolve(source{kind: configapi.SourceStack}, nil); len(got.Elements) != 0 ||
+	if got := resolve(source{kind: configapi.SourceStack}, nil, nil); len(got.Elements) != 0 ||
 		len(got.Hooks) != 0 {
 		t.Errorf("an empty environment %+v", got)
 	}
@@ -117,7 +117,7 @@ func TestUnitEnvironmentAutoattachedTie(t *testing.T) {
 		attached[i].elements[1].FileMount = true
 	}
 	for range 2 {
-		got := resolve(source{kind: configapi.SourceStack}, attached)
+		got := resolve(source{kind: configapi.SourceStack}, attached, nil)
 		if len(got.Elements) != 2 {
 			t.Fatalf("elements: %+v", got.Elements)
 		}
@@ -134,5 +134,34 @@ func TestUnitEnvironmentAutoattachedTie(t *testing.T) {
 			t.Errorf("same-name hooks: %v, want %v", got.Hooks, want)
 		}
 		attached[0], attached[1] = attached[1], attached[0]
+	}
+}
+
+// A runtime override replaces only explicitly named stack phases, retaining
+// context guards before and after it and every omitted stack phase.
+func TestUnitEnvironmentRuntimeHooks(t *testing.T) {
+	stack := source{kind: configapi.SourceStack, hooks: map[string][]string{
+		"before_plan": {"stack before"}, "after_plan": {"stack after"},
+		"after_apply": {"kept"},
+	}}
+	contexts := []source{{kind: configapi.SourceContext, context: "guard", hooks: hooked("guard")}}
+	got := resolve(stack, contexts, map[string][]string{
+		"before_plan": {"custom"}, "after_plan": {}, "after_run": {"custom cleanup"},
+	})
+	want := map[string][]string{
+		"before_plan": {"guard", "custom"}, "after_plan": {"guard"},
+		"after_apply": {"kept"}, "after_run": {"custom cleanup"},
+	}
+	if !reflect.DeepEqual(got.Hooks, want) {
+		t.Errorf("runtime hooks = %v, want %v", got.Hooks, want)
+	}
+	if !reflect.DeepEqual(stack.hooks, map[string][]string{
+		"before_plan": {"stack before"}, "after_plan": {"stack after"}, "after_apply": {"kept"},
+	}) {
+		t.Errorf("runtime hooks mutated the stack: %v", stack.hooks)
+	}
+	got = resolve(source{kind: configapi.SourceStack}, nil, map[string][]string{"before_plan": {"new"}})
+	if !reflect.DeepEqual(got.Hooks, map[string][]string{"before_plan": {"new"}}) {
+		t.Errorf("runtime hook without stored hooks = %v", got.Hooks)
 	}
 }

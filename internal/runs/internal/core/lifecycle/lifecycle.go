@@ -402,10 +402,13 @@ type NewRun struct {
 	Overrides      []Override
 	Task           *kernel.Task
 	Note           string
+	// AlwaysCreate is an operation's explicit request for a fresh run.
+	// RuntimeConfig alone does not imply it: retries can reuse an active run.
+	AlwaysCreate bool
 }
 
-// Override is an environment variable a proposed run sets over its
-// stack's, for that run alone.
+// Override is a run-local environment value from a proposal or a trigger's
+// runtime configuration, stored only in the sealed override column.
 type Override struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
@@ -414,7 +417,7 @@ type Override struct {
 // Create creates n's run in QUEUED, T1, in the transaction ctx carries,
 // and reports whether it created one: a run of the stack, type, commit
 // and local workspace that has not ended is returned instead, unless n
-// has overrides or a task. It locks the stack's row first, so two
+// has overrides, a task or AlwaysCreate. It locks the stack's row first, so two
 // creations of one run wait on each other and a delete of the stack
 // waits for the creation to commit. A disabled stack refuses with
 // ErrDisabled, a deleting one with ErrDeleting, a stack locked by another
@@ -449,9 +452,9 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	if st.Lock != nil && st.Lock.Holder != n.Actor.Caller {
 		return Run{}, false, &Locked{By: st.Lock.By}
 	}
-	// No other run shares a run's overrides, and a task is asked for to
-	// run each time, so a creation with either always creates one.
-	if len(n.Overrides) == 0 && n.Task == nil {
+	// Overrides and tasks always create a run. Other operations explicitly
+	// choose fresh creation; retries keep their normal active-run reuse.
+	if len(n.Overrides) == 0 && n.Task == nil && !n.AlwaysCreate {
 		existing, found, err := l.d.Store.Active(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash,
 			n.LocalWorkspace)
 		if err != nil || found {

@@ -6534,6 +6534,8 @@ type Run struct {
 
 	// CustomRuntimeConfig The configuration a run used, fixed when it was first handed to a
 	// worker. Later handovers use the same hooks, settings and tool versions.
+	// Variable values are never answered. YAML describes the supported
+	// runtime-file keys; other vendor execution flags remain in the JSON view.
 	CustomRuntimeConfig *RuntimeConfig `json:"customRuntimeConfig,omitempty"`
 
 	// Delta Delta is the number of resources affected by a Run in various ways.
@@ -6610,6 +6612,8 @@ type Run struct {
 
 	// RuntimeConfig The configuration a run used, fixed when it was first handed to a
 	// worker. Later handovers use the same hooks, settings and tool versions.
+	// Variable values are never answered. YAML describes the supported
+	// runtime-file keys; other vendor execution flags remain in the JSON view.
 	RuntimeConfig *RuntimeConfig `json:"runtimeConfig,omitempty"`
 
 	// StackId The ID (slug) of the Stack this Run belongs to.
@@ -7122,6 +7126,8 @@ type RunsScheduledForTerminationTile struct {
 
 // RuntimeConfig The configuration a run used, fixed when it was first handed to a
 // worker. Later handovers use the same hooks, settings and tool versions.
+// Variable values are never answered. YAML describes the supported
+// runtime-file keys; other vendor execution flags remain in the JSON view.
 type RuntimeConfig struct {
 	// AfterApply List of after-apply scripts.
 	AfterApply []string `json:"afterApply"`
@@ -7226,7 +7232,7 @@ type RuntimeConfigInput struct {
 	// RunnerImage Name of the Docker image used to process the Run.
 	RunnerImage *string `json:"runnerImage,omitempty"`
 
-	// Yaml Runtime configuration in YAML format.
+	// Yaml One stack's settings in runtime configuration YAML format.
 	// The yaml property, or the other properties must be set, but not both.
 	Yaml *string `json:"yaml,omitempty"`
 }
@@ -7309,6 +7315,8 @@ type ScheduledRun struct {
 
 	// CustomRuntimeConfig The configuration a run used, fixed when it was first handed to a
 	// worker. Later handovers use the same hooks, settings and tool versions.
+	// Variable values are never answered. YAML describes the supported
+	// runtime-file keys; other vendor execution flags remain in the JSON view.
 	CustomRuntimeConfig *RuntimeConfig `json:"customRuntimeConfig,omitempty"`
 
 	// Id Globally unique schedule identifier.

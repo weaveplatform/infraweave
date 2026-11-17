@@ -263,9 +263,22 @@ func (runtimeDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) { retur
 func (runtimeTx) Commit(context.Context) error                           { return nil }
 func (runtimeTx) Rollback(context.Context) error                         { return nil }
 
-// TestUnitTriggerTerragruntYAML refuses malformed YAML and non-booleans
-// before queueing, and leaves other vendors' runtime YAML unread.
-func TestUnitTriggerTerragruntYAML(t *testing.T) {
+type runtimeAuthorizer struct {
+	accessapi.Authorizer
+	allow  bool
+	err    error
+	calls  int
+	action accessapi.Action
+}
+
+func (a *runtimeAuthorizer) Authorize(_ context.Context, _ kernel.Principal, action accessapi.Action, _ kernel.ULID) (bool, error) {
+	a.calls++
+	a.action = action
+	return a.allow, a.err
+}
+
+// Every vendor uses the shared strict runtime parser before queueing.
+func TestUnitTriggerRuntimeYAML(t *testing.T) {
 	for _, tc := range []struct {
 		vendor, yaml string
 		refused      bool
@@ -276,12 +289,16 @@ func TestUnitTriggerTerragruntYAML(t *testing.T) {
 		{"terragrunt", "terragrunt: {use_run_all: \"yes\"}", true},
 		{"terragrunt", "terragrunt: {use_run_all: false}", false},
 		{"terragrunt", "terragrunt: {}", false},
-		{"terraform", "terragrunt: [", false},
-		{"opentofu", "terragrunt: {use_run_all: \"yes\"}", false},
-		{"opentofu", "terragrunt: {}\n---\n[", false},
+		{"terraform", "terragrunt: [", true},
+		{"opentofu", "terragrunt: {use_run_all: \"yes\"}", true},
+		{"opentofu", "terragrunt: {}\n---\n[", true},
+		{"terraform", "project_root: .", false},
+		{"opentofu", "opentofu: {}", false},
 	} {
 		t.Run(tc.vendor+"/"+tc.yaml, func(t *testing.T) {
-			service := trigger.New(trigger.Deps{DB: runtimeDB{}, Stacks: runtimeStacks{vendor: tc.vendor}})
+			service := trigger.New(trigger.Deps{
+				DB: runtimeDB{}, Stacks: runtimeStacks{vendor: tc.vendor}, Authz: &runtimeAuthorizer{allow: true},
+			})
 			s := New(service, nil, nil, nil, nil)
 			ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{})
 			_, err := s.RunTrigger(ctx, api.RunTriggerRequestObject{StackId: "infra", Body: &api.RunTriggerRequest{
@@ -298,6 +315,57 @@ func TestUnitTriggerTerragruntYAML(t *testing.T) {
 			if !ok || refused.Problem.Status != http.StatusConflict ||
 				refused.Problem.Type != problem.TypePrefix+"invalid-state" {
 				t.Fatalf("accepted YAML must reach the missing-commit refusal: %v", err)
+			}
+		})
+	}
+}
+
+func TestUnitTriggerRuntimePermission(t *testing.T) {
+	root := "."
+	for _, tc := range []struct {
+		name, body string
+		allow      bool
+		failure    error
+	}{
+		{name: "ordinary trigger"},
+		{name: "denied custom", body: "custom"},
+		{name: "allowed custom", body: "custom", allow: true},
+		{name: "permission read fails", body: "custom", failure: errors.New("authorization unavailable")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			authz := &runtimeAuthorizer{allow: tc.allow, err: tc.failure}
+			service := trigger.New(trigger.Deps{DB: runtimeDB{}, Stacks: runtimeStacks{vendor: "terraform"}, Authz: authz})
+			server := New(service, nil, nil, nil, nil)
+			body := &api.RunTriggerRequest{}
+			if tc.body != "" {
+				body.RuntimeConfig = &api.RuntimeConfigInput{ProjectRoot: &root}
+			}
+			_, err := server.RunTrigger(kernel.WithPrincipal(t.Context(), kernel.Principal{}), api.RunTriggerRequestObject{
+				StackId: "infra", Body: body,
+			})
+			if tc.body == "" {
+				if authz.calls != 0 {
+					t.Fatal("an ordinary trigger decided the custom-configuration action")
+				}
+			} else if authz.calls != 1 || authz.action != accessapi.ActionRunTriggerWithCustomRuntimeConfig {
+				t.Fatalf("permission calls = %d, action %s", authz.calls, authz.action)
+			}
+			if tc.failure != nil {
+				if !errors.Is(err, tc.failure) {
+					t.Fatalf("permission failure = %v", err)
+				}
+				return
+			}
+			refused, ok := errors.AsType[*problem.Error](err)
+			if !ok {
+				t.Fatalf("trigger refusal = %v", err)
+			}
+			if tc.body != "" && !tc.allow {
+				if refused.Problem.Status != http.StatusForbidden || refused.Problem.Action != string(accessapi.ActionRunTriggerWithCustomRuntimeConfig) {
+					t.Fatalf("permission refusal = %+v", refused.Problem)
+				}
+			} else if refused.Problem.Status != http.StatusConflict {
+				t.Fatalf("permitted trigger did not reach missing commit: %+v", refused.Problem)
 			}
 		})
 	}

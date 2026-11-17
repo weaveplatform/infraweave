@@ -65,3 +65,37 @@ func TestUnitResolvedConfigurationRedactsVariables(t *testing.T) {
 		t.Fatalf("variable projection: %s, %v", data, err)
 	}
 }
+
+func TestUnitCustomConfiguration(t *testing.T) {
+	if customOf(nil) != nil || customOf(json.RawMessage(`broken`)) != nil {
+		t.Fatal("absent or corrupt custom configuration projected")
+	}
+	for _, raw := range []string{
+		`{"beforePlan":["echo fields"],"environment":[{"key":"TOKEN","value":"never-echo"}],"gitSparseCheckoutPaths":[]}`,
+		`{"yaml":"before_plan: [echo yaml]\nenvironment: {TOKEN: never-echo}\n"}`,
+	} {
+		in, err := runtimeconfig.Parse(json.RawMessage(raw), "terraform")
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := customOf(in.Stored())
+		data, err := json.Marshal(got)
+		if err != nil || got == nil || len(got.BeforePlan) != 1 || len(got.Environment) != 1 ||
+			got.Environment[0].Key != "TOKEN" || got.Environment[0].Value != "" ||
+			bytes.Contains(data, []byte("never-echo")) || !bytes.Contains(data, []byte("TOKEN")) {
+			t.Fatalf("custom projection: %s, %v", data, err)
+		}
+		if _, err := runtimeconfig.Parse(mustYAML(t, got.Yaml), "terraform"); err != nil {
+			t.Fatalf("served YAML cannot be parsed: %s, %v", got.Yaml, err)
+		}
+	}
+}
+
+func mustYAML(t *testing.T, text string) json.RawMessage {
+	t.Helper()
+	raw, err := json.Marshal(map[string]string{"yaml": text})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}

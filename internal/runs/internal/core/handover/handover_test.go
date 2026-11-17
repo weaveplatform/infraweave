@@ -120,9 +120,15 @@ func (a *accounts) Slug(context.Context, kernel.AccountID) (string, error) {
 type environment struct {
 	resolved configapi.Resolved
 	err      error
+	hooks    map[string][]string
 }
 
 func (e *environment) Resolve(context.Context, kernel.AccountID, kernel.ULID) (configapi.Resolved, error) {
+	return e.resolved, e.err
+}
+
+func (e *environment) ResolveWithHooks(_ context.Context, _ kernel.AccountID, _ kernel.ULID, hooks map[string][]string) (configapi.Resolved, error) {
+	e.hooks = hooks
 	return e.resolved, e.err
 }
 
@@ -372,6 +378,15 @@ func TestUnitComputedEnvironmentNames(t *testing.T) {
 	}
 }
 
+func storedRuntime(t *testing.T, vendor string, raw json.RawMessage) json.RawMessage {
+	t.Helper()
+	input, err := runtimeconfig.Parse(raw, vendor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return input.Stored()
+}
+
 // sealed is the secrets document of h.
 type sealed struct {
 	Environment       map[string]string `json:"environment"`
@@ -394,8 +409,8 @@ type sealed struct {
 // stack's; and that a stack with no labels has an empty list.
 func TestUnitHandover(t *testing.T) {
 	w := newWorld(t)
-	w.store.run.RuntimeConfig = json.RawMessage(
-		`{"runnerImage":"ghcr.io/acme/run","projectRoot":"run-root"}`)
+	w.store.run.RuntimeConfig = storedRuntime(t, "terraform", json.RawMessage(
+		`{"runnerImage":"ghcr.io/acme/run","projectRoot":"run-root"}`))
 	mode := "600"
 	w.env.resolved = configapi.Resolved{
 		Elements: []configapi.Element{
@@ -494,7 +509,7 @@ func TestUnitHandover(t *testing.T) {
 		got.SourceCredential.Token != "narrow" {
 		t.Errorf("secrets = %+v", got)
 	}
-	if spec.Source != (workersapi.SpecSource{
+	if !reflect.DeepEqual(spec.Source, workersapi.SpecSource{
 		Kind: workersapi.SourceGit, URL: "https://git.example.com/acme/infra.git", Narrowed: true,
 	}) || !slices.Equal(w.sources.asked, []string{"abc"}) {
 		t.Errorf("source = %+v, asked for %v", spec.Source, w.sources.asked)
@@ -645,6 +660,96 @@ func TestUnitHandoverOverrides(t *testing.T) {
 	w.store.overrideErr = down
 	if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, down) {
 		t.Errorf("a handover whose overrides fail = %v", err)
+	}
+}
+
+// TestUnitHandoverRuntimeConfiguration crosses the typed input, configuration
+// resolver and immutable record seams; the configuration package checks the
+// actual context wrapping order independently.
+func TestUnitHandoverRuntimeConfiguration(t *testing.T) {
+	w := newWorld(t)
+	w.store.run.RuntimeConfig = storedRuntime(t, "terraform", json.RawMessage(`{
+		"beforePlan":["echo runtime"], "afterPlan":[],
+		"projectRoot":"infra", "runnerImage":"runtime:one", "gitSparseCheckoutPaths":["infra"],
+		"environment":[{"key":"TOKEN","value":"runtime-secret"},{"key":"LEVEL","value":"${{ literal }}"}]
+	}`))
+	w.store.overrides = []lifecycle.Override{{Name: "TOKEN", Value: "runtime-secret"},
+		{Name: "LEVEL", Value: "${{ literal }}"}}
+	w.env.resolved.Hooks = map[string][]string{"before_plan": {"context guard", "echo runtime"}}
+	w.env.resolved.Elements = []configapi.Element{variable("TOKEN", "stack-secret", true), variable("LEVEL", "context", false)}
+	h, err := w.firstHandover(t, w.run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(w.env.hooks["before_plan"], []string{"echo runtime"}) ||
+		w.env.hooks["after_plan"] == nil || len(w.env.hooks["after_plan"]) != 0 ||
+		*w.stacks.settings.ProjectRoot == "infra" || *h.Spec.Stack.ProjectRoot != "infra" ||
+		h.Spec.RunnerImage == nil || *h.Spec.RunnerImage != "runtime:one" ||
+		!slices.Equal(h.Spec.Source.SparsePaths, []string{"infra"}) {
+		t.Fatalf("runtime overrides: hooks %v, spec %+v", w.env.hooks, h.Spec)
+	}
+	var sec sealed
+	if err := json.Unmarshal(h.Secrets.Reveal(), &sec); err != nil || sec.Environment["TOKEN"] != "runtime-secret" {
+		t.Fatalf("write-only runtime variable: %+v, %v", sec.Environment, err)
+	}
+	for _, v := range h.Spec.Environment {
+		if v.Name == "TOKEN" && (v.Value != nil || !v.WriteOnly) ||
+			v.Name == "LEVEL" && (v.Value == nil || *v.Value != "${{ literal }}") {
+			t.Fatalf("runtime variables stay unrendered and keep write-only: %+v", v)
+		}
+	}
+	c := w.store.run.ResolvedConfig.Configuration
+	if !reflect.DeepEqual(c.Environment, []runtimeconfig.Variable{{Key: "TOKEN"}, {Key: "LEVEL"}}) ||
+		!slices.Equal(c.BeforePlan, h.Spec.Hooks["before_plan"]) ||
+		!slices.Equal(c.GitSparseCheckoutPaths, []string{"infra"}) ||
+		strings.Contains(string(h.Spec.RuntimeConfig), "runtime-secret") {
+		t.Fatalf("recorded effective configuration: %+v", c)
+	}
+	w.stacks.settings.GitSparseCheckoutPaths = []string{"changed"}
+	w.env.resolved.Hooks = map[string][]string{"before_plan": {"changed"}}
+	w.store.overrides[0].Value = "fresh-secret"
+	h, err = w.handover(t, w.run.ID)
+	if err != nil || !slices.Equal(h.Spec.Source.SparsePaths, []string{"infra"}) ||
+		!slices.Equal(h.Spec.Hooks["before_plan"], c.BeforePlan) {
+		t.Fatalf("runtime record replay: %+v, %v", h.Spec, err)
+	}
+	if err := json.Unmarshal(h.Secrets.Reveal(), &sec); err != nil || sec.Environment["TOKEN"] != "fresh-secret" {
+		t.Fatalf("replay reopens variables: %+v, %v", sec.Environment, err)
+	}
+}
+
+func TestUnitHandoverRuntimeVersions(t *testing.T) {
+	for name, c := range map[string]struct{ vendor, yaml, driven string }{
+		"Terraform":       {"terraform", "terraform_version: 1.6.6", "terraform"},
+		"legacy OpenTofu": {"terraform", "terraform_workflow_tool: OPEN_TOFU\nopentofu_version: 1.6.3", "tofu"},
+		"native OpenTofu": {"opentofu", "opentofu: {version: 1.6.3}", "tofu"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := newWorld(t)
+			w.stacks.settings.Vendor = c.vendor
+			raw, _ := json.Marshal(map[string]string{"yaml": c.yaml})
+			w.store.run.RuntimeConfig = storedRuntime(t, c.vendor, raw)
+			h, err := w.firstHandover(t, w.run.ID)
+			if err != nil || h.Spec.Tool == nil || h.Spec.Tool.Name != c.driven || len(w.catalog.asked) != 1 ||
+				!strings.Contains(c.yaml, w.catalog.asked[0]) {
+				t.Fatalf("runtime version: %+v, constraints %v, %v", h.Spec.Tool, w.catalog.asked, err)
+			}
+			w.catalog.invalid = true
+			if _, err := w.firstHandover(t, w.run.ID); err == nil {
+				t.Fatal("unmatched runtime constraint accepted")
+			} else if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Pointer != "/runtimeConfig/yaml" {
+				t.Fatalf("runtime constraint diagnostic: %v", err)
+			}
+		})
+	}
+	for _, config := range []string{`{}`, `{"gitSparseCheckoutPaths":[]}`} {
+		w := newWorld(t)
+		w.store.run.RuntimeConfig = storedRuntime(t, "terraform", json.RawMessage(config))
+		w.stacks.settings.GitSparseCheckoutPaths = []string{"stack"}
+		h, err := w.firstHandover(t, w.run.ID)
+		if err != nil || !slices.Equal(h.Spec.Source.SparsePaths, []string{"stack"}) {
+			t.Fatalf("sparse fallback for %s: %+v, %v", config, h.Spec.Source, err)
+		}
 	}
 }
 
@@ -816,7 +921,7 @@ func TestUnitHandoverLocalPreview(t *testing.T) {
 	})
 	w.svc.BindExpressions(registry(t))
 	h, err := w.firstHandover(t, w.run.ID)
-	if err != nil || h.Spec.Source != (workersapi.SpecSource{
+	if err != nil || !reflect.DeepEqual(h.Spec.Source, workersapi.SpecSource{
 		Kind: workersapi.SourceArchive, URL: "https://store.test/uploads/acct/stack/upload",
 	}) || len(w.sources.asked) != 0 {
 		t.Fatalf("a local preview = %+v, %v; asked %v", h.Spec.Source, err, w.sources.asked)
@@ -1049,8 +1154,8 @@ func TestUnitHandoverTerragruntRunAll(t *testing.T) {
 		{name: "runtime false", yaml: "terragrunt: {use_run_all: false}", stack: true},
 		{name: "runtime true", yaml: "terragrunt: {use_run_all: true}", want: true},
 		{name: "runtime default", yaml: "terragrunt: {}", stack: true},
-		{name: "runtime absent block", yaml: "version: 1", stack: true, want: true},
-		{name: "bad stored runtime", yaml: "terragrunt: {use_run_all: 1}", refused: true},
+		{name: "runtime absent block", yaml: "project_root: live", stack: true, want: true},
+		{name: "bad stored runtime", refused: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := newWorld(t)
@@ -1061,11 +1166,14 @@ func TestUnitHandoverTerragruntRunAll(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				w.store.run.RuntimeConfig = raw
+				w.store.run.RuntimeConfig = storedRuntime(t, "terragrunt", raw)
+			}
+			if tc.refused {
+				w.store.run.RuntimeConfig = json.RawMessage(`{"terragrunt":{"useRunAll":1}}`)
 			}
 			h, err := w.firstHandover(t, w.run.ID)
 			if tc.refused {
-				if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
+				if err == nil {
 					t.Fatalf("invalid runtime = %v", err)
 				}
 				return
@@ -1133,7 +1241,8 @@ func TestUnitHandoverReplaysResolvedConfiguration(t *testing.T) {
 				vendorsapi.Terraform: "1.17.2", vendorsapi.OpenTofu: "1.13.9", vendorsapi.Terragrunt: "1.2.2",
 			}
 			if tc.vendor == "terragrunt" {
-				w.store.run.RuntimeConfig = json.RawMessage(`{"yaml":"terragrunt: {use_run_all: false}"}`)
+				w.store.run.RuntimeConfig = storedRuntime(t, "terragrunt", json.RawMessage(
+					`{"yaml":"terragrunt: {terragrunt_tool: OPEN_TOFU, terraform_version: '1.13.9', terragrunt_version: '1.2.2', use_run_all: false, use_smart_sanitization: true}"}`))
 			}
 			w.env.resolved = configapi.Resolved{
 				Hooks: map[string][]string{"before_plan": {"echo planned"}, "before_apply": {"echo original"}},
@@ -1158,7 +1267,7 @@ func TestUnitHandoverReplaysResolvedConfiguration(t *testing.T) {
 			st.SkipVendorBinaryDownload = tc.flags
 			w.catalog.err = errDown
 			asked := len(w.catalog.vendors)
-			w.store.run.RuntimeConfig = json.RawMessage(`{"yaml":"terragrunt: {use_run_all: true}"}`)
+			w.store.run.RuntimeConfig = storedRuntime(t, "terragrunt", json.RawMessage(`{"yaml":"terragrunt: {use_run_all: true}"}`))
 			w.env.resolved = configapi.Resolved{
 				Hooks: map[string][]string{"before_apply": {"echo changed"}},
 				Elements: []configapi.Element{

@@ -117,4 +117,8 @@ type Environment interface {
 	// run in the reverse order, so the outermost wraps the phase. ErrNoStack
 	// when acct lacks the stack.
 	Resolve(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Resolved, error)
+	// ResolveWithHooks replaces only stack hook phases named in hooks before
+	// the contexts wrap them. An explicit empty list clears the stack's phase;
+	// an omitted phase retains it. Context hooks keep their normal order.
+	ResolveWithHooks(ctx context.Context, acct kernel.AccountID, id kernel.ULID, hooks map[string][]string) (Resolved, error)
 }
