@@ -12,7 +12,6 @@ import (
 
 	"github.com/cucumber/godog"
 
-	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
@@ -24,6 +23,7 @@ func (s *featureSteps) register(sc *godog.ScenarioContext) {
 		`^a running infraweave server whose features\.disabled is "([^"]+)"$`,
 		s.runningSwitchedOff,
 	)
+	sc.Step(`^the installation seeds the tiers "([^"]+)"$`, s.seededTiers)
 	sc.Step(`^the problem names the feature "([a-z-]+)"$`, s.namesFeature)
 	sc.Step(`^"([A-Z]+) ([^"]+)" on the API listener answers (\d+)$`, s.apiAnswers)
 	sc.Step(`^"([A-Z]+) ([^"]+)" on the API listener answers '([^']*)'$`, s.apiAnswersJSON)
@@ -33,7 +33,7 @@ func (s *featureSteps) register(sc *godog.ScenarioContext) {
 	)
 	sc.Step(`^the tier features read on the API listener (hold|lack) "([a-z-]+)"$`, s.tierFeatures)
 	sc.Step(
-		`^the home organization is on the Free tier with billing on, its 2 seats taken$`,
+		`^the home organization is on the (Free|Starter) tier with billing on, its (\d+) seats taken$`,
 		s.seatsTaken,
 	)
 	sc.Step(
@@ -46,11 +46,10 @@ func (s *featureSteps) register(sc *godog.ScenarioContext) {
 	)
 }
 
-// seatsTaken puts home's organization on Free, whose seats limit is 2, and
-// fills both: the home key, which every launch uses, and an active member.
-// The sibling key, seeded unused, holds none. The notification stands in
-// for the operator API's, so every replica rereads the switch.
-func (s *featureSteps) seatsTaken(ctx context.Context) error {
+// seatsTaken fills a seeded tier's seats: the home key and active members.
+// The sibling key remains unused, so its exchange would take one more seat.
+// The notification makes every replica reread billing, as an operator edit does.
+func (s *featureSteps) seatsTaken(ctx context.Context, tier string, count int) error {
 	db, err := s.w.Querier(ctx)
 	if err != nil {
 		return err
@@ -58,21 +57,16 @@ func (s *featureSteps) seatsTaken(ctx context.Context) error {
 	if err := harness.Sibling.Seed(ctx, db); err != nil {
 		return fmt.Errorf("seed the sibling tenant: %w", err)
 	}
-	_, err = db.Query(ctx, fmt.Sprintf(
-		`
-		UPDATE organization_entitlements SET tier = 'Free' WHERE organization_id = '%[1]s';
-		INSERT INTO members (organization_id, id, login, name, email, status)
-			VALUES ('%[1]s', '%[2]s', 'alice', 'Alice', 'alice@example.com', 'active');
-		INSERT INTO account_users (account_id, organization_id, member_id)
-			VALUES ('%[3]s', '%[1]s', '%[2]s');
-		UPDATE billing SET enabled = true;
-		SELECT pg_notify('infraweave_invalidate', 'features:billing');`,
-		harness.UUIDOf(
-			harness.Home.Org,
-		),
-		kernel.NewMemberID().UUID(),
-		harness.UUIDOf(harness.Home.Account),
-	))
+	_, err = db.Query(ctx, fmt.Sprintf(`
+ UPDATE organization_entitlements SET tier = '%[3]s' WHERE organization_id = '%[1]s';
+ INSERT INTO members (organization_id, id, login, name, email, status)
+ SELECT '%[1]s', gen_random_uuid(), 'seat-' || n, 'Seat ' || n, 'seat-' || n || '@example.com', 'active'
+ FROM generate_series(1, %[4]d) n;
+ INSERT INTO account_users (account_id, organization_id, member_id)
+ SELECT '%[2]s', '%[1]s', id FROM members WHERE organization_id = '%[1]s' AND login LIKE 'seat-%%';
+ UPDATE billing SET enabled = true;
+ SELECT pg_notify('infraweave_invalidate', 'features:billing');`,
+		harness.UUIDOf(harness.Home.Org), harness.UUIDOf(harness.Home.Account), tier, count-1))
 	return err //nolint:wrapcheck // the querier names the query
 }
 
@@ -215,6 +209,31 @@ func (s *featureSteps) namesFeature(feature string) error {
 			p.Feature,
 			feature,
 		)
+	}
+	return nil
+}
+
+// seededTiers checks a fresh installation's complete operator tier listing.
+func (s *featureSteps) seededTiers(ctx context.Context, want string) error {
+	resp, err := s.w.Do(ctx, "A", "op", http.MethodGet, "/operator/v1/tiers", nil)
+	if err != nil {
+		return err
+	}
+	var page struct {
+		Items []struct {
+			Name string `json:"name"`
+		} `json:"items"`
+		NextCursor *string `json:"nextCursor"`
+	}
+	if resp.Status != http.StatusOK || json.Unmarshal(resp.Body, &page) != nil {
+		return fmt.Errorf("%w: tiers answered %d: %s", harness.ErrStep, resp.Status, resp.Body)
+	}
+	names := make([]string, len(page.Items))
+	for i, tier := range page.Items {
+		names[i] = tier.Name
+	}
+	if page.NextCursor != nil || strings.Join(names, ", ") != want {
+		return fmt.Errorf("%w: seeded tiers %v, next cursor %v", harness.ErrStep, names, page.NextCursor)
 	}
 	return nil
 }

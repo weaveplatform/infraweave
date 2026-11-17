@@ -7,97 +7,97 @@ The [capability roadmap](capability-roadmap.md) explains how to read it.
 
 A feature is in its lowest seeded tier and every tier above it.
 
-| Feature | Kind | Gates | Free | Starter | Starter+ | Business | Enterprise | Phase |
-|---|---|---|---|---|---|---|---|---|
-| `account-details` | capability | The Account tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
-| `account-settings` | capability | The Account Settings tag, less the settings a finer feature gates | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
-| `ai-account-controls` | capability | The account switches for AI integrations and Infra Assistant | ✓ | ✓ | ✓ | ✓ | ✓ | P25 |
-| `ai-integrations` | capability | The AI Integrations tag, Infra Assistant, run summaries and the hosted `/mcp` server | ✓ | ✓ | ✓ | ✓ | ✓ | P25 |
-| `ansible` | capability | The Ansible tag | ✓ | ✓ | ✓ | ✓ | ✓ | P20b |
-| `api-keys` | capability | The API Keys tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
-| `auth` | capability | The Auth tag and `identityFederationUnlink` | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
-| `backstage` | capability | The Backstage integration key and its seat exemption | ✓ | ✓ | ✓ | ✓ | ✓ | P21 |
-| `blob-storage` | capability | The Blob Storage tag | ✓ | ✓ | ✓ | ✓ | ✓ | P19b |
-| `cloud-integrations` | capability | The Cloud Integrations tag | ✓ | ✓ | ✓ | ✓ | ✓ | P15 |
-| `console` | capability | The console, and the Feature Flags, Forms, UI State and User Guide tags it alone uses | ✓ | ✓ | ✓ | ✓ | ✓ | P24c |
-| `contexts` | capability | The Contexts tag | ✓ | ✓ | ✓ | ✓ | ✓ | P6 |
-| `debug` | capability | The Debug tag | ✓ | ✓ | ✓ | ✓ | ✓ | P27 |
-| `expressions` | capability | The Expressions tag: checking, completing and evaluating expressions over each domain's surfaces | ✓ | ✓ | ✓ | ✓ | ✓ | P6 |
-| `flows-agents` | capability | Flows agent pools, their tokens and the agent gateway | ✓ | ✓ | ✓ | ✓ | ✓ | P18d |
-| `flows-apps` | capability | App installations, custom apps, app versions and registry subscriptions | ✓ | ✓ | ✓ | ✓ | ✓ | P18d |
-| `flows-data-tables` | capability | Data tables, their rows and the Data Table blocks | ✓ | ✓ | ✓ | ✓ | ✓ | P18c |
-| `flows-engine` | capability | Projects, flows, blocks, events, invocations, secrets, named expressions, core blocks, the Deploy triggers and the Flows tag; Flows belongs to the account, which takes the place of Spacelift Flows' organization | ✓ | ✓ | ✓ | ✓ | ✓ | P18c |
-| `flows-forms` | capability | Forms, and the Form Opened and Show Form blocks | ✓ | ✓ | ✓ | ✓ | ✓ | P18c |
-| `flows-mcp-tools` | capability | MCP Tool blocks and the flow and platform Flows MCP servers | ✓ | ✓ | ✓ | ✓ | ✓ | P18c |
-| `infrastructure` | capability | The Infrastructure tag | ✓ | ✓ | ✓ | ✓ | ✓ | P27 |
-| `intent` | capability | The Intent tag and the hosted `intent` tool | ✓ | ✓ | ✓ | ✓ | ✓ | P25b |
-| `managed-users` | capability | The Managed Users tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
-| `opentofu-migration` | capability | The OpenTofu Migration tag, `openTofuMigrate`, `openTofuMigrationQueueClean` and `stackMigrateVendorAll` | ✓ | ✓ | ✓ | ✓ | ✓ | P20b |
-| `operator` | capability | The operator API, `api/operator.openapi.yaml`, which answers to the installation rather than an organization | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
-| `organization` | capability | The served `Organization` tag, outside the parity surface: the organization, its accounts, members, identity linking, account limits and usage across accounts; its identity provider operations carry `oidc-sso` or `saml-sso`, by provider kind | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
-| `origin-integration` | capability | The Origin Integration tag | ✓ | ✓ | ✓ | ✓ | ✓ | P19b |
-| `personal-api-keys` | capability | The Personal API Keys tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
-| `plugins` | capability | The Plugins tag | ✓ | ✓ | ✓ | ✓ | ✓ | P20b |
-| `repos` | capability | The Repos tag | ✓ | ✓ | ✓ | ✓ | ✓ | P19b |
-| `resources` | capability | The Resources tag | ✓ | ✓ | ✓ | ✓ | ✓ | P22 |
-| `roles` | capability | The Roles tag | ✓ | ✓ | ✓ | ✓ | ✓ | P4b |
-| `runs` | capability | The Runs tag, less tasks and targeted replan | ✓ | ✓ | ✓ | ✓ | ✓ | P10 |
-| `saved-filters` | capability | The Saved Filters tag | ✓ | ✓ | ✓ | ✓ | ✓ | P22 |
-| `scans` | capability | The Scans tag | ✓ | ✓ | ✓ | ✓ | ✓ | P22b |
-| `slack` | capability | The Slack and OAuth tags | ✓ | ✓ | ✓ | ✓ | ✓ | P18 |
-| `spaces` | capability | The Spaces tag | ✓ | ✓ | ✓ | ✓ | ✓ | P4 |
-| `stacks` | capability | The Stacks tag, less the operations a finer feature gates | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
-| `tofu-workspaces` | capability | The Tofu Workspaces tag | ✓ | ✓ | ✓ | ✓ | ✓ | P11 |
-| `usage` | capability | The Billing tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3b |
-| `vcs-integrations` | capability | The VCS Integrations tag | ✓ | ✓ | ✓ | ✓ | ✓ | P12 |
-| `vendor-ansible` | option | `vendorConfig.ansible` | ✓ | ✓ | ✓ | ✓ | ✓ | P20b |
-| `vendor-cloudformation` | option | `vendorConfig.cloudFormation` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
-| `vendor-kubernetes` | option | `vendorConfig.kubernetes` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
-| `vendor-opentofu` | option | `vendorConfig.opentofu` | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
-| `vendor-pulumi` | option | `vendorConfig.pulumi` | ✓ | ✓ | ✓ | ✓ | ✓ | P20 |
-| `vendor-terraform` | option | `vendorConfig.terraform` | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
-| `vendor-terragrunt` | option | `vendorConfig.terragrunt` | ✓ | ✓ | ✓ | ✓ | ✓ | P11 |
-| `version-catalog` | capability | The Version Catalog tag | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |
-| `viewer` | capability | The Viewer tag | ✓ | ✓ | ✓ | ✓ | ✓ | P3 |
-| `worker-pools` | capability | The Worker Pools tag less private pools: the public worker pool and the reads every pool shares | ✓ | ✓ | ✓ | ✓ | ✓ | P8 |
-| `module-sharing` | capability | `moduleShare` and `sharedModulesV2`, between accounts of one organization and in both accounts' entitlement | | ✓ | ✓ | ✓ | ✓ | P17 |
-| `modules` | capability | The Modules tag less sharing, and the module registry protocol | | ✓ | ✓ | ✓ | ✓ | P17 |
-| `notification-policies` | option | Policy `type: NOTIFICATION` | | ✓ | ✓ | ✓ | ✓ | P18 |
-| `notifications` | capability | The Notifications tag | | ✓ | ✓ | ✓ | ✓ | P18 |
-| `oidc-federation` | capability | The OIDC token in every run, the subject template and the discovery documents | | ✓ | ✓ | ✓ | ✓ | P15 |
-| `oidc-sso` | capability | OIDC single sign-on | | ✓ | ✓ | ✓ | ✓ | P23 |
-| `policies` | capability | The Policies tag | | ✓ | ✓ | ✓ | ✓ | P13 |
-| `tasks` | capability | Task runs | | ✓ | ✓ | ✓ | ✓ | P10 |
-| `webhooks` | capability | The Webhooks tag | | ✓ | ✓ | ✓ | ✓ | P18 |
-| `drift-detection` | capability | The Drift Detection tag | | | ✓ | ✓ | ✓ | P16 |
-| `ignored-runs` | capability | `stackSearchRunIgnoredTriggers` and the ignored-run warnings | | | ✓ | ✓ | ✓ | P12b |
-| `private-worker-pools` | capability | Private worker pools in the Worker Pools tag | | | ✓ | ✓ | ✓ | P8 |
-| `sessions` | capability | Session listing and revocation | | | ✓ | ✓ | ✓ | P3 |
-| `aggregated-vcs-checks` | option | `vcsChecks: AGGREGATED` on a VCS integration | | | | ✓ | ✓ | P12b |
-| `blueprints` | capability | The Blueprints tag | | | | ✓ | ✓ | P21 |
-| `scheduling` | capability | Scheduled runs, tasks and deletes | | | | ✓ | ✓ | P16 |
-| `targeted-replan` | capability | `runTargetedReplan` | | | | ✓ | ✓ | P10 |
-| `templates` | capability | The Templates tag | | | | ✓ | ✓ | P21 |
-| `terraform-provider-registry` | capability | The Terraform Providers and GPG Keys tags, and the provider registry protocol | | | | ✓ | ✓ | P17b |
-| `audit-trail` | capability | The Audit Trail tag | | | | | ✓ | P18b |
-| `mfa` | capability | Enforced MFA and security keys | | | | | ✓ | P23 |
-| `multiple-vcs-integrations` | option | `isDefault: false` on a VCS integration | | | | | ✓ | P12 |
-| `oidc-api-keys` | option | API key type `OIDC` | | | | | ✓ | P3 |
-| `saml-sso` | capability | SAML single sign-on and its settings | | | | | ✓ | P23 |
-| `scim` | capability | SCIM v2 provisioning and its OAuth client | | | | | ✓ | P23 |
-| `servicenow` | capability | The External Integrations tag and the blueprint attachments to it | | | | | ✓ | P21 |
-| `vcs-agent-pools` | capability | The VCS Agent Pools tag | | | | | ✓ | P19b |
+| Feature | Kind | Gates | Free | Starter | Business | Enterprise | Phase |
+|---|---|---|---|---|---|---|---|
+| `account-details` | capability | The Account tag | ✓ | ✓ | ✓ | ✓ | P3 |
+| `account-settings` | capability | The Account Settings tag, less the settings a finer feature gates | ✓ | ✓ | ✓ | ✓ | P3b |
+| `ai-account-controls` | capability | The account switches for AI integrations and Infra Assistant | ✓ | ✓ | ✓ | ✓ | P25 |
+| `ai-integrations` | capability | The AI Integrations tag, Infra Assistant, run summaries and the hosted `/mcp` server | ✓ | ✓ | ✓ | ✓ | P25 |
+| `ansible` | capability | The Ansible tag | ✓ | ✓ | ✓ | ✓ | P20b |
+| `api-keys` | capability | The API Keys tag | ✓ | ✓ | ✓ | ✓ | P3 |
+| `auth` | capability | The Auth tag and `identityFederationUnlink` | ✓ | ✓ | ✓ | ✓ | P3 |
+| `backstage` | capability | The Backstage integration key and its seat exemption | ✓ | ✓ | ✓ | ✓ | P21 |
+| `blob-storage` | capability | The Blob Storage tag | ✓ | ✓ | ✓ | ✓ | P19b |
+| `cloud-integrations` | capability | The Cloud Integrations tag | ✓ | ✓ | ✓ | ✓ | P15 |
+| `console` | capability | The console, and the Feature Flags, Forms, UI State and User Guide tags it alone uses | ✓ | ✓ | ✓ | ✓ | P24c |
+| `contexts` | capability | The Contexts tag | ✓ | ✓ | ✓ | ✓ | P6 |
+| `debug` | capability | The Debug tag | ✓ | ✓ | ✓ | ✓ | P27 |
+| `expressions` | capability | The Expressions tag: checking, completing and evaluating expressions over each domain's surfaces | ✓ | ✓ | ✓ | ✓ | P6 |
+| `flows-agents` | capability | Flows agent pools, their tokens and the agent gateway | ✓ | ✓ | ✓ | ✓ | P18d |
+| `flows-apps` | capability | App installations, custom apps, app versions and registry subscriptions | ✓ | ✓ | ✓ | ✓ | P18d |
+| `flows-data-tables` | capability | Data tables, their rows and the Data Table blocks | ✓ | ✓ | ✓ | ✓ | P18c |
+| `flows-engine` | capability | Projects, flows, blocks, events, invocations, secrets, named expressions, core blocks, the Deploy triggers and the Flows tag; Flows belongs to the account, which takes the place of Spacelift Flows' organization | ✓ | ✓ | ✓ | ✓ | P18c |
+| `flows-forms` | capability | Forms, and the Form Opened and Show Form blocks | ✓ | ✓ | ✓ | ✓ | P18c |
+| `flows-mcp-tools` | capability | MCP Tool blocks and the flow and platform Flows MCP servers | ✓ | ✓ | ✓ | ✓ | P18c |
+| `infrastructure` | capability | The Infrastructure tag | ✓ | ✓ | ✓ | ✓ | P27 |
+| `intent` | capability | The Intent tag and the hosted `intent` tool | ✓ | ✓ | ✓ | ✓ | P25b |
+| `managed-users` | capability | The Managed Users tag | ✓ | ✓ | ✓ | ✓ | P3b |
+| `opentofu-migration` | capability | The OpenTofu Migration tag, `openTofuMigrate`, `openTofuMigrationQueueClean` and `stackMigrateVendorAll` | ✓ | ✓ | ✓ | ✓ | P20b |
+| `operator` | capability | The operator API, `api/operator.openapi.yaml`, which answers to the installation rather than an organization | ✓ | ✓ | ✓ | ✓ | P3 |
+| `organization` | capability | The served `Organization` tag, outside the parity surface: the organization, its accounts, members, identity linking, account limits and usage across accounts; its identity provider operations carry `oidc-sso` or `saml-sso`, by provider kind | ✓ | ✓ | ✓ | ✓ | P3b |
+| `origin-integration` | capability | The Origin Integration tag | ✓ | ✓ | ✓ | ✓ | P19b |
+| `personal-api-keys` | capability | The Personal API Keys tag | ✓ | ✓ | ✓ | ✓ | P3b |
+| `plugins` | capability | The Plugins tag | ✓ | ✓ | ✓ | ✓ | P20b |
+| `resources` | capability | The Resources tag | ✓ | ✓ | ✓ | ✓ | P22 |
+| `roles` | capability | The Roles tag | ✓ | ✓ | ✓ | ✓ | P4b |
+| `runs` | capability | The Runs tag, less tasks and targeted replan | ✓ | ✓ | ✓ | ✓ | P10 |
+| `saved-filters` | capability | The Saved Filters tag | ✓ | ✓ | ✓ | ✓ | P22 |
+| `scans` | capability | The Scans tag | ✓ | ✓ | ✓ | ✓ | P22b |
+| `slack` | capability | The Slack and OAuth tags | ✓ | ✓ | ✓ | ✓ | P18 |
+| `spaces` | capability | The Spaces tag | ✓ | ✓ | ✓ | ✓ | P4 |
+| `stacks` | capability | The Stacks tag, less the operations a finer feature gates | ✓ | ✓ | ✓ | ✓ | P5 |
+| `tofu-workspaces` | capability | The Tofu Workspaces tag | ✓ | ✓ | ✓ | ✓ | P11 |
+| `usage` | capability | The Billing tag | ✓ | ✓ | ✓ | ✓ | P3b |
+| `vcs-integrations` | capability | The VCS Integrations tag | ✓ | ✓ | ✓ | ✓ | P12 |
+| `vendor-ansible` | option | `vendorConfig.ansible` | ✓ | ✓ | ✓ | ✓ | P20b |
+| `vendor-cloudformation` | option | `vendorConfig.cloudFormation` | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-kubernetes` | option | `vendorConfig.kubernetes` | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-opentofu` | option | `vendorConfig.opentofu` | ✓ | ✓ | ✓ | ✓ | P5 |
+| `vendor-pulumi` | option | `vendorConfig.pulumi` | ✓ | ✓ | ✓ | ✓ | P20 |
+| `vendor-terraform` | option | `vendorConfig.terraform` | ✓ | ✓ | ✓ | ✓ | P5 |
+| `vendor-terragrunt` | option | `vendorConfig.terragrunt` | ✓ | ✓ | ✓ | ✓ | P11 |
+| `version-catalog` | capability | The Version Catalog tag | ✓ | ✓ | ✓ | ✓ | P5 |
+| `viewer` | capability | The Viewer tag | ✓ | ✓ | ✓ | ✓ | P3 |
+| `worker-pools` | capability | The Worker Pools tag less private pools: the public worker pool and the reads every pool shares | ✓ | ✓ | ✓ | ✓ | P8 |
+| `ignored-runs` | capability | `stackSearchRunIgnoredTriggers` and the ignored-run warnings | | ✓ | ✓ | ✓ | P12b |
+| `module-sharing` | capability | `moduleShare` and `sharedModulesV2`, between accounts of one organization and in both accounts' entitlement | | ✓ | ✓ | ✓ | P17 |
+| `modules` | capability | The Modules tag less sharing, and the module registry protocol | | ✓ | ✓ | ✓ | P17 |
+| `notification-policies` | option | Policy `type: NOTIFICATION` | | ✓ | ✓ | ✓ | P18 |
+| `notifications` | capability | The Notifications tag | | ✓ | ✓ | ✓ | P18 |
+| `oidc-federation` | capability | The OIDC token in every run, the subject template and the discovery documents | | ✓ | ✓ | ✓ | P15 |
+| `oidc-sso` | capability | OIDC single sign-on | | ✓ | ✓ | ✓ | P23 |
+| `policies` | capability | The Policies tag | | ✓ | ✓ | ✓ | P13 |
+| `tasks` | capability | Task runs | | ✓ | ✓ | ✓ | P10 |
+| `webhooks` | capability | The Webhooks tag | | ✓ | ✓ | ✓ | P18 |
+| `aggregated-vcs-checks` | option | `vcsChecks: AGGREGATED` on a VCS integration | | | ✓ | ✓ | P12b |
+| `blueprints` | capability | The Blueprints tag | | | ✓ | ✓ | P21 |
+| `drift-detection` | capability | The Drift Detection tag | | | ✓ | ✓ | P16 |
+| `private-worker-pools` | capability | Private worker pools in the Worker Pools tag | | | ✓ | ✓ | P8 |
+| `scheduling` | capability | Scheduled runs, tasks and deletes | | | ✓ | ✓ | P16 |
+| `sessions` | capability | Session listing and revocation | | | ✓ | ✓ | P3 |
+| `targeted-replan` | capability | `runTargetedReplan` | | | ✓ | ✓ | P10 |
+| `templates` | capability | The Templates tag | | | ✓ | ✓ | P21 |
+| `terraform-provider-registry` | capability | The Terraform Providers and GPG Keys tags, and the provider registry protocol | | | ✓ | ✓ | P17b |
+| `audit-trail` | capability | The Audit Trail tag | | | | ✓ | P18b |
+| `mfa` | capability | Enforced MFA and security keys | | | | ✓ | P23 |
+| `multiple-vcs-integrations` | option | `isDefault: false` on a VCS integration | | | | ✓ | P12 |
+| `oidc-api-keys` | option | API key type `OIDC` | | | | ✓ | P3 |
+| `repos` | capability | The Repos tag | | | | ✓ | P19b |
+| `saml-sso` | capability | SAML single sign-on and its settings | | | | ✓ | P23 |
+| `scim` | capability | SCIM v2 provisioning and its OAuth client | | | | ✓ | P23 |
+| `servicenow` | capability | The External Integrations tag and the blueprint attachments to it | | | | ✓ | P21 |
+| `vcs-agent-pools` | capability | The VCS Agent Pools tag | | | | ✓ | P19b |
 
 ## Seeded limits
 
 Every limit is pooled across an organization's accounts. An empty cell means no limit.
 
-| Limit | Unit | Free | Starter | Starter+ | Business | Enterprise | Phase |
-|---|---|---|---|---|---|---|---|
-| `ai-budget` | spend of the installation's default AI integration across the organization's accounts, in USD per 30 days | 10 | | | | | P25 |
-| `private-workers` | registered private workers | 0 | 0 | 2 | 3 | | P8 |
-| `public-worker-slots` | runs in flight on the public worker pool; a run beyond it waits | 1 | 1 | 2 | 2 | | P14 |
-| `seats` | active members, each counted once however many accounts admit it, and API keys that are not personal and were used in the last 30 days; a key takes its seat on its first use in the window, which the limit may refuse | 2 | 2 | | | | P3b |
+| Limit | Unit | Free | Starter | Business | Enterprise | Phase |
+|---|---|---|---|---|---|---|
+| `ai-budget` | spend of the installation's default AI integration across the organization's accounts, in USD per 30 days | 10 | | | | P25 |
+| `private-workers` | registered private workers | 0 | 0 | 3 | | P8 |
+| `public-worker-slots` | runs in flight on the public worker pool; a run beyond it waits | 1 | 2 | 2 | | P14 |
+| `seats` | active members, each counted once however many accounts admit it, and API keys that are not personal and were used in the last 30 days; a key takes its seat on its first use in the window, which the limit may refuse | 2 | 10 | | | P3b |
 
 ## Summary by phase
 

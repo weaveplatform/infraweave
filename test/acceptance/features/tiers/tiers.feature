@@ -46,3 +46,41 @@ Feature: Tiers, organization tiers, grants and billing through the operator API
     Then "GET /operator/v1/tiers" through A with token "h" answers a 401 problem "unauthenticated"
     And "PUT /operator/v1/billing" through B with token "h" and '{"enabled":true}' answers a 401 problem "unauthenticated"
     And "PUT /operator/v1/organizations/acme/tier" through B with token "h" and '{"tier":"Free"}' answers a 401 problem "unauthenticated"
+
+  @case:success
+  Scenario: A fresh installation seeds four tiers
+    Given two infraweave servers, A and B, on one database, with an operator key
+    And the operator key is exchanged through A for token "op"
+    Then the installation seeds the tiers "Business, Enterprise, Free, Starter"
+    And "GET /operator/v1/tiers/Starter%2B" through A with token "op" answers a 404 problem "not-found"
+
+  @op:sessions @op:sessionDelete @op:sessionDeleteAll @case:denial
+  Scenario: Starter refuses session listing and revocation
+    Given two infraweave servers, A and B, on one database, with an operator key
+    And the operator key is exchanged through A for token "op"
+    And the home key is exchanged through B for token "h"
+    When token "op" gives the home organization the tier "Starter" through A
+    And token "op" turns billing on through A
+    Then "GET /api/v1/sessions" through B with token "h" eventually answers a 403 problem "feature-not-in-tier"
+    And the problem names the feature "sessions"
+    And the answer's tiers is '["Business","Enterprise"]'
+    And "DELETE /api/v1/sessions/absent" through A with token "h" answers a 403 problem "feature-not-in-tier"
+    And the problem names the feature "sessions"
+    And the answer's tiers is '["Business","Enterprise"]'
+    And "DELETE /api/v1/sessions" through B with token "h" answers a 403 problem "feature-not-in-tier"
+    And the problem names the feature "sessions"
+    And the answer's tiers is '["Business","Enterprise"]'
+
+  @op:sessions @op:sessionDelete @op:sessionDeleteAll @case:success
+  Scenario: Business admits session listing and revocation
+    Given two infraweave servers, A and B, on one database, with an operator key
+    And the operator key is exchanged through A for token "op"
+    And the home key is exchanged through A for token "h"
+    And the home key is exchanged through A for token "other"
+    When token "op" gives the home organization the tier "Business" through A
+    And token "op" turns billing on through A
+    Then "GET /api/v1/sessions" through B with token "h" eventually answers 200
+    When token "other"'s session is deleted through A with token "h"
+    Then the viewer through B with token "other" answers 401 within a second
+    When every session but token "h"'s is deleted through A
+    Then the sessions listed through B with token "h" are its own alone

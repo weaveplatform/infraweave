@@ -418,7 +418,7 @@ only when the version itself is deleted.
   Spacelift's `spacelift_module`, `spacelift_version` and
   `spacelift_terraform_provider` in `terraform-schema.json`.
 - `test/acceptance/features/tiers/tiers.feature` (billing on): an
-  account whose organization is on Starter+ gets `feature-not-in-tier` from
+  account whose organization is on Starter gets `feature-not-in-tier` from
   `terraformProviderCreate` and a `text/plain` 403 from the provider
   protocol, naming Business and Enterprise.
 

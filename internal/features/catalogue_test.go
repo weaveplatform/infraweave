@@ -1,6 +1,7 @@
 package features_test
 
 import (
+	"maps"
 	"slices"
 	"testing"
 
@@ -32,6 +33,14 @@ func TestUnitFeatureCatalogue(t *testing.T) {
 		if f.Gated() != (f.LowestTier != "") {
 			t.Errorf("%s: gated %t with lowest tier %q", f.Name, f.Gated(), f.LowestTier)
 		}
+		if f.Gated() && !slices.Contains(features.SeededTiers, f.LowestTier) {
+			t.Errorf("%s has unknown lowest tier %q", f.Name, f.LowestTier)
+		}
+		for name := range f.Values {
+			if !slices.Contains(features.SeededTiers, name) {
+				t.Errorf("%s has unknown limit tier %q", f.Name, name)
+			}
+		}
 		for _, r := range f.Requires {
 			if req, ok := features.Lookup(r); !ok || !req.Gated() {
 				t.Errorf("%s requires %s, which is not a gated feature", f.Name, r)
@@ -56,6 +65,32 @@ func TestUnitFeatureCatalogue(t *testing.T) {
 // one's features, that every tier holds operator, and that Enterprise
 // holds every gated feature and no limit.
 func TestUnitSeededTiers(t *testing.T) {
+	if !slices.Equal(features.SeededTiers, []string{"Free", "Starter", "Business", "Enterprise"}) {
+		t.Fatalf("seeded tiers: %v", features.SeededTiers)
+	}
+	for name, limits := range map[string]map[string]int64{
+		"Free":       {"ai-budget": 10, "seats": 2, "private-workers": 0, "public-worker-slots": 1},
+		"Starter":    {"seats": 10, "private-workers": 0, "public-worker-slots": 2},
+		"Business":   {"private-workers": 3, "public-worker-slots": 2},
+		"Enterprise": {},
+	} {
+		tier, _ := features.Seed(name)
+		if !maps.Equal(tier.Limits, limits) {
+			t.Errorf("%s limits: %v, want %v", name, tier.Limits, limits)
+		}
+	}
+	for name, lowest := range map[string]string{
+		"drift-detection":      "Business",
+		"private-worker-pools": "Business",
+		"sessions":             "Business",
+		"ignored-runs":         "Starter",
+		"repos":                "Enterprise",
+	} {
+		f, _ := features.Lookup(name)
+		if f.LowestTier != lowest {
+			t.Errorf("%s starts at %s, want %s", name, f.LowestTier, lowest)
+		}
+	}
 	var prev features.Tier
 	for _, name := range features.SeededTiers {
 		tier, ok := features.Seed(name)

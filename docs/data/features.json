@@ -133,7 +133,7 @@
       "id": "drift-detection",
       "kind": "capability",
       "gates": "The Drift Detection tag",
-      "lowestTier": "Starter+",
+      "lowestTier": "Business",
       "requires": [
         "private-worker-pools"
       ],
@@ -207,7 +207,7 @@
       "id": "ignored-runs",
       "kind": "capability",
       "gates": "`stackSearchRunIgnoredTriggers` and the ignored-run warnings",
-      "lowestTier": "Starter+",
+      "lowestTier": "Starter",
       "phase": "P12b"
     },
     {
@@ -351,7 +351,7 @@
       "id": "private-worker-pools",
       "kind": "capability",
       "gates": "Private worker pools in the Worker Pools tag",
-      "lowestTier": "Starter+",
+      "lowestTier": "Business",
       "phase": "P8"
     },
     {
@@ -361,7 +361,6 @@
       "values": {
         "free": 0,
         "starter": 0,
-        "starterPlus": 2,
         "business": 3
       },
       "phase": "P8"
@@ -372,8 +371,7 @@
       "unit": "runs in flight on the public worker pool; a run beyond it waits",
       "values": {
         "free": 1,
-        "starter": 1,
-        "starterPlus": 2,
+        "starter": 2,
         "business": 2
       },
       "phase": "P14"
@@ -382,7 +380,7 @@
       "id": "repos",
       "kind": "capability",
       "gates": "The Repos tag",
-      "lowestTier": "Free",
+      "lowestTier": "Enterprise",
       "phase": "P19b"
     },
     {
@@ -447,7 +445,7 @@
       "unit": "active members, each counted once however many accounts admit it, and API keys that are not personal and were used in the last 30 days; a key takes its seat on its first use in the window, which the limit may refuse",
       "values": {
         "free": 2,
-        "starter": 2
+        "starter": 10
       },
       "phase": "P3b"
     },
@@ -462,7 +460,7 @@
       "id": "sessions",
       "kind": "capability",
       "gates": "Session listing and revocation",
-      "lowestTier": "Starter+",
+      "lowestTier": "Business",
       "phase": "P3"
     },
     {

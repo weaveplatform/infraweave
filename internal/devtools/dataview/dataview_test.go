@@ -4,10 +4,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	catalogue "github.com/weaveplatform/infraweave/internal/features"
 )
 
 const features = `{"records": [
@@ -35,16 +38,16 @@ const want = "# Seeded tiers\n\n" +
 	"The [capability roadmap](capability-roadmap.md) explains how to read it.\n\n" +
 	"## Features by lowest seeded tier\n\n" +
 	"A feature is in its lowest seeded tier and every tier above it.\n\n" +
-	"| Feature | Kind | Gates | Free | Starter | Starter+ | Business | Enterprise | Phase |\n" +
-	"|---|---|---|---|---|---|---|---|---|\n" +
-	"| `stacks` | capability | The Stacks tag | ✓ | ✓ | ✓ | ✓ | ✓ | P5 |\n" +
-	"| `aggregated` | option | `vcsChecks: AGGREGATED` | | | | ✓ | ✓ | P12 |\n" +
-	"| `audit-trail` | capability | The [Audit](../research/a.md#x) tag \\| more | | | | | ✓ | P18b |\n\n" +
+	"| Feature | Kind | Gates | Free | Starter | Business | Enterprise | Phase |\n" +
+	"|---|---|---|---|---|---|---|---|\n" +
+	"| `stacks` | capability | The Stacks tag | ✓ | ✓ | ✓ | ✓ | P5 |\n" +
+	"| `aggregated` | option | `vcsChecks: AGGREGATED` | | | ✓ | ✓ | P12 |\n" +
+	"| `audit-trail` | capability | The [Audit](../research/a.md#x) tag \\| more | | | | ✓ | P18b |\n\n" +
 	"## Seeded limits\n\n" +
 	"Every limit is pooled across an organization's accounts. An empty cell means no limit.\n\n" +
-	"| Limit | Unit | Free | Starter | Starter+ | Business | Enterprise | Phase |\n" +
-	"|---|---|---|---|---|---|---|---|\n" +
-	"| `seats` | members, [see](https://example.com/x) | 2 | 2 | | | | P3b |\n\n" +
+	"| Limit | Unit | Free | Starter | Business | Enterprise | Phase |\n" +
+	"|---|---|---|---|---|---|---|\n" +
+	"| `seats` | members, [see](https://example.com/x) | 2 | 2 | | | P3b |\n\n" +
 	"## Summary by phase\n\n" +
 	"Counts of the reference rows each phase owns. Superseded counts the rows no phase builds.\n\n" +
 	"| Phase | Tags | Resources (API) | Data sources (API) | `BillingTierFeature` values |\n" +
@@ -76,6 +79,11 @@ func TestUnitRenderErrors(t *testing.T) {
 		"capabilities not JSON": {features: features, capabilities: "[", text: CapabilitiesFile},
 		"unknown tier": {
 			features:     `{"records": [{"id": "x", "kind": "option", "lowestTier": "Gold"}]}`,
+			capabilities: capabilities,
+			want:         ErrUnknownTier,
+		},
+		"unknown limit tier": {
+			features:     `{"records":[{"id":"seats","kind":"limit","values":{"gold":2}}]}`,
 			capabilities: capabilities,
 			want:         ErrUnknownTier,
 		},
@@ -180,5 +188,16 @@ func mustWrite(t *testing.T, p, s string) {
 	t.Helper()
 	if err := os.WriteFile(p, []byte(s), 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestUnitTierNames keeps the generated view aligned with the server's seeds.
+func TestUnitTierNames(t *testing.T) {
+	names := make([]string, len(tiers))
+	for i, tier := range tiers {
+		names[i] = tier.name
+	}
+	if !slices.Equal(names, catalogue.SeededTiers) {
+		t.Errorf("view tiers %v, server tiers %v", names, catalogue.SeededTiers)
 	}
 }

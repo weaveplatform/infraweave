@@ -51,7 +51,8 @@ Five facts shape the answers:
   page name, and marks the rest "Not stated"
   ([26 section 3](../reference/26-scope-and-tiers.md#3-billingtierfeature),
   [section 4](../reference/26-scope-and-tiers.md#4-capability-table-api-tags)).
-  A plain Starter tier is published only in fragments (C260).
+  The pricing page lists Free, Starter, Business and Enterprise; Starter's
+  full feature set is published only in part (C260).
 - **`BillingTierFeature` is a billing artefact, not a feature list.** Some
   values name a Spacelift product (`SPACELIFT_INTELLIGENCE`), some are
   quantities or add-ons (`UNLIMITED_SEATS`, `ADDITIONAL_PUBLIC_WORKER`), one
@@ -231,9 +232,9 @@ generator reads with it. There are three kinds:
 
 A tier is data: a name, a set of features and a set of limit values. Tiers
 are not an ordered ladder. A feature check is set membership, so an operator
-can define a tier that holds a Business feature without a Starter+ one.
+can define a tier that holds a Business feature without a Starter one.
 
-infraweave seeds five tiers from report 26. Each feature is placed at the
+infraweave seeds four tiers from report 26. Each feature is placed at the
 plan Spacelift documents for it, read from report 26's Plan column with these
 rules:
 
@@ -241,8 +242,10 @@ rules:
 |---|---|
 | All, UI support | Every seeded tier |
 | Paid | Starter and above. Starter is the lowest paid plan the pricing page describes |
-| Starter+, Business, Enterprise, from a docs notice or the schema | That tier and above |
-| Starter+ from the pricing page's comparison table only | Every seeded tier. The table has no Free or Starter column, so it is no evidence against them |
+| Starter, Business, Enterprise, from a docs notice, the schema, pricing page or console billing page | That tier and above |
+| Starter+ from a docs notice | The plan the pricing page or billing page gives the feature, else Starter |
+| Not on Starter, from the schema | Business and above |
+| Starter+ from the 2026-10-28 comparison table only | Every seeded tier. That read has no Free or Starter column, so it is no evidence against them |
 | Not stated | Every seeded tier: infraweave does not invent a gate. C261 corrects the placement |
 | A finer gate inside a row | The finer feature at its own plan, the rest of the row at the row's plan |
 
@@ -260,11 +263,10 @@ out tier by tier. Flows, the console, every IaC vendor, `scans`,
 `ai-integrations`, `intent` and `organization` (the `Organization` tag,
 below) are in every seeded tier.
 
-Where Spacelift publishes no value for a tier (Starter's seats and public
-slots, Business's "configurable" public workers), the seed takes the value
-of the tier below it, and C260 corrects it.
+Where Spacelift publishes no value (Business's "configurable" public
+workers), the seed takes the value of the tier below it.
 
-The seed is installed once. After that, the other four tiers are the
+The seed is installed once. After that, the other three tiers are the
 operator's data, and the operator can add tiers of its own. A release adds
 a new feature to a seeded tier its catalogue entry names only while that
 tier still matches its seed.
@@ -429,13 +431,13 @@ A change of tier, a removed grant or a new switch-off deletes nothing.
   missed firings are not caught up, so an upgrade cannot start a burst of
   runs.
 
-A Business organization with five schedules and four private workers, all
-in one account, moves to Starter+:
+A Business organization with five schedules and twelve members, all
+in one account, moves to Starter:
 
-| Item | On Starter+ | Back on Business |
+| Item | On Starter | Back on Business |
 |---|---|---|
 | The five schedules | Kept; none fires. Reading or changing them answers `feature-not-in-tier` with `feature: scheduling` and `tiers: [Business, Enterprise]` | Fire again from their next occurrence |
-| The four private workers | All four stay registered and take runs. A fifth registration answers `limit-reached` with `limit: private-workers`, `scope: organization`, `value: 2`, and so does a new one after two leave, since two is not below two | The limit is 3, so a new registration succeeds once fewer than three are registered |
+| The twelve members | All keep working. An invitation answers `limit-reached` with `limit: seats`, `scope: organization`, `value: 10`, also after two leave: ten is not below ten | No seats limit |
 
 ### Vendor-bound operations
 
@@ -592,11 +594,11 @@ acceptance feature that runs work therefore runs it on a private pool.
   capabilities, is inferred by name. Until captures C14, C121 and C122
   resolve, some operations may sit in the wrong capability; the effect is
   limited to installations that switch billing on or disable features.
-- **Seed gaps.** A plain Starter tier is published only in fragments, and
-  the pricing page gives Starter one private worker while the docs place
-  private worker pools from Starter+; the seed follows the docs, which rank
-  higher. Free's separate API key count is unpublished and not seeded. C260
-  and C261 correct the seed; a correction changes data, not the design.
+- **Seed gaps.** A docs notice naming Starter+ places nothing on its own:
+  it defers to the pricing page or console billing page, else Starter.
+  Free's separate API key count is unpublished and not seeded. C260 checks
+  `sessions` and `ignored-runs`; C261 checks unstated placements. A correction
+  changes data, not the design.
 - **Input deprecations.** Input deprecations rest on the changelog until
   the snapshot fetcher requests them (PD-15).
 - **Unverified operator equivalents.** Whether Origin supports
@@ -660,10 +662,10 @@ acceptance feature that runs work therefore runs it on a private pool.
   - a disabled `flows-engine` answers `feature-disabled` on Flows routes;
   - a skipped background job.
 - **`test/acceptance/features/tiers/tiers.feature`**, billing on:
-  - an account whose organization is on Starter+ creating a schedule answers
+  - an account whose organization is on Starter creating a schedule answers
     `feature-not-in-tier` naming Business and Enterprise;
   - a seat beyond the limit answers `limit-reached`;
-  - the Business to Starter+ downgrade above, then the upgrade back;
+  - the Business to Starter downgrade above, then the upgrade back;
   - a tier change applies to a running server without a restart, in every
     account of the organization, on another replica than the one written;
   - deleting a tier in use, and editing Enterprise, answer 409;

@@ -349,7 +349,7 @@ asks for.
 | `/settings/security` holds a security contact e-mail (`accountUpdateSecurityEmail`) | P3b | *consistent* |
 | `/settings/oauth-redirect-allowlist` takes hosts as a bare hostname or one leading `*.`, with no scheme, port or path | P3b, 0006 | *consistent* |
 | `/settings/account-deletion` marks the account for deletion: run creation stops at once, and permanent deletion opens after 7 days | P3b (`accountToggleDeletionMark`, `accountCanBeDeletedAt`) | *consistent* |
-| The billing page shows four plans: Starter (with 10 users and 2 public workers), Business, Enterprise and Self-Hosted. It shows no Free or Starter+ plan | 0021, report [26](26-scope-and-tiers.md), `features.json` | *conflict* (section 20); *open* (C287) |
+| The billing page shows four plans: Starter (with 10 users and 2 public workers), Business, Enterprise and Self-Hosted. It shows no Free or Starter+ plan | 0021, report [26](26-scope-and-tiers.md), `features.json` | *conflict* (section 17); resolved by the 2026-11-17 pricing read (C287) |
 | Starter lists OIDC integrations, the private module registry, webhooks, policies and notifications; Business adds drift detection, blueprints, templates, advanced scheduling, the private provider registry and targeted replans; Enterprise adds concurrent VCS connections, the audit trail, SAML, OIDC API keys, internal source control and MFA | `features.json` | *consistent* except drift detection and internal source control |
 
 ## 15. Dashboard and runs explorer
@@ -619,12 +619,12 @@ the resolution lives.
 6. **Provider type characters.** Report 15 cites the docs' lowercase
    letters only; the console allows digits too. Report 15 gives both, and
    P17b validates `^[a-z0-9]+$`.
-7. **Tiers.** `features.json` places private worker pools and drift
-   detection at Starter+, repos at Free and Starter's seats at 2; the billing
-   page shows no Starter+, a Starter with 10 users and 2 public workers,
-   drift detection at Business and internal source control at Enterprise.
-   The register is shipped work and keeps its values here; C287 confirms the
-   plans and section 20 lists the gap.
+7. **Tiers.** `features.json`, decision 0021 and report
+   [26](26-scope-and-tiers.md) follow the pricing page as read 2026-11-17:
+   Free, Starter, Business and Enterprise, with Starter at 10 users and
+   2 public workers, and drift detection and private worker pools from
+   Business. The billing page places Repos at Enterprise. This resolves
+   C287; C260 checks sessions and ignored runs on Starter.
 
 8. **Approval reject.** Report 08 and the approval docs gave a reject as
    failing or canceling the run. The console fails it, and one reject among
@@ -666,7 +666,7 @@ These need tickets of their own; this report changes no code.
 |---|---|---|
 | Browser sessions default to 12 hours idle and 7 days absolute, against decision 0006's 10 hours | `internal/access/assembly/settings.go` | Section 6.6 |
 | `drift-detection-manager` is seeded as a system role that Spacelift's console does not show | `internal/access/internal/core/role/role.go` | Section 7, C116 |
-| Tier values: `public-worker-slots` and `seats` for Starter, Starter+ rows, `repos` at Free and `drift-detection` at Starter+ | `docs/data/features.json` and the catalogue generated from it | Section 14, C287 |
+| Tier values follow the 2026-11-17 pricing read | `docs/data/features.json` and the generated catalogue | Section 14, C287 resolved |
 | An OpenTofu stack with no image named runs on the Terraform runner image, while Spacelift's blank default is the vendor's image | `internal/workers/internal/core/images/images.go`, `internal/agent/config/config.go` | Section 4; P20 |
 | `useRunAll: false` still runs `terragrunt run --all` | `internal/iac/terragrunt`, the runner | P20 |
 | No plan document is sanitized before upload, which decision 0009 requires | `internal/agent/exec` | P13 |
@@ -709,7 +709,7 @@ and `azureIntegrationConsentClear` (P15), `isGovSlackAvailable` (P18),
 | The seeded Bedrock integration's model and owner | Not shown in its row | C284 |
 | The VCS event run cap's bound | Behind a switch | C285 |
 | The stack wizard's role step | Follows earlier steps | C286 |
-| The plans offered and their limits | The trial's billing page shows upgrade targets only | C287 |
+| The plans offered and their limits | Pricing page read 2026-11-17 and the billing page's Repos placement | C287 resolved |
 | Event streams, the Kubernetes controller and Flows | No console surface in scope | C21; Flows is report [23](23-flows.md) |
 | Backstage and ServiceNow forms | Their set-up controls may act on click, as SCIM's did | C257, C258 |
 | Sensitive outputs and their transfer to dependants | No output was sensitive | C288 |

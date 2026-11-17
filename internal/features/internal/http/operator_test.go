@@ -89,7 +89,7 @@ func TestAccOperatorTiers(t *testing.T) {
 		opapi.TiersRequestObject{Params: opapi.TiersParams{Cursor: first.Body.NextCursor}},
 	)
 	rest, ok := r.(opapi.Tiers200JSONResponse)
-	if err != nil || !ok || len(rest.Body.Items) != 3 || rest.Body.NextCursor != nil ||
+	if err != nil || !ok || len(rest.Body.Items) != 2 || rest.Body.NextCursor != nil ||
 		rest.Body.Items[0].Name != features.Free {
 		t.Errorf("second page %+v, %v", r, err)
 	}

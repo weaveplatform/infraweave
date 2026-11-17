@@ -3181,9 +3181,9 @@
       "id": "C260",
       "kind": "capture",
       "area": "Scope and tiers (report 26)",
-      "question": "What does a plain Starter tier (`V4_STARTER`, `V5_STARTER`) include, and which features separate `V5_STARTER_PLUS` from `V5_STARTER_PLUS_2`? Only fragments are published: Starter has a seat limit and one private worker, and no session listing",
-      "howToCapture": "Read `tierFeatures` on an account of each tier; ask Spacelift",
-      "blocks": "PD-05; the tier gates behind `tier` and `tierFeatures`",
+      "question": "What does a Starter account's `tierFeatures` hold, particularly `sessions` and `ignored-runs`? The schema excludes session listing on Starter; ignored-run warnings are a paid feature whose docs name Starter+",
+      "howToCapture": "Read `tierFeatures` on a Starter account; ask Spacelift",
+      "blocks": "the `sessions` and `ignored-runs` placements in the seeded tiers",
       "reports": [
         "docs/research/reference/26-scope-and-tiers.md"
       ]
@@ -3192,7 +3192,7 @@
       "id": "C261",
       "kind": "capture",
       "area": "Scope and tiers (report 26)",
-      "question": "Which plan offers each capability whose plan reads \"Not stated\" in report 26: contexts on Free (the pricing comparison table starts at Starter+), roles, Ansible, plugins, Flows, scans, Slack, Repos, Blob Storage, Origin, the OpenTofu migration, Tofu workspaces and personal API keys, and the features `ACCESS_POLICIES`, `ACCOUNT_AI_CONTROL`, `SPACELIFT_INTELLIGENCE`, `BACKSTAGE_INTEGRATION`, `SCANS`, `PRIVATE_MODULE_SHARING` and `CLOUD_CREDENTIAL_GENERATION`?",
+      "question": "Which plan offers each capability whose plan reads \"Not stated\" in report 26: contexts on Free (the pricing comparison table starts at Starter+), roles, Ansible, plugins, Flows, scans, Slack, Blob Storage, Origin, the OpenTofu migration, Tofu workspaces and personal API keys, and the features `ACCESS_POLICIES`, `ACCOUNT_AI_CONTROL`, `SPACELIFT_INTELLIGENCE`, `BACKSTAGE_INTEGRATION`, `SCANS`, `PRIVATE_MODULE_SHARING` and `CLOUD_CREDENTIAL_GENERATION`?",
       "howToCapture": "Compare `tierFeatures` on a Free and a paid account; read the pricing page's full comparison table",
       "blocks": "PD-05",
       "reports": [
@@ -3780,12 +3780,14 @@
       "id": "C287",
       "kind": "capture",
       "area": "Console survey (report 32)",
-      "question": "Which plans does Spacelift sell, and with which limits? The trial's billing page shows Starter (10 users, 2 public workers), Business, Enterprise and Self-Hosted, and no Free or Starter+",
+      "question": "Resolved by the public pricing page as read 2026-11-17: Free, Starter, Business and Enterprise; Starter has 10 users and 2 public workers, drift detection and private pools start at Business. The console billing page places Repos at Enterprise.",
       "howToCapture": "Read the public pricing page and `tierFeatures` on a Starter account; ask sales",
       "blocks": "the tier values of `features.json` and report 26",
       "reports": [
-        "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+        "docs/research/reference/32-spacelift-console-survey.md",
+        "docs/research/reference/26-scope-and-tiers.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C288",

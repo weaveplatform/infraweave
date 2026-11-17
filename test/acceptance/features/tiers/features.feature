@@ -31,11 +31,12 @@ Feature: Features the installation switches off
     And the problem names the feature "vendor-opentofu"
     And "GET /api/v1/stacks" on the API listener answers '{"items":[]}'
 
-  Scenario: A key's first use beyond the seats limit is refused
+  @op:apiKeyUser @case:denial
+  Scenario: A key's first use beyond Starter's seats limit is refused
     Given two infraweave servers, A and B, on one database
-    And the home organization is on the Free tier with billing on, its 2 seats taken
+    And the home organization is on the Starter tier with billing on, its 10 seats taken
     Then the sibling key's first use through B answers a 403 problem "limit-reached"
-    And the problem names the limit "seats" of the organization at 2
+    And the problem names the limit "seats" of the organization at 10
     And the home key is exchanged through A for token "h"
 
   @op:tierFeatures @case:success

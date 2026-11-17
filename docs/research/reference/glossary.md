@@ -262,7 +262,7 @@ or drain, carry the product or component in brackets. infraweave's own language 
 | Stack lock | A user's exclusive lock on a stack, distinct from the run lock `Stack.blocker` describes and from state workspace locks ([07](07-stack-model.md)) |
 | Stack resolution | How spacectl picks a stack when `--id` is absent: from `--run` through `runStack`, or from the Git repository name and project root through `searchStacks` ([06](06-spacectl-and-clients.md)) |
 | Stack webhook | The older per-stack or per-module `WebhooksIntegration`, which sends every run state change ([19](19-events-notifications-audit.md)) |
-| Starter+ | The lowest paid SaaS plan on Spacelift's pricing page; docs notices gate features on "Starter+ and above". It maps to `V4_STARTER_PLUS`, `V5_STARTER_PLUS` and `V5_STARTER_PLUS_2` ([26](26-scope-and-tiers.md) section 2) |
+| Starter+ | The plan docs notices and `V4_STARTER_PLUS`, `V5_STARTER_PLUS` and `V5_STARTER_PLUS_2` name. The public pricing page as read 2026-11-17 does not list it; infraweave seeds no such tier ([26](26-scope-and-tiers.md) section 2) |
 | State rollback | Making an older state version current again by writing it as a new version ([16](16-state-management.md)) |
 | State version | A counter that tells repeated visits to one state within a run apart; logs are keyed by it ([08](08-run-lifecycle.md)) |
 | Stray instance | A cloud instance with no matching Spacelift worker for more than 10 minutes; the autoscaler terminates it ([10](10-workers-and-execution.md)) |

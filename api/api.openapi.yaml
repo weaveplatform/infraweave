@@ -10274,8 +10274,7 @@ paths:
       x-rest-style: override
     get:
       description: |-
-        List of all the active sessions in the account. NOTE: this functionality is not available in the Starter
-        tier. An empty array will be returned for Starter tier accounts.
+        List all active sessions in the account.
       operationId: sessions
       x-infraweave-feature: sessions
       x-infraweave-action: SESSION_READ
@@ -10320,7 +10319,7 @@ paths:
       x-rest-style: read
   /sessions/{sessionId}:
     delete:
-      description: 'Invalidate a Session. NOTE: this functionality is not available in the Starter tier.'
+      description: 'Invalidate a session.'
       operationId: sessionDelete
       x-infraweave-feature: sessions
       x-infraweave-action: SESSION_DELETE

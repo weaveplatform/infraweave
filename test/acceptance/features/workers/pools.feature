@@ -8,7 +8,7 @@ Feature: Private worker pools
   leaves registrations under the old one behind. A pool in a space the
   caller cannot read, or of another account, answers as one that does not
   exist. Private pools need the private-worker-pools capability, which
-  Starter+ and above hold. The home key is space-admin on the account's
+  Business and above hold. The home key is space-admin on the account's
   top space; the member key holds only the bindings a scenario gives it.
   Team inherits from acme.
   ref: decision 0008
@@ -179,21 +179,23 @@ Feature: Private worker pools
     Then it answers a 404 problem "not-found"
 
   @op:workerPools @op:workerPoolCreate @op:searchWorkerPools @case:denial
-  Scenario: An organization on Starter or Free is refused private worker pools, and one on Starter+ is not
+  Scenario: An organization on Starter or Free is refused private worker pools, and one on Business is not
     Given the operator key is exchanged through A for token "op"
     When token "op" gives the home organization the tier "Starter" through A
     And token "op" turns billing on through A
     Then "GET /api/v1/worker-pools" through B with token "h" eventually answers a 403 problem "feature-not-in-tier"
     And the problem names the feature "private-worker-pools"
+    And the answer's tiers is '["Business","Enterprise"]'
     When token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","certificateSigningRequest":"{csr}"}' through A
     Then it answers a 403 problem "feature-not-in-tier"
     When token "h" sends "POST /api/v1/worker-pools/search" with '{}' through B
     Then it answers a 403 problem "feature-not-in-tier"
-    When token "op" gives the home organization the tier "Starter+" through A
+    When token "op" gives the home organization the tier "Business" through A
     Then "GET /api/v1/worker-pools" through B with token "h" eventually answers 200
     When token "op" gives the home organization the tier "Free" through A
     Then "GET /api/v1/worker-pools" through A with token "h" eventually answers a 403 problem "feature-not-in-tier"
     And the problem names the feature "private-worker-pools"
+    And the answer's tiers is '["Business","Enterprise"]'
 
   @op:stackCreate @op:stackUpdate @op:stack @op:stackAttachableWorkerPools @op:attachableWorkerPoolsInSpace @op:workerPoolDelete @op:workerPoolUpdate @case:success
   Scenario: A stack names a pool its space reaches, and the pool is neither deleted nor moved out of reach while it does
@@ -335,7 +337,7 @@ Feature: Private worker pools
   @op:workerDrainSet @op:workerPoolCycle @op:workerPoolSearchWorkers @op:workerPoolSearchWorkersSuggestions @case:denial
   Scenario: The worker API refuses a user token, a replayed registration and a replaced certificate, and a registration beyond private-workers
     Given the operator key is exchanged through A for token "op"
-    And token "op" gives the home organization the tier "Starter+" through A
+    And token "op" gives the home organization the tier "Business" through A
     And token "op" turns billing on through A
     And "GET /api/v1/worker-pools" through B with token "h" eventually answers 200
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"{team}","certificateSigningRequest":"{csr}"}' through B
@@ -350,8 +352,10 @@ Feature: Private worker pools
     When the launcher "l2" registers with the key of "csr" and the certificate "first" through B
     Then it answers 200
     When the launcher "l3" registers with the key of "csr" and the certificate "first" through B
+    Then it answers 200
+    When the launcher "l4" registers with the key of "csr" and the certificate "first" through B
     Then it answers a 403 problem "limit-reached"
-    And the problem names the limit "private-workers" of the organization at 2
+    And the problem names the limit "private-workers" of the organization at 3
     When the launcher "l" registers with the key of "csr" and the certificate "first" as the worker "l" through B
     Then it answers 200
     And the answer's worker is '"{l}"'

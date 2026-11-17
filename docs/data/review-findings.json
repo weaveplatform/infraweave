@@ -6515,7 +6515,7 @@
         {
           "file": "docs/research/reference/26-scope-and-tiers.md",
           "present": [
-            "Rows ticked from Starter+ include contexts, custom tasks, stack dependencies"
+            "The comparison table read 2026-10-28 had Starter+, Business and Enterprise"
           ]
         },
         {
@@ -6550,20 +6550,20 @@
         {
           "file": "docs/research/reference/26-scope-and-tiers.md",
           "present": [
-            "the FAQ describes a Starter plan payable monthly by card whose upgrade for a second private worker is Starter+ [C]",
-            "Of a plain Starter tier, only fragments are published"
+            "Starter offers 10 users and 2 public workers",
+            "Starter has 10 users and 2 public workers"
           ]
         },
         {
           "file": "docs/data/capabilities.json",
           "present": [
-            "Starter+ and above: unlimited users; Free: 2 users [C]; Free and Starter have seat limits [D]"
+            "Business and above: unlimited users; Starter: 10 users [C] 2026-11-17; Free: 2 users [C] 2026-10-28; Free and Starter have seat limits [D]"
           ]
         },
         {
           "file": "docs/data/open-questions.json",
           "present": [
-            "Only fragments are published: Starter has a seat limit and one private worker, and no session listing"
+            "The schema excludes session listing on Starter"
           ]
         }
       ]
@@ -11567,7 +11567,7 @@
           "file": "docs/implementation/capability-roadmap.md",
           "present": [
             "## Feature catalogue",
-            "is the smallest of the five seeded tiers",
+            "is the smallest of the four seeded tiers",
             "`billing` is a feature of the installation, not of a tier, and is off by default."
           ],
           "absent": [
@@ -12430,14 +12430,14 @@
           "file": "docs/research/decisions/0021-capability-scope-and-supersession.md",
           "present": [
             "Billing is on and the organization's entitlement lacks the feature",
-            "an account whose organization is on Starter+ creating a schedule answers",
+            "an account whose organization is on Starter creating a schedule answers",
             "every account of an organization reads the same"
           ]
         },
         {
           "file": "docs/research/decisions/0014-module-and-provider-registry.md",
           "present": [
-            "account whose organization is on Starter+ gets `feature-not-in-tier`"
+            "account whose organization is on Starter gets `feature-not-in-tier`"
           ]
         },
         {

@@ -38,8 +38,8 @@ the features against the seeded tiers and counts the rows each phase owns.
   fails when that file is stale, and `TestUnitFeatureCatalogue` fails when
   an operation, a gated property or a live `BillingTierFeature` value has
   no entry.
-- **Lowest seeded tier** (`lowestTier`) is the smallest of the five seeded
-  tiers (Free, Starter, Starter+, Business, Enterprise) that holds the
+- **Lowest seeded tier** (`lowestTier`) is the smallest of the four seeded
+  tiers (Free, Starter, Business, Enterprise) that holds the
   feature, placed from report 26's plan column by decision 0021's rules.
   Free means every seeded tier. A tier belongs to an organization, and every
   account of the organization inherits it with the organization's grants.

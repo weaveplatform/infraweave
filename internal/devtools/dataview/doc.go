@@ -1,6 +1,6 @@
 // Package dataview renders docs/implementation/tiers.md, the view of the
 // docs/data registers that readers want as tables: every feature of the
-// catalogue against the five seeded tiers, the seeded limits, and how many
+// catalogue against the four seeded tiers, the seeded limits, and how many
 // reference rows each phase of the plan owns. The registers are the only
 // copy of that data, so the view is generated (make generate) and drift is
 // caught by make verify-generate rather than by review.
