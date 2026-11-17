@@ -372,7 +372,7 @@ decision 0009 as `TestUnitPolicyLibrary`.
 | No `time.Sleep` in tests | forbidigo pattern on `_test.go` files in `.golangci.yml` |
 | Waiting on asynchronous work polls a condition with a deadline, through one helper (`deps.Eventually`), never a fixed delay | review; the helper reports what it waited for |
 | Unit tests use virtual time | `internal/clock` and `testing/synctest` |
-| An acceptance scenario reaches a server's timer without waiting for it: time passes for one run, worker or stack's state versions by moving its timestamps back, and the periodic task that reads them falls due | review; the runs and state steps age a run's, worker's or stack's versions' rows, since a real server's clock cannot be moved |
+| An acceptance scenario reaches a server's timer without waiting for it: time passes for one run, worker, stack's state versions or upload by moving its timestamps back, and for a signed URL by signing its token again with an earlier expiry, and the periodic task that reads them falls due | review; the runs and state steps age a run's, worker's, stack's versions' or upload's rows, and sign a URL's token again under the scenario's keyring, since a real server's clock cannot be moved |
 | No test depends on order | `-shuffle=on`; godog runs scenarios in random order with a printed seed |
 | No shared mutable state across scenarios | per-scenario database, bucket prefix and server |
 | No network beyond the containers | Terraform, OpenTofu and providers come from checksummed caches; Gitea replaces hosted VCS |
@@ -603,14 +603,17 @@ coverage it would contribute is not waived.
   reap and the preparing timeout by moving time on for one run or
   worker; `TestAccCaptures` skips the six captures it stands in for as
   awaited.
-- `test/acceptance/features/state/` holds `backend.feature` and the state
-  management features: `urls.feature`, `import.feature`,
-  `rollback.feature`, `external_access.feature` and
-  `terragrunt_units.feature`, each with real Terraform and OpenTofu, and
-  the last with Terragrunt, and `retention.feature`, with real Terraform,
-  which moves time on for a stack's state versions as the runs steps do
-  for a run. `TestAccCaptures` skips C106, C107, C108, C109,
-  C110, C112, C113 and C114 as awaited against them.
+- `test/acceptance/features/state/` holds the state management features:
+  `backend.feature`, `import.feature`, `rollback.feature` and
+  `external_access.feature`, each with real Terraform and OpenTofu;
+  `urls.feature`, with no tool, which moves time on for a signed URL by
+  signing its token again with an earlier expiry and for an upload by
+  moving its row back; `retention.feature`, with real Terraform, which
+  moves time on for a stack's state versions as the runs steps do for a
+  run; and `terragrunt_units.feature`, with real Terragrunt driving
+  Terraform. `vendors/terragrunt.feature` holds a Terragrunt stack's
+  settings. `TestAccCaptures` skips C106, C107, C108, C109, C110, C112,
+  C113 and C114 as awaited against them.
 - `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
   `TestUnitWriteRefusals` and `TestUnitParseStress`
   (`test/acceptance/internal/harness`) prove the stress: a refusal share

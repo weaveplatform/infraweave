@@ -581,19 +581,29 @@ unlock) are ordinary REST operations and answer the problem details of decision
   the upload and download URLs.
 - Store contract tests against PostgreSQL and every object store driver of decision 0005 (decision 0016): versions,
   current pointer, orphan collection through `pending` `blob_objects` rows, retention.
-- Gherkin acceptance with real Terraform and OpenTofu in testcontainers:
+- Gherkin acceptance in testcontainers, with real Terraform and OpenTofu unless named:
   `state/backend.feature` (init, plan, apply through the backend; a second apply blocked by
-  `423` until the first ends), `state/urls.feature` (the signed upload and download),
+  `423` until the first ends; two plans' shared locks at once; a stack's default Tofu
+  workspace, whose lock is an apply's, and an operator's release that refuses the apply's
+  write and release with `423`), `state/urls.feature` (the signed upload and download with
+  no tool, each refused once 15 minutes have passed since it was signed, and an upload no
+  import took expiring after a day, its object ID then importing nothing (C108)),
   `state/external_access.feature` (`terraform_remote_state` with an API key and a bearer
-  token, a run of another stack reading with no credentials in its code, and each refusal),
-  `state/import.feature` (at creation and later, client-encrypted included),
-  `state/rollback.feature` (rollback, `isStateRollback` and the version search),
-  `state/retention.feature` (imports and a run's versions deleted past an hour's
-  retention, row and object, the current version, a recent one and a running run's
-  kept, and a rollback to a deleted version answering `404`),
-  `state/terragrunt_units.feature` (a workspace per unit, listed and unlocked), and
-  `state/force_unlock.feature` (`terraform force-unlock` from a task releases a lock left
-  by a killed run).
+  token, a run of another stack reading with no credentials in its code, each refusal, and
+  no Terraform Cloud service (C106)), `state/import.feature` (at creation and later,
+  client-encrypted included (C112); refused without managed state, and external access
+  refused without it (C107); refused beside a tracked run or a task that has not ended, and
+  allowed beside a proposed run (C109)), `state/rollback.feature` (rollback,
+  `isStateRollback` until a run or an import writes (C110), the version search, and the
+  refusal beside a tracked run (C109)), `state/retention.feature` (with Terraform: imports
+  and a run's versions deleted past an hour's retention, row and object, the current
+  version, a recent one and a running run's kept, and a rollback to a deleted version
+  answering `404` (C110)), and `state/terragrunt_units.feature` (Terragrunt driving
+  Terraform: a workspace per unit, listed; a unit's lock released through
+  `tofuWorkspaceUnlock`, which refuses that unit's write with `423`; and state management
+  that a run's `terragrunt.use_state_management` changes neither way (C113, C114)).
+  `vendors/terragrunt.feature` asserts `useStateManagement` deciding over `manageState` at
+  creation and kept through an update (C113).
 - Retention tests: unit tests of the pass's batches, its question about runs and a
   failure part way; store tests on PostgreSQL of the selection over versions with chosen
   `created_at`s, of `0`, and of a pass stopped in its second batch, which leaves no row

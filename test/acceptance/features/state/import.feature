@@ -7,10 +7,11 @@ Feature: A state file is imported at a stack's creation or into an existing stac
   infraweave reseals the file into its states store as a version marked
   imported by the caller, with no run, deletes the upload and records the
   import on the audit trail. An import needs STACK_MANAGED_STATE_IMPORT on
-  the stack's space and a stack whose state infraweave keeps; one after
-  the stack's creation also needs the caller's lock on the stack and no
-  tracked run, task or destroy run under way, though a proposed run, which
-  writes no state, does not count. The upload must be the caller's own and
+  the stack's space and a stack whose state infraweave keeps, as external
+  state access does; one after the stack's creation also needs the
+  caller's lock on the stack and no tracked run, task or destroy run under
+  way, though a proposed run, which writes no state, does not count. The
+  upload must be the caller's own and
   a JSON state of format version 4, or OpenTofu's client-encrypted
   envelope, which infraweave keeps without parsing. The scenario is the
   worker of stack infra's runs, as in the backend feature: a tracked run
@@ -170,7 +171,7 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And the upload of the URL "up" is one sealed object in the uploads store
 
   @op:stackCreate @case:failure
-  Scenario: A stack is not created from an upload that is missing or used, into a stack without managed state, or that is no state
+  Scenario: A stack is not created from an upload that is missing or used, into a stack without managed state, or that is no state, nor with external state access but no managed state
     Given token "h" sends "POST /api/v1/state/upload-url" with '{}' through A
     And the answer's url is kept as "up"
     And the answer's objectId names "obj"
@@ -185,6 +186,9 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":false,"stackObjectID":"{obj}"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "rule"
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/input/vendorConfig/terraform/externalStateAccessEnabled" as "rule"
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{v3}"}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "rule"
@@ -201,7 +205,7 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     Then it answers a 404 problem "not-found"
 
   @op:stackManagedStateImport @case:failure
-  Scenario: An import is refused into a stack without managed state, unlocked, locked by another or with a tracked run under way, and of an upload that is missing, another's or no state
+  Scenario: An import is refused into a stack without managed state, unlocked, locked by another or with a tracked run or a task under way, and of an upload that is missing, another's or no state
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And token "h" sends "POST /api/v1/state/upload-url" with '{}' through B
     And the answer's url is kept as "up"
@@ -246,6 +250,13 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And token "h" sends "POST /api/v1/stacks/infra/managed-state-import" with '{"state":"{obj}"}' through A
     Then it answers a 409 problem "invalid-state"
     And the problem's detail names the run "pending"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{pending}/cancel" with '{}' through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"echo task"}' through A
+    And the answer's id names "task"
+    And token "h" sends "POST /api/v1/stacks/infra/managed-state-import" with '{"state":"{obj}"}' through B
+    Then it answers a 409 problem "invalid-state"
+    And the problem's detail names the run "task"
     And the upload of the URL "up" is one sealed object in the uploads store
     And the upload of the URL "theirs" is one sealed object in the uploads store
     And the stack "infra" has 0 imported state versions
