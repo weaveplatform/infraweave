@@ -13,7 +13,8 @@ Feature: A state file is imported at a stack's creation or into an existing stac
   way, though a proposed run, which writes no state, does not count. The
   upload must be the caller's own and
   a JSON state of format version 4, or OpenTofu's client-encrypted
-  envelope, which infraweave keeps without parsing. The scenario is the
+  envelope, which infraweave keeps unchanged with any serial and lineage
+  it carries. The scenario is the
   worker of stack infra's runs, as in the backend feature: a tracked run
   applies its configuration, a terraform_data resource and outputs, and
   the tool pulls the state it wrote, which the scenario uploads and
@@ -124,17 +125,92 @@ Feature: A state file is imported at a stack's creation or into an existing stac
       | tool |
       | tofu |
 
-  @op:stackCreate @op:stackManagedStateImport @case:success
-  Scenario: A client-encrypted state is imported unparsed at a stack's creation and later, beside a proposed run
+  @tofu @op:stackCreate @op:stackManagedStateImport @case:success
+  Scenario: An encrypted run's downloaded envelope is imported with its metadata and plans no change
+    Given token "h" eventually reads the OpenTofu versions through A as the fixture's stable releases newest first
+    And token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"opentofu":{"externalStateAccessEnabled":true}}}' through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "encrypted"
+    And token "h" eventually reads the run "encrypted" in the state "READY" through A
+    And token "w" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    And the answer assigns the run "encrypted", its run token kept as "et"
+    And the worker takes over the run "encrypted" with token "et" and the key of "csr", checking out "infra", through A
+    And the tool environment of the run "encrypted" sets "TF_ENCRYPTION" from fixture "test/fixtures/vendor-documents/opentofu/encryption.hcl"
+    And the worker reports the run "encrypted" started in INITIALIZING through B
+    Then tofu "init" of the run "encrypted" exits 0
+    When the worker reports the run "encrypted" succeeded in INITIALIZING through A
+    Then the report's answer is to execute in PLANNING
+    And tofu "plan" of the run "encrypted" exits 0
+    When the worker reports the run "encrypted" succeeded in PLANNING with the delta '{"add":1,"change":0,"delete":0,"import":0,"outputs":true}' through B
+    Then the report's answer is to execute in APPLYING
+    And tofu "apply -auto-approve" of the run "encrypted" exits 0
+    And the relay passed a POST of the state of the run "encrypted" answered 200
+    And the run "encrypted" wrote 1 state version
+    And tofu "output -json" of the run "encrypted" exits 0
+    And the worker records the last output of the run "encrypted" as its outputs.json through B
+    And tofu "state pull" of the run "encrypted" exits 0
+    And the current state version is the run "encrypted"'s, with the serial and lineage of its last output
+    And the current state version of the run "encrypted" is client-encrypted
+    When the worker reports the run "encrypted" succeeded in APPLYING through A
+    Then the report's answer is to exit in FINISHED
+    And token "h" eventually reads the run "encrypted" in the state "FINISHED" through B
+    When token "h" sends "POST /api/v1/stacks/infra/state/download-url" with '{}' through A
+    And the answer's url is kept as "encrypted"
+    And the URL "encrypted" read with no credential through B is the current state version of the run "encrypted", holding "encrypted_data"
+    And the last answer is an encrypted envelope without "plain-1mp0rt-0509"
     When token "h" sends "POST /api/v1/state/upload-url" with '{}' through A
     And the answer's url is kept as "up"
     And the answer's objectId names "obj"
-    And '{"meta":{},"encrypted_data":"c2VhbGVkLW9uZQ==","encryption_version":"v0"}' is put with no credential at the URL "up" through B
+    And the state downloaded from the URL "encrypted" is put with no credential at the URL "up" through B
     Then it answers 200
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Sealed","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}"},"manageState":true,"stackObjectID":"{obj}"}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Sealed","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}}},"manageState":true,"stackObjectID":"{obj}"}' through A
     Then it answers 201
-    And the current state version of the stack "sealed" is imported by the home key, client-encrypted
+    And the current state version of the stack "sealed" is imported by the home key, client-encrypted, with the serial and lineage of the last output of the run "encrypted"
     And the upload of the URL "up" is gone from the uploads store
+    When token "h" sends "POST /api/v1/stacks/sealed/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "copied"
+    And token "h" eventually reads the run "copied" in the state "READY" through A
+    And token "w" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    And the answer assigns the run "copied", its run token kept as "ct"
+    And the worker takes over the run "copied" with token "ct" and the key of "csr", checking out "infra", through A
+    And the tool environment of the run "copied" sets "TF_ENCRYPTION" from fixture "test/fixtures/vendor-documents/opentofu/encryption.hcl"
+    And the worker reports the run "copied" started in INITIALIZING through B
+    Then tofu "init" of the run "copied" exits 0
+    When the worker reports the run "copied" succeeded in INITIALIZING through A
+    Then the report's answer is to execute in PLANNING
+    And tofu "plan -detailed-exitcode" of the run "copied" exits 0
+    When the worker reports the run "copied" succeeded in PLANNING with the delta '{"add":0,"change":0,"delete":0,"import":0,"outputs":false}' through A
+    Then the report's answer is to exit in FINISHED
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Later","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}}},"manageState":true}' through A
+    Then it answers 201
+    When token "h" sends "POST /api/v1/stacks/later/lock" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/state/upload-url" with '{}' through A
+    And the answer's url is kept as "existing"
+    And the answer's objectId names "existing"
+    And the state downloaded from the URL "encrypted" is put with no credential at the URL "existing" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/later/managed-state-import" with '{"state":"{existing}"}' through A
+    Then the answer is 'true'
+    And the current state version of the stack "later" is imported by the home key, client-encrypted, with the serial and lineage of the last output of the run "encrypted"
+    And the upload of the URL "existing" is gone from the uploads store
+    When token "h" sends "POST /api/v1/stacks/later/unlock" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/later/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "later"
+    And token "h" eventually reads the run "later" in the state "READY" through A
+    And token "w" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    And the answer assigns the run "later", its run token kept as "lt"
+    And the worker takes over the run "later" with token "lt" and the key of "csr", checking out "infra", through A
+    And the tool environment of the run "later" sets "TF_ENCRYPTION" from fixture "test/fixtures/vendor-documents/opentofu/encryption.hcl"
+    And the worker reports the run "later" started in INITIALIZING through B
+    Then tofu "init" of the run "later" exits 0
+    When the worker reports the run "later" succeeded in INITIALIZING through A
+    Then the report's answer is to execute in PLANNING
+    And tofu "plan -detailed-exitcode" of the run "later" exits 0
+    When the worker reports the run "later" succeeded in PLANNING with the delta '{"add":0,"change":0,"delete":0,"import":0,"outputs":false}' through B
+    Then the report's answer is to exit in FINISHED
     When token "h" sends "POST /api/v1/stacks/sealed/lock" through B
     Then it answers 200
     When token "h" sends "POST /api/v1/stacks/sealed/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through A
@@ -151,11 +227,11 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And the audit trail holds 2 imports into the stack "sealed" by the home key
 
   @op:stackCreate @op:stackManagedStateImport @case:denial
-  Scenario: A caller without STACK_MANAGED_STATE_IMPORT creates no stack from an upload and imports into none
+  Scenario Outline: A caller without STACK_MANAGED_STATE_IMPORT creates no stack from an upload and imports into none
     Given token "h" sends "POST /api/v1/state/upload-url" with '{}' through A
     And the answer's url is kept as "up"
     And the answer's objectId names "obj"
-    And '{"version":4,"serial":1,"lineage":"l","outputs":{},"resources":[]}' is put with no credential at the URL "up" through B
+    And the fixture "<fixture>" is put with no credential at the URL "up" through B
     And token "h" sends "POST /api/v1/roles" with '{"name":"Stack Creators","actions":["SPACE_READ","STACK_CREATE","STACK_LOCK"]}' through A
     And the member key is stack-creators on the space "legacy"
     When token "m" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{obj}"}' through B
@@ -169,6 +245,11 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"STACK_MANAGED_STATE_IMPORT"'
     And the upload of the URL "up" is one sealed object in the uploads store
+
+    Examples:
+      | fixture                                                        |
+      | test/fixtures/vendor-documents/opentofu/state.json               |
+      | test/fixtures/vendor-documents/opentofu/state-encrypted.json     |
 
   @op:stackCreate @case:failure
   Scenario: A stack is not created from an upload that is missing or used, into a stack without managed state, or that is no state, nor with external state access but no managed state
@@ -260,3 +341,25 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And the upload of the URL "up" is one sealed object in the uploads store
     And the upload of the URL "theirs" is one sealed object in the uploads store
     And the stack "infra" has 0 imported state versions
+
+  @op:stackCreate @op:stackManagedStateImport @case:failure
+  Scenario Outline: An incomplete encrypted envelope or empty object is refused at both import entry points
+    When token "h" sends "POST /api/v1/state/upload-url" with '{}' through A
+    And the answer's url is kept as "invalid"
+    And the answer's objectId names "invalid"
+    And '<body>' is put with no credential at the URL "invalid" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Invalid","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{invalid}"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/stackObjectID" as "rule"
+    When token "h" sends "POST /api/v1/stacks/infra/lock" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/managed-state-import" with '{"state":"{invalid}"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/state" as "rule"
+    And the upload of the URL "invalid" is one sealed object in the uploads store
+
+    Examples:
+      | body                                                    |
+      | {"serial":1,"lineage":"l","encrypted_data":"eA=="}       |
+      | {}                                                      |

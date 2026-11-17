@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -129,7 +130,7 @@ func invalidAt(err error, pointer, reason string) bool {
 // opens the default workspace and makes the file its first version,
 // resealed, marked imported by the caller at the service's time, and
 // deletes the upload and records the import from the caller's address;
-// that a client-encrypted file goes in with no serial or lineage; and
+// that a client-encrypted file keeps any serial and lineage it carries; and
 // that each refusal points at stackObjectID with its reason, importing
 // nothing: an object ID that is no ULID, another principal's upload, one
 // imported already, one over 100 MiB, and a file that is no version 4
@@ -172,13 +173,24 @@ func TestUnitImportAtCreation(t *testing.T) {
 		t.Errorf("the audit entry = %+v with metadata %v", e, meta)
 	}
 
-	i = newImports()
-	if err := i.create(t, i.upload(i.p, encryptedState)); err != nil {
-		t.Fatalf("Created with an encrypted upload = %v", err)
-	}
-	if v, ok := i.current(); !ok || !v.ClientEncrypted || v.Serial != nil || v.Lineage != nil ||
-		!v.Imported {
-		t.Errorf("the imported encrypted version = %+v", v)
+	for _, tt := range []struct {
+		name, body string
+		serial     *int64
+		lineage    *string
+	}{
+		{name: "recorded envelope", body: recordedEncryptedState(t), serial: new(int64(1)), lineage: new("e281addb-85f8-03d1-e5b8-f797b7fc1b6e")},
+		{name: "without metadata", body: encryptedState},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			j := newImports()
+			if err := j.create(t, j.upload(j.p, tt.body)); err != nil {
+				t.Fatalf("Created with an encrypted upload = %v", err)
+			}
+			if v, ok := j.current(); !ok || !v.ClientEncrypted || !reflect.DeepEqual(v.Serial, tt.serial) ||
+				!reflect.DeepEqual(v.Lineage, tt.lineage) || !v.Imported || string(j.b.objects["states/"+v.Key]) != tt.body {
+				t.Errorf("the imported encrypted version = %+v", v)
+			}
+		})
 	}
 
 	other := i.p
@@ -203,6 +215,8 @@ func TestUnitImportAtCreation(t *testing.T) {
 		{"a version that is a string", i.upload(i.p, `{"version":"4","serial":1,"lineage":"l"}`), kernel.ReasonRule},
 		{"a plain state without lineage", i.upload(i.p, `{"version":4,"serial":1}`), kernel.ReasonRule},
 		{"an envelope without its version", i.upload(i.p, `{"encrypted_data":"AA"}`), kernel.ReasonRule},
+		{"an incomplete envelope with metadata", i.upload(i.p, `{"serial":1,"lineage":"l","encrypted_data":"AA"}`), kernel.ReasonRule},
+		{"an empty object", i.upload(i.p, `{}`), kernel.ReasonRule},
 		{"no JSON object", i.upload(i.p, `[1, 2]`), kernel.ReasonRule},
 		{"no JSON", i.upload(i.p, `terraform`), kernel.ReasonRule},
 	} {
@@ -225,15 +239,14 @@ func TestUnitImportAtCreation(t *testing.T) {
 // ref: decision 0010 § "Upload, import and download URLs"
 func TestUnitImportable(t *testing.T) {
 	for body, want := range map[string]bool{
-		plainState:     true,
-		encryptedState: true,
+		plainState:                true,
+		encryptedState:            true,
+		recordedEncryptedState(t): true,
 		`{"version":4,"serial":0,"lineage":"l","resources":[{"version":[4]}]}`: true,
 		`{"version":4.0,"serial":1,"lineage":"l"}`:                             false,
 		`{"version":{"major":4},"serial":1,"lineage":"l"}`:                     false,
 		`{"version":["4"],"serial":1,"lineage":"l"}`:                           false,
 		`{"version":5,"serial":1,"lineage":"l"}`:                               false,
-		`{"encryption_version":"v0"}`:                                          false,
-		`{}`:                                                                   false,
 	} {
 		m, err := scan(strings.NewReader(body))
 		if err != nil || m.importable() != want {

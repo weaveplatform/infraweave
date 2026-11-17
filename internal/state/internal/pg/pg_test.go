@@ -492,7 +492,7 @@ func TestAccStoreUnavailable(t *testing.T) {
 
 // TestAccStoreVersions adds versions to a workspace and reads back the
 // current one with each column: a run's plain state, then a
-// client-encrypted one without serial, lineage or run, then an import
+// client-encrypted one with serial and lineage but no run, then an import
 // with who imported it and when, then a rollback to the import, which
 // keeps them, with a run and who rolled back from which version. Each
 // reads back by its ID too, which no other account finds. A workspace with no
@@ -521,7 +521,7 @@ func TestAccStoreVersions(t *testing.T) {
 	}, Key: "a/b/c/1"}
 	encrypted := core.Version{Version: stateapi.Version{
 		ID: kernel.NewULID(), Stack: at.Stack, Workspace: at.Workspace, Size: 0,
-		SHA256: make([]byte, 32), ClientEncrypted: true,
+		SHA256: make([]byte, 32), ClientEncrypted: true, Serial: &serial, Lineage: &lineage,
 	}, Key: "a/b/c/2"}
 	importedAt := time.Unix(1_800_000_000, 0).UTC()
 	imported := core.Version{Version: stateapi.Version{

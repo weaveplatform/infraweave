@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -166,7 +168,7 @@ const (
 
 // TestUnitStateWrite checks that a write under the run's exclusive lock
 // adds a version whose object is live and whose metadata the body gives,
-// a plain state's serial and lineage or a client-encrypted state's none,
+// a plain or client-encrypted state's optional serial and lineage,
 // under a key of the account, the stack, the workspace's SHA-256 and the
 // version; that the same body again adds none and deletes its object;
 // and that a body that is no state, or fails its Content-MD5 outside
@@ -201,13 +203,19 @@ func TestUnitStateWrite(t *testing.T) {
 			w.b.byState())
 	}
 
-	encrypted := `{"meta":{"key_provider.pbkdf2.k":"e30="},"encrypted_data":"eA==",` +
-		`"encryption_version":"v0"}`
+	encrypted := recordedEncryptedState(t)
 	if added, err := w.write(t, encrypted, ""); err != nil || !added {
 		t.Fatalf("a client-encrypted state: %v, %v", added, err)
 	}
-	if e := w.m.current[w.target]; !e.ClientEncrypted || e.Serial != nil || e.Lineage != nil {
+	if e := w.m.current[w.target]; !e.ClientEncrypted || e.Serial == nil || *e.Serial != 1 ||
+		e.Lineage == nil || *e.Lineage != "e281addb-85f8-03d1-e5b8-f797b7fc1b6e" {
 		t.Errorf("a client-encrypted version %+v", e)
+	}
+	if added, err := w.write(t, encryptedState, ""); err != nil || !added {
+		t.Fatalf("an envelope without metadata: %v, %v", added, err)
+	}
+	if e := w.m.current[w.target]; !e.ClientEncrypted || e.Serial != nil || e.Lineage != nil {
+		t.Errorf("an envelope without metadata %+v", e)
 	}
 
 	// A state larger than the decoder's and the pipe's buffers streams
@@ -221,7 +229,10 @@ func TestUnitStateWrite(t *testing.T) {
 	}
 
 	for _, body := range []string{
-		``, `[]`, `"s"`, `{"version":4,"serial":1}`, `{"version":4,"lineage":"l"}`,
+		``, `{}`, `{"meta":{}}`, `{"encrypted_data":"eA=="}`, `{"encryption_version":"v0"}`,
+		`{"encrypted_data":"eA==","encryption_version":"v0","serial":"1"}`,
+		`{"encrypted_data":"eA==","encryption_version":"v0","lineage":2}`,
+		`[]`, `"s"`, `{"version":4,"serial":1}`, `{"version":4,"lineage":"l"}`,
 		`{"serial":1,"lineage":"l"}`, `{"version":4,"serial":"1","lineage":"l"}`,
 		`{"version":4,"serial":1.5,"lineage":"l"}`, `{"version":4,"serial":-1,"lineage":"l"}`,
 		`{"version":4,"serial":1,"lineage":2}`, `{"version":4,"serial":1,"lineage":"l"} {}`,
@@ -249,6 +260,51 @@ func TestUnitStateWrite(t *testing.T) {
 		if !errors.Is(err, ErrMD5) || added {
 			t.Errorf("Content-MD5 %q: %v, %v", md5, added, err)
 		}
+	}
+}
+
+// recordedEncryptedState is the envelope OpenTofu wrote with state
+// encryption, including the serial and lineage it leaves in the clear.
+func recordedEncryptedState(t testing.TB) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "test", "fixtures",
+		"vendor-documents", "opentofu", "state-encrypted.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// TestUnitStateEnvelopeMetadata keeps each optional metadata field and
+// ignores a plain format version on an envelope, preserving its bytes.
+func TestUnitStateEnvelopeMetadata(t *testing.T) {
+	for _, tt := range []struct {
+		name, fields string
+		serial       *int64
+		lineage      *string
+	}{
+		{name: "neither"},
+		{name: "serial only", fields: `,"serial":2`, serial: new(int64(2))},
+		{name: "lineage only", fields: `,"lineage":"l"`, lineage: new("l")},
+		{name: "plain version ignored", fields: `,"version":{"ignored":[4]},"serial":2,"lineage":"l"`, serial: new(int64(2)), lineage: new("l")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			w := newWrites()
+			body := `{"encrypted_data":"eA==","encryption_version":"v0"` + tt.fields + `}`
+			if added, err := w.write(t, body, ""); err != nil || !added {
+				t.Fatalf("write = %v, %v", added, err)
+			}
+			v, r, ok, err := w.s.Read(t.Context(), w.target)
+			if err != nil || !ok {
+				t.Fatalf("read = %v, %v", ok, err)
+			}
+			defer r.Close()
+			got, err := io.ReadAll(r)
+			if err != nil || string(got) != body || !v.ClientEncrypted ||
+				!reflect.DeepEqual(v.Serial, tt.serial) || !reflect.DeepEqual(v.Lineage, tt.lineage) {
+				t.Errorf("read = %+v, %q, %v", v, got, err)
+			}
+		})
 	}
 }
 
@@ -400,7 +456,7 @@ func TestUnitStateRead(t *testing.T) {
 	if out, err := w.s.Outputs(ctx, w.target.Account, w.target.Stack); out != nil || err != nil {
 		t.Errorf("Outputs of a state without outputs: %v, %v", out, err)
 	}
-	if _, err := w.write(t, `{"encrypted_data":"eA=="}`, ""); err != nil {
+	if _, err := w.write(t, encryptedState, ""); err != nil {
 		t.Fatal(err)
 	}
 	w.b.broken = "Open"

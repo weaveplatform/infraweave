@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -224,6 +225,7 @@ func secretState(serial int, secret string) string {
 func TestAccStateVersions(t *testing.T) {
 	w := newClaimWorld(t)
 	token := applying(t, w)
+	encrypted := encryptedStateFixture(t)
 	for _, driver := range []string{
 		objectstore.DriverFS, objectstore.DriverS3, objectstore.DriverGCS,
 		objectstore.DriverAzureBlob,
@@ -300,8 +302,6 @@ func TestAccStateVersions(t *testing.T) {
 				}
 			}
 
-			encrypted := `{"meta":{"key_provider.pbkdf2.k":"e30="},"encrypted_data":"` +
-				base64.StdEncoding.EncodeToString([]byte(secret)) + `","encryption_version":"v0"}`
 			if rec := c.post(
 				t,
 				under,
@@ -310,8 +310,25 @@ func TestAccStateVersions(t *testing.T) {
 			); rec.Code != http.StatusOK {
 				t.Fatalf("a client-encrypted write = %d %s", rec.Code, rec.Body)
 			}
-			if _, _, serial := current(t, w, driver); serial != nil {
-				t.Errorf("a client-encrypted version has serial %d", *serial)
+			latest, ok, err := s.state.Versions().Latest(t.Context(), w.acct, w.stacks["one"], driver)
+			if err != nil || !ok || !latest.ClientEncrypted || latest.Serial == nil || *latest.Serial != 1 ||
+				latest.Lineage == nil || *latest.Lineage != "e281addb-85f8-03d1-e5b8-f797b7fc1b6e" {
+				t.Errorf("a client-encrypted version = %+v, %v, %v", latest, ok, err)
+			}
+			if rec := c.send(t, http.MethodGet, ws, ""); rec.Code != http.StatusOK || rec.Body.String() != encrypted {
+				t.Errorf("the encrypted read = %d %s", rec.Code, rec.Body)
+			}
+			before, objects := versionsOf(t, w, driver)
+			rec = c.post(t, under, `{"encrypted_data":"eA=="}`, "")
+			var problem struct {
+				Detail string `json:"detail"`
+			}
+			const detail = "The body is not a state: a JSON object with version, serial and lineage, or OpenTofu's client-encrypted state, with encrypted_data and encryption_version."
+			if rec.Code != http.StatusBadRequest || json.Unmarshal(rec.Body.Bytes(), &problem) != nil || problem.Detail != detail {
+				t.Errorf("an incomplete envelope = %d %s", rec.Code, rec.Body)
+			}
+			if n, after := versionsOf(t, w, driver); n != before || after["deleting"] != objects["deleting"]+1 {
+				t.Errorf("a refused envelope left %d versions, objects %v", n, after)
 			}
 
 			large := `{"version":4,"serial":3,"lineage":"5e1d","resources":[` +
@@ -324,7 +341,7 @@ func TestAccStateVersions(t *testing.T) {
 				t.Errorf("a large read = %d, %d bytes of %d", rec.Code, rec.Body.Len(), len(large))
 			}
 
-			before, objects := versionsOf(t, w, driver)
+			before, objects = versionsOf(t, w, driver)
 			wantProblem(t, c.write(t, under, strings.NewReader("{}"), stateMax+1, ""),
 				http.StatusRequestEntityTooLarge, "")
 			rec = c.write(t, under, io.MultiReader(strings.NewReader(`{"version":4,`),
@@ -398,7 +415,7 @@ func TestAccStateSealed(t *testing.T) {
 	if err != nil || !ok || latest.Size != int64(len(state)) || latest.ClientEncrypted {
 		t.Errorf("Latest %+v, %v, %v", latest, ok, err)
 	}
-	encrypted := `{"meta":{},"encrypted_data":"eA==","encryption_version":"v0"}`
+	encrypted := encryptedStateFixture(t)
 	if rec := c.post(t, stack+"?ID=l", encrypted, ""); rec.Code != http.StatusOK {
 		t.Fatalf("a client-encrypted write = %d %s", rec.Code, rec.Body)
 	}
@@ -406,4 +423,14 @@ func TestAccStateSealed(t *testing.T) {
 		err != nil {
 		t.Errorf("Outputs of a client-encrypted state %+v, %v", out, err)
 	}
+}
+
+func encryptedStateFixture(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "vendor-documents",
+		"opentofu", "state-encrypted.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }

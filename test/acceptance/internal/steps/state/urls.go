@@ -31,6 +31,8 @@ type urlSteps struct {
 }
 
 func (u *urlSteps) register(sc *godog.ScenarioContext) {
+	sc.Step(`^the fixture "([^"]+)" is put with no credential at the URL "(\w+)" through ([AB])$`, u.fixturePut)
+	sc.Step(`^the last answer is an encrypted envelope without "([^"]+)"$`, u.encryptedAnswer)
 	sc.Step(`^the answer's url is kept as "(\w+)"$`, u.keep)
 	sc.Step(`^'([^']*)' is put with no credential at the URL "(\w+)"( tampered)? through ([AB])$`,
 		u.put)
