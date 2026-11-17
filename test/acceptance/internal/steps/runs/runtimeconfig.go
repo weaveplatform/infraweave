@@ -57,3 +57,22 @@ func (r *runSteps) releaseEvidence(ctx context.Context, token, run, replica stri
 	}
 	return fmt.Errorf("%w: the applying log names no tool release", harness.ErrStep)
 }
+
+// retryEvidence records the removed hook's actual output from the retry's
+// planning log, without printing unrelated lines from the run.
+func (r *runSteps) retryEvidence(ctx context.Context, token, run, replica string) error {
+	text, err := logText(ctx, r.w, token, run, "PLANNING", replica)
+	if err != nil {
+		return err
+	}
+	if strings.Contains(text, "hook: new") {
+		return fmt.Errorf("%w: the retry runs the changed hook", harness.ErrStep)
+	}
+	for line := range strings.SplitSeq(text, "\n") {
+		if strings.TrimSpace(line) == "hook: old" {
+			fmt.Printf("acceptance: retry %s PLANNING log: %s\n", r.w.IDs[run], line)
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: the retry's planning log has no removed-hook output", harness.ErrStep)
+}

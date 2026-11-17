@@ -6508,7 +6508,9 @@ type Run struct {
 	// CanPromote Checks if a proposed run can be promoted to a tracked one.
 	CanPromote bool `json:"canPromote"`
 
-	// CanRetry Checks if a run can be retried.
+	// CanRetry Whether a proposed or tracked run may be retried on its commit
+	// with its recorded configuration. False for a run in FINISHED
+	// or a tracked run whose stack has moved to another commit.
 	CanRetry bool `json:"canRetry"`
 
 	// Command Command - only useful for Tasks.
@@ -6599,7 +6601,8 @@ type Run struct {
 	// PromoteBlocker Reason why the run cannot be promoted, if any.
 	PromoteBlocker *string `json:"promoteBlocker,omitempty"`
 
-	// RetryBlocker Reason why the run cannot be retried.
+	// RetryBlocker Why the run cannot retry, including a run in FINISHED or a
+	// tracked run no longer on its stack's tracked commit.
 	RetryBlocker *string `json:"retryBlocker,omitempty"`
 
 	// Reviews List of reviews for this run.
@@ -17928,7 +17931,7 @@ type ClientInterface interface {
 
 	// RunRetry Retry Run
 	//
-	// Retry a proposed or tracked Run that has ended: a run of its type is queued on its commit, with its runtime configuration and environment variable overrides. Retrying a tracked run also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. The answer is the new run.
+	// Retry a proposed or tracked Run that ended other than in FINISHED: a new run of its type is queued on its commit with the configuration it recorded at its first handover and its environment variable overrides. Variables and mounted files are read afresh. A tracked run's commit must still be its stack's tracked commit, and its retry also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. A run that ended before recording configuration resolves it afresh. An existing unended run of the same type and commit is answered instead when the retry has no variable overrides.
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/{runId}/retry (the `RunRetry` operationId).
 	RunRetry(ctx context.Context, stackId string, runId string, params *RunRetryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -26183,7 +26186,7 @@ func (c *Client) RunPromote(ctx context.Context, stackId string, runId string, p
 
 // RunRetry Retry Run
 //
-// Retry a proposed or tracked Run that has ended: a run of its type is queued on its commit, with its runtime configuration and environment variable overrides. Retrying a tracked run also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. The answer is the new run.
+// Retry a proposed or tracked Run that ended other than in FINISHED: a new run of its type is queued on its commit with the configuration it recorded at its first handover and its environment variable overrides. Variables and mounted files are read afresh. A tracked run's commit must still be its stack's tracked commit, and its retry also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. A run that ended before recording configuration resolves it afresh. An existing unended run of the same type and commit is answered instead when the retry has no variable overrides.
 //
 // Corresponds with POST /stacks/{stackId}/runs/{runId}/retry (the `RunRetry` operationId).
 func (c *Client) RunRetry(ctx context.Context, stackId string, runId string, params *RunRetryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -51957,7 +51960,7 @@ type ClientWithResponsesInterface interface {
 
 	// RunRetryWithResponse Retry Run
 	//
-	// Retry a proposed or tracked Run that has ended: a run of its type is queued on its commit, with its runtime configuration and environment variable overrides. Retrying a tracked run also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. The answer is the new run.
+	// Retry a proposed or tracked Run that ended other than in FINISHED: a new run of its type is queued on its commit with the configuration it recorded at its first handover and its environment variable overrides. Variables and mounted files are read afresh. A tracked run's commit must still be its stack's tracked commit, and its retry also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. A run that ended before recording configuration resolves it afresh. An existing unended run of the same type and commit is answered instead when the retry has no variable overrides.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -96151,7 +96154,7 @@ func (c *ClientWithResponses) RunPromoteWithResponse(ctx context.Context, stackI
 
 // RunRetryWithResponse Retry Run
 //
-// Retry a proposed or tracked Run that has ended: a run of its type is queued on its commit, with its runtime configuration and environment variable overrides. Retrying a tracked run also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. The answer is the new run.
+// Retry a proposed or tracked Run that ended other than in FINISHED: a new run of its type is queued on its commit with the configuration it recorded at its first handover and its environment variable overrides. Variables and mounted files are read afresh. A tracked run's commit must still be its stack's tracked commit, and its retry also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. A run that ended before recording configuration resolves it afresh. An existing unended run of the same type and commit is answered instead when the retry has no variable overrides.
 //
 // Returns a wrapper object for the known response body format(s).
 //

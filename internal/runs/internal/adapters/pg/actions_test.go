@@ -92,6 +92,9 @@ func TestAccRetry(t *testing.T) {
 		"a retry needs the run's commit, which the stack's repository no longer has")
 
 	tracked := w.canceled(t, mustCreate(t, w, kernel.RunTypeTracked, "a"))
+	settings := w.stacks.settings[w.stack]
+	settings.TrackedCommit = &tracked.Commit
+	w.stacks.settings[w.stack] = settings
 	a.held = holding(accessapi.ActionRunRetry)
 	var blocked *control.Blocked
 	if _, err := c.Retry(ctx, p, "network", tracked.ID.String()); !errors.As(err, &blocked) ||

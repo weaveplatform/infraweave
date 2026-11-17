@@ -103,7 +103,8 @@ func TestUnitAllowedStopKill(t *testing.T) {
 }
 
 // TestUnitGuards answers why a run cannot be retried or promoted: a retry
-// takes a proposed or tracked run that has ended, on a commit; a promotion
+// takes a proposed or tracked run that ended other than in FINISHED,
+// on a commit, a tracked run's still the stack's tracked commit; a promotion
 // takes a proposed run on a commit newer than the stack's tracked commit,
 // on a stack that allows it.
 func TestUnitGuards(t *testing.T) {
@@ -113,19 +114,29 @@ func TestUnitGuards(t *testing.T) {
 			Type: typ, State: state, Commit: stacksapi.Commit{Hash: "abc", Timestamp: at},
 		}
 	}
-	local := run(kernel.RunTypeProposed, kernel.RunStateFinished)
+	local := run(kernel.RunTypeProposed, kernel.RunStateFailed)
 	local.LocalWorkspace = "workspace.tar.gz"
+	tracked := stacksapi.Settings{TrackedCommit: &stacksapi.Commit{Hash: "abc"}}
+	moved := stacksapi.Settings{TrackedCommit: &stacksapi.Commit{Hash: "next"}}
 	for name, c := range map[string]struct {
-		run  lifecycle.Run
-		want string
+		run      lifecycle.Run
+		settings stacksapi.Settings
+		want     string
 	}{
-		"a finished proposed run": {run(kernel.RunTypeProposed, kernel.RunStateFinished), ""},
-		"a failed tracked run":    {run(kernel.RunTypeTracked, kernel.RunStateFailed), ""},
-		"a task":                  {run(kernel.RunTypeTask, kernel.RunStateFinished), "a retry needs a proposed or tracked run"},
-		"a planning run":          {run(kernel.RunTypeTracked, kernel.RunStatePlanning), "a retry needs a run that has ended"},
-		"a local preview":         {local, "a retry needs a run on a commit, not on a local workspace"},
+		"a finished proposed run":                {run(kernel.RunTypeProposed, kernel.RunStateFinished), tracked, "a retry needs a run that ended other than in FINISHED"},
+		"a finished tracked run":                 {run(kernel.RunTypeTracked, kernel.RunStateFinished), tracked, "a retry needs a run that ended other than in FINISHED"},
+		"a failed tracked run":                   {run(kernel.RunTypeTracked, kernel.RunStateFailed), tracked, ""},
+		"a discarded run":                        {run(kernel.RunTypeProposed, kernel.RunStateDiscarded), tracked, ""},
+		"a stopped run":                          {run(kernel.RunTypeProposed, kernel.RunStateStopped), tracked, ""},
+		"a canceled run":                         {run(kernel.RunTypeProposed, kernel.RunStateCanceled), tracked, ""},
+		"an old tracked run":                     {run(kernel.RunTypeTracked, kernel.RunStateCanceled), moved, "a retry needs a tracked run on the stack's tracked commit"},
+		"a tracked run without a tracked commit": {run(kernel.RunTypeTracked, kernel.RunStateFailed), stacksapi.Settings{}, "a retry needs a tracked run on the stack's tracked commit"},
+		"an old proposed run":                    {run(kernel.RunTypeProposed, kernel.RunStateFailed), moved, ""},
+		"a task":                                 {run(kernel.RunTypeTask, kernel.RunStateFinished), tracked, "a retry needs a proposed or tracked run"},
+		"a planning run":                         {run(kernel.RunTypeTracked, kernel.RunStatePlanning), moved, "a retry needs a run that has ended"},
+		"a local preview":                        {local, tracked, "a retry needs a run on a commit, not on a local workspace"},
 	} {
-		if got := read.RetryBlocker(c.run); got != c.want {
+		if got := read.RetryBlocker(c.run, c.settings); got != c.want {
 			t.Errorf("RetryBlocker of %s = %q, want %q", name, got, c.want)
 		}
 	}

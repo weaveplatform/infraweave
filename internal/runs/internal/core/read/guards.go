@@ -26,29 +26,36 @@ type Guards struct {
 
 // What a retry and a promotion need of a run, which a blocker answers.
 const (
-	needsRetryType     = "a retry needs a proposed or tracked run"
-	needsRetryEnded    = "a retry needs a run that has ended"
-	needsRetryCommit   = "a retry needs a run on a commit, not on a local workspace"
-	needsPromoteType   = "a promotion needs a proposed run"
-	needsPromoteCommit = "a promotion needs a run on a commit, not on a local workspace"
-	needsPromoteStack  = "a promotion needs a stack that allows run promotion"
-	needsPromoteNewer  = "a promotion needs a commit newer than the stack's tracked commit"
+	needsRetryType       = "a retry needs a proposed or tracked run"
+	needsRetryEnded      = "a retry needs a run that has ended"
+	needsRetryUnfinished = "a retry needs a run that ended other than in FINISHED"
+	needsRetryCommit     = "a retry needs a run on a commit, not on a local workspace"
+	needsRetryTracked    = "a retry needs a tracked run on the stack's tracked commit"
+	needsPromoteType     = "a promotion needs a proposed run"
+	needsPromoteCommit   = "a promotion needs a run on a commit, not on a local workspace"
+	needsPromoteStack    = "a promotion needs a stack that allows run promotion"
+	needsPromoteNewer    = "a promotion needs a commit newer than the stack's tracked commit"
 )
 
 // RetryBlocker is why r cannot be retried, empty when it can: a retry
-// takes a proposed or tracked run that has ended, on a commit. Whether
-// the stack's repository still has the commit is the retry's to find
+// takes a proposed or tracked run that ended other than in FINISHED,
+// on a commit, and a tracked run must still be on st's tracked commit.
+// Whether the repository still has the commit is the retry's to find
 // out, as a read does not ask the repository.
 //
-// ref: decision 0008 § "The state machine is the authority"
-func RetryBlocker(r lifecycle.Run) string {
+// ref: decision 0008 § "The state machine is the authority", runRetry
+func RetryBlocker(r lifecycle.Run, st stacksapi.Settings) string {
 	switch {
 	case r.Type != kernel.RunTypeProposed && r.Type != kernel.RunTypeTracked:
 		return needsRetryType
 	case !r.State.Terminal():
 		return needsRetryEnded
+	case r.State == kernel.RunStateFinished:
+		return needsRetryUnfinished
 	case r.LocalPreview():
 		return needsRetryCommit
+	case r.Type == kernel.RunTypeTracked && (st.TrackedCommit == nil || r.Commit.Hash != st.TrackedCommit.Hash):
+		return needsRetryTracked
 	}
 	return ""
 }

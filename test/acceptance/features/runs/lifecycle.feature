@@ -6,8 +6,9 @@ Feature: Every run type, action and timer through the run lifecycle
   version catalogue lists. Each scenario reads the run's history and the
   run_updated events the outbox holds of it, which follow the path the
   run's type takes, or the choice made where the reference leaves a gap
-  open until its capture is recorded: a proposed run plans and finishes,
-  and its retry is a new proposed run on its commit (C10); a tracked run
+  open until its capture is recorded: a proposed run plans and finishes;
+  a failed run retries on its commit with its recorded hooks (C10), while
+  a finished run cannot retry; a tracked run
   waits in UNCONFIRMED until confirmed, and on an autodeploy stack applies
   straight from PLANNING; a task performs in PERFORMING, and one that
   skips initialization still passes through INITIALIZING, running no init
@@ -49,23 +50,39 @@ Feature: Every run type, action and timer through the run lifecycle
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 
   @op:runTrigger @op:runRetry @case:success
-  Scenario: A proposed run plans and finishes, and its retry is a new proposed run on its commit
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through B
+  Scenario: A failed proposed run retries on its commit with its recorded hooks
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}},"beforePlan":["echo hook: old","exit 1"]},"manageState":true}' through B
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through A
     And the answer's id names "run"
-    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
-    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FINISHED"
-    And the outbox holds the run "run"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FINISHED"
+    Then token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
+    And the outbox holds the run "run"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
     And the run "run" wrote 0 state versions
-    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/retry" through A
+    And the answer's runtime configuration includes '{"beforePlan":["echo hook: old","exit 1"],"terraformVersion":"{terraform.newest}"}'
+    Given token "h" sends "PATCH /api/v1/stacks/infra" with '{"beforePlan":["echo hook: new"]}' through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/retry" through B
     Then it answers 200
     And the answer's type is '"PROPOSED"'
     And the answer's commits is '["{seed}"]'
     And the answer's last state transition's note is "retry of {run}"
+    And the answer's runtime configuration includes '{"beforePlan":["echo hook: old","exit 1"],"terraformVersion":"{terraform.newest}"}'
     And the answer's id names "retry"
-    And token "h" eventually reads the run "retry" in the state "FINISHED" through B
-    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FINISHED"
-    And the outbox holds the run "retry"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FINISHED"
+    And token "h" eventually reads the run "retry" in the state "FAILED" through A
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
+    And the outbox holds the run "retry"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
+    And token "h" reads the run "retry"'s PLANNING log through B, which holds "hook: old" and not "hook: new"
+    And token "h" records the run "retry"'s retry planning evidence through B
+
+  @op:runTrigger @op:runRetry @case:failure
+  Scenario: A proposed run that finishes cannot be retried
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And the answer's canRetry is 'false'
+    And the answer's retryBlocker is '"A retry needs a run that ended other than in FINISHED."'
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/retry" through A
+    Then it answers a 409 problem "invalid-state"
 
   @op:runTrigger @op:runConfirm @case:success
   Scenario: A tracked run waits in UNCONFIRMED, and applies once confirmed

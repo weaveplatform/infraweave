@@ -1,8 +1,10 @@
 @postgres @vcs
 Feature: Runs are retried, promoted, discarded together and commented on
-  A caller retries a proposed or tracked run once it has ended: a new run
-  of its type on its commit, whose first transition names the run
-  retried. A tracked run's retry also needs RUN_RETRY_BLOCKING. A caller
+  A caller retries a proposed or tracked run once it has ended other than
+  in FINISHED: a new run of its type on its commit with its recorded
+  configuration, whose first transition names the run retried. A tracked
+  run's commit must still be the stack's tracked commit, and its retry
+  also needs RUN_RETRY_BLOCKING. A caller
   promotes a proposed run whose commit is newer than the stack's tracked
   commit, on a stack whose githubActionDeploy allows it: the commit
   becomes the tracked commit, and a tracked run on it is queued on the
@@ -71,6 +73,36 @@ Feature: Runs are retried, promoted, discarded together and commented on
     Then it answers a 409 problem "invalid-state"
     When token "h" sends "POST /api/v1/stacks/infra/runs/01ARZ3NDEKTSV4RRFFQ69G5FAV/retry" through A
     Then it answers a 404 problem "not-found"
+
+  @op:runRetry @op:run @case:failure
+  Scenario: A tracked run on an old commit cannot retry, while an old proposed run still can
+    Given token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "tracked"
+    And token "h" eventually reads the run "tracked" in the state "READY" through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{tracked}/cancel" with '{}' through A
+    Then it answers 200
+    And the answer's canRetry is 'true'
+    Given a commit to "main" of "infra" changing "main.tf"
+    And the head of "main" of "infra" is kept as "next"
+    And token "h" sends "POST /api/v1/stacks/infra/sync-commit" through B
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "next" through A
+    When token "h" sends "GET /api/v1/runs/{tracked}" through B
+    Then it answers 200
+    And the answer's canRetry is 'false'
+    And the answer's retryBlocker is '"A retry needs a tracked run on the stack\u0027s tracked commit."'
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{tracked}/retry" through A
+    Then it answers a 409 problem "invalid-state"
+    When token "h" sends "GET /api/v1/stacks/infra/runs" through B
+    Then the answer's items are the runs "tracked"
+    Given token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through A
+    And the answer's id names "proposal"
+    And token "h" eventually reads the run "proposal" in the state "READY" through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{proposal}/cancel" with '{}' through A
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{proposal}/retry" through B
+    Then it answers 200
+    And the answer's type is '"PROPOSED"'
+    And the answer's commits is '["{seed}"]'
 
   @op:runPromote @case:success
   Scenario: Promoting a proposed run on a newer commit tracks the commit and queues a tracked run on it

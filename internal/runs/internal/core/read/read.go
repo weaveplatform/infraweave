@@ -375,7 +375,7 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 	for i, r := range runs {
 		st := settings[r.Stack]
 		blocker, ok := blockers[r.Stack]
-		g := Guards{Retry: RetryBlocker(r), Promote: PromoteBlocker(r, st)}
+		g := Guards{Retry: RetryBlocker(r, st), Promote: PromoteBlocker(r, st)}
 		out[i] = View{
 			Run: r, Stack: st.Stack, History: histories[r.ID], Comments: comments[r.ID],
 			Guards: g, Actions: Allowed(r, ok && blocker.Run == r.ID, held[st.Space], g),
