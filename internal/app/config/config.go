@@ -80,6 +80,8 @@ type Config struct {
 	//
 	// ref: decision 0008
 	Run runsassembly.Settings `mapstructure:"run"`
+	// Runs controls repository runtime configuration validation.
+	Runs runsassembly.RuntimeSettings `mapstructure:"runs"`
 	// State is the state domain's: the largest state version a write may
 	// carry, and how long a version is kept once a newer one replaces it.
 	//
@@ -136,6 +138,7 @@ func Defaults() Config {
 		Vendors:     vendorsassembly.DefaultSettings(),
 		Worker:      workersassembly.DefaultSettings(),
 		Run:         runsassembly.DefaultSettings(),
+		Runs:        runsassembly.DefaultRuntimeSettings(),
 		State:       stateassembly.DefaultSettings(),
 	}
 }
@@ -282,6 +285,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Vendors.Validate(),
 		c.Worker.Validate(),
 		c.Run.Validate(),
+		c.Runs.Validate(),
 		c.State.Validate(),
 		c.liveness(),
 	); err != nil {

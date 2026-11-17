@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
@@ -19,6 +20,8 @@ type Record struct {
 // Execution holds only execution settings absent from Configuration.
 // Tool versions and Terragrunt's mode live in Configuration alone.
 type Execution struct {
+	Notices                      []string        `json:"notices,omitempty"`
+	Refusal                      *string         `json:"refusal,omitempty"`
 	Vendor                       string          `json:"vendor"`
 	VendorConfig                 json.RawMessage `json:"vendorConfig"`
 	Tool                         *Tool           `json:"tool,omitempty"`
@@ -188,6 +191,12 @@ func New(spec workersapi.Spec, managesState bool) (*Record, error) {
 // variables/files and source credentials to the handover that reads them.
 func (r *Record) Apply(spec *workersapi.Spec) {
 	c, e := r.Configuration, r.Execution
+	spec.Notices = slices.Clone(e.Notices)
+	spec.Refusal = nil
+	if e.Refusal != nil {
+		refusal := *e.Refusal
+		spec.Refusal = &refusal
+	}
 	root, image := c.ProjectRoot, c.RunnerImage
 	spec.Stack.ProjectRoot, spec.RunnerImage = nil, nil
 	if e.ProjectRootSpecified {

@@ -631,6 +631,12 @@ type RunSpec struct {
 	// Hooks Each phase's commands, by phase such as before_init or after_plan, in the order they run. Before a phase, the hooks of the contexts attached by hand run first, by priority, then those of the contexts attached automatically, then the stack's; after a phase they run in the reverse order.
 	Hooks map[string][]string `json:"hooks"`
 
+	// Notices Repository runtime configuration warnings, written at the start of INITIALIZING before any hook or command. Absent when empty.
+	Notices *[]string `json:"notices,omitempty"`
+
+	// Refusal A repository runtime configuration refusal naming its key's path. The runner logs it and fails INITIALIZING before any hook or command, including a task that skips initialization.
+	Refusal *string `json:"refusal,omitempty"`
+
 	// Run The run.
 	Run RunSpecRun `json:"run"`
 

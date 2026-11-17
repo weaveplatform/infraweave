@@ -76,9 +76,13 @@ type Secret interface{ Reveal() []byte }
 // Spec is a run's specification, what the worker API's RunSpec answers
 // but sealed: no write-only value is in it.
 type Spec struct {
-	Run    SpecRun
-	Stack  SpecStack
-	Commit SpecCommit
+	// Notices and Refusal describe the repository runtime configuration;
+	// the runner reports them before INITIALIZING can run any command.
+	Notices []string
+	Refusal *string
+	Run     SpecRun
+	Stack   SpecStack
+	Commit  SpecCommit
 	// RuntimeConfig is the runtime configuration the run's trigger gave,
 	// nil when it gave none.
 	RuntimeConfig json.RawMessage

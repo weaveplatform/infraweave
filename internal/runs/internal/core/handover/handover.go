@@ -53,6 +53,9 @@ type Store interface {
 	// Overrides opens run's environment overrides, none for a run
 	// without.
 	Overrides(ctx context.Context, run lifecycle.Run) ([]lifecycle.Override, error)
+	// SetOverrides seals file variables together with existing custom values
+	// in the first handover's transaction, for replay and retry.
+	SetOverrides(ctx context.Context, run lifecycle.Run, overrides []lifecycle.Override) error
 	// RecordResolved writes run's first resolved configuration in its
 	// successful specification transaction, while Handed's row lock is held.
 	RecordResolved(ctx context.Context, run lifecycle.Run, record *runtimeconfig.Record) error
@@ -89,20 +92,22 @@ type Deps struct {
 	Tokens      Tokens
 	Catalog     vendorsapi.Catalog
 	Objects     Objects
+	UnknownKeys string
 }
 
 // Service builds the specifications of claimed runs.
 type Service struct {
-	store    Store
-	stacks   stacksapi.Stacks
-	spaces   accessapi.Spaces
-	accounts accessapi.Accounts
-	env      configapi.Environment
-	tokens   Tokens
-	catalog  vendorsapi.Catalog
-	objects  Objects
-	exprs    Renderer
-	sources  runsapi.RunSources
+	store       Store
+	stacks      stacksapi.Stacks
+	spaces      accessapi.Spaces
+	accounts    accessapi.Accounts
+	env         configapi.Environment
+	tokens      Tokens
+	catalog     vendorsapi.Catalog
+	objects     Objects
+	exprs       Renderer
+	sources     runsapi.RunSources
+	unknownKeys string
 }
 
 // New returns the service over d.
@@ -110,6 +115,7 @@ func New(d Deps) *Service {
 	return &Service{
 		store: d.Store, stacks: d.Stacks, spaces: d.Spaces, accounts: d.Accounts,
 		env: d.Environment, tokens: d.Tokens, catalog: d.Catalog, objects: d.Objects,
+		unknownKeys: d.UnknownKeys,
 	}
 }
 
@@ -197,8 +203,21 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the typed configuration names the read
 	}
+	custom := rc
+	var repository runtimeconfig.File
+	var hasFile bool
 	var resolved configapi.Resolved
 	if r.ResolvedConfig == nil {
+		repository, hasFile, err = s.repositoryConfig(ctx, r, labels[r.Stack], st.Slug, st.Vendor)
+		if err != nil {
+			return workersapi.Handover{}, err
+		}
+		if hasFile {
+			rc = runtimeconfig.Overlay(repository.Settings(st), custom)
+		}
+		if repository.Refusal != nil {
+			rc = runtimeconfig.Input{}
+		}
 		if err := rc.ApplySettings(&st); err != nil {
 			return workersapi.Handover{}, err //nolint:wrapcheck // the configuration names the refused setting
 		}
@@ -208,6 +227,24 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	}
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the configuration domain names it
+	}
+	ovs, err := s.store.Overrides(ctx, r)
+	if err != nil {
+		return workersapi.Handover{}, err
+	}
+	var fileVariables []runtimeconfig.Variable
+	if r.ResolvedConfig == nil && hasFile && repository.Refusal == nil {
+		fileVariables = repository.Variables(resolved.Elements)
+		if len(fileVariables) > 0 {
+			joined := make([]lifecycle.Override, 0, len(fileVariables)+len(ovs))
+			for _, v := range fileVariables {
+				joined = append(joined, lifecycle.Override{Name: v.Key, Value: v.Value})
+			}
+			ovs = append(joined, ovs...)
+			if err := s.store.SetOverrides(ctx, r, ovs); err != nil {
+				return workersapi.Handover{}, err
+			}
+		}
 	}
 	stack := workersapi.SpecStack{
 		Slug:                         st.Slug,
@@ -249,7 +286,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		Hooks:       resolved.Hooks,
 	}
 	if len(r.RuntimeConfig) > 0 {
-		spec.RuntimeConfig, _ = json.Marshal(rc.Public())
+		spec.RuntimeConfig, _ = json.Marshal(custom.Public())
 	}
 	if r.State == kernel.RunStatePreparingReplan {
 		spec.Targets = r.ReplanTargets
@@ -259,15 +296,20 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		if record, err = runtimeconfig.New(spec, st.ManagesState); err != nil {
 			return workersapi.Handover{}, err //nolint:wrapcheck // the record names the invalid vendor settings
 		}
+		record.Configuration.Environment = runtimeKeys(fileVariables, custom.Environment)
+		if hasFile {
+			record.Configuration.YAML = repository.YAML
+		}
+		record.Execution.Notices = slices.Clone(repository.Notices)
+		if repository.Refusal != nil {
+			note := repository.Refusal.Error()
+			record.Execution.Refusal = &note
+		}
 	}
 	record.Apply(&spec)
 	stack = spec.Stack
 	if record.Execution.ManagesState {
 		spec.StateBackend = &workersapi.StateBackend{Path: StatePath + r.Stack.String()}
-	}
-	ovs, err := s.store.Overrides(ctx, r)
-	if err != nil {
-		return workersapi.Handover{}, err //nolint:wrapcheck // the store names the read
 	}
 	sec := secrets{Environment: map[string]string{}, Files: map[string][]byte{}}
 	err = s.environment(ctx, r, stack, account, resolved.Elements, ovs, &spec, &sec)

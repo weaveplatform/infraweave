@@ -335,6 +335,17 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 		rep.Event, rep.Details, rep.Delta = wire.Stopped, &detail, nil
 		return rep
 	}
+	if state == wire.WorkerStateINITIALIZING {
+		if notices := r.h.Spec.Notices; notices != nil {
+			for _, notice := range *notices {
+				_, _ = fmt.Fprintln(r.log, "infraweave: .infraweave/config.yml: "+notice)
+			}
+		}
+		if refusal := r.h.Spec.Refusal; refusal != nil {
+			_, _ = fmt.Fprintln(r.log, "infraweave: .infraweave/config.yml: "+*refusal)
+			return fail(*refusal)
+		}
+	}
 	if !r.ready {
 		r.prepare(ctx)
 	}
