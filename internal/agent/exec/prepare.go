@@ -22,7 +22,7 @@ import (
 
 // Errors of a run the runner cannot prepare.
 var (
-	errProjectRoot = errors.New("the project root is not under the workspace")
+	errProjectRoot = errors.New("the project root is not under the checkout")
 	errFile        = errors.New("a mounted file cannot be written")
 )
 
@@ -68,8 +68,11 @@ func (r *run) setUp(ctx context.Context) string {
 		return fmt.Sprintf("The project root cannot be used: %v.", err)
 	}
 	if info, err := os.Stat(r.dir); err != nil || !info.IsDir() {
-		return "The project root " + *r.h.Spec.Stack.ProjectRoot + " is not a directory of " +
-			"the workspace."
+		name := "."
+		if p := r.h.Spec.Stack.ProjectRoot; p != nil && *p != "" {
+			name = *p
+		}
+		return "The project root " + name + " is not a directory of the checkout."
 	}
 
 	if err := r.files(); err != nil {
@@ -280,7 +283,7 @@ func lookup(env []string, name string) string {
 // their modes, a write-only file's content from the opened secrets. The
 // workspace is opened as a root, so neither a path nor a link the
 // repository commits writes outside it, and a file there is replaced
-// rather than followed.
+// rather than followed. A path under source/ replaces a checkout file.
 func (r *run) files() error {
 	if len(r.h.Spec.Files) == 0 {
 		return nil

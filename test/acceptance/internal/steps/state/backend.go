@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/backend"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
@@ -50,13 +51,15 @@ type backendSteps struct {
 }
 
 // takenRun is a run the scenario took over: its ID, the name of its run
-// token, the state version its next report names, its workspace, its
+// token, the state version its next report names, its checkout directory
+// for direct tool calls and whole workspace for a runner container, its
 // tool's environment, its backend's path, its tool's last standard
 // output, and the handoff a runner of it reads.
 type takenRun struct {
 	id, token string
 	version   int64
 	dir       string
+	workspace string
 	env       []string
 	path      string
 	stdout    string
@@ -173,8 +176,13 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 		return err
 	}
 	dir := filepath.Join(b.w.Dir, "workspace-"+run)
-	if err := b.checkOut(ctx, repo, spec.Commit.Hash, dir); err != nil {
+	checkout := filepath.Join(dir, source.Checkout)
+	if err := b.checkOut(ctx, repo, spec.Commit.Hash, checkout); err != nil {
 		return err
+	}
+	project := checkout
+	if root := spec.Stack.ProjectRoot; root != nil && *root != "" {
+		project = filepath.Join(checkout, filepath.FromSlash(*root))
 	}
 	spec.Sealed = nil
 	h := handoff.Handoff{
@@ -183,12 +191,12 @@ func (b *backendSteps) takeOver(ctx context.Context, run, token, csr, repo, repl
 		Spec: spec, Secrets: secrets, StateLockTimeout: stateLockTimeout,
 		PoolKey: pool.PublicKey().Bytes(),
 	}
-	env, err := backend.Configure(dir, dir, h)
+	env, err := backend.Configure(dir, project, h)
 	if err != nil {
 		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
 	b.runs[run] = &takenRun{
-		id: id, token: token, version: spec.Run.StateVersion, dir: dir,
+		id: id, token: token, version: spec.Run.StateVersion, dir: project, workspace: dir,
 		env: append(env, toolEnv...), path: spec.StateBackend.Path, handoff: h,
 	}
 	return nil

@@ -192,7 +192,8 @@ func (r *run) sealArtifact(object, name string, write func(io.Writer) error) (up
 	})
 }
 
-// sealWorkspace saves the workspace sealed to the pool's key for the run
+// sealWorkspace saves the whole workspace, checkout and mounted files
+// alike, sealed to the pool's key for the run
 // at version, leaving out what workspace.Write does and naming each such
 // entry in the run's log, and answers its upload. No file of it may hold
 // the run token or the source credential's token.

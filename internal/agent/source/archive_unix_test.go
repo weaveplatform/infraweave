@@ -163,17 +163,17 @@ func TestUnitFetchArchive(t *testing.T) {
 		"main.tf": "one\n", "infra/main.tf": "one\n", "copy.tf": "one\n",
 		"deep/er/file.tf": "deep\n", "infra/run.sh": "#!/bin/sh\n",
 	} {
-		if b, err := os.ReadFile(filepath.Join(ws, name)); err != nil || string(b) != want {
+		if b, err := os.ReadFile(filepath.Join(ws, Checkout, name)); err != nil || string(b) != want {
 			t.Errorf("%s: %q, %v", name, b, err)
 		}
 	}
-	if target, err := os.Readlink(filepath.Join(ws, "infra", "main.tf")); err != nil ||
+	if target, err := os.Readlink(filepath.Join(ws, Checkout, "infra", "main.tf")); err != nil ||
 		target != "../main.tf" {
 		t.Errorf("the link: %q, %v", target, err)
 	}
 	if os.Geteuid() == 0 {
 		var st syscall.Stat_t
-		if err := syscall.Lstat(filepath.Join(ws, "main.tf"), &st); err != nil ||
+		if err := syscall.Lstat(filepath.Join(ws, Checkout, "main.tf"), &st); err != nil ||
 			st.Uid != UID || st.Gid != GID {
 			t.Errorf("owner %d:%d, %v", st.Uid, st.Gid, err)
 		}
@@ -182,7 +182,7 @@ func TestUnitFetchArchive(t *testing.T) {
 			"": fs.ModeDir | 0o777, "infra": fs.ModeDir | 0o777, "main.tf": 0o666,
 			"infra/run.sh": 0o777, "deep/er/file.tf": 0o666,
 		} {
-			if got := mode(t, filepath.Join(ws, name)); got != want {
+			if got := mode(t, filepath.Join(ws, Checkout, name)); got != want {
 				t.Errorf("%q: %v, want %v", name, got, want)
 			}
 		}
@@ -250,7 +250,7 @@ func TestUnitFetchArchive(t *testing.T) {
 		},
 		{
 			"no project root", targz(t, reg("main.tf", "x", 0o644)), 0, nil, ErrProjectRoot,
-			"the project root is not a directory of the workspace: infra",
+			"the project root is not a directory of the checkout: infra",
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {

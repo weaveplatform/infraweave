@@ -1,19 +1,22 @@
 // Package source writes a run's workspace on the launcher's host, before
 // the run's container starts: Fetch its source, and Restore the workspace
-// its planning saved. A git source's
+// its planning saved. The checkout, Git or a local preview archive, is
+// under source/; mounted files and infraweave's own files live beside it
+// at the workspace's top level. A git source's
 // commit is fetched from the provider's HTTPS URL with go-git, alone and
 // with no history, presenting the run's source credential as HTTP Basic
 // auth, and checked out; the credential stays in memory, and an error
 // that would echo it has it replaced. An archive source, a local
 // preview's tar.gz, is downloaded from its pre-signed URL, at most 2 GiB,
-// and extracted through an os.Root of the workspace, at most 8 GiB,
-// refusing an entry or a link that leaves the workspace and any device
+// and extracted through an os.Root of the checkout, at most 8 GiB,
+// refusing an entry or a link that leaves the checkout and any device
 // or pipe. A saved workspace is downloaded from the pre-signed URL the
 // worker API answered, at most 2 GiB, opened with the pool's private key
 // and extracted the same way by internal/agent/workspace. The
 // specification's project root must then be a directory of the
-// workspace, which is handed to the run's user: owned by UID and GID 1983
-// where the launcher may change owners, else open to every user. A
+// checkout. The whole workspace is handed to the run's user: owned by
+// UID and GID 1983 where the launcher may change owners, else open to
+// every user. A
 // store's 400 or 403 to either download is marked client.ErrSigned, the
 // store's refusal of the URL's signature, for the caller to fetch again
 // from a URL signed afresh.

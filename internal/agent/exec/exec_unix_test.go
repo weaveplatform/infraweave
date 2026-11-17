@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/exec"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
@@ -210,6 +211,7 @@ type world struct {
 	w         *worker
 	pool      *ecdh.PrivateKey
 	workspace string
+	checkout  string
 	trace     string
 	plan      string
 	environ   []string
@@ -240,7 +242,7 @@ func newWorld(t *testing.T) *world {
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "bin")
 	ws := filepath.Join(dir, "workspace")
-	for _, d := range []string{bin, ws} {
+	for _, d := range []string{bin, ws, filepath.Join(ws, source.Checkout)} {
 		if err := os.Mkdir(d, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -262,7 +264,7 @@ func newWorld(t *testing.T) *world {
 		t.Fatal(err)
 	}
 	return &world{
-		t: t, workspace: ws, trace: trace, plan: plan, pool: pool,
+		t: t, workspace: ws, checkout: filepath.Join(ws, source.Checkout), trace: trace, plan: plan, pool: pool,
 		w: &worker{version: 3},
 		environ: []string{
 			"PATH=" + bin + ":/usr/bin:/bin", "TRACE=" + trace, "PLAN=" + plan,
@@ -302,7 +304,7 @@ destroy: terraform destroy
 // workflow writes content as the project root's workflow file.
 func (w *world) workflow(content string) {
 	w.t.Helper()
-	dir := filepath.Join(w.workspace, ".infraweave")
+	dir := filepath.Join(w.checkout, ".infraweave")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		w.t.Fatal(err)
 	}
@@ -366,7 +368,7 @@ func TestUnitExecAutodeploy(t *testing.T) {
 	w := newWorld(t)
 	w.w.autodeploy = true
 	root := "infra"
-	if err := os.Mkdir(filepath.Join(w.workspace, root), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(w.checkout, root), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	script, mode, greeting, input := []byte("echo hi\n"), "700", "hello", "false"
@@ -378,7 +380,7 @@ func TestUnitExecAutodeploy(t *testing.T) {
 		{Name: "TF_INPUT", Value: &input},
 	}
 	w.h.Spec.Files = []wire.RunSpecFile{
-		{Path: "infra/scripts/run.sh", Content: &script, FileMode: &mode},
+		{Path: "source/infra/scripts/run.sh", Content: &script, FileMode: &mode},
 		{Path: "secret.txt", WriteOnly: true},
 		{Path: "empty"},
 	}
@@ -431,8 +433,8 @@ func TestUnitExecAutodeploy(t *testing.T) {
 		t.Errorf("output: %s", w.out.String())
 	}
 	for name, want := range map[string]fs.FileMode{
-		"infra/scripts/run.sh": 0o700, "secret.txt": 0o600, "empty": 0o644,
-		"infra/" + backend.File: 0o600,
+		"source/infra/scripts/run.sh": 0o700, "secret.txt": 0o600, "empty": 0o644,
+		"source/infra/" + backend.File: 0o600,
 	} {
 		info, err := os.Stat(filepath.Join(w.workspace, name))
 		if err != nil || info.Mode().Perm() != want {
@@ -520,7 +522,7 @@ func TestUnitExecReplan(t *testing.T) {
 			`-target=x.y["$(touch pwned)"] -target=x.y; touch pwned`,
 		"show -json infraweave.plan",
 	})
-	if _, err := os.Stat(filepath.Join(w.workspace, "pwned")); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(w.checkout, "pwned")); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("a target ran as a command: %v", err)
 	}
 
@@ -557,7 +559,7 @@ func TestUnitExecWorkflowFile(t *testing.T) {
 	if !strings.Contains(w.out.String(), "workspace x; touch pwned targets\n") {
 		t.Errorf("output: %s", w.out.String())
 	}
-	if _, err := os.Stat(filepath.Join(w.workspace, "pwned")); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(w.checkout, "pwned")); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("the workspace name ran as a command: %v", err)
 	}
 
@@ -675,13 +677,37 @@ func TestUnitExecPreparationFails(t *testing.T) {
 			edit: func(w *world) { w.h.Spec.Tool.Name = "pulumi" },
 			want: "The runner has no commands for pulumi.",
 		},
-		"a project root outside the workspace": {
+		"a project root outside the checkout": {
 			edit: func(w *world) { w.h.Spec.Stack.ProjectRoot = &outside },
 			want: "The project root cannot be used: ",
 		},
 		"a project root that is missing": {
 			edit: func(w *world) { w.h.Spec.Stack.ProjectRoot = &missing },
-			want: "The project root missing is not a directory of the workspace.",
+			want: "The project root missing is not a directory of the checkout.",
+		},
+		"a missing checkout with no project root": {
+			edit: func(w *world) {
+				if err := os.Remove(w.checkout); err != nil {
+					w.t.Fatal(err)
+				}
+			},
+			want: "The project root . is not a directory of the checkout.",
+		},
+		"a missing checkout with an empty project root": {
+			edit: func(w *world) {
+				w.h.Spec.Stack.ProjectRoot = new("")
+				if err := os.Remove(w.checkout); err != nil {
+					w.t.Fatal(err)
+				}
+			},
+			want: "The project root . is not a directory of the checkout.",
+		},
+		"a mounted file cannot create the project root": {
+			edit: func(w *world) {
+				w.h.Spec.Stack.ProjectRoot = &missing
+				w.h.Spec.Files = []wire.RunSpecFile{{Path: "source/missing/a.txt"}}
+			},
+			want: "The project root missing is not a directory of the checkout.",
 		},
 		"a file outside the workspace": {
 			edit: func(w *world) { w.h.Spec.Files = []wire.RunSpecFile{{Path: "../x"}} },
@@ -768,7 +794,7 @@ func TestUnitExecPreparationFails(t *testing.T) {
 					w.t.Fatal(err)
 				}
 				w.workflow("")
-				name := filepath.Join(w.workspace, ".infraweave", "workflow.yml")
+				name := filepath.Join(w.checkout, ".infraweave", "workflow.yml")
 				if err := os.Remove(name); err != nil {
 					w.t.Fatal(err)
 				}
@@ -970,9 +996,9 @@ func TestUnitExecLog(t *testing.T) {
 		{Name: "PLAIN_PASS", Value: &plain},
 		{Name: "VISIBLE", Value: &short},
 	}
-	w.h.Spec.Files = []wire.RunSpecFile{{Path: "key.txt", WriteOnly: true}}
+	w.h.Spec.Files = []wire.RunSpecFile{{Path: "source/key.txt", WriteOnly: true}}
 	w.h.Secrets.Environment = map[string]string{"SECRET": "hunter22", "SHORT": short}
-	w.h.Secrets.Files = map[string][]byte{"key.txt": []byte("first-line\nsecond-line\n")}
+	w.h.Secrets.Files = map[string][]byte{"source/key.txt": []byte("first-line\nsecond-line\n")}
 	w.h.Spec.Hooks = map[string][]string{
 		"before_init": {
 			`echo "secret $SECRET short $SHORT plain $PLAIN_PASS"`,

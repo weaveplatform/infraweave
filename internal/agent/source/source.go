@@ -25,6 +25,10 @@ const (
 	GID = 1983
 )
 
+// Checkout is the repository's directory inside a run's workspace. The
+// runner's project root is under it, beside the top-level mounted files.
+const Checkout = "source"
+
 // fetchTimeout bounds one source's fetch, under the pool's default
 // preparing timeout of 15 minutes, so a stalled fetch fails the run before
 // the server gives up on it.
@@ -38,7 +42,7 @@ var (
 	ErrCommit      = errors.New("not a commit hash")
 	ErrDownload    = errors.New("the download failed")
 	ErrArchive     = errors.New("the archive is refused")
-	ErrProjectRoot = errors.New("the project root is not a directory of the workspace")
+	ErrProjectRoot = errors.New("the project root is not a directory of the checkout")
 )
 
 // Fetcher fetches runs' sources into their workspaces.
@@ -59,14 +63,13 @@ func New(doer wire.HttpRequestDoer, ca []byte) *Fetcher {
 	}
 }
 
-// Fetch writes spec's source into dir, which must not exist: the commit
-// checked out from its Git URL, presenting cred as HTTP Basic auth when
-// there is one, or the archive extracted whole. Sparse paths narrow only
-// a Git checkout; a local preview's archive retains all its files. It
-// then checks that the
-// specification's project root is a directory of it, and hands it to the
-// run's user. cred stays in memory: it reaches the provider's host alone,
-// and no file, URL, log or error holds it.
+// Fetch writes spec's source into dir/source, where dir must not exist:
+// the commit checked out from its Git URL, presenting cred as HTTP Basic
+// auth when there is one, or the archive extracted whole. Sparse paths
+// narrow only Git checkout; a local preview retains all its files. It
+// then checks the project root within the checkout and hands the whole
+// workspace to the run's user. cred stays in memory: it reaches the
+// provider's host alone, and no file, URL, log or error holds it.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 // ref: decision 0012 § "Source access for runs"
@@ -85,6 +88,10 @@ func (f *Fetcher) fetch(ctx context.Context, dir string, spec wire.RunSpec, cred
 		u.User != nil {
 		return ErrURL
 	}
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		return fmt.Errorf("the workspace: %w", err)
+	}
+	checkout := filepath.Join(dir, Checkout)
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 	switch s.Kind {
@@ -93,11 +100,11 @@ func (f *Fetcher) fetch(ctx context.Context, dir string, spec wire.RunSpec, cred
 		if s.SparsePaths != nil {
 			paths = *s.SparsePaths
 		}
-		if err := f.git(ctx, dir, s.Url, spec.Commit.Hash, paths, cred); err != nil {
+		if err := f.git(ctx, checkout, s.Url, spec.Commit.Hash, paths, cred); err != nil {
 			return fmt.Errorf("fetch commit %s from %s: %w", spec.Commit.Hash, u.Host, err)
 		}
 	case wire.Archive:
-		if err := f.archive(ctx, dir, s.Url); err != nil {
+		if err := f.archive(ctx, checkout, s.Url); err != nil {
 			return fmt.Errorf("fetch the archive from %s: %w", u.Host, err)
 		}
 	default:
@@ -109,8 +116,8 @@ func (f *Fetcher) fetch(ctx context.Context, dir string, spec wire.RunSpec, cred
 // Restore writes into dir, which must not exist, the run's saved
 // workspace that src, its pre-signed URL, answers: at most 2 GiB, opened
 // with pool's private key for run and extracted, at most 8 GiB, as
-// workspace.Read does. It then checks spec's project root and hands dir to
-// the run's user, as Fetch does. No error names src.
+// workspace.Read does. It checks spec's project root under source/ and
+// hands dir to the run's user, as Fetch does. No error names src.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 func (f *Fetcher) Restore(ctx context.Context, dir, src string, pool *ecdh.PrivateKey, run string, spec wire.RunSpec) error {
@@ -128,11 +135,16 @@ func (f *Fetcher) Restore(ctx context.Context, dir, src string, pool *ecdh.Priva
 	return ready(dir, spec)
 }
 
-// ready checks that spec's project root is a directory of dir and hands
-// dir to the run's user.
+// ready checks that spec's project root is a directory of dir/source,
+// reached through no link that leaves the checkout, and hands the whole
+// workspace to the run's user.
 func ready(dir string, spec wire.RunSpec) error {
-	if root := spec.Stack.ProjectRoot; root != nil && *root != "" && !isDir(dir, *root) {
-		return fmt.Errorf("%w: %s", ErrProjectRoot, *root)
+	root := "."
+	if p := spec.Stack.ProjectRoot; p != nil && *p != "" {
+		root = *p
+	}
+	if !isDir(filepath.Join(dir, Checkout), root) {
+		return fmt.Errorf("%w: %s", ErrProjectRoot, root)
 	}
 	if err := handOver(dir); err != nil {
 		return fmt.Errorf("hand the workspace to the run's user: %w", err)

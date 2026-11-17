@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
+	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/agent/workspace"
@@ -124,10 +125,10 @@ func (f *fakeSources) Fetch(_ context.Context, dir string, _ wire.RunSpec, cred 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.dirs, f.creds = append(f.dirs, dir), append(f.creds, cred)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, source.Checkout), 0o750); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(dir, "main.tf"), nil, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, source.Checkout, "main.tf"), nil, 0o600); err != nil {
 		return err
 	}
 	return f.next()
@@ -140,10 +141,10 @@ func (f *fakeSources) Restore(_ context.Context, dir, src string, pool *ecdh.Pri
 		return errNoPool
 	}
 	f.restored = append(f.restored, dir+" from "+src)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, source.Checkout), 0o750); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(dir, "main.tf"), nil, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, source.Checkout, "main.tf"), nil, 0o600); err != nil {
 		return err
 	}
 	return f.next()
@@ -622,7 +623,7 @@ func TestUnitLauncherFetchesTheRunsSource(t *testing.T) {
 		if j := w.exec.Jobs()[0]; j.Workspace != ws {
 			t.Fatalf("the job's workspace: %q", j.Workspace)
 		}
-		if _, err := os.Stat(filepath.Join(ws, "main.tf")); err != nil {
+		if _, err := os.Stat(filepath.Join(ws, source.Checkout, "main.tf")); err != nil {
 			t.Fatal(err)
 		}
 		w.exec.Container("worker-1").End(ended(0, wire.Exited))
@@ -797,7 +798,10 @@ func TestUnitNewDefaults(t *testing.T) {
 			t.Fatalf("details: %s", d)
 		}
 		src := t.TempDir()
-		if err := os.WriteFile(filepath.Join(src, "main.tf"), nil, 0o600); err != nil {
+		if err := os.MkdirAll(filepath.Join(src, source.Checkout), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(src, source.Checkout, "main.tf"), nil, 0o600); err != nil {
 			t.Fatal(err)
 		}
 		var saved bytes.Buffer

@@ -6,8 +6,10 @@
 // report whose answer is lost is sent again with the same body, and one
 // refused with 409 ends the runner with no further report.
 //
-// Before its first phase the runner writes the specification's mounted
-// files under the workspace, reads the project root's
+// Before its first phase the runner checks the project root under the
+// workspace's source/ checkout, then writes the specification's mounted
+// files under the workspace. A file under source/ replaces the checkout's.
+// It reads the project root's
 // .infraweave/workflow.yml when it has one, which a stack whose workflow
 // tool is CUSTOM must, and checks every template of it, or of the tool's
 // built-in workflow, failing the phase with the key at fault; it writes

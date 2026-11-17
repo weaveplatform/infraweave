@@ -27,10 +27,13 @@ func TestUnitRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(src, "infra"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(src, "a.txt"), []byte("mounted"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(src, "infra", "main.tf"), []byte("terraform {}"),
+	if err := os.MkdirAll(filepath.Join(src, Checkout, "infra"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, Checkout, "infra", "main.tf"), []byte("terraform {}"),
 		0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -47,9 +50,12 @@ func TestUnitRestore(t *testing.T) {
 		archiveSpec("", ptr("infra"))); err != nil {
 		t.Fatal(err)
 	}
-	if b, err := os.ReadFile(filepath.Join(dir, "infra", "main.tf")); err != nil ||
+	if b, err := os.ReadFile(filepath.Join(dir, Checkout, "infra", "main.tf")); err != nil ||
 		string(b) != "terraform {}" {
 		t.Fatalf("main.tf = %q, %v", b, err)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "a.txt")); err != nil || string(b) != "mounted" {
+		t.Fatalf("mounted file = %q, %v", b, err)
 	}
 	if m := mode(t, dir); m.Perm()&0o070 != 0o070 {
 		t.Errorf("the workspace is not handed to the run's user: %v", m)

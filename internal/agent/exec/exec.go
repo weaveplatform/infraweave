@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
 	"github.com/weaveplatform/infraweave/internal/agent/runlog"
+	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
@@ -36,8 +37,8 @@ type Reporter interface {
 
 // Deps are what Run needs beyond the handoff: the worker API's reports,
 // log uploads and artifact uploads, the runner's log, where the session's
-// masked output goes, the workspace the source is checked out in, the
-// environment the session starts from, and Stop, which carries each
+// masked output goes, the workspace holding its checkout and mounted
+// files, the environment the session starts from, and Stop, which carries each
 // SIGINT the launcher sends the runner to stop the run.
 type Deps struct {
 	Reports   Reporter
@@ -759,15 +760,16 @@ func masker(h handoff.Handoff) *mask.Masker {
 	return m
 }
 
-// project is the run's project root under the workspace.
+// project is the run's project root inside the workspace's checkout.
 func (r *run) project() (string, error) {
 	p := r.h.Spec.Stack.ProjectRoot
+	checkout := filepath.Join(r.d.Workspace, source.Checkout)
 	if p == nil || *p == "" || *p == "." {
-		return r.d.Workspace, nil
+		return checkout, nil
 	}
 	rel := filepath.FromSlash(*p)
 	if !filepath.IsLocal(rel) {
 		return "", fmt.Errorf("%w: %q", errProjectRoot, *p)
 	}
-	return filepath.Join(r.d.Workspace, rel), nil
+	return filepath.Join(checkout, rel), nil
 }

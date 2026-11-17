@@ -219,11 +219,11 @@ func TestUnitFetchGit(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{"main.tf": "one\n", "infra/net.tf": "net\n"} {
-		if b, err := os.ReadFile(filepath.Join(dir, name)); err != nil || string(b) != want {
+		if b, err := os.ReadFile(filepath.Join(dir, Checkout, name)); err != nil || string(b) != want {
 			t.Errorf("%s: %q, %v", name, b, err)
 		}
 	}
-	head, err := os.ReadFile(filepath.Join(dir, ".git", "HEAD"))
+	head, err := os.ReadFile(filepath.Join(dir, Checkout, ".git", "HEAD"))
 	if err != nil || strings.TrimSpace(string(head)) != r.first {
 		t.Errorf("HEAD: %q, %v", head, err)
 	}
@@ -261,11 +261,15 @@ func TestUnitFetchGit(t *testing.T) {
 		{"no hash", gitSpec(url, "main", nil), cred, ErrCommit, `not a commit hash: "main"`},
 		{
 			"a project root that is not there", gitSpec(url, r.second, ptr("modules")), cred,
-			ErrProjectRoot, "the project root is not a directory of the workspace: modules",
+			ErrProjectRoot, "the project root is not a directory of the checkout: modules",
 		},
 		{
 			"a project root outside", gitSpec(url, r.second, ptr("../..")), cred, ErrProjectRoot,
 			"../..",
+		},
+		{
+			"the checkout's name is not its project root", gitSpec(url, r.second, ptr(Checkout)), cred,
+			ErrProjectRoot, "the project root is not a directory of the checkout: source",
 		},
 		{
 			"a project root that is a file", gitSpec(url, r.second, ptr("main.tf")), cred,
@@ -307,7 +311,7 @@ func TestUnitFetchBranches(t *testing.T) {
 	if err := fetcher().Fetch(t.Context(), dir, gitSpec(url, r.first, nil), nil); err != nil {
 		t.Fatal(err)
 	}
-	if b, err := os.ReadFile(filepath.Join(dir, "main.tf")); err != nil || string(b) != "one\n" {
+	if b, err := os.ReadFile(filepath.Join(dir, Checkout, "main.tf")); err != nil || string(b) != "one\n" {
 		t.Fatalf("main.tf: %q, %v", b, err)
 	}
 	err := fetcher().Fetch(t.Context(), filepath.Join(t.TempDir(), "ws"),
