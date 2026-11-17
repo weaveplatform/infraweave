@@ -112,7 +112,7 @@ func (c runCalls) upload(t *testing.T, v int64, kind, name string, body []byte) 
 // another run's token answers 401. The account's purge deletes the
 // chunks and records and marks their objects for deletion.
 func TestAccRunReports(t *testing.T) {
-	w := newClaimWorld(t)
+	w := newRunSpecWorld(t)
 	ctx := t.Context()
 	pool, key := w.certified(t)
 	run := w.run(t, w.acct, pool, runSpec{kernel.RunTypeTracked, kernel.RunPriorityNormal, false},

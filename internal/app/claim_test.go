@@ -27,23 +27,29 @@ type claimWorld struct {
 	replicas [2]Domains
 	org      kernel.OrganizationID
 	stacks   map[string]kernel.ULID
+	commit   string
 }
 
 func newClaimWorld(t *testing.T) *claimWorld {
 	t.Helper()
-	h := newHoldWorld(t)
+	return newClaimWorldConfig(t, config.Defaults())
+}
+
+func newClaimWorldConfig(t *testing.T, c config.Config) *claimWorld {
+	t.Helper()
+	h := newHoldWorldConfig(t, c)
 	ctx, cancel := context.WithCancel(t.Context())
 	var wg sync.WaitGroup
 	t.Cleanup(func() {
 		cancel()
 		wg.Wait()
 	})
-	b, err := newDomains(config.Defaults(), h.db, h.keys, h.blobs.Objects, nil, testEvents(t, h.q),
+	b, err := newDomains(c, h.db, h.keys, h.blobs.Objects, nil, testEvents(t, h.q),
 		discard())
 	if err != nil {
 		t.Fatal(err)
 	}
-	w := &claimWorld{holdWorld: h, replicas: [2]Domains{h.d, b}, stacks: map[string]kernel.ULID{}}
+	w := &claimWorld{holdWorld: h, replicas: [2]Domains{h.d, b}, stacks: map[string]kernel.ULID{}, commit: "abc"}
 	// A run's handover resolves its tool from the catalogue, which no
 	// refresh fills here.
 	w.exec(t, `INSERT INTO vendor_releases (vendor, version)
@@ -121,9 +127,9 @@ func (w *claimWorld) run(t *testing.T, acct kernel.AccountID, pool kernel.ULID, 
 	id := kernel.NewULID()
 	w.exec(t, `INSERT INTO runs (account_id, id, stack_id, type, state, commit, triggered_by,
 		priority, drift_detection, priority_tier, worker_pool_id, created_at, command)
-		VALUES ($1, $2, $3, $4, 'READY', '{"hash":"abc"}', 'alice', $5, $6, $7, $8, $9,
+		VALUES ($1, $2, $3, $4, 'READY', jsonb_build_object('hash', $10::text), 'alice', $5, $6, $7, $8, $9,
 			CASE WHEN $4 = 'TASK' THEN 'ls' END)`,
-		acct, id, w.stacks["one"], string(s.typ), string(s.p), s.drift, s.tier(), pool, at)
+		acct, id, w.stacks["one"], string(s.typ), string(s.p), s.drift, s.tier(), pool, at, w.commit)
 	return id
 }
 

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -12,7 +13,16 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
 )
 
-func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, Streams()...)) }
+func TestMain(m *testing.M) {
+	code := sqltest.Main(m, Streams()...)
+	if err := runSpecDependencies.Close(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, "run specification source:", err)
+		if code == 0 {
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
 
 // sessions counts the connections to the test's database, other than the
 // observer's own, that match filter.
