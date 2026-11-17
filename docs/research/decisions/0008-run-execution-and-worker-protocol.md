@@ -555,7 +555,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   JSON, and `changes.json` with each change's unit in a field of its own,
   so no reader splits an address; the plan policy input's `terragrunt`
   block has one entry per unit. Its outputs are each unit's `output -json`,
-  named `<unit>/<output>`.
+  named `<unit>/<output>`, read with `terragrunt run -- output -json` in
+  each unit's directory, since `run --all` writes the units' documents one
+  after another with no unit's name
+  ([33 section 7.2](../reference/33-vendor-tool-documents.md#72-plans-outputs-and-render)).
 - **After planning** the runner uploads two sealed artifacts: `plan.json`,
   the tool's `show -json` of the plan, and `changes.json`, the changes
   `internal/iac` parses from it, which the server reads for the run's
