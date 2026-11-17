@@ -12896,7 +12896,7 @@ paths:
   /stacks/{stackId}/configs:
     post:
       description: >-
-        Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+        Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
       operationId: stackConfigAdd
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_ADD_CONFIG
@@ -13035,7 +13035,7 @@ paths:
       x-rest-style: delete
     put:
       description: >-
-        Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+        Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
       operationId: stackConfigSet
       x-infraweave-feature: stacks
       x-infraweave-action: STACK_ADD_CONFIG

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"testing"
 
+	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
@@ -126,6 +127,114 @@ func TestAccStackElements(t *testing.T) {
 		core.ErrNotFound,
 	) {
 		t.Errorf("REGION of a deleted stack = %v", err)
+	}
+}
+
+// TestAccStackElementContextNames refuses new names set by direct or
+// automatic contexts across the shared variable and mounted-file name
+// space, while retaining stack replacements and context writes.
+func TestAccStackElementContextNames(t *testing.T) {
+	for _, tt := range []struct {
+		name                    string
+		autoattached, fileMount bool
+	}{
+		{name: "direct variable"},
+		{name: "direct file", fileMount: true},
+		{name: "automatic variable", autoattached: true},
+		{name: "automatic file", autoattached: true, fileMount: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			f := newFixture(t)
+			for _, name := range []string{"KEEP", "LATE"} {
+				if _, _, err := f.svc.SetStackElement(ctx, f.admin, "web", variable(name, "stack"), "", "/id"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			in := core.Input{Space: "team", Name: "Shared", Config: []core.ElementInput{
+				{Name: "CLASH", FileMount: tt.fileMount, Value: new("Y29udGV4dA=="), WriteOnly: true},
+				variable("KEEP", "context"),
+			}}
+			if tt.autoattached {
+				in.Labels = []string{"autoattach:*"}
+			}
+			if _, err := f.svc.Create(ctx, f.admin, in); err != nil {
+				t.Fatal(err)
+			}
+			var attachment core.Attachment
+			if !tt.autoattached {
+				var err error
+				attachment, _, err = f.svc.Attach(ctx, f.admin, "shared", "web", 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, pointer := range []string{"/id", "/configId"} {
+				_, created, err := f.svc.SetStackElement(ctx, f.writer, "web", core.ElementInput{
+					Name: "CLASH", FileMount: !tt.fileMount, Value: new("c3RhY2s="),
+				}, "", pointer)
+				inv, ok := errors.AsType[*kernel.Invalid](err)
+				if created || !ok || inv.Detail != "The config element is refused." || !reflect.DeepEqual(inv.Errors, []kernel.FieldError{{
+					Pointer: pointer, Reason: kernel.ReasonDuplicate, Message: "an attached context already sets this name",
+				}}) {
+					t.Fatalf("%s collision = created %v, %v", pointer, created, err)
+				}
+				if _, err := f.svc.StackElement(ctx, f.acct, "web", "CLASH"); !errors.Is(err, core.ErrNotFound) {
+					t.Errorf("refused element stored: %v", err)
+				}
+				if _, created, err := f.svc.SetStackElement(ctx, f.writer, "web", variable("KEEP", "replaced"), "", pointer); err != nil || created {
+					t.Fatalf("%s replacement = created %v, %v", pointer, created, err)
+				}
+			}
+			if _, created, err := f.svc.SetElement(ctx, f.writer, "shared", variable("LATE", "context"), "", "/id"); err != nil || !created {
+				t.Fatalf("context adds the stack's name = created %v, %v", created, err)
+			}
+			resolved, err := f.svc.Resolve(ctx, f.acct, f.web.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, e := range resolved.Elements {
+				if e.Name != "CLASH" && (e.Source != configapi.SourceStack || string(e.Value.Reveal()) == "context") {
+					t.Errorf("stack's element lost: %+v", e)
+				}
+			}
+			if !tt.autoattached {
+				if _, _, err := f.svc.Detach(ctx, f.admin, attachment.ID.String()); err != nil {
+					t.Fatal(err)
+				}
+				if _, created, err := f.svc.SetStackElement(ctx, f.writer, "web", variable("CLASH", "free"), "", "/id"); err != nil || !created {
+					t.Errorf("detached name = created %v, %v", created, err)
+				}
+			}
+		})
+	}
+}
+
+// TestAccStackElementLabelArrival admits a stack label that attaches a
+// context setting an existing stack name, which keeps winning.
+func TestAccStackElementLabelArrival(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t)
+	if _, _, err := f.svc.SetStackElement(ctx, f.admin, "web", variable("LEVEL", "stack"), "", "/id"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Create(ctx, f.admin, core.Input{
+		Name: "Shared", Space: "team", Labels: []string{"autoattach:infra"},
+		Config: []core.ElementInput{variable("LEVEL", "context")},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f.stacks.labels["web"] = []string{"infra"}
+	if err := f.svc.StackChanged(ctx, f.acct, f.web.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.attached(t, f.web.ID); !reflect.DeepEqual(got, []string{"auto:shared"}) {
+		t.Errorf("attached %v", got)
+	}
+	resolved, err := f.svc.Resolve(ctx, f.acct, f.web.ID)
+	if err != nil || len(resolved.Elements) != 1 || resolved.Elements[0].Source != configapi.SourceStack ||
+		string(resolved.Elements[0].Value.Reveal()) != "stack" {
+		t.Errorf("resolved %+v, %v", resolved, err)
 	}
 }
 
