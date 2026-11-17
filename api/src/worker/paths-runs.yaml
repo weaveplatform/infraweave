@@ -38,7 +38,8 @@ components:
             The image the run's container starts from: the runtime
             configuration's, else the stack's, else the account's default
             for private pools. Absent when none names one, for the launcher's
-            own default.
+            default: its own default runner image when set, else the stack's
+            vendor's image.
         stateBackend:
           $ref: '#/components/schemas/RunSpecStateBackend'
         source:

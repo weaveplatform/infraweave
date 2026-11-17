@@ -24,6 +24,7 @@ import (
 	"github.com/moby/moby/client"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/weaveplatform/infraweave/internal/agent/executor/docker"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
 
@@ -200,6 +201,25 @@ func (l *Launchers) Network(ctx context.Context, scenario string, ports ...strin
 		return "", fmt.Errorf("the relay's forwarder: %w", err)
 	}
 	return "container:" + c.ID, nil
+}
+
+// RunImage reads the image used to create run's container. A scenario holds
+// the runner's report until this read, so the launcher cannot remove it first.
+func (l *Launchers) RunImage(ctx context.Context, run string) (string, error) {
+	list, err := l.cli.ContainerList(ctx, client.ContainerListOptions{
+		All: true, Filters: client.Filters{}.Add("label", docker.LabelRun+"="+run),
+	})
+	if err != nil {
+		return "", fmt.Errorf("docker: find run %s: %w", run, err)
+	}
+	if len(list.Items) != 1 {
+		return "", fmt.Errorf("%w: run %s has %d containers, want one", ErrStep, run, len(list.Items))
+	}
+	c, err := l.cli.ContainerInspect(ctx, list.Items[0].ID, client.ContainerInspectOptions{})
+	if err != nil {
+		return "", fmt.Errorf("docker: inspect run %s: %w", run, err)
+	}
+	return c.Container.Config.Image, nil
 }
 
 // Remove removes every container labelled with the label key=value, run

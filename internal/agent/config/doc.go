@@ -10,7 +10,9 @@
 // runtime and runner binary. Defaults are what
 // an empty configuration means, Validate rejects a setting the launcher
 // could not start with, Flags declares the launcher's flags, and Load
-// decodes them.
+// decodes them. The default runner image is unset: when neither
+// the specification nor the launcher names one, VendorRunnerImage selects
+// OpenTofu's image for OpenTofu and Terraform's for every other vendor.
 // Key reads the private key, given as a path, as PEM or as base64 of PEM.
 //
 // Settings come from flags, INFRAWEAVE_LAUNCHER_* environment variables

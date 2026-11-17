@@ -20,7 +20,8 @@ import (
 // The runner images of @terraform and @tofu scenarios, built from their
 // definitions under deploy/images, the ones CI builds and a release
 // publishes. A scenario's tool runs in its vendor's, and a stack names
-// its vendor's.
+// its vendor's unless it exercises vendor-default selection. Both images
+// are also tagged under their untagged published names for that case.
 //
 // ref: decision 0016
 const (
@@ -48,7 +49,7 @@ var (
 )
 
 // Build builds image, RunnerTerraform or RunnerOpenTofu, once per test
-// binary, on first use.
+// binary, on first use, under its acceptance and published names.
 func (l *Launchers) Build(ctx context.Context, image string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -80,7 +81,8 @@ func BuildRunner(ctx context.Context, cli *testcontainers.DockerClient, root, im
 		return fmt.Errorf("build %s: %w", image, err)
 	}
 	res, err := cli.ImageBuild(ctx, &tarball, client.ImageBuildOptions{
-		Tags: []string{image}, Remove: true, ForceRemove: true,
+		Tags:   []string{image, "ghcr.io/weaveplatform/infraweave-" + def},
+		Remove: true, ForceRemove: true,
 	})
 	if err != nil {
 		return fmt.Errorf("build %s: %w", image, err)

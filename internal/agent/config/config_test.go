@@ -55,11 +55,23 @@ func TestUnitLoadDefaults(t *testing.T) {
 	}
 	l, d := c.Launcher, config.Defaults().Launcher
 	if l.Token != "token" || l.PrivateKey.Reveal() != keyPEM || l.PollTimeout != time.Minute ||
-		l.AdminListen != ":9091" || l.DefaultRunnerImage != d.DefaultRunnerImage || l.CacheDir != d.CacheDir ||
+		l.AdminListen != ":9091" || l.DefaultRunnerImage != "" || l.CacheDir != d.CacheDir ||
 		l.Log.Level != "info" || l.Metadata != nil || l.StateLockTimeout != 5*time.Minute ||
 		l.RunTimeout != 70*time.Minute || l.LogTimeout != 7*time.Minute ||
 		l.ToolMirror != "" || l.CAFile != "" {
 		t.Fatalf("defaults: %+v", l)
+	}
+}
+
+func TestUnitVendorRunnerImage(t *testing.T) {
+	for _, vendor := range []string{"terraform", "opentofu", "terragrunt", "pulumi", ""} {
+		want := "ghcr.io/weaveplatform/infraweave-runner-terraform"
+		if vendor == "opentofu" {
+			want = "ghcr.io/weaveplatform/infraweave-runner-opentofu"
+		}
+		if got := config.VendorRunnerImage(vendor); got != want {
+			t.Errorf("VendorRunnerImage(%q) = %q, want %q", vendor, got, want)
+		}
 	}
 }
 
@@ -155,7 +167,6 @@ func TestUnitValidate(t *testing.T) {
 		"launcher.token":                 func(l *config.Launcher) { l.Token = " " },
 		"launcher.private_key":           func(l *config.Launcher) { l.PrivateKey = "" },
 		"launcher.poll_timeout":          func(l *config.Launcher) { l.PollTimeout = 7500 * time.Millisecond },
-		"launcher.default_runner_image":  func(l *config.Launcher) { l.DefaultRunnerImage = "" },
 		"launcher.cache_dir":             func(l *config.Launcher) { l.CacheDir = "" },
 		"launcher.state_lock_timeout":    func(l *config.Launcher) { l.StateLockTimeout = -time.Second },
 		"launcher.run_timeout":           func(l *config.Launcher) { l.RunTimeout = 0 },

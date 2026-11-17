@@ -634,7 +634,7 @@ type RunSpec struct {
 	// Run The run.
 	Run RunSpecRun `json:"run"`
 
-	// RunnerImage The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's own default.
+	// RunnerImage The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's default: its own default runner image when set, else the stack's vendor's image.
 	RunnerImage *string `json:"runnerImage,omitempty"`
 
 	// RuntimeConfig The runtime configuration the run's trigger gave, which overrides the stack's hooks, environment and checkout for this run. Absent when the trigger gave none.

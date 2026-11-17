@@ -58,6 +58,7 @@ type world struct {
 	tools   *fakeTools
 	dir     string
 	log     *logs
+	image   string
 }
 
 func newWorld(t *testing.T) *world {
@@ -75,6 +76,7 @@ func newWorld(t *testing.T) *world {
 func (w *world) config() config.Launcher {
 	c := config.Defaults().Launcher
 	c.Token, c.PrivateKey, c.CacheDir = w.pool.Token, observe.Secret(w.pool.Key), w.dir
+	c.DefaultRunnerImage = w.image
 	c.Metadata = map[string]string{"zone": "a"}
 	c.MaskEnvs = []string{"DB_PASSWORD"}
 	c.SensitiveOutputUpload = true
@@ -372,7 +374,7 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 		}
 		j := jobs[0]
 		if j.Worker != "worker-1" || j.Run != "run-1" ||
-			j.Image != config.Defaults().Launcher.DefaultRunnerImage {
+			j.Image != config.VendorRunnerImage("") {
 			t.Fatalf("job: %+v", j)
 		}
 		h, err := handoff.Read(bytes.NewReader(j.Handoff))
@@ -439,6 +441,40 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 			t.Fatalf("an idle launcher deregisters: %v", got)
 		}
 	})
+}
+
+// TestUnitRunnerImage checks the vendor fallback and both overriding
+// sources on the image the executor actually receives.
+func TestUnitRunnerImage(t *testing.T) {
+	for _, vendor := range []string{"terraform", "opentofu", "terragrunt"} {
+		for _, source := range []string{"vendor", "launcher", "specification"} {
+			t.Run(vendor+"/"+source, func(t *testing.T) {
+				synctest.Test(t, func(t *testing.T) {
+					w := newWorld(t)
+					want := config.VendorRunnerImage(vendor)
+					image := ""
+					if source != "vendor" {
+						w.image, want = "example.com/launcher:1", "example.com/launcher:1"
+					}
+					if source == "specification" {
+						image, want = "example.com/specification:1", "example.com/specification:1"
+					}
+					r := w.start(t)
+					run := newRun("run-1", wire.AssignmentStatePREPARING, image)
+					run.Spec.Stack.Vendor = vendor
+					if vendor == "terragrunt" {
+						run.Spec.Tool = &wire.RunSpecTool{Name: wire.Tofu, Version: "1.13.9", Download: true}
+						run.Spec.Terragrunt = &wire.RunSpecTerragrunt{Version: "1.0.0", Download: true}
+					}
+					w.queue(t, run)
+					if jobs := w.exec.Jobs(); len(jobs) != 1 || jobs[0].Image != want {
+						t.Fatalf("jobs = %+v, want image %q", jobs, want)
+					}
+					r.stop(t)
+				})
+			})
+		}
+	}
 }
 
 var errRefused = errors.New(

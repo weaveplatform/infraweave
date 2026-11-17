@@ -3112,9 +3112,9 @@ image and tool.
    with the Pulumi CLI from its release archive pinned by SHA-256 and moved
    by `deps-refresh.yml`, and Node.js, npm, Python and pip from Alpine,
    published with the other runner images; the launcher's default image
-   per vendor (`-opentofu`, `-pulumi`, else `-terraform`), with
-   `launcher.default_runner_image` unset by default and replacing every
-   vendor's default but Ansible's when set (DV-122); kubectl downloaded by
+   for Pulumi (`-pulumi`), extending the OpenTofu and Terraform vendor
+   defaults delivered by #554, and keeping a configured
+   `launcher.default_runner_image` above it (DV-122); kubectl downloaded by
    the launcher at the run's `tool`, checked against the SHA-256
    `dl.k8s.io` publishes, cached and mirrored under `kubectl/<version>/`,
    and its release index from `kubernetes/kubernetes` releases. Operation:
