@@ -43,6 +43,7 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s APPLYING release evidence through ([AB])$`, r.releaseEvidence)
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s retry planning evidence through ([AB])$`, r.retryEvidence)
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s PLANNING runtime evidence through ([AB])$`, r.runtimeEvidence)
+	sc.Step(`^token "(\w+)" records the run "(\w+)"'s workspace layout evidence through ([AB])$`, r.workspaceEvidence)
 }
 
 // comments checks the bodies of the last answer's comments, a run's,

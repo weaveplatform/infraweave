@@ -61,7 +61,7 @@ func (b *backendSteps) runner(ctx context.Context, run, name string, code int) e
 		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
 	t, err := b.host.RunTool(ctx, harness.ToolRun{
-		Scenario: b.label, Network: b.network, Bin: b.host.Runner, Dir: tr.dir,
+		Scenario: b.label, Network: b.network, Bin: b.host.Runner, Dir: tr.workspace,
 		Image: pinned.image, Env: runnerEnv, Args: []string{"runner"},
 		Mounts: map[string]string{bin: "/bin/" + name}, Stdin: in.Bytes(),
 	})

@@ -109,3 +109,21 @@ Feature: The runner executes a run's phases and their hooks in one shell session
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
     And the answer's last state transition's note is "The before_plan hook 2 of 2 failed with exit status 7."
     And the run "run" wrote 0 state versions
+
+  @op:runTrigger @case:failure @terraform
+  Scenario Outline: A project root outside the checkout fails during preparation
+    Given token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"<root>","vendorConfig":{"terraform":{}}},"manageState":true}' through B
+    Then it answers 201
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, FAILED"
+    And the answer's last state transition's note is "the project root is not a directory of the checkout: <root>"
+
+    Examples:
+      | root    |
+      | missing |
+      | source  |

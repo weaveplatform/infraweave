@@ -37,7 +37,7 @@ var ErrAddress = errors.New("not a state backend address")
 // project's Units, naming its workspace, after checking every unit: one
 // whose name is no workspace name, or that declares its own backend, is
 // refused naming it, and nothing is written. The files a unit includes
-// are read under workspace, which the repository's checkout fills.
+// are read under workspace, which the checkout and the mounted files fill.
 // Without RunAll, only the project root's unit is checked and written,
 // naming the default workspace; nested units and stacks are left alone.
 //

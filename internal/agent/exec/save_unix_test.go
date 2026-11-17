@@ -61,13 +61,15 @@ func (w *world) openedIn(state kernel.RunState, version int64, name string) []by
 // succeeded report.
 func TestUnitExecSave(t *testing.T) {
 	w := newWorld(t)
+	content := []byte("mounted\n")
+	w.h.Spec.Files = []wire.RunSpecFile{{Path: "a.txt", Content: &content}}
 	w.h.Spec.Hooks = map[string][]string{
 		"after_plan": {"echo kept > note.txt", "ln -s /etc/hosts hosts"},
 	}
 	if err := w.run(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(w.out.String(), "infraweave: the workspace's hosts is not saved: it is "+
+	if !strings.Contains(w.out.String(), "infraweave: the workspace's source/hosts is not saved: it is "+
 		"a link that leaves the workspace, a device, a pipe or a socket\n") {
 		t.Errorf("output: %s", w.out.String())
 	}
@@ -90,7 +92,8 @@ func TestUnitExecSave(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{
-		"infraweave.plan": "binary-plan\n", "note.txt": "kept\n",
+		"source/infraweave.plan": "binary-plan\n", "source/note.txt": "kept\n",
+		"a.txt": "mounted\n",
 	} {
 		if b, err := os.ReadFile(filepath.Join(dir, name)); err != nil || string(b) != want {
 			t.Errorf("%s = %q, %v", name, b, err)
@@ -145,7 +148,7 @@ func TestUnitExecSaveFails(t *testing.T) {
 			},
 			want: "The workspace could not be saved for the plan's confirmation: archive the " +
 				"workspace: a file of the workspace holds one of the run's credentials: the file " +
-				"out/leak.txt.",
+				"source/out/leak.txt.",
 		},
 		"the source token in a link": {
 			edit: func(w *world) {
@@ -156,7 +159,7 @@ func TestUnitExecSaveFails(t *testing.T) {
 					"after_plan": {"ln -s ghs_" + strings.Repeat("s", 36) + " l"},
 				}
 			},
-			want: "the link l.",
+			want: "the link source/l.",
 		},
 		"a pool key that is no point": {
 			edit: func(w *world) { w.h.PoolKey = []byte{4, 1, 2} },

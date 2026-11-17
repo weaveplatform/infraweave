@@ -1212,12 +1212,20 @@ has failed":
   polls, prepares and supervises; `infraweave runner` (hidden) executes the
   phases inside the run container.
   0020 packages them and 0004 places the code.
+- **The workspace.** The checkout, or a local preview's archive, is at
+  `/mnt/workspace/source`. Hooks and the tool run in the project root
+  under it, or in `source` when none is named. Mounted files are at
+  `/mnt/workspace/<path>`; one under `source/` replaces the checkout's
+  file. Infraweave's own files live at the workspace's top level, beside
+  `source/`. The whole workspace, checkout and mounted files alike, is
+  what a plan saves for its confirmation. `TF_VAR_infraweave_workspace_root`
+  stays `/mnt/workspace`.
 - **Preparation**, inside the preparing timeout: fetch the specification and
   decrypt its secrets; evaluate the worker-side initialization policy; fetch the
-  source or restore the workspace; download and verify tool binaries; pull the
-  runner image; start the container. A Git source with sparse paths checks out
-  only those directories; a local preview's archive is extracted whole. A
-  failure reports T11, T36 or T44.
+  source into the workspace's `source/` or restore the workspace; download
+  and verify tool binaries; pull the runner image; start the container.
+  A Git source with sparse paths checks out only those directories; a local
+  preview's archive is extracted whole. A failure reports T11, T36 or T44.
 - **The container.** Docker through `github.com/moby/moby/client`. The launcher
   bind-mounts its own executable read-only at `/opt/infraweave/bin/infraweave`
   and runs it as the container's root process with the argument `runner`,

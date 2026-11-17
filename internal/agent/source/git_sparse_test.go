@@ -29,10 +29,10 @@ func TestUnitFetchSparseGit(t *testing.T) {
 			if err := fetcher().Fetch(t.Context(), dir, spec, nil); err != nil {
 				t.Fatal(err)
 			}
-			if got, err := os.ReadFile(filepath.Join(dir, "infra", "net.tf")); err != nil || string(got) != "net\n" {
+			if got, err := os.ReadFile(filepath.Join(dir, Checkout, "infra", "net.tf")); err != nil || string(got) != "net\n" {
 				t.Fatalf("selected directory: %q, %v", got, err)
 			}
-			got, err := os.ReadFile(filepath.Join(dir, "main.tf"))
+			got, err := os.ReadFile(filepath.Join(dir, Checkout, "main.tf"))
 			if tc.sparse {
 				if !errors.Is(err, fs.ErrNotExist) {
 					t.Fatalf("unselected file: %q, %v", got, err)

@@ -67,10 +67,10 @@ func terragruntWorld(t *testing.T) *world {
 	}
 	plans := filepath.Join(filepath.Dir(w.workspace), "unit-plans")
 	for name, content := range map[string]string{
-		filepath.Join(plans, "tfplan.json"):                    planJSON,
-		filepath.Join(plans, "a", "b", "tfplan.json"):          unitPlan,
-		filepath.Join(w.workspace, "terragrunt.hcl"):           "",
-		filepath.Join(w.workspace, "a", "b", "terragrunt.hcl"): "",
+		filepath.Join(plans, "tfplan.json"):                   planJSON,
+		filepath.Join(plans, "a", "b", "tfplan.json"):         unitPlan,
+		filepath.Join(w.checkout, "terragrunt.hcl"):           "",
+		filepath.Join(w.checkout, "a", "b", "terragrunt.hcl"): "",
 	} {
 		if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 			t.Fatal(err)
@@ -121,7 +121,7 @@ func TestUnitExecTerragrunt(t *testing.T) {
 		backend.File:          `"http://server.test/state/v1/stacks/stack-1"`,
 		"a/b/" + backend.File: `"http://server.test/state/v1/stacks/stack-1/workspaces/a%2Fb"`,
 	} {
-		b, err := os.ReadFile(filepath.Join(w.workspace, filepath.FromSlash(unit)))
+		b, err := os.ReadFile(filepath.Join(w.checkout, filepath.FromSlash(unit)))
 		if err != nil || !strings.Contains(string(b), "address        = "+address) {
 			t.Errorf("%s = %s, %v", unit, b, err)
 		}
@@ -135,7 +135,7 @@ func TestUnitExecTerragrunt(t *testing.T) {
 		runID, 1<<20); err != nil {
 		t.Fatal(err)
 	}
-	if b, err := os.ReadFile(filepath.Join(dir, "tfplan.tfplan")); string(b) != "binary-plan\n" {
+	if b, err := os.ReadFile(filepath.Join(dir, "source", "tfplan.tfplan")); string(b) != "binary-plan\n" {
 		t.Errorf("the saved workspace's plan = %q, %v", b, err)
 	}
 }
@@ -202,7 +202,7 @@ func TestUnitExecTerragruntFails(t *testing.T) {
 	}{
 		"a unit's own backend": {
 			edit: func(w *world) {
-				name := filepath.Join(w.workspace, "a", "b", "terragrunt.hcl")
+				name := filepath.Join(w.checkout, "a", "b", "terragrunt.hcl")
 				if err := os.WriteFile(name, []byte("remote_state {\n}\n"), 0o600); err != nil {
 					w.t.Fatal(err)
 				}
@@ -315,7 +315,7 @@ func TestUnitExecTerragruntSingleUnit(t *testing.T) {
 			if writesJSON {
 				w.environ = append(w.environ, "WRITE_SINGLE_JSON=true")
 			}
-			if err := os.WriteFile(filepath.Join(w.workspace, "a", "b", "terragrunt.hcl"),
+			if err := os.WriteFile(filepath.Join(w.checkout, "a", "b", "terragrunt.hcl"),
 				[]byte("remote_state {\n}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -337,7 +337,7 @@ func TestUnitExecTerragruntSingleUnit(t *testing.T) {
 			}
 			want = append(want, "terragrunt run -- apply -auto-approve -input=false -lock-timeout=5m0s tf=terraform ni=true json=")
 			equal(t, "single-unit commands", w.traced(), want)
-			if _, err := os.Stat(filepath.Join(w.workspace, "a", "b", backend.File)); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(w.checkout, "a", "b", backend.File)); !os.IsNotExist(err) {
 				t.Errorf("nested backend file = %v", err)
 			}
 		})
@@ -356,11 +356,11 @@ func TestUnitExecTerragruntSingleUnit(t *testing.T) {
 
 	w = terragruntWorld(t)
 	w.h.Spec.Terragrunt.RunAll = false
-	if err := os.Remove(filepath.Join(w.workspace, "terragrunt.hcl")); err != nil {
+	if err := os.Remove(filepath.Join(w.checkout, "terragrunt.hcl")); err != nil {
 		t.Fatal(err)
 	}
 	config := []byte("")
-	w.h.Spec.Files = []wire.RunSpecFile{{Path: "terragrunt.hcl", Content: &config}}
+	w.h.Spec.Files = []wire.RunSpecFile{{Path: "source/terragrunt.hcl", Content: &config}}
 	if err := w.run(); err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +377,7 @@ func TestUnitExecTerragruntSingleUnitMissingRoot(t *testing.T) {
 			if !managed {
 				w.h.Spec.StateBackend = nil
 			}
-			if err := os.Remove(filepath.Join(w.workspace, "terragrunt.hcl")); err != nil {
+			if err := os.Remove(filepath.Join(w.checkout, "terragrunt.hcl")); err != nil {
 				t.Fatal(err)
 			}
 			if err := w.run(); err != nil {
