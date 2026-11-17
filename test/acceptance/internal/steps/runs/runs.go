@@ -38,8 +38,10 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the "run.schedule" jobs are (\d+), (pending|succeeded)$`, r.scheduled)
 	sc.Step(`^neither the answer nor a server's log names "([^"]+)"$`, r.unnamed)
 	sc.Step(`^the answer's runtime configuration includes '([^']*)'$`, r.runtimeConfiguration)
+	sc.Step(`^the answer's custom runtime configuration includes '([^']*)'$`, r.customRuntimeConfiguration)
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s APPLYING release evidence through ([AB])$`, r.releaseEvidence)
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s retry planning evidence through ([AB])$`, r.retryEvidence)
+	sc.Step(`^token "(\w+)" records the run "(\w+)"'s PLANNING runtime evidence through ([AB])$`, r.runtimeEvidence)
 }
 
 // comments checks the bodies of the last answer's comments, a run's,

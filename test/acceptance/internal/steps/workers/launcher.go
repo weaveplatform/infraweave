@@ -94,6 +94,8 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the run "(\w+)"'s container started from the image "([^"]+)"$`, l.runImage)
 	sc.Step(`^the launchers started from now on download (\w+)'s build altered$`,
 		func(tool string) { l.tampered = tool })
+	sc.Step(`^the tool mirror serves the pinned previous (Terraform|OpenTofu) release kept as "(\w+)"$`,
+		l.previousRelease)
 	sc.Step(`^the launcher "(\w+)" is killed$`, l.kill)
 	sc.Step(`^the launcher "(\w+)" starts again and resumes its worker$`, l.restart)
 	sc.Step(`^the relay holds the runners' reports$`, func() { l.relay.Hold() })
@@ -108,6 +110,26 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's last state transition's note is "([^"]*)"$`, l.note)
 	sc.Step(`^the answer's last state transition's note is '([^']*)'$`, l.note)
 	sc.Step(`^the answer's last state transition's note starts with '([^']*)'$`, l.noteStarts)
+}
+
+// previousRelease adds an older verified archive to the existing mirror,
+// so a custom version constraint downloads that release through the same
+// launcher verification path as the latest release.
+func (l *launcherSteps) previousRelease(ctx context.Context, tool, name string) error {
+	t := deps.TerraformPrevious
+	if tool == "OpenTofu" {
+		t = deps.OpenTofuPrevious
+	}
+	if l.w.IDs[name] != t.Version {
+		return fmt.Errorf("%w: %s catalogue's preceding release %s differs from pin %s",
+			harness.ErrStep, tool, l.w.IDs[name], t.Version)
+	}
+	host, err := l.w.Suite.Launchers(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = host.Mirror(ctx, l.w.Suite.Deps, t)
+	return err //nolint:wrapcheck // the mirror names the release
 }
 
 // servers starts the scenario's two servers with the top-level sections

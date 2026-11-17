@@ -194,6 +194,17 @@ jobs:
           # recording dates itself.
           if ! git diff --quiet test/deps/tools.go; then
             go run ./tools/vendorsfixtures internal/vendors/internal/index/testdata
+            # Runtime-configuration scenarios execute the catalogue's
+            # preceding stable release as well as the latest one.
+            previous_tf=$(jq -r '.body[] | select(.is_prerelease == false and .status.state != "withdrawn") |
+              .version | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
+              internal/vendors/internal/index/testdata/terraform.json | sort -Vru | sed -n '2p')
+            previous_tofu=$(jq -r '.body.versions[].id | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
+              internal/vendors/internal/index/testdata/opentofu.json | sort -Vru | sed -n '2p')
+            tool TerraformPrevious 'terraform_{version}_linux_{arch}.zip' "$previous_tf" \
+              "https://releases.hashicorp.com/terraform/$previous_tf/terraform_${previous_tf}_SHA256SUMS"
+            tool OpenTofuPrevious 'tofu_{version}_linux_{arch}.zip' "$previous_tofu" \
+              "https://github.com/opentofu/opentofu/releases/download/v$previous_tofu/tofu_${previous_tofu}_SHA256SUMS"
           fi
 
       - name: Open or update the refresh PR
