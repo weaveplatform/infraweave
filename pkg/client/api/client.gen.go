@@ -16863,15 +16863,14 @@ type ClientInterface interface {
 
 	// Sessions Sessions
 	//
-	// List of all the active sessions in the account. NOTE: this functionality is not available in the Starter
-	// tier. An empty array will be returned for Starter tier accounts.
+	// List all active sessions in the account.
 	//
 	// Corresponds with GET /sessions (the `Sessions` operationId).
 	Sessions(ctx context.Context, params *SessionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SessionDelete Session Delete
 	//
-	// Invalidate a Session. NOTE: this functionality is not available in the Starter tier.
+	// Invalidate a session.
 	//
 	// Corresponds with DELETE /sessions/{sessionId} (the `SessionDelete` operationId).
 	SessionDelete(ctx context.Context, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -23879,8 +23878,7 @@ func (c *Client) SessionDeleteAll(ctx context.Context, reqEditors ...RequestEdit
 
 // Sessions Sessions
 //
-// List of all the active sessions in the account. NOTE: this functionality is not available in the Starter
-// tier. An empty array will be returned for Starter tier accounts.
+// List all active sessions in the account.
 //
 // Corresponds with GET /sessions (the `Sessions` operationId).
 func (c *Client) Sessions(ctx context.Context, params *SessionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -23897,7 +23895,7 @@ func (c *Client) Sessions(ctx context.Context, params *SessionsParams, reqEditor
 
 // SessionDelete Session Delete
 //
-// Invalidate a Session. NOTE: this functionality is not available in the Starter tier.
+// Invalidate a session.
 //
 // Corresponds with DELETE /sessions/{sessionId} (the `SessionDelete` operationId).
 func (c *Client) SessionDelete(ctx context.Context, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -50822,8 +50820,7 @@ type ClientWithResponsesInterface interface {
 
 	// SessionsWithResponse Sessions
 	//
-	// List of all the active sessions in the account. NOTE: this functionality is not available in the Starter
-	// tier. An empty array will be returned for Starter tier accounts.
+	// List all active sessions in the account.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -50832,7 +50829,7 @@ type ClientWithResponsesInterface interface {
 
 	// SessionDeleteWithResponse Session Delete
 	//
-	// Invalidate a Session. NOTE: this functionality is not available in the Starter tier.
+	// Invalidate a session.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -94273,8 +94270,7 @@ func (c *ClientWithResponses) SessionDeleteAllWithResponse(ctx context.Context, 
 
 // SessionsWithResponse Sessions
 //
-// List of all the active sessions in the account. NOTE: this functionality is not available in the Starter
-// tier. An empty array will be returned for Starter tier accounts.
+// List all active sessions in the account.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -94289,7 +94285,7 @@ func (c *ClientWithResponses) SessionsWithResponse(ctx context.Context, params *
 
 // SessionDeleteWithResponse Session Delete
 //
-// Invalidate a Session. NOTE: this functionality is not available in the Starter tier.
+// Invalidate a session.
 //
 // Returns a wrapper object for the known response body format(s).
 //

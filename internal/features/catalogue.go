@@ -24,15 +24,14 @@ const (
 
 // The seeded tiers, smallest first.
 const (
-	Free        = "Free"
-	Starter     = "Starter"
-	StarterPlus = "Starter+"
-	Business    = "Business"
-	Enterprise  = "Enterprise"
+	Free       = "Free"
+	Starter    = "Starter"
+	Business   = "Business"
+	Enterprise = "Enterprise"
 )
 
 // SeededTiers are the tiers infraweave installs once, smallest first.
-var SeededTiers = []string{Free, Starter, StarterPlus, Business, Enterprise}
+var SeededTiers = []string{Free, Starter, Business, Enterprise}
 
 // The names the installation holds rather than a tier: Billing, the
 // switch, and Operator, the operator API's capability. features.disabled

@@ -1,6 +1,6 @@
 # 26: Scope and tiers
 
-Checked against: docs read 2026-10-28 (SaaS and `self-hosted/latest`, v7.1.0); spacelift.io/pricing read 2026-10-28; schema `b3255fe38f5e`; spacelift-api-bruno `7cad4574954b`; terraform-provider-spacelift v1.57.0 (`c72b9bd2f3c3`); the specification reference `api/reference/spacelift/spacelift.openapi.yaml` and `coverage.md`; infraweave's `api/api.openapi.yaml` at the work tree's commit; reports 01 to 25; decision [0021](../decisions/0021-capability-scope-and-supersession.md) as accepted on 2026-11-03.
+Checked against: docs read 2026-10-28 (SaaS and `self-hosted/latest`, v7.1.0); spacelift.io/pricing read 2026-10-28 and re-read 2026-11-17; schema `b3255fe38f5e`; spacelift-api-bruno `7cad4574954b`; terraform-provider-spacelift v1.57.0 (`c72b9bd2f3c3`); the specification reference `api/reference/spacelift/spacelift.openapi.yaml` and `coverage.md`; infraweave's `api/api.openapi.yaml` at the work tree's commit; reports 01 to 25; decision [0021](../decisions/0021-capability-scope-and-supersession.md) as accepted on 2026-11-03.
 
 Research baseline: **2026-10-28**.
 
@@ -30,7 +30,7 @@ takes its scope and its ordering from here; the inventory reports
 | **[B]** | spacelift-api-bruno at `7cad4574954b` |
 | **[S]** | Source code at the cited commit |
 | **[RN]** | The Spacelift changelog, <https://docs.spacelift.io/product/changelog> |
-| **[C]** | <https://spacelift.io/pricing>, read 2026-10-28; a marketing page outside the docs, so below [D] in precedence |
+| **[C]** | <https://spacelift.io/pricing>, read 2026-10-28 and re-read 2026-11-17 (changed cells carry that date); a marketing page outside the docs, so below [D] in precedence |
 | **[I]** | Inferred; the cell or sentence says from what |
 | *(unverified)* | No primary source confirms it; listed in 30-open-questions |
 
@@ -87,8 +87,8 @@ Totals at the baseline: tags `missing` 52, `stub` 1; resources
 | Value | Meaning |
 |---|---|
 | All | Every plan, Free included; no gate is stated anywhere |
-| Paid | The docs say "paid accounts"; the lowest paid plan sold is Starter+ [C] |
-| Starter+ | The docs or the pricing page name Starter+ and above |
+| Paid | The docs say "paid accounts"; the lowest paid plan sold is Starter [C] 2026-11-17 |
+| Starter+ | A docs notice names Starter+ and above; decision 0021 maps the notice to the current plans |
 | Business | Business and above |
 | Enterprise | Enterprise and above |
 | Not stated | No docs page, no schema description and no pricing line gives a plan *(unverified)* |
@@ -146,25 +146,26 @@ record's `apiPhase` names the phase that delivers the API the row calls.
 
 ### 2.1 SaaS plans
 
-The pricing page lists no prices: every paid plan is "request a quote", and
-Free is free with no card and no time limit [C]. Each plan includes the one
-before it [C]. Its comparison table has one column per paid plan and none for
-Free. It ticks every feature row for Starter+ except blueprints, the private
-provider registry, targeted replans and advanced scheduling (Business and
-above) and the audit trail, internal source control and OIDC API keys
-(Enterprise and above). Rows ticked from Starter+ include contexts, custom
-tasks, stack dependencies, plan and approval policies, the private module
-registry, webhooks, notifications, session management and drift detection
-[C].
+The pricing page as read 2026-11-17 lists Free, Starter, Business and
+Enterprise [C], resolving C287. Starter offers 10 users and 2 public workers;
+drift detection and private worker pools start at Business. The console's
+billing page agrees and places internal source control, Repos, at Enterprise
+(report [32](32-spacelift-console-survey.md) section 14). This is distinct
+from VCS agent pools. Self-hosted is an installation offering.
 
-| Edition | Workers [C] | Users [C] | What it adds [C] | Docs notices that name it [D] |
+| Edition | Workers | Users | What it adds | Docs notices that name it [D] |
 |---|---|---|---|---|
-| Free | 1 public worker | 2 | The base product | Infra Assistant on the Spacelift-provided integration has a USD 10 budget per 30 days, unlimited on paid plans (report [22](22-intelligence.md)) |
-| Starter | 1 private [C] | limited [D] | No plan card or comparison column; the FAQ describes a Starter plan payable monthly by card whose upgrade for a second private worker is Starter+ [C]; see section 2.2 | `sessions` and `sessionDelete` are "not available in the Starter tier" [G]; Free and Starter have seat limits [D] <https://docs.spacelift.io/concepts/identity-access-management/admin> |
-| Starter+ | 2 public; 1 private, 2 available | unlimited | Spaces, IaC support, workflow customisation, VCS integration, resource visualisation, cloud cost estimation, the Spacelift Terraform provider, dependencies, cloud integrations, drift detection, the policy engine; Bronze support | Drift detection, private worker pools, ignored-run warnings ([18](18-scheduling-drift-dependencies.md), [10](10-workers-and-execution.md), [08](08-run-lifecycle.md)) |
-| Business | 3 private; public configurable | unlimited | Blueprints, templates, advanced scheduling, the private provider registry, targeted replans; Silver support with a customer success manager | Scheduling, aggregated VCS checks, targeted replan, the provider registry, blueprints and templates |
-| Enterprise | 5 to 30 private | unlimited | Concurrent VCS connections, audit trail, SAML 2.0 SSO, OIDC API keys, internal source control (VCS agent pools), MFA; Gold support | Audit trail, SAML SSO, SCIM, MFA, OIDC API keys, VCS agent pools, space-level VCS integrations, ServiceNow |
-| Enterprise+ | 12 to 30 private; 100 and more on request | unlimited | Self-hosted, FedRAMP, on-premises and air-gapped installs, executive escalation; single tenancy and a named TAM on request; "unmanaged resources" announced as coming | none |
+| Free | 1 public [C] 2026-10-28 | 2 [C] 2026-10-28 | The base product | Infra Assistant on the provided integration has a USD 10 budget per 30 days ([22](22-intelligence.md)) |
+| Starter | 2 public [C] 2026-11-17 | 10 [C] 2026-11-17 | Paid features; the full set remains C260 | Sessions unavailable [G]; Free and Starter have seat limits [D] |
+| Business | 3 private; public configurable [C] 2026-10-28 | unlimited | Drift detection and private worker pools [C] 2026-11-17; scheduling, targeted replan, private provider registry, blueprints and templates [D] | Scheduling, aggregated VCS checks, targeted replan, provider registry, blueprints and templates |
+| Enterprise | 5 to 30 private [C] 2026-10-28 | unlimited | Concurrent VCS connections, audit trail, SAML [C] 2026-11-17; internal source control (Repos) from the console billing page | Audit trail, SAML SSO, SCIM, MFA, OIDC API keys, VCS agent pools, space-level VCS integrations, ServiceNow |
+
+The comparison table read 2026-10-28 had Starter+, Business and Enterprise
+columns and none for Free or Starter. Its Starter+ checks alone exclude
+neither lower tier. Docs notices still name Starter+; decision 0021 maps
+each to the current pricing or billing page, else the lowest paid plan.
+Free's limits and Business's worker values above are not contradicted by
+the 2026-11-17 read.
 
 Two plan words in the docs have no line on the pricing page:
 - "paid accounts", used for policies, webhooks, notifications, the module
@@ -195,11 +196,11 @@ and the edition names pair by name [I]:
 
 `V4_ENTERPRISE` carries the description "BUSINESS Billing tier." [G]. The
 name is the higher evidence for which edition it is, and the description is
-treated as a copy error [I]. Of a plain Starter tier, only fragments are
-published: a seat limit [D], one private worker [C] and no session listing
-[G]. Its full feature set, and which features separate `V5_STARTER_PLUS` from
-`V5_STARTER_PLUS_2`, are published nowhere *(unverified)*. No schema field maps a tier to its features; only an
-account's own `tierFeatures` is readable [G].
+treated as a copy error [I]. Starter has 10 users and 2 public workers
+[C] 2026-11-17 and no session listing [G]. Its full feature set remains
+unpublished: C260 checks `sessions` and `ignored-runs` against a Starter
+account's `tierFeatures`. No schema field maps a tier to its features; only
+an account's own `tierFeatures` is readable [G].
 
 ### 2.3 Self-Hosted
 
@@ -474,7 +475,7 @@ rerun must fold those corrections in.
 - `BillingTierFeature` is a per-account feature set separate from RBAC.
   infraweave has tiers of its own: decision
   [0021](../decisions/0021-capability-scope-and-supersession.md) seeds Free,
-  Starter, Starter+, Business and Enterprise from the `plan` member, gives
+  Starter, Business and Enterprise from the `plan` member, gives
   each account one tier, and answers `tier` with a tier object and
   `tierFeatures` with the account's entitlement. Billing is off by default,
   so every account behaves as Enterprise until an operator turns it on.
@@ -505,8 +506,7 @@ rerun must fold those corrections in.
   `WORKFLOW_POLICIES`, `ACCOUNT_AI_CONTROL`, `SPACELIFT_INTELLIGENCE` and
   `BACKSTAGE_INTEGRATION`.
 - Open, marked *(unverified)* above:
-  - what a plain Starter tier includes, and what separates `V5_STARTER_PLUS`
-    from `V5_STARTER_PLUS_2` (C260);
+  - what Starter's `tierFeatures` holds for `sessions` and `ignored-runs` (C260);
   - the plan of every capability whose plan reads "Not stated" (C261);
   - what `tier` and `tierFeatures` return on a self-hosted install (C122);
   - whether self-hosted v7.1.0 offers run summaries (C270);

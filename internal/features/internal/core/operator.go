@@ -86,8 +86,8 @@ type Operated struct {
 	Grants Grants
 }
 
-// tierName is a tier's name: the seeded names, Starter+ among them, and
-// the operator's own.
+// tierName is a tier's name: the seeded names and
+// the operator's own. The pattern permits names such as Gold+.
 //
 // ref: decision 0021
 var tierName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 +._-]{0,62}$`)

@@ -38,7 +38,7 @@ are the records that can move.
 - **Seeded tiers, billing off by default.** Every feature is an entry of one
   catalogue, [docs/data/features.json](../data/features.json), from which
   `make generate` writes `internal/features/catalogue.gen.go`: a capability,
-  an option or a limit. Five tiers (Free, Starter, Starter+, Business and Enterprise) are
+  an option or a limit. Four tiers (Free, Starter, Business and Enterprise) are
   seeded from report 26, and the operator can add its own. Billing is off
   by default, so every organization behaves as Enterprise: `tier` answers the
   Enterprise tier object, `tierFeatures` lists every feature not in
@@ -1105,7 +1105,7 @@ use.
    covers from the `tier-feature:` records of
    [capabilities.json](../data/capabilities.json): every capability, option
    and limit, its requirements, those values and its seeded tiers, and
-   `make verify-generate` fails when the file is stale; the five seeded
+   `make verify-generate` fails when the file is stale; the four seeded
    tiers and their limits, installed once; `x-infraweave-feature` on every operation of every
    served document and on each gated schema property. The chi middleware
    after authentication answers `403 feature-disabled` and, with billing
@@ -3057,7 +3057,7 @@ repositories Spacelift hosts, an Enterprise feature
    `searchRepoCommitsSuggestions`, `repoFileHistory`, `searchRepoFiles`,
    `searchRepoFilesSuggestions`, `searchRepos`, `searchReposSuggestions`;
    a stack on a repo runs from its commit like any other source. Gated by
-   `repos`, whose tier C287 settles. Feature: `vcs/repos.feature`.
+   `repos`, which starts at Enterprise. Feature: `vcs/repos.feature`.
 
 **Exit criteria**
 - VCS Agent Pools, Blob Storage, Origin Integration and Repos meet decision
@@ -3963,8 +3963,7 @@ qualified against the tests, and the console survey's open items
    choice.
 4. Amend in place each decision whose behaviour a capture changes, with its
    deviation record; amend the report 26 cells decision 0021's constraints
-   name (section 7.8's MQTT transport, section 7.7's legacy AWS mutations)
-   and the tier values of `features.json` that C287 settles.
+   name (section 7.8's MQTT transport, section 7.7's legacy AWS mutations).
 5. Run the `nightly` suite on the newest PostgreSQL, Terraform, OpenTofu,
    Terragrunt, Pulumi, kubectl and Ansible releases and close what it
    finds.

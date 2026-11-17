@@ -12,9 +12,9 @@ import (
 
 const catalogueFeatures = `{"records": [
   {"id": "stacks", "kind": "capability", "lowestTier": "Free", "phase": "P5"},
-  {"id": "drift", "kind": "capability", "lowestTier": "Starter+", "requires": ["pools"], "phase": "P16"},
-  {"id": "pools", "kind": "capability", "lowestTier": "Starter+", "phase": "P9"},
-  {"id": "seats", "kind": "limit", "values": {"free": 2, "starterPlus": 10}, "phase": "P3b"},
+  {"id": "drift", "kind": "capability", "lowestTier": "Business", "requires": ["pools"], "phase": "P16"},
+  {"id": "pools", "kind": "capability", "lowestTier": "Business", "phase": "P9"},
+  {"id": "seats", "kind": "limit", "values": {"free": 2, "business": 10}, "phase": "P3b"},
   {"id": "billing", "kind": "switch", "phase": "P3b"}
 ]}`
 
@@ -31,9 +31,9 @@ package features
 
 var catalogue = []Feature{
 	{Name: "billing", Kind: "switch", Phase: "P3b"},
-	{Name: "drift", Kind: "capability", Phase: "P16", LowestTier: "Starter+", Requires: []string{"pools"}, TierFeatures: []string{"DRIFT_DETECTION", "PRIVATE_WORKERS"}},
-	{Name: "pools", Kind: "capability", Phase: "P9", LowestTier: "Starter+", TierFeatures: []string{"PRIVATE_WORKERS"}},
-	{Name: "seats", Kind: "limit", Phase: "P3b", Values: map[string]int64{"Free": 2, "Starter+": 10}},
+	{Name: "drift", Kind: "capability", Phase: "P16", LowestTier: "Business", Requires: []string{"pools"}, TierFeatures: []string{"DRIFT_DETECTION", "PRIVATE_WORKERS"}},
+	{Name: "pools", Kind: "capability", Phase: "P9", LowestTier: "Business", TierFeatures: []string{"PRIVATE_WORKERS"}},
+	{Name: "seats", Kind: "limit", Phase: "P3b", Values: map[string]int64{"Free": 2, "Business": 10}},
 	{Name: "stacks", Kind: "capability", Phase: "P5", LowestTier: "Free"},
 }
 `
@@ -62,6 +62,10 @@ func TestUnitCatalogueErrors(t *testing.T) {
 		{
 			"an unknown lowest tier",
 			record(`{"id": "x", "kind": "capability", "lowestTier": "Gold"}`), empty, ErrUnknownTier,
+		},
+		{
+			"an unknown limit tier",
+			record(`{"id":"seats","kind":"limit","values":{"gold":2}}`), empty, ErrUnknownTier,
 		},
 		{
 			"an unknown requirement",

@@ -263,13 +263,13 @@
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
-        "plan": "Starter+ [D]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "`DRIFT_DETECTION`",
         "notes": "Private workers only [D]"
       },
       "infraweave": {
         "feature": "`drift-detection`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "phase": "P16",
         "state": "missing"
       }
@@ -690,13 +690,13 @@
       "spacelift": {
         "inventory": "[04](../research/reference/04-platform-api-inventory.md)",
         "owningReport": "[11](../research/reference/11-vcs-integrations.md)",
-        "plan": "Not stated",
+        "plan": "Enterprise [C] 2026-11-17, console billing page",
         "tierFeatures": "none",
         "notes": "Spacelift Repos, the `SPACELIFT` source provider"
       },
       "infraweave": {
         "feature": "`repos`",
-        "lowestTier": "Free",
+        "lowestTier": "Enterprise",
         "phase": "P19b",
         "state": "missing",
         "notes": "Hosted repositories, served as the `INFRAWEAVE` source provider (the reference's `SPACELIFT`)"
@@ -753,7 +753,7 @@
       },
       "infraweave": {
         "feature": "`runs`, `tasks`, `targeted-replan`, `ignored-runs`",
-        "lowestTier": "Free; Starter for `tasks`; Starter+ for `ignored-runs`; Business for `targeted-replan`",
+        "lowestTier": "Free; Starter for `tasks`; Starter for `ignored-runs`; Business for `targeted-replan`",
         "phase": "P10",
         "also": "P7, P9, P13, P16, P18b, P20b, P22",
         "state": "partial",
@@ -850,7 +850,7 @@
       },
       "infraweave": {
         "feature": "`sessions`, `mfa`",
-        "lowestTier": "Starter+ for `sessions`; Enterprise for `mfa`",
+        "lowestTier": "Business for `sessions`; Enterprise for `mfa`",
         "phase": "P3",
         "also": "P3b (`securityEmail`), P23 (security keys)",
         "state": "partial",
@@ -910,7 +910,7 @@
       },
       "infraweave": {
         "feature": "`stacks`, `scheduling`, `ignored-runs`; the vendor options",
-        "lowestTier": "Free; Starter+ for `ignored-runs`; Business for `scheduling`",
+        "lowestTier": "Free; Starter for `ignored-runs`; Business for `scheduling`",
         "phase": "P5",
         "also": "P4b (`stackRoleBindings`), P6, P7, P8, P9, P11, P12, P12b, P13, P15, P16, P18, P20b, P22, P6b (`stackSyncCommit`, `stackSetCurrentCommit`)",
         "state": "partial",
@@ -1111,13 +1111,13 @@
       "spacelift": {
         "inventory": "[03](../research/reference/03-deploy-core-api-inventory.md)",
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
-        "plan": "Public pool all plans; private pools Starter+ [D]",
+        "plan": "Public pool all plans; private pools Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "`PRIVATE_WORKERS`",
-        "notes": "Every plan runs on the public pool; private pools need Starter+"
+        "notes": "Every plan runs on the public pool; private pools start at Business [C] 2026-11-17; docs name Starter+ [D]"
       },
       "infraweave": {
         "feature": "`worker-pools`, `private-worker-pools`; limits `private-workers`, `public-worker-slots`",
-        "lowestTier": "Free; Starter+ for `private-worker-pools`",
+        "lowestTier": "Free; Business for `private-worker-pools`",
         "phase": "P8",
         "also": "P14, P25b",
         "state": "missing",
@@ -1190,7 +1190,7 @@
       "product": "deploy",
       "infraweave": {
         "feature": "`sessions`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "phase": "P3"
       }
     },
@@ -1467,13 +1467,13 @@
       "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
-        "plan": "Starter+ [D]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "`DRIFT_DETECTION`",
         "rootFields": "5"
       },
       "infraweave": {
         "feature": "`drift-detection`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "apiPhase": "P16",
         "providerPhase": "P24",
         "state": "missing"
@@ -2202,13 +2202,13 @@
       "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
-        "plan": "Starter+ [D]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "`PRIVATE_WORKERS`",
         "rootFields": "5"
       },
       "infraweave": {
         "feature": "`private-worker-pools`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
         "state": "missing"
@@ -2220,13 +2220,13 @@
       "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
-        "plan": "Starter+ [D]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "`PRIVATE_WORKERS`",
         "rootFields": "1"
       },
       "infraweave": {
         "feature": "`private-worker-pools`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
         "state": "missing"
@@ -2586,7 +2586,7 @@
       "product": "deploy",
       "spacelift": {
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)",
-        "plan": "Starter+ [D]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "none",
         "rootFields": "1 [S]",
         "calls": ["stack"],
@@ -2594,7 +2594,7 @@
       },
       "infraweave": {
         "feature": "`drift-detection`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "apiPhase": "P16",
         "providerPhase": "P24",
         "state": "stub"
@@ -3340,13 +3340,13 @@
       "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
-        "plan": "Starter+ [D]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "none",
         "rootFields": "1"
       },
       "infraweave": {
         "feature": "`private-worker-pools`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
         "state": "missing"
@@ -3358,13 +3358,13 @@
       "product": "deploy",
       "spacelift": {
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)",
-        "plan": "Starter+ [D]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "tierFeatures": "none",
         "rootFields": "1"
       },
       "infraweave": {
         "feature": "`private-worker-pools`",
-        "lowestTier": "Starter+",
+        "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
         "state": "missing"
@@ -3395,7 +3395,7 @@
       "number": 2,
       "spacelift": {
         "meaning": "Public worker capacity above the plan default [I] from the name",
-        "plan": "Free has 1 public worker, Starter+ 2, Business and above configurable [C]",
+        "plan": "Free has 1 public worker [C] 2026-10-28; Starter has 2 [C] 2026-11-17; Business and above configurable [C]",
         "selfHosted": "FedRAMP has no public workers [D]",
         "operationsTagged": 0,
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)"
@@ -3572,7 +3572,7 @@
       "number": 12,
       "spacelift": {
         "meaning": "Drift detection",
-        "plan": "Starter+ [D] [C]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "selfHosted": "Private workers only [D]; so none on a Free account, which has no private worker [I] from [C]",
         "operationsTagged": 3,
         "owningReport": "[18](../research/reference/18-scheduling-drift-dependencies.md)"
@@ -3678,7 +3678,7 @@
       "number": 18,
       "spacelift": {
         "meaning": "Private worker pools",
-        "plan": "Starter+ [D] [C]",
+        "plan": "Business [C] 2026-11-17; Starter+ [D]",
         "selfHosted": "FedRAMP runs on private workers only [D]",
         "operationsTagged": 6,
         "owningReport": "[10](../research/reference/10-workers-and-execution.md)"
@@ -3749,7 +3749,7 @@
       "number": 22,
       "spacelift": {
         "meaning": "No cap on users",
-        "plan": "Starter+ and above: unlimited users; Free: 2 users [C]; Free and Starter have seat limits [D]",
+        "plan": "Business and above: unlimited users; Starter: 10 users [C] 2026-11-17; Free: 2 users [C] 2026-10-28; Free and Starter have seat limits [D]",
         "operationsTagged": 0,
         "owningReport": "[14](../research/reference/14-spaces-rbac-and-identity.md)"
       },

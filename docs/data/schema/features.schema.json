@@ -32,7 +32,7 @@
           },
           "lowestTier": {
             "description": "The smallest seeded tier that holds the feature.",
-            "enum": ["Free", "Starter", "Starter+", "Business", "Enterprise"]
+            "enum": ["Free", "Starter", "Business", "Enterprise"]
           },
           "values": {
             "description": "For a limit: its value in each seeded tier. A tier with no value has no limit.",
@@ -41,7 +41,6 @@
             "properties": {
               "free": {"type": "integer", "minimum": 0},
               "starter": {"type": "integer", "minimum": 0},
-              "starterPlus": {"type": "integer", "minimum": 0},
               "business": {"type": "integer", "minimum": 0},
               "enterprise": {"type": "integer", "minimum": 0}
             }

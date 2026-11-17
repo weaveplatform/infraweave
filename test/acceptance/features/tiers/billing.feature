@@ -74,3 +74,17 @@ Feature: Billing reads with infraweave's meaning
     And "GET /api/v1/tier-features?cursor=nope" through B with token "h" answers a 400 problem "invalid-cursor"
     And "GET /api/v1/available-billing-addons?cursor=nope" through A with token "h" answers a 400 problem "invalid-cursor"
     And "GET /api/v1/available-self-service-plans?cursor=nope" through B with token "h" answers a 400 problem "invalid-cursor"
+
+  @op:tier @op:tierFeatures @op:seats @case:success
+  Scenario: Starter reads its published limits and paid features
+    When token "op" gives the home organization the tier "Starter" through A
+    And token "op" turns billing on through A
+    Then the tier read through B with token "h" is the tier "Starter" as token "op" reads it through A
+    And the answer's limits is '{"private-workers":0,"public-worker-slots":2,"seats":10}'
+    And "GET /api/v1/seats" through B with token "h" answers '{"organization":{"inUse":1,"limit":10}}'
+    And the tier features read on the API listener hold "ignored-runs"
+    And the tier features read on the API listener hold "policies"
+    And the tier features read on the API listener lack "drift-detection"
+    And the tier features read on the API listener lack "private-worker-pools"
+    And the tier features read on the API listener lack "repos"
+    And the tier features read on the API listener lack "sessions"

@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	ErrUnknownTier = errors.New("dataview: unknown lowest seeded tier")
+	ErrUnknownTier = errors.New("dataview: unknown seeded tier")
 	ErrNoPhase     = errors.New("dataview: capability record has no phase")
 )
 
@@ -40,7 +40,6 @@ type tier struct {
 var tiers = []tier{
 	{"Free", "free"},
 	{"Starter", "starter"},
-	{"Starter+", "starterPlus"},
 	{"Business", "business"},
 	{"Enterprise", "enterprise"},
 }
@@ -125,7 +124,9 @@ func Render(featuresJSON, capabilitiesJSON []byte) ([]byte, error) {
 	if err := matrix(&b, fs.Records); err != nil {
 		return nil, err
 	}
-	limits(&b, fs.Records)
+	if err := limits(&b, fs.Records); err != nil {
+		return nil, err
+	}
 	if err := summary(&b, cs.Records); err != nil {
 		return nil, err
 	}
@@ -183,7 +184,7 @@ func matrix(b *bytes.Buffer, all []feature) error {
 }
 
 // limits writes each limit's value per tier; an empty cell is no limit.
-func limits(b *bytes.Buffer, all []feature) {
+func limits(b *bytes.Buffer, all []feature) error {
 	b.WriteString("\n## Seeded limits\n\n")
 	b.WriteString(
 		"Every limit is pooled across an organization's accounts. An empty cell means no limit.\n\n",
@@ -197,6 +198,9 @@ func limits(b *bytes.Buffer, all []feature) {
 		if f.Kind != "limit" {
 			continue
 		}
+		if err := checkLimitTiers(f.ID, f.Values); err != nil {
+			return err
+		}
 		fmt.Fprintf(b, "| `%s` | %s |", f.ID, cell(f.Unit))
 		for _, t := range tiers {
 			if v, ok := f.Values[t.key]; ok {
@@ -207,6 +211,7 @@ func limits(b *bytes.Buffer, all []feature) {
 		}
 		fmt.Fprintf(b, " %s |\n", f.Phase)
 	}
+	return nil
 }
 
 var phaseName = regexp.MustCompile(`^P(\d+)([a-z]?)$`)

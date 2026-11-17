@@ -139,6 +139,9 @@ func Catalogue(featuresJSON, capabilitiesJSON []byte) ([]byte, error) {
 		if len(f.Requires) > 0 {
 			fmt.Fprintf(&b, ", Requires: %s", goStrings(f.Requires))
 		}
+		if err := checkLimitTiers(f.ID, f.Values); err != nil {
+			return nil, err
+		}
 		if len(f.Values) > 0 {
 			b.WriteString(", Values: map[string]int64{")
 			for _, t := range tiers {
@@ -169,4 +172,14 @@ func goStrings(ss []string) string {
 		q[i] = strconv.Quote(s)
 	}
 	return "[]string{" + strings.Join(q, ", ") + "}"
+}
+
+// checkLimitTiers refuses a limit key the seeded view would otherwise drop.
+func checkLimitTiers[V int | int64](name string, values map[string]V) error {
+	for key := range values {
+		if !slices.ContainsFunc(tiers, func(t tier) bool { return t.key == key }) {
+			return fmt.Errorf("%w: %s has limit key %q", ErrUnknownTier, name, key)
+		}
+	}
+	return nil
 }

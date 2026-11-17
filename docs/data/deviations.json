@@ -1038,7 +1038,7 @@
       "id": "DV-101",
       "group": "Scope, tiers and clients: decision 0021",
       "spacelift": "Each account's plan gates its features",
-      "infraweave": "`billing` is a feature of the installation, off by default: no entitlement check runs and every organization behaves as Enterprise. Tiers, organization tiers and grants are data managed through the operator API (`api/operator.openapi.yaml`) and `infraweavectl operator`, effective without a restart; five tiers (Free, Starter, Starter+, Business, Enterprise) are seeded from Spacelift's documented plans",
+      "infraweave": "`billing` is a feature of the installation, off by default: no entitlement check runs and every organization behaves as Enterprise. Tiers, organization tiers and grants are data managed through the operator API (`api/operator.openapi.yaml`) and `infraweavectl operator`, effective without a restart; four tiers (Free, Starter, Business, Enterprise) are seeded from Spacelift's documented plans",
       "why": "Most installations serve one company and want every feature; one that hosts others turns billing on and gets Spacelift's packaging without writing it",
       "impact": "None while billing is off; with billing on, organizations see Spacelift's documented gates",
       "source": "[0021 Rationale](../research/decisions/0021-capability-scope-and-supersession.md#rationale)"
