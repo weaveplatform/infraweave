@@ -15729,7 +15729,7 @@ type ClientInterface interface {
 
 	// DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 	//
-	// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
+	// The account's default runner image for private pools, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image: Terraform's for Terraform and Terragrunt stacks, and OpenTofu's for OpenTofu stacks. A launcher's own default runner image overrides those vendor defaults.
 	//
 	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 	DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -21424,7 +21424,7 @@ func (c *Client) ContextConfigSet(ctx context.Context, contextId string, configI
 
 // DefaultPrivateWorkerPoolRunnerImage Get Default Private Worker Pool Runner Image
 //
-// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
+// The account's default runner image for private pools, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image: Terraform's for Terraform and Terragrunt stacks, and OpenTofu's for OpenTofu stacks. A launcher's own default runner image overrides those vendor defaults.
 //
 // Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -49550,7 +49550,7 @@ type ClientWithResponsesInterface interface {
 
 	// DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 	//
-	// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
+	// The account's default runner image for private pools, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image: Terraform's for Terraform and Terragrunt stacks, and OpenTofu's for OpenTofu stacks. A launcher's own default runner image overrides those vendor defaults.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -92208,7 +92208,7 @@ func (c *ClientWithResponses) ContextConfigSetWithResponse(ctx context.Context, 
 
 // DefaultPrivateWorkerPoolRunnerImageWithResponse Get Default Private Worker Pool Runner Image
 //
-// The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
+// The account's default runner image for private pools, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image: Terraform's for Terraform and Terragrunt stacks, and OpenTofu's for OpenTofu stacks. A launcher's own default runner image overrides those vendor defaults.
 //
 // Returns a wrapper object for the known response body format(s).
 //

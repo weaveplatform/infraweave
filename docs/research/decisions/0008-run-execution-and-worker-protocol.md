@@ -1159,14 +1159,19 @@ has failed":
   That is Spacelift's contract, so Spacelift's public runner images and customers'
   derived images run unchanged.
 - **Selection** follows Spacelift's precedence: runtime configuration, stack, the
-  account default, the launcher default
+  account default, `launcher.default_runner_image` when set, then the vendor's
+  image
   ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
-  The launcher's default depends on the stack's vendor: `-opentofu` for
+  The vendor's image is: `-opentofu` for
   OpenTofu, `-pulumi` for Pulumi, `launcher.default_ansible_runner_image`
   (by default `-ansible`) for Ansible, and `-terraform` for every other
   vendor. `launcher.default_runner_image`, unset by default, replaces the
   default of every vendor but Ansible, as Spacelift's launcher variables
-  do.
+  do. For the shipped vendors, OpenTofu uses
+  `ghcr.io/weaveplatform/infraweave-runner-opentofu`; every other vendor,
+  Terragrunt included and whatever tool it drives, uses
+  `ghcr.io/weaveplatform/infraweave-runner-terraform`. P20 adds Pulumi's image,
+  and P20b adds Ansible's image and its separate default setting.
 - **Defaults.** infraweave publishes its own multi-arch images
   (`ghcr.io/weaveplatform/infraweave-runner-terraform`, `-opentofu`,
   `-pulumi`, `-ansible`) that meet the contract, defined under
@@ -1359,7 +1364,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
   (60s), `launcher.run_timeout` (70m), `launcher.log_timeout` (7m),
   `launcher.cache_dir`, `launcher.metadata`, `launcher.admin_listen` (`:9091`),
   `launcher.state_lock_timeout` (5m),
-  `launcher.log.*`, `launcher.default_runner_image`,
+  `launcher.log.*`, `launcher.default_runner_image` (unset),
   `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
   `launcher.mask_envs`, `launcher.whitelist_envs`,
   `launcher.sensitive_output_upload` (off), `launcher.tool_mirror`,

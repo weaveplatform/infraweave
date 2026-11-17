@@ -40,7 +40,7 @@ type Launcher struct {
 	// nothing to say, in whole seconds.
 	PollTimeout time.Duration `mapstructure:"poll_timeout"`
 	// DefaultRunnerImage is the image of a run whose specification names
-	// none.
+	// none. When empty, the stack's vendor selects its built-in image.
 	DefaultRunnerImage string `mapstructure:"default_runner_image"`
 	// CacheDir holds what the launcher keeps between starts: the worker it
 	// registered, so a restart resumes it, and the tool binaries runs
@@ -131,15 +131,25 @@ func Defaults() Config {
 		cache = os.TempDir()
 	}
 	return Config{Launcher: Launcher{
-		PollTimeout:        60 * time.Second,
-		DefaultRunnerImage: "ghcr.io/weaveplatform/infraweave-runner-terraform",
-		CacheDir:           filepath.Join(cache, "infraweave-launcher"),
-		StateLockTimeout:   5 * time.Minute,
-		RunTimeout:         70 * time.Minute,
-		LogTimeout:         7 * time.Minute,
-		AdminListen:        ":9091",
-		Log:                observe.LogDefaults(),
+		PollTimeout:      60 * time.Second,
+		CacheDir:         filepath.Join(cache, "infraweave-launcher"),
+		StateLockTimeout: 5 * time.Minute,
+		RunTimeout:       70 * time.Minute,
+		LogTimeout:       7 * time.Minute,
+		AdminListen:      ":9091",
+		Log:              observe.LogDefaults(),
 	}}
+}
+
+// VendorRunnerImage is the image used when neither a run's specification
+// nor its launcher names one. Terragrunt uses Terraform's image even when
+// it drives OpenTofu. The Terraform reference must match images.DefaultPrivate
+// in internal/workers; the agent and that domain do not import each other.
+func VendorRunnerImage(vendor string) string {
+	if vendor == "opentofu" {
+		return "ghcr.io/weaveplatform/infraweave-runner-opentofu"
+	}
+	return "ghcr.io/weaveplatform/infraweave-runner-terraform"
 }
 
 // ErrConfig marks an invalid setting.
@@ -160,9 +170,6 @@ func (c Launcher) Validate() error {
 	if c.PollTimeout < MinPoll || c.PollTimeout > MaxPoll || c.PollTimeout%time.Second != 0 {
 		bad("launcher.poll_timeout must be whole seconds from %s to %s, got %s",
 			MinPoll, MaxPoll, c.PollTimeout)
-	}
-	if c.DefaultRunnerImage == "" {
-		bad("launcher.default_runner_image is required")
 	}
 	if c.CacheDir == "" {
 		bad("launcher.cache_dir is required")

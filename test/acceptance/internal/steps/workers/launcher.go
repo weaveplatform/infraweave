@@ -79,6 +79,13 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 			`(, which keeps sensitive outputs' values,)?(?:, whose no-log timeout is (\d+s),)? through ([AB])$`,
 		l.start,
 	)
+	sc.Step(`^token "(\w+)" starts the launcher "(\w+)" of the pool "(\w+)" with the key of "(\w+)", without a default runner image through ([AB])$`,
+		func(ctx context.Context, token, name, pool, csr, replica string) error {
+			return l.startWithImage(ctx, token, name, pool, csr, "", replica)
+		})
+	sc.Step(`^token "(\w+)" starts the launcher "(\w+)" of the pool "(\w+)" with the key of "(\w+)", whose default runner image is "([^"]+)" through ([AB])$`,
+		l.startWithImage)
+	sc.Step(`^the run "(\w+)"'s container started from the image "([^"]+)"$`, l.runImage)
 	sc.Step(`^the launchers started from now on download (\w+)'s build altered$`,
 		func(tool string) { l.tampered = tool })
 	sc.Step(`^the launcher "(\w+)" is killed$`, l.kill)
@@ -116,6 +123,16 @@ func (l *launcherSteps) servers(ctx context.Context, raw string) error {
 // as its endpoint, as a pool token names the server a launcher reaches.
 // The launcher's worker is kept as name once it registers.
 func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps, quiet, replica string) error {
+	return l.startConfigured(ctx, token, name, pool, csr, keeps, quiet, replica, nil)
+}
+
+// startWithImage overrides the scenario's usual image default, omitting the
+// setting entirely for an empty image so the vendor fallback is exercised.
+func (l *launcherSteps) startWithImage(ctx context.Context, token, name, pool, csr, image, replica string) error {
+	return l.startConfigured(ctx, token, name, pool, csr, "", "", replica, &image)
+}
+
+func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, csr, keeps, quiet, replica string, image *string) error {
 	w := l.w
 	host, err := w.Suite.Launchers(ctx)
 	if err != nil {
@@ -195,12 +212,42 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps
 		}
 		settings["default_runner_image"] = t.image
 	}
+	if image != nil {
+		if *image == harness.RunnerTerraform || *image == harness.RunnerOpenTofu {
+			if err := host.Build(ctx, *image); err != nil {
+				return err //nolint:wrapcheck // names the image
+			}
+		}
+		delete(settings, "default_runner_image")
+		if *image != "" {
+			settings["default_runner_image"] = *image
+		}
+	}
 	config, err := yaml.Marshal(map[string]any{"launcher": settings})
 	if err != nil {
 		return fmt.Errorf("launcher config: %w", err)
 	}
 	l.launchers[name] = &launcher{dir: dir, config: config}
 	return l.run(ctx, name)
+}
+
+// runImage reads the container's actual creation image through Docker,
+// while the relay keeps it alive, and retains that observation as evidence.
+func (l *launcherSteps) runImage(ctx context.Context, run, want string) error {
+	host, err := l.w.Suite.Launchers(ctx)
+	if err != nil {
+		return err
+	}
+	image, err := host.RunImage(ctx, l.w.IDs[run])
+	if err != nil {
+		return err
+	}
+	l.w.IDs[run+".image"] = image
+	if image != l.w.Resolve(want) {
+		return fmt.Errorf("%w: run %s's container started from %q, want %q",
+			harness.ErrStep, run, image, want)
+	}
+	return nil
 }
 
 // scenarioTools are the tools a scenario's tags name, with the runner

@@ -686,7 +686,8 @@ func (l *Launcher) dropWorkspace(ctx context.Context, run string, c executor.Con
 // container with ws as its workspace, each binary mounted read-only at
 // /bin/<tool>, and the handoff, which holds the opened secrets in memory
 // alone. A binary whose download is false is not mounted, so the image's
-// own runs.
+// own runs. The image is the specification's, else the launcher's default
+// when set, else the stack's vendor's built-in image.
 //
 // ref: decision 0008 § "Runner images"
 func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.RunSpec, secrets wire.RunSpecSecrets, ws string, out *lines) (executor.Container, error) {
@@ -703,6 +704,9 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 		})
 	}
 	image := l.d.Config.DefaultRunnerImage
+	if image == "" {
+		image = config.VendorRunnerImage(spec.Stack.Vendor)
+	}
 	if spec.RunnerImage != nil && *spec.RunnerImage != "" {
 		image = *spec.RunnerImage
 	}

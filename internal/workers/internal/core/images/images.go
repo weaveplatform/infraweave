@@ -8,10 +8,12 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
-// DefaultPrivate is the runner image a private pool's run uses when
-// neither its runtime configuration, its stack nor its account names one:
-// the launcher's default. It is untagged, so it resolves to the latest
-// release of the Terraform runner image.
+// DefaultPrivate is the account read's fallback and the built-in image for
+// Terraform and Terragrunt runs. With no account default, an OpenTofu run
+// uses its own vendor image; a launcher's configured default overrides both.
+// It is untagged, so it resolves to the latest release. This reference must
+// match config.VendorRunnerImage in internal/agent/config; neither imports
+// the other.
 //
 // ref: decision 0008 § "Runner images"
 const DefaultPrivate = "ghcr.io/weaveplatform/infraweave-runner-terraform"
@@ -20,7 +22,8 @@ const DefaultPrivate = "ghcr.io/weaveplatform/infraweave-runner-terraform"
 const maxLength = 255
 
 // Images are an account's default runner images for runs on private and
-// on public pools; nil takes the launcher's default.
+// on public pools; nil takes the launcher's configured default, else the
+// stack's vendor image.
 type Images struct {
 	Private *string
 	Public  *string
@@ -40,8 +43,8 @@ type Service struct{ store Store }
 // New returns the service over store.
 func New(store Store) *Service { return &Service{store: store} }
 
-// Private is the runner image acct's runs on private pools use when
-// neither their runtime configuration nor their stack names one.
+// Private answers the account's default for private pools, or DefaultPrivate
+// when none is set. The launcher selects each run's vendor fallback.
 func (s *Service) Private(ctx context.Context, acct kernel.AccountID) (string, error) {
 	in, err := s.store.RunnerImages(ctx, acct)
 	if err != nil {

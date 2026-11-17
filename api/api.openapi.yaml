@@ -5207,7 +5207,7 @@ paths:
   /default-private-worker-pool-runner-image:
     get:
       description: >-
-        The runner image a private worker pool's runs use when neither the stack nor the run names one: the account's default, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or else the launcher's default, the infraweave Terraform runner image.
+        The account's default runner image for private pools, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image: Terraform's for Terraform and Terragrunt stacks, and OpenTofu's for OpenTofu stacks. A launcher's own default runner image overrides those vendor defaults.
       operationId: defaultPrivateWorkerPoolRunnerImage
       x-infraweave-feature: account-details
       x-infraweave-action: AUTHENTICATED
