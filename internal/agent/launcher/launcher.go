@@ -717,6 +717,8 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 		Assigned: a.State, StateVersion: a.StateVersion, Spec: spec, Secrets: secrets,
 		StateLockTimeout: l.d.Config.StateLockTimeout, MaskEnvs: l.d.Config.MaskEnvs,
 		SensitiveOutputUpload: l.d.Config.SensitiveOutputUpload,
+		MaxRequestsPerSecond:  l.d.Config.MaxRequestsPerSecond,
+		MaxRequestsBurst:      l.d.Config.MaxRequestsBurst,
 		PoolKey:               l.id.open.PublicKey().Bytes(),
 	}); err != nil {
 		return nil, err //nolint:wrapcheck // handoff names the write

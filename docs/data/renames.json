@@ -270,6 +270,12 @@
       "kind": "concept",
       "reference": "The Kubernetes label `app.kubernetes.io/managed-by: spacelift`",
       "infraweave": "`app.kubernetes.io/managed-by: infraweave`"
+    },
+    {
+      "id": "RN-45",
+      "kind": "identifier",
+      "reference": "TF_VAR_spacelift_graphql_endpoint",
+      "infraweave": "TF_VAR_infraweave_api_endpoint"
     }
   ]
 }

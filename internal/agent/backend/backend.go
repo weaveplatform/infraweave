@@ -143,6 +143,15 @@ func Address(endpoint, p, workspace string) (string, error) {
 	return out.String(), nil
 }
 
+// APIAddress is the REST API's base URL reached through the same relay or
+// private address as the worker API. Address applies the backend's URL
+// checks and preserves the same prefix for both APIs.
+func APIAddress(endpoint string) (string, error) {
+	// This path must match app.BaseURL in internal/app/router.go; the
+	// agent cannot import the server's assembly.
+	return Address(endpoint, "/api/v1", "")
+}
+
 // Environment is the phase environment's credentials of the run whose run
 // token is token, which Terraform's and OpenTofu's HTTP backend read. They
 // are never written into the workspace, so a saved workspace or a log

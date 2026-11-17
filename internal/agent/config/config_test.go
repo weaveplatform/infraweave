@@ -58,6 +58,7 @@ func TestUnitLoadDefaults(t *testing.T) {
 		l.AdminListen != ":9091" || l.DefaultRunnerImage != "" || l.CacheDir != d.CacheDir ||
 		l.Log.Level != "info" || l.Metadata != nil || l.StateLockTimeout != 5*time.Minute ||
 		l.RunTimeout != 70*time.Minute || l.LogTimeout != 7*time.Minute ||
+		l.MaxRequestsPerSecond != 10 || l.MaxRequestsBurst != 100 ||
 		l.ToolMirror != "" || l.CAFile != "" {
 		t.Fatalf("defaults: %+v", l)
 	}
@@ -100,6 +101,8 @@ func TestUnitLoadPrecedence(t *testing.T) {
   log_timeout: 15m
   mask_envs: [AWS_SECRET_ACCESS_KEY, DB_PASSWORD]
   sensitive_output_upload: true
+  max_requests_per_second: 12
+  max_requests_burst: 120
   tool_mirror: https://mirror.example.com/releases
   ca_file: /etc/infraweave/ca.pem
   metadata:
@@ -122,6 +125,9 @@ func TestUnitLoadPrecedence(t *testing.T) {
 		c.Launcher.CAFile != "/etc/infraweave/ca.pem" || !c.Launcher.SensitiveOutputUpload {
 		t.Fatalf("file: %+v", c.Launcher)
 	}
+	if c.Launcher.MaxRequestsPerSecond != 12 || c.Launcher.MaxRequestsBurst != 120 {
+		t.Fatalf("file rate settings: %+v", c.Launcher)
+	}
 
 	t.Setenv("INFRAWEAVE_LAUNCHER_ADMIN_LISTEN", ":7001")
 	t.Setenv("INFRAWEAVE_LAUNCHER_DOCKER_RUNTIME", "runsc")
@@ -129,6 +135,8 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	t.Setenv("INFRAWEAVE_LAUNCHER_MASK_ENVS", "TOKEN,_KEY2")
 	t.Setenv("INFRAWEAVE_LAUNCHER_LOG_TIMEOUT", "20m")
 	t.Setenv("INFRAWEAVE_LAUNCHER_SENSITIVE_OUTPUT_UPLOAD", "false")
+	t.Setenv("INFRAWEAVE_LAUNCHER_MAX_REQUESTS_PER_SECOND", "17")
+	t.Setenv("INFRAWEAVE_LAUNCHER_MAX_REQUESTS_BURST", "170")
 	c, err = load(t, "--config", f)
 	if err != nil {
 		t.Fatal(err)
@@ -139,6 +147,9 @@ func TestUnitLoadPrecedence(t *testing.T) {
 		c.Launcher.Metadata["zone"] != "a" || c.Launcher.Metadata["Rack"] != "7" ||
 		c.Launcher.SensitiveOutputUpload {
 		t.Fatalf("environment over file: %+v", c.Launcher)
+	}
+	if c.Launcher.MaxRequestsPerSecond != 17 || c.Launcher.MaxRequestsBurst != 170 {
+		t.Fatalf("environment rate settings: %+v", c.Launcher)
 	}
 
 	c, err = load(t, "--config", f, "--admin-listen", ":7002", "--log-level", "debug")
@@ -164,23 +175,25 @@ func TestUnitValidate(t *testing.T) {
 		many[strings.Repeat("k", i+1)] = "v"
 	}
 	for key, edit := range map[string]func(*config.Launcher){
-		"launcher.token":                 func(l *config.Launcher) { l.Token = " " },
-		"launcher.private_key":           func(l *config.Launcher) { l.PrivateKey = "" },
-		"launcher.poll_timeout":          func(l *config.Launcher) { l.PollTimeout = 7500 * time.Millisecond },
-		"launcher.cache_dir":             func(l *config.Launcher) { l.CacheDir = "" },
-		"launcher.state_lock_timeout":    func(l *config.Launcher) { l.StateLockTimeout = -time.Second },
-		"launcher.run_timeout":           func(l *config.Launcher) { l.RunTimeout = 0 },
-		"launcher.log_timeout":           func(l *config.Launcher) { l.LogTimeout = -time.Minute },
-		"launcher.mask_envs \"A-B\"":     func(l *config.Launcher) { l.MaskEnvs = []string{"OK", "A-B"} },
-		"launcher.mask_envs \"9X\"":      func(l *config.Launcher) { l.MaskEnvs = []string{"9X"} },
-		"launcher.tool_mirror \"ftp:":    func(l *config.Launcher) { l.ToolMirror = "ftp://mirror" },
-		"launcher.tool_mirror \"https:/": func(l *config.Launcher) { l.ToolMirror = "https:///x" },
-		"launcher.tool_mirror \"::\"":    func(l *config.Launcher) { l.ToolMirror = "::" },
-		"launcher.metadata holds":        func(l *config.Launcher) { l.Metadata = many },
-		"launcher.metadata \"\"":         func(l *config.Launcher) { l.Metadata = map[string]string{"": "v"} },
-		"launcher.admin_listen \"9091\"": func(l *config.Launcher) { l.AdminListen = "9091" },
-		"port must be":                   func(l *config.Launcher) { l.AdminListen = ":http" },
-		"launcher.log":                   func(l *config.Launcher) { l.Log.Level = "loud" },
+		"launcher.token":                   func(l *config.Launcher) { l.Token = " " },
+		"launcher.private_key":             func(l *config.Launcher) { l.PrivateKey = "" },
+		"launcher.poll_timeout":            func(l *config.Launcher) { l.PollTimeout = 7500 * time.Millisecond },
+		"launcher.cache_dir":               func(l *config.Launcher) { l.CacheDir = "" },
+		"launcher.state_lock_timeout":      func(l *config.Launcher) { l.StateLockTimeout = -time.Second },
+		"launcher.run_timeout":             func(l *config.Launcher) { l.RunTimeout = 0 },
+		"launcher.log_timeout":             func(l *config.Launcher) { l.LogTimeout = -time.Minute },
+		"launcher.max_requests_per_second": func(l *config.Launcher) { l.MaxRequestsPerSecond = 0 },
+		"launcher.max_requests_burst":      func(l *config.Launcher) { l.MaxRequestsBurst = 0 },
+		"launcher.mask_envs \"A-B\"":       func(l *config.Launcher) { l.MaskEnvs = []string{"OK", "A-B"} },
+		"launcher.mask_envs \"9X\"":        func(l *config.Launcher) { l.MaskEnvs = []string{"9X"} },
+		"launcher.tool_mirror \"ftp:":      func(l *config.Launcher) { l.ToolMirror = "ftp://mirror" },
+		"launcher.tool_mirror \"https:/":   func(l *config.Launcher) { l.ToolMirror = "https:///x" },
+		"launcher.tool_mirror \"::\"":      func(l *config.Launcher) { l.ToolMirror = "::" },
+		"launcher.metadata holds":          func(l *config.Launcher) { l.Metadata = many },
+		"launcher.metadata \"\"":           func(l *config.Launcher) { l.Metadata = map[string]string{"": "v"} },
+		"launcher.admin_listen \"9091\"":   func(l *config.Launcher) { l.AdminListen = "9091" },
+		"port must be":                     func(l *config.Launcher) { l.AdminListen = ":http" },
+		"launcher.log":                     func(l *config.Launcher) { l.Log.Level = "loud" },
 	} {
 		l := valid()
 		edit(&l)
@@ -188,6 +201,22 @@ func TestUnitValidate(t *testing.T) {
 		if !errors.Is(err, config.ErrConfig) || !strings.Contains(err.Error(), key) {
 			t.Errorf("%s: %v", key, err)
 		}
+	}
+	for _, name := range []string{"MAX_REQUESTS_PER_SECOND", "MAX_REQUESTS_BURST"} {
+		t.Run(name, func(t *testing.T) {
+			for _, value := range []string{"1.5", "true"} {
+				yaml := "launcher:\n  " + strings.ToLower(name) + ": " + value + "\n"
+				if _, err := load(t, "--config", file(t, yaml)); err == nil {
+					t.Errorf("%s: %s was accepted", name, value)
+				}
+			}
+			for _, value := range []string{"0", "-1", "not-an-integer"} {
+				t.Setenv("INFRAWEAVE_LAUNCHER_"+name, value)
+				if _, err := load(t); err == nil {
+					t.Errorf("%s=%s was accepted", name, value)
+				}
+			}
+		})
 	}
 	for _, d := range []time.Duration{time.Second, 3 * time.Minute} {
 		l := valid()

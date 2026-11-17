@@ -30,6 +30,8 @@ import (
 )
 
 // BaseURL is the API's prefix, the server URL of api/api.openapi.yaml.
+// BaseURL must match backend.APIAddress in internal/agent/backend; the
+// isolated agent derives this API's URL from its worker endpoint.
 const BaseURL = "/api/v1"
 
 // OperatorBaseURL is the operator API's prefix, the server URL of

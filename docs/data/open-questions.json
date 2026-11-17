@@ -4016,6 +4016,42 @@
         "docs/research/reference/33-vendor-tool-documents.md",
         "docs/research/reference/18-scheduling-drift-dependencies.md"
       ]
+    },
+    {
+      "id": "C308",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "What values do SPACELIFT_MAX_REQUESTS_PER_SECOND and SPACELIFT_MAX_REQUESTS_BURST take in a run, and do they differ between the public pool and a private worker's launcher?",
+      "howToCapture": "A task on a public-pool stack and one on a private pool printing the variables' values",
+      "blocks": "the defaults of infraweave's run settings in decision 0008",
+      "reports": [
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C309",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "When is SPACELIFT_VENDOR_BINARY_CACHED true: a binary the worker cached from an earlier run, one the image holds, or one downloaded for this run? What does it read on a stack that skips the vendor binary download?",
+      "howToCapture": "A task on a public-pool stack and one on a private pool printing the variables' values",
+      "blocks": "the defaults of infraweave's run settings in decision 0008",
+      "reports": [
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C310",
+      "kind": "capture",
+      "area": "Configuration and state (reports 13 and 16)",
+      "question": "What does TF_APPEND_USER_AGENT hold in a run?",
+      "howToCapture": "A task on a public-pool stack and one on a private pool printing the variables' values",
+      "blocks": "the defaults of infraweave's run settings in decision 0008",
+      "reports": [
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
     }
   ]
 }

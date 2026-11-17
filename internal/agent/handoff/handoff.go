@@ -38,6 +38,10 @@ type Handoff struct {
 	// the run may keep its sensitive outputs' values where its stack
 	// allows it too.
 	SensitiveOutputUpload bool `json:"sensitiveOutputUpload,omitempty"`
+	// MaxRequestsPerSecond and MaxRequestsBurst are the launcher's API
+	// rate settings for clients in the run.
+	MaxRequestsPerSecond int `json:"maxRequestsPerSecond"`
+	MaxRequestsBurst     int `json:"maxRequestsBurst"`
 	// PoolKey is the pool's public key, an uncompressed P-256 point, to
 	// which the runner seals a saved workspace's content key.
 	PoolKey []byte `json:"poolKey,omitempty"`

@@ -29,6 +29,7 @@ func TestUnitCheckOverrides(t *testing.T) {
 		{Name: "REGION", Value: "eu"},
 		{Name: "REGION", Value: "us"},
 		{Name: "NUL", Value: "a\x00"},
+		{Name: "TF_APPEND_USER_AGENT"},
 	})
 	inv, ok := errors.AsType[*kernel.Invalid](err)
 	if !ok {
@@ -46,6 +47,7 @@ func TestUnitCheckOverrides(t *testing.T) {
 		"/environmentVarsOverrides/4/key " + kernel.ReasonRule,
 		"/environmentVarsOverrides/6/key " + kernel.ReasonDuplicate,
 		"/environmentVarsOverrides/7/value " + kernel.ReasonRule,
+		"/environmentVarsOverrides/8/key " + kernel.ReasonRule,
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Errorf("refusals:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))

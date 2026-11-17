@@ -18,6 +18,8 @@ func TestUnitHandoffRoundTrip(t *testing.T) {
 		Endpoint: "https://iw.example.com/worker/v1", Run: "run-1", RunToken: "token",
 		Assigned: wire.AssignmentStatePREPARINGREPLAN, StateVersion: 9,
 		SensitiveOutputUpload: true,
+		MaxRequestsPerSecond:  19,
+		MaxRequestsBurst:      190,
 		Spec: wire.RunSpec{
 			Stack: wire.RunSpecStack{
 				EnableWellKnownSecretMasking: true, EnableSensitiveOutputUpload: true,
@@ -47,6 +49,7 @@ func TestUnitHandoffRoundTrip(t *testing.T) {
 	if got.Spec.Source != h.Spec.Source || got.Spec.Tool == nil || *got.Spec.Tool != *h.Spec.Tool ||
 		!got.Spec.Stack.EnableWellKnownSecretMasking ||
 		!got.Spec.Stack.EnableSensitiveOutputUpload || !got.SensitiveOutputUpload ||
+		got.MaxRequestsPerSecond != 19 || got.MaxRequestsBurst != 190 ||
 		got.Secrets.SourceCredential == nil ||
 		*got.Secrets.SourceCredential != *h.Secrets.SourceCredential {
 		t.Errorf("Read: spec %+v, secrets %+v", got.Spec, got.Secrets)

@@ -70,6 +70,10 @@ type Launcher struct {
 	// SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED does; off, the runner
 	// records each sensitive output with no value. The handoff carries it.
 	SensitiveOutputUpload bool `mapstructure:"sensitive_output_upload"`
+	// MaxRequestsPerSecond and MaxRequestsBurst are the API rate settings
+	// exposed to clients in each run's environment.
+	MaxRequestsPerSecond int `mapstructure:"max_requests_per_second"`
+	MaxRequestsBurst     int `mapstructure:"max_requests_burst"`
 	// MaskEnvs names the run's variables whose values the runner masks in
 	// its log, whether or not they are secret, as SPACELIFT_MASK_ENVS
 	// does; the handoff carries the names.
@@ -136,8 +140,12 @@ func Defaults() Config {
 		StateLockTimeout: 5 * time.Minute,
 		RunTimeout:       70 * time.Minute,
 		LogTimeout:       7 * time.Minute,
-		AdminListen:      ":9091",
-		Log:              observe.LogDefaults(),
+		// Match the server's standard rate class in platform/httpkit/
+		// middleware/ratelimit; run clients share the server's defaults.
+		MaxRequestsPerSecond: 10,
+		MaxRequestsBurst:     100,
+		AdminListen:          ":9091",
+		Log:                  observe.LogDefaults(),
 	}}
 }
 
@@ -186,6 +194,12 @@ func (c Launcher) Validate() error {
 	}
 	if c.LogTimeout <= 0 {
 		bad("launcher.log_timeout must be positive, got %s", c.LogTimeout)
+	}
+	if c.MaxRequestsPerSecond <= 0 {
+		bad("launcher.max_requests_per_second must be positive, got %d", c.MaxRequestsPerSecond)
+	}
+	if c.MaxRequestsBurst <= 0 {
+		bad("launcher.max_requests_burst must be positive, got %d", c.MaxRequestsBurst)
 	}
 	for _, name := range c.MaskEnvs {
 		if !envName.MatchString(name) {
@@ -292,6 +306,15 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		v.SetConfigType("yaml")
 		if err := v.ReadInConfig(); err != nil {
 			return nil, fmt.Errorf("read config: %w", err)
+		}
+	}
+	// Viper's weak decoding converts floats and booleans to integers.
+	// Check the resolved values first so a fractional rate is not truncated.
+	for _, key := range []string{"launcher.max_requests_per_second", "launcher.max_requests_burst"} {
+		if v.IsSet(key) {
+			if _, err := strconv.Atoi(v.GetString(key)); err != nil {
+				return nil, fmt.Errorf("%w: %s must be an integer: %w", ErrConfig, key, err)
+			}
 		}
 	}
 	c := Defaults()

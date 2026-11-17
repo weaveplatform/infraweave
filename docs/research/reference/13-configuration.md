@@ -524,6 +524,11 @@ list is in report 07.
 
 ## Inferred and undocumented
 
+- The public- and private-pool values of `SPACELIFT_MAX_REQUESTS_PER_SECOND`
+  and `SPACELIFT_MAX_REQUESTS_BURST` remain uncaptured (C308).
+- When `SPACELIFT_VENDOR_BINARY_CACHED` is true, including a run that skips
+  the binary download, remains uncaptured (C309).
+- The value of `TF_APPEND_USER_AGENT` in a run remains uncaptured (C310).
 - Mounted file values are Base64 at the API, inferred from the provider passing
   its Base64 `content` straight into `ConfigInput.value`.
 - `stackConfigAdd` on an existing ID updating in place, inferred from the UI (C97).

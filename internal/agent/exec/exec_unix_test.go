@@ -272,6 +272,7 @@ func newWorld(t *testing.T) *world {
 			Endpoint: "http://server.test/worker/v1", Run: runID, RunToken: "run-token",
 			Assigned: wire.AssignmentStatePREPARING, StateVersion: 3,
 			StateLockTimeout: 5 * time.Minute, PoolKey: pool.PublicKey().Bytes(),
+			MaxRequestsPerSecond: 10, MaxRequestsBurst: 100,
 			Spec: wire.RunSpec{
 				Run:    wire.RunSpecRun{Account: acctID, Id: runID, Type: wire.TRACKED},
 				Commit: wire.RunSpecCommit{Hash: "abc123"},
@@ -723,6 +724,10 @@ func TestUnitExecPreparationFails(t *testing.T) {
 				w.h.Spec.StateBackend = &wire.RunSpecStateBackend{Path: "/state/v1/stacks/infra"}
 			},
 			want: "The state backend cannot be configured: ",
+		},
+		"an API endpoint with no managed state": {
+			edit: func(w *world) { w.h.Endpoint = "http://server.test/elsewhere" },
+			want: "The run environment cannot be configured: ",
 		},
 		"no shell": {
 			edit: func(w *world) { w.environ = []string{"PATH=" + w.t.TempDir()} },

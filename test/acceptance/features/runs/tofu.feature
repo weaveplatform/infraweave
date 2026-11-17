@@ -54,6 +54,7 @@ Feature: Runs of an OpenTofu stack end to end
     And the head of "main" of "infra" is kept as "seed"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "pool"
+    And the launchers started from now on set the run request limits to 17 per second and a burst of 170
     And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 
@@ -146,10 +147,10 @@ Feature: Runs of an OpenTofu stack end to end
     Then the answer's resources are the changes "terraform_data.local ADD"
     And the run "run" wrote 0 state versions
 
-  @op:proposeWithOverrides @case:success
+  @op:proposeWithOverrides @case:success @op:runTrigger @case:denial
   Scenario: A proposed run's environment ranks its sources, and its in-run API token reads its own stack and space
     Given token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false},{"id":"CTX_ONLY","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}]}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}},"beforePlan":["env | grep -E \"^(CTX_ONLY|ECHO|LEVEL|ro_PLAIN|STACK_ONLY|TF_VAR_infraweave_run_type|TF_VAR_infraweave_stack_id)=\" | sort","echo \"api token: ${INFRAWEAVE_API_TOKEN:+set}\"","p=$(printf %s \"$INFRAWEAVE_API_TOKEN\" | cut -d. -f2 | tr _- /+)","while [ $(( ${#p} % 4 )) -ne 0 ]; do p=\"$p=\"; done","sub=$(printf %s \"$p\" | base64 -d | jq -r .sub)","echo \"token sub: $sub\"","s=$(curl -fsS -H \"Authorization: Bearer $INFRAWEAVE_API_TOKEN\" {relay.url}/api/v1/stacks/${sub%%/*})","echo \"stack read: $(echo \"$s\" | jq -r .id) in $(echo \"$s\" | jq -r .space)\"","sp=$(curl -fsS -H \"Authorization: Bearer $INFRAWEAVE_API_TOKEN\" {relay.url}/api/v1/spaces/$(echo \"$s\" | jq -r .space))","echo \"space read: $(echo \"$sp\" | jq -r .id)\""]},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}},"beforePlan":["env | grep -E \"^(CTX_ONLY|ECHO|LEVEL|ro_PLAIN|STACK_ONLY|TF_VAR_infraweave_run_type|TF_VAR_infraweave_stack_id|TF_VAR_infraweave_api_endpoint|INFRAWEAVE_MAX_REQUESTS_PER_SECOND|INFRAWEAVE_MAX_REQUESTS_BURST|INFRAWEAVE_SENSITIVE_OUTPUT_UPLOAD_ENABLED|INFRAWEAVE_VENDOR_BINARY_CACHED|TF_APPEND_USER_AGENT)=\" | sort","echo \"api token: ${INFRAWEAVE_API_TOKEN:+set}\"","p=$(printf %s \"$INFRAWEAVE_API_TOKEN\" | cut -d. -f2 | tr _- /+)","while [ $(( ${#p} % 4 )) -ne 0 ]; do p=\"$p=\"; done","sub=$(printf %s \"$p\" | base64 -d | jq -r .sub)","echo \"token sub: $sub\"","s=$(curl -fsS -H \"Authorization: Bearer $INFRAWEAVE_API_TOKEN\" $TF_VAR_infraweave_api_endpoint/stacks/${sub%%/*})","echo \"stack read: $(echo \"$s\" | jq -r .id) in $(echo \"$s\" | jq -r .space)\"","sp=$(curl -fsS -H \"Authorization: Bearer $INFRAWEAVE_API_TOKEN\" $TF_VAR_infraweave_api_endpoint/spaces/$(echo \"$s\" | jq -r .space))","echo \"space read: $(echo \"$sp\" | jq -r .id)\"","code=$(curl -sS -o /tmp/infraweave-denied.json -w \"%{http_code}\" -X POST -H \"Authorization: Bearer $INFRAWEAVE_API_TOKEN\" -H \"Content-Type: application/json\" --data \"{}\" \"$TF_VAR_infraweave_api_endpoint/stacks/${sub%%/*}/runs\")","echo \"run trigger: $code $(jq -r .type /tmp/infraweave-denied.json)\""]},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through B
     And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":1}' through A
     And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"STACK_ONLY","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through A
@@ -161,8 +162,10 @@ Feature: Runs of an OpenTofu stack end to end
     Then it answers 201
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "FINISHED" through B
-    And token "h" reads the run "run"'s PLANNING log through A, which holds "CTX_ONLY=context\nECHO=run of infra\nLEVEL=run\nSTACK_ONLY=stack\nTF_VAR_infraweave_run_type=stack\nTF_VAR_infraweave_stack_id=infra\nro_PLAIN=plain\napi token: set" and not "LEVEL=stack"
-    And token "h" reads the run "run"'s PLANNING log through B, which holds "token sub: infra/{run}\nstack read: infra in legacy\nspace read: legacy" and not "LEVEL=context"
+    And token "h" reads the run "run"'s PLANNING log through A, which holds "CTX_ONLY=context\nECHO=run of infra\nINFRAWEAVE_MAX_REQUESTS_BURST=170\nINFRAWEAVE_MAX_REQUESTS_PER_SECOND=17\nINFRAWEAVE_SENSITIVE_OUTPUT_UPLOAD_ENABLED=false\nINFRAWEAVE_VENDOR_BINARY_CACHED=true\nLEVEL=run\nSTACK_ONLY=stack" and not "LEVEL=stack"
+    And token "h" reads the run "run"'s PLANNING log through A, which holds "TF_APPEND_USER_AGENT=infraweave/" and not "TF_APPEND_USER_AGENT=container"
+    And token "h" reads the run "run"'s PLANNING log through A, which holds "TF_VAR_infraweave_api_endpoint={relay.url}/api/v1\nTF_VAR_infraweave_run_type=stack\nTF_VAR_infraweave_stack_id=infra\nro_PLAIN=plain\napi token: set" and not "LEVEL=stack"
+    And token "h" reads the run "run"'s PLANNING log through B, which holds "token sub: infra/{run}\nstack read: infra in legacy\nspace read: legacy\nrun trigger: 403 urn:infraweave:problem:forbidden" and not "LEVEL=context"
 
   @op:runTrigger @op:contextCreateV2 @op:contextAttach @op:contextConfigAdd @case:success
   Scenario: Auto-attached contexts rank variables and hooks from Z to A

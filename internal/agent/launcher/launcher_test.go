@@ -80,6 +80,7 @@ func (w *world) config() config.Launcher {
 	c.Metadata = map[string]string{"zone": "a"}
 	c.MaskEnvs = []string{"DB_PASSWORD"}
 	c.SensitiveOutputUpload = true
+	c.MaxRequestsPerSecond, c.MaxRequestsBurst = 17, 170
 	return c
 }
 
@@ -387,6 +388,7 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 			h.Secrets.Environment["TF_VAR_x"] != "1" || h.Spec.Sealed != nil ||
 			h.Spec.Hooks["before_init"][0] != "echo hi" ||
 			!slices.Equal(h.MaskEnvs, []string{"DB_PASSWORD"}) || !h.SensitiveOutputUpload ||
+			h.MaxRequestsPerSecond != 17 || h.MaxRequestsBurst != 170 ||
 			!bytes.Equal(h.PoolKey, poolKey(t, w.pool).Bytes()) {
 			t.Fatalf("handoff: %+v", h)
 		}
