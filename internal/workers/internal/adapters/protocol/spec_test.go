@@ -80,7 +80,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			Tool: &workersapi.SpecTool{
 				Name: "tofu", Version: "1.11.2", Download: true, CPUProfiling: true,
 			},
-			Terragrunt: &workersapi.SpecTerragrunt{Version: "0.93.3", Download: true},
+			Terragrunt: &workersapi.SpecTerragrunt{Version: "0.93.3", Download: true, RunAll: true},
 			Task:       &kernel.Task{Command: "make check", SkipInitialization: true},
 			Targets:    []string{"aws_instance.web", `module.app["a"]`},
 			Hooks:      map[string][]string{"beforeInit": {"echo hi"}},
@@ -143,7 +143,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 		"tool": map[string]any{
 			"name": "tofu", "version": "1.11.2", "download": true, "enableCPUProfiling": true,
 		},
-		"terragrunt": map[string]any{"version": "0.93.3", "download": true},
+		"terragrunt": map[string]any{"version": "0.93.3", "download": true, "runAll": true},
 		"task":       map[string]any{"command": "make check", "skipInitialization": true},
 		"targets":    []any{"aws_instance.web", `module.app["a"]`},
 		"hooks":      map[string]any{"beforeInit": []any{"echo hi"}},

@@ -33,11 +33,13 @@ var ErrAddress = errors.New("not a state backend address")
 // workspace, and answers the phase environment's credentials. A run whose
 // stack infraweave keeps no state for writes nothing and answers none.
 //
-// A Terragrunt stack's run writes File into each of the project's Units
-// instead, naming the unit's workspace, after checking every unit: one
+// A Terragrunt stack's run with RunAll writes File into each of the
+// project's Units, naming its workspace, after checking every unit: one
 // whose name is no workspace name, or that declares its own backend, is
 // refused naming it, and nothing is written. The files a unit includes
 // are read under workspace, which the repository's checkout fills.
+// Without RunAll, only the project root's unit is checked and written,
+// naming the default workspace; nested units and stacks are left alone.
 //
 // ref: decision 0010 § "How a run reaches it"
 func Configure(workspace, root string, h handoff.Handoff) ([]string, error) {
@@ -47,7 +49,7 @@ func Configure(workspace, root string, h handoff.Handoff) ([]string, error) {
 	units := []string{""}
 	if h.Spec.Terragrunt != nil {
 		var err error
-		if units, err = checkUnits(workspace, root); err != nil {
+		if units, err = checkUnits(workspace, root, h.Spec.Terragrunt.RunAll); err != nil {
 			return nil, err
 		}
 	}
@@ -67,12 +69,15 @@ func Configure(workspace, root string, h handoff.Handoff) ([]string, error) {
 	return Environment(h.RunToken), nil
 }
 
-// checkUnits are the Units of the Terragrunt project at root, each
-// checked: its name a workspace name and no backend of its own.
-func checkUnits(workspace, root string) ([]string, error) {
-	units, err := Units(root)
-	if err != nil {
-		return nil, err
+// checkUnits checks the selected units: every discovered unit under runAll,
+// otherwise the root alone, each with a valid workspace name and no backend.
+func checkUnits(workspace, root string, runAll bool) ([]string, error) {
+	units := []string{""}
+	if runAll {
+		var err error
+		if units, err = Units(root); err != nil {
+			return nil, err
+		}
 	}
 	// Terragrunt's functions answer absolute paths, which the include
 	// paths the check works out are built from.

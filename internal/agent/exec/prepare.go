@@ -56,7 +56,7 @@ func (r *run) setUp(ctx context.Context) string {
 	}
 	w, err := vendors.Defaults(tool.Name)
 	if err == nil && r.terragrunt() {
-		w, err = vendors.Terragrunt()
+		w, err = vendors.Terragrunt(r.h.Spec.Terragrunt.RunAll)
 	}
 	if err != nil {
 		return "The runner has no commands for " + string(tool.Name) + "."
@@ -69,8 +69,20 @@ func (r *run) setUp(ctx context.Context) string {
 		return "The project root " + *r.h.Spec.Stack.ProjectRoot + " is not a directory of " +
 			"the workspace."
 	}
+
 	if err := r.files(); err != nil {
 		return fmt.Sprintf("The mounted files cannot be written: %v.", err)
+	}
+	if r.terragrunt() && !r.h.Spec.Terragrunt.RunAll {
+		info, err := os.Stat(filepath.Join(r.dir, backend.UnitFile))
+		if err != nil || !info.Mode().IsRegular() {
+			name := "."
+			if p := r.h.Spec.Stack.ProjectRoot; p != nil && *p != "" {
+				name = *p
+			}
+			return "The project root " + name + " holds no terragrunt.hcl; a Terragrunt " +
+				"stack whose useRunAll is false runs the unit there."
+		}
 	}
 	if d := r.readWorkflow(); d != "" {
 		return d
@@ -218,7 +230,7 @@ func (r *run) environment(creds []string) []string {
 }
 
 // terragrunt reports whether the run is a Terragrunt stack's, whose
-// commands Terragrunt runs across the stack's units.
+// commands Terragrunt runs according to its resolved RunAll mode.
 func (r *run) terragrunt() bool {
 	return r.h.Spec.Terragrunt != nil
 }

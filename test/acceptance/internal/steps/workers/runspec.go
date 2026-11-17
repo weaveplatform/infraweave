@@ -119,7 +119,7 @@ func (w *workerSteps) tool(name, version, notDownloaded, masking string) error {
 // Terragrunt at version driving the tool name at toolVersion, their
 // {name}s resolved, both downloaded unless notDownloaded is set, and
 // names a state backend unless without is set.
-func (w *workerSteps) terragrunt(version, name, toolVersion, notDownloaded, without string) error {
+func (w *workerSteps) terragrunt(version, name, toolVersion, notDownloaded, without, mode string) error {
 	s, err := w.spec()
 	if err != nil {
 		return err
@@ -128,7 +128,9 @@ func (w *workerSteps) terragrunt(version, name, toolVersion, notDownloaded, with
 		Name: wire.RunSpecToolName(name), Version: w.w.Resolve(toolVersion),
 		Download: notDownloaded == "",
 	}
-	tg := wire.RunSpecTerragrunt{Version: w.w.Resolve(version), Download: notDownloaded == ""}
+	tg := wire.RunSpecTerragrunt{
+		Version: w.w.Resolve(version), Download: notDownloaded == "", RunAll: mode == "across every unit",
+	}
 	if s.Tool == nil || *s.Tool != tool || s.Terragrunt == nil || *s.Terragrunt != tg ||
 		(s.StateBackend == nil) != (without != "") {
 		return fmt.Errorf("%w: the tool is %+v, Terragrunt %+v and the state backend %+v; "+

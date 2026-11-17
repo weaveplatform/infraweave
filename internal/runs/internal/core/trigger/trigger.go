@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/iac/terragrunt"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -130,6 +131,11 @@ func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha stri
 		settings, err := s.d.Stacks.Settings(ctx, p.AccountID, st.ID)
 		if err != nil {
 			return err //nolint:wrapcheck // as above
+		}
+		if settings.Vendor == terragrunt.Kind {
+			if _, err := terragrunt.RuntimeRunAll(n.RuntimeConfig); err != nil {
+				return err //nolint:wrapcheck // names the runtime configuration's field
+			}
 		}
 		if n.Commit, err = s.commit(ctx, p.AccountID, settings, sha, "/commitSha"); err != nil {
 			return err

@@ -4,7 +4,10 @@
 // with neither with ErrNoCommit, and creates the run through the
 // lifecycle, which answers a run of the stack, type and commit that has
 // not ended instead of a second and refuses a disabled or locked stack.
-// It answers the run as a read.View. A proposed run may carry
+// It answers the run as a read.View. Before creating a Terragrunt run it
+// checks the runtime YAML's terragrunt block and refuses malformed YAML or
+// a non-boolean use_run_all at /runtimeConfig/yaml; other vendors leave it
+// unread. A proposed run may carry
 // environment variable overrides, which CheckOverrides bounds and the
 // lifecycle keeps sealed; a run with overrides is never answered in place
 // of a second. Task creates a TASK run of a command, kernel.Task bounds,
@@ -34,7 +37,7 @@
 //
 // # Dependencies
 //
-// It imports accessapi, stacksapi, the domain's lifecycle and read,
+// It imports iac/terragrunt, accessapi, stacksapi, the domain's lifecycle and read,
 // internal/kernel, platform/objectstore and its blobs, and platform/tx.
 // The runs domain's assembly constructs it.
 package trigger

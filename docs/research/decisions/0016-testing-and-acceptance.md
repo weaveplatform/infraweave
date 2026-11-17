@@ -626,7 +626,12 @@ coverage it would contribute is not waived.
   moving its row back; `retention.feature`, with real Terraform, which
   moves time on for a stack's state versions as the runs steps do for a
   run; and `terragrunt_units.feature`, with real Terragrunt driving
-  Terraform. `vendors/terragrunt.feature` holds a Terragrunt stack's
+  Terraform in both modes: all units with a workspace per unit, or the
+  project root's unit alone in the default workspace. It checks runtime
+  mode overrides, the omitted-key default, malformed runtime refusals and
+  a missing root unit; single-unit plans use a saved-plan fallback when
+  the pinned Terragrunt writes no JSON directory outside run-all.
+  `vendors/terragrunt.feature` holds a Terragrunt stack's
   settings and runs. `TestAccCaptures` skips C106, C107, C108, C109, C110,
   C112, C113 and C114 as awaited against them.
 - `test/acceptance/features/vendors/` holds each vendor's runs:

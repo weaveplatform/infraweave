@@ -8,7 +8,7 @@
 // relay's or a private address's host and port. Code that declares its
 // own backend fails initialization, since the tool refuses two.
 //
-// A Terragrunt stack's run writes File into each of its Units instead:
+// A Terragrunt stack's run with runAll writes File into each of its Units:
 // each directory under the project root with a terragrunt.hcl, found as
 // terragrunt run --all finds them, outside .git, .terraform and
 // .terragrunt-cache and never through a link. A unit's workspace is its
@@ -24,7 +24,9 @@
 // get_repo_root and get_path_to_repo_root, each answering within the
 // workspace; one that cannot be is not read. A terragrunt.stack.hcl is
 // refused, since Terragrunt generates its units when the run runs, where
-// no backend file reaches them.
+// no backend file reaches them. Without runAll, only the project root's
+// unit is checked and written, naming the default workspace; nested units
+// and explicit stacks are neither discovered nor checked.
 //
 // ref: decision 0010 § "How a run reaches it"
 // ref: decision 0010 § "Endpoints"

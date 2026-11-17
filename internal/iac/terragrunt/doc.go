@@ -8,18 +8,20 @@
 // Settings' Driven names the vendor kind of the tool whose release a run
 // mounts beside Terragrunt's. ManagesState decides whether a Terragrunt
 // stack keeps its state in infraweave's backend: useStateManagement when
-// it is set, and the stack's manageState when it is null.
+// it is set, and the stack's manageState when it is null. RuntimeRunAll
+// reads a run's YAML terragrunt block: use_run_all decides the mode, false
+// when omitted, and an absent block leaves the stack's mode in effect.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 // ref: decision 0010 § "How a run reaches it"
 //
 // # Input and output
 //
-// None. It checks and decodes JSON in memory.
+// None. It checks and decodes JSON and runtime YAML in memory.
 //
 // # Dependencies
 //
-// It imports the standard library, internal/kernel for the field errors,
+// It imports the standard library, gopkg.in/yaml.v3, internal/kernel for field errors,
 // the settings checks it shares with the other vendors, and terraform and
 // opentofu for the kinds of the tools it drives. internal/iac registers
 // it.

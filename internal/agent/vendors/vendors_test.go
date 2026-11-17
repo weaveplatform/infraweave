@@ -92,50 +92,59 @@ func TestUnitVendorsCommands(t *testing.T) {
 // as Terragrunt approves it. A workflow file's templates render in the
 // same phases.
 func TestUnitVendorsTerragruntCommands(t *testing.T) {
-	w, err := vendors.Terragrunt()
-	if err != nil {
-		t.Fatal(err)
-	}
-	p := params()
-	p.PlanFileName = workflow.TerragruntPlanFile
-	o := vendors.Options{Params: p, PlanJSON: "/p", OutputsJSON: "/o", UnitPlans: "/plans"}
-	all := "terragrunt run --all -- "
-	for _, c := range []struct {
-		state wire.WorkerState
-		want  []vendors.Command
-	}{
-		{wire.WorkerStateINITIALIZING, []vendors.Command{
-			{Key: workflow.Init, Line: all + "init -input=false -lock-timeout='5m0s'"},
-		}},
-		{wire.WorkerStatePLANNING, []vendors.Command{{
-			Key: workflow.Plan, Line: all + "plan -input=false -lock-timeout='5m0s' " +
-				"-lock='true'  -out='tfplan.tfplan' ",
-			Env: []string{"TG_JSON_OUT_DIR=/plans"},
-		}}},
-		{wire.WorkerStateAPPLYING, []vendors.Command{
-			{Key: workflow.Apply, Line: all + "apply -input=false -lock-timeout='5m0s'"},
-		}},
-		{wire.WorkerStateDESTROYING, []vendors.Command{
-			{Key: workflow.Destroy, Line: all + "destroy -input=false -lock-timeout='5m0s'"},
-		}},
-	} {
-		got, err := w.Commands(t.Context(), c.state, o)
-		if err != nil || !reflect.DeepEqual(got, c.want) {
-			t.Errorf("%s = %q, %v", c.state, got, err)
+	for _, runAll := range []bool{false, true} {
+		w, err := vendors.Terragrunt(runAll)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	if _, err := w.Commands(t.Context(), wire.WorkerStatePERFORMING, o); !errors.Is(err,
-		vendors.ErrState) {
-		t.Errorf("PERFORMING: %v", err)
-	}
-	f, err := vendors.Read([]byte(file(workflow.Plan, "echo ${{ planFileName }}")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := f.Commands(t.Context(), wire.WorkerStatePLANNING, o)
-	if err != nil || len(got) != 1 || got[0].Line != "echo 'tfplan.tfplan'" ||
-		!reflect.DeepEqual(got[0].Env, []string{"TG_JSON_OUT_DIR=/plans"}) {
-		t.Errorf("a workflow file's planning = %q, %v", got, err)
+		p := params()
+		p.PlanFileName = workflow.TerragruntPlanFile
+		o := vendors.Options{Params: p, PlanJSON: "/p", OutputsJSON: "/o", UnitPlans: "/plans"}
+		all, approve := "terragrunt run -- ", "-auto-approve "
+		if runAll {
+			all, approve = "terragrunt run --all -- ", ""
+		}
+		for _, c := range []struct {
+			state wire.WorkerState
+			want  []vendors.Command
+		}{
+			{wire.WorkerStateINITIALIZING, []vendors.Command{
+				{Key: workflow.Init, Line: all + "init -input=false -lock-timeout='5m0s'"},
+			}},
+			{wire.WorkerStatePLANNING, []vendors.Command{{
+				Key: workflow.Plan, Line: all + "plan -input=false -lock-timeout='5m0s' " +
+					"-lock='true'  -out='tfplan.tfplan' ",
+				Env: []string{"TG_JSON_OUT_DIR=/plans"},
+			}}},
+			{wire.WorkerStateAPPLYING, []vendors.Command{
+				{Key: workflow.Apply, Line: all + "apply " + approve + "-input=false -lock-timeout='5m0s'"},
+			}},
+			{wire.WorkerStateDESTROYING, []vendors.Command{
+				{Key: workflow.Destroy, Line: all + "destroy " + approve + "-input=false -lock-timeout='5m0s'"},
+			}},
+		} {
+			got, err := w.Commands(t.Context(), c.state, o)
+			if err != nil || !reflect.DeepEqual(got, c.want) {
+				t.Errorf("%s = %q, %v", c.state, got, err)
+			}
+		}
+		if _, err := w.Commands(t.Context(), wire.WorkerStatePERFORMING, o); !errors.Is(err,
+			vendors.ErrState) {
+			t.Errorf("PERFORMING: %v", err)
+		}
+		f, err := vendors.Read([]byte(file(workflow.Plan, "echo ${{ planFileName }}")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := f.Commands(t.Context(), wire.WorkerStatePLANNING, o)
+		if err != nil || len(got) != 1 || got[0].Line != "echo 'tfplan.tfplan'" ||
+			!reflect.DeepEqual(got[0].Env, []string{"TG_JSON_OUT_DIR=/plans"}) {
+			t.Errorf("a workflow file's planning = %q, %v", got, err)
+		}
+		command, err := w.Command(t.Context(), workflow.ShowPlan, o)
+		if err != nil || command.Line != all+"show -json 'tfplan.tfplan'" || command.Stdout != "/p" {
+			t.Errorf("showPlan fallback = %+v, %v", command, err)
+		}
 	}
 }
 

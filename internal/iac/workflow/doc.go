@@ -2,8 +2,9 @@
 // the nine keys of .infraweave/workflow.yml, one per command the runner
 // may need, the run parameters a template reads, and the built-in
 // templates of Terraform and OpenTofu, and of a Terragrunt run, which
-// runs each of their commands across its units through terragrunt run
-// --all, which a run without a workflow file renders. Each value is a text template whose literal text is
+// runs commands through terragrunt run --all across its units or through
+// terragrunt run -- in the project root's unit alone, according to its
+// resolved mode, which a run without a workflow file renders. Each value is a text template whose literal text is
 // shell; the expression engine quotes every value it embeds. The vendors
 // domain declares the templates' editor surface from Variables, and the
 // runner renders them.

@@ -146,14 +146,17 @@ func Defaults(bin string) Templates {
 const TerragruntPlanFile = "tfplan.tfplan"
 
 // Terragrunt are the built-in templates of a Terragrunt run: each runs
-// the command Defaults would through terragrunt run --all, across the
-// stack's units in their dependency order, with the tool TG_TF_PATH
-// names. Terragrunt adds -auto-approve to apply and destroy, so apply
-// plans again rather than reading a saved plan.
+// the command Defaults would through terragrunt run, with --all across
+// the stack's units when runAll is true, otherwise in the root unit alone,
+// with the tool TG_TF_PATH names. Single-unit apply and destroy explicitly
+// approve; Terragrunt approves under --all. Apply plans again in both modes.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
-func Terragrunt() Templates {
-	const all = "terragrunt run --all -- "
+func Terragrunt(runAll bool) Templates {
+	all, approve := "terragrunt run -- ", "-auto-approve "
+	if runAll {
+		all, approve = "terragrunt run --all -- ", ""
+	}
 	return Templates{
 		Init:            all + "init -input=false -lock-timeout=${{ lockTimeout }}",
 		WorkspaceSelect: all + "workspace select ${{ workspaceName }}",
@@ -164,8 +167,8 @@ func Terragrunt() Templates {
 		ShowState:  all + "show -json",
 		ShowPlan:   all + "show -json ${{ planFileName }}",
 		GetOutputs: all + "output -json",
-		Apply:      all + "apply -input=false -lock-timeout=${{ lockTimeout }}",
-		Destroy:    all + "destroy -input=false -lock-timeout=${{ lockTimeout }}",
+		Apply:      all + "apply " + approve + "-input=false -lock-timeout=${{ lockTimeout }}",
+		Destroy:    all + "destroy " + approve + "-input=false -lock-timeout=${{ lockTimeout }}",
 	}
 }
 

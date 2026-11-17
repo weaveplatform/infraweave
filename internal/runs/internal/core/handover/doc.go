@@ -18,7 +18,9 @@
 // secret masking and sensitive output upload, the tool its vendor mounts
 // at the catalogue's release for the stack's version constraint, for a
 // Terragrunt stack the tool its tool setting drives and Terragrunt itself
-// at the release its terragruntVersion allows, and where the run's worker
+// at the release its terragruntVersion allows, with runAll from a runtime
+// YAML terragrunt block's use_run_all (false when omitted), otherwise the
+// stack's useRunAll, and where the run's worker
 // fetches its source by Git, whose credential, minted by RunSources
 // before the in-run API token, goes into the secrets. A constraint no
 // listed release meets is a *kernel.Invalid naming the setting it comes
