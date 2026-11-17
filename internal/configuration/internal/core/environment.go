@@ -253,9 +253,10 @@ func (s *Service) ResolveWithHooks(ctx context.Context, acct kernel.AccountID, i
 	return resolve(sources[0], sources[1:], hooks), nil
 }
 
-// sources are acct's stack id's sources, the stack's first, with its
-// settings; with open, each element's value opened, write-only or not,
-// and otherwise only a readable one, as Value.
+// sources are acct's stack id's sources in resolution order, the stack's
+// first and then ranked contexts, with its settings; with open, each
+// element's value opened, write-only or not, and otherwise only a readable
+// one, as Value.
 func (s *Service) sources(ctx context.Context, acct kernel.AccountID, id kernel.ULID, open bool) ([]source, stacksapi.Settings, error) {
 	settings, err := s.stacks.Settings(ctx, acct, id)
 	if errors.Is(err, stacksapi.ErrNotFound) {
@@ -300,7 +301,7 @@ func (s *Service) sources(ctx context.Context, acct kernel.AccountID, id kernel.
 			elements: elements[c.ID], hooks: c.Hooks,
 		})
 	}
-	return out, settings, nil
+	return append(out[:1], ranked(out[1:])...), settings, nil
 }
 
 // readElements are owners' elements as a read answers them, a write-only

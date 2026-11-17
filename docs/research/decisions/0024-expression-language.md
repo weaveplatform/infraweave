@@ -114,7 +114,12 @@ doublestar globs stay as the standard mini-languages they are
   rendered on the server when the run is handed over, against the
   variables the run resolves to. A value that reads a secret is itself a
   secret: sealed, write-only and masked
-  ([0013](0013-secrets-at-rest.md)). `${NAME}` without braces is passed
+  ([0013](0013-secrets-at-rest.md)). For a stack, the editor's environment
+  samples and save-time template secrecy use the winning stored sources
+  in [0008](0008-run-execution-and-worker-protocol.md)'s rank order. A
+  winning secret is masked in the editor and makes a template reading it
+  write-only; a secret hidden by a public winner does neither.
+  `${NAME}` without braces is passed
   through untouched, so the shell in a hook expands it as usual.
 - **Who declares a surface.** The domain that owns a surface's context
   declares it through its assembly's `Surfaces()`. `configuration` declares

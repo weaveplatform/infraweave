@@ -426,7 +426,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   phase, the contexts' hooks run in rank order and then the stack's;
   after it, the reverse. A stack's `runtimeConfig` answers its stored
   environment in the same order, one winner per variable name or file
-  path, carrying the winning context's attachment.
+  path, carrying the winning context's attachment. The expression editor's
+  environment samples and a saved stack template's secrecy use these same
+  winners: a winning write-only variable is masked in samples and makes
+  a template reading it write-only; a losing secret does neither.
 - **Overrides.** A proposed run, from `proposeWithOverrides` or
   `runProposeLocalWorkspace`, may carry environment variable overrides for
   that run alone. A trigger's runtime configuration variables use the same
