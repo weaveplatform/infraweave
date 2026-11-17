@@ -608,7 +608,9 @@ unlock) are ordinary REST operations and answer the problem details of decision
 - Store contract tests against PostgreSQL and every object store driver of decision 0005 (decision 0016): versions,
   current pointer, orphan collection through `pending` `blob_objects` rows, retention.
 - Gherkin acceptance in testcontainers, with real Terraform and OpenTofu unless named:
-  `state/backend.feature` (init, plan, apply through the backend; a second apply blocked by
+  `state/backend.feature` (init, plan, apply through the backend; an apply under OpenTofu's
+  state encryption, the version client-encrypted with the state's serial and lineage;
+  a second apply blocked by
   `423` until the first ends; two plans' shared locks at once; a stack's default Tofu
   workspace, whose lock is an apply's, and an operator's release that refuses the apply's
   write and release with `423`), `state/force_unlock.feature` (a Terraform or

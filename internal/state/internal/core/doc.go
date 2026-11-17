@@ -17,9 +17,9 @@
 // holds the workspace's exclusive lock under the write's ID, checked
 // before the body streams and again as it commits: the body streams once
 // through a Content-MD5 check, skipped under fips140=only, and a scan of
-// its top-level object, which tells a plain state's serial and lineage
-// from a client-encrypted state, into its own sealed object, and one
-// transaction makes the object live, records the version and makes it
+// its top-level object, which identifies OpenTofu's client-encrypted
+// envelope and keeps any serial and lineage, into its own sealed object.
+// One transaction makes the object live, records the version and makes it
 // current, unless its SHA-256 is the current version's. Read, Latest and
 // Outputs read the current version, its metadata and its outputs. Upload
 // stores a state file for import, sealed, in the uploads store under its
@@ -30,7 +30,8 @@
 // whatever the current version holds, under the upload's row lock so one
 // import alone consumes it, then deletes the upload and records the
 // import on the audit trail; it takes a plain state of format version 4
-// or OpenTofu's client-encrypted envelope, scanned as it streams, and
+// or OpenTofu's client-encrypted envelope with its optional serial and
+// lineage, scanned as it streams, and
 // refuses any other upload as a *kernel.Invalid. Import does so for a
 // stack after its creation, in one transaction that locks the stack's
 // row FOR UPDATE, refusing as a *Blocked a stack that keeps no managed

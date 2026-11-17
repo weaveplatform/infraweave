@@ -437,8 +437,8 @@ func answer(w http.ResponseWriter, err error) {
 		problem.Write(w, problem.InvalidRequest.New("The body does not match its Content-MD5."))
 	case errors.Is(err, core.ErrState):
 		problem.Write(w, problem.InvalidRequest.New("The body is not a state: a JSON object "+
-			"with version, serial and lineage, or a client-encrypted state with neither "+
-			"serial nor lineage."))
+			"with version, serial and lineage, or OpenTofu's client-encrypted state, "+
+			"with encrypted_data and encryption_version."))
 	case errors.Is(err, core.ErrWorkspaceName):
 		problem.Write(w, problem.InvalidRequest.New(fmt.Sprintf(
 			"A workspace name is UTF-8 without NUL, at most %d bytes.", core.MaxWorkspaceName)))

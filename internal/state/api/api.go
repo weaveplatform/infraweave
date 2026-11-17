@@ -37,8 +37,9 @@ const (
 )
 
 // Version is a managed state version's metadata, without its contents.
-// Serial and Lineage are nil for a client-encrypted version, whose body
-// the server never parses; Run is nil for a version no run wrote, such as
+// Serial and Lineage are nil when a client-encrypted version lacks those
+// fields; the server never parses its encrypted contents. Run is nil for
+// a version no run wrote, such as
 // an import. ImportedUsername and ImportedAt name who imported an
 // imported version and when, nil for any other. A rollback copies the
 // version RolledBackFrom names, with its Run and its import's fields,

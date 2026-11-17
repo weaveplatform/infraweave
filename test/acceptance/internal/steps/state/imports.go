@@ -25,6 +25,9 @@ type importSteps struct {
 }
 
 func (i *importSteps) register(sc *godog.ScenarioContext) {
+	sc.Step(`^the state downloaded from the URL "(\w+)" is put with no credential at the URL "(\w+)" through ([AB])$`, i.downloadPut)
+	sc.Step(`^the current state version of the stack "(\w+)" is imported by the (home|member) key, client-encrypted, `+
+		`with the serial and lineage of the last output of the run "(\w+)"$`, i.importedEncryptedState)
 	sc.Step(`^the answer's objectId names "(\w+)"$`, i.names)
 	sc.Step(
 		`^the last output of the run "(\w+)" is put with no credential at the URL "(\w+)" through ([AB])$`,
@@ -134,6 +137,14 @@ func (i *importSteps) current(ctx context.Context, slug, tenant string) (importe
 // the tenant's import of the state the run kept as run's tool last
 // printed: a plain state with its serial and lineage.
 func (i *importSteps) importedState(ctx context.Context, slug, tenant, run string) error {
+	return i.importedMetadata(ctx, slug, tenant, run, false)
+}
+
+func (i *importSteps) importedEncryptedState(ctx context.Context, slug, tenant, run string) error {
+	return i.importedMetadata(ctx, slug, tenant, run, true)
+}
+
+func (i *importSteps) importedMetadata(ctx context.Context, slug, tenant, run string, encrypted bool) error {
 	tr, err := i.backend.run(run)
 	if err != nil {
 		return err
@@ -149,7 +160,7 @@ func (i *importSteps) importedState(ctx context.Context, slug, tenant, run strin
 	if err != nil {
 		return err
 	}
-	if v.encrypted || v.serial == nil || *v.serial != *local.Serial || v.lineage == nil ||
+	if v.encrypted != encrypted || v.serial == nil || *v.serial != *local.Serial || v.lineage == nil ||
 		*v.lineage != local.Lineage {
 		return fmt.Errorf("%w: the imported version is client-encrypted %t, serial %v of %v; "+
 			"the tool's %d of %s", harness.ErrStep, v.encrypted, v.serial, v.lineage,

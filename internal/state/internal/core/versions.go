@@ -31,8 +31,8 @@ var (
 	// ErrMD5 reports a body that does not match the Content-MD5 sent with
 	// it.
 	ErrMD5 = errors.New("state: the body does not match its Content-MD5")
-	// ErrState reports a body that is no JSON object, or one with some but
-	// not all of a plain state's version, serial and lineage.
+	// ErrState reports a body that is neither OpenTofu's client-encrypted
+	// envelope nor a plain state with version, serial and lineage.
 	ErrState = errors.New("state: the body is not a state")
 )
 
@@ -266,18 +266,15 @@ func outputs(r io.Reader) ([]stateapi.Output, error) {
 	return nil, nil
 }
 
-// meta is what a state body says of itself: a plain state's serial and
-// lineage, or that it is client-encrypted, as OpenTofu's encryption
-// writes a state with neither. Version is the format version a plain
-// state names when it is a whole number, and envelope whether the body
-// carries both members of OpenTofu's encrypted state, encrypted_data and
-// encryption_version; a write needs neither, an import one or the other.
+// meta is what a state body says of itself: its optional serial and
+// lineage, and whether encrypted_data and encryption_version identify
+// OpenTofu's client-encrypted envelope. Version is the format version a
+// plain state names when it is a whole number; an envelope ignores it.
 type meta struct {
 	serial    *int64
 	lineage   *string
 	encrypted bool
 	version   *int64
-	envelope  bool
 }
 
 // importable reports whether a state an import reads is one infraweave
@@ -286,10 +283,7 @@ type meta struct {
 //
 // ref: decision 0010 § "Upload, import and download URLs"
 func (m meta) importable() bool {
-	if m.encrypted {
-		return m.envelope
-	}
-	return m.version != nil && *m.version == 4
+	return m.encrypted || m.version != nil && *m.version == 4
 }
 
 // scanner scans a body for its meta as the body streams to its object,
@@ -325,8 +319,8 @@ func (s *scanner) result(err error) (meta, error) {
 	return r.m, r.err
 }
 
-// scan reads a body's top-level object, skipping every member but version,
-// serial and lineage, through to its end.
+// scan reads a body's top-level object through to its end, keeping its
+// metadata and identifying OpenTofu's encrypted envelope by its members.
 func scan(r io.Reader) (meta, error) {
 	dec := json.NewDecoder(r)
 	dec.UseNumber()
@@ -370,8 +364,8 @@ func scan(r io.Reader) (meta, error) {
 		return meta{}, fmt.Errorf("%w: data after the object", ErrState)
 	}
 	switch {
-	case m.serial == nil && m.lineage == nil:
-		m.encrypted, m.envelope = true, data && label
+	case data && label:
+		m.encrypted, m.version = true, nil
 	case m.serial == nil || m.lineage == nil || !version:
 		return meta{}, fmt.Errorf("%w: a plain state has version, serial and lineage", ErrState)
 	}

@@ -60,6 +60,7 @@ type takenRun struct {
 	env       []string
 	path      string
 	stdout    string
+	stderr    string
 	handoff   handoff.Handoff
 }
 
@@ -111,6 +112,7 @@ func (b *backendSteps) register(sc *godog.ScenarioContext) {
 	b.registerChecks(sc)
 	b.registerRunner(sc)
 	b.registerExternal(sc)
+	b.registerEncryption(sc)
 }
 
 // run is the run the scenario took over as name, or the workspace of
@@ -370,7 +372,7 @@ func (b *backendSteps) wait(ctx context.Context, p *process, want int) error {
 	if err != nil {
 		return err
 	}
-	p.run.stdout = stdout
+	p.run.stdout, p.run.stderr = stdout, stderr
 	b.outputs = append(b.outputs, fmt.Sprintf("$ %s\nexit %d\n%s\n%s", p.what, code, stdout,
 		stderr))
 	if code != want {
