@@ -41,7 +41,7 @@ func tree(t *testing.T, files map[string]string) string {
 // terragrunt is a handoff of a Terragrunt stack's run with managed state.
 func terragrunt() handoff.Handoff {
 	h := managed("https://relay.internal:8443")
-	h.Spec.Terragrunt = &wire.RunSpecTerragrunt{Version: "1.2.2", Download: true}
+	h.Spec.Terragrunt = &wire.RunSpecTerragrunt{RunAll: true, Version: "1.2.2", Download: true}
 	return h
 }
 
@@ -149,6 +149,32 @@ func TestUnitBackendUnits(t *testing.T) {
 	if env, err := backend.Configure(bare, bare, h); env != nil || err != nil ||
 		len(written(t, bare)) != 0 {
 		t.Errorf("a Terragrunt stack without managed state = %q, %v", env, err)
+	}
+}
+
+// TestUnitBackendSingleUnit checks only the project root's backend and
+// leaves nested units and explicit stacks unvisited and unwritten.
+func TestUnitBackendSingleUnit(t *testing.T) {
+	ws := tree(t, map[string]string{
+		"live/terragrunt.hcl":              "",
+		"live/nested/terragrunt.hcl":       "remote_state {\n  backend = \"local\"\n}\n",
+		"live/nested/terragrunt.stack.hcl": "unit \"generated\" {}",
+	})
+	root := filepath.Join(ws, "live")
+	h := terragrunt()
+	h.Spec.Terragrunt.RunAll = false
+	if _, err := backend.Configure(ws, root, h); err != nil {
+		t.Fatal(err)
+	}
+	got := written(t, root)
+	if len(got) != 1 || !strings.Contains(got[backend.File], "/state/v1/stacks/"+stack+"\"") {
+		t.Errorf("single-unit backend files = %v", got)
+	}
+	if err := os.WriteFile(filepath.Join(root, "terragrunt.hcl"), []byte("remote_state {\n}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := backend.Configure(ws, root, h); !errors.Is(err, backend.ErrOwnBackend) {
+		t.Errorf("the root unit's own backend = %v", err)
 	}
 }
 

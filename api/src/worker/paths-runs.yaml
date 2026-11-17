@@ -286,10 +286,11 @@ components:
       description: >-
         The Terragrunt the launcher mounts beside the tool, present for a
         Terragrunt stack's run alone. The runner runs each phase's tool
-        commands through it across the stack's units, and such a run records
-        no plan, changes or outputs documents, so the server expects none.
+        commands through it across the stack's units when runAll is true,
+        or in the project root's unit alone when false. Such a run records no
+        plan, changes or outputs documents, so the server expects none.
       type: object
-      required: [version, download]
+      required: [version, download, runAll]
       properties:
         version:
           type: string
@@ -302,6 +303,11 @@ components:
           description: >-
             Whether the launcher mounts the release; false when the stack
             runs the runner image's own binaries instead.
+        runAll:
+          type: boolean
+          description: >-
+            True when the runner works across every unit under the project
+            root, false when it runs the project root's unit alone.
     RunSpecStateBackend:
       description: >-
         The stack's managed state backend, present only when infraweave keeps

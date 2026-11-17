@@ -1961,7 +1961,10 @@ read-only access, signed URLs, Terragrunt units' workspaces and retention.
    `useStateManagement` deciding over `manageState`, Terragrunt's release
    index, a run specification naming Terragrunt and its tool, the launcher's
    verification of Terragrunt's signed sums, and the runner's
-   `terragrunt run --all` with a backend file per unit
+   `terragrunt run --all` with a backend file per unit, or `terragrunt run --`
+   in the project root's unit alone with its default workspace. The run's
+   runtime terragrunt block decides use_run_all when present, false when
+   omitted; otherwise the stack's useRunAll decides
    ([0008](../research/decisions/0008-run-execution-and-worker-protocol.md),
    [0010](../research/decisions/0010-state-backend.md)). Gated by
    `vendor-terragrunt`. Feature: `vendors/terragrunt.feature`.
@@ -3122,9 +3125,7 @@ image and tool.
    `accept-vendors` partition takes `@pulumi`, `@aws`, `@kubernetes` and
    `@ansible` ahead of `accept-runs`, which drops `@kubernetes`, with k3s
    pinned at its newest release tag (0016).
-4. Terragrunt beyond P11: `useRunAll: false` runs one unit in the project
-   root, while P11 runs `run --all` whatever the setting and its features
-   set `useRunAll: true` where they need units; `skipReplan` and its
+4. Terragrunt beyond P11's single-unit and run-all modes: `skipReplan` and its
    deprecated alias `skipReplanWhenRunAll`, applying each unit's saved plan
    (C188); `prefixResourceNamesWithModuleName`; `MANUALLY_PROVISIONED`,
    with Terragrunt still downloaded, the image's own tool and a

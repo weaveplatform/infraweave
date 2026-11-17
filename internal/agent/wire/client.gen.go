@@ -658,7 +658,7 @@ type RunSpec struct {
 	// Task What a TASK run performs in PERFORMING. Present for a TASK run alone.
 	Task *RunSpecTask `json:"task,omitempty"`
 
-	// Terragrunt The Terragrunt the launcher mounts beside the tool, present for a Terragrunt stack's run alone. The runner runs each phase's tool commands through it across the stack's units, and such a run records no plan, changes or outputs documents, so the server expects none.
+	// Terragrunt The Terragrunt the launcher mounts beside the tool, present for a Terragrunt stack's run alone. The runner runs each phase's tool commands through it across the stack's units when runAll is true, or in the project root's unit alone when false. Such a run records no plan, changes or outputs documents, so the server expects none.
 	Terragrunt *RunSpecTerragrunt `json:"terragrunt,omitempty"`
 
 	// Tool The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none. A Terragrunt stack's run mounts the tool its Terragrunt drives, tofu for OPEN_TOFU and terraform for TERRAFORM_FOSS, whose version constraint is the stack's terraformVersion, else its Terragrunt settings' terraformVersion.
@@ -839,10 +839,13 @@ type RunSpecTask struct {
 	SkipInitialization bool `json:"skipInitialization"`
 }
 
-// RunSpecTerragrunt The Terragrunt the launcher mounts beside the tool, present for a Terragrunt stack's run alone. The runner runs each phase's tool commands through it across the stack's units, and such a run records no plan, changes or outputs documents, so the server expects none.
+// RunSpecTerragrunt The Terragrunt the launcher mounts beside the tool, present for a Terragrunt stack's run alone. The runner runs each phase's tool commands through it across the stack's units when runAll is true, or in the project root's unit alone when false. Such a run records no plan, changes or outputs documents, so the server expects none.
 type RunSpecTerragrunt struct {
 	// Download Whether the launcher mounts the release; false when the stack runs the runner image's own binaries instead.
 	Download bool `json:"download"`
+
+	// RunAll True when the runner works across every unit under the project root, false when it runs the project root's unit alone.
+	RunAll bool `json:"runAll"`
 
 	// Version The release: the newest stable Terragrunt release the version catalogue lists that meets the stack's terragruntVersion, or the newest it lists when the stack sets none.
 	Version string `json:"version"`

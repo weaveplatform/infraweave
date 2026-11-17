@@ -388,12 +388,16 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   none (see "Vendors' runs"). The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the
   run uses one release. A Terragrunt stack's run also names `terragrunt`
-  (`version` and `download`), which drives the tool its `tool` setting
+  (`version`, `download` and `runAll`), which drives the tool its `tool` setting
   chooses (`OPEN_TOFU` is `tofu`, `TERRAFORM_FOSS` is `terraform`;
   `MANUALLY_PROVISIONED` names no `tool`, so the image's own binary runs,
   found through `TG_TF_PATH` when the stack or image sets it, and a
   `terraformVersion` on such a stack answers `422` `validation-failed`);
-  its version is the newest Terragrunt release matching the stack's
+  `runAll` comes from the run's runtime YAML terragrunt block's `use_run_all`
+  when that block is present, false when the key is omitted, otherwise the
+  stack's `useRunAll`. Malformed YAML or a non-boolean switch is refused at
+  `/runtimeConfig/yaml` before a Terragrunt run is created; other vendors
+  leave it unread. Its version is the newest Terragrunt release matching the stack's
   `terragruntVersion`, from Terragrunt's release index without alpha or
   release-candidate tags, and the stack reads both back as
   `effectiveVersions`, the tool's null for `MANUALLY_PROVISIONED`;
@@ -540,7 +544,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 - **A Terragrunt run** writes each unit's backend file in `INITIALIZING`
   ([0010](0010-state-backend.md)), failing the phase with a note that names
   the first unit the backend cannot hold, and runs each phase's tool
-  commands as `terragrunt run --all -- <command>`, with `TG_TF_PATH` naming
+  commands as `terragrunt run --all -- <command>` under run-all. Without it,
+  only the project root's unit runs, through `terragrunt run -- <command>`,
+  and a root without `terragrunt.hcl` fails `INITIALIZING` naming it.
+  Both modes set `TG_TF_PATH` naming
   the mounted tool, or the image's own when the specification does not
   download it, and `TG_NON_INTERACTIVE` set. Its plan command runs with
   `TG_JSON_OUT_DIR`, the variable of `--json-out-dir`, naming a directory
@@ -551,7 +558,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   ([33 section 7.2](../reference/33-vendor-tool-documents.md#72-plans-outputs-and-render)). After planning the runner
   reads each unit's plan from that directory and reports their summed
   `delta`, failing on a plan that does not parse, naming its unit, or on
-  none. Terragrunt approves `apply` and `destroy` itself. Without
+  none under run-all. A single-unit plan that writes no JSON there falls
+  back to `terragrunt run -- show -json tfplan.tfplan`, reading the root's
+  saved plan. Terragrunt 1.2.2 writes the JSON directory under `--all` only.
+  Terragrunt approves `apply` and `destroy` under run-all; single-unit
+  commands carry `-auto-approve`. Without
   `skipReplan`, `apply` plans again rather than reading the saved plan, so
   mocked outputs never reach an apply; with `skipReplan`, or with the
   deprecated `skipReplanWhenRunAll` under run-all, it applies each unit's

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
@@ -229,5 +231,66 @@ func TestUnitOverrides(t *testing.T) {
 	if len(got) != 2 || got[0] != (lifecycle.Override{Name: "B", Value: "2"}) ||
 		got[1] != (lifecycle.Override{Name: "A", Value: "1"}) {
 		t.Errorf("overrides = %+v", got)
+	}
+}
+
+// runtimeStacks exposes a stack without a commit: an accepted YAML value
+// reaches the ordinary missing-commit refusal; no lifecycle can queue a run.
+type runtimeStacks struct {
+	stacksapi.Stacks
+	vendor string
+}
+
+func (s runtimeStacks) BySlug(context.Context, kernel.AccountID, string) (stacksapi.Stack, error) {
+	return stacksapi.Stack{}, nil
+}
+
+func (s runtimeStacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
+	return stacksapi.Settings{Vendor: s.vendor}, nil
+}
+
+type (
+	runtimeDB struct{}
+	runtimeTx struct{ pgx.Tx }
+)
+
+func (runtimeDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) { return runtimeTx{}, nil }
+func (runtimeTx) Commit(context.Context) error                           { return nil }
+func (runtimeTx) Rollback(context.Context) error                         { return nil }
+
+// TestUnitTriggerTerragruntYAML refuses malformed YAML and non-booleans
+// before queueing, and leaves other vendors' runtime YAML unread.
+func TestUnitTriggerTerragruntYAML(t *testing.T) {
+	for _, tc := range []struct {
+		vendor, yaml string
+		refused      bool
+	}{
+		{"terragrunt", "terragrunt: [", true},
+		{"terragrunt", "terragrunt: {use_run_all: \"yes\"}", true},
+		{"terragrunt", "terragrunt: {use_run_all: false}", false},
+		{"terragrunt", "terragrunt: {}", false},
+		{"terraform", "terragrunt: [", false},
+		{"opentofu", "terragrunt: {use_run_all: \"yes\"}", false},
+	} {
+		t.Run(tc.vendor+"/"+tc.yaml, func(t *testing.T) {
+			service := trigger.New(trigger.Deps{DB: runtimeDB{}, Stacks: runtimeStacks{vendor: tc.vendor}})
+			s := New(service, nil, nil, nil, nil)
+			ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{})
+			_, err := s.RunTrigger(ctx, api.RunTriggerRequestObject{StackId: "infra", Body: &api.RunTriggerRequest{
+				RuntimeConfig: &api.RuntimeConfigInput{Yaml: &tc.yaml},
+			}})
+			if tc.refused {
+				inv, ok := errors.AsType[*kernel.Invalid](err)
+				if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != "/runtimeConfig/yaml" {
+					t.Fatalf("runtime YAML = %v", err)
+				}
+				return
+			}
+			refused, ok := errors.AsType[*problem.Error](err)
+			if !ok || refused.Problem.Status != http.StatusConflict ||
+				refused.Problem.Type != problem.TypePrefix+"invalid-state" {
+				t.Fatalf("accepted YAML must reach the missing-commit refusal: %v", err)
+			}
+		})
 	}
 }

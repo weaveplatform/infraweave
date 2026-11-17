@@ -914,7 +914,7 @@ func TestUnitHandoverTerragrunt(t *testing.T) {
 	h, err := w.handover(t, w.run.ID)
 	if err != nil || h.Spec.Tool == nil || h.Spec.Terragrunt == nil ||
 		*h.Spec.Tool != (workersapi.SpecTool{Name: "tofu", Version: "1.10.7", Download: true}) ||
-		*h.Spec.Terragrunt != (workersapi.SpecTerragrunt{Version: "0.93.3", Download: true}) ||
+		*h.Spec.Terragrunt != (workersapi.SpecTerragrunt{Version: "0.93.3", Download: true, RunAll: true}) ||
 		!slices.Equal(w.catalog.asked, []string{"~> 1.10.0", "~> 0.93.0"}) ||
 		!slices.Equal(w.catalog.vendors, []vendorsapi.Vendor{
 			vendorsapi.OpenTofu,
@@ -986,5 +986,45 @@ func TestUnitHandoverTerragrunt(t *testing.T) {
 	w.stacks.settings.Vendor, w.stacks.settings.VendorConfig = "terraform", nil
 	if h, err := w.handover(t, w.run.ID); err != nil || h.Spec.Terragrunt != nil {
 		t.Errorf("a Terraform stack mounts Terragrunt %+v, %v", h.Spec.Terragrunt, err)
+	}
+}
+
+// TestUnitHandoverTerragruntRunAll resolves the mode once from the runtime
+// block when present, including an omitted key, otherwise from the stack.
+func TestUnitHandoverTerragruntRunAll(t *testing.T) {
+	for _, tc := range []struct {
+		name, yaml           string
+		stack, want, refused bool
+	}{
+		{name: "stack true", stack: true, want: true},
+		{name: "stack false"},
+		{name: "runtime false", yaml: "terragrunt: {use_run_all: false}", stack: true},
+		{name: "runtime true", yaml: "terragrunt: {use_run_all: true}", want: true},
+		{name: "runtime default", yaml: "terragrunt: {}", stack: true},
+		{name: "runtime absent block", yaml: "version: 1", stack: true, want: true},
+		{name: "bad stored runtime", yaml: "terragrunt: {use_run_all: 1}", refused: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := newWorld(t)
+			w.stacks.settings.Vendor = "terragrunt"
+			w.stacks.settings.VendorConfig = json.RawMessage(fmt.Sprintf(`{"useRunAll":%t}`, tc.stack))
+			if tc.yaml != "" {
+				raw, err := json.Marshal(map[string]string{"yaml": tc.yaml})
+				if err != nil {
+					t.Fatal(err)
+				}
+				w.store.run.RuntimeConfig = raw
+			}
+			h, err := w.handover(t, w.run.ID)
+			if tc.refused {
+				if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
+					t.Fatalf("invalid runtime = %v", err)
+				}
+				return
+			}
+			if err != nil || h.Spec.Terragrunt == nil || h.Spec.Terragrunt.RunAll != tc.want {
+				t.Fatalf("Terragrunt %+v, error %v; want runAll %t", h.Spec.Terragrunt, err, tc.want)
+			}
+		})
 	}
 }

@@ -148,7 +148,7 @@ Feature: Terragrunt stacks
     And the answer's id names "pool"
     And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "cert"
     And the launcher "l" registers with the key of "csr" and the certificate "cert" through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"tool":"OPEN_TOFU","terragruntVersion":"~> 0.73.0","terraformVersion":"~> 1.6.0","useRunAll":true,"useSmartSanitization":false,"useStateManagement":false}}},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"tool":"OPEN_TOFU","terragruntVersion":"~> 0.73.0","terraformVersion":"~> 1.6.0","useRunAll":false,"useSmartSanitization":false,"useStateManagement":false}}},"manageState":true}' through B
     And token "h" eventually reads the stack "infra" through A with the effective versions '{"tool":"OPEN_TOFU","effectiveTerragruntVersion":"0.73.16","effectiveTerraformVersion":"1.6.3"}'
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "run"
@@ -157,7 +157,7 @@ Feature: Terragrunt stacks
     Then the answer assigns the run "run", its run token kept as "rt"
     When token "rt" sends "GET /worker/v1/runs/{run}/spec" through A
     Then it answers 200
-    And the specification mounts terragrunt "0.73.16" driving tofu "1.6.3", downloaded, without a state backend
+    And the specification mounts terragrunt "0.73.16" driving tofu "1.6.3", downloaded, without a state backend, in the project root's unit alone
 
   @vcs @case:success
   Scenario: A tracked run of a Terragrunt stack mounts the newest releases with its state backend, and its apply finishes with no outputs
@@ -180,7 +180,7 @@ Feature: Terragrunt stacks
     Then the answer assigns the run "run", its run token kept as "rt"
     When token "rt" sends "GET /worker/v1/runs/{run}/spec" through A
     Then it answers 200
-    And the specification mounts terragrunt "{terragrunt.newest}" driving terraform "{terraform.newest}", not downloaded, with a state backend
+    And the specification mounts terragrunt "{terragrunt.newest}" driving terraform "{terraform.newest}", not downloaded, with a state backend, across every unit
     When token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"started","state":"INITIALIZING","stateVersion":3}' through B
     Then it answers 200
     When token "rt" sends "POST /worker/v1/runs/{run}/reports" with '{"event":"succeeded","state":"INITIALIZING","stateVersion":4}' through A

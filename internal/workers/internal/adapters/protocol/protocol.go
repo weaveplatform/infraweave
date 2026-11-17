@@ -246,7 +246,7 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 		}
 	}
 	if t := spec.Terragrunt; t != nil {
-		out.Terragrunt = &gen.RunSpecTerragrunt{Version: t.Version, Download: t.Download}
+		out.Terragrunt = &gen.RunSpecTerragrunt{Version: t.Version, Download: t.Download, RunAll: t.RunAll}
 	}
 	if t := spec.Task; t != nil {
 		out.Task = &gen.RunSpecTask{Command: t.Command, SkipInitialization: t.SkipInitialization}

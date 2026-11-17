@@ -3,7 +3,8 @@
 // workflow surface. Defaults answers a tool's built-in workflow, the
 // templates internal/iac/workflow declares under its binary, and
 // Terragrunt a Terragrunt run's, which runs each command across the
-// stack's units through terragrunt run --all; Read answers the workflow a
+// stack's units through terragrunt run --all or in the project root's
+// unit alone through terragrunt run --; Read answers the workflow a
 // .infraweave/workflow.yml holds. Either checks every key
 // before any command runs, a fault naming the key, its line in the file
 // and its range. Commands renders a worker state's phase with the run's
@@ -12,6 +13,8 @@
 // to the outputs' JSON file; and destroy. A Terragrunt run's planning
 // runs plan alone, with TG_JSON_OUT_DIR naming the directory Terragrunt
 // writes each unit's plan's JSON under, and its applying apply alone.
+// Command also renders showPlan for a single-unit run that writes no JSON
+// there; a run-all phase never falls back to showPlan.
 // Every value a template embeds is one shell word, so no workspace name
 // or target becomes shell syntax.
 //

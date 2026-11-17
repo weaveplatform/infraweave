@@ -56,8 +56,10 @@ behind the controls every API surface shares, and depart from them only where de
   `unlock_address` (all the stack URL), `lock_method = "LOCK"` and
   `unlock_method = "UNLOCK"`. Code that declares its own backend fails initialization, as
   in Spacelift ([16 section 1.1](../reference/16-state-management.md#11-how-a-run-reaches-it)).
-- **Terragrunt units.** For a Terragrunt stack, the runner writes the same file into each
-  unit's directory, naming the unit's workspace URL
+- **Terragrunt units.** With run-all, the runner writes the same file into each
+  unit's directory, naming the unit's workspace URL. Without run-all, only
+  the project root's unit is checked and written, naming the default
+  workspace; nested units and explicit stacks are left unvisited
   ([16 section 8](../reference/16-state-management.md#8-terragrunt-units-and-workspace-locks)).
   A unit is a directory under the project root that holds `terragrunt.hcl`, found as
   `terragrunt run --all` finds them: outside `.git`, `.terraform` and `.terragrunt-cache`,
@@ -76,9 +78,10 @@ behind the controls every API surface shares, and depart from them only where de
   project root; the generated units, under `.terragrunt-stack`, are then found, checked
   and given backend files as any unit is, each workspace named by the unit's path from
   the project root, such as `.terragrunt-stack/vpc`. Every later Terragrunt command runs
-  with `--no-stack-generate`, so the units keep their backend files. Without run-all a
-  `terragrunt.stack.hcl` under the project root fails initialization with a note saying
-  that explicit stacks need `useRunAll`, as Spacelift supports them only under run-all
+  with `--no-stack-generate`, so the units keep their backend files. Without run-all
+  the project root must hold `terragrunt.hcl`; nested explicit stacks are not
+  discovered. Explicit stack generation needs `useRunAll`, as Spacelift supports
+  it only under run-all
   ([20 section 6.6](../reference/20-vendors.md#66-limitations)). Terragrunt behaves so:
   `stack generate` writes every unit, and a file written into a generated unit survives
   any later command, while `--no-stack-generate` also keeps the generated code from being

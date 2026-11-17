@@ -1,5 +1,5 @@
 @postgres @objectstore @vcs @docker @terraform @terragrunt
-Feature: Runs of a Terragrunt stack, each unit in its own state workspace
+Feature: Terragrunt runs select the root unit or all units and their state workspaces
   A real launcher of a private pool runs each run of a Terragrunt stack
   in a container of infraweave-runner-terraform:acceptance, with the
   newest Terragrunt and the newest Terraform the version catalogue lists,
@@ -8,7 +8,7 @@ Feature: Runs of a Terragrunt stack, each unit in its own state workspace
   stack's project root is live, whose units are live itself and
   live/network/vpc, which sources its module from modules/vpc; both
   include the repository's root.hcl, which they find in a parent folder.
-  Initialization writes each unit's backend file, naming its own state
+  With run-all, initialization writes each unit's backend file, naming its own state
   workspace, the default one for the unit at the project root and
   network%2Fvpc for the other, and runs init across the units through
   terragrunt run --all; planning plans them all, and the run's delta is
@@ -33,7 +33,11 @@ Feature: Runs of a Terragrunt stack, each unit in its own state workspace
   space.
   Stacks live in legacy, keep their state in infraweave and run on the
   pool; the units have terraform_data resources alone, so no provider is
-  downloaded.
+  downloaded. Without run-all, only live's root unit runs and writes its
+  backend in the default workspace; nested units and explicit stacks are
+  untouched. A runtime terragrunt block replaces the stack's run-all mode,
+  false when its use_run_all key is absent. A missing root unit fails
+  initialization, even where nested units exist.
   ref: decision 0008
   ref: decision 0010
   ref: decision 0016
@@ -109,14 +113,14 @@ Feature: Runs of a Terragrunt stack, each unit in its own state workspace
   Scenario: A run's runtime configuration changes no stack's state management: use_state_management off keeps each unit's state, and on keeps none
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Kept","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Unkept","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"useStateManagement":false}}},"manageState":true}' through A
-    When token "h" sends "POST /api/v1/stacks/kept/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt:\n  use_state_management: false\n"}}' through A
+    When token "h" sends "POST /api/v1/stacks/kept/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt:\n  use_state_management: false\n  use_run_all: true\n"}}' through A
     And the answer's id names "kept"
     Then token "h" eventually reads the run "kept" in the state "FINISHED" through B
     And the run "kept" wrote 2 state versions
     And the state workspaces of the run "kept"'s stack are "default, network/vpc", each at a version the run wrote
     When token "h" sends "GET /api/v1/stacks/kept" through A
     Then the answer's managesStateFile is 'true'
-    When token "h" sends "POST /api/v1/stacks/unkept/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt:\n  use_state_management: true\n"}}' through B
+    When token "h" sends "POST /api/v1/stacks/unkept/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt:\n  use_state_management: true\n  use_run_all: true\n"}}' through B
     And the answer's id names "unkept"
     Then token "h" eventually reads the run "unkept" in the state "FINISHED" through A
     And token "h" reads the run "unkept"'s APPLYING log through B, which holds "Apply complete! Resources: 2 added, 0 changed, 0 destroyed." and not "Error"
@@ -170,3 +174,91 @@ Feature: Runs of a Terragrunt stack, each unit in its own state workspace
     Then the answer's first run names "destroy"
     And token "h" eventually finds no stack "infra" through A
     And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, DESTROYING, FINISHED"
+
+  @op:runTrigger @op:runConfirm @op:stackDelete @case:success
+  Scenario: A single-unit run plans and applies only the project root, then destroys it
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"useRunAll":false,"useSmartSanitization":false}},"beforeInit":["set -x"]},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "UNCONFIRMED" through B
+    And the answer's delta is '{"addCount":1,"changeCount":0,"deleteCount":0,"importCount":0,"moveCount":0,"forgetCount":0,"resources":0,"okCount":0,"skipCount":0,"rescueCount":0,"ignoreCount":0,"unreachableCount":0,"failedCount":0}'
+    And token "h" reads the run "run"'s INITIALIZING log through A, which holds "terragrunt run -- init" and not "--all"
+    And token "h" reads the run "run"'s PLANNING log through B, which holds "terragrunt run -- plan" and not "--all"
+    And token "h" reads the run "run"'s PLANNING log through A, which holds "terragrunt run -- show -json tfplan.tfplan" and not "--all"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/confirm" with '{"run":"{run}"}' through A
+    Then it answers 200
+    And token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And token "h" reads the run "run"'s APPLYING log through A, which holds "Resources: 1 added" and not "--all"
+    And the run "run" wrote 1 state version
+    And the state workspaces of the run "run"'s stack are "default", each at a version the run wrote
+    When token "h" sends "DELETE /api/v1/stacks/infra?destroyResources=true" through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/stacks/infra/runs" through B
+    Then the answer's first run names "destroy"
+    And token "h" eventually finds no stack "infra" through A
+    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, DESTROYING, FINISHED"
+
+  @op:runTrigger @case:success
+  Scenario Outline: The runtime block replaces the stack's run-all mode, and an absent block keeps it
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terragrunt":{"useRunAll":<stack>,"useSmartSanitization":false}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"<yaml>"}}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And the run "run" wrote <versions> state version
+    And the state workspaces of the run "run"'s stack are "<workspaces>", each at a version the run wrote
+
+    Examples:
+      | stack | yaml                              | versions | workspaces           |
+      | true  | terragrunt: {use_run_all: false}   | 1        | default              |
+      | false | terragrunt: {use_run_all: true}    | 2        | default, network/vpc |
+      | true  | terragrunt: {}                     | 1        | default              |
+      | true  | version: 1                        | 2        | default, network/vpc |
+
+  @op:runTrigger @case:failure
+  Scenario Outline: A malformed runtime block is refused before a run exists
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"<yaml>"}}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/runtimeConfig/yaml" as "rule"
+    When token "h" sends "GET /api/v1/stacks/infra/runs" through B
+    Then the answer's items is '[]'
+
+    Examples:
+      | yaml                              |
+      | terragrunt: {use_run_all: \"yes\"} |
+      | terragrunt: [                     |
+
+  @op:runTrigger @case:failure
+  Scenario: A single-unit run needs terragrunt.hcl at the project root even when nested units exist
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live/network","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"useRunAll":false,"useSmartSanitization":false}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, FAILED"
+    And the answer's last state transition's note is "The project root live/network holds no terragrunt.hcl; a Terragrunt stack whose useRunAll is false runs the unit there."
+    And the run "run" wrote 0 state versions
+
+  @op:runTrigger @case:success
+  Scenario: A single-unit run leaves nested own backends and explicit stacks untouched
+    Given a Gitea repository "single" with the files:
+      | live/terragrunt.hcl                 | locals {\n  owner = "infraweave"\n}\n |
+      | live/main.tf                        | resource "terraform_data" "root" {\n  input = "root"\n}\n |
+      | live/nested/terragrunt.hcl          | remote_state {\n  backend = "local"\n  config = {}\n}\n |
+      | live/nested/main.tf                 | resource "terraform_data" "ignored" {}\n |
+      | live/nested/terragrunt.stack.hcl    | unit "ignored" {\n  source = "unused"\n  path = "generated"\n}\n |
+    And the head of "main" of "single" is kept as "single_seed"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Single","repository":"single","branch":"main","provider":"GIT","repositoryURL":"{single.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terragrunt":{"useRunAll":false,"useSmartSanitization":false}},"afterInit":["test ! -e nested/infraweave_backend.tf && echo nested-backend-untouched"]},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/single/runs" with '{"commitSha":"{single_seed}"}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And token "h" reads the run "run"'s INITIALIZING log through A, which holds "nested-backend-untouched" and not "Error"
+    And the run "run" wrote 1 state version
+    And the state workspaces of the run "run"'s stack are "default", each at a version the run wrote
+
+  @op:runTrigger @case:success
+  Scenario: Another vendor leaves a runtime Terragrunt block unread even when it is malformed
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt: ["}}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And the run "run" wrote 1 state version

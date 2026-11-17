@@ -30587,7 +30587,8 @@ components:
         tool:
           $ref: '#/components/schemas/TerragruntTool'
         useRunAll:
-          description: If set to true, Terragrunt backend will execute commands in run-all mode.
+          description: >-
+            When true, commands run across every unit under the project root. When false, commands run in the project root's unit alone.
           type: boolean
         useSmartSanitization:
           description: |-
@@ -30652,7 +30653,8 @@ components:
         tool:
           $ref: '#/components/schemas/TerragruntTool'
         useRunAll:
-          description: If set to true, Terragrunt backend will execute commands in run-all mode.
+          description: >-
+            When true, commands run across every unit under the project root. When false, commands run in the project root's unit alone.
           type: boolean
         useSmartSanitization:
           description: |-

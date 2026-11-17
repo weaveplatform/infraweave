@@ -222,7 +222,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if err != nil {
 		return workersapi.Handover{}, err
 	}
-	tg, err := s.terragrunt(ctx, st)
+	tg, err := s.terragrunt(ctx, st, r.RuntimeConfig)
 	if err != nil {
 		return workersapi.Handover{}, err
 	}
@@ -373,13 +373,23 @@ func (s *Service) tool(ctx context.Context, st stacksapi.Settings) (*workersapi.
 // when st sets none, which the catalogue lists without alpha, beta or
 // release-candidate builds. A release that does not resolve is a
 // *kernel.Invalid naming terragruntVersion, as tool's names its setting.
+// RunAll is the runtime block's mode when present, else the stack's.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func (s *Service) terragrunt(ctx context.Context, st stacksapi.Settings) (*workersapi.SpecTerragrunt, error) {
+func (s *Service) terragrunt(ctx context.Context, st stacksapi.Settings, runtime json.RawMessage) (*workersapi.SpecTerragrunt, error) {
 	if st.Vendor != string(vendorsapi.Terragrunt) {
 		return nil, nil //nolint:nilnil // a vendor that mounts no Terragrunt
 	}
-	constraints := terragrunt.Read(st.VendorConfig).TerragruntVersion
+	settings := terragrunt.Read(st.VendorConfig)
+	mode := settings.UseRunAll
+	override, err := terragrunt.RuntimeRunAll(runtime)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // names the runtime configuration's field
+	}
+	if override != nil {
+		mode = *override
+	}
+	constraints := settings.TerragruntVersion
 	if constraints != nil && strings.TrimSpace(*constraints) == "" {
 		constraints = nil
 	}
@@ -390,7 +400,9 @@ func (s *Service) terragrunt(ctx context.Context, st stacksapi.Settings) (*worke
 	if err != nil {
 		return nil, err
 	}
-	return &workersapi.SpecTerragrunt{Version: version, Download: !st.SkipVendorBinaryDownload}, nil
+	return &workersapi.SpecTerragrunt{
+		Version: version, Download: !st.SkipVendorBinaryDownload, RunAll: mode,
+	}, nil
 }
 
 // cpuProfiling is the first OpenTofu release that writes a CPU profile to

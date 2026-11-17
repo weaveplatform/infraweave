@@ -89,7 +89,7 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		w.tool,
 	)
 	sc.Step(
-		`^the specification mounts terragrunt "([^"]+)" driving (terraform|tofu) "([^"]+)", (not )?downloaded, with(out)? a state backend$`,
+		`^the specification mounts terragrunt "([^"]+)" driving (terraform|tofu) "([^"]+)", (not )?downloaded, with(out)? a state backend, (across every unit|in the project root's unit alone)$`,
 		w.terragrunt,
 	)
 	sc.Step(

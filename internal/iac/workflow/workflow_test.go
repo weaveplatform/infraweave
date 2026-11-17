@@ -98,13 +98,24 @@ func TestUnitWorkflowDefaults(t *testing.T) {
 			}
 		}
 	}
-	tg := workflow.Terragrunt()
-	if len(tg) != len(workflow.Keys) {
-		t.Errorf("terragrunt: %d templates", len(tg))
-	}
-	for _, k := range workflow.Keys {
-		if !strings.HasPrefix(tg[k], "terragrunt run --all -- ") {
-			t.Errorf("terragrunt %s: %s", k, tg[k])
+	for _, runAll := range []bool{false, true} {
+		tg := workflow.Terragrunt(runAll)
+		if len(tg) != len(workflow.Keys) {
+			t.Errorf("terragrunt: %d templates", len(tg))
+		}
+		prefix := "terragrunt run -- "
+		if runAll {
+			prefix = "terragrunt run --all -- "
+		}
+		for _, k := range workflow.Keys {
+			if !strings.HasPrefix(tg[k], prefix) {
+				t.Errorf("terragrunt runAll=%t %s: %s", runAll, k, tg[k])
+			}
+		}
+		for _, k := range []workflow.Key{workflow.Apply, workflow.Destroy} {
+			if strings.Contains(tg[k], "-auto-approve") == runAll {
+				t.Errorf("terragrunt runAll=%t %s approval: %s", runAll, k, tg[k])
+			}
 		}
 	}
 	values := workflow.Params{

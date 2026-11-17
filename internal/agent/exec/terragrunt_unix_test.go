@@ -4,6 +4,7 @@ package exec_test
 
 import (
 	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/exec"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/agent/workspace"
+	"github.com/weaveplatform/infraweave/internal/iac/workflow"
 )
 
 // fakeTerragrunt is a terragrunt that appends its arguments, the tool it
@@ -23,12 +25,21 @@ import (
 // $EXIT_<command>, the command after --, 0 when unset.
 const fakeTerragrunt = `#!/bin/sh
 printf '%s\n' "terragrunt $* tf=$TG_TF_PATH ni=$TG_NON_INTERACTIVE json=${TG_JSON_OUT_DIR:+set}" >> "$TRACE"
-while [ "$1" != -- ]; do shift; done
+all=false
+while [ "$1" != -- ]; do
+  [ "$1" = --all ] && all=true
+  shift
+done
 shift
 if [ "$1" = plan ] && [ -n "$TG_JSON_OUT_DIR" ]; then
-  [ -d "$UNIT_PLANS" ] && mkdir -p "$TG_JSON_OUT_DIR" && cp -R "$UNIT_PLANS"/. "$TG_JSON_OUT_DIR"/
+  if [ "$all" = true ]; then
+    [ -d "$UNIT_PLANS" ] && mkdir -p "$TG_JSON_OUT_DIR" && cp -R "$UNIT_PLANS"/. "$TG_JSON_OUT_DIR"/
+  elif [ "$WRITE_SINGLE_JSON" = true ]; then
+    mkdir -p "$TG_JSON_OUT_DIR" && cp "$PLAN" "$TG_JSON_OUT_DIR/tfplan.json"
+  fi
   echo binary-plan > tfplan.tfplan
 fi
+[ "$1" = show ] && cat "$PLAN"
 eval "exit \${EXIT_$1:-0}"
 `
 
@@ -69,7 +80,7 @@ func terragruntWorld(t *testing.T) *world {
 		}
 	}
 	w.environ = append(w.environ, "UNIT_PLANS="+plans)
-	w.h.Spec.Terragrunt = &wire.RunSpecTerragrunt{Version: "1.2.2"}
+	w.h.Spec.Terragrunt = &wire.RunSpecTerragrunt{RunAll: true, Version: "1.2.2"}
 	w.h.Spec.StateBackend = &wire.RunSpecStateBackend{Path: "/state/v1/stacks/stack-1"}
 	return w
 }
@@ -291,4 +302,172 @@ func TestUnitExecTerragruntFails(t *testing.T) {
 			equal(t, "reports", got[:len(got)-1], c.want[:len(c.want)-1])
 		})
 	}
+}
+
+// TestUnitExecTerragruntSingleUnit checks both sources of the root plan's
+// JSON, explicit approval for apply and destroy, and mounted root configs.
+func TestUnitExecTerragruntSingleUnit(t *testing.T) {
+	for _, writesJSON := range []bool{false, true} {
+		t.Run(map[bool]string{false: "saved plan fallback", true: "root plan JSON"}[writesJSON], func(t *testing.T) {
+			w := terragruntWorld(t)
+			w.h.Spec.Terragrunt.RunAll = false
+			w.w.autodeploy = true
+			if writesJSON {
+				w.environ = append(w.environ, "WRITE_SINGLE_JSON=true")
+			}
+			if err := os.WriteFile(filepath.Join(w.workspace, "a", "b", "terragrunt.hcl"),
+				[]byte("remote_state {\n}\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.run(); err != nil {
+				t.Fatal(err)
+			}
+			equal(t, "reports", w.events(), []string{
+				"INITIALIZING started 3", "INITIALIZING succeeded 4", "PLANNING succeeded 5", "APPLYING succeeded 6",
+			})
+			if delta := w.w.reports[2].Delta; delta == nil || delta.Add != 1 || delta.Change != 0 || delta.Delete != 0 {
+				t.Errorf("root plan delta = %+v", delta)
+			}
+			want := []string{
+				"terragrunt run -- init -input=false -lock-timeout=5m0s tf=terraform ni=true json=",
+				"terragrunt run -- plan -input=false -lock-timeout=5m0s -lock=true -out=tfplan.tfplan tf=terraform ni=true json=set",
+			}
+			if !writesJSON {
+				want = append(want, "terragrunt run -- show -json tfplan.tfplan tf=terraform ni=true json=")
+			}
+			want = append(want, "terragrunt run -- apply -auto-approve -input=false -lock-timeout=5m0s tf=terraform ni=true json=")
+			equal(t, "single-unit commands", w.traced(), want)
+			if _, err := os.Stat(filepath.Join(w.workspace, "a", "b", backend.File)); !os.IsNotExist(err) {
+				t.Errorf("nested backend file = %v", err)
+			}
+		})
+	}
+	w := terragruntWorld(t)
+	w.h.Spec.Terragrunt.RunAll = false
+	w.h.Spec.Run.Type = wire.PROPOSED
+	w.w.then = map[wire.WorkerState]string{wire.WorkerStateINITIALIZING: "DESTROYING"}
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	trace := w.traced()
+	equal(t, "single-unit destroy", trace[len(trace)-1:], []string{
+		"terragrunt run -- destroy -auto-approve -input=false -lock-timeout=5m0s tf=terraform ni=true json=",
+	})
+
+	w = terragruntWorld(t)
+	w.h.Spec.Terragrunt.RunAll = false
+	if err := os.Remove(filepath.Join(w.workspace, "terragrunt.hcl")); err != nil {
+		t.Fatal(err)
+	}
+	config := []byte("")
+	w.h.Spec.Files = []wire.RunSpecFile{{Path: "terragrunt.hcl", Content: &config}}
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "mounted root configuration", w.events(), []string{
+		"INITIALIZING started 3", "INITIALIZING succeeded 4", "PLANNING succeeded 5",
+	})
+}
+
+func TestUnitExecTerragruntSingleUnitMissingRoot(t *testing.T) {
+	for _, managed := range []bool{false, true} {
+		t.Run(map[bool]string{false: "unmanaged", true: "managed"}[managed], func(t *testing.T) {
+			w := terragruntWorld(t)
+			w.h.Spec.Terragrunt.RunAll = false
+			if !managed {
+				w.h.Spec.StateBackend = nil
+			}
+			if err := os.Remove(filepath.Join(w.workspace, "terragrunt.hcl")); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.run(); err != nil {
+				t.Fatal(err)
+			}
+			equal(t, "missing root unit", w.events(), []string{
+				"INITIALIZING started 3", "INITIALIZING failed 4: The project root . holds no terragrunt.hcl; " +
+					"a Terragrunt stack whose useRunAll is false runs the unit there.",
+			})
+			if trace := w.traced(); len(trace) != 0 {
+				t.Errorf("commands without root unit: %v", trace)
+			}
+		})
+	}
+}
+
+// TestUnitExecTerragruntSingleUnitPlanFailure preserves a command's failure
+// and refuses malformed JSON without hiding it behind a second read.
+func TestUnitExecTerragruntSingleUnitPlanFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name                    string
+		writesJSON, invalidJSON bool
+		want                    string
+	}{
+		{name: "show command fails", want: "The showPlan command failed with exit status 3."},
+		{name: "saved plan JSON malformed", invalidJSON: true, want: "The units' plans could not be read:"},
+		{name: "root JSON malformed", writesJSON: true, invalidJSON: true, want: "The units' plans could not be read: the unit at the project root:"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := terragruntWorld(t)
+			w.h.Spec.Terragrunt.RunAll = false
+			if tc.writesJSON {
+				w.environ = append(w.environ, "WRITE_SINGLE_JSON=true")
+			}
+			if tc.invalidJSON {
+				if err := os.WriteFile(w.plan, []byte("{"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				w.environ = append(w.environ, "EXIT_show=3")
+			}
+			if err := w.run(); err != nil {
+				t.Fatal(err)
+			}
+			events := w.events()
+			if len(events) != 3 || !strings.HasPrefix(events[2], "PLANNING failed 5: "+tc.want) {
+				t.Fatalf("reports %v, want planning refusal %s", events, tc.want)
+			}
+			if tc.writesJSON && strings.Contains(strings.Join(w.traced(), "\n"), "run -- show") {
+				t.Error("a malformed written plan triggered a fallback")
+			}
+		})
+	}
+}
+
+// TestUnitExecTerragruntSingleUnitStop stops while the saved-plan fallback
+// is running, preserving STOPPED and running the final hook without a delta.
+func TestUnitExecTerragruntSingleUnitStop(t *testing.T) {
+	w := terragruntWorld(t)
+	w.h.Spec.Terragrunt.RunAll = false
+	fifo, holding := reached(t)
+	templates := workflow.Terragrunt(false)
+	templates[workflow.ShowPlan] = `sh -c ': > "$0" && exec sleep 60' '` + fifo + `'`
+	var file strings.Builder
+	for _, key := range workflow.Keys {
+		file.WriteString(string(key) + ": |\n  " + templates[key] + "\n")
+	}
+	w.workflow(file.String())
+	w.h.Spec.Hooks = map[string][]string{
+		"after_plan": {hook("not reached")},
+		"after_run":  {hook("after_run", "TF_VAR_infraweave_final_run_state")},
+	}
+	stop := make(chan os.Signal, 1)
+	done := w.stopped(w.w, stop, slog.DiscardHandler)
+	await(t, holding)
+	stop <- os.Interrupt
+	if err := ended(t, done); err != nil {
+		t.Fatal(err)
+	}
+	events := w.events()
+	if len(events) != 3 || !strings.HasPrefix(events[2],
+		"PLANNING stopped 5: Stopped on request: The showPlan command ") {
+		t.Fatalf("stopped fallback reports = %v", events)
+	}
+	if delta := w.w.reports[2].Delta; delta != nil {
+		t.Errorf("a stopped fallback carries a delta: %+v", delta)
+	}
+	equal(t, "stopped fallback trace", w.traced(), []string{
+		"terragrunt run -- init -input=false -lock-timeout=5m0s tf=terraform ni=true json=",
+		"terragrunt run -- plan -input=false -lock-timeout=5m0s -lock=true -out=tfplan.tfplan tf=terraform ni=true json=set",
+		"after_run STOPPED",
+	})
 }

@@ -81,9 +81,10 @@ func Defaults(tool wire.RunSpecToolName) (*Workflow, error) {
 }
 
 // Terragrunt is the built-in workflow of a Terragrunt run, which runs
-// each command across the stack's units through terragrunt run --all.
-func Terragrunt() (*Workflow, error) {
-	return New(workflow.Terragrunt(), nil)
+// each command across the stack's units under runAll, or in the project
+// root's unit alone otherwise.
+func Terragrunt(runAll bool) (*Workflow, error) {
+	return New(workflow.Terragrunt(runAll), nil)
 }
 
 // Read is the workflow a workflow file's data holds.
@@ -163,25 +164,35 @@ func (w *Workflow) Commands(ctx context.Context, state wire.WorkerState, o Optio
 	}
 	out := make([]Command, len(keys))
 	for i, k := range keys {
-		res, err := w.registry.Evaluate(ctx, request(w.templates[k]), expr.Input{
-			Values: o.Params.Values(),
-		})
-		if f, ok := errors.AsType[*expr.Failed](err); ok && f.Range != nil {
-			err = fmt.Errorf("%d:%d: %w", f.Range.Start.Line, f.Range.Start.Column, f)
+		var err error
+		if out[i], err = w.Command(ctx, k, o); err != nil {
+			return nil, err
 		}
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", k, err)
-		}
-		line, _ := res.Value.(string)
-		out[i] = Command{Key: k, Line: line}
-		switch {
-		case k == workflow.ShowPlan:
-			out[i].Stdout = o.PlanJSON
-		case k == workflow.GetOutputs:
-			out[i].Stdout = o.OutputsJSON
-		case k == workflow.Plan && o.UnitPlans != "":
-			out[i].Env = []string{UnitPlansVariable + "=" + o.UnitPlans}
-		}
+	}
+	return out, nil
+}
+
+// Command renders one workflow key. Single-unit Terragrunt planning uses
+// showPlan only when Terragrunt writes no JSON under TG_JSON_OUT_DIR.
+func (w *Workflow) Command(ctx context.Context, key workflow.Key, o Options) (Command, error) {
+	res, err := w.registry.Evaluate(ctx, request(w.templates[key]), expr.Input{
+		Values: o.Params.Values(),
+	})
+	if f, ok := errors.AsType[*expr.Failed](err); ok && f.Range != nil {
+		err = fmt.Errorf("%d:%d: %w", f.Range.Start.Line, f.Range.Start.Column, f)
+	}
+	if err != nil {
+		return Command{}, fmt.Errorf("%s: %w", key, err)
+	}
+	line, _ := res.Value.(string)
+	out := Command{Key: key, Line: line}
+	switch {
+	case key == workflow.ShowPlan:
+		out.Stdout = o.PlanJSON
+	case key == workflow.GetOutputs:
+		out.Stdout = o.OutputsJSON
+	case key == workflow.Plan && o.UnitPlans != "":
+		out.Env = []string{UnitPlansVariable + "=" + o.UnitPlans}
 	}
 	return out, nil
 }

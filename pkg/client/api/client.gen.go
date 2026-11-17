@@ -8650,7 +8650,7 @@ type StackConfigVendorTerragrunt struct {
 	// Tool TerragruntTool defines the underlying tool run by Terragrunt.
 	Tool TerragruntTool `json:"tool"`
 
-	// UseRunAll If set to true, Terragrunt backend will execute commands in run-all mode.
+	// UseRunAll When true, commands run across every unit under the project root. When false, commands run in the project root's unit alone.
 	UseRunAll bool `json:"useRunAll"`
 
 	// UseSmartSanitization If Smart sanitization should be used for sanitizing terraform plans and resources.
@@ -8697,7 +8697,7 @@ type StackConfigVendorTerragruntInput struct {
 	// Tool TerragruntTool defines the underlying tool run by Terragrunt.
 	Tool *TerragruntTool `json:"tool,omitempty"`
 
-	// UseRunAll If set to true, Terragrunt backend will execute commands in run-all mode.
+	// UseRunAll When true, commands run across every unit under the project root. When false, commands run in the project root's unit alone.
 	UseRunAll bool `json:"useRunAll"`
 
 	// UseSmartSanitization If Smart sanitization should be used for sanitizing terraform plans and resources.

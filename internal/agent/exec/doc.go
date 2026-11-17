@@ -19,15 +19,19 @@
 //
 // A Terragrunt stack's run, whose specification names terragrunt, runs
 // Terragrunt's built-in workflow, each command through terragrunt run
-// --all across the stack's units, and writes the backend's file into each
-// unit, naming its workspace; a unit the backend cannot hold fails
+// --all across the stack's units when runAll is true, otherwise through
+// terragrunt run -- in the project root's unit alone. It writes backend
+// files in the selected units, naming their workspaces; a root without
+// terragrunt.hcl or a selected unit the backend cannot hold fails
 // initialization naming it. Its environment adds TG_TF_PATH, the tool
 // the launcher mounts at /bin/<tool>, or the image's own when the
 // specification does not download it, and TG_NON_INTERACTIVE. Its plan
 // command runs with TG_JSON_OUT_DIR naming a directory of the temporary
 // directory, set for that command alone, under which Terragrunt writes
 // each unit's plan's JSON; planning reports their deltas summed, failing
-// on a plan that does not parse, naming its unit, or on none. Its
+// on a plan that does not parse, naming its unit, or on none under run-all.
+// A single-unit run that writes no JSON there reads the root's saved plan
+// through its showPlan command instead. Its
 // planning saves only the workspace, its applying runs apply alone, which
 // plans again, and reads and saves no outputs: the server reads no plan,
 // changes or outputs of a Terragrunt run. One sh session runs every phase, so a variable a hook exports

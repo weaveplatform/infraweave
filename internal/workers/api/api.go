@@ -175,10 +175,12 @@ type SpecTool struct {
 
 // SpecTerragrunt is the Terragrunt a Spec's launcher mounts: Version, the
 // release, and Download, false when the runner image's own binary runs
-// instead.
+// instead, and RunAll, the resolved choice of all units or the root unit.
 type SpecTerragrunt struct {
 	Version  string
 	Download bool
+	// RunAll runs every unit under the project root; false runs its unit alone.
+	RunAll bool
 }
 
 // StateBackend is a Spec's managed state backend: Path is where the

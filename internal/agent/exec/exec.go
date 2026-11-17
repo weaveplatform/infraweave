@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
+	"github.com/weaveplatform/infraweave/internal/iac/workflow"
 	"github.com/weaveplatform/infraweave/internal/platform/mask"
 )
 
@@ -373,8 +374,12 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	var p plan.Plan
 	switch {
 	case state == wire.WorkerStatePLANNING && r.terragrunt():
-		if p, err = r.unitPlans(); err != nil {
-			return fail("The units' plans could not be read: " + err.Error())
+		var failure *planFailure
+		if p, failure = r.terragruntPlan(ctx); failure != nil {
+			if failure.step {
+				return end(failure.note)
+			}
+			return fail(failure.note)
 		}
 		delta := deltaOf(p.Delta)
 		rep.Delta = &delta
@@ -512,6 +517,39 @@ func (r *run) plan() (plan.Plan, error) {
 	}
 	defer f.Close()
 	return plan.Parse(f) //nolint:wrapcheck // plan names the document
+}
+
+// planFailure distinguishes a failed read or render from a command step
+// that ended the phase: a step still needs the phase's stop-aware end path.
+type planFailure struct {
+	note string
+	step bool
+}
+
+// terragruntPlan reads the selected units' JSON. Releases that write it
+// only under --all still save the root unit's binary plan, so a single-unit
+// run can use showPlan. A malformed written document never falls back.
+func (r *run) terragruntPlan(ctx context.Context) (plan.Plan, *planFailure) {
+	p, err := r.unitPlans()
+	if err == nil {
+		return p, nil
+	}
+	if !errors.Is(err, errNoUnitPlans) || r.h.Spec.Terragrunt.RunAll {
+		return plan.Plan{}, &planFailure{note: "The units' plans could not be read: " + err.Error()}
+	}
+	command, err := r.workflow.Command(ctx, workflow.ShowPlan, r.options)
+	if err != nil {
+		return plan.Plan{}, &planFailure{note: "The workflow's commands cannot be rendered: " +
+			strings.TrimSuffix(err.Error(), ".") + "."}
+	}
+	if detail := r.steps(ctx, commandSteps([]vendors.Command{command})); detail != "" || r.halted() {
+		return plan.Plan{}, &planFailure{note: detail, step: true}
+	}
+	p, err = r.plan()
+	if err != nil {
+		return plan.Plan{}, &planFailure{note: "The units' plans could not be read: " + err.Error()}
+	}
+	return p, nil
 }
 
 // unitPlanFile is the name of each unit's plan's JSON under the
