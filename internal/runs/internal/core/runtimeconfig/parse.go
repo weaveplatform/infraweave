@@ -205,6 +205,9 @@ func parseYAML(text string) (Input, error) {
 			return in, err
 		}
 	}
+	if err := checkEnvironmentOrigins(document.Content[0]); err != nil {
+		return Input{}, err
+	}
 	return in, nil
 }
 

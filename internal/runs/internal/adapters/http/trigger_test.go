@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -315,6 +317,35 @@ func TestUnitTriggerRuntimeYAML(t *testing.T) {
 			if !ok || refused.Problem.Status != http.StatusConflict ||
 				refused.Problem.Type != problem.TypePrefix+"invalid-state" {
 				t.Fatalf("accepted YAML must reach the missing-commit refusal: %v", err)
+			}
+		})
+	}
+}
+
+func TestUnitTriggerRuntimeEnvironmentAlias(t *testing.T) {
+	const marker = "runtime-http-alias-secret"
+	for _, tc := range []struct{ name, vendor, text, setting string }{
+		{"environment to hook", "terraform", "environment: {TOKEN: &s \"echo " + marker + "\"}\nbefore_plan: [*s]", "before_plan[0]"},
+		{"hook to environment", "terraform", "before_plan: [&s \"echo " + marker + "\"]\nenvironment: {TOKEN: *s}", "before_plan[0]"},
+		{"image to environment", "terraform", "runner_image: &s " + marker + "\nenvironment: {TOKEN: *s}", "runner_image"},
+		{"environment to version", "opentofu", "environment: {TOKEN: &s " + marker + "}\nopentofu: {version: *s}", "opentofu.version"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := trigger.New(trigger.Deps{
+				DB: runtimeDB{}, Stacks: runtimeStacks{vendor: tc.vendor}, Authz: &runtimeAuthorizer{allow: true},
+			})
+			server := New(svc, nil, nil, nil, nil)
+			_, err := server.RunTrigger(kernel.WithPrincipal(t.Context(), kernel.Principal{}), api.RunTriggerRequestObject{
+				StackId: "infra", Body: &api.RunTriggerRequest{RuntimeConfig: &api.RuntimeConfigInput{Yaml: &tc.text}},
+			})
+			out := httptest.NewRecorder()
+			problem.ResponseError(out, nil, err)
+			var p problem.Problem
+			if json.Unmarshal(out.Body.Bytes(), &p) != nil || out.Code != http.StatusUnprocessableEntity ||
+				p.Type != problem.TypePrefix+"validation-failed" || len(p.Errors) != 1 ||
+				p.Errors[0].Pointer != "/runtimeConfig/yaml" || p.Errors[0].Reason != kernel.ReasonRule ||
+				!strings.Contains(p.Errors[0].Message, tc.setting) || strings.Contains(out.Body.String(), marker) {
+				t.Fatalf("runtime alias HTTP refusal: %d, type %s, errors %d", out.Code, p.Type, len(p.Errors))
 			}
 		})
 	}

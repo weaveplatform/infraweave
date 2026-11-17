@@ -337,6 +337,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   each time. One strict parser checks both forms before creation: wrong types,
   unknown keys, reserved variables, an unclean relative project root and a
   vendor block with no effect answer `422 validation-failed`.
+  A YAML environment value's origin may be shared with other environment
+  values, but reusing it in an execution setting is refused at
+  `/runtimeConfig/yaml`, naming the setting without the value. This includes
+  environment candidates shadowed by YAML merges. Independent identical
+  literals remain independent; no value comparison classifies them as aliases.
 
   At the first handover, a supplied hook list replaces the stack's own list
   for that phase; an empty list clears it, and an omitted phase keeps it.
