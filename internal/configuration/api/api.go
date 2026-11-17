@@ -84,7 +84,8 @@ type Secret interface{ Reveal() []byte }
 // Element is one config element of a stack's environment, from Source,
 // and from the context Context names when it is a context's. Value holds
 // the value as saved, its templates unrendered, whether or not it is
-// write-only.
+// write-only. A mounted file's saved value is Base64; the handover decodes
+// it for the worker, while Checksum remains the saved value's checksum.
 type Element struct {
 	Name      string
 	FileMount bool

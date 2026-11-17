@@ -125,6 +125,34 @@ Feature: Runs of an OpenTofu stack end to end
     And token "h" eventually reads the run "run" in the state "FAILED" through A
     And the answer leaves out "runtimeConfig"
 
+  @op:runTrigger @op:runConfirm @op:contextCreateV2 @op:contextAttach @op:stackConfigSet @case:success
+  Scenario: Readable and secret mounted files preserve text and binary bytes in plan and apply
+    Given token "h" sends "POST /api/v1/contexts" with '{"name":"Files","space":"legacy","configAttachments":[{"id":"readable.txt","type":"FILE_MOUNT","value":"enVsdQo=","writeOnly":false},{"id":"readable.bin","type":"FILE_MOUNT","value":"AP9BCgA=","writeOnly":false}]}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}},"beforePlan":["printf \"zulu\\n\" | cmp - readable.txt","printf \"\\146\\061\\154\\145\\055\\163\\063\\143\\162\\063\\164\\012\" | cmp - secret.txt","printf \"\\000\\377A\\012\\000\" | cmp - readable.bin","printf \"\\000\\377A\\012\\000\" | cmp - secret.bin","echo mounted bytes match"],"beforeApply":["printf \"zulu\\n\" | cmp - readable.txt","printf \"\\146\\061\\154\\145\\055\\163\\063\\143\\162\\063\\164\\012\" | cmp - secret.txt","printf \"\\000\\377A\\012\\000\" | cmp - readable.bin","printf \"\\000\\377A\\012\\000\" | cmp - secret.bin","echo mounted bytes match"]},"manageState":true}' through B
+    And token "h" sends "PUT /api/v1/stacks/infra/contexts/files" with '{"priority":0}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra/configs/secret.txt" with '{"type":"FILE_MOUNT","value":"ZjFsZS1zM2NyM3QK","writeOnly":true}' through B
+    And token "h" sends "PUT /api/v1/stacks/infra/configs/secret.bin" with '{"type":"FILE_MOUNT","value":"AP9BCgA=","writeOnly":true,"fileMode":"600"}' through A
+    Then it answers 201
+    And the answer's checksum is '"e67b57605dd765b72c935374eef290a3c3f37796778003c13405cd4300b7ac97"'
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    Then the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "UNCONFIRMED" through A
+    And token "h" reads the run "run"'s PLANNING log through B, which holds "mounted bytes match" and not "f1le-s3cr3t"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/confirm" with '{"run":"{run}"}' through A
+    Then it answers 200
+    And token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And token "h" reads the run "run"'s APPLYING log through A, which holds "mounted bytes match" and not "f1le-s3cr3t"
+    When token "h" sends "GET /api/v1/contexts/files/config-element?id=readable.bin" through B
+    Then it answers 200
+    And the answer's value is '"AP9BCgA="'
+    And the answer's checksum is '"e67b57605dd765b72c935374eef290a3c3f37796778003c13405cd4300b7ac97"'
+    When token "h" sends "GET /api/v1/stacks/infra/config-element?id=secret.bin" through A
+    Then it answers 200
+    And the answer's checksum is '"e67b57605dd765b72c935374eef290a3c3f37796778003c13405cd4300b7ac97"'
+    And the answer leaves out "value"
+    And no object in the scenario's bucket holds "f1le-s3cr3t", of at least 6 objects
+    And no answer of the scenario, log line of A or B, audit entry or event holds "f1le-s3cr3t"
+
   @op:runDiscard @op:runTrigger @op:runCpuProfileDownloadURL @case:success
   Scenario: A run discarded from UNCONFIRMED ends, and its stack's lock passes to the next run
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}}},"manageState":true}' through B

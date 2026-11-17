@@ -389,10 +389,10 @@ func TestUnitHandover(t *testing.T) {
 				false),
 			variable("TF_VAR_infraweave_stack_id", "mine", false),
 			{Name: "EMPTY"},
-			{Name: "main.tf", FileMount: true, Checksum: "x", Value: secret("terraform {}")},
+			{Name: "main.tf", FileMount: true, Checksum: "x", Value: secret("dGVycmFmb3JtIHt9")},
 			{
 				Name: "key.pem", FileMount: true, WriteOnly: true, FileMode: &mode, Checksum: "y",
-				Value: secret("PRIVATE"),
+				Value: secret("UFJJVkFURQ=="),
 			},
 		},
 		Hooks: map[string][]string{"before_init": {"echo hi"}},

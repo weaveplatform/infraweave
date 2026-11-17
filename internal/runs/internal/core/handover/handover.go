@@ -3,6 +3,7 @@ package handover
 import (
 	"cmp"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -551,13 +552,19 @@ func (s *Service) environment(
 	}
 	for _, e := range elements {
 		if e.FileMount {
+			// Configuration saves the API's Base64 value. The specification
+			// carries raw bytes, whose JSON encoding supplies the wire layer.
+			content, err := base64.StdEncoding.DecodeString(string(reveal(e.Value)))
+			if err != nil {
+				return fmt.Errorf("runs: decode mounted file %s: %w", e.Name, err)
+			}
 			f := workersapi.File{
 				Path: e.Name, Mode: e.FileMode, Checksum: e.Checksum, WriteOnly: e.WriteOnly,
 			}
 			if e.WriteOnly {
-				sec.Files[e.Name] = reveal(e.Value)
+				sec.Files[e.Name] = content
 			} else {
-				f.Content = reveal(e.Value)
+				f.Content = content
 			}
 			spec.Files = append(spec.Files, f)
 			continue
