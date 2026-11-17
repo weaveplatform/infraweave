@@ -17467,7 +17467,7 @@ type ClientInterface interface {
 
 	// StackConfigAddWithBody Add Stack Config
 	//
-	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -17476,7 +17476,7 @@ type ClientInterface interface {
 
 	// StackConfigAdd Add Stack Config
 	//
-	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -17492,7 +17492,7 @@ type ClientInterface interface {
 
 	// StackConfigSetWithBody Set Stack Config
 	//
-	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -17501,7 +17501,7 @@ type ClientInterface interface {
 
 	// StackConfigSet Set Stack Config
 	//
-	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -25212,7 +25212,7 @@ func (c *Client) StackConfigElement(ctx context.Context, stackId string, params 
 
 // StackConfigAddWithBody Add Stack Config
 //
-// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 //
 // Takes any type of body and a specified content type.
 //
@@ -25231,7 +25231,7 @@ func (c *Client) StackConfigAddWithBody(ctx context.Context, stackId string, par
 
 // StackConfigAdd Add Stack Config
 //
-// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -25267,7 +25267,7 @@ func (c *Client) StackConfigDelete(ctx context.Context, stackId string, configId
 
 // StackConfigSetWithBody Set Stack Config
 //
-// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 //
 // Takes any type of body and a specified content type.
 //
@@ -25286,7 +25286,7 @@ func (c *Client) StackConfigSetWithBody(ctx context.Context, stackId string, con
 
 // StackConfigSet Set Stack Config
 //
-// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -51466,7 +51466,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigAddWithBodyWithResponse Add Stack Config
 	//
-	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -51475,7 +51475,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigAddWithResponse Add Stack Config
 	//
-	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+	// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -51493,7 +51493,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigSetWithBodyWithResponse Set Stack Config
 	//
-	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -51502,7 +51502,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackConfigSetWithResponse Set Stack Config
 	//
-	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+	// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -95354,7 +95354,7 @@ func (c *ClientWithResponses) StackConfigElementWithResponse(ctx context.Context
 
 // StackConfigAddWithBodyWithResponse Add Stack Config
 //
-// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -95369,7 +95369,7 @@ func (c *ClientWithResponses) StackConfigAddWithBodyWithResponse(ctx context.Con
 
 // StackConfigAddWithResponse Add Stack Config
 //
-// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is.
+// Add a config element to a stack, or replace the element with its ID: 201 when it is created and 200 when it replaces one. A write-only value is never answered; its checksum is. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /id. Replacing an existing element stays allowed.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -95399,7 +95399,7 @@ func (c *ClientWithResponses) StackConfigDeleteWithResponse(ctx context.Context,
 
 // StackConfigSetWithBodyWithResponse Set Stack Config
 //
-// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -95414,7 +95414,7 @@ func (c *ClientWithResponses) StackConfigSetWithBodyWithResponse(ctx context.Con
 
 // StackConfigSetWithResponse Set Stack Config
 //
-// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one.
+// Create or replace the stack's config element at configId, the variable's name or the file's path: 201 when it is created and 200 when it replaces one. A new element may not take a name a directly or automatically attached context sets; this answers 422 at /configId. Replacing an existing element stays allowed.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

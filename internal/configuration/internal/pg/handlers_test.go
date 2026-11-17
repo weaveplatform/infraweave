@@ -2,7 +2,10 @@ package pg_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/http"
@@ -157,6 +160,46 @@ func handlers(ctx context.Context, s http.Server, att string) map[string]func() 
 			)
 			return err
 		},
+	}
+}
+
+// TestAccStackConfigCollisionPointers answers each write's name pointer
+// without disclosing the attached context or its stored value.
+func TestAccStackConfigCollisionPointers(t *testing.T) {
+	f := newFixture(t)
+	f.create(t, "Hidden Source", "", variable("REGION", "eu"))
+	if _, _, err := f.svc.Attach(t.Context(), f.admin, "hidden-source", "web", 0); err != nil {
+		t.Fatal(err)
+	}
+	s := http.New(f.svc, f.authz, f.spaces)
+	ctx := kernel.WithPrincipal(t.Context(), f.writer)
+	for pointer, call := range map[string]func() error{
+		"/id": func() error {
+			_, err := s.StackConfigAdd(ctx, api.StackConfigAddRequestObject{
+				StackId: "web", Body: &api.ConfigInput{Id: "REGION", Type: api.ENVIRONMENTVARIABLE, Value: "us"},
+			})
+			return err
+		},
+		"/configId": func() error {
+			_, err := s.StackConfigSet(ctx, api.StackConfigSetRequestObject{
+				StackId: "web", ConfigId: "REGION",
+				Body: &api.ConfigElementInput{Type: api.ENVIRONMENTVARIABLE, Value: new("us")},
+			})
+			return err
+		},
+	} {
+		rec := httptest.NewRecorder()
+		problem.ResponseError(rec, httptest.NewRequestWithContext(ctx, "POST", "/", nil), call())
+		var p problem.Problem
+		if err := json.NewDecoder(rec.Body).Decode(&p); err != nil {
+			t.Fatal(err)
+		}
+		if rec.Code != 422 || p.Type != problem.TypePrefix+"validation-failed" ||
+			p.Detail != "The config element is refused." || !reflect.DeepEqual(p.Errors, []problem.FieldError{{
+			Pointer: pointer, Reason: "duplicate", Message: "an attached context already sets this name",
+		}}) {
+			t.Errorf("%s collision = %d %+v", pointer, rec.Code, p)
+		}
 	}
 }
 

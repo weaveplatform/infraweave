@@ -25,7 +25,10 @@ func (s *Service) StackElement(ctx context.Context, acct kernel.AccountID, slug,
 // account's stack slug and reports whether it created it, holding the
 // stack so a delete of it waits. The route has decided STACK_ADD_CONFIG
 // on the stack's space. Refusals point under at, the element's place in
-// the request body, and its name at at+name.
+// the request body, and its name at at+name. A new element may not take a
+// name an attached context sets; replacing the stack's own stays allowed.
+//
+// ref: decision 0008 § "The run specification and its secrets"
 func (s *Service) SetStackElement(ctx context.Context, p kernel.Principal, slug string, in ElementInput, at, name string) (Element, bool, error) {
 	if errs := checkElement(at, name, in); len(errs) > 0 {
 		return Element{}, false, &kernel.Invalid{
@@ -40,10 +43,52 @@ func (s *Service) SetStackElement(ctx context.Context, p kernel.Principal, slug 
 		if err != nil {
 			return err
 		}
+		if err := s.stackElementName(ctx, p.AccountID, owner, in.Name, at+name); err != nil {
+			return err
+		}
 		e, created, err = s.set(ctx, p.AccountID, owner, in, at)
 		return err
 	})
 	return e, created, err //nolint:wrapcheck // each step in the transaction names itself
+}
+
+// stackElementName refuses a new name held by any attached context,
+// without disclosing a context the caller may not read.
+func (s *Service) stackElementName(ctx context.Context, acct kernel.AccountID, owner Owner, name, pointer string) error {
+	if _, err := s.store.Element(ctx, acct, owner, name); err == nil {
+		return nil
+	} else if !errors.Is(err, ErrNotFound) {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	attached, err := s.store.Attachments(ctx, acct, []kernel.ULID{owner.Stack}, true)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	owners := make([]Owner, 0, len(attached[owner.Stack]))
+	for _, a := range attached[owner.Stack] {
+		owners = append(owners, Owner{Context: a.Context})
+	}
+	if len(owners) == 0 {
+		return nil
+	}
+	elements, err := s.store.Elements(ctx, acct, owners)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	for _, es := range elements {
+		for _, e := range es {
+			if e.Name == name {
+				return &kernel.Invalid{
+					Detail: "The config element is refused.",
+					Errors: []kernel.FieldError{{
+						Pointer: pointer, Reason: kernel.ReasonDuplicate,
+						Message: "an attached context already sets this name",
+					}},
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // DeleteStackElement deletes the element name of p's account's stack slug

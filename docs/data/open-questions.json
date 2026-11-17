@@ -1375,7 +1375,7 @@
       "id": "C101",
       "kind": "capture",
       "area": "Configuration and state (reports 13 and 16)",
-      "question": "Where do computed values, stack dependency inputs and launcher-forwarded variables rank against contexts and stack variables? The console refuses a stack variable whose name an attached context sets, and shows a dependency input as computed with its source stack (report 32)",
+      "question": "Where do computed values, stack dependency inputs and launcher-forwarded variables rank against contexts and stack variables? The console refuses a stack variable whose name an attached context sets, and shows a dependency input as computed with its source stack (report 32). Infraweave refuses a stack element whose name an attached context sets, as the console does (maintainer, 2026-11-17); replacing an existing stack element remains allowed",
       "howToCapture": "Runs defining one name at each level",
       "blocks": "the full precedence order",
       "reports": [

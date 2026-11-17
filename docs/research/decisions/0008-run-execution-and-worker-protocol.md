@@ -316,8 +316,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   then directly attached contexts by priority, lowest number first, then
   by slug; then auto-attached contexts by name from Z to A, then by slug
   from Z to A. The first source of a name wins for variables and mounted
-  files, and a name the stack drops lets the next source through. Before
-  a phase, the contexts' hooks run in rank order and then the stack's;
+  files, and a name the stack drops lets the next source through. A stack
+  cannot create an element whose name an attached context sets; a name
+  the stack already has keeps its place when a context with that name
+  attaches. Replacing that stack element remains allowed. Before a
+  phase, the contexts' hooks run in rank order and then the stack's;
   after it, the reverse.
 - **Overrides.** A proposed run, from `proposeWithOverrides` or
   `runProposeLocalWorkspace`, may carry environment variable overrides for

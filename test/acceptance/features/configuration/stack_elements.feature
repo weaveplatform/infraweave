@@ -3,7 +3,9 @@ Feature: A stack's own config elements
   A stack holds its own config elements, environment variables and
   mounted files, beside those of the contexts it attaches. An element is
   added by its ID, or created and replaced at its own path, and a value
-  that is left out keeps the one stored. A write-only value is never
+  that is left out keeps the one stored. A new element cannot take a name
+  an attached context sets; a name the stack already owns can be replaced.
+  A write-only value is never
   answered again, by the element, the stack or the contexts the stack may
   attach, only its checksum. Deleting a stack deletes its elements. A
   space writer adds and deletes a stack's elements; a space reader reads
@@ -55,6 +57,61 @@ Feature: A stack's own config elements
     Then it answers 201
     And the answer's config lists the elements ""
 
+  @op:stackConfigAdd @op:stackConfigSet @op:contextAttach @case:success
+  Scenario: Stack names survive context attachment, context writes and labels, and detach frees a name
+    Given token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through A
+    Then it answers 201
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false},{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}]}' through B
+    And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":0}' through A
+    Then it answers 200
+    And the answer's id names "att"
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/LEVEL" with '{"type":"ENVIRONMENT_VARIABLE","value":"replaced","writeOnly":false}' through B
+    Then it answers 200
+    And the answer's value is '"replaced"'
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"again","writeOnly":false}' through A
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"LATE","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through B
+    Then it answers 201
+    When token "h" sends "POST /api/v1/contexts/shared/configs" with '{"id":"LATE","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}' through A
+    Then it answers 201
+    Given token "h" sends "POST /api/v1/contexts" with '{"name":"Labelled","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"automatic","writeOnly":false}]}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through A
+    Then it answers 200
+    And the stack "infra" read through B with token "h" eventually attaches the contexts "shared, auto:labelled"
+    When token "h" sends "DELETE /api/v1/context-attachments/{att}" through A
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"free","writeOnly":false}' through B
+    Then it answers 201
+    And the answer's value is '"free"'
+
+  @op:stackConfigAdd @op:stackConfigSet @case:failure
+  Scenario: A new stack name cannot hide a direct or auto-attached context element
+    Given token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false},{"id":"app.toml","type":"FILE_MOUNT","value":"a2V5","writeOnly":true}]}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":0}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"us","writeOnly":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/id" as "duplicate"
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/REGION" with '{"type":"ENVIRONMENT_VARIABLE","value":"us","writeOnly":false}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/configId" as "duplicate"
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"REGION","type":"FILE_MOUNT","value":"dXM=","writeOnly":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/id" as "duplicate"
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/app.toml" with '{"type":"ENVIRONMENT_VARIABLE","value":"plain","writeOnly":false}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/configId" as "duplicate"
+    Given token "h" sends "POST /api/v1/contexts" with '{"name":"Automatic","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"ZONE","type":"ENVIRONMENT_VARIABLE","value":"a","writeOnly":false}]}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "shared, auto:automatic"
+    When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"ZONE","type":"ENVIRONMENT_VARIABLE","value":"b","writeOnly":false}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/id" as "duplicate"
+    When token "h" sends "PUT /api/v1/stacks/infra/configs/ZONE" with '{"type":"ENVIRONMENT_VARIABLE","value":"b","writeOnly":false}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/configId" as "duplicate"
+    When token "h" sends "GET /api/v1/stacks/infra" through B
+    Then the answer's config lists the elements ""
+
   @op:stackAttachableContexts @op:stack @case:success
   Scenario: The contexts a stack may attach answer no write-only value
     Given token "h" sends "POST /api/v1/contexts" with '{"name":"Top","space":"acme","configAttachments":[{"id":"TOKEN","type":"ENVIRONMENT_VARIABLE","value":"s3cret","writeOnly":true}]}' through A
@@ -71,11 +128,19 @@ Feature: A stack's own config elements
   Scenario: A space reader reads a stack's elements and changes none; a writer changes them
     Given token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}' through A
     And token "h" sends "POST /api/v1/stacks/hidden/configs" with '{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}' through B
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"CLASH","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}]}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":0}' through B
     And the member key is space-reader on the space "legacy"
     When token "m" sends "GET /api/v1/stacks/infra/config-element?id=REGION" through A
     Then the answer's value is '"eu"'
     When token "m" sends "GET /api/v1/stacks/infra/attachable-contexts" through B
     Then it answers 200
+    When token "m" sends "POST /api/v1/stacks/infra/configs" with '{"id":"CLASH","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"STACK_ADD_CONFIG"'
+    When token "m" sends "PUT /api/v1/stacks/infra/configs/CLASH" with '{"type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"STACK_ADD_CONFIG"'
     When token "m" sends "POST /api/v1/stacks/infra/configs" with '{"id":"MINE","type":"ENVIRONMENT_VARIABLE","value":"1","writeOnly":false}' through A
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"STACK_ADD_CONFIG"'
