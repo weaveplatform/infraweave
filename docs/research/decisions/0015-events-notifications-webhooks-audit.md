@@ -309,19 +309,38 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
 
 ### Audit trail
 
-- **Recording.** Every mutating operation records an `AuditTrailEntry`
-  through `audit.Record(ctx, entry)`, in the transaction that `tx.Do` put
-  on `ctx`, so an entry exists exactly when the change does. Failed logins
-  are recorded by the authentication path (decision 0006).
+- **Recording.** Every mutating operation a caller makes records an
+  `AuditTrailEntry` through `audit.Record(ctx, entry)`, in the transaction
+  that `tx.Do` put on `ctx`, so an entry exists exactly when the change
+  does; an operation that fails records nothing. Failed logins are recorded
+  by the authentication path (decision 0006).
+- **Only callers' changes.** Work infraweave does on its own records no
+  entry: runs that a push, a stack dependency, a trigger policy or a
+  schedule creates, run state changes, policy evaluations, module versions
+  a push creates, and attachments removed with the stack or module they
+  belong to. A run's `runTrigger`, `runConfirm`, `runReview`, `runDiscard`,
+  `runRetry` and `runTargetedReplan` are entries, because a caller made
+  them. This is the trail Spacelift's console shows
+  ([32 section 16.9](../reference/32-spacelift-console-survey.md#169-the-audit-trail)).
 - **Actions.** Each mutating operation in the served spec names its action
   in `x-infraweave-audit-action` (`<resource>.<verb>`, snake case, for
   example `stack.create`), with its `AuditTrailResourceType` and event type.
-  The full Spacelift vocabulary is unknown (capture C180), so infraweave's
+  The actions Spacelift's console shows are infraweave's names for the same
+  operations: `policy.attach` and `policy.detach` on the stack with the
+  policy as the related resource, `run.review` with the decision and note in
+  the body, `stack_dependency.update` for a reference change, and
+  `version.create` with the module as the related resource. The full
+  Spacelift vocabulary is unknown (capture C180), so the rest of infraweave's
   list is derived from the operations and kept as code constants.
 - **Fields.** `actor` (`username`, and `run` when an administrative run
   acted, with username `infraweave`), `action`, `eventType`,
   `affectedResource` and `relatedResource` with typed metadata, `body`,
-  `remoteIP`, `identityUlid`, `ownerLogin` and `createdAt`.
+  `remoteIP`, `identityUlid`, `ownerLogin` and `createdAt`. A member's
+  `username` is `<source>::<login>`, the identity provider's kind and the
+  login it asserted, as Spacelift's trail shows `github::<login>`; the
+  prefixes for API keys and SSO sources are infraweave's while C180 is open.
+  `body` is the operation's arguments as the caller sent them, sanitized
+  below.
 - **Sanitizing.** Every field that the spec marks `writeOnly` is replaced in
   `body` and in webhook `data` by `{"SecretSHA": "<hex HMAC-SHA256>"}`,
   keyed by `crypt.DeriveKey("audit-secret-sha")` (decision 0013).
@@ -333,9 +352,14 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
   Organization admins list them through
   the `Organization` tag; no account's listing or audit webhook shows them,
   because they are not that account's data.
-- **Retention.** `audit.retention`, default 30 days, the docs' value;
-  Spacelift's console labels its log tab 14 days, which C279 settles.
-  `auditTrailRetentionDays` answers it, and a daily job deletes older rows.
+- **Retention.** `audit.retention`, default 30 days, the value Spacelift's
+  `auditTrailRetentionDays` answers (C279); `auditTrailRetentionDays`
+  answers infraweave's, and a daily job deletes older rows. The 14 days on
+  Spacelift's log tab is its default time range, beside presets from an
+  hour to 14 days and a custom range.
+- **Search.** `searchAuditTrailEntries` pages 50 entries at a time by
+  cursor, newest first, and filters on action, affected and related
+  resource type and ID, event type, username and a time range.
 - **Audit webhook.** One per account. `auditTrailSetWebhook` on an enabled
   webhook first sends an `audit_trail_webhook.set` delivery and refuses the
   change with 422 unless the endpoint answers 2xx. The problem slug
@@ -359,7 +383,8 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
   names), `data`, `remoteIP` and `timestamp` (Unix milliseconds). With
   `includeRuns`, run state changes are sent with action `run.state_changed`
   and the run default payload as `data`. That shape is infraweave's until
-  capture C182.
+  capture C182. They are webhook deliveries only: the searchable trail
+  never lists run state changes, as Spacelift's does not.
 
 ### Features
 

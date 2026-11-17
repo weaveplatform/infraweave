@@ -957,8 +957,9 @@ reads by the state backend) *(unverified)* (C8).
   mutations check *(unverified)* (C6).
 - `contextDelete` and `policyDelete` take `force`; that it deletes an
   attached entity is read from the argument name **[I]** *(unverified)* (C9).
-- `runRetry` creating a new run rather than reusing the old one is read from
-  the docs action table and return type **[I]** *(unverified)* (C10).
+- `runRetry` creates a new run rather than reusing the old one, as the docs
+  action table and return type suggest and the console shows
+  ([32](32-spacelift-console-survey.md) section 17.3), which resolves C10.
 - 102 Purpose cells, nearly all of them in
   [04](04-platform-api-inventory.md) and covering the Intent, template, role
   binding and managed-user operations, hold only a Bruno request name: no

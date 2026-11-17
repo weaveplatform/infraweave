@@ -1,0 +1,91 @@
+{
+  "in_progress": [
+    {
+      "based_on_local_workspace": false,
+      "branch": "main",
+      "command": "",
+      "commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767235238000000000,
+        "exist_on_tracked_branch": true,
+        "hash": "0000000000000000000000000000000000000001",
+        "message": "tracked run 2",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000001"
+      },
+      "created_at": 1767235241712656000,
+      "drift_detection": false,
+      "force_apply_mode": "DISABLED",
+      "id": "01H00000000000000000000003",
+      "state": "UNCONFIRMED",
+      "trigger": null,
+      "triggered_by": null,
+      "type": "TRACKED",
+      "updated_at": 1767235295903222000,
+      "user_provided_metadata": []
+    }
+  ],
+  "pull_request": null,
+  "push": {
+    "affected_files": [
+      "main.tf"
+    ],
+    "affected_stacks_count": 1,
+    "author": "user-a",
+    "branch": "main",
+    "created_at": 1767235358000000000,
+    "hash": "0000000000000000000000000000000000000002",
+    "message": "cancel test [cancel]",
+    "tag": ""
+  },
+  "stack": {
+    "additional_project_globs": [],
+    "administrative": false,
+    "autodeploy": false,
+    "branch": "main",
+    "id": "stack-a",
+    "labels": [],
+    "locked_by": null,
+    "name": "stack-a",
+    "namespace": "owner-a",
+    "project_root": "",
+    "repository": "repo-a",
+    "roles": [],
+    "space": {
+      "id": "root",
+      "labels": [],
+      "name": "root"
+    },
+    "state": "UNCONFIRMED",
+    "terraform_version": null,
+    "terraform_workflow_tool": null,
+    "tracked_commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767235238000000000,
+      "hash": "0000000000000000000000000000000000000001",
+      "message": "tracked run 2",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000001"
+    },
+    "worker_pool": {
+      "public": true
+    }
+  },
+  "vcs_integration": {
+    "created_at": -6795364578871345000,
+    "description": "Managed GitHub VCS integration",
+    "id": "managed-github-vcs-integration",
+    "is_default": true,
+    "labels": [],
+    "name": "GitHub",
+    "provider": "GITHUB",
+    "space": {
+      "id": "root",
+      "labels": [],
+      "name": "root"
+    },
+    "updated_at": -6795364578871345000
+  }
+}

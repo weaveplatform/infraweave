@@ -1,0 +1,138 @@
+{
+  "reviews": {
+    "current": {
+      "approvals": [
+        {
+          "author": "user-a",
+          "author_roles": [
+            {
+              "id": "space-admin",
+              "name": "Space admin",
+              "slug": "space-admin",
+              "ulid": "01H00000000000000000000001"
+            }
+          ],
+          "identity": {
+            "federations": {
+              "github-oauth": {
+                "id": "github-id-a",
+                "username": "user-a"
+              }
+            },
+            "ulid": "01H00000000000000000000002"
+          },
+          "note": "approve at queued",
+          "request": {
+            "remote_ip": "192.0.2.1",
+            "timestamp_ns": 1767235277453270800
+          },
+          "session": {
+            "admin": true,
+            "creator_ip": "192.0.2.1",
+            "idp_subject": "github-id-a",
+            "login": "user-a",
+            "machine": false,
+            "name": "user-a",
+            "teams": null
+          },
+          "state": "QUEUED",
+          "state_version": 0
+        }
+      ],
+      "rejections": []
+    },
+    "older": {
+      "approvals": [],
+      "rejections": []
+    }
+  },
+  "run": {
+    "based_on_local_workspace": false,
+    "branch": "main",
+    "changes": [],
+    "command": "",
+    "commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767235238000000000,
+      "exist_on_tracked_branch": true,
+      "hash": "0000000000000000000000000000000000000001",
+      "message": "tracked run 2",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000001"
+    },
+    "created_at": 1767235241712656000,
+    "creator_session": {
+      "admin": "",
+      "creator_ip": "",
+      "idp_subject": "",
+      "login": "",
+      "machine": true,
+      "name": "",
+      "teams": []
+    },
+    "drift_detection": false,
+    "flags": [],
+    "force_apply_mode": "DISABLED",
+    "id": "01H00000000000000000000003",
+    "repository_runtime_config_changed": true,
+    "runtime_config": {
+      "after_apply": [],
+      "after_destroy": [],
+      "after_init": [],
+      "after_perform": [],
+      "after_plan": [],
+      "after_run": [],
+      "before_apply": [],
+      "before_destroy": [],
+      "before_init": [],
+      "before_perform": [],
+      "before_plan": [],
+      "environment": {},
+      "git_sparse_checkout_paths": [],
+      "project_root": "",
+      "runner_image": "public.ecr.aws/spacelift/runner-opentofu:latest",
+      "terraform_version": null
+    },
+    "state": "QUEUED",
+    "trigger": null,
+    "triggered_by": null,
+    "type": "TRACKED",
+    "updated_at": 1767235241854240000,
+    "user_provided_metadata": []
+  },
+  "stack": {
+    "additional_project_globs": [],
+    "administrative": false,
+    "autodeploy": false,
+    "branch": "main",
+    "id": "stack-a",
+    "labels": [],
+    "locked_by": null,
+    "name": "stack-a",
+    "namespace": "owner-a",
+    "project_root": "",
+    "repository": "repo-a",
+    "roles": [],
+    "space": {
+      "id": "root",
+      "labels": [],
+      "name": "root"
+    },
+    "state": "NONE",
+    "terraform_version": null,
+    "terraform_workflow_tool": null,
+    "tracked_commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767235238000000000,
+      "hash": "0000000000000000000000000000000000000001",
+      "message": "tracked run 2",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000001"
+    },
+    "worker_pool": {
+      "public": true
+    }
+  }
+}

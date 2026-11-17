@@ -325,13 +325,15 @@
       "id": "C10",
       "kind": "capture",
       "area": "Platform, API and clients (reports 01 to 06)",
-      "question": "Does `runRetry` create a new run or reuse the old one, and which run types may be retried (the schema says pull-request runs, spacectl says failed runs)?",
+      "question": "Does `runRetry` create a new run or reuse the old one, and which run types may be retried (the schema says pull-request runs, spacectl says failed runs)? Resolved by driving the console on 2026-11-17 (report 32): a retry creates a new run of the retried run's type on the same commit, with the retried run's runtime configuration; failed and discarded tracked runs offer it, finished runs do not, and a failed task offers to perform it again instead",
       "howToCapture": "Retry a proposed and a tracked run and compare the returned IDs",
       "blocks": "run history model",
       "reports": [
         "docs/research/reference/03-deploy-core-api-inventory.md",
-        "docs/research/reference/08-run-lifecycle.md"
-      ]
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C11",
@@ -550,12 +552,13 @@
       "id": "C29",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Do runtime-file hooks replace or extend the stack's hooks, and what happens to context hooks?",
+      "question": "Do runtime-file hooks replace or extend the stack's hooks, and what happens to context hooks? Without a runtime file, the console's runs merge context and stack hooks in the documented nesting and record the merged lists in the run's runtime configuration (report 32)",
       "howToCapture": "A run with hooks in a context, on the stack and in `config.yml`",
       "blocks": "hook assembly for a run",
       "reports": [
         "docs/research/reference/07-stack-model.md",
-        "docs/research/reference/13-configuration.md"
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -640,12 +643,14 @@
       "id": "C37",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Which state does a push policy `cancel` give a run awaiting confirmation: `CANCELED` or `DISCARDED`?",
+      "question": "Which state does a push policy `cancel` give a run awaiting confirmation: `CANCELED` or `DISCARDED`? Resolved by driving the console on 2026-11-17 (report 32): `DISCARDED`, with the note \"canceled by push policy in favor of run <id>\", and the stack's state becomes `DISCARDED`",
       "howToCapture": "Cancel an unconfirmed run from a push policy",
       "blocks": "push policy effects",
       "reports": [
-        "docs/research/reference/08-run-lifecycle.md"
-      ]
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C38",
@@ -675,35 +680,41 @@
       "id": "C40",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Does an approval policy `reject` fail the run or cancel it? The approval page's rules section says fail, its walkthrough says cancel",
+      "question": "Does an approval policy `reject` fail the run or cancel it? The approval page's rules section says fail, its walkthrough says cancel Resolved by driving the console on 2026-11-17 (report 32): a reject in `QUEUED` fails the run at once, with the note \"Run rejected by approval policies\"; C291 rejects in `PENDING_REVIEW` and `UNCONFIRMED`",
       "howToCapture": "Reject a queued run and an unconfirmed run, then read `history`",
       "blocks": "the targets of T5, T24 and T29",
       "reports": [
         "docs/research/reference/08-run-lifecycle.md",
-        "docs/research/reference/09-policies.md"
-      ]
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C41",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Does one `reject` from one of several attached approval policies fail the run regardless of the others?",
+      "question": "Does one `reject` from one of several attached approval policies fail the run regardless of the others? Resolved by driving the console on 2026-11-17 (report 32): yes; with one policy approving and the other rejecting, the aggregate is a reject and the run fails",
       "howToCapture": "Attach two approval policies with opposite outcomes",
       "blocks": "approval combination rules",
       "reports": [
-        "docs/research/reference/09-policies.md"
-      ]
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C42",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Does a task created with `skipInitialization` pass through `INITIALIZING`?",
+      "question": "Does a task created with `skipInitialization` pass through `INITIALIZING`? Resolved by driving the console on 2026-11-17 (report 32): yes; the phase only logs that initialization is skipped, and no init hook runs",
       "howToCapture": "Capture such a task's `history`",
       "blocks": "whether T13 or a `PREPARING` to `PERFORMING` edge exists",
       "reports": [
-        "docs/research/reference/08-run-lifecycle.md"
-      ]
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C43",
@@ -779,33 +790,36 @@
       "id": "C49",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "What is the API's default `engineType` when `policyCreatev2` omits it?",
+      "question": "What is the API's default `engineType` when `policyCreatev2` omits it? The console's editor opens every new policy on Rego V1 (report 32); the API's default for an omitted field is still unread",
       "howToCapture": "Create a policy without `engineType` and read it back",
       "blocks": "the default Rego dialect",
       "reports": [
-        "docs/research/reference/09-policies.md"
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
       "id": "C50",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "What effect does a flag set by a login, access, notification or Intent policy have, given those types touch no run?",
+      "question": "What effect does a flag set by a login, access, notification or Intent policy have, given those types touch no run? A plan policy's flag reaches the same run's later approval, trigger and notification inputs and the next run's `previous_run`, and not the runs a trigger policy creates (report 32)",
       "howToCapture": "Sample such a policy and inspect the receipts",
       "blocks": "whether flags live outside runs",
       "reports": [
-        "docs/research/reference/09-policies.md"
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
       "id": "C51",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "How does a policy get the `PolicyULID` it needs to use `reset_flag`, and which policies lack one?",
+      "question": "How does a policy get the `PolicyULID` it needs to use `reset_flag`, and which policies lack one? Every policy created in the console has a ULID, and its decisions carry `reset_flag` (report 32); older policies are unread",
       "howToCapture": "Ask Spacelift; compare old and new policies through the API",
       "blocks": "flag reset eligibility",
       "reports": [
-        "docs/research/reference/09-policies.md"
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -834,7 +848,7 @@
       "id": "C54",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Are the in-product policy templates served from the spacelift-policies-example-library module? The console's catalogue lists 59 templates on 2026-11-17 against the library's 67 (report 32)",
+      "question": "Are the in-product policy templates served from the spacelift-policies-example-library module? The console's catalogue lists 59 templates on 2026-11-17 against the library's 67 (report 32). The 50 entries on the catalogue's first page are all library templates; the library templates missing from them are its six login templates and nine others, as many as the entries left unread",
       "howToCapture": "Compare `searchPolicyTemplates` with the library's 67 templates",
       "blocks": "the template corpus",
       "reports": [
@@ -846,11 +860,12 @@
       "id": "C55",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "What does `queued_runs` count on each trigger policy `stacks[]` entry, and is it present on module-version events?",
+      "question": "What does `queued_runs` count on each trigger policy `stacks[]` entry, and is it present on module-version events? A sampled input carries it as an integer on every `stacks[]` entry, 0 for each stack with no queued run (report 32); module-version events are unread",
       "howToCapture": "Sample a trigger policy",
       "blocks": "trigger policy input",
       "reports": [
-        "docs/research/reference/09-policies.md"
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -868,11 +883,12 @@
       "id": "C57",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Which OPA version evaluates policies?",
+      "question": "Which OPA version evaluates policies? The console's policy pages do not show it (report 32)",
       "howToCapture": "Query `policyRuntime` on a live account",
       "blocks": "Rego compatibility",
       "reports": [
-        "docs/research/reference/09-policies.md"
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -1334,33 +1350,37 @@
       "id": "C99",
       "kind": "capture",
       "area": "Configuration and state (reports 13 and 16)",
-      "question": "What priority does an auto-attached context attachment report, and does `autoattach:*` reach child spaces whatever their inheritance setting?",
+      "question": "What priority does an auto-attached context attachment report, and does `autoattach:*` reach child spaces whatever their inheritance setting? The console gives an auto-attached context no priority field and labels the auto-attached order reverse alphabetical (report 32); the API's value, and which of two auto-attached contexts wins a variable, are unread",
       "howToCapture": "Query `attachedContexts`; test with an inheritance-off child space",
       "blocks": "the attachment resource and auto-attach resolution",
       "reports": [
-        "docs/research/reference/13-configuration.md"
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
       "id": "C100",
       "kind": "capture",
       "area": "Configuration and state (reports 13 and 16)",
-      "question": "Is the `TF_VAR_spacelift_*` and `SPACELIFT_*` list the report gives complete?",
+      "question": "Is the `TF_VAR_spacelift_*` and `SPACELIFT_*` list the report gives complete? Resolved by a run's environment on 2026-11-17 (report 32): no; a run also has `TF_VAR_spacelift_graphql_endpoint` and four more `SPACELIFT_*` variables, which report 13 now lists",
       "howToCapture": "A task printing `env`",
       "blocks": "computed environment parity",
       "reports": [
-        "docs/research/reference/13-configuration.md"
-      ]
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C101",
       "kind": "capture",
       "area": "Configuration and state (reports 13 and 16)",
-      "question": "Where do computed values, stack dependency inputs and launcher-forwarded variables rank against contexts and stack variables?",
+      "question": "Where do computed values, stack dependency inputs and launcher-forwarded variables rank against contexts and stack variables? The console refuses a stack variable whose name an attached context sets, and shows a dependency input as computed with its source stack (report 32)",
       "howToCapture": "Runs defining one name at each level",
       "blocks": "the full precedence order",
       "reports": [
-        "docs/research/reference/13-configuration.md"
+        "docs/research/reference/13-configuration.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -1792,34 +1812,39 @@
       "id": "C140",
       "kind": "capture",
       "area": "Blueprints and templates (report 17)",
-      "question": "Does the service reject a blueprint body with neither or both of `stack` and `stacks`?",
+      "question": "Does the service reject a blueprint body with neither or both of `stack` and `stacks`? The schema the console's blueprint page serves requires exactly one of them, and the page will not publish a body that fails it (report 32); the API's own answer is unread",
       "howToCapture": "`blueprintParseTemplate` on both bodies",
       "blocks": "the validator rule",
       "reports": [
-        "docs/research/reference/17-blueprints-and-templates.md"
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
       "id": "C141",
       "kind": "capture",
       "area": "Blueprints and templates (report 17)",
-      "question": "How does a body declare an `AVAILABLE_SPACES` input when neither JSON schema accepts that type?",
+      "question": "How does a body declare an `AVAILABLE_SPACES` input when neither JSON schema accepts that type? Resolved by the template schema the console serves on 2026-11-17 (report 32): as `type: available_spaces`, a text input type; the blueprint schema it serves has no such type",
       "howToCapture": "Create a template version with `type: available_spaces`",
       "blocks": "input type completeness",
       "reports": [
-        "docs/research/reference/17-blueprints-and-templates.md"
-      ]
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C142",
       "kind": "capture",
       "area": "Blueprints and templates (report 17)",
-      "question": "Are `validations` and `required` accepted on `boolean` and `select` inputs (docs yes, schema no)?",
+      "question": "Are `validations` and `required` accepted on `boolean` and `select` inputs (docs yes, schema no)? Resolved by the template schema the console serves on 2026-11-17 (report 32): yes; `boolean` and `select` take a `validations` object holding `required` alone",
       "howToCapture": "`templateVersionParseTemplate` on such a body",
       "blocks": "validation parity",
       "reports": [
-        "docs/research/reference/17-blueprints-and-templates.md"
-      ]
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C143",
@@ -1903,11 +1928,12 @@
       "id": "C150",
       "kind": "capture",
       "area": "Blueprints and templates (report 17)",
-      "question": "What rule derives `TemplateDeploymentState` from stack and run states, and which actions are allowed in `NONE`, and revert in `DESTROYING_FAILED` and `DISCARDED`?",
+      "question": "What rule derives `TemplateDeploymentState` from stack and run states, and which actions are allowed in `NONE`, and revert in `DESTROYING_FAILED` and `DISCARDED`? With one stack, the console shows a deployment in progress, unconfirmed and success as the stack's first run plans, waits and applies, and deleting while the destroy run removes it (report 32)",
       "howToCapture": "Drive deployments through failures, confirmations and discards; try each action",
       "blocks": "state-gated API behaviour",
       "reports": [
-        "docs/research/reference/17-blueprints-and-templates.md"
+        "docs/research/reference/17-blueprints-and-templates.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -1936,11 +1962,12 @@
       "id": "C153",
       "kind": "capture",
       "area": "Scheduling, drift and dependencies (report 18)",
-      "question": "What does the API do with an empty `ScheduledRunInput.name`, which the schema requires and the provider omits when unset?",
+      "question": "What does the API do with an empty `ScheduledRunInput.name`, which the schema requires and the provider omits when unset? The console's run schedule form marks the name optional (report 32)",
       "howToCapture": "Create a scheduled run without a name",
       "blocks": "field validation",
       "reports": [
-        "docs/research/reference/18-scheduling-drift-dependencies.md"
+        "docs/research/reference/18-scheduling-drift-dependencies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -1980,11 +2007,12 @@
       "id": "C157",
       "kind": "capture",
       "area": "Scheduling, drift and dependencies (report 18)",
-      "question": "Is there a minimum interval between firings?",
+      "question": "Is there a minimum interval between firings? The console's drift detection form accepts `*/5 * * * *` with no warning (report 32)",
       "howToCapture": "Try `* * * * *`; ask Spacelift",
       "blocks": "scheduler load limits",
       "reports": [
-        "docs/research/reference/18-scheduling-drift-dependencies.md"
+        "docs/research/reference/18-scheduling-drift-dependencies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -2233,11 +2261,12 @@
       "id": "C180",
       "kind": "capture",
       "area": "Events, notifications and audit (report 19)",
-      "question": "What is the full set of audit `action` strings, and the `actor` prefixes for API keys, SSO users and other identity sources?",
+      "question": "What is the full set of audit `action` strings, and the `actor` prefixes for API keys, SSO users and other identity sources? The console's trail shows only the mutations of callers, with the actions report 19 lists, and `github::<login>` as a GitHub user's actor (report 32)",
       "howToCapture": "Capture the audit webhook over a broad set of mutations; ask Spacelift",
       "blocks": "audit vocabulary",
       "reports": [
-        "docs/research/reference/19-events-notifications-audit.md"
+        "docs/research/reference/19-events-notifications-audit.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -2256,7 +2285,7 @@
       "id": "C182",
       "kind": "capture",
       "area": "Events, notifications and audit (report 19)",
-      "question": "What shape do run state change events take on the audit webhook under `includeRuns`? The console's help says the switch adds them to the audit events (report 32), settling that they are added rather than annotations",
+      "question": "What shape do run state change events take on the audit webhook under `includeRuns`? The console's help says the switch adds them to the audit events (report 32), settling that they are added rather than annotations. The searchable trail lists no run state changes (report 32)",
       "howToCapture": "Capture with the flag on and off",
       "blocks": "the audit stream schema",
       "reports": [
@@ -2279,12 +2308,14 @@
       "id": "C184",
       "kind": "capture",
       "area": "Events, notifications and audit (report 19)",
-      "question": "Is `policy_receipts` under `run_updated.run` (docs) or at `run_updated` (contract and Datadog module), or both?",
+      "question": "Is `policy_receipts` under `run_updated.run` (docs) or at `run_updated` (contract and Datadog module), or both? Resolved by a sampled notification policy input on 2026-11-17 (report 32): at `run_updated` only, one receipt per policy evaluated on the run",
       "howToCapture": "Sample a notification policy evaluation",
       "blocks": "notification policy compatibility",
       "reports": [
-        "docs/research/reference/19-events-notifications-audit.md"
-      ]
+        "docs/research/reference/19-events-notifications-audit.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C185",
@@ -2345,12 +2376,14 @@
       "id": "C190",
       "kind": "capture",
       "area": "Vendors (report 20)",
-      "question": "Do Pulumi login and stack selection run before or after `before_init` hooks?",
+      "question": "Do Pulumi login and stack selection run before or after `before_init` hooks? Resolved by a Pulumi run's log on 2026-11-17 (report 32): `before_init` hooks run before the login and before the stack is selected, or created when missing; `after_init` hooks run after both",
       "howToCapture": "A Pulumi stack whose `before_init` hook prints; read the log order",
       "blocks": "Pulumi hook order",
       "reports": [
-        "docs/research/reference/20-vendors.md"
-      ]
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C191",
@@ -2378,11 +2411,12 @@
       "id": "C193",
       "kind": "capture",
       "area": "Vendors (report 20)",
-      "question": "What exact commands do Ansible runs, CloudFormation applies (change set execution) and Pulumi destroys use? The report infers them",
+      "question": "What exact commands do Ansible runs, CloudFormation applies (change set execution) and Pulumi destroys use? The report infers them. The console settles the Ansible part, `--check` while planning and a real run while applying, and shows `pulumi preview` and `pulumi up` output for Pulumi's plan and apply (report 32); the Pulumi destroy and CloudFormation commands are unread",
       "howToCapture": "Read the logs of each run type",
       "blocks": "runner command parity",
       "reports": [
-        "docs/research/reference/20-vendors.md"
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -2445,12 +2479,14 @@
       "id": "C199",
       "kind": "capture",
       "area": "Resources, scans and search (report 21)",
-      "question": "Where is the Ansible \"Enable configuration management view\" toggle stored?",
+      "question": "Where is the Ansible \"Enable configuration management view\" toggle stored? Resolved by driving the console on 2026-11-17 (report 32): a switch in an Ansible stack's page header, on by default and kept across reloads, which no other vendor's stack shows; no stack field holds it, so it is console state",
       "howToCapture": "Toggle it and watch the GraphQL calls",
       "blocks": "whether the API exposes it",
       "reports": [
-        "docs/research/reference/21-resources-scans-search.md"
-      ]
+        "docs/research/reference/21-resources-scans-search.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C200",
@@ -3585,7 +3621,7 @@
       "id": "C273",
       "kind": "capture",
       "area": "Console survey (report 32)",
-      "question": "What does a policy's page in the console show of its evaluations, samples and simulation, and which operations does it call?",
+      "question": "What does a policy's page in the console show of its evaluations, samples and simulation, and which operations does it call? The console's policy page has body, \"Used by\" and samples tabs and a simulation panel, with sample filters per type (report 32); the operation names are unread",
       "howToCapture": "Create a plan policy on a trial account, attach it to a stack, trigger a run, and open the policy's page with the browser's request bodies recorded",
       "blocks": "P13b's sampling and simulation surfaces and the console's policy page",
       "reports": [
@@ -3629,34 +3665,37 @@
       "id": "C277",
       "kind": "capture",
       "area": "Console survey (report 32)",
-      "question": "Which fields and defaults do the module wizard's details, behaviour and availability steps take?",
+      "question": "Which fields and defaults do the module wizard's details, behaviour and availability steps take? Resolved by filling the wizard on 2026-11-17 (report 32): details take a name behind a fixed `terraform-<provider>-` prefix, a provider, labels and a description, and create the module; behaviour takes the workflow tool (OpenTofu by default), a runner image, administrative, local preview and deletion protection (on by default); availability lists the origin and inherited spaces and adds others",
       "howToCapture": "Fill the module wizard's source step with a repository and read the next three steps without creating",
       "blocks": "P17's module settings and sharing",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C278",
       "kind": "capture",
       "area": "Console survey (report 32)",
-      "question": "What do a stack's settings pages show for scheduled runs, tasks and deletes, drift detection and dependencies, with which bounds and defaults?",
+      "question": "What do a stack's settings pages show for scheduled runs, tasks and deletes, drift detection and dependencies, with which bounds and defaults? Resolved by a stack's pages on 2026-11-17 (report 32): settings hold details, source code, vendor, behaviour, integrations, roles and deletion; schedules (drift detection, deletion, task and run) and dependencies are stack tabs, each schedule kind marked as working on private workers only, with no numeric bounds shown",
       "howToCapture": "Create a stack on a trial account and open each settings page",
       "blocks": "P16's schedule, drift detection and dependency inputs",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C279",
       "kind": "capture",
       "area": "Console survey (report 32)",
-      "question": "Does `auditTrailRetentionDays` answer 14, as the console's audit log tab is labelled, or 30, as the docs say?",
+      "question": "Does `auditTrailRetentionDays` answer 14, as the console's audit log tab is labelled, or 30, as the docs say? Resolved by the audit trail's own query on 2026-11-17 (report 32): `auditTrailRetentionDays` answers 30; the 14 days is the log tab's default time range",
       "howToCapture": "Query `auditTrailRetentionDays` on a trial account and compare it with the oldest entry the log lists",
       "blocks": "the default of decision 0015's `audit.retention`",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C280",
@@ -3742,6 +3781,84 @@
       "question": "Which plans does Spacelift sell, and with which limits? The trial's billing page shows Starter (10 users, 2 public workers), Business, Enterprise and Self-Hosted, and no Free or Starter+",
       "howToCapture": "Read the public pricing page and `tierFeatures` on a Starter account; ask sales",
       "blocks": "the tier values of `features.json` and report 26",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C288",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "How does a stack's outputs tab show a sensitive output, and does the switch that transfers sensitive outputs across dependencies pass one to a dependant's output reference?",
+      "howToCapture": "Mark an output sensitive, run the stack, read its outputs tab and a dependant's environment with the switch off and on",
+      "blocks": "P22's outputs view and P16's reference rules for sensitive outputs",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C289",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What does publishing a blueprint do, which integrations attach to a published one, and what does creating a stack from it ask and record?",
+      "howToCapture": "Publish a blueprint on a trial account, attach an integration, create a stack from it and read the stack and the audit trail",
+      "blocks": "P21's blueprint states, integrations and `blueprintCreateStack`",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C290",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "On a private worker pool, when do drift detection, task, run and deletion schedules fire, what `triggered_by` and `TF_VAR_spacelift_run_trigger` do their runs carry, and what does reconcile do after drift?",
+      "howToCapture": "Attach a private worker to a trial account, create each schedule kind at short intervals, and read the runs, their environment and the audit trail",
+      "blocks": "P16's schedule firing, drift reconcile and run triggers",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C291",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Does an approval policy reject fail a run in `PENDING_REVIEW` and in `UNCONFIRMED` as it does in `QUEUED`?",
+      "howToCapture": "Reject a proposed run with a plan warning in `PENDING_REVIEW`, and a tracked run in `UNCONFIRMED`, then read their history",
+      "blocks": "the targets of T24 and T29",
+      "reports": [
+        "docs/research/reference/08-run-lifecycle.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C292",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Where does the console set a run's priority, and how does a prioritized run move in a private pool's queue?",
+      "howToCapture": "Queue several runs on a private worker pool with one worker and look for the prioritize control on the queued run, the stack and the pool's queue",
+      "blocks": "P14's queue order and `runPrioritySet`",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C293",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Does a tag push create a module version when `.spacelift/config.yml` sets no `module_version`, and which wins when both name a version?",
+      "howToCapture": "Push a tag on a module repository with and without `module_version` in the config file, and read the versions list",
+      "blocks": "P17's version sources and decision 0014's version events",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C294",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What does Spacelift answer when a member who did not lock a stack triggers a run or a task on it?",
+      "howToCapture": "Lock a stack as one member and trigger on it as another, then read the answer and the run list",
+      "blocks": "the human lock's refusal in decision 0008",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"
       ]

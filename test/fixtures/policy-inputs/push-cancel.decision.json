@@ -1,0 +1,23 @@
+{
+  "allow_fork": false,
+  "cancel": [
+    "01H00000000000000000000003"
+  ],
+  "external_dependency": [],
+  "fail": false,
+  "flag": [],
+  "ignore": false,
+  "ignore_track": false,
+  "lock": "",
+  "message": [],
+  "module_version": "",
+  "notify": false,
+  "notrigger": false,
+  "prioritize": false,
+  "priority": "",
+  "propose": false,
+  "reset_flag": [],
+  "sample": true,
+  "track": true,
+  "unlock": ""
+}

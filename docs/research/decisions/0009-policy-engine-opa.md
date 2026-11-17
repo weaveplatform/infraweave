@@ -183,13 +183,13 @@ Who calls the engine, when, and what the result does to the run of decision
 | Type | Caller | When | Effect |
 |---|---|---|---|
 | `LOGIN` | `internal/access` (decision [0006](0006-authentication-and-tokens.md)) | Entry into an account (a sign-in, an account switch) and API key exchange, under the `LOGIN_POLICIES` scheme of decision [0007](0007-authorization-spaces-and-roles.md), with every `LOGIN` policy of the account's top space | Allow, admin, roles per space, teams, or denial with messages |
-| `GIT_PUSH` | the `vcs.process_delivery` job (decision [0012](0012-vcs-integration-model.md)) | Per affected stack or module, before any run exists | Creates the run in `QUEUED` (T1), cancels runs, sets lock, priority, external dependencies, module version, commit status |
-| `APPROVAL` | `internal/runs` | On entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW`, and on each `runReview` | `QUEUED` to `READY` waits for approve (T2); reject gives T5, T24 or T29; approve in `PENDING_REVIEW` gives T23 |
+| `GIT_PUSH` | the `vcs.process_delivery` job (decision [0012](0012-vcs-integration-model.md)) | Per affected stack or module, before any run exists | Creates the run in `QUEUED` (T1); cancels runs, a queued one to `CANCELED` (T4) and one awaiting confirmation to `DISCARDED` (T27), each with a note naming the run that replaces it; sets lock, priority, external dependencies, module version, commit status. With no matching rule the push is ignored and listed among the stack's ignored runs |
+| `APPROVAL` | `internal/runs` | On entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW`, and on each `runReview`, for proposed and tracked runs alike; a review counts only in the state it was made in, earlier ones reaching the policy as `reviews.older` | `QUEUED` to `READY` waits for approve (T2); reject gives T5, T24 or T29 with the note `Run rejected by approval policies`; approve in `PENDING_REVIEW` gives T23; in `UNCONFIRMED`, confirmation waits for approve |
 | `PLAN` | `internal/runs` | When the worker reports a finished plan, and on each targeted replan | Picks the next state: `FAILED` (T18), `UNCONFIRMED` (T20), `APPLYING` (T21), `PENDING_REVIEW` (T22) or `FINISHED` (T17) |
 | `INITIALIZATION` (deprecated, server-side) | `internal/runs` | Before `QUEUED` to `READY` | `deny` sends the run to `FAILED` with the messages |
 | `TASK` (deprecated) | the task create handler | Before the task run is created | `deny` creates no run and answers `403`, problem `forbidden` (decision [0022](0022-api-errors-and-update-semantics.md)), with the messages in `detail` |
-| `TRIGGER` | the `policy.trigger` job | A tracked run or task reaches a terminal state; a module version is released | Creates tracked runs on the named stacks |
-| `NOTIFICATION` | event routing (decision 0015) | Every event decision 0015 defines | Routes to the inbox, Slack, webhooks, pull request comments |
+| `TRIGGER` | the `policy.trigger` job | A tracked run or task reaches a terminal state, `FAILED` and `DISCARDED` included; a module version is released | Creates tracked runs on the named stacks, each on its stack's tracked commit, with `triggered_by` `policy/<stack>/<run>` and no `trigger`; the finishing run's flags do not pass to them |
+| `NOTIFICATION` | event routing (decision 0015) | Every event decision 0015 defines, so every state change of a run in the policy's space or below | Routes to the inbox, Slack, webhooks, pull request comments; never attached to a stack |
 | `INTENT` | Intent operations | Each resource operation | Allow, deny or pending review |
 | `ACCESS` | never | n/a | Not served: absent from the served `PolicyType` (decision 0021) |
 
@@ -267,6 +267,16 @@ Who calls the engine, when, and what the result does to the run of decision
   and test, and reports every rewrite.
 - infraweave publishes the JSON Schema it generates from those structs at
   `GET /.well-known/policy-contract.json`, in the shape of Spacelift's contract.
+- **Recorded inputs.** `test/fixtures/policy-inputs` holds eighteen documents Spacelift
+  evaluated, redacted with every key kept
+  ([32 section 16](../reference/32-spacelift-console-survey.md#16-driven-policies-runs-and-the-registry)).
+  Every key they hold has a field in the structs, after the `spacelift` to `infraweave`
+  mapping. Where they differ from the contract
+  ([09 section 4](../reference/09-policies.md#4-input-documents)), the structs follow the
+  documents: `reviews.current` and `reviews.older` are objects of `approvals` and
+  `rejections`, and each trigger `stacks[]` entry carries `queued_runs`. Values the
+  documents leave null where the field is known, such as the trigger input's
+  `stack.space`, infraweave fills.
 - Plan input string values are sanitized on the worker before upload, per the stack's
   sanitization mode, so plaintext attribute values never reach the server's policy input
   or its samples.
@@ -292,8 +302,11 @@ Who calls the engine, when, and what the result does to the run of decision
 - **Rejected: OPA decision logs.** Receipts and samples are the product's audit surface and
   must be sealed and bounded per hour; decision logs upload unsealed batches.
 - **Departures from Spacelift**, for the deviations register:
-  - `REGO_V1` is the default engine when a create omits it; Spacelift's provider defaults to
-    `REGO_V0` and the API's own default is unverified.
+  - `REGO_V1` is the default engine when a create omits it, as Spacelift's console opens
+    every new policy on Rego V1
+    ([32 section 16.1](../reference/32-spacelift-console-survey.md#161-the-policy-page-samples-simulation-and-templates));
+    Spacelift's provider defaults to `REGO_V0`, and the API's own default for an omitted
+    field is open (C49).
   - `net.lookup_ip_addr` is also removed, because DNS lookups from the server reach the
     network that Spacelift's five removals keep policies away from.
   - Evaluation errors have a stated, fail-closed outcome per type; Spacelift documents none.
@@ -312,12 +325,14 @@ Who calls the engine, when, and what the result does to the run of decision
   absent, as Spacelift leaves them.
 - **OPA upgrades change semantics rarely but not never.** OPA is kept at the latest release;
   the example-library corpus below runs on every upgrade.
-- **Unverified facts carried over:** whether a reject in `QUEUED` fails or cancels the run
-  (T5 in [08](../reference/08-run-lifecycle.md#transition-table)), whether one approval
-  policy's reject fails the run whatever the others decide
-  ([09 section 3.3](../reference/09-policies.md#33-approval)), and what a flag set by a
-  type with no run does. infraweave fails the run in both reject cases and ignores such
-  flags.
+- **A reject fails the run.** Spacelift's console fails a run rejected in `QUEUED`
+  (T5 in [08](../reference/08-run-lifecycle.md#transition-table)), and fails a run that one
+  approval policy rejects while another approves
+  ([09 section 3.3](../reference/09-policies.md#33-approval)); infraweave fails the run on
+  a reject in every state that evaluates approval policies, `PENDING_REVIEW` and
+  `UNCONFIRMED` included, which C291 checks against Spacelift.
+- **Flags from types with no run.** What such a flag does is unverified (C50); infraweave
+  ignores such flags.
 - Whether infraweave pins Spacelift's policy contract as a committed snapshot is PD-14,
   outside this record.
 
@@ -334,8 +349,11 @@ Who calls the engine, when, and what the result does to the run of decision
   `internal/policy` and expects every library test to pass, after the importer's rewrite of
   the package, `input.spacelift` and `data.spacelift` in templates and tests alike, so the
   corpus also tests the rewrite.
-- A contract test compares the generated `policy-contract.json` with the field lists of
-  [09 section 4](../reference/09-policies.md#4-input-documents).
+- A contract test, `TestUnitPolicyContract`, compares the generated
+  `policy-contract.json` with the field lists of
+  [09 section 4](../reference/09-policies.md#4-input-documents) and with the keys and JSON
+  types of every input document in `test/fixtures/policy-inputs`, and the decision
+  structs with the keys of its `*.decision.json` documents.
 - Gherkin acceptance (decision 0016): `policy/plan.feature` (deny fails, warn holds an
   autodeployed run in `UNCONFIRMED`, warn with approval sends a proposed run to
   `PENDING_REVIEW`), `policy/approval.feature`, `policy/push.feature`,

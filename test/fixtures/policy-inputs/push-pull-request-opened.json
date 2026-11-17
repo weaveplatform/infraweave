@@ -1,0 +1,112 @@
+{
+  "in_progress": [
+    {
+      "based_on_local_workspace": false,
+      "branch": "branch-a",
+      "command": "",
+      "commit": {
+        "author": "user-a",
+        "branch": "branch-a",
+        "created_at": 1767235889000000000,
+        "exist_on_tracked_branch": false,
+        "hash": "0000000000000000000000000000000000000007",
+        "message": "proposed deny test [deny]",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000007"
+      },
+      "created_at": 1767235892351781000,
+      "drift_detection": false,
+      "force_apply_mode": "DISABLED",
+      "id": "01H00000000000000000000012",
+      "state": "QUEUED",
+      "trigger": null,
+      "triggered_by": null,
+      "type": "PROPOSED",
+      "updated_at": 1767235892416025000,
+      "user_provided_metadata": []
+    }
+  ],
+  "pull_request": {
+    "action": "opened",
+    "action_initiator": "user-a",
+    "affected_stacks_count": 1,
+    "approved": false,
+    "author": "user-a",
+    "base": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767235540000000000,
+      "hash": "0000000000000000000000000000000000000003",
+      "message": "tracked run 4",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000003"
+    },
+    "closed": false,
+    "diff": [
+      "main.tf"
+    ],
+    "draft": false,
+    "head": {
+      "author": "user-a",
+      "branch": "branch-a",
+      "created_at": 1767235889000000000,
+      "hash": "0000000000000000000000000000000000000007",
+      "message": "proposed deny test [deny]",
+      "pull_request_id": 3,
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000007"
+    },
+    "head_owner": "owner-a",
+    "id": 3,
+    "labels": [],
+    "mergeable": true,
+    "title": "proposed run deny test",
+    "undiverged": true
+  },
+  "push": {
+    "affected_files": [
+      "main.tf"
+    ],
+    "affected_stacks_count": 1,
+    "author": "user-a",
+    "branch": "branch-a",
+    "created_at": 1767235889000000000,
+    "hash": "0000000000000000000000000000000000000007",
+    "message": "proposed deny test [deny]",
+    "tag": ""
+  },
+  "stack": {
+    "additional_project_globs": [],
+    "administrative": false,
+    "autodeploy": false,
+    "branch": "main",
+    "id": "stack-a",
+    "labels": [],
+    "locked_by": null,
+    "name": "stack-a",
+    "namespace": "owner-a",
+    "project_root": "",
+    "repository": "repo-a",
+    "roles": [],
+    "space": {
+      "id": "root",
+      "labels": [],
+      "name": "root"
+    },
+    "state": "FINISHED",
+    "terraform_version": null,
+    "terraform_workflow_tool": null,
+    "tracked_commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767235540000000000,
+      "hash": "0000000000000000000000000000000000000003",
+      "message": "tracked run 4",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000003"
+    },
+    "worker_pool": {
+      "public": true
+    }
+  }
+}

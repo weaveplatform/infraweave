@@ -259,8 +259,10 @@ How replacements count (once in add and once in delete, or otherwise) is
 
 - For Ansible stacks the stack page shows a _Configuration Management_ view in place of
   _Resources_; a toggle (**Enable configuration management view**) switches back to the
-  resources view for historical resources [D] config-mgmt. Where the toggle is stored is
-  *(unverified)* (C199); no stack field for it exists in the schema [G].
+  resources view for historical resources [D] config-mgmt. The toggle is a switch
+  in the header of an Ansible stack's page, on by default and kept across reloads; other vendors'
+  stacks do not show it ([32](32-spacelift-console-survey.md) section 16.8), which resolves C199;
+  no stack field for it exists in the schema [G], so it is console state.
 - The account _Resources_ view has a _Configuration Management_ tab, and an Ansible
   run's view has a _Tasks_ tab with per-task execution details and logs [D] config-mgmt.
 - The view shows the latest status of every inventory item from its most recent run,

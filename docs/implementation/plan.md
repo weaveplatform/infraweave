@@ -2122,6 +2122,11 @@ Spacelift's console creates approval, push, plan, trigger, notification and
 Intent policies, with an `autoattach:<label>` hint on the form, and its
 plan policy templates read scanner plugins' results from the policy input
 ([32](../research/reference/32-spacelift-console-survey.md) section 3).
+Driven, the console evaluates approval policies before a run starts, fails
+a rejected run, discards an unconfirmed run a push policy cancels, and
+triggers on failed and discarded runs; the inputs it evaluated are checked
+in as `test/fixtures/policy-inputs`
+([32](../research/reference/32-spacelift-console-survey.md) sections 16.1 to 16.3).
 
 **Tasks**
 1. `internal/platform/rego`: OPA v1 as a library, `REGO_V0` and `REGO_V1`,
@@ -2140,10 +2145,18 @@ plan policy templates read scanner plugins' results from the policy input
    `stackPolicyAttachment`. `ACCESS` and the superseded aliases are absent
    from `PolicyType`. Records DV-028 to DV-031.
 3. `internal/policies/internal/{inputs,combine}`: per-type input structs
-   matching report 09 section 4, with the reference's `spacelift.*` input
-   keys named `infraweave.*`, `GET /.well-known/policy-contract.json`,
-   combination rules. Tests: `TestUnitPolicyContract`,
-   `TestUnitCombination`. `POST /policies/check`, served by `expressions`
+   matching report 09 section 4 and every key of the recorded inputs in
+   `test/fixtures/policy-inputs`, with the reference's `spacelift.*` input
+   keys named `infraweave.*`: `reviews.current` and `reviews.older` as
+   objects of approvals and rejections, `queued_runs` on each trigger
+   `stacks[]` entry, `triggered_by` as `policy/<stack>/<run>` or
+   `dependencies/<stack>`; decision structs with the recorded decisions'
+   keys, the push decision's `reset_flag` and `priority` among them;
+   `GET /.well-known/policy-contract.json`; combination rules, one reject
+   among approving policies failing the run. Tests:
+   `TestUnitPolicyContract`, which reads every fixture through a relative
+   path, maps `spacelift` to `infraweave`, and fails on a key with no field
+   or a JSON type that differs; `TestUnitCombination`. `POST /policies/check`, served by `expressions`
    over the surface `policies` lists in `Surfaces()`, compiles a body
    with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
    The plan input carries `third_party_metadata.custom.<plugin>`, which
@@ -2151,14 +2164,35 @@ plan policy templates read scanner plugins' results from the policy input
    in decision 0009. The `sanitized()` built-in hashes with
    `internal/iac/sanitize`, decision 0009's hash (DV-031), the package
    task 7's runner step uses, so the worker and the built-in never differ.
-4. Evaluation points in `internal/runs/internal/core/gates`: approval on
-   `QUEUED`, `UNCONFIRMED`, `PENDING_REVIEW` and each `runReview`; plan after
-   `PLANNING` and each targeted replan; push in `vcs.evaluate_event`;
-   trigger through the durable `policy.trigger` job. `runReview`,
-   `runPolicyReceiptSample`.
-5. Features: `policy/plan.feature`, `policy/approval.feature`,
-   `policy/push.feature`, `policy/trigger.feature`, against a real Terraform
-   run.
+4. Evaluation points in `internal/runs/internal/core/gates`, with the
+   operations `runReview` and `runPolicyReceiptSample`:
+   - approval on entering `QUEUED`, before `READY`, then `UNCONFIRMED` and
+     `PENDING_REVIEW`, and on each `runReview`, for proposed and tracked runs;
+     a review counts in the state it was made in, and a reject fails the
+     run with the note `Run rejected by approval policies` (T5, T24, T29);
+   - plan after `PLANNING` and each targeted replan, a `warn` or `deny`
+     adding a history entry with its messages and a deny failing the run
+     with the note `denied by plan policy`;
+   - push in `vcs.evaluate_event`: no matching rule ignores the push and
+     lists it among the stack's ignored runs; `cancel` moves a queued run to
+     `CANCELED` (T4) and an unconfirmed one to `DISCARDED` (T27, which gains
+     the scheduler driver), noting the run that replaces it;
+   - trigger through the durable `policy.trigger` job when a tracked run or
+     task ends, `FAILED` and `DISCARDED` included, each triggered run on its
+     stack's tracked commit with `triggered_by` `policy/<stack>/<run>`;
+   - flags reach the same run's later evaluations and the next run's
+     `previous_run`, never a triggered run.
+5. Features, against a real Terraform run:
+   - `policy/approval.feature`: approval in `QUEUED` and again in
+     `UNCONFIRMED`; a reject fails the run; one reject among approving
+     policies fails it; a proposed run waits for approval;
+   - `policy/push.feature`: no matching rule ignores the push; `cancel`
+     discards an unconfirmed run and cancels a queued one; a pull request
+     event and the branch push of one commit make one proposed run;
+   - `policy/plan.feature`: a warning's history entry; a deny on a proposed
+     run fails it; a plan flag reaches the approval input;
+   - `policy/trigger.feature`: a finished run triggers the named stack on
+     its tracked commit; failed and discarded runs are evaluated too.
 6. The [domain wiring](#adding-a-domain) of `policies`,
    after `configuration` and before `runs` in `domains.go` and the
    migration order: its edges to `features`, `access` and `stacks`, with
@@ -2186,8 +2220,11 @@ plan policy templates read scanner plugins' results from the policy input
 - Option 5's walkthrough holds against Gitea: a push opens a proposed run, a
   plan policy warns, and the check and pull request comment appear.
 - The operations of task 2 and task 4 meet decision 0016's evidence rule.
-- Captures C37, C40, C41, C49, C50, C51, C55 and C57 replay once
-  recorded.
+- `TestUnitPolicyContract` passes over every document in
+  `test/fixtures/policy-inputs`.
+- The behaviours C37, C40 and C41 settled hold in acceptance;
+  captures C49, C50, C51, C55's module-version part, C57 and C291 replay
+  once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P13b: Login, task and initialization policies, sampling and simulation
@@ -2234,19 +2271,29 @@ Intent policies, and its template catalogue holds 59 templates
    `policy_sample_budgets`, sealed samples in `policy-inputs`. Operations:
    `policyEvaluationSample`, `policySearchEvaluationRecords`,
    `policySearchEvaluationRecordSuggestions`, `policyInputCaptures`,
-   `policyInputCapture` (C53). Test: a sealing test that finds no input
-   value in the object store. Feature: `policy/sampling.feature`.
+   `policyInputCapture` (C53). A sample's input is readable by root space
+   admins only, as Spacelift's console says, and the samples list filters
+   by type: outcome, pull request and branch for push, run type and drift
+   for plan, module and run type for notification
+   ([32](../research/reference/32-spacelift-console-survey.md) section 16.1).
+   Test: a sealing test that finds no input value in the object store.
+   Feature: `policy/sampling.feature`.
 5. Simulation and templates: `policySimulatev2`, with no receipt and no
    sample; `policyTemplate`, `searchPolicyTemplates` and
    `searchPolicyTemplatesSuggestions` from the MIT example library at a
    pinned commit, imported with decision 0009's rewrite of the package and
    the `spacelift` input paths. Test: `TestUnitPolicyLibrary` runs the
    library's 67 templates and 61 tests. The console's catalogue of 59
-   (C54) decides whether infraweave serves the whole library or a
-   selection. Feature: `policy/simulation.feature`.
+   holds library templates and none of the six login templates (C54), so
+   `searchPolicyTemplates` serves the library less its login templates,
+   which the corpus test still runs. Simulation takes an edited input and
+   answers the whole decision document. Feature:
+   `policy/simulation.feature`.
 6. A policy's page in the console reads evaluations, samples and
-   simulation through these operations alone; C273 records which ones
-   Spacelift's page calls.
+   simulation through these operations alone: body, used-by and samples
+   tabs, and a simulation panel; a notification policy has no used-by tab,
+   as it is never attached. C273 records which operations Spacelift's page
+   calls.
 
 **Exit criteria**
 - The Policies tag (less its Intent attachments) meets decision 0016's
@@ -2322,7 +2369,7 @@ role ([32](../research/reference/32-spacelift-console-survey.md) section 4).
   while another organization's run proceeds.
 - A run on k3s through the controller reaches `FINISHED`, and an
   initialization policy's `deny` fails a run from `PREPARING`.
-- Captures C21, C66, C67, C68 and C69 replay once recorded.
+- Captures C21, C66, C67, C68, C69 and C292 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P15: Cloud integrations and OIDC federation
@@ -2403,7 +2450,11 @@ Decisions: [0011](../research/decisions/0011-persistent-work-queue.md), [0008](.
 **Depends on:** P10, P2c.
 
 Scheduled runs, tasks and deletes, drift detection, and stack dependencies
-with output references and external dependencies.
+with output references and external dependencies. In Spacelift's console,
+schedules and dependencies are tabs of a stack rather than settings, every
+schedule kind works on private workers only, and a dependant's run exists
+from the moment its upstream run is created
+([32](../research/reference/32-spacelift-console-survey.md) sections 16.4 and 16.5).
 
 **Tasks**
 1. `internal/schedules` (flat domain): `scheduled_jobs` with `next_fire_at`
@@ -2413,8 +2464,13 @@ with output references and external dependencies.
    `stackScheduledTask`, `stackScheduledTaskCreate`,
    `stackScheduledTaskUpdate`, `stackScheduledTaskDelete`,
    `stackScheduledDelete`, `stackScheduledDeleteCreate`,
-   `stackScheduledDeleteUpdate`, `stackScheduledDeleteDelete`. Records
-   DV-090.
+   `stackScheduledDeleteUpdate`, `stackScheduledDeleteDelete`. Tasks and
+   runs fire on cron expressions with a timezone or once at a timestamp; a
+   scheduled run takes an optional name and custom runtime configuration;
+   a scheduled delete takes a timestamp and deletes or keeps resources,
+   keeping them by default. A schedule on a stack of the public worker pool is
+   accepted, and its firings create no run while the stack stays there.
+   Records DV-090.
 2. Wiring ([domain wiring](#adding-a-domain)):
    `schedules`' graph rule and shared-rule entries, its place after `vcs`
    in `domains.go` and the migration order, and its edges to `features`,
@@ -2424,8 +2480,9 @@ with output references and external dependencies.
    ([declared graph](repo-layout.md#declared-graph)).
 3. Drift detection: `drift_detection` rows, drift runs at priority levels 6 and 7 on
    private pools, each pool's drift run limits enforced in the claim
-   (the console's pool form reveals the limit behind a switch, C274),
-   reconcile. Operations:
+   (the console's pool form reveals the limit behind a switch, C274); one
+   or more cron expressions and a timezone; reconcile and ignore state,
+   both off by default. Operations:
    `stackIntegrationDriftDetectionCreate`,
    `stackIntegrationDriftDetectionUpdate`,
    `stackIntegrationDriftDetectionDelete`.
@@ -2436,28 +2493,43 @@ with output references and external dependencies.
    `stackDependenciesAddReference`, `stackDependenciesAddReferences`,
    `stackDependenciesUpdateReference`, `stackDependenciesUpdateReferences`,
    `stackDependenciesDeleteReference`,
-   `stackDependenciesDeleteReferences`. An output reference may carry an
+   `stackDependenciesDeleteReferences`. A dependency triggers always or only
+   when a referenced output changes, and each reference has its own
+   trigger-always switch; a referenced value reaches the dependant's
+   environment at handover, shown as computed with its source stack, and
+   not the plan policy input's `runtime_config.environment`. An output
+   reference may carry an
    expression over `value` and `outputs`, evaluated in `serve` at the
    downstream run's handover, which reads the upstream outputs through
    `stateapi.Versions`, a back edge that `internal/app` sets after
    construction (`SetVersions`); its scenario joins
    `expressions/deploy.feature`. Records DV-107.
-5. `internal/runs/internal/core/dependencies`: dependent runs, skipping on
-   unchanged outputs, `SKIPPED` on upstream failure; external dependencies
-   with `runExternalDependencyMarkAsCompleted`.
-6. Features: `runs/scheduled_runs.feature`,
-   `runs/missed_firings.feature`, `runs/drift_detection.feature`,
-   `stacks/dependencies.feature`.
+5. `internal/runs/internal/core/dependencies`: a dependant's run is created
+   in the transaction that creates its upstream's run, on the dependant's
+   tracked commit, with `triggered_by` `dependencies/<stack>` and `trigger`
+   naming the upstream run and stack; it waits in `QUEUED` with a history
+   entry naming the upstream run and its state, and plans once the upstream
+   finishes, with the new output values. Skipping on unchanged outputs,
+   `SKIPPED` on upstream failure; external dependencies with
+   `runExternalDependencyMarkAsCompleted`.
+6. Features:
+   - `runs/scheduled_runs.feature`: each schedule kind fires on a private
+     pool, and a public-pool stack's schedule creates no run;
+   - `runs/missed_firings.feature`;
+   - `runs/drift_detection.feature`: drift found, reconciled and ignored
+     by state;
+   - `stacks/dependencies.feature`: one commit to both stacks runs the
+     dependant after the upstream with the new output; a commit to the
+     upstream alone creates the dependant's run with the upstream's.
 
 **Exit criteria**
 - Drift Detection and the schedule and dependency operations of the Stacks
   tag meet decision 0016's evidence rule.
 - Two instances fire each scheduled time once.
-- Captures C38, C151, C153 to C168, C274 and C278 replay once recorded;
-  C278 records the stack settings pages Spacelift's console shows for
-  schedules, drift detection and dependencies, which the trial could not
-  show without a stack
-  ([32](../research/reference/32-spacelift-console-survey.md) section 19).
+- Captures C38, C151, C153 to C168, C274, C288 and C290 replay once
+  recorded; C278, the stack pages Spacelift's console shows for schedules,
+  drift detection and dependencies, is settled
+  ([32](../research/reference/32-spacelift-console-survey.md) section 16.5).
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P17: Module registry
@@ -2467,7 +2539,11 @@ Decisions: [0014](../research/decisions/0014-module-and-provider-registry.md), [
 **Depends on:** P13, P15.
 
 Private modules from VCS, versioned and tested by runs, served through the
-Terraform module registry protocol and `terraform login`.
+Terraform module registry protocol and `terraform login`. Spacelift's
+console creates a module at the wizard's details step, numbers versions
+from `module_version` in `.spacelift/config.yml`, and tests each with runs
+that need no confirmation
+([32](../research/reference/32-spacelift-console-survey.md) section 16.6).
 
 **Tasks**
 1. `internal/registry` (hexagon) with modules, versions and test cases;
@@ -2486,8 +2562,11 @@ Terraform module registry protocol and `terraform login`.
    `moduleAttachableAzureIntegrations`. A module's source takes the
    fields Spacelift's console asks first: space, provider, repository,
    branch, project root and sparse checkout paths
-   ([32](../research/reference/32-spacelift-console-survey.md) section 8);
-   `versionYank` is the console's "mark as bad".
+   ([32](../research/reference/32-spacelift-console-survey.md) section 8),
+   then a name whose ID is `terraform-<provider>-<name>`, the provider
+   inferred from a `terraform-<provider>-<name>` repository or given,
+   OpenTofu as the default workflow tool, and deletion protection on by
+   default; `versionYank` is the console's "mark as bad".
 2. Wiring ([domain wiring](#adding-a-domain)): `registry`'s
    graph rule and shared-rule entries, `core-not-adapters` included, its
    place after `cloud` in `domains.go` and the migration order, and its
@@ -2520,11 +2599,19 @@ Terraform module registry protocol and `terraform login`.
    `POST /terraform/token`) in `access`. Tests:
    `TestUnitVersionNumberRules`, `TestUnitVersionSegmentParse`. Records
    DV-052, DV-054, DV-055.
-5. Test cases as `TESTING` runs created through `runsapi`, which carry the
-   module's configuration elements, since `runs` cannot read `registry`;
+5. Versions from the tracked branch: a push whose `.spacelift/config.yml`
+   changes `module_version` creates that version; a push that leaves it
+   unchanged creates none and records no failed version; `versionCreate`
+   without a number takes it from the file at the branch head; a number
+   in use is refused under decision 0014's no-reuse rule, naming the
+   version and commit. Test cases as `TESTING` runs created through
+   `runsapi`, which carry the module's configuration elements, since `runs`
+   cannot read `registry`: `QUEUED`, `INITIALIZING`, `PLANNING`, `APPLYING`,
+   `DESTROYING`, `FINISHED`, with no confirmation and no plan policy;
    negative cases included.
 6. Features: `registry/protocol.feature`, `registry/modules.feature`
-   (`@vcs`, `@terraform`, `@tofu`).
+   (`@vcs`, `@terraform`, `@tofu`): a bump creates a version and runs its
+   test case, a push without one creates none, a reused number is refused.
 
 **Exit criteria**
 - Modules meets decision 0016's evidence rule; `terraform init` and
@@ -2532,7 +2619,8 @@ Terraform module registry protocol and `terraform login`.
 - A module shared with another account of the organization resolves there,
   a share to an account of another organization answers
   `422 validation-failed`, and a revoked share stops new downloads.
-- Captures C129 to C134 and C277 replay once recorded.
+- Captures C129 to C134 and C293 replay once recorded; C277, the
+  wizard's steps, is settled.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P17b: Provider registry and GPG keys
@@ -2701,13 +2789,22 @@ own records, and the metrics and traces operators run infraweave with.
    `auditTrailSetWebhook` (with `webhook-verification-failed`),
    `auditTrailWebhook`, `auditTrailDeleteWebhook`,
    `auditTrailWebhookSetHeaders`, `auditTrailWebhookDeleteHeaders`,
-   `auditTrailRetentionDays`. Test: `TestUnitAuditActionsCoverMutations`.
-   Feature: `events/audit.feature` (ordered shipping across a receiver that
-   fails three times; `includeRuns` adding run state changes, C182). The
-   console's audit webhook form takes an endpoint, a secret, enable, retry
-   on failure, include runs and headers, and its log tab is labelled 14
-   days against the docs' 30 (C279;
-   [32](../research/reference/32-spacelift-console-survey.md) section 9).
+   `auditTrailRetentionDays`. Entries record callers' mutations only, with
+   `actor.username` `<source>::<login>`: runs that a push, dependency,
+   trigger policy or schedule creates, state changes, policy evaluations,
+   versions a push creates and attachments removed with their stack record
+   none. The shipped domains that record no entry yet, stacks, runs,
+   configuration, VCS, workers and cloud, gain theirs; the access and
+   state callers take the actor format. The search pages 50 entries by
+   cursor, newest first, filtered by action, affected and related resource
+   type and ID, event type, username and time range; retention defaults to
+   30 days, which C279 settles, the console's 14 days being its default
+   range ([32](../research/reference/32-spacelift-console-survey.md) sections 9 and 16.9).
+   Test: `TestUnitAuditActionsCoverMutations`. Feature:
+   `events/audit.feature`: ordered shipping across a receiver that fails
+   three times; `includeRuns` adding run state changes to the webhook and
+   never to the search (C182); a run's trigger, confirm, review, discard,
+   retry and targeted replan recorded; a push-created run recording none.
 2. Usage: `usage` and the usage CSV from a trailing 30-day window of run
    records and P8's `worker_pool_samples`, private workers only for the
    worker aspect, run minutes split by private and public workers and
@@ -2739,7 +2836,8 @@ own records, and the metrics and traces operators run infraweave with.
 - One trace ID spans a run's API request, its job, the launcher's phases and
   the runner's environment.
 - `runWorkerMetrics` meets decision 0016's evidence rule.
-- Captures C180 to C184, C279 and C280 replay once recorded.
+- Captures C180 to C183 and C280 replay once recorded; C184 and C279 are
+  settled.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P18c: Flows engine and API
@@ -2987,8 +3085,9 @@ vendor's contract into them before any vendor's code.
      delete, `runChangesV3` answered for every vendor, a
      `MANUALLY_PROVISIONED` Terragrunt stack, `terragruntEffectiveVersion`
      without Gruntwork's table, a Pulumi default image) and the rename
-     records for Spacelift's Kubernetes labels. C193 is split so P20 awaits
-     its CloudFormation and Pulumi parts and P20b its Ansible part.
+     records for Spacelift's Kubernetes labels. P20 awaits C193's
+     CloudFormation and Pulumi destroy parts; its Ansible part is settled
+     ([32](../research/reference/32-spacelift-console-survey.md) section 16.8).
 2. The vendor contract on main: `iactest`'s plan cases become each
    vendor's own (empty, malformed, another format), with the size bound for
    any document; `Vendor.ReadOutputs`; the runner reads plans and outputs
@@ -3003,18 +3102,29 @@ vendor's contract into them before any vendor's code.
    root, while P11 runs `run --all` whatever the setting and its features
    set `useRunAll: true` where they need units; `skipReplan` and its
    deprecated alias `skipReplanWhenRunAll`;
-   `prefixResourceNamesWithModuleName`; `MANUALLY_PROVISIONED`; explicit
+   `prefixResourceNamesWithModuleName`; `MANUALLY_PROVISIONED`, with
+   OpenTofu the default tool, the latest Terragrunt release the default
+   version and managed state off by default, as Spacelift's wizard has them;
+   explicit
    stacks under run-all; and each unit's changes, outputs and plan
    document. Operations: `terragruntVersions` and
    `terragruntEffectiveVersion`, from the `vendors` domain's release
    catalogue. Feature: `vendors/terragrunt.feature`
    (`@terragrunt`), where C185, C188 and C189 are awaited.
-4. `internal/iac/pulumi`: `loginURL` and `stackName`, login and stack
-   selection placed against `before_init` (C190), preview, up and destroy
-   (C193), structured steps for the changes view and the policy input, and
-   outputs, a secret output keeping no value. Gated by `vendor-pulumi`.
-   Feature: `vendors/pulumi.feature` (`@pulumi`: a program with no provider
-   plugins and a file backend, so the scenario needs no network).
+4. `internal/iac/pulumi`: `loginURL` and `stackName`; `before_init` hooks,
+   then the login and the stack's selection, created when missing, then
+   `after_init` hooks, the order Spacelift's runs show (C190 settled);
+   `pulumi preview` in planning and `pulumi up` in applying, and destroy
+   (C193); structured steps for the changes view and the plan policy
+   input's `pulumi.steps`, with changes keyed by URN; outputs, a secret
+   output keeping no value; a file backend under `/mnt/workspace` carried
+   from plan to apply in the workspace archive. Spacelift's wizard requires
+   a runner image and `before_init` and `before_apply` hooks for Pulumi;
+   infraweave requires neither, its default image carrying the CLI. Gated
+   by `vendor-pulumi`. Feature: `vendors/pulumi.feature` (`@pulumi`: a
+   program with no provider plugins and a file backend, so the scenario
+   needs no network), whose log shows a `before_init` hook's output before
+   the login.
 5. `internal/iac/cloudformation` and a runner driver over the AWS SDK:
    nested templates packaged to `templateBucket` under the run's ID, a
    change set named for the run so that `APPLYING` executes exactly what
@@ -3024,7 +3134,8 @@ vendor's contract into them before any vendor's code.
    Feature: `vendors/cloudformation.feature` (moto's CloudFormation and
    S3, plain and nested templates).
 6. `internal/iac/kubernetes`: `namespace` (C32), `kubectlVersion` resolved
-   at each handover, `kubernetesWorkflowTool` `KUBECTL` and `CUSTOM`, a
+   at each handover (the latest release by default), `kubernetesWorkflowTool`
+   `KUBECTL` and `CUSTOM`, a
    server-side dry run with pruning by label to plan, rollout status after
    apply, delete by label to destroy, a Secret's values always hashed in
    the plan document, Kustomize native and Helm through a `helm template`
@@ -3043,8 +3154,8 @@ vendor's contract into them before any vendor's code.
   `vendors/terragrunt.feature` covers every setting of task 3.
 - No vendor's plan document reaches the object store unsanitized: a
   scenario per vendor finds no sensitive value in the uploaded plan.
-- Captures C32, C185, C188, C189, C190 and C192, and C193's CloudFormation
-  and Pulumi parts, replay once recorded.
+- Captures C32, C185, C188, C189 and C192, and C193's CloudFormation and
+  Pulumi destroy parts, replay once recorded; C190 is settled.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P20b: Ansible, OpenTofu migration and plugins
@@ -3070,8 +3181,16 @@ templates, of which Checkov, Terrascan, Trivy, Trufflehog and Wiz scan
    `ansibleHostSearchAnsibleTaskExecutionsSuggestions`,
    `searchAnsibleHosts`, `searchAnsibleHostsSuggestions`, `ansibleTasks`,
    `searchAnsibleTasks`, `searchAnsibleTasksSuggestions`,
-   `hasAnsibleStacks`. Feature: `vendors/ansible.feature` (`@docker`), where
-   C193's Ansible part and C199 are awaited.
+   `hasAnsibleStacks`. Planning runs `ansible-playbook --check` and applying
+   the real run, as Spacelift's do (C193's Ansible part settled); the plan
+   policy input's `ansible` block is the play recap by host with the
+   playbook, and each change carries host, playbook, role and task, with no
+   address. The configuration management view is console state, on by
+   default for an Ansible stack, which no field serves (C199 settled)
+   ([32](../research/reference/32-spacelift-console-survey.md) section 16.8).
+   Deleting an Ansible stack offers no destroy. Feature:
+   `vendors/ansible.feature` (`@docker`): a check-mode plan, a real apply
+   and the inventory records it leaves.
 2. OpenTofu migration: `openTofuFeatures`, `openTofuMigrateSearch`,
    `openTofuMigrateSuggestions`, `openTofuMigrationCounts`,
    `openTofuMigrationQueueSearch`, `openTofuMigrationQueueSearchSuggestions`,
@@ -3111,8 +3230,7 @@ templates, of which Checkov, Terrascan, Trivy, Trufflehog and Wiz scan
   `@case:denial` and a `@case:failure` scenario.
 - A plan policy reads a plugin's result from the policy input in
   acceptance.
-- Captures C186, C187, C191, C193's Ansible part, C199 and C252 to C255
-  replay once recorded.
+- Captures C186, C187, C191 and C252 to C255 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P21: Blueprints, templates and external integrations
@@ -3122,7 +3240,10 @@ Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.m
 **Depends on:** P16, P12b.
 
 Single-body blueprints, templates with versions and deployments, and the
-ServiceNow and Backstage integrations that attach to them.
+ServiceNow and Backstage integrations that attach to them. Spacelift's
+console validates a body against the schema it serves before publishing,
+and manages a deployment's stacks through the deployment alone
+([32](../research/reference/32-spacelift-console-survey.md) sections 16.7 and 17.6).
 
 **Tasks**
 1. `internal/templates` (flat domain), whose bodies are text templates of
@@ -3133,7 +3254,13 @@ ServiceNow and Backstage integrations that attach to them.
    `templateSchema`, `blueprintWithGroupCreate`,
    `blueprintWithGroupUpdate`, `blueprintWithGroupDelete`,
    `searchBlueprints`, `searchBlueprintsSuggestions`,
-   `blueprintAttachToIntegration`, `blueprintDetachIntegration`.
+   `blueprintAttachToIntegration`, `blueprintDetachIntegration`. A
+   blueprint's ID is its name and a ULID, and it starts as a draft;
+   `blueprintSchema` serves the schema Spacelift's console serves, which
+   requires exactly one of `stack` and `stacks` and at most 5 stacks; a body
+   that fails it cannot be published, and `blueprintParseTemplate` answers
+   each failure with its JSON path; integrations attach to a published
+   blueprint only (C289).
 2. Wiring ([domain wiring](#adding-a-domain)):
    `templates`' graph rule and shared-rule entries, its place after
    `events` in `domains.go` and the migration order, and its edges to
@@ -3152,23 +3279,40 @@ ServiceNow and Backstage integrations that attach to them.
    `searchTemplatesSuggestions`. A template is created with its first
    version's identifier and optional Markdown deployment instructions, as
    Spacelift's console asks for both
-   ([32](../research/reference/32-spacelift-console-survey.md) section 10).
+   ([32](../research/reference/32-spacelift-console-survey.md) section 10),
+   and cannot be deleted while it has versions. A version is a draft until
+   published, which cannot be undone and makes its body read-only.
+   `templateSchema` serves the schema Spacelift's console serves:
+   `available_spaces` among the input types, `validations.required` on
+   `boolean` and `select` inputs, a deployment-level `space` and
+   `scheduled_delete`, and `external_depends_on` on a stack; bodies read
+   `inputs`, `context.deployment.name`, `context.template.name` and `maps`.
 4. Deployments that create stacks with dependencies:
    `templateDeploymentCreate`, `templateDeployment`,
    `templateDeploymentUpdate`, `templateDeploymentDelete`,
    `templateDeploymentRollback`, `templateDeploymentSearchChangeHistory`,
-   `searchTemplateDeployments`.
+   `searchTemplateDeployments`. A deployment creates its stacks and a
+   tracked run on each at once, with `triggered_by`
+   `blueprint_deployment/<name>`; its state follows the runs, waiting for
+   the creator to confirm; its change history records each input change.
+   Its stacks are managed: triggering, locking, environment changes and
+   deletion through the stack are refused with the deployment named, and
+   behaviour the body leaves out takes the API's defaults. Deleting a
+   deployment destroys its stacks' resources and deletes the stacks.
 5. External integrations: `externalIntegrations`, `externalIntegration`,
    `externalIntegrationCreate`, `externalIntegrationDelete`,
    `attachableExternalIntegrationInSpace`; the Backstage key with its seat
    exemption.
-6. Features: `templates/blueprints.feature`, `templates/versions.feature`,
-   `templates/deployments.feature`, `integrations/external.feature`.
+6. Features: `templates/blueprints.feature` (a draft that fails the schema
+   cannot publish), `templates/versions.feature` (publishing is final),
+   `templates/deployments.feature` (a deployment's run, its managed stack's
+   refusals, deletion destroying resources), `integrations/external.feature`.
 
 **Exit criteria**
 - Blueprints, Templates and External Integrations meet decision 0016's
   evidence rule.
-- Captures C139 to C150, C152, C257 and C258 replay once recorded.
+- Captures C139, C140, C143 to C150, C152, C257, C258 and C289 replay once
+  recorded; C141 and C142 are settled.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P22: Resources, search and console support
@@ -3194,7 +3338,12 @@ capability gates.
    `stackSearchManagedEntitiesGroupByProviders`,
    `stackSearchManagedEntitiesGroupByStacks`,
    `stackSearchManagedEntitiesGroupByTypes`, `runSearchEntityChanges`,
-   `runSearchEntityChangesSuggestions`, `runResourceCreate`.
+   `runSearchEntityChangesSuggestions`, `runResourceCreate`. As in
+   Spacelift's view, outputs and each stack's root module are entities
+   beside resources, a Pulumi stack resource has type `module`, each entity
+   names the runs that created and last updated it, and a stack's outputs
+   are listed with their values, a sensitive one's never served (C288)
+   ([32](../research/reference/32-spacelift-console-survey.md) section 16.10).
 2. Wiring ([domain wiring](#adding-a-domain)):
    `resources`' graph rule and shared-rule entries, its place after
    `templates` in `domains.go` and the migration order, and its edges to
@@ -3223,7 +3372,7 @@ capability gates.
 **Exit criteria**
 - Resources, Saved Filters, UI State, Forms and User Guide meet decision
   0016's evidence rule.
-- Captures C196 to C211 and C281 replay once recorded.
+- Captures C196 to C211, C281 and C288 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P22b: Scans

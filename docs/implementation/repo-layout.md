@@ -238,7 +238,8 @@ infraweave/
 │   ├── deps/                      the Docker dependencies of every TestAcc test; images.go pins each by digest
 │   ├── depguard/                  a module of its own breaking each depguard rule once; make lint-fixtures
 │   ├── fixtures/                  Terraform and OpenTofu projects, Git repositories, policy corpus (P9)
-│   │   └── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
+│   │   ├── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
+│   │   └── policy-inputs/         policy inputs and decisions Spacelift evaluated, redacted; read by P13's contract test
 │   └── terraform/
 │       ├── <resource>/            provider acceptance configurations, translated from Spacelift's (P24)
 │       ├── cloud/<job>/<cloud>/   the cloud platforms' labs: objectstore-cloud's buckets and identities

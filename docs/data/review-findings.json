@@ -1607,7 +1607,7 @@
       "severity": "unsupported",
       "finding": "T5, T24 and T29 gave an approval `reject` as `FAILED` only, while the approval page's walkthrough says Reject cancels the run",
       "change": "Both statements recorded; the target is open (C40)",
-      "status": "open",
+      "status": "folded",
       "files": [
         "docs/research/reference/08-run-lifecycle.md",
         "docs/data/run-transitions.json"
@@ -1650,7 +1650,7 @@
       "severity": "unsupported",
       "finding": "T13 tied `skipInitialization` to the `INITIALIZING` to `PERFORMING` edge with no source showing that such a task enters `INITIALIZING`",
       "change": "Open (C42); anchor corrected to `task#skipping-initialization`",
-      "status": "open",
+      "status": "folded",
       "files": [
         "docs/research/reference/08-run-lifecycle.md",
         "docs/data/run-transitions.json"
@@ -1660,7 +1660,7 @@
         {
           "file": "docs/data/run-transitions.json",
           "present": [
-            "whether the run then still passes through `INITIALIZING` or goes from `PREPARING` straight to `PERFORMING` is *(unverified)*",
+            "the run still passes through `INITIALIZING`, which only logs that initialization is skipped",
             "https://docs.spacelift.io/concepts/run/task#skipping-initialization"
           ]
         }
@@ -4097,7 +4097,7 @@
       "severity": "wrong",
       "finding": "`policy_receipts` was placed under `run_updated.run`; the contract, and Spacelift's own Datadog module, put it at `run_updated.policy_receipts`",
       "change": "Moved; the conflict recorded; open (C184)",
-      "status": "open",
+      "status": "folded",
       "files": [
         "docs/research/reference/19-events-notifications-audit.md"
       ],
@@ -7186,8 +7186,9 @@
         {
           "file": "docs/research/decisions/0009-policy-engine-opa.md",
           "present": [
-            "whether one approval policy's reject fails the run whatever the others decide",
-            "infraweave fails the run in both reject cases and ignores such flags"
+            "and fails a run that one",
+            "infraweave fails the run on",
+            "ignores such flags"
           ]
         }
       ]

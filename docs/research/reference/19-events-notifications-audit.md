@@ -159,7 +159,7 @@ product decision PD-14, which is open.
 | `force_apply_mode` | `DISABLED`, `SINGLE` or `CASCADE` |
 | `promoted` | Whether the run was promoted from a proposed run |
 | `runtime_config` | Every hook list (`before_init` to `after_run`), `environment`, `project_root`, `runner_image`, `terraform_version`; the contract adds `git_sparse_checkout_paths` |
-| `policy_receipts[]` | `flags`, `name`, `outcome`, `type` of each evaluated policy. The page nests it under `run`; the contract puts it at `run_updated.policy_receipts` (null when the run has none), and Spacelift's Datadog module reads it there **[D]** [policy contract][d-contract] **[S]** [policy.rego.tpl][s-dd-rego]. Whether it also still appears under `run` is *(unverified)* (C184) |
+| `policy_receipts[]` | `flags`, `name`, `outcome`, `type` of each evaluated policy. The page nests it under `run`; the contract puts it at `run_updated.policy_receipts` (null when the run has none), and Spacelift's Datadog module reads it there **[D]** [policy contract][d-contract] **[S]** [policy.rego.tpl][s-dd-rego]. A sampled input has it at `run_updated` only, one entry per policy evaluated on the run ([32](32-spacelift-console-survey.md) section 16.3), which resolves C184 |
 | `states_history[]` | `new_state`, `note`, `username` |
 | `trigger` | For runs started by a stack dependency: `run.id`, `stack.id` and a nested `trigger` for the next link up the chain; null otherwise |
 | `triggered_by` | Who or what triggered the run, or null |
@@ -542,7 +542,16 @@ The `action` field has no enum in the schema **[G]**. Action names seen in the d
 | `account.login_failed`, whose `error` field records the login policy's `deny_message` | **[D]** [login policy][d-login] **[RN]** [changelog 2026-10-14][rn] |
 
 Login failures are also audited on self-hosted since v3.2.0 **[RN]** [self-hosted
-changelog][d-sh-changelog]. The names follow `<resource>.<verb>` in snake case [I] (from these six). The full list of action strings is
+changelog][d-sh-changelog]. The names follow `<resource>.<verb>` in snake case [I] (from these six). The console's trail adds
+`stack.update`, `stack.delete`, `policy.create`, `policy.update`, `policy.attach`, `policy.detach`,
+`policy.delete`, `run.trigger`, `run.confirm`, `run.review`, `run.discard`, `run.retry`,
+`run.targeted_replan`, `stack_dependency.create`, `stack_dependency.update`,
+`stack_dependency.delete`, `schedule_task.create`, `schedule_task.delete`, `module.create`,
+`module.update`, `module.share`, `module.delete`, `version.create`, `blueprint.create`,
+`blueprint.update`, `blueprint.delete`, `context.create`, `context.attach`,
+`stack_config_element.create`, `account.login`, `github_integration.update` and
+`account.create_oauth_client_for_scim`, each the mutation of a caller, and shows a GitHub user's actor as
+`github::<login>` ([32](32-spacelift-console-survey.md) section 16.9). The full list of action strings is
 *(unverified)* (C180). The RBAC `Action` enum (report 14) is a separate permission vocabulary.
 
 ### Resource types and metadata **[G]**
@@ -688,7 +697,7 @@ Payload fields **[D]** [audit trail][d-audit]:
 
 The payload differs from `AuditTrailEntry`: it uses `actor` as a single string and `timestamp` in
 milliseconds, while the entry has a structured `actor` and `createdAt` in seconds [I] (from comparing
-the docs sample with the schema). The shape of run events sent under `includeRuns` is *(unverified)* (C182),
+the docs sample with the schema). The shape of run events sent under `includeRuns` is *(unverified)* (C182); the searchable trail itself lists no run state changes ([32](32-spacelift-console-survey.md) section 16.9),
 and is presumably the run webhook payload of section 6 [I]. Spacelift publishes a reference receiver
 that verifies the signature and writes events to S3 through Kinesis Firehose
 ([terraform-aws-spacelift-events-collector][s-collector-repo], no licence; cited, not quoted).
@@ -1033,16 +1042,14 @@ The provider has no resource for Slack, notifications or managed user group inte
 - Size limits on `spacelift::logs::*` substitution *(unverified)* (C172).
 - Which VCS providers accept the `pull_request` route *(unverified)* (C173).
 - What the legacy per-stack Slack subscription sends *(unverified)* (C175).
-- The full set of audit `action` strings and the `actor` prefixes for API keys and other identity
-  sources *(unverified)* (C180).
+- The full set of audit `action` strings and the `actor` prefixes for API keys and SSO identity
+  sources *(unverified)* (C180); the console shows `github::<login>` for a GitHub user.
 - The audit webhook's retry schedule and the role of `retryOnFailure` against the docs' unconditional
   retry *(unverified)* (C181).
 - The shape of run events sent to the audit webhook under `includeRuns` *(unverified)* (C182).
 - The self-hosted usage export's table list and envelope *(unverified)* (C183).
 - What the server side of `GET /usageanalytics/csv` accepts and returns *(unverified)* (C23).
 - What the contract-only `pull_request` rule field `truncate_body` does *(unverified)* (C174).
-- Whether `policy_receipts` also still appears under `run_updated.run`, as the docs page shows, or only
-  at `run_updated` as the contract and the Datadog module have it *(unverified)* (C184).
 - That both signatures are HMACs keyed by the secret [I] (GitHub's mechanism, and the example
   receiver for SHA-256).
 - The pairing of `AuditTrailResourceType` values with metadata types [I] (by name).

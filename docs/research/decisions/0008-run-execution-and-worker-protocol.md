@@ -94,11 +94,12 @@ facts shape the design.
   | Worker lost, or container ended, while a test case is `APPLYING` | `FAILED`, by liveness alone | added as T45: T39 moves even a failed apply on to its destroy, which needs a worker |
   | `runKill` ends the process | `FAILED`, note `killed` | T15, T18, T38, T41 or T43 by the state killed in |
   | Run timeout or no-log timeout on the worker | `FAILED`, note naming the timeout | as for a kill |
-  | Approval policy `reject` | `FAILED` (the rules reading of T5, T24, T29) | as listed |
+  | Approval policy `reject` | `FAILED`, note `Run rejected by approval policies`, as Spacelift's console fails a run rejected in `QUEUED` ([32 section 16.2](../reference/32-spacelift-console-survey.md#162-policies-on-runs)); `PENDING_REVIEW` and `UNCONFIRMED` follow the same rule (C291) | T5, T24, T29 |
+  | Push policy `cancel` naming a run in `UNCONFIRMED` | `DISCARDED`, note `canceled by push policy in favor of run <id>`, as Spacelift's console shows (C37) | T27 |
   | Upstream run in a dependency chain fails or is canceled | dependants `SKIPPED`, note naming the upstream run | T6 |
   | Drift run on a pool with drift runs disabled | created `QUEUED` and failed in the same transaction (T1 then T5), note explaining the limit | T1, T5 |
-  | Task with `skipInitialization` | passes through `INITIALIZING` with no vendor init | T13 |
-  | `runRetry` | a new run of the retried run's type on its commit, with its runtime configuration and overrides, for a `PROPOSED` or `TRACKED` run that has ended and whose source still exists; `canRetry` and `retryBlocker` say whether and why not; a retry never triggers dependants, and a tracked run needs `RUN_RETRY_BLOCKING` as well | T1 |
+  | Task with `skipInitialization` | passes through `INITIALIZING`, which runs neither the vendor's init nor the `before_init` and `after_init` hooks and logs that initialization is skipped, as Spacelift's console shows (C42) | T13 |
+  | `runRetry` | a new run of the retried run's type on its commit, with the runtime configuration the retried run resolved (its hooks and environment as they were, not the stack's current ones) and its overrides, for a `PROPOSED` or `TRACKED` run that has ended other than in `FINISHED` and whose source still exists, as Spacelift's console retries ([32 section 17.3](../reference/32-spacelift-console-survey.md#173-run-states-discard-retry-and-targeted-replan)); `canRetry` and `retryBlocker` say whether and why not; a retry never triggers dependants, and a tracked run needs `RUN_RETRY_BLOCKING` as well | T1 |
   | `DESTROY` run | no plan and no confirmation: `INITIALIZING` straight to `DESTROYING` | T14 |
   | The `state` argument of `runStop` and `runKill` | the state the caller saw; a run that has left it answers `409` `invalid-state` with its current state | none |
   | `PARSE` run type | served in the enum, never created | none |
@@ -109,7 +110,7 @@ facts shape the design.
 |---|---|---|
 | API action | T3, T8 (discard), T4 and T9 (`runCancel`), T16 and T19 (`runStop` once the worker confirms), T26 (`runConfirm`), T27 (`runDiscard`), T28 (`runTargetedReplan`) | Handler calls `run.Transition` with the caller's identity; [0007](0007-authorization-spaces-and-roles.md) checks the run action first |
 | Creation | T1 | Every route in [08 section 1](../reference/08-run-lifecycle.md#1-run-types) inserts the run in `QUEUED` in the transaction that creates it |
-| Scheduler | T2, T5 and T6 for dependencies, T4 for a push policy `cancel` | The `run.schedule` job, below |
+| Scheduler | T2, T5 and T6 for dependencies; for a push policy `cancel`, T4 on a queued run and T27 on one awaiting confirmation | The `run.schedule` job, below |
 | Approval policy | T5, T23, T24, T29, and the gates on T2 and T26 | Evaluated on entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW` and on each review ([09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated)) |
 | Worker claim | T7, T30, T33 | The poll claims the run (below) |
 | Worker report | T10, T11, T12 to T16, T18 for a tool error, T19, T32, T35 to T43, T44 | Runner or launcher reports through `/worker/v1` |
@@ -432,6 +433,15 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `stack_labels_list` (the labels as an HCL list) and `workspace_root`
   (`/mnt/workspace`). The runner sets `run_state`, which changes with each
   phase, and the launcher sets `INFRAWEAVE_API_TOKEN` from the sealed part.
+  Spacelift's runs also carry `TF_VAR_spacelift_graphql_endpoint`, the API's
+  URL, and `SPACELIFT_MAX_REQUESTS_BURST`,
+  `SPACELIFT_MAX_REQUESTS_PER_SECOND`,
+  `SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED` and
+  `SPACELIFT_VENDOR_BINARY_CACHED`
+  ([32 section 17.2](../reference/32-spacelift-console-survey.md#172-the-run-environment));
+  infraweave sets `TF_VAR_infraweave_graphql_endpoint` to its API's base URL,
+  since the variable names the endpoint a run's provider calls, and the four
+  others under `INFRAWEAVE_` from the launcher's settings.
 
 - **Secrets are sealed to the pool.** The server opens the sealed values
   ([0013](0013-secrets-at-rest.md)) and seals the secret part of the
