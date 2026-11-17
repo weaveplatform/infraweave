@@ -162,7 +162,7 @@ and lint is clean.
 | P18c Flows engine and API | Not started | |
 | P18d Flows apps, agents and Deploy blocks | Not started | **M6** |
 | P19b VCS agent pools and other source providers | Not started | |
-| P20 Other vendors | Not started | |
+| P20 Other vendors | In progress | Done: [#558](https://github.com/weaveplatform/infraweave/issues/558) each vendor's contract in decisions 0008, 0009, 0010, 0016 and 0024, from what Pulumi, kubectl and ansible-core write when driven, kept in `test/fixtures/vendor-documents`, and from AWS's CloudFormation reference |
 | P20b Ansible, OpenTofu migration and plugins | Not started | |
 | P21 Blueprints, templates and external integrations | Not started | |
 | P22 Resources, search and console support | Not started | |
@@ -2160,8 +2160,8 @@ in as `test/fixtures/policy-inputs`
    over the surface `policies` lists in `Surfaces()`, compiles a body
    with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
    The plan input carries `third_party_metadata.custom.<plugin>`, which
-   P20b's plugins write, and each vendor's block in the shape P20 records
-   in decision 0009. The `sanitized()` built-in hashes with
+   P20b's plugins write, and each vendor's block in the shape decision
+   0009 records. The `sanitized()` built-in hashes with
    `internal/iac/sanitize`, decision 0009's hash (DV-031), the package
    task 7's runner step uses, so the worker and the built-in never differ.
 4. Evaluation points in `internal/runs/internal/core/gates`, with the
@@ -3049,113 +3049,131 @@ Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.m
 Pulumi, CloudFormation and Kubernetes, each an `iac` package with built-in
 command templates and a runner step behind one contract, the rest of
 Terragrunt, whose runs and units P11 delivers, and sanitization of each
-new vendor's plan, on the package and runner step P13 adds. The decisions
-were written for the Terraform family, so the first task writes each new
-vendor's contract into them before any vendor's code.
+new vendor's plan, on the package and runner step P13 adds. Each vendor's
+plan document is what its tool writes for a machine, recorded in
+`test/fixtures/vendor-documents`
+([33](../research/reference/33-vendor-tool-documents.md)), and decision
+0008's "Vendors' runs" states each vendor's commands, documents, outputs,
+image and tool.
 
 **Tasks**
-1. Rewrite the decisions in place where P20 and the decisions or main
-   disagree, before code:
-   - 0008: a section on each vendor's runs (commands per phase, the plan
-     document, outputs); the default runner image per vendor when neither
-     the runtime configuration, the stack nor the account names one, since
-     main answers the Terraform runner image for every vendor, OpenTofu
-     included, while Spacelift's blank default is the vendor's own image
-     ([32](../research/reference/32-spacelift-console-survey.md) section 4);
-     which tools the launcher downloads and how kubectl is verified; and
-     whether Pulumi has a runner image of its own, since "runner images
-     for each" contradicts 0008's three images and report 20 section 11;
-   - 0009: the sanitization contract that P13 applies to the Terraform
-     family, extended to each new vendor, with its modes
-     (`useSmartSanitization`, the label
-     `feature:disable_resource_sanitization`) and what each vendor's plan
-     document hashes, and the shape of each vendor's block in the plan
-     policy input, which P13 evaluates;
-   - 0010: state for the vendors that keep their own (Pulumi's backend,
-     CloudFormation in AWS, Kubernetes in the cluster), what `manageState`
-     reads for them, and Terragrunt's explicit stacks, which 0010 fails at
-     `INITIALIZING` today;
-   - 0016: tags and partitions for Pulumi, an AWS fake (moto) and the
-     vendor use of `@kubernetes`, which 0016 describes for workers only, in
-     an `accept-runs` partition already near its timeout; k3s pinned by
-     digest;
-   - 0024: the Kubernetes workflow keys, so `kubernetesWorkflowTool: CUSTOM`
-     has commands to read, and each vendor's built-in templates;
-   - the deviation records for each departure (CloudFormation's destroy on
-     delete, `runChangesV3` answered for every vendor, a
-     `MANUALLY_PROVISIONED` Terragrunt stack, `terragruntEffectiveVersion`
-     without Gruntwork's table, a Pulumi default image) and the rename
-     records for Spacelift's Kubernetes labels. P20 awaits C193's
-     CloudFormation and Pulumi destroy parts; its Ansible part is settled
-     ([32](../research/reference/32-spacelift-console-survey.md) section 16.8).
+1. The vendors' contracts in decisions 0008, 0009, 0010, 0016 and 0024,
+   from what Pulumi, kubectl and ansible-core write when driven and from
+   AWS's CloudFormation reference
+   ([33](../research/reference/33-vendor-tool-documents.md)), with the
+   deviation records DV-120 to DV-128 and the rename records RN-43 and
+   RN-44. Done by #558.
 2. The vendor contract on main: `iactest`'s plan cases become each
-   vendor's own (empty, malformed, another format), with the size bound for
-   any document; `Vendor.ReadOutputs`; the runner reads plans and outputs
-   through the stack's vendor, not through `plan.Parse` directly.
-   The runner sanitizes each new vendor's plan document before upload with
-   P13's `internal/iac/sanitize` and the mode the run specification
-   carries.
-   Built-in command templates live in `internal/iac/workflow` beside
-   Terraform's and each vendor's phase map in `internal/agent/vendors`, so
-   every command renders through one quoting path (0024).
-3. Terragrunt beyond P11: `useRunAll: false` runs one unit in the project
+   vendor's own (empty, malformed, another format, and its recorded
+   documents), with the size bound for any document; `Vendor.ReadOutputs`;
+   the runner reads plans and outputs through the stack's vendor, not
+   through `plan.Parse` and `plan.ReadOutputs` directly, and uploads
+   `changes.json` for every vendor, which `changesV2`, `changesV3` and
+   `searchEntityChanges` read alike (DV-121). The runner sanitizes each
+   new vendor's plan document before upload with P13's
+   `internal/iac/sanitize` and the mode the run specification carries, by
+   decision 0009's table. Built-in command templates live in
+   `internal/iac/workflow` beside Terraform's and each vendor's phase map
+   in `internal/agent/vendors`, so every command renders through one
+   quoting path (0024); extra arguments are split as `sh` splits words and
+   quoted one word each. Pulumi, CloudFormation and Kubernetes register
+   state of their own, so `manageState` is accepted and ignored and their
+   stacks read `managesStateFile: false` (0010).
+3. Images and tools: `deploy/images/runner-pulumi` on the runner base,
+   with the Pulumi CLI from its release archive pinned by SHA-256 and moved
+   by `deps-refresh.yml`, and Node.js, npm, Python and pip from Alpine,
+   published with the other runner images; the launcher's default image
+   per vendor (`-opentofu`, `-pulumi`, else `-terraform`), with
+   `launcher.default_runner_image` unset by default and replacing every
+   vendor's default but Ansible's when set (DV-122); kubectl downloaded by
+   the launcher at the run's `tool`, checked against the SHA-256
+   `dl.k8s.io` publishes, cached and mirrored under `kubectl/<version>/`,
+   and its release index from `kubernetes/kubernetes` releases. Operation:
+   `kubectlVersions`, from the `vendors` catalogue. The suite's
+   `accept-vendors` partition takes `@pulumi`, `@aws`, `@kubernetes` and
+   `@ansible` ahead of `accept-runs`, which drops `@kubernetes`, with k3s
+   pinned at its newest release tag (0016).
+4. Terragrunt beyond P11: `useRunAll: false` runs one unit in the project
    root, while P11 runs `run --all` whatever the setting and its features
    set `useRunAll: true` where they need units; `skipReplan` and its
-   deprecated alias `skipReplanWhenRunAll`;
-   `prefixResourceNamesWithModuleName`; `MANUALLY_PROVISIONED`, with
-   OpenTofu the default tool, the latest Terragrunt release the default
-   version and managed state off by default, as Spacelift's wizard has them;
-   explicit
-   stacks under run-all; and each unit's changes, outputs and plan
-   document. Operations: `terragruntVersions` and
-   `terragruntEffectiveVersion`, from the `vendors` domain's release
-   catalogue. Feature: `vendors/terragrunt.feature`
-   (`@terragrunt`), where C185, C188 and C189 are awaited.
-4. `internal/iac/pulumi`: `loginURL` and `stackName`; `before_init` hooks,
-   then the login and the stack's selection, created when missing, then
-   `after_init` hooks, the order Spacelift's runs show (C190 settled);
-   `pulumi preview` in planning and `pulumi up` in applying, and destroy
-   (C193); structured steps for the changes view and the plan policy
-   input's `pulumi.steps`, with changes keyed by URN; outputs, a secret
-   output keeping no value; a file backend under `/mnt/workspace` carried
-   from plan to apply in the workspace archive. Spacelift's wizard requires
-   a runner image and `before_init` and `before_apply` hooks for Pulumi;
-   infraweave requires neither, its default image carrying the CLI. Gated
-   by `vendor-pulumi`. Feature: `vendors/pulumi.feature` (`@pulumi`: a
-   program with no provider plugins and a file backend, so the scenario
-   needs no network), whose log shows a `before_init` hook's output before
-   the login.
-5. `internal/iac/cloudformation` and a runner driver over the AWS SDK:
-   nested templates packaged to `templateBucket` under the run's ID, a
-   change set named for the run so that `APPLYING` executes exactly what
-   was confirmed, stack events streamed into the log, and outputs read from
-   the stack. CDK, SAM and Serverless are hook recipes, as report 20
+   deprecated alias `skipReplanWhenRunAll`, applying each unit's saved plan
+   (C188); `prefixResourceNamesWithModuleName`; `MANUALLY_PROVISIONED`,
+   with Terragrunt still downloaded, the image's own tool and a
+   `terraformVersion` refused (DV-123), OpenTofu the default tool, the
+   latest Terragrunt release the default version and managed state off by
+   default, as Spacelift's wizard has them; explicit stacks under run-all
+   through `terragrunt stack generate` and `--no-stack-generate`, refused
+   without run-all (C304); each unit's changes with the unit in a field of
+   its own, its outputs named `<unit>/<output>` and `plan.json` as
+   `{"units": [...]}`, which the plan policy input's `terragrunt` block
+   reads. Operations: `terragruntVersions` and `terragruntEffectiveVersion`,
+   from the `vendors` domain's release catalogue, each constraint resolved
+   on its own (DV-124). Feature: `vendors/terragrunt.feature`
+   (`@terragrunt`), where C185, C188, C189 and C304 are awaited.
+5. Pulumi: `internal/iac/pulumi` with `loginURL` and `stackName`, and its
+   phase map: `before_init` hooks, then `pulumi login` and
+   `pulumi stack select --create`, then `after_init` hooks (C190 settled);
+   `pulumi preview` with `--event-log` under `PULUMI_DEBUG_COMMANDS=true`,
+   whose `resOutputsEvent`s are `plan.json`'s steps and the plan policy
+   input's `pulumi.steps`, with changes keyed by URN and a replacement by
+   the order of its steps; `pulumi up --yes` without `--skip-preview`;
+   outputs from `pulumi stack export`, a secret signature object marking a
+   sensitive one; `pulumi destroy --yes`, which a protected resource stops
+   before anything is deleted; no passphrase of the runner's own (DV-128).
+   The plan cases parse `test/fixtures/vendor-documents/pulumi`. Gated by `vendor-pulumi`.
+   Feature: `vendors/pulumi.feature` (`@docker`, `@pulumi`: a program
+   with no provider plugin and a file backend, so the scenario needs no
+   network), whose log shows a `before_init` hook's output before the
+   login, and where C295, C299 and C300 are awaited.
+6. CloudFormation: `internal/iac/cloudformation` with `entryTemplateFile`,
+   `region`, `stackName` and `templateBucket`, and
+   `internal/agent/cloudformation`, run as
+   `infraweave runner cloudformation <step>` over aws-sdk-go-v2: templates
+   and local nested templates uploaded under the run's ID; a change set
+   named for the run, `CREATE` or `UPDATE` by the stack's status, with
+   `CF_PARAM_*` and `CF_CAPABILITY_*`, and every page of it and its nested
+   change sets read into `plan.json`; `ExecuteChangeSet` of exactly what
+   was confirmed, a change set another run's apply deleted failing with a
+   note; stack events streamed into the log; outputs from the stack; and
+   `DeleteStack` on destroy (DV-120). Parameter values are always hashed
+   (DV-125). CDK, SAM and Serverless are hook recipes, as report 20
    section 8 describes, not images. Gated by `vendor-cloudformation`.
-   Feature: `vendors/cloudformation.feature` (moto's CloudFormation and
-   S3, plain and nested templates).
-6. `internal/iac/kubernetes`: `namespace` (C32), `kubectlVersion` resolved
-   at each handover (the latest release by default), `kubernetesWorkflowTool`
-   `KUBECTL` and `CUSTOM`, a
-   server-side dry run with pruning by label to plan, rollout status after
-   apply, delete by label to destroy, a Secret's values always hashed in
-   the plan document, Kustomize native and Helm through a `helm template`
-   hook. Operation: `kubectlVersions`, from the `vendors` catalogue. Gated by `vendor-kubernetes`.
-   Feature: `vendors/kubernetes.feature` (`@kubernetes`, k3s).
-7. `vendors/sanitization.feature`, which P13 adds, gains each new vendor's
-   rule.
+   Feature: `vendors/cloudformation.feature` (`@docker`, `@aws`: moto's
+   CloudFormation and S3, plain and nested templates and an entry
+   template a hook writes), where C296 is awaited; C303 stays open until
+   an AWS account records an empty change set and a `NoEcho` parameter.
+7. Kubernetes: `internal/iac/kubernetes` with `namespace`, `""` read as
+   absent (C32), `kubectlVersion` a constraint resolved at each handover,
+   the latest release when null, and `kubernetesWorkflowTool` `KUBECTL`
+   and `CUSTOM` over decision 0024's seven keys; `internal/agent/kubernetes`
+   composing `plan.json` from `get` and the dry-run stream, a pruned object
+   with `after` null; the kustomization's `labels` transformer with
+   `infraweave-stack` and `app.kubernetes.io/managed-by` (RN-43, RN-44,
+   DV-126); a client dry run when nothing is labelled yet, else a server
+   one; the prune flag by kubectl release (DV-127); rollout status after
+   apply; delete by label to destroy; a Secret's values always hashed
+   (DV-125); no `kubectl diff`. Helm is a `helm template` hook recipe
+   (C298). The plan cases parse `test/fixtures/vendor-documents/kubernetes`.
+   Gated by `vendor-kubernetes`. Feature: `vendors/kubernetes.feature`
+   (`@docker`, `@kubernetes`, k3s), with a `CUSTOM` workflow and a Helm hook
+   on a Helm pinned in `test/deps`, where C32 and C297 are awaited.
+8. `vendors/sanitization.feature`, which P13 adds, gains each new vendor's
+   rule, and C192 is awaited against it.
 
 **Exit criteria**
 - Pulumi, CloudFormation and Kubernetes each run a tracked run to
   `FINISHED` in acceptance, and a proposed run, a task and a destroy run;
-  every vendor passes `iactest`.
+  every vendor passes `iactest`, its recorded documents among the plan
+  cases.
 - `terragruntVersions`, `terragruntEffectiveVersion` and `kubectlVersions`
   meet decision 0016's evidence rule, each with a `@case:success`, a
   `@case:denial` and a `@case:failure` scenario, and
-  `vendors/terragrunt.feature` covers every setting of task 3.
+  `vendors/terragrunt.feature` covers every setting of task 4.
 - No vendor's plan document reaches the object store unsanitized: a
   scenario per vendor finds no sensitive value in the uploaded plan.
-- Captures C32, C185, C188, C189 and C192, and C193's CloudFormation and
-  Pulumi destroy parts, replay once recorded; C190 is settled.
+- Captures C32, C185, C188, C189, C192, C295, C296, C297 and C300 replay
+  once recorded; C299 and C304 hold on the pinned releases; C190 and C193
+  are settled.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P20b: Ansible, OpenTofu migration and plugins
@@ -3172,26 +3190,42 @@ templates, of which Checkov, Terrascan, Trivy, Trufflehog and Wiz scan
 ([32](../research/reference/32-spacelift-console-survey.md) section 12).
 
 **Tasks**
-1. `internal/iac/ansible`, its built-in command templates in
-   `internal/iac/workflow` and its phase map, the option `vendor-ansible`,
-   the runner image of P20's decision and the launcher's
-   `default_ansible_runner_image`; inventory records from each run's task
-   results. Operations: `ansibleHosts`, `ansibleHost`,
+1. Ansible's image and callback: `deploy/images/runner-ansible` on the
+   runner base, with ansible-core from PyPI pinned by version and hash and
+   moved by `deps-refresh.yml`, and infraweave's aggregate callback plugin
+   `infraweave`, which writes one record per task result (host, playbook,
+   role, task, action, status, check mode) and the play recap, honours
+   `no_log`, and writes no module result and no diff; neither
+   `ansible.posix` nor ansible-runner. The launcher's
+   `default_ansible_runner_image` names it by default. The callback's tests
+   run ansible-core over `test/fixtures/vendor-documents/ansible/project`
+   and compare the records' statuses and recap with the recorded ones.
+2. `internal/iac/ansible` with `playbook`, its built-in command templates
+   in `internal/iac/workflow` and its phase map: Galaxy requirements in
+   `INITIALIZING`, `ansible-playbook <playbook> --check` while planning and
+   the real run while applying, with `ANSIBLE_VERBOSITY=1` and no `--diff`
+   or `-i`, as Spacelift's runs show (C193's Ansible part settled), and
+   any exit code but 0 failing the phase; `plan.json` from the records,
+   the plan policy input's `ansible` block as the recap with the playbook,
+   and changes carrying host, playbook, role, task and action with no
+   address, skipped tasks counted unless
+   `INFRAWEAVE_IGNORE_SKIPPED_TASK_CHANGES` is `true`. Gated by
+   `vendor-ansible`. Inventory records from each run's records, the hosts,
+   tasks and seven statuses of the configuration management view.
+   Operations: `ansibleHosts`, `ansibleHost`,
    `ansibleHostSearchAnsibleTaskExecutions`,
    `ansibleHostSearchAnsibleTaskExecutionsSuggestions`,
    `searchAnsibleHosts`, `searchAnsibleHostsSuggestions`, `ansibleTasks`,
    `searchAnsibleTasks`, `searchAnsibleTasksSuggestions`,
-   `hasAnsibleStacks`. Planning runs `ansible-playbook --check` and applying
-   the real run, as Spacelift's do (C193's Ansible part settled); the plan
-   policy input's `ansible` block is the play recap by host with the
-   playbook, and each change carries host, playbook, role and task, with no
-   address. The configuration management view is console state, on by
-   default for an Ansible stack, which no field serves (C199 settled)
-   ([32](../research/reference/32-spacelift-console-survey.md) section 16.8).
-   Deleting an Ansible stack offers no destroy. Feature:
-   `vendors/ansible.feature` (`@docker`): a check-mode plan, a real apply
-   and the inventory records it leaves.
-2. OpenTofu migration: `openTofuFeatures`, `openTofuMigrateSearch`,
+   `hasAnsibleStacks`. The configuration management view is console
+   state, on by default for an Ansible stack, which no field serves (C199
+   settled) ([32](../research/reference/32-spacelift-console-survey.md)
+   section 16.8). Deleting an Ansible stack offers no destroy, and
+   `destroyResources: true` answers `422`. Feature:
+   `vendors/ansible.feature` (`@docker`, `@ansible`): a check-mode plan, a
+   real apply, a failed task and the inventory records they leave, where
+   C302 is awaited.
+3. OpenTofu migration: `openTofuFeatures`, `openTofuMigrateSearch`,
    `openTofuMigrateSuggestions`, `openTofuMigrationCounts`,
    `openTofuMigrationQueueSearch`, `openTofuMigrationQueueSearchSuggestions`,
    `openTofuMigrate`, `openTofuMigrationQueueClean`, `stackMigrateVendor`,
@@ -3199,7 +3233,7 @@ templates, of which Checkov, Terrascan, Trivy, Trufflehog and Wiz scan
    OpenTofu at a version each supports, with its state untouched. Feature:
    `vendors/opentofu_migration.feature` (`@terraform`, `@tofu`), where C186
    and C187 are awaited.
-3. `internal/plugins` (flat domain), added through the
+4. `internal/plugins` (flat domain), added through the
    [domain wiring](#adding-a-domain) after `runs` in `domains.go` and the
    migration order, with edges to `features`, `access`, `configuration`
    and `runs`, and to `policies` if P13 has landed (P13 adds it
@@ -3212,25 +3246,28 @@ templates, of which Checkov, Terrascan, Trivy, Trufflehog and Wiz scan
    `pluginTemplateCreate`, `pluginTemplateDelete`, `plugins`, `plugin`,
    `pluginInstall`, `pluginUpdate`, `pluginDelete`,
    `runPluginLogsDownloadURL`. Gated by `plugins`. Records DV-081.
-4. Plugin output in runs: each plugin's Markdown report uploaded with the
+5. Plugin output in runs: each plugin's Markdown report uploaded with the
    run and served by `runPluginLogsDownloadURL`, and its structured result
    placed in the plan policy input under
    `third_party_metadata.custom.<plugin>` (C191 for Infracost), which P13's
    plan policies read. Who may manage plugins follows C253; until it is
    settled, plugins and templates need space admin, as the console's role
    catalogue offers no plugin action (report 32 section 7).
-5. Features: `vendors/plugins.feature` (`@docker`, `@terraform`): a scanner
+6. Features: `vendors/plugins.feature` (`@docker`, `@terraform`): a scanner
    plugin installed by label runs after planning, its report is
    downloadable, and a plan policy denies on its result; an account
    template is created, installed, updated and deleted.
 
 **Exit criteria**
 - Ansible, OpenTofu Migration and Plugins meet decision 0016's evidence
-  rule: every operation of tasks 1 to 3 has a `@case:success`, a
+  rule: every operation of tasks 2 to 4 has a `@case:success`, a
   `@case:denial` and a `@case:failure` scenario.
+- An Ansible stack runs a tracked run to `FINISHED` in acceptance, and a
+  proposed run and a task, through the `-ansible` image's callback.
 - A plan policy reads a plugin's result from the policy input in
   acceptance.
-- Captures C186, C187, C191 and C252 to C255 replay once recorded.
+- Captures C186, C187, C191, C252 to C255 and C302 replay once recorded;
+  C193 and C199 are settled.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P21: Blueprints, templates and external integrations

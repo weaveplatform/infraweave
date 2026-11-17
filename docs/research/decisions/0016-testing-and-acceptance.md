@@ -146,7 +146,10 @@ everywhere, and the reason names where the contract checks it instead.
 | `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
 | `@docker` | the host's Docker daemon; the harness builds the runner images of `deploy/images/` as `infraweave-runner-terraform:acceptance` and `infraweave-runner-opentofu:acceptance`, imports `infraweave-runner:acceptance`, a minimal image with UID 1983 and no base that carries the relay's forwarder, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008); real runs with `@terraform` or `@tofu` |
-| `@kubernetes` | a k3s container, testcontainers-go `k3s` module | Kubernetes workers (decision 0008) |
+| `@kubernetes` | a k3s container, testcontainers-go `k3s` module, privileged, with its bundled components disabled so that it pulls no image, joined to the run containers' Docker network; the scenario's kubeconfig names it by its network alias | Kubernetes stacks' runs, and Kubernetes workers (decision 0008) |
+| `@pulumi` | with `@docker`, the runner image `infraweave-runner-pulumi:acceptance` built from `deploy/images/`, and a host directory per scenario that `launcher.docker.extra_mounts` mounts for a `file://` Pulumi backend | Pulumi stacks' runs: a Pulumi YAML program with no provider, whose configuration and outputs, one of them secret, need no plugin download; `PULUMI_CONFIG_PASSPHRASE` is a write-only stack variable |
+| `@aws` | moto's server, serving S3 and CloudFormation, which run containers reach through `AWS_ENDPOINT_URL` with dummy credentials | CloudFormation stacks' runs: a template of an `AWS::SSM::Parameter` and an `AWS::S3::Bucket`, a template with a nested stack, and a `before_init` hook that writes the entry template, as `sam package` would |
+| `@ansible` | with `@docker`, the runner image `infraweave-runner-ansible:acceptance` built from `deploy/images/` | Ansible stacks' runs: a playbook against `localhost` with a local connection |
 | `@flows-agent` | a test app built on `pkg/flows/appsdk` as a local OCI image, and an `infraweave flows-agent` subprocess that runs it in Docker | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
 
 - **A real run.** `@terraform` and `@tofu` scenarios exercise the full
@@ -184,12 +187,18 @@ everywhere, and the reason names where the contract checks it instead.
   by digest in `test/deps/images.go`, as a stack's runner image, and runs a
   tracked run on it unchanged (decision 0008's image contract).
 - **Images and tools.** Every container image the suite pulls is pinned by
-  digest in `test/deps/images.go`, and the Terraform and OpenTofu releases
-  by the SHA-256 of each Linux archive in `test/deps/tools.go`;
-  `deps-refresh.yml` moves the pins to the newest release. The runner
-  images the suite builds pin their Alpine base by digest in their
-  Dockerfiles under `deploy/images/`, which Dependabot moves, so CI, the
-  suite and a release build from one pin. An archive is downloaded once into
+  digest in `test/deps/images.go`, and the Terraform, OpenTofu, Terragrunt
+  and kubectl releases by the SHA-256 of each Linux archive or binary in
+  `test/deps/tools.go`; `deps-refresh.yml` moves the pins to the newest
+  release. k3s is pinned at its newest release tag, which
+  `deps-refresh.yml` reads from k3s's releases, since the image's `latest`
+  tag trails them by more than a year
+  ([33 section 1](../reference/33-vendor-tool-documents.md#1-versions)).
+  The runner images the suite builds pin their Alpine base by digest in
+  their Dockerfiles under `deploy/images/`, which Dependabot moves, and
+  `-pulumi`'s Pulumi CLI and `-ansible`'s ansible-core by version and
+  SHA-256, which `deps-refresh.yml` moves, so CI, the suite and a release
+  build from one pin. An archive is downloaded once into
   the user's cache directory and checked against its pin each time a test
   binary uses it.
 - **The newest releases everywhere.** A scenario's stack sets no version,
@@ -399,7 +408,8 @@ coverage it would contribute is not waived.
 |---|---|---|---|---|
 | `unit` | `ubuntu-latest`, `macos-latest`, `windows-latest` | `make test` | 15 min | yes |
 | `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc`, `@vault` | 20 min | yes |
-| `accept-runs` | `ubuntu-latest` | `@docker`, `@terraform`, `@tofu`, `@terragrunt`, `@kubernetes`, `@flows-agent` | 30 min | yes |
+| `accept-vendors` | `ubuntu-latest` | `@pulumi`, `@aws`, `@kubernetes`, `@ansible` | 30 min | yes |
+| `accept-runs` | `ubuntu-latest` | `@docker`, `@terraform`, `@tofu`, `@terragrunt`, `@flows-agent` | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
 | `parity` | `ubuntu-latest` | `make verify-parity` and the state check | 5 min | yes |
@@ -408,10 +418,10 @@ coverage it would contribute is not waived.
 | `console-e2e` | `ubuntu-latest` | the Playwright journeys against a real `infraweave all` built with `-cover` ([0023](0023-console.md)) | 30 min | yes |
 | `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` and `console`, whose TypeScript coverage has its own thresholds | 10 min | yes |
 | `postgres-next` | `ubuntu-latest` | the `sqltest` suites, `queuetest` and `accept-core` on the next PostgreSQL major, its beta or release candidate until it is generally available ([0005](0005-persistence-postgresql.md#engine-and-versions)), selected by `INFRAWEAVE_POSTGRES=next` | 20 min | no |
-| `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform and OpenTofu releases | 60 min | no |
+| `nightly` | `ubuntu-latest`, scheduled | the full suite on the newest Terraform, OpenTofu, Terragrunt and kubectl releases, with `-pulumi` and `-ansible` built on the newest Pulumi and ansible-core releases | 60 min | no |
 | `stress` | `ubuntu-latest`, scheduled weekly and on demand | `make accept-stress PARTITION=runs`, reporting the relay's refusals and uploading a failed scenario's evidence | 90 min | no |
 | `objectstore-cloud` | `ubuntu-latest`, scheduled nightly | `objectstoretest` against real Amazon S3, Google Cloud Storage and Azure Blob Storage | 20 min | no |
-| `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's and OpenTofu's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
+| `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's, OpenTofu's, Terragrunt's and kubectl's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
 | `vcs-lab` | `ubuntu-latest`, scheduled nightly | `sourcetest` and the `@vcs-lab` scenarios against GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps repositories created for the run and destroyed after it | 45 min | no |
 
 - **`fips-only` and coverage.** It runs the same tests as the jobs above
@@ -481,9 +491,10 @@ coverage it would contribute is not waived.
     that broke.
   - **Failures.** As the cloud object store job: an issue per provider.
 
-- A scenario's partition is the first of `accept-runs`,
+- A scenario's partition is the first of `accept-vendors`, `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so a
-  `@postgres` `@terraform` scenario runs once, in `accept-runs`.
+  `@postgres` `@terraform` scenario runs once, in `accept-runs`, and a
+  `@docker` `@pulumi` one in `accept-vendors`.
   `TestUnitFeaturePartitions` parses every feature and fails when a
   scenario carries a tag no partition lists.
 - Every required job is in the `needs` of the `Quality gate` job and, when
@@ -526,8 +537,8 @@ coverage it would contribute is not waived.
     move to a fixed release.
   - **Rejected: LocalStack.** It emulates many AWS services, which the suite
     does not need, at a larger image size, and its image needs a licence
-    token to start, which no public pull request has. The KEK suite's one
-    AWS service, KMS, runs on moto.
+    token to start, which no public pull request has. The KEK suite's
+    KMS, and CloudFormation runs' S3 and CloudFormation, run on moto.
 - **fake-gcs-server and Azurite** are the maintained open-source emulators
   for their services, and both speak the APIs the native SDKs call, so the
   drivers run unchanged against them.
@@ -612,8 +623,16 @@ coverage it would contribute is not waived.
   moves time on for a stack's state versions as the runs steps do for a
   run; and `terragrunt_units.feature`, with real Terragrunt driving
   Terraform. `vendors/terragrunt.feature` holds a Terragrunt stack's
-  settings. `TestAccCaptures` skips C106, C107, C108, C109, C110, C112,
-  C113 and C114 as awaited against them.
+  settings and runs. `TestAccCaptures` skips C106, C107, C108, C109, C110,
+  C112, C113 and C114 as awaited against them.
+- `test/acceptance/features/vendors/` holds each vendor's runs:
+  `pulumi.feature`, `cloudformation.feature`, `kubernetes.feature` and
+  `ansible.feature`, each a tracked run with its changes, plan policy input
+  and outputs, a proposed run, a task and, but for Ansible, a destroy run;
+  and `sanitization.feature`, each vendor's plan policy input compared
+  through `sanitized`. `TestAccCaptures` skips C32, C185, C188, C189, C192,
+  C295, C296, C297, C299, C300 and C304 as awaited against them and
+  `vendors/terragrunt.feature`.
 - `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
   `TestUnitWriteRefusals` and `TestUnitParseStress`
   (`test/acceptance/internal/harness`) prove the stress: a refusal share

@@ -1,0 +1,136 @@
+{
+    "kind": "List",
+    "apiVersion": "v1",
+    "metadata": {},
+    "items": [
+        {
+            "apiVersion": "v1",
+            "data": {
+                "greeting": "hello"
+            },
+            "kind": "ConfigMap",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"data\":{\"greeting\":\"hello\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-config\",\"namespace\":\"example\"}}\n"
+                },
+                "creationTimestamp": "2026-11-17T10:23:17Z",
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-config",
+                "namespace": "example",
+                "uid": "43ef9bfe-27a1-424e-aa16-a7b99ec41ab7"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "data": {
+                "note": "removed in v2, so the plan prunes it"
+            },
+            "kind": "ConfigMap",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"data\":{\"note\":\"removed in v2, so the plan prunes it\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-extra\",\"namespace\":\"example\"}}\n"
+                },
+                "creationTimestamp": "2026-11-17T10:23:17Z",
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-extra",
+                "namespace": "example",
+                "uid": "7cd1b814-6f01-4d28-9fa1-e33a396a082a"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "data": {
+                "apiKey": "ZHVtbXktYXBpLWtleS12MQ==",
+                "password": "ZHVtbXktcGFzc3dvcmQtdjE="
+            },
+            "kind": "Secret",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"data\":{\"password\":\"ZHVtbXktcGFzc3dvcmQtdjE=\"},\"kind\":\"Secret\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-secret\",\"namespace\":\"example\"},\"stringData\":{\"apiKey\":\"dummy-api-key-v1\"},\"type\":\"Opaque\"}\n"
+                },
+                "creationTimestamp": "2026-11-17T10:23:17Z",
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-secret",
+                "namespace": "example",
+                "uid": "89e2832b-7aba-4d20-9e4e-d0608f601d63"
+            },
+            "type": "Opaque"
+        },
+        {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-app\",\"namespace\":\"example\"},\"spec\":{\"replicas\":0,\"selector\":{\"matchLabels\":{\"app\":\"example-app\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"example-app\"}},\"spec\":{\"containers\":[{\"envFrom\":[{\"configMapRef\":{\"name\":\"example-config\"}}],\"image\":\"registry.example.com/app:1\",\"name\":\"app\"}]}}}}\n"
+                },
+                "creationTimestamp": "2026-11-17T10:23:17Z",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-app",
+                "namespace": "example",
+                "uid": "a15e15b2-044a-4851-85ab-9cb13b0b5a0a"
+            },
+            "spec": {
+                "progressDeadlineSeconds": 600,
+                "replicas": 0,
+                "revisionHistoryLimit": 10,
+                "selector": {
+                    "matchLabels": {
+                        "app": "example-app"
+                    }
+                },
+                "strategy": {
+                    "rollingUpdate": {
+                        "maxSurge": "25%",
+                        "maxUnavailable": "25%"
+                    },
+                    "type": "RollingUpdate"
+                },
+                "template": {
+                    "metadata": {
+                        "labels": {
+                            "app": "example-app"
+                        }
+                    },
+                    "spec": {
+                        "containers": [
+                            {
+                                "envFrom": [
+                                    {
+                                        "configMapRef": {
+                                            "name": "example-config"
+                                        }
+                                    }
+                                ],
+                                "image": "registry.example.com/app:1",
+                                "imagePullPolicy": "IfNotPresent",
+                                "name": "app",
+                                "resources": {},
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File"
+                            }
+                        ],
+                        "dnsPolicy": "ClusterFirst",
+                        "restartPolicy": "Always",
+                        "schedulerName": "default-scheduler",
+                        "securityContext": {},
+                        "terminationGracePeriodSeconds": 30
+                    }
+                }
+            },
+            "status": {}
+        }
+    ]
+}

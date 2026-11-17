@@ -16,6 +16,9 @@ api/src/** text eol=lf
 *.gen.go text eol=lf
 internal/devtools/openapibundle/testdata/golden/** text eol=lf
 internal/agent/backend/testdata/** text eol=lf
+# Recorded documents are as each vendor's tool wrote them, with LF endings;
+# a CRLF checkout on Windows would change what the vendors' plan cases parse.
+test/fixtures/vendor-documents/** text eol=lf
 # Release files are checked against their vendors' signatures byte for byte;
 # a CRLF checkout on Windows fails the signature.
 internal/agent/tools/testdata/** -text

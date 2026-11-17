@@ -329,7 +329,8 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   run shares them, and one without them never answers a run that has
   them.
 - **The runner image** is the run's runtime configuration's, else the
-  stack's, else the account's default for private pools.
+  stack's, else the account's default for private pools, else the
+  launcher's default for the stack's vendor (see "Runner images").
 - **The source.** The clear part's `source` names `kind`, `url` and
   `narrowed`, and the launcher fetches it before the container starts:
   - **`git`:** an HTTPS Git URL of the stack's repository, from which the
@@ -375,17 +376,22 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   one's image, mounts and user, with no network, which does the same, and
   removes the workspace before the container. Only the launcher's user and
   the run's container reach it, through the launcher's cache directory.
-- **The tool.** `tool` names `name` (`terraform` or `tofu`), `version`
-  and `download`. The version is the Version Catalog's effective version
+- **The tool.** `tool` names `name` (`terraform`, `tofu` or `kubectl`),
+  `version` and `download`; a Pulumi, CloudFormation or Ansible run names
+  none (see "Vendors' runs"). The version is the Version Catalog's effective version
   for the stack's constraint, resolved at handover, so every phase of the
   run uses one release. A Terragrunt stack's run also names `terragrunt`
   (`version` and `download`), which drives the tool its `tool` setting
   chooses (`OPEN_TOFU` is `tofu`, `TERRAFORM_FOSS` is `terraform`;
-  `MANUALLY_PROVISIONED` answers `422` until the Terragrunt work of P20);
+  `MANUALLY_PROVISIONED` names no `tool`, so the image's own binary runs,
+  found through `TG_TF_PATH` when the stack or image sets it, and a
+  `terraformVersion` on such a stack answers `422` `validation-failed`);
   its version is the newest Terragrunt release matching the stack's
   `terragruntVersion`, from Terragrunt's release index without alpha or
   release-candidate tags, and the stack reads both back as
-  `effectiveVersions`. The constraint is the stack's `terraformVersion`,
+  `effectiveVersions`, the tool's null for `MANUALLY_PROVISIONED`;
+  `terragruntEffectiveVersion` resolves a pair of constraints the same
+  way, each against its own index. The constraint is the stack's `terraformVersion`,
   else its vendor settings' `version`; a stack with neither runs the
   newest listed release. `download` is false when the stack sets
   `skipVendorBinaryDownload`, and the image's own binary runs. A
@@ -531,13 +537,18 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   Terragrunt reads to write the plan's JSON. After planning the runner
   reads each unit's plan from that directory and reports their summed
   `delta`, failing on a plan that does not parse, naming its unit, or on
-  none. Terragrunt approves `apply` and `destroy` itself, and `apply`
-  plans again rather than reading the saved plan, as the refused
-  `skipReplan` says. A tracked run whose plan changes something saves its
+  none. Terragrunt approves `apply` and `destroy` itself. Without
+  `skipReplan`, `apply` plans again rather than reading the saved plan, so
+  mocked outputs never reach an apply; with `skipReplan`, or with the
+  deprecated `skipReplanWhenRunAll` under run-all, it applies each unit's
+  saved `tfplan.tfplan` (C188). A tracked run whose plan changes something saves its
   workspace for the confirmation, Terragrunt's cache of each unit with it.
-  It uploads no `plan.json`, `changes.json` or outputs, and the
-  specification marks the run so the server expects none; the changes
-  view, outputs and the plan policy input of a Terragrunt run are P20's.
+  It uploads `plan.json` as `{"units": [{"path", "plan"}]}`, each unit's
+  path from the project root, empty for the root unit, with its plan's
+  JSON, and `changes.json` with each change's unit in a field of its own,
+  so no reader splits an address; the plan policy input's `terragrunt`
+  block has one entry per unit. Its outputs are each unit's `output -json`,
+  named `<unit>/<output>`.
 - **After planning** the runner uploads two sealed artifacts: `plan.json`,
   the tool's `show -json` of the plan, and `changes.json`, the changes
   `internal/iac` parses from it, which the server reads for the run's
@@ -565,6 +576,226 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
   The run keeps its delta for its changes view. A `failed` or `stopped`
   report of `PLANNING` is taken as in any state.
+
+### Vendors' runs
+
+Pulumi, CloudFormation, Kubernetes and Ansible runs follow the same phases,
+hooks, reports and plan decision as the Terraform family's. What differs is
+each phase's commands, the plan document, the outputs, the image and the
+tool. Report [33](../reference/33-vendor-tool-documents.md) records what each
+tool writes, and `test/fixtures/vendor-documents` keeps those documents.
+
+- **What every vendor uploads.** After planning the runner uploads
+  `plan.json`, the vendor's plan document below, sanitized
+  ([0009](0009-policy-engine-opa.md#vendor-plan-documents)), and
+  `changes.json`, the changes `internal/iac/<vendor>` parses from it, and
+  reports the delta. A plan document that does not parse, or that exceeds
+  the plan bound, fails planning, naming the vendor. A replacement counts
+  once in add and once in delete, as a Terraform replacement does. No
+  vendor in this section manages state through
+  [0010](0010-state-backend.md), so their runs carry no `stateBackend`.
+  `changesV2`, `changesV3` and `searchEntityChanges` read every vendor's
+  `changes.json` alike.
+- **Extra arguments.** `INFRAWEAVE_PULUMI_CLI_ARGS_preview`, `_up` and
+  `_destroy`, and `INFRAWEAVE_ANSIBLE_CLI_ARGS`, `_plan` and `_apply`, are
+  split into words as `sh` splits them, without expansion, and appended to
+  the phase's command, each word quoted.
+
+**Pulumi** runs on the image's CLI; the specification names no tool.
+
+| Phase | Commands |
+|---|---|
+| `INITIALIZING` | `before_init` hooks; `pulumi login --non-interactive <loginURL>`; `pulumi stack select --create <stackName> --non-interactive`; `after_init` hooks |
+| `PLANNING` | `pulumi preview --refresh --diff --show-replacement-steps --non-interactive --event-log <runner temp>/events.jsonl`, with `PULUMI_DEBUG_COMMANDS=true` in that command's environment alone |
+| `APPLYING` | `pulumi up --refresh --diff --show-replacement-steps --yes --non-interactive`, then `pulumi stack export` for the outputs |
+| `DESTROYING` | `pulumi destroy --refresh --yes --non-interactive` |
+
+- **Hooks first.** `before_init` hooks run before the login, as Spacelift's
+  do, so a hook can export `PULUMI_ACCESS_TOKEN` or cloud credentials the
+  login needs.
+- **The event log.** The CLI accepts `--event-log` only under
+  `PULUMI_DEBUG_COMMANDS=true`, which the Automation API sets too. The run
+  log keeps the preview's human diff, and the steps come from the log
+  file. The nightly job runs the Pulumi scenarios on the newest Pulumi
+  release ([0016](0016-testing-and-acceptance.md#ci)), where a change to
+  the flag fails first.
+- **The plan document** is `{"steps": [...]}`: one step per
+  `resOutputsEvent` of the preview, in order, each
+  `{op, urn, type, provider, old, new}` from the event's `metadata`, the
+  shape of Spacelift's `pulumi.steps`. The stack resource's last step
+  carries the stack's outputs, and each default provider has its own step.
+  A value unknown at preview stays Pulumi's sentinel string
+  `04da6b54-80e4-46f7-96ec-b56ff0331ba9`. A preview whose `summaryEvent`
+  is missing or whose `result` is not `succeeded` fails planning.
+- **Changes** are one per URN, from its steps other than `refresh`; the URN
+  is the address, the type token the type, and the URN's last segment the
+  name:
+
+  | Pulumi step | Change type |
+  |---|---|
+  | `same` | `NOOP` |
+  | `create` | `ADD` |
+  | `update` | `CHANGE` |
+  | `delete` | `DELETE` |
+  | `replace`, with its `create-replacement` and `delete-replaced` | `REPLACE_CREATE_BEFORE_DESTROY` when `create-replacement` comes first, else `REPLACE_DESTROY_BEFORE_CREATE` |
+  | `read` | `READ` |
+  | `import` | `IMPORT` |
+  | `discard` | `FORGET` |
+
+  The delta's `resources` counts the custom resources with an `old` state,
+  and its output flag is set when the stack resource's last step changes
+  its outputs.
+- **Applying previews again.** `pulumi up` without `--skip-preview` previews
+  and then updates, as Spacelift's applies do. It applies the program as
+  it stands, not a saved plan, which Pulumi offers only as a preview
+  feature.
+- **Outputs** are the root `pulumi:pulumi:Stack` resource's `outputs` in
+  `pulumi stack export`: a secret signature object
+  (`4dabf18193072939515e22adb298388d`) is a sensitive output. When the run
+  keeps sensitive outputs' values (see Outputs under "Logs and artifacts"),
+  the runner exports with `--show-secrets` and takes the value from the
+  object's `plaintext`. `pulumi stack output --json` is not read: its
+  `"[secret]"` cannot be told from a literal string.
+- **Destroying previews first.** A resource the preview refuses, such as a
+  protected one, fails the run before anything is deleted; with
+  `--skip-preview` the same destroy deletes part of the stack and then
+  fails.
+- **The passphrase.** The runner sets none. A stack whose backend uses
+  Pulumi's passphrase provider sets `PULUMI_CONFIG_PASSPHRASE` as a
+  write-only variable or `PULUMI_CONFIG_PASSPHRASE_FILE` as a mounted file;
+  without either, Pulumi's own error fails `INITIALIZING`. The salt is in
+  the backend and in the `Pulumi.<stack>.yaml` that `stack select` writes,
+  which the workspace archive carries from planning to applying. Plugins
+  live in the container's home, not the workspace, so applying downloads
+  them again, as `init` installs Terraform's providers again.
+
+**CloudFormation** runs `infraweave runner cloudformation <step>`, the
+runner binary's driver over aws-sdk-go-v2, with the AWS SDK's credential
+chain and `AWS_ENDPOINT_URL*`. The phase's shell runs it, so variables a
+hook exports reach it, and no image needs the AWS CLI; the specification
+names no tool. `CF_METADATA_REGION`, `CF_METADATA_STACK_NAME`,
+`CF_METADATA_ENTRY_TEMPLATE_FILE` and `CF_METADATA_TEMPLATE_BUCKET` are set
+for every phase's hooks.
+
+| Phase | Steps |
+|---|---|
+| `INITIALIZING` | hooks; `DescribeStacks` decides the change set's type: `CREATE` when the stack is missing or in `REVIEW_IN_PROGRESS`, else `UPDATE` |
+| `PLANNING` | upload the entry template, and each nested `AWS::CloudFormation::Stack` whose `TemplateURL` is a local path rewritten to its uploaded `https://` URL, to `s3://<templateBucket>/<run ULID>/`; `CreateChangeSet` named `infraweave-<run ULID>` with `TemplateURL`, the parameters of `CF_PARAM_<name>`, the capabilities of `CF_CAPABILITY_<name>=1` and `IncludeNestedStacks`, without property values; `DescribeChangeSet` until it settles, every page and every nested change set |
+| `APPLYING` | `ExecuteChangeSet` of that change set with the run's ULID as `ClientRequestToken`; `DescribeStackEvents` of the stack and its nested stacks into the log until the stack settles; `DescribeStacks` for the outputs |
+| `DESTROYING` | `DeleteStack`, then `DescribeStacks` until it is gone |
+
+- **The plan document** is `{"parameters": [...], "changes": [...]}`: the
+  change set's `Parameters`, and every `Change` of the root change set
+  and of each nested one, as the API answers them, each with `stack`, the
+  logical IDs of its nested stacks from the root joined by `/`, empty at
+  the root.
+- **An empty plan.** A change set that fails because it holds no change is
+  a plan with no changes, matched by its `StatusReason` (C303); any other
+  failure fails planning with that reason.
+- **Changes.** The address is `stack` and the `LogicalResourceId` joined
+  by `/`, the type the `ResourceType`. `Add` is `ADD`, `Remove` `DELETE`,
+  `Import` `IMPORT`, `Modify` with `Replacement: True` a replacement that
+  creates first, and any other `Modify` or `Dynamic` `CHANGE`.
+- **The confirmed change set.** `APPLYING` executes the change set named
+  for the run, so it applies exactly what was confirmed. Executing a
+  change set deletes the stack's others, so a run whose change set another
+  run's apply removed fails `APPLYING` with a note saying so.
+- **A stack that fails to settle**, ending in a `*_FAILED` or
+  `*_ROLLBACK_COMPLETE` status, fails the phase with the first failed
+  event's reason.
+- **Outputs** are `DescribeStacks`' `Outputs`, every one plain: the API
+  marks none sensitive, and `NoEcho` does not mask a template's `Outputs`.
+- **CDK, SAM and Serverless** are hook recipes on a custom image, as report
+  [20 section 8](../reference/20-vendors.md#8-cloudformation) gives them.
+
+**Kubernetes** runs kubectl, which the launcher downloads at the run's
+`tool` (`name` `kubectl`): the newest release matching the stack's
+`kubectlVersion`, the newest release when it is null, resolved at the
+handover. `KUBECONFIG` is `/mnt/workspace/.kube/config` in every phase, and
+a mounted file or a `before_init` hook writes it. Each command is a key of
+the Kubernetes workflow ([0024](0024-expression-language.md#workflow-command-templates)).
+
+| Phase | Commands |
+|---|---|
+| `INITIALIZING` | hooks; `createFromStdin` with a `SelfSubjectAccessReview`; the kustomization (below) |
+| `PLANNING` | `apiResources`, the kinds to read and prune; `get` of the stack's objects; `apply` with `dryRunStrategy` `server` when `get` found any and `client` when it found none, and `outputFormat` `json` |
+| `APPLYING` | `apply`; `rolloutStatus` for each Deployment, StatefulSet and DaemonSet applied, with `getPods` writing their pods to the log meanwhile |
+| `DESTROYING` | `apiResources`; `delete` of every listed kind by the stack's label |
+
+- **The kustomization.** Without a `kustomization.yaml` at the project
+  root, the runner writes one that lists every `.yaml` and `.yml` file
+  under it; with one, it adds a `labels` transformer. Either way the
+  transformer sets `infraweave-stack: <stack ULID>` and
+  `app.kubernetes.io/managed-by: infraweave` on each object's `metadata`
+  and leaves selectors alone. A project root with no manifest fails
+  planning, since pruning would remove everything.
+- **Why a client dry run first.** A server dry run into a namespace that
+  does not exist yet, or that the same apply creates, fails; a client dry
+  run does not. A custom resource definition and a resource of its kind
+  fail in one apply in every mode, so a stack applies definitions in an
+  earlier run or another stack.
+- **Pruning** passes `--prune` with the stack's label and one allowlist
+  entry per kind `apiResources` lists, through the template's
+  `pruneAllowList`; `pruneFlag` is `--prune-allowlist`, or
+  `--prune-whitelist` when the resolved kubectl is below 1.26, which has
+  only that flag.
+- **The plan document** is `{"version": 1, "resources": [...]}`, one entry
+  per object, `{address, kind, namespace, name, before, after}`. `before`
+  is the object `get` read and `after` the object of the dry run's `List`;
+  the dry run writes each object it would prune as a further JSON value
+  after the `List`, which is an entry with `after` null. The address is
+  `[<group>/]<kind>/[<namespace>/]<name>`, such as
+  `apps/Deployment/example/example-app`.
+- **Changes.** `before` alone is `DELETE`, `after` alone `ADD`, and both
+  are `CHANGE` when they differ with `metadata.uid`, `creationTimestamp`,
+  `resourceVersion`, `generation`, `managedFields`, the
+  `kubectl.kubernetes.io/last-applied-configuration` and
+  `deployment.kubernetes.io/revision` annotations, and `status` left out,
+  else `NOOP`. `resources` counts the objects `get` read. Kubernetes has no
+  outputs.
+- **Rollouts** wait `KUBECTL_ROLLOUT_TIMEOUT` seconds, 600 by default.
+- **No `kubectl diff`.** The runner never runs it: its output prints a
+  Secret's last-applied annotation, and a pruned Secret whole, into the
+  log.
+- **Helm** is a hook recipe: a `before_plan` hook renders `helm template`
+  into a file the committed `kustomization.yaml` lists (C298).
+
+**Ansible** runs on the `infraweave-runner-ansible` image's ansible-core,
+with infraweave's aggregate callback `infraweave`; the specification names
+no tool. Before every phase the runner exports `ANSIBLE_VERBOSITY=1` and
+`ANSIBLE_SSH_CONTROL_PATH_DIR=/tmp/.ansible/cp` unless the stack sets
+them, and adds `infraweave` to the stack's `ANSIBLE_CALLBACKS_ENABLED`.
+
+| Phase | Commands |
+|---|---|
+| `INITIALIZING` | hooks; `ansible-galaxy install -r <file>` for the first `requirements.yml` or `requirements.yaml` at the project root, in `roles/` or in `collections/`, or the file `INFRAWEAVE_ANSIBLE_REQUIREMENTS_FILE` names |
+| `PLANNING` | `ansible-playbook <playbook> --check`, skipped when `INFRAWEAVE_SKIP_PLANNING` is `true` |
+| `APPLYING` | `ansible-playbook <playbook>` |
+
+- **No `--diff` and no `-i`.** A diff prints a template's rendered secrets
+  into the log, and the inventory comes from the project's `ansible.cfg`,
+  `ANSIBLE_INVENTORY` or the extra arguments, as in Spacelift's runs. Any
+  exit code other than 0 fails the phase: 2 for a failed task, 4 for an
+  unreachable host.
+- **The callback** writes JSON lines to the file `INFRAWEAVE_ANSIBLE_RECORD`
+  names: one record per task result, `{host, playbook, role, task, action,
+  status, checkMode}`, with `status` one of `ok`, `changed`, `failed`,
+  `skipped`, `unreachable`, `rescued` and `ignored`, and last
+  `{"stats": {processed, ok, changed, dark, failures, skipped, rescued,
+  ignored}}`, ansible-core's play recap. It writes no module result and no
+  diff, since results carry file checksums, command output and rendered
+  content, and it keeps a `no_log` task's names and status alone. It needs
+  neither `ansible.posix` nor ansible-runner.
+- **The plan document** is `{"playbook", "stats", "tasks"}` from those
+  records.
+- **Changes** are one per task result that is `ok` or `changed`, with its
+  host, playbook, role, task and action, and no address. The delta's
+  `change` counts `changed` results, and `skipped` ones too unless
+  `INFRAWEAVE_IGNORE_SKIPPED_TASK_CHANGES` is `true`
+  ([20 section 10](../reference/20-vendors.md#10-ansible)). Ansible has no
+  outputs.
+- **The configuration management view** reads its hosts, tasks and
+  executions from each run's records.
 
 ### Logs and artifacts
 
@@ -910,13 +1141,32 @@ has failed":
 - **Selection** follows Spacelift's precedence: runtime configuration, stack, the
   account default, the launcher default
   ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
+  The launcher's default depends on the stack's vendor: `-opentofu` for
+  OpenTofu, `-pulumi` for Pulumi, `launcher.default_ansible_runner_image`
+  (by default `-ansible`) for Ansible, and `-terraform` for every other
+  vendor. `launcher.default_runner_image`, unset by default, replaces the
+  default of every vendor but Ansible, as Spacelift's launcher variables
+  do.
 - **Defaults.** infraweave publishes its own multi-arch images
-  (`ghcr.io/weaveplatform/infraweave-runner-terraform`, `-opentofu`, `-ansible`)
-  that meet the contract, defined under `deploy/images/`. They hold the
-  tools a phase's shell needs (`bash`, `ca-certificates`, `curl`, `git`,
-  `jq`, `openssh-client`, `ps` and `tzdata`) and no Terraform or OpenTofu
-  binary, which the launcher mounts, as Spacelift's images do
+  (`ghcr.io/weaveplatform/infraweave-runner-terraform`, `-opentofu`,
+  `-pulumi`, `-ansible`) that meet the contract, defined under
+  `deploy/images/` on one Alpine base. They hold the tools a phase's shell
+  needs (`bash`, `ca-certificates`, `curl`, `git`, `jq`, `openssh-client`,
+  `ps` and `tzdata`) and no Terraform or OpenTofu binary, which the
+  launcher mounts, as Spacelift's images do
   ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
+  - **`-pulumi`** adds the Pulumi CLI and its language hosts from Pulumi's
+    release archive, checked against the SHA-256 its Dockerfile pins, with
+    Node.js and npm, and Python and pip, from Alpine; Go and .NET programs
+    build on an image derived from it. The CLI and its language hosts are
+    statically linked
+    ([33 section 2.1](../reference/33-vendor-tool-documents.md#21-commands-per-phase));
+    that they and a provider plugin run on musl is C299.
+  - **`-ansible`** adds ansible-core from PyPI and infraweave's callback
+    plugin, enabled by the runner (see "Vendors' runs"), and neither
+    `ansible.posix` nor ansible-runner.
+  - Kubernetes and CloudFormation stacks run on `-terraform`: kubectl is
+    mounted, and CloudFormation's driver is the runner itself.
 - **Tool binaries.** The launcher downloads the requested version of Terraform,
   OpenTofu, Terragrunt or kubectl, verifies it and mounts it read-only at
   `/bin/<tool>`, such as `/bin/terraform` or `/bin/tofu`; a Terragrunt
@@ -929,7 +1179,7 @@ has failed":
   | Terraform | `SHA256SUMS` signed by HashiCorp's PGP key, which is embedded in the binary, then the archive checksum |
   | OpenTofu | `SHA256SUMS` signed by the OpenTofu signing key, embedded, then the archive checksum |
   | Terragrunt | `SHA256SUMS` signed by Gruntwork's Terragrunt signing key, embedded rather than taken from the release, then the binary's checksum |
-  | kubectl | The published SHA-256 checksum |
+  | kubectl | The SHA-256 that `dl.k8s.io` publishes beside the binary, fetched over TLS |
 
   Binaries are cached at `<cache_dir>/binaries/<tool>/<version>/<os>_<arch>` and
   reused. Each is written beside its path and renamed into place, so
@@ -942,7 +1192,11 @@ has failed":
   `<tool_mirror>/<tool>/<version>/` with the vendor's file names, the layout
   of `releases.hashicorp.com`. `skipVendorBinaryDownload` skips the download.
   A refused release fails the run in preparation, and its note names the
-  release and the step that refused it.
+  release and the step that refused it. kubectl's releases come from the
+  `kubernetes/kubernetes` GitHub releases, alpha, beta and release
+  candidates left out, through the reader Terragrunt's index uses, and
+  `kubectlVersions` lists them newest first; `launcher.tool_mirror` serves
+  kubectl under `kubectl/<version>/`.
 
 ### Timeouts and timers
 
@@ -1055,6 +1309,12 @@ the note `killed`.
 - `deleting` is the runs domain's state of the stack, as its projected run
   state is, so setting and clearing it changes neither the stack's version
   nor its `ETag`.
+- A CloudFormation stack's destroy run deletes the CloudFormation stack
+  with `DeleteStack` (see "Vendors' runs"), where Spacelift's docs give a
+  task to run before deleting the stack.
+- An Ansible stack has nothing to destroy: `destroyResources: true` answers
+  `422` `validation-failed` at `/destroyResources`, as Spacelift's console
+  offers no destroy for one.
 
 ### Signed runs
 
@@ -1145,6 +1405,40 @@ offers this policy is available to it alone; 0009 lists built-ins.
   images usable.
 - **Departure: launcher settings are named `INFRAWEAVE_LAUNCHER_*`.** The
   launcher is infraweave's client, not Spacelift's.
+- **Departure: `MANUALLY_PROVISIONED` still downloads Terragrunt.**
+  Spacelift downloads nothing for such a stack and relies on the image's
+  `terragrunt`; infraweave's images carry no Terragrunt, so the launcher
+  downloads and verifies it, and only the tool comes from the image.
+- **Departure: Terragrunt and its tool resolve on their own.** Spacelift
+  picks a compatible pair from Gruntwork's compatibility table, which is a
+  documentation page rather than data; current Terragrunt drives every
+  current OpenTofu and Terraform release, so each constraint resolves
+  against its own index.
+- **Departure: a default image for Pulumi.** Spacelift's Pulumi stacks
+  need an image named per language; `-pulumi` runs a Pulumi YAML, Node.js
+  or Python program with none named, and a stack that names one is
+  unaffected.
+- **Departure: CloudFormation stacks destroy on delete.** Spacelift
+  documents no destroy for a CloudFormation stack; every other vendor's
+  destroy run deletes what it created, and a destroy run that did nothing
+  would be a silent failure.
+- **Departure: changes for every vendor.** Spacelift's `changesV3` answers
+  an error for vendors outside the Terraform family; every vendor records
+  `changes.json`, so one read serves them all and no client breaks.
+- **Departure: no passphrase of infraweave's own for Pulumi.** Spacelift's
+  Pulumi runs need no `PULUMI_CONFIG_PASSPHRASE` from the stack, so its
+  runner sets one (C300); a passphrase the runner chose would protect
+  nothing, so the stack sets its own.
+- **kubectl is checked by its published SHA-256 alone**, from the origin
+  that serves the binary, where Terraform, OpenTofu and Terragrunt are
+  checked against embedded signing keys. Kubernetes signs its releases
+  keylessly through Sigstore, whose verification needs a trust root the
+  launcher would have to keep current, and publishes no long-lived key.
+- **Plans from the tools' own documents.** Each vendor's plan document is
+  what its tool writes for a machine (Pulumi's engine events, kubectl's
+  dry run, ansible-core's callback, CloudFormation's change set), never a
+  log parsed for meaning
+  ([33](../reference/33-vendor-tool-documents.md)).
 - **UID 1983 and Spacelift's precedence** cost nothing and let existing images,
   hooks and runtime configuration move over unchanged.
 
@@ -1266,6 +1560,17 @@ offers this policy is available to it alone; 0009 lists built-ins.
   and cached, and a tampered `SHA256SUMS`, a tampered archive, a signature
   by another key, a missing signature and an oversized archive each
   refused.
+- Each vendor's `iactest` plan cases parse the recorded documents of
+  `test/fixtures/vendor-documents`: Pulumi's event logs of a create, no
+  change, a change and a failed preview, and kubectl's `get` and dry runs
+  of a create, no change, a change and a prune. The Ansible callback's
+  tests run ansible-core over the recorded project, a check, an apply and
+  a failure, and compare its records' statuses and recap with the recorded
+  ones. `vendors/pulumi.feature`,
+  `vendors/cloudformation.feature`, `vendors/kubernetes.feature` and
+  `vendors/ansible.feature` run each vendor's tracked run, proposed run,
+  task and, but for Ansible, destroy run
+  ([0016](0016-testing-and-acceptance.md)).
 - `api/worker.openapi.yaml` validates as OpenAPI 3, and a test checks that the
   served `/worker/v1` routes match it.
 

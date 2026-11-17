@@ -1,0 +1,29 @@
+Previewing destroy (dev):
+
+ ~  pulumi:pulumi:Stack example-dev refreshing
+ ~  pulumi:pulumi:Stack example-dev refreshing
+ ~  random:index:RandomPassword password refreshing
+ ~  random:index:RandomPet pet refreshing
+ ~  random:index:RandomInteger number refreshing
+ ~  random:index:RandomPet pet refresh
+ ~  random:index:RandomInteger number refresh
+ ~  random:index:RandomPassword password refresh
+ -  random:index:RandomPassword password delete
+ -  random:index:RandomPet pet delete
+ -  random:index:RandomInteger number delete
+ -  random:index:RandomPassword password delete error: Preview failed: resource "urn:pulumi:dev::example::random:index/randomPassword:RandomPassword::password" cannot be deleted
+ ~  pulumi:pulumi:Stack example-dev refreshing error: preview failed
+ -  random:index:RandomPassword password delete 1 error
+ ~  pulumi:pulumi:Stack example-dev refresh 1 error
+Diagnostics:
+  pulumi:pulumi:Stack (example-dev):
+    error: preview failed
+
+  random:index:RandomPassword (password):
+    error: Preview failed: resource "urn:pulumi:dev::example::random:index/randomPassword:RandomPassword::password" cannot be deleted
+    because it is protected. To unprotect the resource, either remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`, or use the command:
+    `pulumi state unprotect 'urn:pulumi:dev::example::random:index/randomPassword:RandomPassword::password'`
+
+Resources:
+    - 2 to delete
+    2 errored

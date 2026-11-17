@@ -1,0 +1,23 @@
+{
+    "_meta": {
+        "hostvars": {
+            "localhost": {
+                "ansible_connection": "local",
+                "ansible_python_interpreter": "/usr/local/bin/python3",
+                "db_password": "dummy-db-password-v1"
+            }
+        },
+        "profile": "inventory_legacy"
+    },
+    "all": {
+        "children": [
+            "ungrouped",
+            "local"
+        ]
+    },
+    "local": {
+        "hosts": [
+            "localhost"
+        ]
+    }
+}

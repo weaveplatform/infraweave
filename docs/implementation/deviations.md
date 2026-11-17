@@ -96,9 +96,10 @@ MCP.
 ### Runs, workers and policies: decisions 0008 and 0009
 
 The worker long-poll protocol in place of MQTT, lost runs and offline
-workers, runner images and launcher settings, the pool key, and the policy
-engine's default version, removed builtins, fail-closed outcomes and
-`sanitized` helper.
+workers, runner images and launcher settings, the pool key, each vendor's
+runs, default images and changes, the policy engine's default version,
+removed builtins, fail-closed outcomes and `sanitized` helper, and the
+plan values hashed for every vendor.
 
 ### State and queue: decisions 0010 and 0011
 
@@ -171,7 +172,8 @@ and the keys of the repository configuration file.
 ### Expressions: decision 0024
 
 CEL for every expression, text templates in workflow files and environment
-values, a fixed render context, and expressions on output references.
+values, a fixed render context, expressions on output references, and the
+Kubernetes workflow's label and prune flag.
 
 ## Deviations a capture may change
 

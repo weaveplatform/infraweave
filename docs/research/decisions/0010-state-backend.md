@@ -70,14 +70,30 @@ behind the controls every API surface shares, and depart from them only where de
   and templates of `find_in_parent_folders`, `get_terragrunt_dir`, `get_repo_root` and
   `get_path_to_repo_root`, read no further up than the workspace; an include it cannot work
   out, and a module a unit sources, is left to the tool, which refuses a second backend at
-  `init`. A `terragrunt.stack.hcl` under the project root fails initialization too, since
-  Terragrunt generates its units when the run runs, where no backend file reaches them.
+  `init`.
+- **Explicit stacks.** Under run-all, a project root that holds a `terragrunt.stack.hcl`
+  has its units generated first in `INITIALIZING`, by `terragrunt stack generate` at the
+  project root; the generated units, under `.terragrunt-stack`, are then found, checked
+  and given backend files as any unit is, each workspace named by the unit's path from
+  the project root, such as `.terragrunt-stack/vpc`. Every later Terragrunt command runs
+  with `--no-stack-generate`, so the units keep their backend files. Without run-all a
+  `terragrunt.stack.hcl` under the project root fails initialization with a note saying
+  that explicit stacks need `useRunAll`, as Spacelift supports them only under run-all
+  ([20 section 6.6](../reference/20-vendors.md#66-limitations)). Whether those flags
+  behave so on the latest Terragrunt is C304.
 - **Which stacks manage state.** A stack manages state when created with `manageState`.
   For a Terragrunt stack, `useStateManagement` decides when it is set and `manageState`
   when it is null, as the Terraform provider documents
   ([16 section 2.1](../reference/16-state-management.md#21-where-the-flag-lives)); the
   stack answers the effective value. Either is fixed at creation:
   `terragrunt.use_state_management` in a run's runtime configuration changes nothing.
+- **Vendors with state of their own.** Pulumi keeps state in the backend its `loginURL`
+  names, CloudFormation in AWS and Kubernetes in the cluster, and Ansible's state is its
+  hosts ([33 section 6](../reference/33-vendor-tool-documents.md#6-what-each-contract-takes)).
+  Their stacks accept `manageState` and ignore it, since the Terraform provider sends it
+  for every stack, and answer `managesStateFile: false`. Their runs carry no
+  `stateBackend`, and state import, external access and the state URLs answer them as
+  they answer any stack without managed state.
 - **Credentials.** The username is `run` and the password is the run token (decision
   [0006](0006-authentication-and-tokens.md)), passed through `TF_HTTP_USERNAME` and
   `TF_HTTP_PASSWORD` in the phase environment, never written into the workspace, so the
@@ -603,7 +619,10 @@ unlock) are ordinary REST operations and answer the problem details of decision
   `tofuWorkspaceUnlock`, which refuses that unit's write with `423`; and state management
   that a run's `terragrunt.use_state_management` changes neither way (C113, C114)).
   `vendors/terragrunt.feature` asserts `useStateManagement` deciding over `manageState` at
-  creation and kept through an update (C113).
+  creation and kept through an update (C113), and an explicit stack under run-all with a
+  workspace per generated unit, refused without run-all (C304). `vendors/pulumi.feature`,
+  `vendors/cloudformation.feature` and `vendors/kubernetes.feature` create their stacks
+  with `manageState: true` and read `managesStateFile: false`.
 - Retention tests: unit tests of the pass's batches, its question about runs and a
   failure part way; store tests on PostgreSQL of the selection over versions with chosen
   `created_at`s, of `0`, and of a pass stopped in its second batch, which leaves no row

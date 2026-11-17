@@ -1,0 +1,35 @@
+No config file found; using defaults
+
+PLAY [Configure the example host] **********************************************
+
+TASK [common : Ensure the work directory] **************************************
+changed: [localhost] => {"changed": true, "path": "/tmp/example"}
+
+TASK [Say hello] ***************************************************************
+ok: [localhost] => {
+    "msg": "hello from localhost"
+}
+
+TASK [Write a file] ************************************************************
+changed: [localhost] => {"changed": true}
+
+TASK [Render a template] *******************************************************
+changed: [localhost] => {"changed": true}
+
+TASK [Ensure a line] ***********************************************************
+changed: [localhost] => {"backup": "", "changed": true, "msg": "line added"}
+
+TASK [Write a secret file with no_log] *****************************************
+changed: [localhost] => {"censored": "the output has been hidden due to the fact that 'no_log: true' was specified for this result", "changed": true}
+
+TASK [Write a secret file without no_log] **************************************
+changed: [localhost] => {"changed": true}
+
+TASK [Command without check mode support] **************************************
+skipping: [localhost] => {"changed": false, "cmd": ["echo", "would-run"], "delta": null, "end": null, "msg": "Command would have run if not in check mode", "rc": 0, "start": null, "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+
+TASK [Skipped task] ************************************************************
+skipping: [localhost] => {"false_condition": false}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=7    changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0

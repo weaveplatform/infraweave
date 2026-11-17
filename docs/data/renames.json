@@ -258,6 +258,18 @@
       "kind": "concept",
       "reference": "Flows HTTP Endpoint `audience` value `organization`",
       "infraweave": "`account`"
+    },
+    {
+      "id": "RN-43",
+      "kind": "concept",
+      "reference": "The Kubernetes label `spacelift-stack: <stack slug>`",
+      "infraweave": "`infraweave-stack: <stack ULID>`"
+    },
+    {
+      "id": "RN-44",
+      "kind": "concept",
+      "reference": "The Kubernetes label `app.kubernetes.io/managed-by: spacelift`",
+      "infraweave": "`app.kubernetes.io/managed-by: infraweave`"
     }
   ]
 }

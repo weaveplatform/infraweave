@@ -1,0 +1,65 @@
+
+PLAY [Configure the example host] **********************************************
+
+TASK [common : Ensure the work directory] **************************************
+--- before
++++ after
+@@ -1,4 +1,4 @@
+ {
+     "path": "/tmp/example",
+-    "state": "absent"
++    "state": "directory"
+ }
+
+changed: [localhost]
+
+TASK [Say hello] ***************************************************************
+ok: [localhost] => {
+    "msg": "hello from localhost"
+}
+
+TASK [Write a file] ************************************************************
+--- before
++++ after: /tmp/example/copy.txt
+@@ -0,0 +1 @@
++copied v1
+
+changed: [localhost]
+
+TASK [Render a template] *******************************************************
+--- before
++++ after: /root/.ansible/tmp/ansible-local-233dm6j1be4/tmplas6erjl/config.ini.j2
+@@ -0,0 +1,3 @@
++[app]
++version = v1
++secret = dummy-app-secret-v1
+
+changed: [localhost]
+
+TASK [Ensure a line] ***********************************************************
+--- before: /tmp/example/lines.txt (content)
++++ after: /tmp/example/lines.txt (content)
+@@ -0,0 +1 @@
++key=value-v1
+
+changed: [localhost]
+
+TASK [Write a secret file with no_log] *****************************************
+changed: [localhost]
+
+TASK [Write a secret file without no_log] **************************************
+--- before
++++ after: /tmp/example/leaky.txt
+@@ -0,0 +1 @@
++dummy-db-password-v1
+
+changed: [localhost]
+
+TASK [Command without check mode support] **************************************
+skipping: [localhost]
+
+TASK [Skipped task] ************************************************************
+skipping: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=7    changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0

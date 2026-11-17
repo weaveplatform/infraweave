@@ -92,7 +92,7 @@ doublestar globs stay as the standard mini-languages they are
 | Output references | Expression, optional on a reference | `value` (the referenced output), `outputs` (the upstream stack's outputs) | `serve`, at the downstream run's handover |
 | Notification text | Text template in every string a notification policy returns, and in the default messages | `event` (the event document of [0015](0015-events-notifications-webhooks-audit.md)), `logs(phase)` | `scheduler`, in the delivery job |
 | Environment interpolation | Text template in a variable's value | `env` (the run's other variables), `run`, `stack` | `serve`, at the run's handover ([0008](0008-run-execution-and-worker-protocol.md)) |
-| Workflow command templates | Text template, shell-quoted (below) | `planFileName`, `lock`, `refresh`, `targets`, `workspaceName`, `lockTimeout` | The runner: checked at initialization, each command rendered when its phase runs |
+| Workflow command templates | Text template, shell-quoted (below) | The vendor's run parameters: for the Terraform family `planFileName`, `lock`, `refresh`, `targets`, `workspaceName`, `lockTimeout`; for Kubernetes those of the seven Kubernetes keys (below) | The runner: checked at initialization, each command rendered when its phase runs |
 
 - **Flows variables.** `outputs.<block>` holds each upstream block's output
   on the event's primary lineage, keyed by the block's camelCase name, as
@@ -292,13 +292,17 @@ templates.
 ### Workflow command templates
 
 - **File.** `.infraweave/workflow.yml` in the run's project root holds the
-  nine keys of
-  [20 section 3.2](../reference/20-vendors.md#32-commands-per-phase); each
-  value is a text template whose literal text is shell. The runner reads it
-  whenever the project root has it, after writing the mounted files, so a
-  mounted file can supply it. A stack whose workflow tool is `CUSTOM` must
-  have it; any other stack without it renders the vendor's built-in
-  templates, which `internal/iac/workflow` declares. A key it does not
+  vendor's keys: for Terraform, OpenTofu and Terragrunt the nine keys of
+  [20 section 3.2](../reference/20-vendors.md#32-commands-per-phase), and
+  for Kubernetes the seven of
+  [20 section 9.1](../reference/20-vendors.md#91-commands)
+  (`createFromStdin`, `apiResources`, `apply`, `rolloutStatus`, `getPods`,
+  `delete` and `get`); each value is a text template whose literal text is
+  shell. The runner reads it whenever the project root has it, after
+  writing the mounted files, so a mounted file can supply it. A stack
+  whose workflow tool is `CUSTOM` must have it; any other stack without it
+  renders the vendor's built-in templates, which `internal/iac/workflow`
+  declares. A key it does not
   know, a key given twice, or a value that is null, empty or not a scalar
   fails the run; a scalar is its text as written, so `init: true` runs
   `true`. The runner reads at most 256 KiB of it, and only inside the
@@ -311,6 +315,25 @@ templates.
   `now` or `random.*` is in scope, so rendering needs nothing the worker
   does not already hold and the same parameters always render the same
   line.
+- **Kubernetes variables** are Spacelift's template parameters under the
+  same rule: `stackId` (the stack's ULID, the value of its
+  `infraweave-stack` label), `namespace` (empty for a stack of several
+  namespaces), `dryRunStrategy` (`none`, `client` or `server`),
+  `outputFormat` (empty, `json`, `name` or `wide`), `pruneAllowList` (a
+  list of `<group>/<version>/<Kind>`, `core` for the core group),
+  `pruneFlag` (`--prune-allowlist`, or `--prune-whitelist` when the
+  resolved kubectl is below 1.26), `noHeaders`, `isNamespaced`,
+  `rolloutTimeout` (seconds), `id` (`<kind>/<name>`), `pods` (a label
+  selector), `resourcesToDelete` and `resourceKindsToGet` (lists). The
+  built-in `apply` is
+  `kubectl apply -k ./ --prune ${{ pruneAllowList.map(k, pruneFlag + "=" + k) }} -l ${{ "infraweave-stack=" + stackId }} --dry-run=${{ dryRunStrategy }} ${{ outputFormat == "" ? [] : ["-o", outputFormat] }} ${{ namespace == "" ? [] : ["--namespace=" + namespace] }}`.
+  The label `feature:k8s_keep_using_prune_white_list_flag` has no effect,
+  since the resolved release decides the flag.
+- **Pulumi, CloudFormation and Ansible** take no workflow file, as in
+  Spacelift. Pulumi's and Ansible's commands
+  ([0008](0008-run-execution-and-worker-protocol.md#vendors-runs)) are
+  built-in templates of `internal/iac/workflow` rendered the same way, so a
+  stack's extra arguments reach the shell as one quoted word each.
 - **Checked at initialization, rendered when the phase runs.** The runner
   uses the same `internal/platform/expr` package and library. Every key is
   parsed and type-checked before the first command runs; a missing key, a
@@ -410,6 +433,14 @@ templates.
   text templates, and `logs(phase)` replaces the `spacelift::logs::*`
   placeholders.
 - **Departure from Spacelift:** output references may carry an expression.
+- **Departure from Spacelift:** Kubernetes' prune flag follows the resolved
+  kubectl release, not a stack label: `--prune-allowlist` exists from 1.26
+  and current kubectl refuses `--prune-whitelist`
+  ([33 section 3.1](../reference/33-vendor-tool-documents.md#31-commands)),
+  so a label could only break a run.
+- **Departure from Spacelift:** the `infraweave-stack` label's value is the
+  stack's ULID rather than its slug, so it never needs truncating and two
+  accounts' stacks of one slug on one cluster never share it.
 
 ## Constraints
 
@@ -454,6 +485,10 @@ templates.
 - `TestUnitExprShellSurface`: a shell surface quotes every embedded
   value, renders a list as one word per element, keeps a whole template
   text, and has no `now` and no `random.*`.
+- `TestUnitWorkflowKubernetes` renders the seven Kubernetes keys with and
+  without a namespace, each dry-run strategy and a kubectl release either
+  side of 1.26, and a `.infraweave/workflow.yml` of a `CUSTOM` Kubernetes
+  stack missing a key fails initialization naming it.
 - `test/acceptance/features/expressions/flows.feature` (`@postgres`,
   `@flows-agent`): a Transform in the steps form, a named expression, a
   `fail` routed to a Handle Error block, a retry reproducing `now` and

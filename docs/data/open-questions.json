@@ -2411,13 +2411,15 @@
       "id": "C193",
       "kind": "capture",
       "area": "Vendors (report 20)",
-      "question": "What exact commands do Ansible runs, CloudFormation applies (change set execution) and Pulumi destroys use? The report infers them. The console settles the Ansible part, `--check` while planning and a real run while applying, and shows `pulumi preview` and `pulumi up` output for Pulumi's plan and apply (report 32); the Pulumi destroy and CloudFormation commands are unread",
+      "question": "What exact commands do Ansible runs, CloudFormation applies (change set execution) and Pulumi destroys use? Resolved on 2026-11-17: the console settles Ansible's, `ansible-playbook <playbook> --check` while planning and the same without `--check` while applying (report 32), and the Pulumi CLI's own output settles Pulumi's plan and apply, a `pulumi up --yes` that previews before it updates (report 33); Pulumi's destroy moves to C295 and CloudFormation's runs to C296",
       "howToCapture": "Read the logs of each run type",
       "blocks": "runner command parity",
       "reports": [
         "docs/research/reference/20-vendors.md",
-        "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+        "docs/research/reference/32-spacelift-console-survey.md",
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C194",
@@ -3861,6 +3863,120 @@
       "blocks": "the human lock's refusal in decision 0008",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C295",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Which command does Spacelift's Pulumi destroy run, and does it preview first? `pulumi destroy --yes` stops at a protected resource before deleting anything, while `--skip-preview` deletes part of the stack and then fails",
+      "howToCapture": "Destroy a Pulumi stack holding one protected resource, through a destroy task and through deletion with `destroyResources`, and read the log and the stack's resources",
+      "blocks": "Pulumi's destroy command in decision 0008",
+      "reports": [
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C296",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Which AWS calls do Spacelift's CloudFormation runs make in each phase, what does the plan policy input's `cloudformation` block hold, and what does deleting a CloudFormation stack with `destroyResources` do?",
+      "howToCapture": "Run a CloudFormation stack with a nested template through a plan, an apply and deletion with `destroyResources`, under a plan policy that prints its input, and read the logs and CloudTrail",
+      "blocks": "CloudFormation's run contract and policy block in decisions 0008 and 0009; DV-120",
+      "reports": [
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C297",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "What does Spacelift pass to plan policies in the `kubernetes` block, given that a dry run that prunes writes a stream of JSON values, and how does a Secret's value appear there and in the resources view?",
+      "howToCapture": "Plan a Kubernetes stack holding a Secret, with one object pruned, under a plan policy that prints its input, and open the resources view",
+      "blocks": "the `kubernetes` policy block in decision 0009; DV-125",
+      "reports": [
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C298",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Does the `helm template` hook recipe work under the Kubernetes workflow, and does pruning remove a chart's objects that a later release drops?",
+      "howToCapture": "Follow the Helm recipe with a chart, upgrade it to a release that drops an object, and read the dry run and the cluster",
+      "blocks": "the Helm recipe of decision 0008",
+      "reports": [
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C299",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "Do the Pulumi CLI, its Node.js, Python and YAML language hosts and a provider plugin run on Alpine's musl?",
+      "howToCapture": "Build the `-pulumi` image and preview a Node.js, a Python and a YAML program that use the `random` provider",
+      "blocks": "the `-pulumi` image's base in decision 0008",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C300",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "What passphrase does Spacelift's Pulumi runner set when the stack sets no `PULUMI_CONFIG_PASSPHRASE`, and what does the resource plugin it installs while initializing do?",
+      "howToCapture": "Print the environment, masked, and `pulumi plugin ls` from a `before_plan` hook of a Pulumi stack with a `file://` backend",
+      "blocks": "the passphrase rule in decision 0008",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C301",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "How do Pulumi's `update`, `read`, `import` and `discard` steps appear in the engine events: their order, `old` and `new`, and the summary's counts?",
+      "howToCapture": "Preview, with `--event-log`, a program whose resource updates in place, a `get` resource, an imported resource and a removed `retainOnDelete` resource",
+      "blocks": "Pulumi's change types in decision 0008",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C302",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "Does a Spacelift Ansible change entry's `task_name` carry the role's prefix, as ansible-core names a role's task (`common : Ensure the work directory`)?",
+      "howToCapture": "Plan a playbook with a role under a plan policy that prints its input",
+      "blocks": "the Ansible changes' task names in decision 0008",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C303",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "Does `DescribeChangeSet` mask a `NoEcho` parameter's value in `Parameters` and in property values, and a write-only property's value; and which `StatusReason` does a change set with no changes carry?",
+      "howToCapture": "In an AWS account, create change sets with a `NoEcho` parameter, with and without `IncludePropertyValues`, and one with no changes, and read `DescribeChangeSet`",
+      "blocks": "CloudFormation's sanitization in decision 0009 and its empty plan in decision 0008",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C304",
+      "kind": "capture",
+      "area": "Vendors (report 20)",
+      "question": "Does `terragrunt stack generate` at the project root generate every unit of its `terragrunt.stack.hcl` under `.terragrunt-stack`, and does `--no-stack-generate` keep a later `run --all` from generating them again over files written in between?",
+      "howToCapture": "Run the latest Terragrunt on a `terragrunt.stack.hcl` of two units, write a file into each generated unit, then run `terragrunt run --all --no-stack-generate -- plan`",
+      "blocks": "explicit stacks in decision 0010",
+      "reports": [
+        "docs/research/reference/20-vendors.md"
       ]
     }
   ]
