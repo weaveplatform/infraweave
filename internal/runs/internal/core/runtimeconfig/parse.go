@@ -157,6 +157,10 @@ func parseYAML(text string) (Input, error) {
 		document.Content[0].Tag == "!!null" && document.Content[0].Value == "" {
 		return in, nil
 	}
+	if root := document.Content[0]; sensitiveMappingKey(root, environmentOrigins(root), map[*yaml.Node]bool{}) {
+		return Input{}, invalid(yamlPointer, kernel.ReasonRule,
+			"A mapping key shares an environment value's YAML origin.")
+	}
 	fields, err := mapping(document.Content[0], "runtime configuration")
 	if err != nil {
 		return in, err

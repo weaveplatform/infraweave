@@ -342,6 +342,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `/runtimeConfig/yaml`, naming the setting without the value. This includes
   environment candidates shadowed by YAML merges. Independent identical
   literals remain independent; no value comparison classifies them as aliases.
+  Mapping keys sharing such an origin are refused before a diagnostic can
+  name them. This privacy check also covers malformed object-valued
+  environments; ordinary scalar/list type refusals remain unchanged.
 
   At the first handover, a supplied hook list replaces the stack's own list
   for that phase; an empty list clears it, and an omitted phase keeps it.

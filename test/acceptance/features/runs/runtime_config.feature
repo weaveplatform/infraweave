@@ -117,6 +117,9 @@ Feature: A trigger checks and applies its custom runtime configuration
       | {"yaml":"befor_plan: []"} | /runtimeConfig/yaml | unknown-field |
       | {"yaml":"{environment: {TOKEN: &s runtime-alias-secret-566}, before_plan: [*s]}"} | /runtimeConfig/yaml | rule |
       | {"yaml":"{before_plan: [&s runtime-alias-secret-566], environment: {TOKEN: *s}}"} | /runtimeConfig/yaml | rule |
+      | {"yaml":"{&s runtime-alias-secret-566: kept, environment: {TOKEN: *s}}"} | /runtimeConfig/yaml | rule |
+      | {"yaml":"{&s runtime-alias-secret-566: kept, runtime-alias-secret-566: again, environment: {TOKEN: *s}}"} | /runtimeConfig/yaml | rule |
+      | {"yaml":"{environment: {&env environment: baseline}, <<: { *env : {TOKEN: &s runtime-alias-secret-566}}, before_plan: [*s]}"} | /runtimeConfig/yaml | rule |
       | {"beforePlan":"x"} | /runtimeConfig/beforePlan | type |
       | {"beforPlan":[]} | /runtimeConfig/beforPlan | unknown-field |
       | {"beforPlan":null} | /runtimeConfig/beforPlan | unknown-field |

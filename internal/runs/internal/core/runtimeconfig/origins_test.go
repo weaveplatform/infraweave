@@ -3,6 +3,7 @@ package runtimeconfig_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -34,6 +35,7 @@ func TestUnitRuntimeEnvironmentAliasOrigin(t *testing.T) {
 		{"environment to workflow", "environment: {TOKEN: &s CUSTOM}\nterraform_workflow_tool: *s", "terraform", "terraform_workflow_tool"},
 		{"native workflow to environment", "opentofu: {workflow_tool: &s CUSTOM}\nenvironment: {TOKEN: *s}", "opentofu", "opentofu.workflow_tool"},
 		{"environment to Terragrunt tool", "environment: {TOKEN: &s OPEN_TOFU}\nterragrunt: {terragrunt_tool: *s}", "terragrunt", "terragrunt.terragrunt_tool"},
+		{"losing aliased environment key", "environment: {&env environment: baseline}\n<<: { *env : {TOKEN: &s \"" + secret + "\"}}\nbefore_plan: [*s]", "terraform", "before_plan[0]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in, err := runtimeconfig.Parse(runtimeYAML(t, tc.text), tc.vendor)
@@ -86,5 +88,45 @@ func TestUnitRuntimeEnvironmentAliasAllowed(t *testing.T) {
 				t.Fatalf("allowed environment aliases retained %d execution values, want %d", values, tc.secretValues)
 			}
 		})
+	}
+}
+
+func TestUnitRuntimeEnvironmentKeyOrigin(t *testing.T) {
+	const marker = "runtime-key-origin-secret"
+	for _, tc := range []struct{ name, text, vendor string }{
+		{"anchor key", "&s " + marker + ": kept\nenvironment: {TOKEN: *s}", "terraform"},
+		{"alias key", "environment: {TOKEN: &s " + marker + "}\n*s: kept", "terraform"},
+		{"duplicate root", "&s " + marker + ": kept\n" + marker + ": again\nenvironment: {TOKEN: *s}", "terraform"},
+		{"vendor key", "opentofu: {&s " + marker + ": kept}\nenvironment: {TOKEN: *s}", "opentofu"},
+		{"environment key", "environment: {&s " + marker + ": *s}", "terraform"},
+		{"duplicate environment", "environment: {&s " + marker + ": *s, " + marker + ": again}", "terraform"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := runtimeconfig.Parse(runtimeYAML(t, tc.text), tc.vendor)
+			inv, ok := errors.AsType[*kernel.Invalid](err)
+			raw := ""
+			if ok {
+				raw = inv.Detail + fmt.Sprint(inv.Errors)
+			}
+			if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != "/runtimeConfig/yaml" ||
+				inv.Errors[0].Reason != kernel.ReasonRule || strings.Contains(raw, marker) {
+				t.Fatalf("sensitive key was not safely refused before diagnostics; marker exposed=%t",
+					strings.Contains(raw, marker))
+			}
+		})
+	}
+	_, err := runtimeconfig.Parse(runtimeYAML(t, marker+": kept\nenvironment: {TOKEN: "+marker+"}"), "terraform")
+	if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Reason != kernel.ReasonUnknownField {
+		t.Fatal("independent identical key literal was classified by its text")
+	}
+	_, err = runtimeconfig.Parse(runtimeYAML(t, "environment: {TOKEN: {nested: value}}"), "terraform")
+	if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Reason != kernel.ReasonRule {
+		t.Fatal("invalid environment containers did not take the privacy-first key refusal")
+	}
+	for _, value := range []string{"true", "[value]"} {
+		_, err := runtimeconfig.Parse(runtimeYAML(t, "environment: {TOKEN: "+value+"}"), "terraform")
+		if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Reason != kernel.ReasonFormat {
+			t.Fatal("scalar/list environment values lost their ordinary type refusal")
+		}
 	}
 }

@@ -329,6 +329,9 @@ func TestUnitTriggerRuntimeEnvironmentAlias(t *testing.T) {
 		{"hook to environment", "terraform", "before_plan: [&s \"echo " + marker + "\"]\nenvironment: {TOKEN: *s}", "before_plan[0]"},
 		{"image to environment", "terraform", "runner_image: &s " + marker + "\nenvironment: {TOKEN: *s}", "runner_image"},
 		{"environment to version", "opentofu", "environment: {TOKEN: &s " + marker + "}\nopentofu: {version: *s}", "opentofu.version"},
+		{"key to environment", "terraform", "&s " + marker + ": kept\nenvironment: {TOKEN: *s}", "mapping key"},
+		{"duplicate key to environment", "terraform", "&s " + marker + ": kept\n" + marker + ": again\nenvironment: {TOKEN: *s}", "mapping key"},
+		{"losing aliased environment key", "terraform", "environment: {&env environment: baseline}\n<<: { *env : {TOKEN: &s " + marker + "}}\nbefore_plan: [*s]", "before_plan[0]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := trigger.New(trigger.Deps{
@@ -344,7 +347,7 @@ func TestUnitTriggerRuntimeEnvironmentAlias(t *testing.T) {
 			if json.Unmarshal(out.Body.Bytes(), &p) != nil || out.Code != http.StatusUnprocessableEntity ||
 				p.Type != problem.TypePrefix+"validation-failed" || len(p.Errors) != 1 ||
 				p.Errors[0].Pointer != "/runtimeConfig/yaml" || p.Errors[0].Reason != kernel.ReasonRule ||
-				!strings.Contains(p.Errors[0].Message, tc.setting) || strings.Contains(out.Body.String(), marker) {
+				!strings.Contains(strings.ToLower(p.Errors[0].Message), tc.setting) || strings.Contains(out.Body.String(), marker) {
 				t.Fatalf("runtime alias HTTP refusal: %d, type %s, errors %d", out.Code, p.Type, len(p.Errors))
 			}
 		})
