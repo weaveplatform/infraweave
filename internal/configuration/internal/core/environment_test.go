@@ -29,12 +29,12 @@ func hooked(name string) map[string][]string {
 // TestUnitEnvironmentPrecedence checks the precedence of a stack's
 // environment: the stack's own element outranks a context's, a context
 // attached by hand one attached automatically, a lower priority a higher
-// one, and among those attached automatically the first by name; a name
+// one, and among those attached automatically the last by name, then slug; a name
 // the stack drops lets the next one through. Its hooks follow the worked
 // example of auto-attached a and b, c at priority 0 and d at 5: c, d, b,
 // a, stack before a phase and the reverse after it.
 //
-// ref: report 13 §5.5, §7.1
+// ref: decision 0008 § "The run specification and its secrets"
 func TestUnitEnvironmentPrecedence(t *testing.T) {
 	stack := source{
 		kind:     configapi.SourceStack,
@@ -69,7 +69,7 @@ func TestUnitEnvironmentPrecedence(t *testing.T) {
 		{"A", "stack", configapi.SourceStack, ""},
 		{"B", "c", configapi.SourceContext, "context-c"},
 		{"C", "d", configapi.SourceContext, "context-d"},
-		{"D", "a", configapi.SourceAutoattached, "context-a"},
+		{"D", "b", configapi.SourceAutoattached, "context-b"},
 		{"E", "a", configapi.SourceAutoattached, "context-a"},
 	}; !reflect.DeepEqual(elements, want) {
 		t.Errorf("elements %v, want %v", elements, want)
@@ -100,5 +100,39 @@ func TestUnitEnvironmentPrecedence(t *testing.T) {
 	if got := resolve(source{kind: configapi.SourceStack}, nil); len(got.Elements) != 0 ||
 		len(got.Hooks) != 0 {
 		t.Errorf("an empty environment %+v", got)
+	}
+}
+
+// TestUnitEnvironmentAutoattachedTie checks the descending slug tie-breaker
+// for equal names, for both variables and mounted files, independently of
+// the attachment read's order. Hooks follow that same rank and its reverse.
+//
+// ref: decision 0008 § "The run specification and its secrets"
+func TestUnitEnvironmentAutoattachedTie(t *testing.T) {
+	attached := []source{
+		{kind: configapi.SourceAutoattached, context: "a-slug", name: "Shared", elements: vars("VALUE", "a", "config.txt", "a-file"), hooks: hooked("a")},
+		{kind: configapi.SourceAutoattached, context: "z-slug", name: "Shared", elements: vars("VALUE", "z", "config.txt", "z-file"), hooks: hooked("z")},
+	}
+	for i := range attached {
+		attached[i].elements[1].FileMount = true
+	}
+	for range 2 {
+		got := resolve(source{kind: configapi.SourceStack}, attached)
+		if len(got.Elements) != 2 {
+			t.Fatalf("elements: %+v", got.Elements)
+		}
+		for _, e := range got.Elements {
+			want := "z"
+			if e.FileMount {
+				want = "z-file"
+			}
+			if e.Context != "z-slug" || string(e.Value.Reveal()) != want {
+				t.Errorf("same-name context winner: %+v", e)
+			}
+		}
+		if want := map[string][]string{"before_plan": {"z", "a"}, "after_plan": {"a", "z"}}; !reflect.DeepEqual(got.Hooks, want) {
+			t.Errorf("same-name hooks: %v, want %v", got.Hooks, want)
+		}
+		attached[0], attached[1] = attached[1], attached[0]
 	}
 }

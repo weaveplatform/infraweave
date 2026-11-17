@@ -312,6 +312,13 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   the run's last transition. A template that does not render answers `422`
   `validation-failed` naming the variable, and leaves out the evaluator's
   message when the template reads a secret, so a failure cannot echo one.
+- **The environment's sources.** The stack's own elements rank first;
+  then directly attached contexts by priority, lowest number first, then
+  by slug; then auto-attached contexts by name from Z to A, then by slug
+  from Z to A. The first source of a name wins for variables and mounted
+  files, and a name the stack drops lets the next source through. Before
+  a phase, the contexts' hooks run in rank order and then the stack's;
+  after it, the reverse.
 - **Overrides.** A proposed run, from `proposeWithOverrides` or
   `runProposeLocalWorkspace`, may carry environment variable overrides for
   that run alone. They are kept in `runs.env_overrides_sealed`

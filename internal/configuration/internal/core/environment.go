@@ -141,9 +141,9 @@ type source struct {
 
 // ranked are attached in rank order, highest first: those attached by
 // hand by priority, lowest first, then by slug; then those attached
-// automatically, by name.
+// automatically, by name from Z to A, then by slug from Z to A.
 //
-// ref: report 13 §7.1
+// ref: decision 0008 § "The run specification and its secrets"
 func ranked(attached []source) []source {
 	out := slices.Clone(attached)
 	slices.SortStableFunc(out, func(a, b source) int {
@@ -154,7 +154,7 @@ func ranked(attached []source) []source {
 		case auto != (b.kind == configapi.SourceAutoattached):
 			return -1
 		case auto:
-			return cmp.Or(strings.Compare(a.name, b.name), strings.Compare(a.context, b.context))
+			return cmp.Or(strings.Compare(b.name, a.name), strings.Compare(b.context, a.context))
 		}
 		return cmp.Or(cmp.Compare(a.priority, b.priority), strings.Compare(a.context, b.context))
 	})
@@ -179,13 +179,12 @@ func winners(all []source) []Opened {
 	return out
 }
 
-// resolve is the environment of stack with attached: its elements, each
-// from the first source of its name in rank order, and each phase's
-// hooks. Before a phase, the contexts attached by hand run first, by
-// priority, then those attached automatically, last name first, then the
-// stack; after a phase the reverse, so the outermost wraps the phase.
+// resolve uses one source rank for variables, mounted files and hooks:
+// each element comes from the first source of its name. Before a phase,
+// contexts run in rank order, then the stack; after it the reverse, so
+// the outermost wraps the phase.
 //
-// ref: report 13 §5.5, §7.1
+// ref: decision 0008 § "The run specification and its secrets"
 func resolve(stack source, attached []source) configapi.Resolved {
 	rank := append([]source{stack}, ranked(attached)...)
 	out := configapi.Resolved{Elements: []configapi.Element{}, Hooks: map[string][]string{}}
@@ -204,18 +203,7 @@ func resolve(stack source, attached []source) configapi.Resolved {
 			Checksum: e.Checksum, Value: e.Secret, Source: src.kind, Context: src.context,
 		})
 	}
-	var before []source
-	for _, src := range rank[1:] {
-		if src.kind != configapi.SourceAutoattached {
-			before = append(before, src)
-		}
-	}
-	for _, src := range slices.Backward(rank[1:]) {
-		if src.kind == configapi.SourceAutoattached {
-			before = append(before, src)
-		}
-	}
-	before = append(before, stack)
+	before := append(slices.Clone(rank[1:]), stack)
 	after := slices.Clone(before)
 	slices.Reverse(after)
 	for _, src := range rank {

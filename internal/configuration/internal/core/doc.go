@@ -14,7 +14,7 @@
 // a stack's environment, opening every value: its own elements outrank an
 // attached context's, a context attached by hand one attached
 // automatically, a lower priority a higher one, and among those attached
-// automatically the first by name; each phase's hooks run outermost
+// automatically the last by name, then slug; each phase's hooks run outermost
 // first before it and last after it. Surface declares the environment
 // expression surface, env and stack, and a value's ${{ … }} templates
 // are checked against it when saved through the Checker internal/app
