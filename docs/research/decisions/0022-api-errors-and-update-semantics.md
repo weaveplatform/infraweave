@@ -89,7 +89,9 @@ Rules that apply to every problem:
 - **Protocol endpoints differ.** Routes whose client is defined by someone
   else answer what that client expects, not problem details: the registry
   protocol (decision 0014) and inbound VCS webhooks
-  ([0012](0012-vcs-integration-model.md)). The Terraform `http` state backend
+  ([0012](0012-vcs-integration-model.md)). Webhook intake answers only a
+  status and an empty body, including `401` without `WWW-Authenticate`;
+  its controls and deviations are recorded once in 0003. The Terraform `http` state backend
   ([0010](0010-state-backend.md)) answers problem details too, but a `423`,
   whose `LockInfo` body Terraform reads; its client reads only the status of
   any other error. The worker API

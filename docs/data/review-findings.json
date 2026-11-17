@@ -6979,7 +6979,7 @@
       "subject": "28",
       "severity": "unsupported",
       "finding": "pull request to runs was one to many in the row and many to many in the diagram; no `Run` field names a pull request",
-      "change": "Row rewritten, *(unverified)* (C269)",
+      "change": "Row rewritten with C269; resolved as observed 2026-11-17: requests match runs by commit SHA",
       "status": "folded",
       "files": [
         "docs/research/reference/28-data-model.md",
@@ -6990,13 +6990,13 @@
         {
           "file": "docs/research/reference/28-data-model.md",
           "present": [
-            "zero or more runs per pull request; no `Run` field names a pull request, so whether a run can sit under several is not shown"
+            "zero or more runs per pull request; as observed 2026-11-17, the same run appears under several requests sharing its commit"
           ]
         },
         {
           "file": "docs/data/open-questions.json",
           "present": [
-            "Can one run be listed under several pull requests?"
+            "Resolved as observed 2026-11-17: one run can appear under several pull requests sharing its commit"
           ]
         }
       ]
@@ -10632,8 +10632,8 @@
     {
       "id": "DES-07.15",
       "severity": "wrong",
-      "finding": "0012 kept a `/spacelift` comment command and called `BLOB` and `ORIGIN` \"capabilities\", a feature kind in 0021",
-      "change": "`/infraweave`; interfaces",
+      "finding": "0012 kept a built-in `/spacelift` action in comments and called `BLOB` and `ORIGIN` \"capabilities\", a feature kind in 0021",
+      "change": "Interfaces named precisely; P12b stores comment events for P13 policy evaluation and has no built-in action in comments",
       "status": "folded",
       "files": [
         "docs/research/decisions/0012-vcs-integration-model.md"
@@ -10643,7 +10643,7 @@
           "file": "docs/research/decisions/0012-vcs-integration-model.md",
           "present": [
             "It builds `BLOB` and `ORIGIN` as schema-only interfaces (PD-03)",
-            "A `/infraweave` comment that proposes bypasses it."
+            "Comment events are stored for those policies"
           ],
           "absent": [
             "`/spacelift`"

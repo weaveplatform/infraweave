@@ -10667,7 +10667,7 @@ paths:
         Note: this is an experimental functionality.
       operationId: stackSearchRunIgnoredTriggers
       x-infraweave-feature: ignored-runs
-      x-infraweave-action: SPACE_READ
+      x-infraweave-action: SPACE_ADMIN
       x-infraweave-subject: path:stackId:stack
       parameters:
         - description: Selects the parent object.

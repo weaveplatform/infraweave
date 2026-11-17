@@ -88,8 +88,9 @@ are the records that can move.
   ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 - **One event model.** Deploy and Flows share decision
   [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)'s event envelope and emit path from the queue phase on: P2c's
-  outbox writes the `events` rows that P18 fans out and that the Flows
-  engine consumes ([0018](../research/decisions/0018-flows-runtime.md)). Flows therefore follows the events phase
+  outbox writes the `events` rows whose fan-out begins in P12b with Commit
+  checks and extends in P18 to other sinks and kinds. The Flows
+  engine consumes them ([0018](../research/decisions/0018-flows-runtime.md)). Flows therefore follows the events phase
   directly, as P18c and P18d.
 - **One expression language.** Every expression a user writes is CEL
   ([0024](../research/decisions/0024-expression-language.md)). `internal/platform/expr` and the expression endpoints land in
@@ -183,7 +184,7 @@ and lint is clean.
 | M1 Walking skeleton | P1c | `infraweave serve`, built with `-cover`, runs as a subprocess under godog and every step drives it through `pkg/sdk`; every reference operation is classified served, served with divergence, superseded or missing by `make verify-parity`; depguard enforces decision 0004's shared rules over the whole tree |
 | M2 Authorized API on PostgreSQL | P5 | An operator creates an organization with its first account, and an organization admin adds a second account whose data the first cannot see; an API key exchanges for a token that works in its own account only; spaces and roles decide every route; a feature in `features.disabled` answers `403 feature-disabled`; a stack is created, read, replaced with `PUT`, merged with `PATCH`, locked, searched and deleted, and survives a restart and a second `serve` replica |
 | M3 First run | P9 | `runs/terraform.feature` and `runs/tofu.feature`: a tracked run on a private Docker worker fetches its source, plans, waits for `runConfirm`, applies through the managed state backend into the object store, masks a secret in its log and reaches `FINISHED` |
-| M4 GitOps loop | P13 | Option 5's walkthrough holds end to end against Gitea: a push opens a proposed run, a plan policy warns, the check and the pull request comment appear, and an approval policy holds a tracked run until a review |
+| M4 GitOps loop | P13 | Option 5's walkthrough holds end to end against each provider's fake: a push opens a proposed run, a plan policy warns, the check and, under `feature:add_plan_pr_comment`, the pull request comment appear, and an approval policy holds a tracked run until a review |
 | M5 Deploy core | P14, P15, P16, P17b and P18b | Public worker pool and Kubernetes workers, cloud credentials through OIDC, schedules, drift detection, stack dependencies, the module and provider registries, notifications, webhooks, Slack, the event streams, the audit trail and the per-account metrics all pass their features |
 | M6 Flows | P18d | A flow's Deploy trigger block reacts to a real run and a Trigger Run block starts another; a Go app built on `pkg/flows/appsdk` runs on a Flows agent; every expression in the flow is CEL |
 | M7 Ecosystem | P19b, P21 and P22b | Every VCS provider, VCS agent pools, every vendor of report 20, blueprints and templates, the resources view, generic search, the console-support operations and scans pass their features |
@@ -2005,7 +2006,7 @@ a source credential for its repository.
    `searchVCSIntegrationsSuggestions`,
    `attachableVCSIntegrationsForProviderInSpace`.
 2. `internal/vcs/internal/adapters/github`: `Source`, `Browse` and `Tester`
-   over the operator's GitHub App and per-account custom Apps, with the chi
+   over account-owned GitHub App integrations, with the chi
    fake `githubfake`. Operations: `githubIntegration`,
    `githubIntegrationUpdate`, `githubEnterpriseIntegrationCreate`,
    `githubEnterpriseIntegration`, `githubEnterpriseIntegrationUpdate`,
@@ -2062,55 +2063,75 @@ a source credential for its repository.
 
 ## P12b: VCS events and feedback
 
-Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md).
+Decisions: [0003](../research/decisions/0003-api-conventions.md), [0012](../research/decisions/0012-vcs-integration-model.md), [0011](../research/decisions/0011-persistent-work-queue.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md).
 
 **Depends on:** P10, P12.
 
-Every provider of P12, as peers: webhooks stored before they are
-acknowledged, default push behaviour creating tracked and proposed runs,
-checks, pull request comments and deployments.
+Every provider of P12, as peers: account-owned GitHub Apps, verified deliveries
+stored before acknowledgement, full-diff pushes creating tracked and proposed
+runs, and feedback through the `events` domain's Commit checks sink.
 
 **Tasks**
-1. Webhook secrets and endpoints: `githubEnterpriseIntegrationRegenerateWebhookSecret`,
-   `githubEnterpriseWebhooksEndpoint`,
-   `gitlabIntegrationRegenerateWebhookSecret`, `gitlabWebhooksEndpoint`,
-   `bitbucketCloudIntegrationRegenerateWebhookSecret`,
-   `bitbucketCloudWebhooksEndpoint`,
-   `bitbucketDatacenterIntegrationRegenerateWebhookSecret`,
-   `bitbucketDatacenterWebhooksEndpoint`, `azureDevOpsWebhooksEndpoint`,
-   with the previous secret valid until its expiry.
-2. Intake at `POST /webhooks/vcs/github` and
-   `/webhooks/vcs/{provider}/{integrationId}`: body bound, verification
-   against the current and previous secret by each provider's scheme
-   (decision 0012's table), filtering, `vcs_deliveries` stored with
-   `vcs.process_delivery` in one transaction. Tests: each provider's
-   `verify_test.go` (`TestUnitGitHubSignature` and its peers) and
-   `parse_test.go`, against P12's fakes. Records DV-041 to DV-044.
+1. Close P12's gaps: retire the shared GitHub App in favour of per-account
+   `GITHUB_ENTERPRISE` integrations, with `GITHUB` resolving as the account's
+   alias; enforce `multiple-vcs-integrations`; prove every VCS Integrations
+   operation under the evidence rule. Rotate every provider's secret,
+   including `azureDevOpsRepoIntegrationRegenerateWebhookSecret`, with the
+   previous-secret window; answer the five webhook URLs only to integration
+   admins; add `WEBHOOK` and `GITHUB_APP_EVENTS` checks and manifest parity.
+2. Intake only at `POST /webhooks/vcs/{provider}/{integrationId}`: apply
+   0003's shared controls and explicit deviations, the address-keyed
+   `expensive` budget, 25 MiB bound, current/previous verification, exact
+   consumed-event filter and safe stored headers. Store `vcs_deliveries`
+   and `vcs.process_delivery` in one transaction before acknowledgement.
+   Add `vcsIntegrationDeliveries` and expensive, idempotent,
+   signature-reverifying `vcsIntegrationDeliveryReplay` with the specified
+   retention, fields, states and refusals. Records DV-041 to DV-044.
 3. Processing: `vcs.process_delivery` and `vcs.evaluate_event` with the
-   default push behaviour (push policies in P13), run deduplication,
-   `vcsEventTriggeredRunsLimit`, `accountUpdateVCSEventTriggeredRunsLimit`,
-   ignored triggers (`stackSearchRunIgnoredTriggers`), superseded proposed
-   runs, a push to a stack's branch moving its tracked commit through
-   P6b's projection, and a renamed repository followed on every provider by
-   the stable repository ID its events carry.
-4. Feedback: `vcs.report_check` with individual and aggregated checks,
-   check actions (Preview and Deploy) as GitHub check-run buttons and as
-   pull request comment commands on every other provider, `Comments.Upsert`
-   with the hidden marker, GitHub Deployments and GitLab environments.
-   Records DV-047.
-5. Features: `vcs/webhooks.feature` and `vcs/feedback.feature` (`@vcs`,
-   Gitea for real webhooks and statuses, each provider's fake for its own
-   shapes, recorded payloads driving a run and a check on every provider),
-   and their `@vcs-lab` scenarios against P12's lab.
+   full before-to-after diff (new branches from the default-branch merge
+   base), tracked-branch projection, other-branch proposed runs without a
+   pull request, once-per-stack/commit/type event runs under the stack
+   lock, and superseded proposals. Pull request events record requests and
+   head commits without creating runs. Persist ignored reasons, the
+   operator ceiling (500 by default) and nullable account cap owned by
+   `vcs`; expose admin-only ignored triggers. Follow stable repository IDs,
+   owner renames and installation state without creating accounts, and
+   implement the `stacksapi` read port for `Stack.pullRequests`.
+4. Feedback: build `internal/events`, `events.fanout`, the sinks consumer,
+   `event_deliveries` and the Commit checks sink for `run_updated`, with its
+   graph/shared rules, domain wiring and migration order after `vcs`, and
+   edges to `runs` and `vcs`. `vcs.report_check` posts the fixed state map,
+   individual/aggregate names, options and `AGGREGATED`/`ALL` feature gate,
+   one check per run updated in place. GitHub Preview/Deploy buttons follow
+   run promotion and bypass event deduplication; all providers store
+   comment events for P13 and start no run from them here. Add per-run
+   labelled plan comments with crash recovery and GitHub minimization,
+   GitHub deployments and GitLab environments for tracked runs. Records
+   DV-047 and DV-129 to DV-135; rename RN-46.
+5. Features: `vcs/webhooks.feature` and `vcs/feedback.feature` (`@vcs`),
+   with every provider's fake sending signed deliveries over HTTP and
+   recording feedback. Gitea stays the raw Git host under `sourcetest`.
+   Add `@vcs-lab` variants: direct container delivery and short-lived
+   tunnels for hosted providers, the account's lab App and added
+   permissions, Bitbucket Cloud write scopes, optional Data Center.
 
 **Exit criteria**
-- On every provider, a signed push creates one tracked run; a bad signature
-  or secret answers `401` and stores nothing; a duplicate delivery creates
-  nothing; a replica stopped after acknowledging leaves the run to another.
-- A pull request comment command starts a proposed or tracked run on every
-  provider but GitHub, as GitHub's check action does.
-- VCS Integrations meets decision 0016's evidence rule.
-- Captures C72 to C76, C79 and C80 replay once recorded.
+- In `vcs/webhooks.feature`, every provider's signed tracked push creates
+  one tracked run, another-branch push proposes, bad verification answers
+  `401` without storing, duplicate deliveries and re-pushed commits create
+  nothing, and another replica finishes acknowledged work after a crash.
+- In `vcs/feedback.feature`, eligible runs post checks in state order,
+  updated in place through the Commit checks sink, with aggregates and cap
+  failures; plan comments and deployments follow the settled rules.
+- On GitHub, a check's Deploy action starts a tracked run on the pull
+  request's head while the stack allows run promotion, and the check
+  carries no actions while it does not. A pull request comment on every
+  provider is stored and starts nothing until P13's push policies.
+- Every VCS Integrations operation, both account cap operations, ignored
+  trigger search and both delivery operations meet 0016's evidence rule.
+- Captures C72, C75, C76, C79, C80 and C285 replay once recorded; until
+  then scenarios assert the recorded choices. C73, C74 and C269 are
+  resolved as observed 2026-11-17.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P13: Policy engine and workflow policies
@@ -2234,8 +2255,9 @@ in as `test/fixtures/policy-inputs`
   store unsanitized: a scenario per vendor finds no sensitive value in the
   uploaded plan, and no dummy secret of the recorded plans in
   `test/fixtures/vendor-documents` survives either mode.
-- Option 5's walkthrough holds against Gitea: a push opens a proposed run, a
-  plan policy warns, and the check and pull request comment appear.
+- Option 5's walkthrough holds against each provider's fake: a push opens a
+  proposed run, a plan policy warns, and the check and, under
+  `feature:add_plan_pr_comment`, the pull request comment appear.
 - The operations of task 2 and task 4 meet decision 0016's evidence rule.
 - `TestUnitPolicyContract` passes over every document in
   `test/fixtures/policy-inputs`.
@@ -2724,29 +2746,31 @@ Decisions: [0015](../research/decisions/0015-events-notifications-webhooks-audit
 
 **Depends on:** P13.
 
-The fan-out of every event to the inbox, notification policy routes,
-webhooks, Slack and pull request comments, and the server-sent-event
-streams that observers read. `internal/events` holds these sinks and the
-audit trail's search and shipper (P18b); every domain writes its audit
-entries through `internal/platform/audit` in the change's own transaction
-([0015](../research/decisions/0015-events-notifications-webhooks-audit.md)).
-The Flows engine (P18c) adds its own consumer of the same fan-out.
+P12b builds `internal/events`, its `run_updated` fan-out, `event_deliveries`
+and Commit checks sink. P18 extends that foundation to inbox, notification
+policy routes, HTTP webhooks, Slack, Teams, pull request notifications and
+server-sent-event streams. The audit trail's search and shipper follow in
+P18b; every domain already writes audit entries through
+`internal/platform/audit` in its change's transaction. The Flows engine
+(P18c) adds its own consumer of the same fan-out.
+
+ref: [0015](../research/decisions/0015-events-notifications-webhooks-audit.md).
 
 **Tasks**
-1. `internal/events` (hexagon): `events.fanout` and `events.deliver` with
-   `event_deliveries` keyed by event, sink, target and rule; notification
-   policy selection by space; the `run_updated`, `module_version`,
-   `internal_error` and `worker_usage` kinds, the last computed from P8's
-   `worker_pool_samples` through `workers/api`. Tests:
-   `TestUnitPolicySelection`, `TestUnitGroupingKey`,
+1. Extend P12b's `internal/events` hexagon with `events.deliver`, the other
+   sinks and event kinds, and notification-policy selection by space.
+   Add `module_version`, `internal_error` and `worker_usage`, the last
+   computed from P8's `worker_pool_samples` through `workers/api`.
+   Tests: `TestUnitPolicySelection`, `TestUnitGroupingKey`,
    `TestUnitNotificationInputConformsToContract`.
-2. Wiring ([domain wiring](#adding-a-domain)): `events`'
-   graph rule and shared-rule entries, `core-not-adapters` included, its
-   place after `schedules` in `domains.go` and the migration order, and its
-   edges to `features`, `access`, `workers`, `stacks`, `runs`, `policies`
-   and `vcs`, stack webhooks holding their stacks through `stacksapi`;
-   `worker_usage` reads `worker_pool_samples` through `workersapi`
-   ([declared graph](repo-layout.md#declared-graph)).
+2. Extend P12b's graph rule, shared rules, domain wiring and migration
+   order with edges to `features`, `access`, `workers`, `stacks` and
+   `policies`; retain its edges to `runs` and `vcs`. P12b places `events`
+   after `vcs`; P16 keeps `schedules` after `vcs`, between `vcs` and
+   `events`. Stack webhooks hold their stacks through `stacksapi`, and
+   `worker_usage` reads samples through `workersapi`.
+
+   ref: [domain wiring](#adding-a-domain), [declared graph](repo-layout.md#declared-graph).
 3. HTTP delivery: signatures, secret headers, rule headers, timeouts, no
    redirects, retries with `retryOnFailure`, auto-disable after ten
    failures, the egress guard, delivery bodies in `deliveries`. Operations:

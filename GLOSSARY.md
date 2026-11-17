@@ -268,6 +268,20 @@ _Avoid_: force-unlock, which a run sends through the state backend
 A named set of permissions granted to an identity in a space.
 _Avoid_: process role, permission set
 
+### Version control
+
+**Delivery**:
+One webhook request a VCS provider sent, retained before it is acknowledged.
+_Avoid_: event, which records something that happened in infraweave
+
+**Commit check**:
+A run's state as its VCS provider shows it on a commit.
+_Avoid_: status, build
+
+**Ignored trigger**:
+A tracked-branch or tag push that created no run on a stack, with its reason.
+_Avoid_: skipped run, which would imply a run exists
+
 ### Registry
 
 **Module**:

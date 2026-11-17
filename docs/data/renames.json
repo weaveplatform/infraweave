@@ -276,6 +276,12 @@
       "kind": "identifier",
       "reference": "TF_VAR_spacelift_graphql_endpoint",
       "infraweave": "TF_VAR_infraweave_api_endpoint"
+    },
+    {
+      "id": "RN-46",
+      "kind": "concept",
+      "reference": "Check, deployment environment and deployment task names under `spacelift/`",
+      "infraweave": "The same names under `infraweave/`"
     }
   ]
 }

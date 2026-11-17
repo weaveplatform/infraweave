@@ -69,7 +69,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `policies` | capability | The Policies tag | | ✓ | ✓ | ✓ | P13 |
 | `tasks` | capability | Task runs | | ✓ | ✓ | ✓ | P10 |
 | `webhooks` | capability | The Webhooks tag | | ✓ | ✓ | ✓ | P18 |
-| `aggregated-vcs-checks` | option | `vcsChecks: AGGREGATED` on a VCS integration | | | ✓ | ✓ | P12b |
+| `aggregated-vcs-checks` | option | `vcsChecks: AGGREGATED` and `vcsChecks: ALL` on a VCS integration | | | ✓ | ✓ | P12b |
 | `blueprints` | capability | The Blueprints tag | | | ✓ | ✓ | P21 |
 | `drift-detection` | capability | The Drift Detection tag | | | ✓ | ✓ | P16 |
 | `private-worker-pools` | capability | Private worker pools in the Worker Pools tag | | | ✓ | ✓ | P8 |

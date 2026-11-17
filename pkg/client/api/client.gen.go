@@ -15292,7 +15292,7 @@ type ClientInterface interface {
 
 	// AzureDevOpsWebhooksEndpoint Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Azure DevOps webhooks.
+	// Webhook URL of the account's default Azure DevOps integration. Requires admin access to its space.
 	//
 	// Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
 	AzureDevOpsWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15474,7 +15474,7 @@ type ClientInterface interface {
 
 	// BitbucketCloudWebhooksEndpoint Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Bitbucket Cloud webhooks.
+	// Webhook URL of the account's default Bitbucket Cloud integration. Requires admin access to its space.
 	//
 	// Corresponds with GET /bitbucket-cloud-webhooks-endpoint (the `BitbucketCloudWebhooksEndpoint` operationId).
 	BitbucketCloudWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15563,7 +15563,7 @@ type ClientInterface interface {
 
 	// BitbucketDatacenterWebhooksEndpoint Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Bitbucket Datacenter webhooks.
+	// Webhook URL of the account's default Bitbucket Data Center integration. Requires admin access to its space.
 	//
 	// Corresponds with GET /bitbucket-datacenter-webhooks-endpoint (the `BitbucketDatacenterWebhooksEndpoint` operationId).
 	BitbucketDatacenterWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15935,7 +15935,7 @@ type ClientInterface interface {
 
 	// GithubEnterpriseWebhooksEndpoint Get Webhooks Endpoint
 	//
-	// The webhooks endpoint to use in your GitHub Enterprise App.
+	// Webhook URL of the named GitHub App integration, or the account's default when id is omitted. Requires admin access to its space.
 	//
 	// Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
 	GithubEnterpriseWebhooksEndpoint(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16050,7 +16050,7 @@ type ClientInterface interface {
 
 	// GitlabWebhooksEndpoint Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Gitlab webhooks.
+	// Webhook URL of the account's default GitLab integration. Requires admin access to its space.
 	//
 	// Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
 	GitlabWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -20427,7 +20427,7 @@ func (c *Client) AzureDevOpsRepoIntegrationTest(ctx context.Context, azureDevOps
 
 // AzureDevOpsWebhooksEndpoint Get Webhooks Endpoint
 //
-// Endpoint for incoming Azure DevOps webhooks.
+// Webhook URL of the account's default Azure DevOps integration. Requires admin access to its space.
 //
 // Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
 func (c *Client) AzureDevOpsWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -20829,7 +20829,7 @@ func (c *Client) BitbucketCloudIntegrationTest(ctx context.Context, bitbucketClo
 
 // BitbucketCloudWebhooksEndpoint Get Webhooks Endpoint
 //
-// Endpoint for incoming Bitbucket Cloud webhooks.
+// Webhook URL of the account's default Bitbucket Cloud integration. Requires admin access to its space.
 //
 // Corresponds with GET /bitbucket-cloud-webhooks-endpoint (the `BitbucketCloudWebhooksEndpoint` operationId).
 func (c *Client) BitbucketCloudWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -21028,7 +21028,7 @@ func (c *Client) BitbucketDatacenterIntegrationTest(ctx context.Context, bitbuck
 
 // BitbucketDatacenterWebhooksEndpoint Get Webhooks Endpoint
 //
-// Endpoint for incoming Bitbucket Datacenter webhooks.
+// Webhook URL of the account's default Bitbucket Data Center integration. Requires admin access to its space.
 //
 // Corresponds with GET /bitbucket-datacenter-webhooks-endpoint (the `BitbucketDatacenterWebhooksEndpoint` operationId).
 func (c *Client) BitbucketDatacenterWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -21850,7 +21850,7 @@ func (c *Client) GithubEnterpriseIntegrationTest(ctx context.Context, githubEnte
 
 // GithubEnterpriseWebhooksEndpoint Get Webhooks Endpoint
 //
-// The webhooks endpoint to use in your GitHub Enterprise App.
+// Webhook URL of the named GitHub App integration, or the account's default when id is omitted. Requires admin access to its space.
 //
 // Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
 func (c *Client) GithubEnterpriseWebhooksEndpoint(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22105,7 +22105,7 @@ func (c *Client) GitlabIntegrationTest(ctx context.Context, gitlabIntegrationId 
 
 // GitlabWebhooksEndpoint Get Webhooks Endpoint
 //
-// Endpoint for incoming Gitlab webhooks.
+// Webhook URL of the account's default GitLab integration. Requires admin access to its space.
 //
 // Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
 func (c *Client) GitlabWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -49069,7 +49069,7 @@ type ClientWithResponsesInterface interface {
 
 	// AzureDevOpsWebhooksEndpointWithResponse Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Azure DevOps webhooks.
+	// Webhook URL of the account's default Azure DevOps integration. Requires admin access to its space.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49267,7 +49267,7 @@ type ClientWithResponsesInterface interface {
 
 	// BitbucketCloudWebhooksEndpointWithResponse Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Bitbucket Cloud webhooks.
+	// Webhook URL of the account's default Bitbucket Cloud integration. Requires admin access to its space.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49366,7 +49366,7 @@ type ClientWithResponsesInterface interface {
 
 	// BitbucketDatacenterWebhooksEndpointWithResponse Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Bitbucket Datacenter webhooks.
+	// Webhook URL of the account's default Bitbucket Data Center integration. Requires admin access to its space.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49768,7 +49768,7 @@ type ClientWithResponsesInterface interface {
 
 	// GithubEnterpriseWebhooksEndpointWithResponse Get Webhooks Endpoint
 	//
-	// The webhooks endpoint to use in your GitHub Enterprise App.
+	// Webhook URL of the named GitHub App integration, or the account's default when id is omitted. Requires admin access to its space.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49895,7 +49895,7 @@ type ClientWithResponsesInterface interface {
 
 	// GitlabWebhooksEndpointWithResponse Get Webhooks Endpoint
 	//
-	// Endpoint for incoming Gitlab webhooks.
+	// Webhook URL of the account's default GitLab integration. Requires admin access to its space.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -91391,7 +91391,7 @@ func (c *ClientWithResponses) AzureDevOpsRepoIntegrationTestWithResponse(ctx con
 
 // AzureDevOpsWebhooksEndpointWithResponse Get Webhooks Endpoint
 //
-// Endpoint for incoming Azure DevOps webhooks.
+// Webhook URL of the account's default Azure DevOps integration. Requires admin access to its space.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -91721,7 +91721,7 @@ func (c *ClientWithResponses) BitbucketCloudIntegrationTestWithResponse(ctx cont
 
 // BitbucketCloudWebhooksEndpointWithResponse Get Webhooks Endpoint
 //
-// Endpoint for incoming Bitbucket Cloud webhooks.
+// Webhook URL of the account's default Bitbucket Cloud integration. Requires admin access to its space.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -91886,7 +91886,7 @@ func (c *ClientWithResponses) BitbucketDatacenterIntegrationTestWithResponse(ctx
 
 // BitbucketDatacenterWebhooksEndpointWithResponse Get Webhooks Endpoint
 //
-// Endpoint for incoming Bitbucket Datacenter webhooks.
+// Webhook URL of the account's default Bitbucket Data Center integration. Requires admin access to its space.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -92558,7 +92558,7 @@ func (c *ClientWithResponses) GithubEnterpriseIntegrationTestWithResponse(ctx co
 
 // GithubEnterpriseWebhooksEndpointWithResponse Get Webhooks Endpoint
 //
-// The webhooks endpoint to use in your GitHub Enterprise App.
+// Webhook URL of the named GitHub App integration, or the account's default when id is omitted. Requires admin access to its space.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -92769,7 +92769,7 @@ func (c *ClientWithResponses) GitlabIntegrationTestWithResponse(ctx context.Cont
 
 // GitlabWebhooksEndpointWithResponse Get Webhooks Endpoint
 //
-// Endpoint for incoming Gitlab webhooks.
+// Webhook URL of the account's default GitLab integration. Requires admin access to its space.
 //
 // Returns a wrapper object for the known response body format(s).
 //

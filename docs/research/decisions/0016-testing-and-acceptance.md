@@ -142,7 +142,7 @@ everywhere, and the reason names where the contract checks it instead.
 | `@terragrunt` | a pinned Terragrunt release, checked against its signed `SHA256SUMS`, beside `@terraform` or `@tofu` | a Terragrunt stack's run and its units' workspaces |
 | `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
 | `@vault` | Vault in dev mode, with the Transit engine mounted and a Transit key per scenario | the `vault` KEK provider: rewrapping the data keys to Vault, and servers that run on it ([0013](0013-secrets-at-rest.md)) |
-| `@vcs` | Gitea container, with a repository seeded per scenario, and each provider's chi fake | real webhooks, commit statuses, pull request comments; each provider's own shapes (decision 0012) |
+| `@vcs` | Gitea container as the raw Git host, with a repository seeded per scenario; each provider's chi fake sends signed deliveries over HTTP and records received checks, statuses and comments | provider-shaped intake and feedback through the real server; raw Git stays under `sourcetest` (decision 0012) |
 | `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
 | `@docker` | the host's Docker daemon; the harness builds the runner images of `deploy/images/` as `infraweave-runner-terraform:acceptance` and `infraweave-runner-opentofu:acceptance`, also tags each under its untagged published `ghcr.io/weaveplatform/infraweave-runner-<vendor>` name for vendor-default scenarios, imports `infraweave-runner:acceptance`, a minimal image with UID 1983 and no base that carries the relay's forwarder, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008); real runs with `@terraform` or `@tofu` |
@@ -388,7 +388,7 @@ decision 0009 as `TestUnitPolicyLibrary`.
 | A stopped server's state locks are seeded directly | `state/force_unlock.feature` seeds lock rows: a live run releases its locks when its terminal event is read, so no live path leaves one for a task to break; the former holder's writable phase is arranged to reach the broken-lock checks |
 | No test depends on order | `-shuffle=on`; godog runs scenarios in random order with a printed seed |
 | No shared mutable state across scenarios | per-scenario database, bucket prefix and server |
-| No network beyond the containers | Terraform, OpenTofu and providers come from checksummed caches; Gitea replaces hosted VCS |
+| No network beyond the containers | Terraform, OpenTofu and providers come from checksummed caches; Gitea serves raw Git; provider fakes send signed HTTP deliveries and record feedback |
 | A failing scenario leaves evidence | the harness writes the server's and launcher's logs and the database dump of that scenario to `test/acceptance/out/<scenario>/`, uploaded as a CI artefact on failure |
 
 A test that fails intermittently is quarantined only by a tracking issue
@@ -464,7 +464,8 @@ coverage it would contribute is not waived.
     the first. GitHub, Bitbucket Cloud and Azure DevOps are the hosted
     services. Two providers run as containers the job starts:
     - **Bitbucket Data Center** has no hosted service, so the job starts
-      Atlassian's image with a licence from its secrets.
+      Atlassian's image only when a licence is configured; otherwise it is
+      optional and skipped, with the reason in the summary.
     - **GitLab.com** offers group and project access tokens only on paid
       tiers, so the job starts GitLab Community Edition, which offers
       them on every tier.
@@ -477,18 +478,44 @@ coverage it would contribute is not waived.
     environment secrets of a `vcs-lab` environment that only `main` may
     use, each reaching only its lab, which holds nothing else:
     - an owner's token on a test GitHub organization, and a GitHub App
-      the organization owns, installed on all its repositories;
+      the organization owns, installed on all its repositories and registered
+      as the lab account's GitHub App integration;
     - an Atlassian account's API token on a Bitbucket Cloud test workspace;
     - a personal access token on an Azure DevOps test project;
     - the Bitbucket Data Center licence. The job makes the containers'
       administrator credentials and certificates for each run.
+  - **Delivery paths (D21).** GitLab CE and optional Bitbucket Data Center
+    deliver directly from their job containers. GitHub, Bitbucket Cloud
+    and Azure DevOps use a short-lived, account-free `cloudflared` quick
+    tunnel, opened before the server starts and closed when the job ends.
+    Its URL is the server's public URL for that run. The latest release
+    is pinned by checksum or digest and refreshed with the other tools.
+    A tunnel that cannot open skips the affected provider and the summary
+    names why. Repository hooks on the first repository use the
+    integration's URL, secret and consumed event list. For GitHub, the job
+    sets the lab App's hook through `PATCH /app/hook/config` with its JWT
+    and restores it afterward.
+  - **Lab reach.** The lab App asks for checks, pull requests, issues and
+    deployments write and organization members read. It subscribes to
+    `push`, `pull_request`, `pull_request_review`, `issue_comment`,
+    `check_run`, `repository` and `organization`; installation events
+    arrive without subscription. Bitbucket Cloud's token also has pull
+    request and repository write scopes. The lab setup documents these
+    one-time requirements without publishing account, organization or
+    cloud account IDs.
   - **What it covers.** That the fakes still match the real services:
     - each provider's `Source`, through `sourcetest`;
     - a private stack through its integration, in the `@vcs-lab`
       scenarios;
     - the reach of each run's source credential, which a minted token
       gives to its own repository alone and a lent token gives to both;
-    - from P12b, webhooks and feedback.
+    - from P12b, real signed pushes to the tracked and another branch,
+      tracked commit movement, no extra run from opening a pull request,
+      an individual check updated in place, and a stored pull request
+      comment that starts nothing;
+    - plan comments only under `feature:add_plan_pr_comment`, once per
+      run, with the earlier GitHub comment minimized. Buttons remain a
+      capture and deployments are proved by fakes.
 
     A provider whose secrets are unset is skipped, and the run's
     summary names the secrets it lacks, so a failed run is a provider
@@ -557,8 +584,8 @@ coverage it would contribute is not waived.
 - **Hosted VCS providers nightly, not per pull request.** They need
   credentials, which pull requests from forks do not receive, and their
   availability and rate limits would make the blocking gate flaky. Gitea
-  gives real webhooks and statuses and the chi fakes give each provider's
-  shapes in every pull request; the nightly `vcs-lab` job proves the
+  serves raw Git, while each provider's chi fake sends signed deliveries
+  over HTTP and records received feedback in every pull request; the nightly `vcs-lab` job proves the
   fakes against repositories Terraform creates, so a provider that changes
   its API opens an issue within a day.
 - **Rejected: acceptance on macOS and Windows.** The macOS runners have no
@@ -596,8 +623,8 @@ coverage it would contribute is not waived.
   and its bucket, which the maintainer provisions; until they exist the job
   skips that cloud, and its summary says so. The VCS lab job
   likewise needs each hosted provider's test organization or workspace, the
-  GitHub App and the Bitbucket Data Center licence, which the maintainer
-  provides once.
+  GitHub App, which the maintainer provides once. Bitbucket Data Center
+  is optional and runs only when a licence is configured.
 - Under `GODEBUG=fips140=only`, a test helper or library that reaches for a
   refused algorithm fails the `fips-only` job like product code does; the
   fix is an approved algorithm, not an exemption.

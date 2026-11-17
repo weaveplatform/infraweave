@@ -373,19 +373,19 @@
     {
       "id": "DV-041",
       "group": "VCS: decision 0012",
-      "spacelift": "SaaS installs Spacelift's GitHub Marketplace app",
-      "infraweave": "The operator registers a GitHub App, as self-hosted Spacelift requires",
-      "why": "infraweave has no global app of its own",
-      "impact": "Operators create and register an app; repositories install that app",
+      "spacelift": "SaaS installs Spacelift's GitHub App; as observed 2026-11-17, an account created from a GitHub account or organization has it as its built-in integration",
+      "infraweave": "No built-in integration: each account registers its own App as a GitHub Enterprise integration, whose installations belong to it; `githubIntegration` and `githubIntegrationUpdate` are not served. Provider `GITHUB` resolves to its named or account-default GitHub App integration; a write with none answers `422` at `/provider`",
+      "why": "An App's installations must belong to one account",
+      "impact": "Each account registers an App and sets its default; existing GITHUB stack configurations keep their provider value",
       "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
     },
     {
       "id": "DV-042",
       "group": "VCS: decision 0012",
       "spacelift": "Spacelift's own webhook endpoints",
-      "infraweave": "Webhook URLs under `/webhooks/vcs/`",
-      "why": "One route family for every provider",
-      "impact": "VCS webhook configurations point at the new path",
+      "infraweave": "`/webhooks/vcs/{provider}/{integrationId}`, one URL per integration",
+      "why": "An integration's secret and account determine its delivery boundary",
+      "impact": "Provider webhook configurations use the integration's URL",
       "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
     },
     {
@@ -401,9 +401,9 @@
       "id": "DV-044",
       "group": "VCS: decision 0012",
       "spacelift": "No delivery listing or replay",
-      "infraweave": "Routes to list received deliveries and replay one",
-      "why": "Debugging a missed trigger without the provider's console",
-      "impact": "New operations; no Spacelift client uses them",
+      "infraweave": "Listing and replay; replay verifies the stored signature again and creates only runs that never existed",
+      "why": "Recover missed triggers without the provider console while retaining verification and event deduplication",
+      "impact": "New admin operations; bodies past retention and rotated-out signatures cannot be replayed",
       "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
     },
     {
@@ -433,10 +433,10 @@
     {
       "id": "DV-047",
       "group": "VCS: decision 0012",
-      "spacelift": "The individual commit check name is undocumented",
-      "infraweave": "`infraweave/<stack slug>`",
-      "why": "A stable name is needed for branch protection",
-      "impact": "Branch protection rules copied from Spacelift need the check name changed",
+      "spacelift": "A new check run for each state change of a run, as observed 2026-11-17",
+      "infraweave": "One check per run, updated in place",
+      "why": "A run has one check identity throughout its states",
+      "impact": "Commit history avoids one check object per transition; branch protection uses stable names",
       "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
     },
     {
@@ -1304,6 +1304,69 @@
         ],
         "settles": "The passphrase Spacelift's Pulumi runner sets"
       }
+    },
+    {
+      "id": "DV-129",
+      "group": "VCS: decision 0012",
+      "spacelift": "Affected files appear to come from the head commit's own changes",
+      "infraweave": "Affected files come from the push's full before-to-after diff",
+      "why": "All changes in a multi-commit push must reach affected stacks",
+      "impact": "A stack touched earlier in the push gets a run even if the head commit touches nothing in its root",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-130",
+      "group": "VCS: decision 0012",
+      "spacelift": "A pull request event proposes on the pull request's commit",
+      "infraweave": "Pull request events record the request and create no run; branch pushes propose",
+      "why": "One event path creates runs and PR events maintain association state",
+      "impact": "Opening a pull request does not create a second run; branch pushes need no request",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-131",
+      "group": "VCS: decision 0012",
+      "spacelift": "GitLab comments every affected merge request by default",
+      "infraweave": "Plan comments only under `feature:add_plan_pr_comment`, on every provider",
+      "why": "One explicit stack choice controls plan-log publication on all providers",
+      "impact": "Enable the label to publish masked planning logs on matching request heads",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-132",
+      "group": "VCS: decision 0012",
+      "spacelift": "No Azure DevOps webhook secret rotation",
+      "infraweave": "`azureDevOpsRepoIntegrationRegenerateWebhookSecret`",
+      "why": "Every provider needs the same bounded previous-secret window",
+      "impact": "Integration admins rotate Azure DevOps webhook passwords through the API",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-133",
+      "group": "VCS: decision 0012",
+      "spacelift": "Without an account limit, one event creates a run for every affected stack",
+      "infraweave": "The operator's `vcs.event_runs_ceiling` (default 500) always bounds an event; stacks past the cap record `RUN_LIMIT_REACHED`",
+      "why": "An unset account cap cannot permit unbounded fan-out",
+      "impact": "Account limits are null or 1 up to the ceiling; capped stacks also get failed checks",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-134",
+      "group": "VCS: decision 0012",
+      "spacelift": "GitHub installation creates an account and organization renamed renames it",
+      "infraweave": "Installation events keep the integration current; no account is created or renamed",
+      "why": "An account owns its App integration independently of GitHub account identity",
+      "impact": "Installation health and repository paths follow events without changing tenancy",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-135",
+      "group": "VCS: decision 0012",
+      "spacelift": "`feature:enable_git_checkout` switches a stack to Git checkout",
+      "infraweave": "The label is ignored and cannot change the integration's useGitCheckout setting; the integration owns that preference. P12b retains all-provider Git clone and adds no alternate archive transport",
+      "why": "Checkout preference belongs to the integration",
+      "impact": "Changing the old label does not change checkout; additional source providers and private-source reach stay with P19b",
+      "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
     }
   ]
 }

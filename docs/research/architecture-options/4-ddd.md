@@ -1026,7 +1026,7 @@ internal/sourcecontrol/
 ├── application/routing/
 │   ├── match.go                        stackconfig/api.Stacks.ByRepository(integration, repo)
 │   ├── push.go                         governance/api.Evaluator.Push per stack or module
-│   └── dedupe.go                       commit SHA plus run type per stack; comment commands bypass
+│   └── dedupe.go                       commit SHA plus run type per stack; policy-driven comment events bypass
 ├── application/feedback/
 │   ├── checks.go                       individual or aggregated checks per integration settings
 │   ├── comments.go                     Comments.Upsert with a deduplication key

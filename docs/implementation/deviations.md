@@ -109,8 +109,10 @@ work queue with retry limits, dead jobs and ordering keys.
 
 ### VCS: decision 0012
 
-The operator's GitHub App, webhook routes, secret rotation, delivery replay,
-the VCS agent's transport and allowlist, and commit check names.
+Account-owned GitHub Apps, per-integration webhook routes, secret rotation,
+reverified delivery replay, full push diffs, event and run deduplication,
+check updates, labelled plan comments, the run ceiling, installation state,
+checkout preference, and the VCS agent's transport and allowlist.
 
 ### Secrets: decision 0013
 

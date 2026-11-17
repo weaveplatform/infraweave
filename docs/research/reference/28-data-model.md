@@ -169,7 +169,7 @@ erDiagram
 | Stack to managed entities | one to zero or more | `Stack.entities: [ManagedEntity!]!`; `ManagedEntity.stackId: ID!` [G] (report [21](21-resources-scans-search.md) section 2.2) |
 | Managed entity to run | zero or one creator, zero or one updater | `ManagedEntity.creator: Run`, `.updater: Run` [G] |
 | Stack to outputs | one to zero or more | `Stack.outputs: [StackOutput!]!` [G] |
-| Pull request to runs | zero or more runs per pull request; no `Run` field names a pull request, so whether a run can sit under several is not shown *(unverified)* (C269) | `PullRequest.runs: [Run!]!`; `PullRequest.run` is deprecated [G] (report [11](11-vcs-integrations.md) section 12.5) |
+| Pull request to runs | zero or more runs per pull request; as observed 2026-11-17, the same run appears under several requests sharing its commit (C269, resolved) | `PullRequest.runs: [Run!]!`; `PullRequest.run` is deprecated [G] (report [11](11-vcs-integrations.md) section 12.5) |
 
 ## 4. Policies and contexts
 
@@ -676,7 +676,7 @@ snapshot and fails verification on drift.
   - which host field routes a VCS integration through an agent pool (report
     11 section 14.2) (C77);
   - whether `TemplateVersion.version` is unique per template (C146);
-  - whether one run can be listed under several pull requests (C269);
+  - one run can be listed under several pull requests by matching commit SHA, as observed 2026-11-17 (C269, resolved);
   - how a FIDO2 security key is registered (report 14) (C120).
 
 ## Versions at the research baseline

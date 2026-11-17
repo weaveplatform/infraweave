@@ -365,7 +365,7 @@ Raw Git (`GIT`) builds a stack or module from any publicly reachable Git URL, in
 | Azure DevOps | Code pushed; PR created, merge attempted, updated, commented on | As above **[D]** |
 | Raw Git | none | Manual Sync and Trigger |
 
-The PR comment page does not name the providers that support comment-driven actions; GitLab's documented triggers omit comment events *(unverified whether GitLab comments are processed)* (C74).
+As observed 2026-11-17, `/spacelift` comments on pull requests did nothing; no provider offers a built-in Preview or Deploy command in comments (C74, resolved). Comment events can instead be evaluated by push policies.
 
 ### 11.2 What an event becomes
 
@@ -412,7 +412,7 @@ Aggregated checks (Business plan and above) post three checks per commit **[D]**
 | `spacelift/proposed` | Proposed runs |
 | `spacelift/modules` | Module runs |
 
-The same three names are documented for GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps **[D]**. The individual check's name is not documented in the mirror *(unverified; the per-stack name format is unknown)* (C73).
+The same three names are documented for GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps **[D]**. As observed 2026-11-17, individual names are `spacelift/<stack>/tracked` and `spacelift/<stack>` (C73, resolved); GitHub posts check runs only, creates a new one per state change, and includes all three aggregates with "0 runs" for empty kinds.
 
 ### 12.2 What checks report
 
@@ -442,7 +442,7 @@ Bitbucket Cloud, Bitbucket Data Center and Azure DevOps have no documented deplo
 
 ### 12.5 Pull requests in Spacelift
 
-The stack's PRs tab lists open PRs against the tracked branch, each with its status and most recent run; it is read-only and a PR leaves the list when closed **[D]** [github](https://docs.spacelift.io/integrations/source-control/github#pull-requests). The schema returns up to 50 open PRs **[G]**. Whether one run can be listed under several pull requests is open: `PullRequest.runs` lists runs, but no `Run` field names a pull request *(unverified)* (C269).
+The stack's PRs tab lists open PRs against the tracked branch, each with its status and most recent run; it is read-only and a PR leaves the list when closed **[D]** [github](https://docs.spacelift.io/integrations/source-control/github#pull-requests). The schema returns up to 50 open PRs **[G]**. As observed 2026-11-17, one run can appear under several pull requests sharing its commit; requests list matching runs by SHA, current head first (C269, resolved).
 
 ## 13. Push policy interplay
 
@@ -612,7 +612,7 @@ Report 26 owns the full tier map.
 - A provider abstraction with seven external source kinds plus native repos, each with its own credentials (App key, project token, email and API token, username and PAT, organization PAT), webhook authentication (HMAC signature, shared token header, basic auth) and API surface.
 - One default integration per provider in the root space, any number of space-scoped ones, admin-only secrets, integrations that move between spaces, deletion that detaches stacks rather than failing, and webhook URLs derived from an immutable name.
 - Inbound webhook endpoints per integration, with secret rotation, a test operation that reports connection, permission, webhook and app-event checks, and per-event run caps.
-- Event normalization into one push or pull request input for the push policy (report 09), with per-provider meanings of `approved`, `mergeable`, `undiverged` and `head_owner`, run deduplication by SHA and run type, fork handling, comment commands and superseded-run cancellation.
+- Event normalization into one push or pull request input for the push policy (report 09), with per-provider meanings of `approved`, `mergeable`, `undiverged` and `head_owner`, run deduplication by SHA and run type, fork handling, policy-driven comment events and superseded-run cancellation.
 - Outbound feedback: per-stack and aggregated checks with failure-only and skip-unchanged options, check actions that start runs, PR comments with edit-in-place keys, and deployment and environment reporting on GitHub and GitLab.
 - A private-network path: a gateway that accepts outbound agent streams, a request and response envelope over gRPC, pool tokens and reset, request validation, and worker-side endpoint mapping.
 - Source download by archive or by Git checkout, with sparse checkout and the GitHub potential merge commit.
