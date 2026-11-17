@@ -92,7 +92,7 @@ download, answers 404 with `{"errors":[{"message":"not found"}]}`.
 |---|---|---|
 | Session token | `terraform login <host>`; a registry session independent of the console's browser session | `Authorization: Bearer`, verified as decision 0006 defines |
 | API key | `credentials "<host>" { token = "<base64(api:<id>:<secret>)>" }`, unpadded, as Spacelift documents | Decoded, exchanged for a token as decision 0006 defines, and the result cached in memory until 30 seconds before it expires |
-| In-run token | Written into the run's `~/.terraformrc` by the runner (decision 0008) | `Authorization: Bearer`, as above |
+| In-run token | Written into the run's `~/.terraformrc` by the runner (decision 0008), and for a Terragrunt run also set as `TG_TF_REGISTRY_TOKEN`, so `tfr://` sources resolve ([20 section 6.4](../reference/20-vendors.md#64-state-workspaces-and-caching)) | `Authorization: Bearer`, as above |
 | None | Public modules and public providers | Anonymous read |
 
 - A module or provider is readable when the caller holds `SPACE_READ` on its space,

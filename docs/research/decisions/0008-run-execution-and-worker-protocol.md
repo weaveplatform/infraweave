@@ -110,7 +110,7 @@ facts shape the design.
 |---|---|---|
 | API action | T3, T8 (discard), T4 and T9 (`runCancel`), T16 and T19 (`runStop` once the worker confirms), T26 (`runConfirm`), T27 (`runDiscard`), T28 (`runTargetedReplan`) | Handler calls `run.Transition` with the caller's identity; [0007](0007-authorization-spaces-and-roles.md) checks the run action first |
 | Creation | T1 | Every route in [08 section 1](../reference/08-run-lifecycle.md#1-run-types) inserts the run in `QUEUED` in the transaction that creates it |
-| Scheduler | T2, T5 and T6 for dependencies; for a push policy `cancel`, T4 on a queued run and T27 on one awaiting confirmation | The `run.schedule` job, below |
+| Scheduler | T2, T5 and T6 for dependencies; for a push policy `cancel`, T4 on a queued run, T9 on a ready one and T27 on one awaiting confirmation | The `run.schedule` job, below |
 | Approval policy | T5, T23, T24, T29, and the gates on T2 and T26 | Evaluated on entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW` and on each review ([09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated)) |
 | Worker claim | T7, T30, T33 | The poll claims the run (below) |
 | Worker report | T10, T11, T12 to T16, T18 for a tool error, T19, T32, T35 to T43, T44 | Runner or launcher reports through `/worker/v1` |

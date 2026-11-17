@@ -2174,9 +2174,9 @@ in as `test/fixtures/policy-inputs`
      adding a history entry with its messages and a deny failing the run
      with the note `denied by plan policy`;
    - push in `vcs.evaluate_event`: no matching rule ignores the push and
-     lists it among the stack's ignored runs; `cancel` moves a queued run to
-     `CANCELED` (T4) and an unconfirmed one to `DISCARDED` (T27, which gains
-     the scheduler driver), noting the run that replaces it;
+     lists it among the stack's ignored runs; `cancel` moves a queued or ready run to
+     `CANCELED` (T4, T9) and an unconfirmed one to `DISCARDED` (T27), noting
+     the run that replaces it; T9 and T27 gain the scheduler driver;
    - trigger through the durable `policy.trigger` job when a tracked run or
      task ends, `FAILED` and `DISCARDED` included, each triggered run on its
      stack's tracked commit with `triggered_by` `policy/<stack>/<run>`;
@@ -2598,7 +2598,10 @@ that need no confirmation
    domain's contribution. `login.v1` (`/terraform-login`,
    `POST /terraform/token`) in `access`. Tests:
    `TestUnitVersionNumberRules`, `TestUnitVersionSegmentParse`. Records
-   DV-052, DV-054, DV-055.
+   DV-052, DV-054, DV-055. The runner writes the in-run token into the
+   run's `~/.terraformrc` and, for a Terragrunt run, also sets
+   `TG_TF_REGISTRY_TOKEN` to it, so `tfr://` sources resolve
+   ([20 section 6.4](../research/reference/20-vendors.md#64-state-workspaces-and-caching)).
 5. Versions from the tracked branch: a push whose `.spacelift/config.yml`
    changes `module_version` creates that version; a push that leaves it
    unchanged creates none and records no failed version; `versionCreate`
