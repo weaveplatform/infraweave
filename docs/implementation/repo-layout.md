@@ -211,7 +211,7 @@ infraweave/
 │   │   └── api/ assembly/ internal/{core,http,pg}/
 │   ├── registry/                  hexagon: modules, versions, test cases, providers, GPG keys (P17, P17b)
 │   │   └── api/ assembly/ internal/{core/{module,version,testcase,provider,gpg,sharing,port},adapters/{http,protocol,pg}}/
-│   ├── events/                    hexagon: the sinks: inbox, named and stack webhooks, streams, audit trail, Slack, Teams (P18, P18b)
+│   ├── events/                    hexagon: Commit checks sink (P12b); inbox, named and stack webhooks, streams, audit trail, Slack, Teams (P18, P18b)
 │   │   └── api/ assembly/ internal/{core/{inbox,webhook,delivery,stream,audit,metrics,port},adapters/{http,slack,pg}}/
 │   ├── templates/                 flat: blueprints, templates, versions, deployments (P21)
 │   │   └── api/ assembly/ internal/{core,render,http,pg}/

@@ -757,7 +757,7 @@
       "area": "Stacks, runs and policies (reports 07 to 09)",
       "question": "Which label produces the ignored-trigger reason `DISABLED_BY_LABEL`, and how do `CUSTOM_POLICY` and `CUSTOM_POLICY_NO_TRIGGER` differ?",
       "howToCapture": "Ask Spacelift; capture ignored triggers under each setup",
-      "blocks": "ignored-trigger reasons infraweave emits",
+      "blocks": "P13 policy-specific ignored-trigger reason scenarios await this capture; P12b independently asserts NO_AFFECTED_FILES_IN_PROJECT_ROOT, TAGS_IGNORED_BY_DEFAULT and RUN_LIMIT_REACHED",
       "reports": [
         "docs/research/reference/08-run-lifecycle.md"
       ]
@@ -1053,7 +1053,7 @@
       "area": "VCS integrations (report 11)",
       "question": "Does the stack label `feature:enable_git_checkout` still have any effect now that every integration has `useGitCheckout`?",
       "howToCapture": "Toggle each on a trial account; ask Spacelift",
-      "blocks": "whether checkout mode is per integration only",
+      "blocks": "Capture awaits checkout-label behavior; until recorded P12b asserts that feature:enable_git_checkout is ignored and the integration useGitCheckout setting decides",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md"
       ]
@@ -1062,23 +1062,25 @@
       "id": "C73",
       "kind": "capture",
       "area": "VCS integrations (report 11)",
-      "question": "What name does an individual (per-stack) VCS check carry on each provider?",
-      "howToCapture": "Capture a GitHub check run and the GitLab and Bitbucket statuses",
-      "blocks": "branch protection rules that name checks",
+      "question": "Resolved as observed 2026-11-17: individual names are `spacelift/<stack>/tracked` and `spacelift/<stack>`; GitHub uses check runs only, one new object per state change, and the three aggregated checks include \"0 runs\" for empty kinds",
+      "howToCapture": "Maintainer observation of the provider check views on 2026-11-17",
+      "blocks": "None; P12b asserts the renamed names and its deliberate in-place update contract",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C74",
       "kind": "capture",
       "area": "VCS integrations (report 11)",
-      "question": "Does Spacelift act on GitLab comment (note) events for `/spacelift` commands?",
-      "howToCapture": "Comment on a GitLab merge request",
-      "blocks": "comment commands on GitLab",
+      "question": "Resolved as observed 2026-11-17: `/spacelift` pull request comments did nothing; no provider has a built-in Preview or Deploy command in comments",
+      "howToCapture": "Maintainer observation of pull request comments on 2026-11-17",
+      "blocks": "None; P12b stores comments without creating runs, and P13 evaluates comment events through push policies",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C75",
@@ -1086,7 +1088,7 @@
       "area": "VCS integrations (report 11)",
       "question": "How does Bitbucket Cloud write commit statuses and PR comments with only `read:*` token scopes?",
       "howToCapture": "Connect with a read-only token and run a PR",
-      "blocks": "Bitbucket Cloud credential scopes",
+      "blocks": "The real Bitbucket Cloud feedback scenario awaits confirmed scopes; the lab uses pull request and repository write scopes and fakes assert checks/comments",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md"
       ]
@@ -1097,7 +1099,7 @@
       "area": "VCS integrations (report 11)",
       "question": "Does renaming a GitHub organization still rename the Spacelift account? The docs say yes; the 2026-06-08 changelog removes automatic renames",
       "howToCapture": "Ask Spacelift, or rename a test organization",
-      "blocks": "account identity tied to an organization",
+      "blocks": "The installation/owner-rename capture awaits upstream behavior; P12b asserts integration state and stack paths change without creating or renaming accounts",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md"
       ]
@@ -1132,7 +1134,7 @@
       "area": "VCS integrations (report 11)",
       "question": "Do the GitHub check's Preview and Deploy buttons rely on `check_run` `requested_action` events?",
       "howToCapture": "Capture GitHub App webhook deliveries while pressing them",
-      "blocks": "GitHub event handling",
+      "blocks": "A person-pressed Preview/Deploy capture awaits recording; P12b fake scenarios assert requested_action and githubActionDeploy gating",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md"
       ]
@@ -1143,7 +1145,7 @@
       "area": "VCS integrations (report 11)",
       "question": "How does Spacelift verify each provider's webhook deliveries (signature header, GitLab token)?",
       "howToCapture": "Replay a delivery with a wrong signature against a trial account",
-      "blocks": "webhook verification",
+      "blocks": "Wrong-signature capture awaits upstream verification; P12b asserts each recorded scheme and refuses invalid or expired previous secrets",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md"
       ]
@@ -3297,13 +3299,14 @@
       "id": "C269",
       "kind": "capture",
       "area": "Data model (report 28)",
-      "question": "Can one run be listed under several pull requests? `PullRequest.runs` lists runs, but no `Run` field names a pull request",
-      "howToCapture": "Open two pull requests on the same head commit and read `runs` on each",
-      "blocks": "whether runs and pull requests need a join table or a column on `runs`",
+      "question": "Resolved as observed 2026-11-17: one run can appear under several pull requests sharing its commit; requests list runs by matching SHA, current head first",
+      "howToCapture": "Maintainer observation of open pull requests and their runs on 2026-11-17",
+      "blocks": "None; vcs keeps pull request head history and matches stack runs by SHA, without a Run pull-request owner",
       "reports": [
         "docs/research/reference/28-data-model.md",
         "docs/research/reference/11-vcs-integrations.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "RV-1",
@@ -3760,7 +3763,7 @@
       "area": "Console survey (report 32)",
       "question": "What bound does the switch limiting the runs one VCS event creates take, and what happens to the runs beyond it?",
       "howToCapture": "Turn the switch on and read its field; push a commit that touches more stacks than the bound",
-      "blocks": "the bound `accountUpdateVCSEventTriggeredRunsLimit` accepts",
+      "blocks": "Spacelift's bound remains open; P12b cap scenarios assert null or 1 up to vcs.event_runs_ceiling (default 500), with RUN_LIMIT_REACHED and a failed check for every capped stack",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"
       ]

@@ -840,7 +840,7 @@ internal/core/vcs/
   normalize.go                                provider payload to one PushEvent or PullRequestEvent
   route.go                                    match stacks and modules by integration, repository, branch;
                                               project root and globs
-  dedupe.go                                   (stack, sha, run type); comment commands bypass
+  dedupe.go                                   (stack, sha, run type); policy-driven comment events bypass
   process.go                                  per target: driving.PolicyDecisions.Push, then
                                               driving.Runs.Trigger or an ignored-trigger record
   feedback.go                                 Subscriber for RunStateChanged: checks, PR comments,
@@ -1479,7 +1479,7 @@ Coverage implications:
 
 ### A GitHub push becomes a proposed run, a plan policy and a PR comment
 
-1. `internal/adapter/driving/http/router.go` (built in `internal/app/router.go`): chi routes `POST /webhooks/vcs/github/{integration}` to `adapter/driving/http/webhook/webhook.go`.
+1. `internal/adapter/driving/http/router.go` (built in `internal/app/router.go`): chi routes `POST /webhooks/vcs/{provider}/{integrationId}` to `adapter/driving/http/webhook/webhook.go`.
 2. `webhook.go`: reads the body under a size cap and calls `driving.Webhooks.Ingest`.
 3. `internal/core/vcs/ingest.go`: loads the integration through `driven.VCSStore`; asks `driven.VCSProvider` (`internal/adapter/driven/vcs/github/verify.go`) to check `X-Hub-Signature-256`.
 4. `ingest.go`: in one `driven.UnitOfWork.Tx` (`internal/adapter/driven/postgres`), stores the delivery (`postgres/vcs`) and enqueues `vcs.process_delivery` on the `vcs-inbox` queue through `driven.Queue` (`internal/adapter/driven/queue`); `webhook.go` answers `202`.

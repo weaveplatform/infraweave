@@ -1044,7 +1044,7 @@
         "phase": "P12",
         "also": "P12b (webhooks, checks, comments and deployments)",
         "state": "missing",
-        "notes": "Every provider is a peer, built together: GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps; beyond Spacelift, the others gain GitHub's capabilities where their APIs allow: per-run repository tokens, comment commands for Preview and Deploy, and renames followed by repository ID"
+        "notes": "Every provider is a peer, built together: GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps; beyond Spacelift, the others gain GitHub's capabilities where their APIs allow: per-run repository tokens and renames followed by repository ID; GitHub alone has Preview and Deploy check buttons, while every provider stores comment events for push policies"
       }
     },
     {

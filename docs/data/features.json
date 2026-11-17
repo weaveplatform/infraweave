@@ -18,7 +18,7 @@
     {
       "id": "aggregated-vcs-checks",
       "kind": "option",
-      "field": "`vcsChecks: AGGREGATED` on a VCS integration",
+      "field": "`vcsChecks: AGGREGATED` and `vcsChecks: ALL` on a VCS integration",
       "lowestTier": "Business",
       "phase": "P12b"
     },

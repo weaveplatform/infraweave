@@ -38,9 +38,10 @@ breaking change to retrofit once clients exist:
   | The operator API | `/operator/v1` | `api/operator.openapi.yaml` | Operator tokens ([0021](0021-capability-scope-and-supersession.md)) |
   | The worker API | `/worker/v1` | `api/worker.openapi.yaml` | Worker session tokens, and run tokens on the runner's routes ([0008](0008-run-execution-and-worker-protocol.md)) |
   | The state backend | `/state/v1` | none: Terraform's `http` backend protocol ([0010](0010-state-backend.md)) | Run tokens under the username `run`, and an API key or the API's bearer tokens under `api`, as the HTTP Basic password ([0006](0006-authentication-and-tokens.md)); the signed routes' tokens |
+  | VCS webhook intake | `/webhooks/vcs` | none: each provider's delivery shapes | The integration's webhook secret, checked by the handler |
   | Routes beside the documents | the break-glass login, the OAuth authorization server, the fs driver's `/blobs/{token}`, the console at `/` ([0023](0023-console.md)) | none | Their own, as the exceptions below say |
 
-  A surface added later, such as an inbound webhook, joins the same
+  A surface added later joins the same
   listener behind the same controls, and records here any control it
   departs from.
 - **Shared controls.** Every request passes the same chain, in this order,
@@ -102,6 +103,13 @@ breaking change to retrofit once clients exist:
 
   | Routes | Control | Deviation | Why |
   |---|---|---|---|
+  | VCS webhook intake | Authentication | No credential at the authenticator; the handler finds the integration and verifies its signature or token. Failure is `401`, an empty body and no `WWW-Authenticate`. Every delivery, verified or not, is an `expensive` draw on the client's address | The provider's signature or token authenticates its own request shape |
+  | VCS webhook intake | Authorization | No account action decides the route | The integration's secret is the credential |
+  | VCS webhook intake | Feature gates | None at intake | Each job's kind is checked when claimed, so intake does not lose a valid delivery on a tier change |
+  | VCS webhook intake | Idempotency keys | `Idempotency-Key` is ignored | The provider's delivery ID deduplicates |
+  | VCS webhook intake | Strict bodies | The handler parses the provider's shapes | These are provider protocols, not the served JSON schema |
+  | VCS webhook intake | Bounded bodies | 25 MiB, not `server.max_body_bytes` | A provider's push payload can exceed the API body bound |
+  | VCS webhook intake | Problem details | Status and an empty body on every answer | Providers expect their webhook protocol's response |
   | The worker API | Authorization | No account action decides a route | The worker or the run is its own subject: a session token names one worker of one pool, a run token one run, and the service reads that worker's or run's rows alone |
   | The worker API | Feature gates | No capability gates a route | `private-workers` bounds registration; gating the protocol would strand a running run when an organization's tier drops |
   | The worker API's poll | Bounded connections | The write deadline is the longest hold, `worker.poll_timeout_max` within 120 seconds, plus `server.timeouts.write` | A poll answers when a run, a signal or its wait comes, which may be after the write timeout; a held poll holds no transaction or pooled connection, and a worker holds one poll per replica |
@@ -130,6 +138,14 @@ breaking change to retrofit once clients exist:
   Each state backend row is one item, under its control's name, of the comment on the
   state backend's entries in the route table (`apiOperations` in
   `internal/app/operations.go`).
+
+Webhook intake follows control 6 without a rate-limit deviation: it has no
+authenticator credential, so its key is the client's address. Request ID,
+access log, route table, bounded connections and uncacheable answers apply
+unchanged. `vcsIntegrationDeliveryReplay` takes every shared control and is
+`expensive`, since it can create runs.
+
+ref: [0012, intake and replay](0012-vcs-integration-model.md#webhook-intake-stored-before-acknowledgement), [0022, protocol endpoints](0022-api-errors-and-update-semantics.md#errors-a-status-per-class-problem-details-spacelifts-words-kept-pd-01-option-b).
 
 ### Idempotency keys
 
@@ -284,6 +300,13 @@ The scaffolder adds them to each operation and records each addition in
 `x-infraweave-divergence`.
 
 ## Rationale
+
+- **Webhook address budget.** GitHub sends deliveries from shared addresses
+  and never retries, so a `429` on a verified GitHub delivery loses that event
+  until someone redelivers it from the App's settings. The operator sizes
+  the `expensive` budget for the provider's traffic. Keeping the common
+  address rule bounds unauthenticated work before signature verification.
+
 
 - **One set of controls, deviations by name.** A surface whose only client
   is our own still faces whoever holds its credential: a compromised

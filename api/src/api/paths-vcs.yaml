@@ -937,8 +937,8 @@ paths:
       description: Endpoint for incoming Azure DevOps webhooks.
       operationId: azureDevOpsWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_READ
-      x-infraweave-subject: list
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1367,8 +1367,8 @@ paths:
       description: Endpoint for incoming Bitbucket Cloud webhooks.
       operationId: bitbucketCloudWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_READ
-      x-infraweave-subject: list
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -1797,8 +1797,8 @@ paths:
       description: Endpoint for incoming Bitbucket Datacenter webhooks.
       operationId: bitbucketDatacenterWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_READ
-      x-infraweave-subject: list
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:
@@ -2411,8 +2411,8 @@ paths:
       description: The webhooks endpoint to use in your GitHub Enterprise App
       operationId: githubEnterpriseWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_READ
-      x-infraweave-subject: list
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: query:id:vcs_integration
       parameters:
         - in: query
           name: id
@@ -2934,8 +2934,8 @@ paths:
       description: Endpoint for incoming Gitlab webhooks.
       operationId: gitlabWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_READ
-      x-infraweave-subject: list
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: account
       responses:
         "200":
           content:

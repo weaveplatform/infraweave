@@ -50,7 +50,7 @@ not provider names.
 | `Source` | `ResolveRef`, `AffectedFiles(base, head)`, `ReadFile(ref, path)` (for `.infraweave/config.yml`), `SourceCredential(run)` | all |
 | `Browse` | `Repositories`, `Branches` | all |
 | `Checks` | `SetIndividual`, `SetAggregated` | all but raw Git |
-| `Comments` | `Upsert(pr, dedupKey, body)` | all but raw Git |
+| `Comments` | `PostPlan(pr, run, body)`, `Upsert(pr, dedupKey, body)` | all but raw Git |
 | `Deployments` | `Report(stack, run, state)` | GitHub, GitLab |
 | `Tester` | `Test()` returning `CONNECTION`, `PERMISSIONS`, `WEBHOOK`, `GITHUB_APP_EVENTS` checks | all but raw Git |
 
@@ -81,7 +81,7 @@ not provider names.
   [28 section 12.6](../reference/28-data-model.md#126-vcs-and-cloud-integrations):
   provider, `slug` (from the immutable name), space, labels, `is_default`, check
   mode and options, `use_git_checkout`, provider settings (`api_host`,
-  `user_facing_host`, app ID, installations), `credentials_sealed` (private key,
+  `user_facing_host`, app ID), `credentials_sealed` (private key,
   token or password), `webhook_secret_sealed`, and
   `previous_webhook_secret_sealed` with `previous_secret_valid_until`. Sealing
   is [0013](0013-secrets-at-rest.md)'s.
@@ -101,15 +101,20 @@ not provider names.
   transaction; a detached stack receives no events and refuses manual triggers
   with `409 invalid-state` ([0022](0022-api-errors-and-update-semantics.md))
   until it is rebound.
-- **The `GITHUB` provider.** infraweave operates no Marketplace app. The
-  `GITHUB` value names one GitHub App that the operator registers for the
-  installation (server settings `vcs.github_app.app_id`,
-  `vcs.github_app.private_key_file`, `vcs.github_app.webhook_secret_file`,
-  and `vcs.github_app.api_host` for an App on GitHub Enterprise Server);
-  `githubIntegration` and `githubIntegrationUpdate` read and set its check
-  options. `GITHUB_ENTERPRISE` is the per-account custom App on github.com or
-  GitHub Enterprise Server, including the manifest flow
-  ([11 section 4.2](../reference/11-vcs-integrations.md#42-operations)).
+- **The `GITHUB` provider (D1).** infraweave has no built-in GitHub
+  integration. Each account registers its own App as a `GITHUB_ENTERPRISE`
+  integration, on github.com or GitHub Enterprise Server, by key or through
+  the manifest flow. Every installation of that App belongs to that account.
+  `githubIntegration` and `githubIntegrationUpdate` are not served. `GITHUB`
+  remains an alias: a stack (and later module) write naming it, or omitting
+  the provider, resolves to the account's default GitHub App integration
+  when it names no integration, or to the named GitHub App integration in
+  that account. Reads retain the provider and integration the write named;
+  resolution does not copy a default onto the stack. A write with no
+  integration to resolve answers `422` at `/provider`.
+- **Installations (D22).** GitHub App installations and their repositories
+  are integration state, separate from provider settings. Events keep this
+  state current; they never create or rename an account.
 - **Bitbucket Cloud's host.** A `BITBUCKET_CLOUD` integration names no
   host: every one reaches `https://api.bitbucket.org/2.0`, or the server
   setting `vcs.bitbucket_cloud.api_host` when the operator points it at a
@@ -134,7 +139,7 @@ GitHub has a capability, the others gain its equivalent:
 | GitHub capability | Equivalent on the other providers | Where none exists |
 |---|---|---|
 | An installation token per run, limited to one repository | GitLab: a project access token with `read_repository`; Bitbucket Data Center: a repository access token with `REPO_READ`; each revoked when the run ends (below) | Bitbucket Cloud and Azure DevOps mint no repository token through their APIs, so their runs receive the integration's token |
-| Check-run actions **Preview** and **Deploy** | Pull request comment commands that start the same runs, from each provider's comment event | |
+| Preview and Deploy check-run actions, while the stack allows run promotion | | None: comment events reach P13's push policies on every provider |
 | Renames followed through the `repository` event | Renames followed by the stable repository or project ID every event carries; an event whose path differs from the stack's under the same ID updates the stack | |
 | Deployments | GitLab environments | Bitbucket and Azure DevOps: commit statuses only |
 
@@ -146,109 +151,248 @@ client to the routes it calls in every pull request, and the scheduled
 
 ### Webhook intake: stored before acknowledgement
 
-Each integration has one endpoint, `POST /webhooks/vcs/{provider}/{integrationId}`;
-the operator's GitHub App uses `POST /webhooks/vcs/github`. The
-`<provider>WebhooksEndpoint` reads return these URLs. They answer what the
-provider expects (status and an empty body), never problem details.
+**Controls (D2).** The one route is
+`POST /webhooks/vcs/{provider}/{integrationId}`. The API surfaces record
+owns the shared controls and intake's deviations. Each delivery, verified
+or not, is an `expensive` draw on the client's address. Intake has no
+feature gate; each job's kind is checked when claimed. Request IDs, access
+logging, the route table, bounded connections and uncacheable answers
+apply unchanged. Every answer, including a refusal or throttle, is a
+status with an empty body; a failed verification has no `WWW-Authenticate`.
+
+ref: [0003, API surfaces](0003-api-conventions.md#api-surfaces), [0011](0011-persistent-work-queue.md), [0022, protocol endpoints](0022-api-errors-and-update-semantics.md#errors-a-status-per-class-problem-details-spacelifts-words-kept-pd-01-option-b).
 
 The handler does, in order:
 
 1. **Bound the body.** Read at most 25 MiB; a larger body answers `413`.
 2. **Find the integration.** An unknown or deleted one answers `404`.
-3. **Verify.** Per provider, with constant-time comparison (`hmac.Equal`,
-   `subtle.ConstantTimeCompare`), against the current secret and, until
-   `previous_secret_valid_until`, the previous one:
+3. **Verify.** Compare in constant time against the current secret and,
+   until `previous_secret_valid_until`, the previous one:
 
    | Provider | Check | Delivery ID |
    |---|---|---|
-   | GitHub, GitHub Enterprise | `X-Hub-Signature-256` is `sha256=` and the hex HMAC-SHA256 of the body; the SHA-1 `X-Hub-Signature` alone is refused | `X-GitHub-Delivery` |
+   | GitHub App integrations | `X-Hub-Signature-256`: `sha256=` plus the hex HMAC-SHA256 of the body; SHA-1 alone is refused | `X-GitHub-Delivery` |
    | GitLab | `X-Gitlab-Token` equals the secret | `X-Gitlab-Event-UUID` |
-   | Bitbucket Cloud | `X-Hub-Signature` is `sha256=` and the hex HMAC-SHA256 of the body | `X-Request-UUID` |
-   | Bitbucket Data Center | as Bitbucket Cloud; a delivery without a signature is refused, as Spacelift refuses it | `X-Request-Id` |
-   | Azure DevOps | HTTP Basic with an empty user name and the webhook password | the payload's event `id` |
+   | Bitbucket Cloud | `X-Hub-Signature`: `sha256=` plus the hex HMAC-SHA256 of the body | `X-Request-UUID` |
+   | Bitbucket Data Center | As Bitbucket Cloud; unsigned deliveries are refused | `X-Request-Id` |
+   | Azure DevOps | HTTP Basic with an empty username and the webhook password | The payload's event `id` |
 
-   A failed check answers `401` and stores nothing, so an unauthenticated
-   sender cannot fill the database. It is logged and counted
-   (`infraweave.vcs.webhook.rejected` by provider and reason; metric names are
-   decision 0017's). A provider that sends no delivery ID gets the SHA-256 of
-   the body as its ID.
-4. **Filter.** Event types that [11 section 11.1](../reference/11-vcs-integrations.md#111-events-consumed-per-provider)
-   does not list answer `200` and are not stored.
-5. **Store and enqueue in one transaction.** Insert into `vcs_deliveries`
-   (`integration_id`, `delivery_id`, provider event name, received time,
-   selected headers, the body inline as `bytea` up to 256 KiB or else an
-   object key in the `inbox` store written before the transaction, state
-   `received`) with `ON CONFLICT (integration_id, delivery_id) DO NOTHING`. When
-   the row is new, `queue.EnqueueTx` adds a `vcs.process_delivery` job on the
-   `vcs-inbox` queue with `unique_key` the delivery row ID and `ordering_key`
-   the integration plus repository, so one repository's events run in arrival
-   order ([0011](0011-persistent-work-queue.md)).
-6. **Acknowledge.** `202` for a new delivery, `200` for a duplicate. If the
-   transaction fails the answer is `503`, so providers that retry do so.
+   Failure answers `401`, stores nothing, and increments
+   `infraweave.vcs.webhook.rejected` by provider and reason. A provider
+   without a delivery ID uses the body's SHA-256.
+4. **Filter.** Unconsumed events answer `200` and are not stored:
 
-The handler makes no call to the VCS and evaluates no policy, so it answers
-well inside GitHub's 10-second delivery timeout.
+   | Provider | Consumed events and actions |
+   |---|---|
+   | GitHub App integrations | `push`, `pull_request`, `pull_request_review`, `issue_comment` (`created` on a pull request), `check_run` (`requested_action`), `repository` (`renamed`), `installation`, `installation_repositories`, `installation_target` (`renamed`), `organization` (`renamed`) |
+   | GitLab | Push, tag push, merge request, note on a merge request |
+   | Bitbucket Cloud | Push; pull request created, updated, approved, approval removed, fulfilled, comment created |
+   | Bitbucket Data Center | `repo:refs_changed`, `pr:opened`, `pr:from_ref_updated`, `pr:modified`, `pr:reviewer:approved`, `pr:reviewer:unapproved`, `pr:merged`, `pr:comment:added` |
+   | Azure DevOps | Code pushed; pull request created, updated, merge attempted, commented on |
+
+5. **Store and enqueue (D3).** In one transaction insert `vcs_deliveries`
+   with integration, delivery ID, provider event, received time, selected
+   headers, body and state `received`, and enqueue `vcs.process_delivery`.
+   `ON CONFLICT (integration_id, delivery_id) DO NOTHING` deduplicates.
+   Bodies up to 256 KiB are inline `bytea`; larger ones use an `inbox`
+   object written before the transaction. The job uses queue `vcs-inbox`,
+   unique key the row ID and ordering key integration plus repository.
+   Stored headers are the event and delivery ID headers, `Content-Type`,
+   `User-Agent`, and the signature header: `X-Hub-Signature-256` for
+   GitHub, `X-Hub-Signature` for both Bitbucket providers. For GitLab and
+   Azure DevOps store the handler's HMAC-SHA256 of the body under the
+   secret that verified it instead. `Authorization` and `X-Gitlab-Token`
+   are never stored or logged. Replay can verify the retained digest
+   without retaining a secret-bearing request header.
+6. **Acknowledge.** `202` for new, `200` for duplicate, `503` if the
+   transaction fails. The handler makes no VCS call and evaluates no
+   policy, staying inside GitHub's 10-second timeout.
+
+**URLs (D6).** Each `<provider>WebhooksEndpoint` read answers the provider's
+account-default integration URL; `githubEnterpriseWebhooksEndpoint?id=`
+can name one integration instead. With none it answers `404 not-found`.
+The integration's `SPACE_ADMIN` action decides access in its space, the
+default's being the top space. The URL and secret are not reader data.
+
+**Rotation (D4).** All five providers have a regenerate operation,
+including `azureDevOpsRepoIntegrationRegenerateWebhookSecret`. In one
+transaction a new 32-byte current secret is sealed, the former current
+becomes previous, and its validity ends at now plus
+`vcs.webhook_secret_overlap` (default 24 hours, validated at load). A second
+regenerate within that window drops the older previous secret. The admin
+receives the new secret; the audited change carries no secret.
+
+**Test checks (D19).** `WEBHOOK` on GitLab, both Bitbucket providers and
+Azure DevOps checks every repository the integration's stacks use for a
+hook to this URL with all consumed events. `webHooks` metadata gives
+`expected` and `actual`, names up to 10 failing repositories and counts the
+rest. GitHub's `GITHUB_APP_EVENTS` reads `GET /app`: it checks subscribed
+consumed events that require subscription, and checks, pull requests,
+issues and deployments write plus organization members read. GitHub sends
+`installation` and `installation_repositories` without subscription. The
+manifest and check share one permissions/events list; GitHub feedback uses
+the Checks API, so `statuses` is not requested. Registration stays with the
+user: infraweave never creates or deletes provider hooks.
 
 ### Processing
 
-- **`vcs.process_delivery`** parses the stored body, updates `pull_requests`
-  and repository renames, resolves the affected stacks and modules through the
-  `(vcs_integration, repository, branch)` index of report 28, and computes the
-  affected files once per event. In the transaction that completes the job it
-  sets the delivery to `dispatched` and enqueues one `vcs.evaluate_event` job
-  per stack or module (unique key: delivery plus stack), so one stack's
-  failure is retried alone and never repeats another's run.
-- **`vcs.evaluate_event`** evaluates the push policy (0009) and applies its
-  outcome (`track`, `propose`, `ignore`, `notrigger`, `cancel`, `lock`), and
-  creates runs ([0008](0008-run-execution-and-worker-protocol.md)) in the
-  transaction that completes the job. Run deduplication on stack, commit SHA
-  and run type is a unique index on `runs`, so a retried job cannot create a
-  second run. A `/infraweave` comment that proposes bypasses it.
-- **Budgets.** Every child job carries the delivery's deadline, received time
-  plus 10 minutes; a job that starts after it completes with outcome `expired`
-  and acts on nothing. The `vcsEventTriggeredRunsLimit` cap is a counter on the
-  delivery row incremented in each run-creating transaction; a run past the cap
-  is not created and the cap failure is reported as a check.
-- **Superseded proposed runs.** A push to a branch stops that branch's
-  proposed runs still in `PLANNING` on an older commit (T19 in
-  [08 section 3](../reference/08-run-lifecycle.md#transition-table)).
-- **Retention.** Delivery rows are kept 7 days (`vcs.deliveries.retention`),
-  then deleted by the hourly periodic task `vcs.deliveries.prune`; `inbox` objects expire after 2 days
-  ([0005](0005-persistence-postgresql.md)). A delivery whose job is dead stays
-  visible with state `failed`. `GET /vcs-integrations/{id}/deliveries` lists
-  deliveries and `POST /vcs-integrations/{id}/deliveries/{deliveryId}/replay`
-  enqueues one again, both needing the integration admin action.
-- **Webhook registration** stays with the user, as in Spacelift: infraweave
-  shows the URL and secret, and the `WEBHOOK` test check compares expected
-  and actual hooks. infraweave does not create or delete hooks on the VCS.
+- **Dispatch.** `vcs.process_delivery` parses the stored body, maintains
+  repository and pull request state, resolves affected stacks and modules,
+  and computes affected files once per event. Its completing transaction
+  marks the delivery `dispatched` and enqueues `vcs.evaluate_event` per
+  stack or module, unique by delivery and stack. Each child inherits the
+  received-time-plus-10-minutes deadline; a job starting after it records
+  `expired` and acts on nothing.
+- **Default push behaviour (D9).** A tracked-branch push moves
+  `trackedBranchHead`. If its full before-to-after diff touches the project
+  root or an additional glob, it also moves `trackedCommit`, set by
+  `infraweave`, and starts a tracked run on the head. Otherwise it records
+  `NO_AFFECTED_FILES_IN_PROJECT_ROOT`. A new branch diffs from its merge
+  base with the repository's default branch. Other branch pushes touching
+  the root propose on the head, with no pull request needed. Pull request
+  events record the request and its head commits and create no run. Fork
+  pull requests get runs only through P13's `allow_fork`.
+- **Ignored triggers (D9, D17).** Record tracked pushes with no affected
+  root files, tag pushes on every stack of the repository
+  (`TAGS_IGNORED_BY_DEFAULT`), and stacks beyond the cap
+  (`RUN_LIMIT_REACHED`). Other-branch pushes, pull request events and
+  comments record no ignored trigger. Record for every account;
+  `stackSearchRunIgnoredTriggers` needs `SPACE_ADMIN` on the stack's space.
+  P13 owns `CUSTOM_POLICY*`; capture C46 remains open for those reasons.
+- **Policy boundary (D24).** `vcs.evaluate_event` applies the default now
+  and P13's push-policy outcome later, creating runs in the transaction
+  that completes the job. Comment events are stored for those policies
+  and create nothing before P13. Event runs have `triggered_by` `vcs/commit`;
+  check-button runs have `github/<login>`.
+- **Once per commit and type (D8).** Once a stack has any run of a type on
+  a commit, a VCS event never creates another of that type on that commit,
+  regardless of its state or trigger. Check under `lifecycle.Create`'s
+  stack row lock, in the evaluate job's completing transaction, using a
+  `runs` index on account, stack, type and commit hash. The type is in the
+  key by the maintainer's choice of 2026-11-17: fast-forwarding a proposed
+  commit onto the tracked branch still creates its tracked run. Manual
+  triggers, check buttons and P13's comment-driven runs bypass this
+  event-only check. The same ignored reason on the same stack and commit
+  is recorded once.
+- **Run cap (D18).** `vcs` owns the Account Settings operations
+  `vcsEventTriggeredRunsLimit`, `accountUpdateVCSEventTriggeredRunsLimit`
+  and their per-account table. The account has no cap unless set: `null`
+  or 1 up to `vcs.event_runs_ceiling` (default 500), which always applies.
+  Increment the delivery counter in the run-creating transaction. Every
+  stack past the cap records `RUN_LIMIT_REACHED` and a failed check.
+- **Superseded proposed runs.** A branch push stops its older proposed
+  runs still in `PLANNING`.
+- **Renames (D15).** `vcs` maps integration plus stable provider repository
+  ID to path. A changed path renames every stack on the old path through
+  a `stacksapi` method that bumps its version and appends `stack.changed`,
+  without an audit entry. GitHub `installation_target` and `organization`
+  renamed events re-point all stacks on the owner's repositories.
+- **Installation state (D22).** Installation and repository events keep
+  the GitHub App integration's installations and repositories current.
+  Deleted or suspended installations mark the integration unhealthy;
+  affected runs fail fast with that reason. No account is created or
+  renamed by any VCS event.
+- **Pull requests (D16).** `vcs` owns `pull_requests` and the head commits
+  each request has had. `stacksapi` declares the read port behind
+  `Stack.pullRequests`, implemented by `vcs`: at most 50 open requests
+  against the tracked branch that have a run on the stack, each with its
+  runs matched by SHA, current head first. A run can appear on several
+  requests sharing a commit; no run-to-request ownership column is implied.
+- **Retention and replay (D7).** Rows last 7 days
+  (`vcs.deliveries.retention`), pruned hourly; `inbox` objects last 2 days.
+  A dead job leaves the delivery `failed`. `vcsIntegrationDeliveries`,
+  `GET /vcs-integrations/{vcsIntegrationId}/deliveries`, lists newest first
+  with search cursor/page-size paging. Each `VCSDelivery` has `id`,
+  `deliveryId`, `event`, `receivedAt`, `state` (`RECEIVED`, `DISPATCHED`,
+  `FAILED`, `EXPIRED`), `lastError` and `runsCreated`. It is `standard`;
+  replay, `vcsIntegrationDeliveryReplay` at
+  `POST /vcs-integrations/{vcsIntegrationId}/deliveries/{deliveryId}/replay`,
+  is `expensive`, honours idempotency keys, and answers `202` with the
+  delivery. Both need the integration's `SPACE_ADMIN` and
+  `vcs-integrations`, with every shared API control. Replay checks the
+  stored signature again under the current or valid previous secret,
+  resets state, deadline and cap counter, increments `replays`, and
+  enqueues by delivery ID plus replay count in one transaction. Pending or
+  running work, expired body, or a signature that no longer verifies
+  answers `409 invalid-state`; missing or other-integration delivery is
+  `404`. Replay is audited and obeys the once-per-commit rule: only runs
+  that never existed are recovered.
+
+New tables join their domain's initial `00001_*.sql` `CREATE`s; no `ALTER`
+is added before v0.1.0.
+
+ref: [0008](0008-run-execution-and-worker-protocol.md), [0009](0009-policy-engine-opa.md), [0011](0011-persistent-work-queue.md), [0013](0013-secrets-at-rest.md), [0015](0015-events-notifications-webhooks-audit.md), C46, C76, C269, C285.
 
 ### Checks, comments and deployments
 
-All feedback runs as queue jobs triggered by run state changes (the event
-model is decision 0015's), never inline in a transition.
+**Feedback trigger (D13).** P12b builds the `events` domain's Commit checks
+sink. From `run_updated` it enqueues `vcs` feedback jobs; no outbound effect
+runs inline in a state transition.
 
-- **Checks.** `vcs.report_check` jobs carry the run and check, with unique key
-  `(run, check name)` so a newer state coalesces into a pending job, and
-  ordering key the run so states post in order. Individual checks are named
-  `infraweave/<stack slug>`; aggregated checks are `infraweave/tracked`,
-  `infraweave/proposed` and `infraweave/modules`. `vcs_checks` (`INDIVIDUAL`,
-  `AGGREGATED`, `ALL`) and the options `individualFailuresOnly` and
-  `individualSkipUnchanged` apply as
-  [11 section 12.1](../reference/11-vcs-integrations.md#121-vcs-check-modes) says.
-  A check update sets a state, so a repeat is harmless.
-- **Check actions.** A GitHub `check_run` requested action creates a proposed
-  (**Preview**) or tracked (**Deploy**) run with `triggered_by`
-  `github/<login>`, unless `githubActionDeploy` is off.
-- **Pull request comments.** Comments from the `feature:add_plan_pr_comment`
-  label and from notification policy `pull_request` rules go through
-  `Comments.Upsert`. `vcs_pr_comments` maps `(integration, repository, pull
-  request, dedup key)` to the provider's comment ID. Every body ends with a
-  hidden marker `<!-- infraweave:<dedup key> -->`; before creating a comment
-  the job searches the pull request for the marker, so a crash between
-  creation and recording edits the first comment instead of posting a second.
-- **Deployments.** GitHub Deployments and GitLab environments follow
-  [11 section 12.4](../reference/11-vcs-integrations.md#124-deployments-and-environments),
-  including the `ghenv:<name>` and `ghenv:-` labels.
+ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model).
+
+- **Eligible runs (D11).** Tracked and proposed runs on repository commits
+  post checks, whatever started them. Tasks, destroy runs, drift detection
+  runs and local previews post none.
+- **Modes and names (D11, D12).** `vcsChecks` is `INDIVIDUAL`, `AGGREGATED`
+  or `ALL`: two toggles, at least one on. `aggregated-vcs-checks` gates both
+  `AGGREGATED` and `ALL`. Individual names are
+  `infraweave/<stack slug>/tracked` and `infraweave/<stack slug>` for
+  proposed runs. Aggregated names are `infraweave/tracked`,
+  `infraweave/proposed`, `infraweave/modules`.
+- **In-place updates (D11).** One check per run is updated in place.
+  `vcs.report_check` coalesces pending updates by run and check name and
+  orders them by run; aggregate updates order by repository, commit and
+  check name. Store provider IDs, and look up name/external ID before
+  creating after an uncertain post, so a crash does not duplicate it.
+  GitHub uses the Checks API only (`external_id` the stack ID); GitLab
+  commit statuses; both Bitbucket providers build statuses; Azure DevOps
+  commit statuses and, for recorded request heads, pull request statuses
+  on the latest iteration.
+
+  | Run state | Check state |
+  |---|---|
+  | `QUEUED`, `READY` | queued, or pending where queued is unavailable |
+  | `PREPARING` through `APPLYING`, including `UNCONFIRMED` | in progress |
+  | `FINISHED` | success with change counts; neutral “no changes” where supported, success elsewhere |
+  | `FAILED`, `STOPPED`, `DISCARDED` | failure |
+  | `CANCELED` | canceled where supported, failure elsewhere |
+
+  `individualFailuresOnly` sends terminal failures alone;
+  `individualSkipUnchanged` suppresses unchanged individual checks but
+  still posts failures. Cap failures post a failed check with the run
+  limit even though there is no run or `run_updated` event.
+- **Aggregates (D11).** Read every run of the kind on that integration's
+  repository and commit. Open at its first run; conclude when all have
+  ended, failure if any failed, success otherwise, with per-stack counts.
+  When a kind concludes, a kind with no runs concludes skipped with
+  “0 runs”; modules stay skipped until P17. A later run updates that check;
+  if the provider cannot reopen it, create another under the same name.
+- **Buttons (D10).** GitHub checks carry **Preview** and **Deploy** only
+  while `githubActionDeploy` is on. A press creates respectively a proposed
+  or tracked run on that commit, triggered by `github/<login>`, bypassing
+  event deduplication and using the delivery's run cap. The external ID
+  must name this account's stack on this repository and integration; a
+  forged or stale ID reaches no other stack. A Deploy sender needs
+  repository write access, read through the App, and leaves the tracked
+  commit unchanged. A disabled or refused action creates nothing and is
+  logged and counted. Other providers have no equivalent check buttons.
+- **Plan comments (D14).** Only `feature:add_plan_pr_comment` enables them,
+  on every provider. Each run whose planning ends posts a new comment on
+  each open request whose head is its commit: a heading linking stack and
+  run, then a collapsed block of the masked planning log, cut to the
+  provider's limit. Minimize that stack's previous comment as outdated on
+  GitHub; leave it elsewhere. Hidden markers and `vcs_pr_comments`, keyed
+  per run for plans, recover a post-before-recording crash without
+  duplicating it. P18's notification-policy `pull_request` rules retain
+  edit-in-place upserts with their own deduplication keys.
+- **Deployments (D11).** A tracked run creates a GitHub deployment when
+  reaching `UNCONFIRMED` or starting apply; proposed runs create none.
+  The environment is `infraweave/<stack slug>`, overridden by
+  `ghenv:<name>` or disabled by `ghenv:-`. Discard or failed apply marks
+  failure, successful apply active. GitLab environments follow that rule.
+
+ref: [0015](0015-events-notifications-webhooks-audit.md), [0016](0016-testing-and-acceptance.md), RN-46, DV-047, C73, C74, C75, C79.
 
 ### Source access for runs
 
@@ -277,6 +421,14 @@ leaves a token whose integration was deleted to expire.
 
 A run behind a VCS agent pool needs a private worker that can reach the VCS;
 the launcher's mapping of pool names to endpoints is 0008's.
+
+**Checkout preference (D23).** `feature:enable_git_checkout` is ignored and
+cannot change the integration's `useGitCheckout` setting; the integration
+owns that preference. P12b adds no alternate archive transport: runs retain
+the all-provider HTTPS Git clone and source/workspace contract. P19b owns
+additional source providers and private-source reach.
+
+ref: [plan, P19b](../../implementation/plan.md#p19b-vcs-agent-pools-and-other-source-providers), [0008](0008-run-execution-and-worker-protocol.md), DV-135, C72.
 
 ### VCS agent pools
 
@@ -322,7 +474,7 @@ the launcher's mapping of pool names to endpoints is 0008's.
 
 - **Store before acknowledging.** Committing the delivery and its job in one
   transaction means an acknowledged event is never lost and an unacknowledged
-  one is retried by the provider. Doing no VCS calls and no policy work in the
+  one can be redelivered by the provider. Doing no VCS calls and no policy work in the
   handler keeps the answer fast whatever the fan-out.
 - **Verify before storing.** Storing unverified bodies would let anyone who
   learns a URL write to the database and consume queue capacity.
@@ -360,21 +512,20 @@ the launcher's mapping of pool names to endpoints is 0008's.
   behind the server breaks integrations. Capture C78 decides only whether this
   is also a departure from the released Spacelift agent.
 - **Departures from Spacelift**, for the deviations register: an
-  operator-registered GitHub App in place of the Marketplace app; webhook URLs
-  under `/webhooks/vcs/`; acceptance of the previous webhook secret for a
-  window; the delivery listing and replay routes; the HTTP long-poll agent
-  protocol and token layout; refusal of unmatched Azure DevOps requests by the
-  agent; and `infraweave/<stack slug>` as the individual check name, which
-  Spacelift does not document; and, beyond GitHub, per-run repository
-  tokens on GitLab and Bitbucket Data Center, pull request comment commands,
-  and renames followed by repository ID.
+  per-account GitHub App; per-integration webhook URLs; previous-secret
+  window and Azure DevOps rotation; delivery listing and reverified replay;
+  checks updated in place; full push diff; pull request events creating no
+  run; label-only plan comments; the run ceiling; installation state without
+  accounts; the ignored Git checkout label; per-run repository tokens on
+  GitLab and Bitbucket Data Center; repository-ID renames; and the HTTP
+  long-poll agent and strict allowlist.
 
 ## Constraints
 
 - **Unverified provider facts.** The webhook header schemes in the table
   follow each provider's own documentation; report 11 marks them **[I]** for
-  Spacelift. The individual check name is unverified in Spacelift; branch
-  protection rules copied from Spacelift may need the name changed.
+  Spacelift. Check names and the absence of automatic PR-event runs are
+  recorded as observed 2026-11-17; branch protection uses the renamed prefix.
 - **Provider-wide tokens.** Bitbucket Cloud and Azure DevOps runs, and
   GitLab and Bitbucket Data Center runs whose integration cannot mint a
   repository token, receive a token with the integration's full scope, sealed to the worker pool's key and
@@ -409,8 +560,12 @@ the launcher's mapping of pool names to endpoints is 0008's.
     signature answers `401` and stores no row; the same delivery ID twice
     stores one row and one run; a replica stopped after acknowledging, before
     processing, leaves the job to another replica, which creates the run once.
-  - `vcs/feedback.feature`: individual and aggregated checks post in state
-    order; a comment upsert after a simulated crash edits the existing comment.
+  - `vcs/feedback.feature`: all provider fakes record individual and
+    aggregated checks in state order, updated in place, with the state map,
+    run exclusions, cap failure and option gate; GitHub buttons obey run
+    promotion; labelled plan comments recover a simulated post-before-record
+    crash and minimize the prior GitHub comment; deployments follow tracked
+    runs. `@vcs-lab` variants verify the configured real providers.
   - `vcs/agent.feature`: an integration with `api_host` `private://pool`
     lists branches through a connected agent; a disallowed path is refused; no
     connected agent answers `502 upstream-error`.

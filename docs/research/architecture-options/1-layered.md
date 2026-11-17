@@ -789,7 +789,7 @@ in the job.
 ```text
 internal/transport/http/webhook/
 ├── webhook.go             common: size limits, delivery ID, 202 after durable intake
-├── github/github.go       POST /webhooks/vcs/github/{integration}: headers, event name (P12)
+├── github/github.go       POST /webhooks/vcs/{provider}/{integrationId}: headers, event name (P12)
 └── gitlab/ bitbucketcloud/ bitbucketdc/ azuredevops/                                     (P19)
 internal/service/vcs/
 ├── intake.go              Intake(ctx, integration, headers, body): verify, store, enqueue in one transaction
@@ -1402,7 +1402,7 @@ Coverage implications:
 
 ### A GitHub push becomes a proposed run, a plan policy and a PR comment
 
-1. `internal/transport/http/webhook/github/github.go`: `POST /webhooks/vcs/github/{integration}`
+1. `internal/transport/http/webhook/github/github.go`: `POST /webhooks/vcs/{provider}/{integrationId}`
    reads the event name and delivery ID and calls `service/vcs.Intake`.
 2. `internal/service/vcs/intake.go` and `verify.go`: the HMAC signature is checked with the
    integration's secret (sealed by `infra/crypto`); in one `repository.Tx` the delivery is
