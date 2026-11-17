@@ -15,7 +15,10 @@
 // one workspace's answer, and the releases the home account's audit
 // trail records with the caller's address, and the state workspaces of
 // a run's stack, one per Terragrunt unit, each at a version the run
-// wrote, from the database. A
+// wrote, from the database. Force-unlock scenarios seed the locks a stopped
+// server could leave, inspect their complete audit metadata and broken-lock
+// records, and arrange the proposed holder as a writing caller so its next
+// write reaches the broken-lock check. A
 // scenario can instead hand a run it took over to
 // this build's runner, started as a launcher starts it in the tool's
 // runner image, which executes the run's phases and reports them itself.

@@ -608,7 +608,11 @@ unlock) are ordinary REST operations and answer the problem details of decision
   `state/backend.feature` (init, plan, apply through the backend; a second apply blocked by
   `423` until the first ends; two plans' shared locks at once; a stack's default Tofu
   workspace, whose lock is an apply's, and an operator's release that refuses the apply's
-  write and release with `423`), `state/urls.feature` (the signed upload and download with
+  write and release with `423`), `state/force_unlock.feature` (a Terraform or
+  OpenTofu task force-unlocking seeded stopped-server locks; the audit caller,
+  workspace and every released LockInfo; one broken-lock record per release;
+  proposed-run denial, a no-op on an unlocked workspace, and the former
+  holder's write and release refused with `423`), `state/urls.feature` (the signed upload and download with
   no tool, each refused once 15 minutes have passed since it was signed, and an upload no
   import took expiring after a day, its object ID then importing nothing (C108)),
   `state/external_access.feature` (`terraform_remote_state` with an API key and a bearer

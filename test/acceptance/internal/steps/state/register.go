@@ -12,6 +12,7 @@ import (
 func Register(sc *godog.ScenarioContext, w *harness.World) {
 	b, u := &backendSteps{w: w}, &urlSteps{w: w}
 	b.register(sc)
+	(&forceUnlockSteps{w: w, backend: b}).register(sc)
 	(&workspaceSteps{w: w}).register(sc)
 	u.register(sc)
 	(&importSteps{w: w, backend: b, urls: u}).register(sc)

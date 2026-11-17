@@ -385,6 +385,7 @@ decision 0009 as `TestUnitPolicyLibrary`.
 | Waiting on asynchronous work polls a condition with a deadline, through one helper (`deps.Eventually`), never a fixed delay | review; the helper reports what it waited for |
 | Unit tests use virtual time | `internal/clock` and `testing/synctest` |
 | An acceptance scenario reaches a server's timer without waiting for it: time passes for one run, worker, stack's state versions or upload by moving its timestamps back, and for a signed URL by signing its token again with an earlier expiry, and the periodic task that reads them falls due | review; the runs and state steps age a run's, worker's, stack's versions' or upload's rows, and sign a URL's token again under the scenario's keyring, since a real server's clock cannot be moved |
+| A stopped server's state locks are seeded directly | `state/force_unlock.feature` seeds lock rows: a live run releases its locks when its terminal event is read, so no live path leaves one for a task to break; the former holder's writable phase is arranged to reach the broken-lock checks |
 | No test depends on order | `-shuffle=on`; godog runs scenarios in random order with a printed seed |
 | No shared mutable state across scenarios | per-scenario database, bucket prefix and server |
 | No network beyond the containers | Terraform, OpenTofu and providers come from checksummed caches; Gitea replaces hosted VCS |
