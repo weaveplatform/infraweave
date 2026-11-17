@@ -333,7 +333,8 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
   Organization admins list them through
   the `Organization` tag; no account's listing or audit webhook shows them,
   because they are not that account's data.
-- **Retention.** `audit.retention`, default 30 days, Spacelift's value.
+- **Retention.** `audit.retention`, default 30 days, the docs' value;
+  Spacelift's console labels its log tab 14 days, which C279 settles.
   `auditTrailRetentionDays` answers it, and a daily job deletes older rows.
 - **Audit webhook.** One per account. `auditTrailSetWebhook` on an enabled
   webhook first sends an `audit_trail_webhook.set` delivery and refuses the
@@ -343,8 +344,12 @@ webhook ([19 section 6](../reference/19-events-notifications-audit.md#6-named-we
 - **Ordered shipping.** A single `audit.ship` job per account reads entries
   after its stored cursor in `(created_at, id)` order and sends them one at
   a time. It advances the cursor only after a 2xx. Failures are retried
-  whatever `retryOnFailure` says, as the docs describe. The schedule is
-  infraweave's while capture C181 is open: back-off from 10s doubling to
+  whatever `retryOnFailure` says, as the docs describe, although
+  Spacelift's console offers the audit webhook a retry switch whose help
+  promises up to three retries on a 5xx
+  ([32 section 9](../reference/32-spacelift-console-survey.md#9-events-notifications-and-audit));
+  `retryOnFailure` is stored and read back. The schedule is infraweave's
+  while capture C181 is open: back-off from 10s doubling to
   1h, up to `audit.webhook.max_attempts` (default 20). Then the
   failed delivery is recorded, an `internal_error` is raised, and the
   shipper moves on.

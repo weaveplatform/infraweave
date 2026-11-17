@@ -1452,10 +1452,12 @@ Source: [G].
 | Access snapshot | Each session carries precomputed space access; under IAM it is recomputed on role and topology changes, under login policies it is fixed until re-login | [G] `SessionSpaceAccessRoleGrant`, [RN] 2026-03-19, 2026-06-11 |
 | Root-admin only | Managing sessions | [D] [access-control] |
 
-The session lifetime for browser logins is not documented
-*(unverified)* (C119). The docs mention shorter sessions as a mitigation for login-time IP
-checks, which implies a configurable timeout, but no setting exists in the
-schema [D] [migrate-spaces], [G] *(unverified)* (C119).
+The session lifetime for browser logins is not documented. The console's
+session list shows a session signed in through GitHub ending 10 hours after
+it starts, and its settings offer no lifetime
+([32](32-spacelift-console-survey.md) section 6.6), which resolves C119. The
+docs mention shorter sessions as a mitigation for login-time IP checks, but
+no setting exists in the schema [D] [migrate-spaces], [G].
 
 ## 11. Tier gates
 

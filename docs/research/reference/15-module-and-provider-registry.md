@@ -681,7 +681,7 @@ login policies, non-admin keys must be allowed and granted `space_read` by the p
 
 | Rule | Evidence |
 |---|---|
-| A provider is identified by its `type`, unique in the account and used as its ID; lowercase letters only. | [D] provider-registry; [G] `terraformProviderCreate` |
+| A provider is identified by its `type`, unique in the account and used as its ID; the docs say lowercase letters only, and the console's create form allows lowercase letters and digits ([32](32-spacelift-console-survey.md) section 8). | [D] provider-registry; [G] `terraformProviderCreate` |
 | The Terraform provider forces replacement when `type` changes. | [S] [tf-provider L21](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_terraform_provider.go#L21) |
 | A provider lives in a space; runs of stacks in that space or inheriting children can read it. | [D] provider-registry |
 | `public: true` makes it usable by anyone; this is the only way to share a provider across accounts. Set with `terraformProviderSetVisibility`. | [D] provider-registry; [G] |

@@ -9269,8 +9269,8 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "the longest chain of **Depends on** edges (25 edges)",
-            "the registry chain (P12b → P13 → P17 → P17b) and the audit chain (P12b → P13 → P18 → P18b) are each one phase shorter"
+            "the longest chain of **Depends on** edges (26 edges)",
+            "the registry chain (P17 → P17b) and the audit chain (P18 → P18b) are each two phases shorter"
           ]
         }
       ]

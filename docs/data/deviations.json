@@ -157,9 +157,9 @@
     {
       "id": "DV-017",
       "group": "Identity and access: decisions 0006 and 0007",
-      "spacelift": "Browser session lifetime is undocumented",
-      "infraweave": "Session lifetimes are stated, configurable defaults",
-      "why": "A self-hosted operator needs a known value",
+      "spacelift": "A web session ends 10 hours after sign-in, and no account setting changes it ([report 32](../research/reference/32-spacelift-console-survey.md))",
+      "infraweave": "Session lifetimes are configuration, by default 10 hours from sign-in and 10 hours idle, and an organization may shorten them",
+      "why": "A self-hosted operator applies its own session policy",
       "impact": "None",
       "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)"
     },

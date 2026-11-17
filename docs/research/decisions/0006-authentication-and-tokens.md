@@ -75,7 +75,7 @@ is used for signatures only; nothing infraweave seals uses JWE.
 |---|---|---|---|---|---|
 | API token | `POST /auth/token` with a secret or OIDC API key | 10 hours, never past the key's `expiresAt` | the API base URL | `api::<key ULID>`, or `api::oidc::<client ID>::<key ULID>` | yes, channel `UNKNOWN` |
 | Organization token | `POST /auth/token` with an organization key | 10 hours, never past the key's `expiresAt` | the API base URL | `org::<key ULID>` | yes, channel `UNKNOWN` |
-| Browser session | sign-in through one of the organization's identity providers, or its break-glass login | the organization's session lifetime, by default idle 12 hours and absolute 7 days | none: an opaque cookie, not a JWT | n/a | yes, channel `WEB` |
+| Browser session | sign-in through one of the organization's identity providers, or its break-glass login | the organization's session lifetime, by default 10 hours from sign-in and 10 hours idle | none: an opaque cookie, not a JWT | n/a | yes, channel `WEB` |
 | CLI token | loopback login from `infraweavectl` | expires with the browser session it came from | the API base URL | member login | yes, channel `INFRAWEAVECTL` |
 | Terraform CLI token | `terraform login` against the registry's `login.v1` service | 30 days | the API base URL | member login | yes, channel `TERRAFORM_CLI` |
 | MCP access token | the token endpoint of the [authorization server](#the-oauth-authorization-server-for-mcp) | 1 hour | the MCP resource URL the grant names | member login | yes, the grant's, channel `UNKNOWN` |
@@ -153,7 +153,13 @@ a binding change takes effect without a new token.
 - **MFA and session lifetime** are organization settings. Spacelift's
   `accountToggleEnforcingMFA` and `enforceMFA` act on the organization of
   the caller's account. Enforcing MFA revokes every session of the
-  organization but the caller's.
+  organization but the caller's. It needs an OIDC or SAML identity provider
+  in the organization, as Spacelift's console offers MFA only after single
+  sign-on is set up ([32 section 6.6](../reference/32-spacelift-console-survey.md#66-mfa-and-sessions));
+  without one, `accountToggleEnforcingMFA` answers `422`, problem
+  `validation-failed`. A browser session lasts 10 hours from sign-in by
+  default, Spacelift's lifetime (the same section), and an organization may
+  shorten it.
 - **The reference's identity operations.** `samlCreate`, `samlUpdate`,
   `samlDelete`, `samlSettings`, `oidcCreate`, `oidcUpdate`, `oidcDelete`,
   `oidcSettings`, `hasSSO`, the SCIM client operations and the MFA
@@ -666,7 +672,7 @@ Departures from Spacelift, for the plan's deviations register:
 | OIDC API key issuers are fetched over HTTPS only, optionally from an allowlist | A self-hosted server fetching user-supplied URLs is an SSRF path |
 | Signing keys rotate automatically every 90 days | Self-hosted Spacelift documents no rotation of its JWT signing key, while its AWS module rotates only the master and in-app encryption keys yearly ([24 section 3.5](../reference/24-self-hosted-reference.md#35-encryption-and-kms)); rotation limits key exposure |
 | The federation token file is refreshed during long runs | Spacelift does not document reissue (report 12 section 6.1); a run past one hour otherwise loses cloud access |
-| Session lifetimes are stated defaults | Spacelift's browser session lifetime is undocumented |
+| Session lifetimes are configuration, by default Spacelift's 10 hours, and an organization may shorten them | Spacelift's web session ends 10 hours after sign-in and no account setting changes it ([32 section 6.6](../reference/32-spacelift-console-survey.md#66-mfa-and-sessions)); a self-hosted operator applies its own session policy |
 | Identity providers, MFA, session lifetime and members belong to the organization, and a member enters one account at a time | Spacelift has no organization level; one agreement covering several business entities needs one sign-in and separate authorization |
 | Identities from two providers are linked only by an admin and a sign-in through each | Spacelift links external accounts to one user per provider (report 14 section 6.5); infraweave never merges by email |
 | The federation audience defaults to the host plus the account slug, and claims name the account's top space by its slug | One installation hosts many accounts under one issuer; Spacelift's account host plays both roles on SaaS |
