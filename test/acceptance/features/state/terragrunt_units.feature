@@ -212,7 +212,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
       | true  | terragrunt: {use_run_all: false}   | 1        | default              |
       | false | terragrunt: {use_run_all: true}    | 2        | default, network/vpc |
       | true  | terragrunt: {}                     | 1        | default              |
-      | true  | version: 1                        | 2        | default, network/vpc |
+      | true  | {}                                | 2        | default, network/vpc |
 
   @op:runTrigger @case:failure
   Scenario Outline: A malformed runtime block is refused before a run exists
