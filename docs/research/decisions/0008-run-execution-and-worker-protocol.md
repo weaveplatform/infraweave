@@ -347,7 +347,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   the stack already has keeps its place when a context with that name
   attaches. Replacing that stack element remains allowed. Before a
   phase, the contexts' hooks run in rank order and then the stack's;
-  after it, the reverse.
+  after it, the reverse. A stack's `runtimeConfig` answers its stored
+  environment in the same order, one winner per variable name or file
+  path, carrying the winning context's attachment.
 - **Overrides.** A proposed run, from `proposeWithOverrides` or
   `runProposeLocalWorkspace`, may carry environment variable overrides for
   that run alone. They are kept in `runs.env_overrides_sealed`
@@ -475,9 +477,15 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   named `INFRAWEAVE_*`, and the Terraform metadata variables
   `TF_VAR_infraweave_*`, where Spacelift's are `SPACELIFT_*` and
   `TF_VAR_spacelift_*` (0001's rename table), with the same suffixes and
-  values except where the rename register records another. Configuration
-  reads list them under the `ConfigElementCategory` value
-  `INFRAWEAVE_ENVIRONMENT`. The server puts the `TF_VAR_infraweave_*`
+  values except where the rename register records another. A stack's
+  `runtimeConfig` lists the 17 metadata variables and
+  `INFRAWEAVE_API_TOKEN` as computed elements, `runtime` true with the
+  category value `INFRAWEAVE_ENVIRONMENT` and no value; its `config` lists only
+  the elements set on it. A stored source of a computed name replaces
+  that placeholder in this configuration-source view. The real API token
+  and phase state are injected and protected separately at execution.
+  The four launcher settings below are not computed elements of this
+  view. The server puts the `TF_VAR_infraweave_*`
   variables it knows at handover in the clear part, unless the stack sets a
   variable of the same name: `account_name`, `commit_branch`, `commit_sha`,
   `local_preview`, `project_root`, `repository`, `run_id`, `run_trigger`,

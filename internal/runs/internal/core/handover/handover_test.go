@@ -352,6 +352,26 @@ func variable(name string, value string, writeOnly bool) configapi.Element {
 	return configapi.Element{Name: name, Value: secret(value), WriteOnly: writeOnly}
 }
 
+// TestUnitComputedEnvironmentNames compares the server's real handover
+// with the shared view's names; the runner supplies the remaining three.
+func TestUnitComputedEnvironmentNames(t *testing.T) {
+	w := newWorld(t)
+	h, err := w.handover(t, w.run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, 0, len(h.Spec.Environment))
+	for _, v := range h.Spec.Environment {
+		names = append(names, v.Name)
+	}
+	want := slices.DeleteFunc(kernel.ComputedEnvironmentNames(), func(name string) bool {
+		return name == kernel.APITokenVariable || name == kernel.APIEndpointVariable || name == kernel.RunStateVariable
+	})
+	if len(want) != 15 || !slices.Equal(names, want) {
+		t.Errorf("server environment %v; computed server names %v", names, want)
+	}
+}
+
 // sealed is the secrets document of h.
 type sealed struct {
 	Environment       map[string]string `json:"environment"`

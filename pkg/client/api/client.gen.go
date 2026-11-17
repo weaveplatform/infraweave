@@ -4099,6 +4099,8 @@ type Commit struct {
 // ConfigElement ConfigElement is a stack runtime configuration element: environment variable
 // or file mount.
 type ConfigElement struct {
+	// Category Set to INFRAWEAVE_ENVIRONMENT for infraweave's computed run variables.
+	// Stored elements have no category.
 	Category *ConfigElementCategory `json:"category,omitempty"`
 
 	// Checksum SHA256 checksum of the value.
@@ -4119,7 +4121,9 @@ type ConfigElement struct {
 	// Id Environment variable name or file mount relative path.
 	Id string `json:"id"`
 
-	// Runtime Whether the config element is only known at runtime.
+	// Runtime True for a computed environment element whose value is known only in
+	// a run. Stored elements have runtime false, including stored overrides
+	// of computed names.
 	Runtime bool `json:"runtime"`
 
 	// Type ConfigType is the type of the configuration element.
@@ -4134,7 +4138,8 @@ type ConfigElement struct {
 	WriteOnly bool `json:"writeOnly"`
 }
 
-// ConfigElementCategory defines model for ConfigElementCategory.
+// ConfigElementCategory Set to INFRAWEAVE_ENVIRONMENT for infraweave's computed run variables.
+// Stored elements have no category.
 type ConfigElementCategory string
 
 // ConfigElementInput A config element to create or replace at the ID in the path. An absent value keeps a replaced element's value, so a write-only value need not be sent again; it cannot make a write-only element readable.
@@ -8232,8 +8237,11 @@ type Stack struct {
 	// RunnerImage Optional runner image used to process the Run.
 	RunnerImage *string `json:"runnerImage,omitempty"`
 
-	// RuntimeConfig Calculated runtime config containing elements coming from contexts,
-	// stack and various integrations.
+	// RuntimeConfig Resolved environment configuration for runs of this stack, one element
+	// per variable name or file path after precedence across the stack and
+	// its contexts. Infraweave's own run variables appear as computed
+	// elements without values when no stored source sets their names.
+	// The actual API token and phase state are injected at execution.
 	RuntimeConfig []ConfigElementWithSource `json:"runtimeConfig"`
 
 	// ScheduledDeletes Deletes that are scheduled for this stack
@@ -8712,8 +8720,8 @@ type StackConfigVendorTerragruntInput struct {
 type StackConnection struct {
 	Cursor string `json:"cursor"`
 
-	// Node A reference to a Stack; fetch it with GET /stacks/{stackId}.
-	Node StackRef `json:"node"`
+	// Node Stack represents a single infrastructure project.
+	Node Stack `json:"node"`
 }
 
 // StackContextAttachment StackContextAttachment is the stack attachment viewed from the Stack.

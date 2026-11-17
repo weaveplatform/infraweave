@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/backend"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/iac/workflow"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 )
 
@@ -225,7 +226,7 @@ func (r *run) environment(creds []string) ([]string, error) {
 	}
 	env = append(env,
 		"TF_APPEND_USER_AGENT=infraweave/"+buildinfo.Version(),
-		"TF_VAR_infraweave_api_endpoint="+api,
+		kernel.APIEndpointVariable+"="+api,
 		"INFRAWEAVE_MAX_REQUESTS_PER_SECOND="+strconv.Itoa(r.h.MaxRequestsPerSecond),
 		"INFRAWEAVE_MAX_REQUESTS_BURST="+strconv.Itoa(r.h.MaxRequestsBurst),
 		"INFRAWEAVE_SENSITIVE_OUTPUT_UPLOAD_ENABLED="+strconv.FormatBool(r.h.SensitiveOutputUpload),
@@ -240,7 +241,7 @@ func (r *run) environment(creds []string) ([]string, error) {
 		}
 	}
 	if t := r.h.Secrets.ApiToken; t != "" {
-		env = append(env, "INFRAWEAVE_API_TOKEN="+t)
+		env = append(env, kernel.APITokenVariable+"="+t)
 	}
 	return append(env, creds...), nil
 }

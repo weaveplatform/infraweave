@@ -663,7 +663,10 @@ components:
           description: Environment variable name or file mount relative path.
           type: string
         runtime:
-          description: Whether the config element is only known at runtime.
+          description: |-
+            True for a computed environment element whose value is known only in
+            a run. Stored elements have runtime false, including stored overrides
+            of computed names.
           type: boolean
         type:
           $ref: '#/components/schemas/ConfigType'
@@ -688,11 +691,14 @@ components:
       type: object
       x-graphql-type: ConfigElement
     ConfigElementCategory:
+      description: |-
+        Set to INFRAWEAVE_ENVIRONMENT for infraweave's computed run variables.
+        Stored elements have no category.
       enum:
         - INFRAWEAVE_ENVIRONMENT
       type: string
       x-enum-descriptions:
-        INFRAWEAVE_ENVIRONMENT: Element is managed by infraweave (API tokens, OIDC tokens, TF_VAR_infraweave_* metadata).
+        INFRAWEAVE_ENVIRONMENT: Computed API token or TF_VAR_infraweave_* run metadata, without a value before a run.
       x-graphql-type: ConfigElementCategory
     ConfigElementWithSource:
       properties:
@@ -4252,8 +4258,11 @@ components:
           type: string
         runtimeConfig:
           description: |-
-            Calculated runtime config containing elements coming from contexts,
-            stack and various integrations.
+            Resolved environment configuration for runs of this stack, one element
+            per variable name or file path after precedence across the stack and
+            its contexts. Infraweave's own run variables appear as computed
+            elements without values when no stored source sets their names.
+            The actual API token and phase state are injected at execution.
           items:
             $ref: '#/components/schemas/ConfigElementWithSource'
           type: array
@@ -5028,7 +5037,7 @@ components:
         cursor:
           type: string
         node:
-          $ref: '#/components/schemas/StackRef'
+          $ref: '#/components/schemas/Stack'
       required:
         - cursor
         - node
