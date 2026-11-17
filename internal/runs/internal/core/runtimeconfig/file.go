@@ -113,30 +113,6 @@ func ParseFile(data []byte, slug, vendor, unknownKeys string) File {
 	return out
 }
 
-// A shared key cannot be named in a notice without disclosing its environment
-// value. Refuse it before map conversion drops key-node provenance, including
-// malformed environment containers that another entry aliases for diagnostics.
-func sensitiveMappingKey(node *yaml.Node, origins, seen map[*yaml.Node]bool) bool {
-	node = unalias(node)
-	if node == nil || seen[node] {
-		return false
-	}
-	seen[node] = true
-	if node.Kind == yaml.MappingNode {
-		for i := 0; i < len(node.Content); i += 2 {
-			if origins[unalias(node.Content[i])] {
-				return true
-			}
-		}
-	}
-	for _, child := range node.Content {
-		if sensitiveMappingKey(child, origins, seen) {
-			return true
-		}
-	}
-	return false
-}
-
 // diagnosticFields keeps unknown defaults without importing their known
 // execution settings into a selected entry's source projection.
 func diagnosticFields(node *yaml.Node) map[string]*yaml.Node {
