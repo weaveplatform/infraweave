@@ -1,6 +1,6 @@
-// Package state holds the acceptance steps of features/state: Terraform
-// and OpenTofu keeping a run's state in infraweave's managed state
-// backend. The scenario is the run's worker: it takes over a run a poll
+// Package state holds the acceptance steps of features/state: Terraform,
+// OpenTofu and Terragrunt's units keeping a run's state in infraweave's
+// managed state backend. The scenario is the run's worker: it takes over a run a poll
 // assigned, opening its sealed specification with the pool's key,
 // checking out its commit from Gitea and writing the backend file and
 // credentials infraweave's agent writes; it reports the run's phases over
@@ -13,7 +13,9 @@
 // write still to come. The scenario reads the stack's Tofu workspaces,
 // whose locks those are, through the API, as a search's, a release's or
 // one workspace's answer, and the releases the home account's audit
-// trail records with the caller's address. A
+// trail records with the caller's address, and the state workspaces of
+// a run's stack, one per Terragrunt unit, each at a version the run
+// wrote, from the database. A
 // scenario can instead hand a run it took over to
 // this build's runner, started as a launcher starts it in the tool's
 // runner image, which executes the run's phases and reports them itself.

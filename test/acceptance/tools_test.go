@@ -7,14 +7,15 @@ import (
 	"github.com/weaveplatform/infraweave/test/deps"
 )
 
-// TestUnitToolPins checks that the Terraform and OpenTofu releases the
-// suite pins are the newest each recorded index lists. A stack that sets
-// no version runs the catalogue's newest, which the launcher downloads, so
-// a pin behind the index fails every real run's download from the
-// harness's mirror; deps-refresh.yml moves both together.
+// TestUnitToolPins checks that the Terraform, OpenTofu and Terragrunt
+// releases the suite pins are the newest each recorded index lists. A
+// stack that sets no version runs the catalogue's newest, which the
+// launcher downloads, so a pin behind the index fails every real run's
+// download from the harness's mirror; deps-refresh.yml moves both
+// together.
 func TestUnitToolPins(t *testing.T) {
 	for name, pin := range map[string]deps.Tool{
-		"terraform": deps.Terraform, "opentofu": deps.OpenTofu,
+		"terraform": deps.Terraform, "opentofu": deps.OpenTofu, "terragrunt": deps.Terragrunt,
 	} {
 		newest, err := vendors.Newest(name)
 		if err != nil {

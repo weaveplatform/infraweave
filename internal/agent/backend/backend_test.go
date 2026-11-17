@@ -41,7 +41,7 @@ func managed(relay string) handoff.Handoff {
 // it; and that a run on a stack without managed state writes nothing.
 func TestUnitBackendFile(t *testing.T) {
 	root := t.TempDir()
-	env, err := backend.Configure(root, managed("https://relay.internal:8443"))
+	env, err := backend.Configure(root, root, managed("https://relay.internal:8443"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestUnitBackendFile(t *testing.T) {
 	if err := os.Symlink(elsewhere, filepath.Join(linked, backend.File)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.Configure(linked, managed("https://relay.internal:8443")); err != nil {
+	if _, err := backend.Configure(linked, linked, managed("https://relay.internal:8443")); err != nil {
 		t.Fatal(err)
 	}
 	if b, _ := os.ReadFile(elsewhere); string(b) != "kept" {
@@ -103,7 +103,7 @@ func TestUnitBackendFile(t *testing.T) {
 	bare := t.TempDir()
 	h := managed("https://relay.internal:8443")
 	h.Spec.StateBackend = nil
-	if env, err := backend.Configure(bare, h); env != nil || err != nil {
+	if env, err := backend.Configure(bare, bare, h); env != nil || err != nil {
 		t.Errorf("a stack without managed state = %q, %v", env, err)
 	}
 	if entries, _ := os.ReadDir(bare); len(entries) != 0 {
@@ -115,38 +115,50 @@ func TestUnitBackendFile(t *testing.T) {
 // an endpoint it cannot join, and an error when the project root cannot
 // hold the file.
 func TestUnitBackendFileRefused(t *testing.T) {
-	if _, err := backend.Configure(t.TempDir(), managed("ftp://relay")); !errors.Is(err,
+	if _, err := backend.Configure("", t.TempDir(), managed("ftp://relay")); !errors.Is(err,
 		backend.ErrAddress) {
 		t.Errorf("an FTP endpoint = %v", err)
 	}
 	missing := filepath.Join(t.TempDir(), "missing")
-	if _, err := backend.Configure(missing, managed("https://relay")); err == nil {
+	if _, err := backend.Configure(missing, missing, managed("https://relay")); err == nil {
 		t.Error("a missing project root wrote the backend file")
 	}
 	full := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(full, backend.File, "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.Configure(full, managed("https://relay")); err == nil {
+	if _, err := backend.Configure(full, full, managed("https://relay")); err == nil {
 		t.Error("a directory under the file's name was replaced")
 	}
 }
 
 // TestUnitAddress checks that a backend path joins a relay's, a private
 // address's and a prefixed server URL's endpoint keeping its scheme, host,
-// port and prefix, and that an endpoint or a path Address cannot join is
-// refused.
+// port and prefix, escaped as the endpoint escapes it; that a workspace
+// other than the default is one segment under workspaces, each / in it
+// %2F and each other byte a path segment cannot hold escaped; and that an
+// endpoint or a path Address cannot join is refused.
 func TestUnitAddress(t *testing.T) {
 	path := "/state/v1/stacks/" + stack
-	for endpoint, want := range map[string]string{
-		"https://relay.internal:8443/worker/v1": "https://relay.internal:8443" + path,
-		"http://10.0.0.7:8080/worker/v1":        "http://10.0.0.7:8080" + path,
-		"https://[fd00::7]:8443/worker/v1":      "https://[fd00::7]:8443" + path,
-		"https://iw.example.com/infra/worker/v1": "https://iw.example.com/infra" +
-			path,
+	for _, c := range []struct{ endpoint, workspace, want string }{
+		{"https://relay.internal:8443/worker/v1", "", "https://relay.internal:8443" + path},
+		{"http://10.0.0.7:8080/worker/v1", "", "http://10.0.0.7:8080" + path},
+		{"https://[fd00::7]:8443/worker/v1", "", "https://[fd00::7]:8443" + path},
+		{"https://iw.example.com/infra/worker/v1", "", "https://iw.example.com/infra" + path},
+		{
+			"https://relay.internal:8443/worker/v1", "a/b",
+			"https://relay.internal:8443" + path + "/workspaces/a%2Fb",
+		},
+		{"https://relay/worker/v1", "network", "https://relay" + path + "/workspaces/network"},
+		{
+			"https://iw.example.com/in%20fra/worker/v1", "env 1/100%/é?#",
+			"https://iw.example.com/in%20fra" + path + "/workspaces/env%201%2F100%25%2F%C3%A9%3F%23",
+		},
 	} {
-		if got, err := backend.Address(endpoint, path); got != want || err != nil {
-			t.Errorf("Address(%s) = %s, %v; want %s", endpoint, got, err, want)
+		got, err := backend.Address(c.endpoint, path, c.workspace)
+		if got != c.want || err != nil {
+			t.Errorf("Address(%s, %q) = %s, %v; want %s", c.endpoint, c.workspace, got, err,
+				c.want)
 		}
 	}
 	for name, tc := range map[string]struct{ endpoint, path string }{
@@ -161,7 +173,7 @@ func TestUnitAddress(t *testing.T) {
 		"a relative":     {"https://relay/worker/v1", "state/v1/stacks/" + stack},
 		"a climb":        {"https://relay/worker/v1", "/state/v1/../../etc"},
 	} {
-		if got, err := backend.Address(tc.endpoint, tc.path); !errors.Is(err,
+		if got, err := backend.Address(tc.endpoint, tc.path, "a/b"); !errors.Is(err,
 			backend.ErrAddress) {
 			t.Errorf("%s = %q, %v", name, got, err)
 		}

@@ -59,9 +59,19 @@ behind the controls every API surface shares, and depart from them only where de
 - **Terragrunt units.** For a Terragrunt stack, the runner writes the same file into each
   unit's directory, naming the unit's workspace URL
   ([16 section 8](../reference/16-state-management.md#8-terragrunt-units-and-workspace-locks)).
-  Terragrunt copies a unit's directory into its cache before it runs the tool, so the file
-  goes with it. A unit that declares its own backend or `remote_state`, or whose name is
-  over 512 bytes, fails initialization naming the unit.
+  A unit is a directory under the project root that holds `terragrunt.hcl`, found as
+  `terragrunt run --all` finds them: outside `.git`, `.terraform` and `.terragrunt-cache`,
+  and never through a link. Terragrunt copies a unit's directory into its cache before it
+  runs the tool, so the file goes with it. Before any file is written every unit is
+  checked, and the first that fails fails initialization naming the unit: a name over 512
+  bytes or not UTF-8; `remote_state` in its `terragrunt.hcl` or in the file an `include`
+  names; a `generate` block whose contents declare a backend; or a `backend` or `cloud`
+  block in a Terraform file of its directory. An include's path is worked out from literals
+  and templates of `find_in_parent_folders`, `get_terragrunt_dir`, `get_repo_root` and
+  `get_path_to_repo_root`, read no further up than the workspace; an include it cannot work
+  out, and a module a unit sources, is left to the tool, which refuses a second backend at
+  `init`. A `terragrunt.stack.hcl` under the project root fails initialization too, since
+  Terragrunt generates its units when the run runs, where no backend file reaches them.
 - **Which stacks manage state.** A stack manages state when created with `manageState`.
   For a Terragrunt stack, `useStateManagement` decides when it is set and `manageState`
   when it is null, as the Terraform provider documents

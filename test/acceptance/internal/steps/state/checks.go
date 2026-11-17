@@ -33,6 +33,8 @@ func (b *backendSteps) registerChecks(sc *godog.ScenarioContext) {
 		b.locked,
 	)
 	sc.Step(`^the run "(\w+)" wrote (\d+) state versions?$`, b.wrote)
+	sc.Step(`^the state workspaces of the run "(\w+)"'s stack are "([^"]*)", each at a `+
+		`version the run wrote$`, b.workspaces)
 	sc.Step(
 		`^the current state version is the run "(\w+)"'s, with the serial and lineage of its last output$`,
 		b.current,
@@ -186,6 +188,33 @@ func (b *backendSteps) wrote(ctx context.Context, run string, n int) error {
 	}
 	if got != n {
 		return fmt.Errorf("%w: the run wrote %d state versions", harness.ErrStep, got)
+	}
+	return nil
+}
+
+// workspaces checks the state workspaces of the stack the run kept as run
+// ran on, by name in order, comma-separated, default for the stack's
+// default workspace, and that the current version of each is one the run
+// wrote.
+func (b *backendSteps) workspaces(ctx context.Context, run, names string) error {
+	id, ok := b.w.IDs[run]
+	if !ok {
+		return fmt.Errorf("%w: no run %q", harness.ErrStep, run)
+	}
+	var got string
+	if err := b.w.Row(ctx, `SELECT coalesce(string_agg(
+			CASE WHEN s.name = '' THEN 'default' ELSE s.name END ||
+			CASE WHEN v.run_id = $1 THEN '' ELSE ' (at a version of another run, or none)' END,
+			', ' ORDER BY s.name), '')
+		FROM state_workspaces s
+		LEFT JOIN managed_state_versions v
+			ON v.account_id = s.account_id AND v.id = s.current_version_id
+		WHERE s.stack_id = (SELECT stack_id FROM runs WHERE id = $1)`,
+		[]any{harness.UUIDOf(id)}, &got); err != nil {
+		return err
+	}
+	if got != names {
+		return fmt.Errorf("%w: the workspaces are %q", harness.ErrStep, got)
 	}
 	return nil
 }

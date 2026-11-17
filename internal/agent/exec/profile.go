@@ -7,7 +7,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/google/pprof/profile"
 
@@ -38,29 +40,40 @@ func (r *run) profiling() bool {
 	return t != nil && t.EnableCPUProfiling != nil && *t.EnableCPUProfiling
 }
 
-// exec runs s in the session. A tool command of a run that profiles runs
-// with TOFU_CPU_PROFILE naming a fresh file of the run's temporary
-// directory, unset again once it ends, so neither a later command nor a
-// hook writes over it.
+// exec runs s in the session, with s's variables exported for it alone
+// and unset again once it ends. A tool command of a run that profiles
+// also runs with TOFU_CPU_PROFILE naming a fresh file of the run's
+// temporary directory, so neither a later command nor a hook writes over
+// it.
 func (r *run) exec(ctx context.Context, s step) (int, error) {
-	if s.command == "" || !r.profiling() {
+	env := s.env
+	var p *profiled
+	if s.command != "" && r.profiling() {
+		r.profiles++
+		path := filepath.Join(r.temp, "cpu-"+strconv.Itoa(r.profiles)+".pprof")
+		env = append(slices.Clip(env), "TOFU_CPU_PROFILE="+path)
+		p = &profiled{command: s.command, path: path}
+	}
+	if len(env) == 0 {
 		return r.shell.run(ctx, s.text)
 	}
-	r.profiles++
-	path := filepath.Join(r.temp, "cpu-"+strconv.Itoa(r.profiles)+".pprof")
-	if code, err := r.shell.run(
-		ctx,
-		"export TOFU_CPU_PROFILE="+quote(path),
-	); code != 0 ||
+	exports, names := make([]string, len(env)), make([]string, len(env))
+	for i, e := range env {
+		name, value, _ := strings.Cut(e, "=")
+		exports[i], names[i] = name+"="+quote(value), name
+	}
+	if code, err := r.shell.run(ctx, "export "+strings.Join(exports, " ")); code != 0 ||
 		err != nil {
 		return code, err
 	}
-	r.profiled = append(r.profiled, profiled{command: s.command, path: path})
+	if p != nil {
+		r.profiled = append(r.profiled, *p)
+	}
 	code, err := r.shell.run(ctx, s.text)
 	if err != nil {
 		return code, err
 	}
-	if c, err := r.shell.run(ctx, "unset TOFU_CPU_PROFILE"); c != 0 || err != nil {
+	if c, err := r.shell.run(ctx, "unset "+strings.Join(names, " ")); c != 0 || err != nil {
 		return c, err
 	}
 	return code, nil

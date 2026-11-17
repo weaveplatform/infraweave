@@ -11,7 +11,7 @@
 // scheduler, for a scenario about that mode), reading its listeners from
 // the JSON logs on its stdout, and starts the dependencies a selected
 // scenario's tags name (@postgres, @objectstore, @oidc, @vault, @vcs,
-// @docker, @terraform, @tofu) once, on first use, from test/deps. Without a Docker daemon it skips the
+// @docker, @terraform, @tofu, @terragrunt) once, on first use, from test/deps. Without a Docker daemon it skips the
 // scenarios that need one, unless INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1, which
 // fails the run instead. A failed scenario leaves its evidence in
 // out/<scenario>/. make accept PARTITION=core|runs|integrations selects one

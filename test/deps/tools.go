@@ -33,6 +33,14 @@ type Tool struct {
 	// Signature is the suffix of the release's detached signature of its
 	// SHA256SUMS, which a launcher verifies against the vendor's key.
 	Signature string
+	// Build and SumsFile name the release's Linux build for an
+	// architecture and its SHA256SUMS, with {version} and {arch} for
+	// theirs; empty for <name>_<version>_linux_<arch>.zip and
+	// <name>_<version>_SHA256SUMS.
+	Build, SumsFile string
+	// Bare is whether the build is the binary itself, not a zip that
+	// holds it.
+	Bare bool
 }
 
 // Terraform serves @terraform, from HashiCorp's release site.
@@ -59,18 +67,56 @@ var OpenTofu = Tool{
 	},
 }
 
-// Archive is the file name of t's Linux archive for arch, a GOARCH.
+// Terragrunt serves @terragrunt, from its GitHub releases, whose builds
+// are bare binaries listed in one SHA256SUMS.
+var Terragrunt = Tool{
+	Name:      "terragrunt",
+	Version:   "1.2.2",
+	Download:  "https://github.com/gruntwork-io/terragrunt/releases/download/v%s/",
+	Signature: ".gpgsig",
+	Build:     "terragrunt_linux_{arch}",
+	SumsFile:  "SHA256SUMS",
+	Bare:      true,
+	SHA256: map[string]string{
+		"terragrunt_linux_amd64": "1ba4ad11cf6ac277e8ba59a3fdceb8576778e22f6a24bedd542e91bad9f36491",
+		"terragrunt_linux_arm64": "a730c7daf2fb7dd13e6e7b016b3a89fd4f546bc81a31f8ff19474866c566b755",
+	},
+}
+
+// Archive is the file name of t's Linux build for arch, a GOARCH.
 func (t Tool) Archive(arch string) string {
+	if t.Build != "" {
+		return t.name(t.Build, arch)
+	}
 	return fmt.Sprintf("%s_%s_linux_%s.zip", t.Name, t.Version, arch)
 }
 
 // Sums is the file name of t's release's list of SHA-256s.
 func (t Tool) Sums() string {
+	if t.SumsFile != "" {
+		return t.name(t.SumsFile, "")
+	}
 	return fmt.Sprintf("%s_%s_SHA256SUMS", t.Name, t.Version)
 }
 
+// cacheName is the name archive, t's build, is cached and kept by: a
+// bare build's name, which holds no version, with t's name and version
+// before it.
+func (t Tool) cacheName(archive string) string {
+	if t.Bare {
+		return t.Name + "_" + t.Version + "_" + archive
+	}
+	return archive
+}
+
+// name is pattern with t's version and arch in place.
+func (t Tool) name(pattern, arch string) string {
+	return strings.NewReplacer("{version}", t.Version, "{arch}", arch).Replace(pattern)
+}
+
 // The bounds of a download and of the binary it holds. Each tool's
-// archive is tens of MiB, and its binary under a few hundred.
+// archive is tens of MiB, and its binary, which Terragrunt publishes
+// bare, under a few hundred.
 const (
 	maxArchive = 256 << 20
 	maxBinary  = 512 << 20
@@ -92,7 +138,8 @@ var (
 	ErrToolDownload = errors.New("the download failed")
 )
 
-// tools are the binaries a test binary extracted, by archive, each once.
+// tools are the binaries a test binary extracted, by the cache name of
+// their build, each once.
 type tools struct {
 	mu   sync.Mutex
 	once map[string]*toolOnce
@@ -115,10 +162,10 @@ func (d *Dependencies) Tool(ctx context.Context, t Tool, arch string) (string, e
 	if d.tools.once == nil {
 		d.tools.once = map[string]*toolOnce{}
 	}
-	o, ok := d.tools.once[archive]
+	o, ok := d.tools.once[t.cacheName(archive)]
 	if !ok {
 		o = &toolOnce{}
-		d.tools.once[archive] = o
+		d.tools.once[t.cacheName(archive)] = o
 	}
 	d.tools.mu.Unlock()
 	o.once.Do(func() {
@@ -130,8 +177,8 @@ func (d *Dependencies) Tool(ctx context.Context, t Tool, arch string) (string, e
 	return o.bin, o.err
 }
 
-// extract extracts archive's binary into the test binary's tools
-// directory.
+// extract extracts archive's binary, or copies a bare one, into the test
+// binary's tools directory.
 func (d *Dependencies) extract(ctx context.Context, t Tool, archive string) (string, error) {
 	path, err := d.cached(ctx, t, archive)
 	if err != nil {
@@ -141,8 +188,13 @@ func (d *Dependencies) extract(ctx context.Context, t Tool, archive string) (str
 	if err != nil {
 		return "", err
 	}
-	bin := filepath.Join(dir, archive+".d", t.Name)
-	if err := unzip(path, t.Name, bin); err != nil {
+	bin := filepath.Join(dir, t.cacheName(archive)+".d", t.Name)
+	if t.Bare {
+		err = copyBinary(path, bin)
+	} else {
+		err = unzip(path, t.Name, bin)
+	}
+	if err != nil {
 		return "", err
 	}
 	return bin, nil
@@ -159,7 +211,7 @@ func (d *Dependencies) cached(ctx context.Context, t Tool, archive string) (stri
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(cache, archive)
+	path := filepath.Join(cache, t.cacheName(archive))
 	if sum, err := fileSHA256(path); err != nil || sum != want {
 		if err := download(ctx, fmt.Sprintf(t.Download, t.Version)+archive, path); err != nil {
 			return "", err
@@ -198,12 +250,14 @@ func (d *Dependencies) release(ctx context.Context, t Tool, archive string) (map
 	if err != nil {
 		return nil, err
 	}
-	sums := filepath.Join(cache, t.Sums())
+	sums := filepath.Join(cache, t.Name+"_"+t.Version+"_SHA256SUMS")
 	sig := sums + t.Signature
 	base := fmt.Sprintf(t.Download, t.Version)
 	if !lists(sums, archive, t.SHA256[archive]) {
-		for _, f := range []string{sums, sig} {
-			if err := download(ctx, base+filepath.Base(f), f); err != nil {
+		for _, f := range []struct{ name, path string }{
+			{t.Sums(), sums}, {t.Sums() + t.Signature, sig},
+		} {
+			if err := download(ctx, base+f.name, f.path); err != nil {
 				return nil, err
 			}
 		}
@@ -213,7 +267,7 @@ func (d *Dependencies) release(ctx context.Context, t Tool, archive string) (map
 		}
 	}
 	if _, err := os.Stat(sig); err != nil {
-		if err := download(ctx, base+filepath.Base(sig), sig); err != nil {
+		if err := download(ctx, base+t.Sums()+t.Signature, sig); err != nil {
 			return nil, err
 		}
 	}
@@ -323,6 +377,36 @@ func download(ctx context.Context, url, path string) error {
 	return nil
 }
 
+// copyBinary writes the binary at path to bin, executable.
+func copyBinary(path, bin string) error {
+	src, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("tools: %w", err)
+	}
+	defer src.Close()
+	return write(src, bin)
+}
+
+// write writes src, at most maxBinary bytes of it, to the new file bin,
+// executable.
+func write(src io.Reader, bin string) error {
+	if err := os.MkdirAll(filepath.Dir(bin), 0o750); err != nil {
+		return fmt.Errorf("tools: %w", err)
+	}
+	out, err := os.OpenFile(bin, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o755)
+	if err != nil {
+		return fmt.Errorf("tools: %w", err)
+	}
+	_, err = io.Copy(out, io.LimitReader(src, maxBinary))
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return fmt.Errorf("tools: %w", err)
+	}
+	return nil
+}
+
 // unzip writes the entry name of the archive at path to bin, executable.
 // Only that entry is read, so no other path the archive names is written.
 func unzip(path, name, bin string) error {
@@ -340,21 +424,7 @@ func unzip(path, name, bin string) error {
 			return fmt.Errorf("%w: %w", ErrToolArchive, err)
 		}
 		defer src.Close()
-		if err := os.MkdirAll(filepath.Dir(bin), 0o750); err != nil {
-			return fmt.Errorf("tools: %w", err)
-		}
-		out, err := os.OpenFile(bin, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o755)
-		if err != nil {
-			return fmt.Errorf("tools: %w", err)
-		}
-		_, err = io.Copy(out, io.LimitReader(src, maxBinary))
-		if cerr := out.Close(); err == nil {
-			err = cerr
-		}
-		if err != nil {
-			return fmt.Errorf("tools: %w", err)
-		}
-		return nil
+		return write(src, bin)
 	}
 	return fmt.Errorf("%w: %s holds no %s", ErrToolArchive, filepath.Base(path), name)
 }

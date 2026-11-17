@@ -56,8 +56,9 @@ type upload struct {
 // the server opens them, and, for a tracked run whose plan changes
 // something, which may wait for the plan's confirmation and apply in
 // another container, the workspace sealed to the pool's key, which the
-// server cannot open. It answers the note of what failed, empty when
-// nothing did.
+// server cannot open. A Terragrunt run saves its workspace alone, since
+// the server reads no plan or changes of one. It answers the note of what
+// failed, empty when nothing did.
 //
 // ref: decision 0008 § "Logs and artifacts"
 // ref: decision 0008 § "The run specification and its secrets"
@@ -66,14 +67,18 @@ func (r *run) save(ctx context.Context, version int64, p plan.Plan) string {
 	if note != "" {
 		return note
 	}
-	ups := make([]upload, 0, 3)
-	for _, a := range []struct {
+	artifacts := []struct {
 		name  string
 		write func(io.Writer) error
 	}{
 		{PlanArtifact, func(w io.Writer) error { return copyFile(w, r.options.PlanJSON) }},
 		{ChangesArtifact, func(w io.Writer) error { return plan.Write(w, p.Changes) }},
-	} {
+	}
+	if r.terragrunt() {
+		artifacts = nil
+	}
+	ups := make([]upload, 0, 3)
+	for _, a := range artifacts {
 		u, err := r.sealArtifact(key(a.name), a.name, a.write)
 		if err != nil {
 			return fmt.Sprintf("The plan's %s could not be sealed: %v.", a.name, err)
@@ -87,6 +92,9 @@ func (r *run) save(ctx context.Context, version int64, p plan.Plan) string {
 				err)
 		}
 		ups = append(ups, u)
+	}
+	if len(ups) == 0 {
+		return ""
 	}
 	if err := r.send(ctx, version, ups); err != nil {
 		return fmt.Sprintf("The plan's results could not be uploaded: %v.", err)

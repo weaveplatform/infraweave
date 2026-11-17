@@ -67,17 +67,22 @@ func contents(t *testing.T, dir string) map[string]string {
 
 // TestUnitWorkspaceRoundTrip saves a workspace and restores it with the
 // pool's key: files, their modes and the links that stay in it come back,
-// a .terraform directory's providers are left out silently, and a link
-// that leaves the workspace and a pipe are left out and named.
+// as does a Terragrunt unit's .terragrunt-cache, a .terraform directory's
+// providers, in it too, are left out silently, and a link that leaves the
+// workspace and a pipe are left out and named.
 func TestUnitWorkspaceRoundTrip(t *testing.T) {
 	dir := tree(t, map[string]string{
-		"main.tf":                             "terraform {}",
-		"infraweave.plan":                     "binary-plan",
-		"infra/scripts/run.sh":                "#!/bin/sh",
-		".terraform/modules/vpc/main.tf":      "module",
-		".terraform/terraform.tfstate":        "{}",
-		".terraform/providers/registry/x/bin": "provider",
-		"nested/.terraform/providers/y":       "provider",
+		"main.tf":                                             "terraform {}",
+		"infraweave.plan":                                     "binary-plan",
+		"infra/scripts/run.sh":                                "#!/bin/sh",
+		".terraform/modules/vpc/main.tf":                      "module",
+		".terraform/terraform.tfstate":                        "{}",
+		".terraform/providers/registry/x/bin":                 "provider",
+		"nested/.terraform/providers/y":                       "provider",
+		"a/b/.terragrunt-cache/h1/h2/main.tf":                 "unit",
+		"a/b/.terragrunt-cache/h1/h2/tfplan.tfplan":           "unit-plan",
+		"a/b/.terragrunt-cache/h1/h2/.terraform/providers/z":  "provider",
+		"a/b/.terragrunt-cache/h1/h2/.terraform/modules.json": "{}",
 	})
 	if err := os.Chmod(filepath.Join(dir, "infra/scripts/run.sh"), 0o755); err != nil {
 		t.Fatal(err)
@@ -118,6 +123,12 @@ func TestUnitWorkspaceRoundTrip(t *testing.T) {
 		".terraform":    "/", ".terraform/modules": "/", ".terraform/modules/vpc": "/",
 		".terraform/modules/vpc/main.tf": "module", ".terraform/terraform.tfstate": "{}",
 		"nested": "/", "nested/.terraform": "/",
+		"a": "/", "a/b": "/", "a/b/.terragrunt-cache": "/", "a/b/.terragrunt-cache/h1": "/",
+		"a/b/.terragrunt-cache/h1/h2":                         "/",
+		"a/b/.terragrunt-cache/h1/h2/main.tf":                 "unit",
+		"a/b/.terragrunt-cache/h1/h2/tfplan.tfplan":           "unit-plan",
+		"a/b/.terragrunt-cache/h1/h2/.terraform":              "/",
+		"a/b/.terragrunt-cache/h1/h2/.terraform/modules.json": "{}",
 	}
 	got := contents(t, out)
 	for k, v := range want {

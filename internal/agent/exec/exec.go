@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"math"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -364,15 +367,24 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 		return end(d)
 	}
 	r.initialized = true
+	// A Terragrunt run keeps no outputs, so its applying reads and saves
+	// none.
+	outputs := state == wire.WorkerStateAPPLYING && !r.terragrunt()
 	var p plan.Plan
-	switch state {
-	case wire.WorkerStatePLANNING:
+	switch {
+	case state == wire.WorkerStatePLANNING && r.terragrunt():
+		if p, err = r.unitPlans(); err != nil {
+			return fail("The units' plans could not be read: " + err.Error())
+		}
+		delta := deltaOf(p.Delta)
+		rep.Delta = &delta
+	case state == wire.WorkerStatePLANNING:
 		if p, err = r.plan(); err != nil {
 			return fail("The plan's JSON could not be read: " + err.Error())
 		}
 		delta := deltaOf(p.Delta)
 		rep.Delta = &delta
-	case wire.WorkerStateAPPLYING:
+	case outputs:
 		if err := r.outputs(); err != nil {
 			return fail("The outputs' JSON could not be read: " + err.Error())
 		}
@@ -380,12 +392,12 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	if d := r.steps(ctx, r.hooks("after_"+name)); d != "" || r.halted() {
 		return end(d)
 	}
-	switch state {
-	case wire.WorkerStatePLANNING:
+	switch {
+	case state == wire.WorkerStatePLANNING:
 		if d := r.save(ctx, version, p); d != "" {
 			return fail(d)
 		}
-	case wire.WorkerStateAPPLYING:
+	case outputs:
 		if d := r.saveOutputs(ctx, version); d != "" {
 			return fail(d)
 		}
@@ -433,10 +445,12 @@ func (r *run) commands(ctx context.Context, state wire.WorkerState) ([]step, err
 	return commandSteps(commands), nil
 }
 
-// step is one hook or command, how a failure names it, and the tool
-// command a CPU profile labels its samples with, empty for a hook.
+// step is one hook or command, how a failure names it, the tool command
+// a CPU profile labels its samples with, empty for a hook, and the
+// variables set for it alone, each NAME=value.
 type step struct {
 	text, what, command string
+	env                 []string
 }
 
 // hooks are the steps of the specification's hooks of phase, in order.
@@ -459,7 +473,10 @@ func commandSteps(commands []vendors.Command) []step {
 		if c.Stdout != "" {
 			text = "{ " + text + "\n} >" + quote(c.Stdout)
 		}
-		out[i] = step{text: text, what: "The " + string(c.Key) + " command", command: string(c.Key)}
+		out[i] = step{
+			text: text, what: "The " + string(c.Key) + " command", command: string(c.Key),
+			env: c.Env,
+		}
 	}
 	return out
 }
@@ -495,6 +512,77 @@ func (r *run) plan() (plan.Plan, error) {
 	}
 	defer f.Close()
 	return plan.Parse(f) //nolint:wrapcheck // plan names the document
+}
+
+// unitPlanFile is the name of each unit's plan's JSON under the
+// directory a Terragrunt run's plan command names: the unit's path from
+// the project root, then this name.
+//
+// ref: https://docs.terragrunt.com/reference/cli/commands/run/#json-out-dir
+const unitPlanFile = "tfplan.json"
+
+// unitPlans reads each unit's plan's JSON, which a Terragrunt run's plan
+// command wrote under the options' UnitPlans, opened as a root, and
+// answers their delta summed: each count added, and the outputs changing
+// when any unit's do. A plan that does not parse is an error naming its
+// unit, and planning that wrote none is an error too, since every unit
+// Terragrunt planned writes one.
+func (r *run) unitPlans() (plan.Plan, error) {
+	root, err := os.OpenRoot(r.options.UnitPlans)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return plan.Plan{}, errNoUnitPlans
+	case err != nil:
+		return plan.Plan{}, fmt.Errorf("open their directory: %w", err)
+	}
+	defer root.Close()
+	var out plan.Plan
+	units := 0
+	err = fs.WalkDir(root.FS(), ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || d.Name() != unitPlanFile {
+			return err
+		}
+		f, err := root.Open(filepath.FromSlash(p))
+		if err != nil {
+			return err //nolint:wrapcheck // names the path
+		}
+		defer f.Close()
+		u, err := plan.Parse(f)
+		if err != nil {
+			return fmt.Errorf("the unit %s: %w", unitName(path.Dir(p)), err)
+		}
+		units++
+		out.Delta = sum(out.Delta, u.Delta)
+		return nil
+	})
+	switch {
+	case err != nil:
+		return plan.Plan{}, err //nolint:wrapcheck // names the unit or the path
+	case units == 0:
+		return plan.Plan{}, errNoUnitPlans
+	}
+	return out, nil
+}
+
+// errNoUnitPlans is planning that wrote no unit's plan.
+var errNoUnitPlans = errors.New("no unit's plan was written")
+
+// unitName is how a note names the unit whose path from the project root
+// is rel, with / separators, "." for the project root.
+func unitName(rel string) string {
+	if rel == "." {
+		return "at the project root"
+	}
+	return strconv.Quote(rel)
+}
+
+// sum is the delta of a's and b's changes together.
+func sum(a, b plan.Delta) plan.Delta {
+	return plan.Delta{
+		Add: a.Add + b.Add, Change: a.Change + b.Change, Delete: a.Delete + b.Delete,
+		Import: a.Import + b.Import, Move: a.Move + b.Move, Forget: a.Forget + b.Forget,
+		Resources: a.Resources + b.Resources, Outputs: a.Outputs || b.Outputs,
+	}
 }
 
 // outputs checks the outputs' JSON, which applying's commands wrote, so

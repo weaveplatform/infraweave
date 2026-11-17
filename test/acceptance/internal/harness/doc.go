@@ -32,7 +32,8 @@
 // infraweave as subprocesses (serve modes, migrate) whose JSON logs give
 // their listeners, builds the runner images from deploy/images with the
 // Docker daemon's builder, serves the pinned tool releases to launchers
-// as a tool mirror, reaches their listeners over loopback HTTP, queries
+// as a tool mirror, and a scenario's tampered mirror one build altered,
+// reaches their listeners over loopback HTTP, queries
 // the scenario's database, and writes godog's cucumber report, the
 // subprocesses' coverage, a failed scenario's evidence and a stressed
 // run's store refusals. Under a CPU

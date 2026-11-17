@@ -15,7 +15,7 @@ import (
 )
 
 // File is the backend file's name, which Configure writes at the project
-// root.
+// root, or in each Terragrunt unit's directory.
 //
 // ref: decision 0010 § "How a run reaches it"
 const File = "infraweave_backend.tf"
@@ -29,35 +29,92 @@ const Username = "run"
 var ErrAddress = errors.New("not a state backend address")
 
 // Configure points the run h hands over at its stack's managed state
-// backend: it writes File into root, the run's project root, and answers
-// the phase environment's credentials. A run whose stack infraweave keeps
-// no state for writes nothing and answers none.
-func Configure(root string, h handoff.Handoff) ([]string, error) {
+// backend: it writes File into root, the run's project root under
+// workspace, and answers the phase environment's credentials. A run whose
+// stack infraweave keeps no state for writes nothing and answers none.
+//
+// A Terragrunt stack's run writes File into each of the project's Units
+// instead, naming the unit's workspace, after checking every unit: one
+// whose name is no workspace name, or that declares its own backend, is
+// refused naming it, and nothing is written. The files a unit includes
+// are read under workspace, which the repository's checkout fills.
+//
+// ref: decision 0010 § "How a run reaches it"
+func Configure(workspace, root string, h handoff.Handoff) ([]string, error) {
 	if h.Spec.StateBackend == nil {
 		return nil, nil
 	}
-	address, err := Address(h.Endpoint, h.Spec.StateBackend.Path)
-	if err != nil {
-		return nil, err
+	units := []string{""}
+	if h.Spec.Terragrunt != nil {
+		var err error
+		if units, err = checkUnits(workspace, root); err != nil {
+			return nil, err
+		}
 	}
-	if err := write(filepath.Join(root, File), address); err != nil {
-		return nil, err
+	for _, u := range units {
+		address, err := Address(h.Endpoint, h.Spec.StateBackend.Path, u)
+		if err != nil {
+			return nil, err
+		}
+		err = write(filepath.Join(root, filepath.FromSlash(u), File), address)
+		if err != nil && h.Spec.Terragrunt != nil {
+			return nil, fmt.Errorf("%s: %w", unit(u), err)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	return Environment(h.RunToken), nil
 }
 
-// Address is the backend's URL: p, the specification's stateBackend.path,
-// under the server URL whose worker API is at endpoint, as a handoff names
-// it. It keeps the endpoint's scheme, host, port and any path before
-// client.BasePath, so the backend answers behind the same relay or private
-// address as the worker API. An endpoint with user information, a query
-// or a fragment is refused, since the backend file would carry it.
-func Address(endpoint, p string) (string, error) {
+// checkUnits are the Units of the Terragrunt project at root, each
+// checked: its name a workspace name and no backend of its own.
+func checkUnits(workspace, root string) ([]string, error) {
+	units, err := Units(root)
+	if err != nil {
+		return nil, err
+	}
+	// Terragrunt's functions answer absolute paths, which the include
+	// paths the check works out are built from.
+	abs, err := filepath.Abs(workspace)
+	if err != nil {
+		return nil, fmt.Errorf("the workspace: %w", err)
+	}
+	absRoot, _ := filepath.Abs(root) // the working directory answered a moment ago
+	fsys, err := os.OpenRoot(abs)
+	if err != nil {
+		return nil, fmt.Errorf("open the workspace: %w", err)
+	}
+	defer fsys.Close()
+	p := &project{fs: fsys, workspace: abs, root: absRoot}
+	for _, u := range units {
+		if err := checkName(u); err != nil {
+			return nil, err
+		}
+		if err := p.checkBackend(u); err != nil {
+			return nil, err
+		}
+	}
+	return units, nil
+}
+
+// Address is the URL of the backend's workspace: p, the specification's
+// stateBackend.path, under the server URL whose worker API is at
+// endpoint, as a handoff names it, and for a workspace other than the
+// default, empty, its name as one escaped path segment under workspaces,
+// a / in it %2F. It keeps the endpoint's scheme, host, port and any path
+// before client.BasePath, so the backend answers behind the same relay or
+// private address as the worker API. An endpoint with user information, a
+// query or a fragment is refused, since the backend file would carry it.
+//
+// ref: decision 0010 § "Endpoints"
+func Address(endpoint, p, workspace string) (string, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrAddress, err)
 	}
 	prefix, ok := strings.CutSuffix(u.Path, client.BasePath)
+	rawPrefix, _ := strings.CutSuffix(u.EscapedPath(), client.BasePath)
 	switch {
 	case u.Scheme != "http" && u.Scheme != "https", u.Host == "":
 		return "", fmt.Errorf("%w: the endpoint %q is no HTTP URL", ErrAddress, endpoint)
@@ -71,6 +128,13 @@ func Address(endpoint, p string) (string, error) {
 		return "", fmt.Errorf("%w: the path %q is not clean and absolute", ErrAddress, p)
 	}
 	out := url.URL{Scheme: u.Scheme, Host: u.Host, Path: prefix + p}
+	if workspace != "" {
+		// RawPath keeps the workspace one segment: Path alone would
+		// send each / in it as a separator.
+		out.RawPath = rawPrefix + (&url.URL{Path: p}).EscapedPath() + "/workspaces/" +
+			url.PathEscape(workspace)
+		out.Path += "/workspaces/" + workspace
+	}
 	return out.String(), nil
 }
 

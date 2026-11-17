@@ -8,7 +8,9 @@
 //	"IWWS" | 0x01 | state version (uint64) | envelope length (uint16) | envelope | object stream
 //
 // The providers of each .terraform directory are left out, since init
-// installs them again from the lock file; so are a link that leaves the
+// installs them again from the lock file, including those of each copy
+// of a Terragrunt unit in its .terragrunt-cache, which is otherwise kept
+// with the plan Terragrunt saved there; so are a link that leaves the
 // workspace, a device, a pipe and a socket, which Write answers by path.
 // A file, link or name that holds one of the run's credentials the
 // runner names, its run token and its source credential, fails the save.

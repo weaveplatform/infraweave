@@ -26,10 +26,21 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
-// Release is one build of a tool: the binary a run's specification names,
-// its version, and the platform of the container that runs it.
+// Tool names a binary a run mounts: the tool its specification names, or
+// the Terragrunt that drives it.
+type Tool string
+
+// The tools a Fetcher fetches, each by the binary's name.
+const (
+	Terraform       = Tool(wire.Terraform)
+	Tofu            = Tool(wire.Tofu)
+	Terragrunt Tool = "terragrunt"
+)
+
+// Release is one build of a tool: the binary, its version, and the
+// platform of the container that runs it.
 type Release struct {
-	Tool    wire.RunSpecToolName
+	Tool    Tool
 	Version string
 	OS      string
 	Arch    string
@@ -53,8 +64,8 @@ type Config struct {
 }
 
 // The bounds of a release's files. A tool's archive is tens of MiB and
-// its binary a few hundred; SHA256SUMS lists a few dozen archives, and a
-// detached signature is under a KiB.
+// its binary, which Terragrunt publishes bare, a few hundred; SHA256SUMS
+// lists a few dozen builds, and a detached signature is under a KiB.
 const (
 	maxArchive   = 256 << 20
 	maxBinary    = 512 << 20
@@ -67,45 +78,83 @@ const (
 // fails the run before the server gives up on it.
 const fetchTimeout = 10 * time.Minute
 
-// vendor is where a tool's releases come from and who signs them.
+// vendor is where a tool's releases come from, how their files are
+// named and who signs them.
 type vendor struct {
 	// name is the signer, as a note names it.
 	name string
 	// base is the URL of a release's files, with %s for the version.
 	base string
+	// sums and build name SHA256SUMS and a platform's build, with
+	// {version}, {os} and {arch} for the release's.
+	sums, build string
+	// zipped is whether the build is a zip that holds the binary, rather
+	// than the binary itself.
+	zipped bool
 	// signature is the suffix of SHA256SUMS's detached signature.
 	signature string
 	// key is the signer's armored public key.
 	key []byte
 }
 
+// file is the name of a release's file that pattern, one of v's names,
+// names for r.
+func (v vendor) file(pattern string, r Release) string {
+	return strings.NewReplacer("{version}", r.Version, "{os}", r.OS, "{arch}", r.Arch).
+		Replace(pattern)
+}
+
 // The vendors' public keys: HashiCorp's PGP key, which signs each
-// Terraform release's SHA256SUMS, and the OpenTofu signing key, which
-// signs each of OpenTofu's. They are compiled in, so a release is trusted
-// only when a key the launcher's own binary carries signed it.
+// Terraform release's SHA256SUMS, the OpenTofu signing key, which signs
+// each of OpenTofu's, and Gruntwork's code signing key, which signs each
+// of Terragrunt's. They are compiled in, so a release is trusted only
+// when a key the launcher's own binary carries signed it. Terragrunt's
+// releases also publish their key, which the launcher never reads: a key
+// fetched beside a signature vouches for whatever was published with it.
 var (
 	//go:embed keys/hashicorp.asc
 	hashicorpKey []byte
 	//go:embed keys/opentofu.asc
 	opentofuKey []byte
+	// gruntworkKey's fingerprint is 68C80F86DF98E710C0F22E2E577774ACA847CC49,
+	// as Terragrunt's installation guide publishes it and each release's
+	// terragrunt-signing-key.asc carries it.
+	//
+	// ref: https://docs.terragrunt.com/getting-started/install/
+	// ref: https://github.com/gruntwork-io/terragrunt/releases/download/v1.2.2/terragrunt-signing-key.asc
+	//go:embed keys/gruntwork.asc
+	gruntworkKey []byte
 )
 
-// vendors are the tools a run mounts, by the binary its specification
-// names.
+// vendors are the tools a run mounts, by their binary's name.
 //
 // ref: decision 0008 § "Runner images"
-var vendors = map[wire.RunSpecToolName]vendor{
-	wire.Terraform: {
+var vendors = map[Tool]vendor{
+	Terraform: {
 		name:      "HashiCorp",
 		base:      "https://releases.hashicorp.com/terraform/%s/",
+		sums:      "terraform_{version}_SHA256SUMS",
+		build:     "terraform_{version}_{os}_{arch}.zip",
+		zipped:    true,
 		signature: ".sig",
 		key:       hashicorpKey,
 	},
-	wire.Tofu: {
+	Tofu: {
 		name:      "OpenTofu",
 		base:      "https://github.com/opentofu/opentofu/releases/download/v%s/",
+		sums:      "tofu_{version}_SHA256SUMS",
+		build:     "tofu_{version}_{os}_{arch}.zip",
+		zipped:    true,
 		signature: ".gpgsig",
 		key:       opentofuKey,
+	},
+	Terragrunt: {
+		name:      "Gruntwork",
+		base:      "https://github.com/gruntwork-io/terragrunt/releases/download/v%s/",
+		sums:      "SHA256SUMS",
+		build:     "terragrunt_{os}_{arch}",
+		signature: ".gpgsig",
+		key:       gruntworkKey,
 	},
 }
 
@@ -117,7 +166,7 @@ var (
 	ErrDownload  = errors.New("the download failed")
 	ErrSigner    = errors.New("the signature is by an unknown key")
 	ErrSignature = errors.New("the signature does not verify")
-	ErrUnlisted  = errors.New("the signed sums list no such archive")
+	ErrUnlisted  = errors.New("the signed sums list no such build")
 	ErrChecksum  = errors.New("the SHA-256 is not the signed one")
 	ErrArchive   = errors.New("the archive holds no binary of the tool")
 )
@@ -132,20 +181,22 @@ var (
 // Fetcher downloads, verifies and caches tool binaries.
 type Fetcher struct {
 	c          Config
-	vendors    map[wire.RunSpecToolName]vendor
+	vendors    map[Tool]vendor
 	maxArchive int64
+	maxBinary  int64
 }
 
 // New is a Fetcher of c.
 func New(c Config) *Fetcher {
-	return &Fetcher{c: c, vendors: vendors, maxArchive: maxArchive}
+	return &Fetcher{c: c, vendors: vendors, maxArchive: maxArchive, maxBinary: maxBinary}
 }
 
 // Binary answers the path of r's binary, from the cache, or downloaded
 // and verified into it: SHA256SUMS's detached signature is checked against
-// the vendor's key, then the archive's SHA-256 against the one SHA256SUMS
-// lists, before the binary is extracted. The binary is written beside its
-// path and renamed into place, so launchers sharing the cache never see a
+// the vendor's key, then the build's SHA-256 against the one SHA256SUMS
+// lists, before the binary is extracted from it, or taken as it is when
+// the vendor publishes it bare. The binary is written beside its path
+// and renamed into place, so launchers sharing the cache never see a
 // partial one.
 //
 // ref: decision 0008 § "Runner images"
@@ -180,7 +231,7 @@ func (f *Fetcher) binary(ctx context.Context, r Release) (string, error) {
 	if f.c.Mirror != "" {
 		base = strings.TrimSuffix(f.c.Mirror, "/") + "/" + string(r.Tool) + "/" + r.Version + "/"
 	}
-	sumsFile := fmt.Sprintf("%s_%s_SHA256SUMS", r.Tool, r.Version)
+	sumsFile := v.file(v.sums, r)
 	sums, err := f.get(ctx, base+sumsFile, maxSums)
 	if err != nil {
 		return "", fmt.Errorf("download %s: %w", sumsFile, err)
@@ -192,21 +243,31 @@ func (f *Fetcher) binary(ctx context.Context, r Release) (string, error) {
 	if err := verify(v, sums, sig); err != nil {
 		return "", fmt.Errorf("verify %s: %w", sumsFile, err)
 	}
-	archive := fmt.Sprintf("%s_%s_%s_%s.zip", r.Tool, r.Version, r.OS, r.Arch)
-	want, ok := listed(sums, archive)
+	build := v.file(v.build, r)
+	want, ok := listed(sums, build)
 	if !ok {
-		return "", fmt.Errorf("check %s: %w", archive, ErrUnlisted)
+		return "", fmt.Errorf("check %s: %w", build, ErrUnlisted)
 	}
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", fmt.Errorf("the cache: %w", err)
 	}
-	zipped, err := f.download(ctx, base+archive, dir, want)
-	if err != nil {
-		return "", fmt.Errorf("download %s: %w", archive, err)
+	limit := f.maxBinary
+	if v.zipped {
+		limit = f.maxArchive
 	}
-	defer os.Remove(zipped)
-	if err := extract(zipped, string(r.Tool), path); err != nil {
-		return "", fmt.Errorf("extract %s from %s: %w", r.Tool, archive, err)
+	tmp, err := f.download(ctx, base+build, dir, want, limit)
+	if err != nil {
+		return "", fmt.Errorf("download %s: %w", build, err)
+	}
+	defer os.Remove(tmp)
+	if !v.zipped {
+		if err := install(tmp, path); err != nil {
+			return "", fmt.Errorf("install %s: %w", build, err)
+		}
+		return path, nil
+	}
+	if err := extract(tmp, string(r.Tool), path); err != nil {
+		return "", fmt.Errorf("extract %s from %s: %w", r.Tool, build, err)
 	}
 	return path, nil
 }
@@ -273,15 +334,15 @@ func (f *Fetcher) get(ctx context.Context, url string, limit int64) ([]byte, err
 	return b.Bytes(), nil
 }
 
-// download writes the body url answers to a temporary file in dir and
-// answers its path once its SHA-256 is want.
-func (f *Fetcher) download(ctx context.Context, url, dir, want string) (string, error) {
-	tmp, err := os.CreateTemp(dir, ".archive-*")
+// download writes the body url answers, at most limit bytes, to a
+// temporary file in dir and answers its path once its SHA-256 is want.
+func (f *Fetcher) download(ctx context.Context, url, dir, want string, limit int64) (string, error) {
+	tmp, err := os.CreateTemp(dir, ".download-*")
 	if err != nil {
 		return "", fmt.Errorf("the cache: %w", err)
 	}
 	h := sha256.New()
-	err = f.fetch(ctx, url, io.MultiWriter(tmp, h), f.maxArchive)
+	err = f.fetch(ctx, url, io.MultiWriter(tmp, h), limit)
 	if cerr := tmp.Close(); err == nil && cerr != nil {
 		err = fmt.Errorf("the cache: %w", cerr)
 	}
@@ -356,13 +417,19 @@ func extract(archive, name, path string) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrArchive, err)
 	}
+	return install(tmp.Name(), path)
+}
+
+// install makes the file at tmp, a verified binary beside path,
+// executable and renames it into place.
+func install(tmp, path string) error {
 	// The run's user, UID 1983, is not the launcher's, and executes the
 	// binary through a read-only mount.
 	//nolint:gosec // every user reads and executes a tool binary
-	if err := os.Chmod(tmp.Name(), 0o755); err != nil {
+	if err := os.Chmod(tmp, 0o755); err != nil {
 		return fmt.Errorf("the cache: %w", err)
 	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
+	if err := os.Rename(tmp, path); err != nil {
 		// Windows refuses to replace a file another launcher is
 		// renaming into place; its binary is as good as this one.
 		if fi, serr := os.Stat(path); serr == nil && fi.Mode().IsRegular() {

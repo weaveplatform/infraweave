@@ -7,12 +7,14 @@
 // RustFS; Vault in dev mode with the Transit engine; Gitea, serving HTTPS
 // under a CA made for the run; and the in-process OIDC issuer. images.go
 // pins each image by digest, and Postgres picks the PostgreSQL major the
-// INFRAWEAVE_POSTGRES variable names. tools.go pins the Terraform and
-// OpenTofu releases @terraform and @tofu run, and Tool downloads one's
-// Linux archive into a cache that outlives the test binary, checks it
-// against its pinned SHA-256 on each use, and extracts its binary once
-// per test binary; Release adds the release's SHA256SUMS, which must list
-// that SHA-256, and its signature, for a tool mirror to serve. Eventually
+// INFRAWEAVE_POSTGRES variable names. tools.go pins the Terraform,
+// OpenTofu and Terragrunt releases @terraform, @tofu and @terragrunt run,
+// and Tool downloads one's Linux build into a cache that outlives the
+// test binary, checks it against its pinned SHA-256 on each use, and
+// extracts its binary once per test binary, or copies it, Terragrunt's
+// build being the binary itself; Release adds the release's SHA256SUMS,
+// which must list that SHA-256, and its signature, for a tool mirror to
+// serve under the vendor's file names. Eventually
 // is the only way a TestAcc
 // test waits, polling with backoff up to WaitLimit. DockerReachable
 // reports whether a daemon answers, and KEK is the test key every server

@@ -7,7 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -528,6 +532,53 @@ func TestUnitLockModes(t *testing.T) {
 	if rec.Code != http.StatusLocked || rec.Body.String() != holder ||
 		rec.Header().Get("Content-Type") != "application/json" {
 		t.Errorf("a conflict = %d %q %s", rec.Code, rec.Header().Get("Content-Type"), rec.Body)
+	}
+}
+
+// TestUnitUnitAddresses checks that the addresses the runner writes into
+// each Terragrunt unit's backend file, as the agent's golden files hold
+// them, reach the workspace the unit names: sent as Terraform's http
+// backend sends a request to its address, the nested unit a/b's %2F
+// decodes to one workspace a/b, and the unit at the project root's
+// address is the stack's default workspace.
+func TestUnitUnitAddresses(t *testing.T) {
+	address := regexp.MustCompile(`(?m)^\s*address\s*=\s*"([^"]+)"$`)
+	for golden, want := range map[string]string{
+		"infraweave_backend.tf":     stateapi.DefaultWorkspace,
+		"a/b/infraweave_backend.tf": "a/b",
+	} {
+		file, err := os.ReadFile(filepath.Join("..", "..", "..", "agent", "backend", "testdata",
+			"units", filepath.FromSlash(golden)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := address.FindSubmatch(file)
+		if m == nil {
+			t.Fatalf("%s names no address:\n%s", golden, file)
+		}
+		u, err := url.Parse(string(m[1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		w := newWorld()
+		_, id, ok := strings.Cut(u.Path, "/state/v1/stacks/")
+		id, _, _ = strings.Cut(id, "/")
+		if w.stack.ID, err = kernel.ParseULID(id); !ok || err != nil {
+			t.Fatalf("%s: no stack in %s (%v)", golden, u, err)
+		}
+		req, err := http.NewRequestWithContext(t.Context(), "LOCK", u.String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rec := w.serve(t, "LOCK", req.URL.RequestURI(), lockBody,
+			nil); rec.Code != http.StatusOK {
+			t.Fatalf("%s: %s = %d %s", golden, req.URL.RequestURI(), rec.Code, rec.Body)
+		}
+		if len(w.locked) != 1 || w.locked[0].t != (core.Target{
+			Account: w.acct, Stack: w.stack.ID, Workspace: want,
+		}) {
+			t.Errorf("%s locked %+v, want the workspace %q", golden, w.locked, want)
+		}
 	}
 }
 

@@ -55,6 +55,9 @@ func (r *run) setUp(ctx context.Context) string {
 		return "The run's specification names no tool to run."
 	}
 	w, err := vendors.Defaults(tool.Name)
+	if err == nil && r.terragrunt() {
+		w, err = vendors.Terragrunt()
+	}
 	if err != nil {
 		return "The runner has no commands for " + string(tool.Name) + "."
 	}
@@ -72,7 +75,7 @@ func (r *run) setUp(ctx context.Context) string {
 	if d := r.readWorkflow(); d != "" {
 		return d
 	}
-	creds, err := backend.Configure(r.dir, r.h)
+	creds, err := backend.Configure(r.d.Workspace, r.dir, r.h)
 	if err != nil {
 		return fmt.Sprintf("The state backend cannot be configured: %v.", err)
 	}
@@ -100,6 +103,10 @@ func (r *run) setUp(ctx context.Context) string {
 		},
 		PlanJSON:    filepath.Join(r.temp, "plan.json"),
 		OutputsJSON: filepath.Join(r.temp, "outputs.json"),
+	}
+	if r.terragrunt() {
+		r.options.Params.PlanFileName = workflow.TerragruntPlanFile
+		r.options.UnitPlans = filepath.Join(r.temp, "plans")
 	}
 	if r.shell, err = start(ctx, r.dir, r.env, r.log.File()); err != nil {
 		if errors.Is(err, osexec.ErrNotFound) {
@@ -184,12 +191,18 @@ func readFile(dir, name string, limit int64) ([]byte, error) {
 }
 
 // environment is the phase environment: the container's, the tool's
-// automation switches, the specification's variables with the
+// automation switches, for a Terragrunt run the tool Terragrunt drives
+// and Terragrunt's own switch, the specification's variables with the
 // write-only values opened, then the in-run API token and the state
 // backend's credentials, which no variable of the stack overrides.
+//
+// ref: decision 0008 § "Phases, reports and the plan decision"
 func (r *run) environment(creds []string) []string {
 	env := slices.Clone(r.d.Environ)
 	env = append(env, "TF_IN_AUTOMATION=1", "TF_INPUT=0")
+	if r.terragrunt() {
+		env = append(env, "TG_TF_PATH="+r.toolPath(), "TG_NON_INTERACTIVE=true")
+	}
 	for _, v := range r.h.Spec.Environment {
 		switch {
 		case v.WriteOnly:
@@ -202,6 +215,25 @@ func (r *run) environment(creds []string) []string {
 		env = append(env, "INFRAWEAVE_API_TOKEN="+t)
 	}
 	return append(env, creds...)
+}
+
+// terragrunt reports whether the run is a Terragrunt stack's, whose
+// commands Terragrunt runs across the stack's units.
+func (r *run) terragrunt() bool {
+	return r.h.Spec.Terragrunt != nil
+}
+
+// toolPath is the tool Terragrunt drives: the binary the launcher mounts
+// at /bin/<tool> when the specification downloads it, else the image's
+// own on the path.
+//
+// ref: decision 0008 § "Runner images"
+func (r *run) toolPath() string {
+	t := r.h.Spec.Tool
+	if t.Download {
+		return "/bin/" + string(t.Name)
+	}
+	return string(t.Name)
 }
 
 // lookup is name's value in env, the last entry winning as it does for a

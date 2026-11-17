@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -32,7 +34,10 @@ import (
 // runner. A run's image is its stack's, else the runner image of the
 // scenario's tool, @terraform's or @tofu's, else RunnerImage; a launcher
 // of a @terraform or @tofu scenario downloads and verifies the tool
-// from the suite's tool mirror. The relay records each call and holds the
+// from the suite's tool mirror, and of a @terragrunt one Terragrunt too,
+// or, once the scenario says so, a tool's build altered on its way, which
+// fails the verification. {launcher.arch} is the architecture the
+// launchers download builds for. The relay records each call and holds the
 // runners' reports on demand, so a run stays on its worker while the
 // scenario kills the launcher; a run's container reaches the API through
 // it at {relay.url}. {runner.spacelift} names Spacelift's public runner
@@ -48,6 +53,10 @@ type launcherSteps struct {
 	relay     *harness.Relay
 	network   string
 	launchers map[string]*launcher
+	// tampered names the tool whose build the scenario's launchers
+	// download altered, through tamperer, a mirror of the suite's.
+	tampered string
+	tamperer *httptest.Server
 }
 
 // launcher is one launcher of the scenario: its process, the directory
@@ -70,6 +79,8 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 			`(, which keeps sensitive outputs' values,)?(?:, whose no-log timeout is (\d+s),)? through ([AB])$`,
 		l.start,
 	)
+	sc.Step(`^the launchers started from now on download (\w+)'s build altered$`,
+		func(tool string) { l.tampered = tool })
 	sc.Step(`^the launcher "(\w+)" is killed$`, l.kill)
 	sc.Step(`^the launcher "(\w+)" starts again and resumes its worker$`, l.restart)
 	sc.Step(`^the relay holds the runners' reports$`, func() { l.relay.Hold() })
@@ -82,6 +93,8 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	)
 	sc.Step(`^the answer's history is the states "([^"]*)"$`, l.history)
 	sc.Step(`^the answer's last state transition's note is "([^"]*)"$`, l.note)
+	sc.Step(`^the answer's last state transition's note is '([^']*)'$`, l.note)
+	sc.Step(`^the answer's last state transition's note starts with '([^']*)'$`, l.noteStarts)
 }
 
 // servers starts the scenario's two servers with the top-level sections
@@ -157,15 +170,27 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps
 	if quiet != "" {
 		settings["log_timeout"] = quiet
 	}
+	w.IDs["launcher.arch"] = host.Arch
 	for _, t := range scenarioTools {
 		if !slices.Contains(w.Tags, t.tag) {
 			continue
 		}
+		mirror, err := host.Mirror(ctx, w.Suite.Deps, t.tool)
+		if err != nil {
+			return err //nolint:wrapcheck // names the release
+		}
+		if t.tool.Name == l.tampered && l.tamperer == nil {
+			l.tamperer = harness.TamperedMirror(mirror, t.tool, host.Arch)
+		}
+		settings["tool_mirror"] = mirror
+		if l.tamperer != nil {
+			settings["tool_mirror"] = l.tamperer.URL
+		}
+		if t.image == "" {
+			continue
+		}
 		if err := host.Build(ctx, t.image); err != nil {
 			return err //nolint:wrapcheck // names the image
-		}
-		if settings["tool_mirror"], err = host.Mirror(ctx, w.Suite.Deps, t.tool); err != nil {
-			return err //nolint:wrapcheck // names the release
 		}
 		settings["default_runner_image"] = t.image
 	}
@@ -178,13 +203,15 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps
 }
 
 // scenarioTools are the tools a scenario's tags name, with the runner
-// image each runs in.
+// image each runs in; Terragrunt runs in the image of the tool it drives,
+// so it names none, and it comes after that tool, whose mirror it shares.
 var scenarioTools = []struct {
 	tag, image string
 	tool       deps.Tool
 }{
 	{"@terraform", harness.RunnerTerraform, deps.Terraform},
 	{"@tofu", harness.RunnerOpenTofu, deps.OpenTofu},
+	{"@terragrunt", "", deps.Terragrunt},
 }
 
 // poolToken reads the pool kept as pool through replica with token and
@@ -418,6 +445,26 @@ func (l *launcherSteps) note(want string) error {
 	return nil
 }
 
+// noteStarts checks that the note of the last transition of the run the
+// answer reads starts with want, for a note that ends with what the
+// scenario cannot know, such as a download's SHA-256.
+func (l *launcherSteps) noteStarts(want string) error {
+	h, err := l.transitions()
+	if err != nil {
+		return err
+	}
+	last := h[len(h)-1]
+	if last.Note == nil || !strings.HasPrefix(*last.Note, l.w.Resolve(want)) {
+		note := "none"
+		if last.Note != nil {
+			note = strconv.Quote(*last.Note)
+		}
+		return fmt.Errorf("%w: the last transition is %s, with the note %s", harness.ErrStep,
+			last.State, note)
+	}
+	return nil
+}
+
 // end stops the scenario's launchers, leaving the evidence of a failed
 // scenario beside the servers', removes the containers its launchers and
 // forwarder started, and closes the relay.
@@ -451,6 +498,9 @@ func (l *launcherSteps) end(ctx context.Context, _ *godog.Scenario, failed error
 	}
 	if err == nil {
 		err = host.Remove(ctx, harness.LabelScenario, l.label)
+	}
+	if l.tamperer != nil {
+		l.tamperer.Close()
 	}
 	return ctx, errors.Join(err, l.relay.Close(ctx))
 }
