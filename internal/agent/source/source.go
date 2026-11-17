@@ -61,7 +61,9 @@ func New(doer wire.HttpRequestDoer, ca []byte) *Fetcher {
 
 // Fetch writes spec's source into dir, which must not exist: the commit
 // checked out from its Git URL, presenting cred as HTTP Basic auth when
-// there is one, or the archive extracted. It then checks that the
+// there is one, or the archive extracted whole. Sparse paths narrow only
+// a Git checkout; a local preview's archive retains all its files. It
+// then checks that the
 // specification's project root is a directory of it, and hands it to the
 // run's user. cred stays in memory: it reaches the provider's host alone,
 // and no file, URL, log or error holds it.
@@ -87,7 +89,11 @@ func (f *Fetcher) fetch(ctx context.Context, dir string, spec wire.RunSpec, cred
 	defer cancel()
 	switch s.Kind {
 	case wire.Git:
-		if err := f.git(ctx, dir, s.Url, spec.Commit.Hash, cred); err != nil {
+		var paths []string
+		if s.SparsePaths != nil {
+			paths = *s.SparsePaths
+		}
+		if err := f.git(ctx, dir, s.Url, spec.Commit.Hash, paths, cred); err != nil {
 			return fmt.Errorf("fetch commit %s from %s: %w", spec.Commit.Hash, u.Host, err)
 		}
 	case wire.Archive:

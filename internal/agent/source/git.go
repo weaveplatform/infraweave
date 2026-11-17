@@ -22,7 +22,11 @@ import (
 // before it, from a server that serves a commit by its hash, as GitHub,
 // GitLab and Gitea do; from one that does not, every branch is fetched,
 // whose histories hold the commit of any run on one of them.
-func (f *Fetcher) git(ctx context.Context, dir, url, commit string, cred *wire.RunSpecSourceCredential) error {
+// Sparse paths check out those directories alone; an empty list checks
+// out the whole commit.
+func (f *Fetcher) git(
+	ctx context.Context, dir, url, commit string, paths []string, cred *wire.RunSpecSourceCredential,
+) error {
 	if !plumbing.IsHash(commit) {
 		return fmt.Errorf("%w: %q", ErrCommit, commit)
 	}
@@ -54,7 +58,9 @@ func (f *Fetcher) git(ctx context.Context, dir, url, commit string, cred *wire.R
 		return fmt.Errorf("the workspace: %w", err)
 	}
 	if err := wt.Checkout(
-		&git.CheckoutOptions{Hash: plumbing.NewHash(commit), Force: true},
+		&git.CheckoutOptions{
+			Hash: plumbing.NewHash(commit), Force: true, SparseCheckoutDirectories: paths,
+		},
 	); err != nil {
 		return fmt.Errorf("check out: %w", err)
 	}
