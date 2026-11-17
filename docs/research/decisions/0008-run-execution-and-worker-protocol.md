@@ -99,7 +99,7 @@ facts shape the design.
   | Upstream run in a dependency chain fails or is canceled | dependants `SKIPPED`, note naming the upstream run | T6 |
   | Drift run on a pool with drift runs disabled | created `QUEUED` and failed in the same transaction (T1 then T5), note explaining the limit | T1, T5 |
   | Task with `skipInitialization` | passes through `INITIALIZING`, which runs neither the vendor's init nor the `before_init` and `after_init` hooks and logs that initialization is skipped, as Spacelift's console shows (C42) | T13 |
-  | `runRetry` | a new run of the retried run's type on its commit, with the runtime configuration the retried run resolved (its hooks and environment as they were, not the stack's current ones) and its overrides, for a `PROPOSED` or `TRACKED` run that has ended other than in `FINISHED` and whose source still exists, as Spacelift's console retries ([32 section 17.3](../reference/32-spacelift-console-survey.md#173-run-states-discard-retry-and-targeted-replan)); `canRetry` and `retryBlocker` say whether and why not; a retry never triggers dependants, and a tracked run needs `RUN_RETRY_BLOCKING` as well | T1 |
+  | `runRetry` | a new run of the retried run's type on its commit, with the runtime configuration the retried run resolved (its hooks and settings as they were, not the stack's current ones) and its overrides; variables and files are read afresh, for a `PROPOSED` or `TRACKED` run that has ended other than in `FINISHED` and whose source still exists, as Spacelift's console retries ([32 section 17.3](../reference/32-spacelift-console-survey.md#173-run-states-discard-retry-and-targeted-replan)); `canRetry` and `retryBlocker` say whether and why not; a retry never triggers dependants, and a tracked run needs `RUN_RETRY_BLOCKING` as well | T1 |
   | `DESTROY` run | no plan and no confirmation: `INITIALIZING` straight to `DESTROYING` | T14 |
   | The `state` argument of `runStop` and `runKill` | the state the caller saw; a run that has left it answers `409` `invalid-state` with its current state | none |
   | `PARSE` run type | served in the enum, never created | none |
@@ -299,6 +299,32 @@ timeouts; environment variables and mounted files; the managed state backend's
 address and credentials ([0010](0010-state-backend.md)); and the in-run API token
 and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
+- **The resolved configuration.** The first successful `GET .../spec`
+  fixes the merged hooks, project root, a named runtime/stack runner image,
+  tool releases and the vendor's settings and execution flags. It records
+  them in `runs.resolved_config`, under the run row's lock, in the same
+  transaction as the specification's in-run token, artifact key and pool
+  envelope sealing. A failed handover or sealed answer rolls them back,
+  leaving no record. The worker's claim is an earlier transaction.
+  Every later handover, including apply, replan and resumed preparation,
+  uses this record even when the stack, its contexts or the catalogue
+  change. Variables and mounted files are resolved and rendered at each
+  handover, so a rotated secret reaches the apply; neither their values
+  nor source credentials or authorization are snapshotted.
+
+  The column is an internal envelope: `configuration` is the served
+  `RuntimeConfig` shape, with all eleven hook lists, the resolved releases,
+  selected vendor block and public YAML; `execution` keeps workspace,
+  download, profiling, masking, output-upload and state-management settings
+  that the public shape cannot express. Shared resolved releases and
+  Terragrunt's mode have one authoritative place in `configuration`.
+  Reads expose that configuration alone, absent before the first successful
+  handover, and its YAML contains no private execution metadata. Environment
+  and sparse paths are empty lists until the trigger's configuration is
+  applied. An unspecified runtime/stack runner image is recorded as an
+  empty string and replayed as absent: account and launcher defaults are
+  still resolved by those layers, rather than snapshotted here.
+
 - **The clear part and the sealed part.** The specification answers the run
   token's own run alone. Its clear part carries everything but secrets. A
   write-only variable or file appears by name alone, with `writeOnly: true`,
@@ -389,7 +415,7 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 - **The tool.** `tool` names `name` (`terraform`, `tofu` or `kubectl`),
   `version` and `download`; a Pulumi, CloudFormation or Ansible run names
   none (see "Vendors' runs"). The version is the Version Catalog's effective version
-  for the stack's constraint, resolved at handover, so every phase of the
+  for the stack's constraint, resolved at the first successful handover, so every phase of the
   run uses one release. A Terragrunt stack's run also names `terragrunt`
   (`version`, `download` and `runAll`), which drives the tool its `tool` setting
   chooses (`OPEN_TOFU` is `tofu`, `TERRAFORM_FOSS` is `terraform`;

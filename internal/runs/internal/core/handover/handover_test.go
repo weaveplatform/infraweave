@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
@@ -38,6 +40,18 @@ type store struct {
 	key                      []byte
 	overrides                []lifecycle.Override
 	err, keyErr, overrideErr error
+	recordErr                error
+}
+
+func (s *store) RecordResolved(_ context.Context, _ lifecycle.Run, record *runtimeconfig.Record) error {
+	if s.recordErr != nil {
+		return s.recordErr
+	}
+	doc, err := json.Marshal(record)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(doc, &s.run.ResolvedConfig)
 }
 
 func (s *store) Overrides(context.Context, lifecycle.Run) ([]lifecycle.Override, error) {
@@ -325,6 +339,14 @@ func (w *world) handover(t *testing.T, id kernel.ULID) (workersapi.Handover, err
 	return h, err
 }
 
+// firstHandover isolates independent resolution cases that share a fixture.
+// Replay tests use handover directly to retain the stored record.
+func (w *world) firstHandover(t *testing.T, id kernel.ULID) (workersapi.Handover, error) {
+	t.Helper()
+	w.store.run.ResolvedConfig = nil
+	return w.handover(t, id)
+}
+
 // variable is v of the environment.
 func variable(name string, value string, writeOnly bool) configapi.Element {
 	return configapi.Element{Name: name, Value: secret(value), WriteOnly: writeOnly}
@@ -375,7 +397,7 @@ func TestUnitHandover(t *testing.T) {
 		},
 		Hooks: map[string][]string{"before_init": {"echo hi"}},
 	}
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,7 +491,7 @@ func TestUnitHandover(t *testing.T) {
 	}
 	w.store.run.RuntimeConfig, w.stacks.labels = nil, nil
 	w.env.resolved = configapi.Resolved{}
-	h, err = w.handover(t, w.run.ID)
+	h, err = w.firstHandover(t, w.run.ID)
 	if err != nil || *h.Spec.RunnerImage != "ghcr.io/acme/stack" ||
 		*h.Spec.Stack.ProjectRoot != "stack-root" || h.Spec.RuntimeConfig != nil ||
 		h.Spec.Stack.Labels == nil || len(h.Spec.Stack.Labels) != 0 {
@@ -530,7 +552,7 @@ func TestUnitHandoverMetadata(t *testing.T) {
 				w.store.run.LocalWorkspace = "acct/stack/upload"
 			}
 			w.env.resolved.Elements = tc.set
-			h, err := w.handover(t, w.run.ID)
+			h, err := w.firstHandover(t, w.run.ID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -576,7 +598,7 @@ func TestUnitHandoverOverrides(t *testing.T) {
 		{Name: "TOKEN", Value: "t3st"},
 		{Name: "DEBUG", Value: "1"},
 	}
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,7 +623,7 @@ func TestUnitHandoverOverrides(t *testing.T) {
 
 	down := errors.New("store down")
 	w.store.overrideErr = down
-	if _, err := w.handover(t, w.run.ID); !errors.Is(err, down) {
+	if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, down) {
 		t.Errorf("a handover whose overrides fail = %v", err)
 	}
 }
@@ -611,12 +633,12 @@ func TestUnitHandoverOverrides(t *testing.T) {
 // keeps the stack's state.
 func TestUnitHandoverStateBackend(t *testing.T) {
 	w := newWorld(t)
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil || h.Spec.StateBackend != nil {
 		t.Errorf("a stack without managed state = %+v, %v", h.Spec.StateBackend, err)
 	}
 	w.stacks.settings.ManagesState = true
-	h, err = w.handover(t, w.run.ID)
+	h, err = w.firstHandover(t, w.run.ID)
 	want := "/state/v1/stacks/" + w.run.Stack.String()
 	if err != nil || h.Spec.StateBackend == nil || h.Spec.StateBackend.Path != want {
 		t.Errorf("a stack with managed state = %+v, %v; want %s", h.Spec.StateBackend, err, want)
@@ -627,13 +649,13 @@ func TestUnitHandoverStateBackend(t *testing.T) {
 // command and skipInitialization, and that no other run's carries a task.
 func TestUnitHandoverTask(t *testing.T) {
 	w := newWorld(t)
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil || h.Spec.Task != nil {
 		t.Errorf("a tracked run's task = %+v, %v", h.Spec.Task, err)
 	}
 	task := kernel.Task{Command: "terraform output -json", SkipInitialization: true}
 	w.store.run.Type, w.store.run.Task = kernel.RunTypeTask, &task
-	h, err = w.handover(t, w.run.ID)
+	h, err = w.firstHandover(t, w.run.ID)
 	if err != nil || h.Spec.Task == nil || *h.Spec.Task != task ||
 		h.Spec.Run.Type != kernel.RunTypeTask {
 		t.Errorf("a task's specification = %+v, %v", h.Spec.Task, err)
@@ -647,12 +669,12 @@ func TestUnitHandoverTargets(t *testing.T) {
 	w := newWorld(t)
 	targets := []string{"terraform_data.this", `module.app["a"].aws_instance.web[0]`}
 	w.store.run.ReplanTargets = targets
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil || h.Spec.Targets != nil {
 		t.Errorf("a run in %s carries targets %q, %v", w.store.run.State, h.Spec.Targets, err)
 	}
 	w.store.run.State = kernel.RunStatePreparingReplan
-	h, err = w.handover(t, w.run.ID)
+	h, err = w.firstHandover(t, w.run.ID)
 	if err != nil || !slices.Equal(h.Spec.Targets, targets) {
 		t.Errorf("a replan's targets = %q, %v; want %q", h.Spec.Targets, err, targets)
 	}
@@ -678,15 +700,15 @@ func TestUnitHandoverRefused(t *testing.T) {
 		lifecycle.ErrNoTransaction) {
 		t.Errorf("outside a transaction = %v", err)
 	}
-	if _, err := w.handover(t, kernel.NewULID()); !errors.Is(err, workersapi.ErrNotOnWorker) {
+	if _, err := w.firstHandover(t, kernel.NewULID()); !errors.Is(err, workersapi.ErrNotOnWorker) {
 		t.Errorf("no such run = %v", err)
 	}
 	w.store.run.State = kernel.RunStateFinished
-	if _, err := w.handover(t, w.run.ID); !errors.Is(err, workersapi.ErrNotOnWorker) {
+	if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, workersapi.ErrNotOnWorker) {
 		t.Errorf("a finished run = %v", err)
 	}
 	w.store.run.State, w.store.run.WorkerPool = kernel.RunStatePreparing, nil
-	if _, err := w.handover(t, w.run.ID); !errors.Is(err, workersapi.ErrNotOnWorker) {
+	if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, workersapi.ErrNotOnWorker) {
 		t.Errorf("a public pool's run = %v", err)
 	}
 	w.store.run.WorkerPool = w.run.WorkerPool
@@ -694,7 +716,7 @@ func TestUnitHandoverRefused(t *testing.T) {
 		variable("TOKEN", "s3cret", true),
 		variable("BAD", "${{ env.MISSING }}", false),
 	}
-	_, err := w.handover(t, w.run.ID)
+	_, err := w.firstHandover(t, w.run.ID)
 	if inv, ok := errors.AsType[*kernel.Invalid](err); !ok ||
 		!strings.Contains(inv.Detail, "BAD") || !strings.Contains(inv.Detail, "MISSING") {
 		t.Errorf("a missing variable = %v", err)
@@ -705,7 +727,7 @@ func TestUnitHandoverRefused(t *testing.T) {
 		"${{ 0.0 / 0.0 }}":      "",
 	} {
 		w.env.resolved.Elements[1] = variable("BAD", source, false)
-		_, err := w.handover(t, w.run.ID)
+		_, err := w.firstHandover(t, w.run.ID)
 		inv, ok := errors.AsType[*kernel.Invalid](err)
 		if !ok || !strings.Contains(inv.Detail, "BAD") || strings.Contains(inv.Detail, "s3cret") ||
 			want != "" && inv.Detail != want {
@@ -718,17 +740,17 @@ func TestUnitHandoverRefused(t *testing.T) {
 		"an evaluation that fails": renderer{eval: context.Canceled},
 	} {
 		w.svc.BindExpressions(r)
-		if _, err := w.handover(t, w.run.ID); err == nil || errors.As(err, new(*kernel.Invalid)) {
+		if _, err := w.firstHandover(t, w.run.ID); err == nil || errors.As(err, new(*kernel.Invalid)) {
 			t.Errorf("%s = %v", name, err)
 		}
 	}
 	w.svc.BindExpressions(nil)
-	if _, err := w.handover(t, w.run.ID); err == nil {
+	if _, err := w.firstHandover(t, w.run.ID); err == nil {
 		t.Error("a template with no registry bound rendered")
 	}
 	w.env.resolved.Elements = nil
 	w.store.run.RuntimeConfig = json.RawMessage(`[`)
-	if _, err := w.handover(t, w.run.ID); err == nil {
+	if _, err := w.firstHandover(t, w.run.ID); err == nil {
 		t.Error("a runtime configuration that does not decode was handed over")
 	}
 	w.store.run.RuntimeConfig = nil
@@ -745,7 +767,7 @@ func TestUnitHandoverRefused(t *testing.T) {
 		"the key":         func(on bool) { w.store.keyErr = cond(on) },
 	} {
 		fail(true)
-		if _, err := w.handover(t, w.run.ID); !errors.Is(err, errDown) {
+		if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, errDown) {
 			t.Errorf("%s down = %v", name, err)
 		}
 		fail(false)
@@ -773,7 +795,7 @@ func TestUnitHandoverLocalPreview(t *testing.T) {
 		Environment: w.env, Tokens: w.tokens, Catalog: w.catalog, Objects: w.objects,
 	})
 	w.svc.BindExpressions(registry(t))
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil || h.Spec.Source != (workersapi.SpecSource{
 		Kind: workersapi.SourceArchive, URL: "https://store.test/uploads/acct/stack/upload",
 	}) || len(w.sources.asked) != 0 {
@@ -783,12 +805,12 @@ func TestUnitHandoverLocalPreview(t *testing.T) {
 		t.Errorf("a local preview's secrets name a credential: %s", h.Secrets.Reveal())
 	}
 	w.objects.live = nil
-	if _, err := w.handover(t, w.run.ID); err == nil ||
+	if _, err := w.firstHandover(t, w.run.ID); err == nil ||
 		!strings.Contains(err.Error(), "local workspace has expired") {
 		t.Errorf("an expired upload = %v", err)
 	}
 	w.objects.err = errDown
-	if _, err := w.handover(t, w.run.ID); !errors.Is(err, errDown) {
+	if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, errDown) {
 		t.Errorf("a failed signing = %v", err)
 	}
 }
@@ -817,7 +839,13 @@ func TestUnitHandoverCPUProfiling(t *testing.T) {
 		w.stacks.settings.Vendor = c.vendor
 		w.stacks.settings.VendorConfig = json.RawMessage(c.settings)
 		w.catalog.effective = c.release
-		h, err := w.handover(t, w.run.ID)
+		h, err := w.firstHandover(t, w.run.ID)
+		if c.settings == "[" {
+			if err == nil || w.store.run.ResolvedConfig != nil {
+				t.Errorf("invalid vendor settings were recorded: %v", err)
+			}
+			continue
+		}
 		if err != nil || h.Spec.Tool == nil || h.Spec.Tool.CPUProfiling != c.want {
 			t.Errorf("%s %s at %s: %+v, %v", c.vendor, c.settings, c.release, h.Spec.Tool, err)
 		}
@@ -841,7 +869,7 @@ func TestUnitHandoverSourceAndTool(t *testing.T) {
 	w.stacks.settings.SkipVendorBinaryDownload = true
 	w.stacks.settings.EnableWellKnownSecretMasking = true
 	w.stacks.settings.EnableSensitiveOutputUpload = true
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil || h.Spec.Source.Narrowed ||
 		h.Spec.Source.URL != "https://example.com/infra.git" ||
 		h.Spec.Tool == nil ||
@@ -855,7 +883,7 @@ func TestUnitHandoverSourceAndTool(t *testing.T) {
 	}
 
 	w.stacks.settings.Vendor = "pulumi"
-	if h, err = w.handover(t, w.run.ID); err != nil || h.Spec.Tool != nil {
+	if h, err = w.firstHandover(t, w.run.ID); err != nil || h.Spec.Tool != nil {
 		t.Errorf("a vendor with no tool = %+v, %v", h.Spec.Tool, err)
 	}
 
@@ -876,7 +904,7 @@ func TestUnitHandoverSourceAndTool(t *testing.T) {
 		}},
 	} {
 		tc.set()
-		_, err := w.handover(t, w.run.ID)
+		_, err := w.firstHandover(t, w.run.ID)
 		inv, ok := errors.AsType[*kernel.Invalid](err)
 		if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != tc.pointer {
 			t.Errorf("%s = %v", tc.name, err)
@@ -888,7 +916,7 @@ func TestUnitHandoverSourceAndTool(t *testing.T) {
 
 	w.catalog.versions = []string{"1.14.2"}
 	w.svc.BindSources(nil)
-	if _, err := w.handover(t, w.run.ID); err == nil || len(w.tokens.got) != minted {
+	if _, err := w.firstHandover(t, w.run.ID); err == nil || len(w.tokens.got) != minted {
 		t.Errorf("no sources bound = %v, tokens %v", err, w.tokens.got)
 	}
 }
@@ -911,7 +939,7 @@ func TestUnitHandoverTerragrunt(t *testing.T) {
 		vendorsapi.OpenTofu: "1.10.7", vendorsapi.Terragrunt: "0.93.3", vendorsapi.Terraform: "1.13.4",
 	}
 	w.catalog.asked, w.catalog.vendors = nil, nil
-	h, err := w.handover(t, w.run.ID)
+	h, err := w.firstHandover(t, w.run.ID)
 	if err != nil || h.Spec.Tool == nil || h.Spec.Terragrunt == nil ||
 		*h.Spec.Tool != (workersapi.SpecTool{Name: "tofu", Version: "1.10.7", Download: true}) ||
 		*h.Spec.Terragrunt != (workersapi.SpecTerragrunt{Version: "0.93.3", Download: true, RunAll: true}) ||
@@ -930,7 +958,7 @@ func TestUnitHandoverTerragrunt(t *testing.T) {
 	w.stacks.settings.VendorConfig = json.RawMessage(`{"terragruntVersion":" ","terraformVersion":"~> 1.14.0"}`)
 	w.catalog.versions = []string{"0.99.0"}
 	w.catalog.asked, w.catalog.vendors = nil, nil
-	h, err = w.handover(t, w.run.ID)
+	h, err = w.firstHandover(t, w.run.ID)
 	if err != nil ||
 		*h.Spec.Tool != (workersapi.SpecTool{Name: "terraform", Version: "1.13.4"}) ||
 		*h.Spec.Terragrunt != (workersapi.SpecTerragrunt{Version: "0.99.0"}) ||
@@ -963,7 +991,7 @@ func TestUnitHandoverTerragrunt(t *testing.T) {
 		w.stacks.settings.TerraformVersion = nil
 		w.stacks.settings.VendorConfig = json.RawMessage(tc.settings)
 		w.catalog.refused = tc.refused
-		_, err := w.handover(t, w.run.ID)
+		_, err := w.firstHandover(t, w.run.ID)
 		inv, ok := errors.AsType[*kernel.Invalid](err)
 		if !ok || len(inv.Errors) != 1 || inv.Errors[0].Pointer != tc.pointer {
 			t.Errorf("%s = %v", tc.name, err)
@@ -978,13 +1006,13 @@ func TestUnitHandoverTerragrunt(t *testing.T) {
 		`{"tool":"MANUALLY_PROVISIONED","terragruntVersion":"0.93.3"}`,
 	} {
 		w.stacks.settings.VendorConfig = json.RawMessage(settings)
-		if _, err := w.handover(t, w.run.ID); !errors.Is(err, w.catalog.err) {
+		if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, w.catalog.err) {
 			t.Errorf("%s while the catalogue fails = %v", settings, err)
 		}
 	}
 	w.catalog.err = nil
 	w.stacks.settings.Vendor, w.stacks.settings.VendorConfig = "terraform", nil
-	if h, err := w.handover(t, w.run.ID); err != nil || h.Spec.Terragrunt != nil {
+	if h, err := w.firstHandover(t, w.run.ID); err != nil || h.Spec.Terragrunt != nil {
 		t.Errorf("a Terraform stack mounts Terragrunt %+v, %v", h.Spec.Terragrunt, err)
 	}
 }
@@ -1015,7 +1043,7 @@ func TestUnitHandoverTerragruntRunAll(t *testing.T) {
 				}
 				w.store.run.RuntimeConfig = raw
 			}
-			h, err := w.handover(t, w.run.ID)
+			h, err := w.firstHandover(t, w.run.ID)
 			if tc.refused {
 				if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
 					t.Fatalf("invalid runtime = %v", err)
@@ -1024,6 +1052,116 @@ func TestUnitHandoverTerragruntRunAll(t *testing.T) {
 			}
 			if err != nil || h.Spec.Terragrunt == nil || h.Spec.Terragrunt.RunAll != tc.want {
 				t.Fatalf("Terragrunt %+v, error %v; want runAll %t", h.Spec.Terragrunt, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestUnitHandoverReplaysResolvedConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		name, vendor, settings string
+		flags                  bool
+	}{
+		{"terraform", "terraform", `{"version":"1.17.2","workspace":"original","useSmartSanitization":true,"externalStateAccessEnabled":true}`, true},
+		{"opentofu", "opentofu", `{"version":"1.13.9","workspace":"original","enableCPUProfiling":true,"concise":true}`, false},
+		{"terragrunt", "terragrunt", `{"terraformVersion":"1.13.9","terragruntVersion":"1.2.2","tool":"OPEN_TOFU","useRunAll":true,"useSmartSanitization":true}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := newWorld(t)
+			st := &w.stacks.settings
+			st.Vendor, st.VendorConfig = tc.vendor, json.RawMessage(tc.settings)
+			st.ManagesState, st.EnableWellKnownSecretMasking, st.EnableSensitiveOutputUpload = tc.flags, tc.flags, tc.flags
+			st.SkipVendorBinaryDownload = !tc.flags
+			w.catalog.releases = map[vendorsapi.Vendor]string{
+				vendorsapi.Terraform: "1.17.2", vendorsapi.OpenTofu: "1.13.9", vendorsapi.Terragrunt: "1.2.2",
+			}
+			if tc.vendor == "terragrunt" {
+				w.store.run.RuntimeConfig = json.RawMessage(`{"yaml":"terragrunt: {use_run_all: false}"}`)
+			}
+			w.env.resolved = configapi.Resolved{
+				Hooks: map[string][]string{"before_plan": {"echo planned"}, "before_apply": {"echo original"}},
+				Elements: []configapi.Element{
+					variable("LIVE", "value-old-xx", false), variable("SECRET", "private-old-xx", true),
+					{Name: "mounted.txt", FileMount: true, Value: secret("file-old-xx")},
+				},
+			}
+			first, err := w.handover(t, w.run.ID)
+			if err != nil || w.store.run.ResolvedConfig == nil {
+				t.Fatalf("first handover did not record: %v", err)
+			}
+			before, err := json.Marshal(w.store.run.ResolvedConfig)
+			if err != nil || strings.Contains(string(before), "private-old-xx") || strings.Contains(string(before), "value-old-xx") ||
+				strings.Contains(string(before), "file-old-xx") || strings.Contains(string(before), "narrow") {
+				t.Fatalf("record contains run values: %s, %v", before, err)
+			}
+			root, image, constraint := "changed-root", "runner:changed", "no-matching-release"
+			st.ProjectRoot, st.RunnerImage, st.TerraformVersion = &root, &image, &constraint
+			st.Vendor, st.VendorConfig = "terraform", json.RawMessage(`{"workspace":"changed","enableCPUProfiling":false,"useRunAll":true}`)
+			st.ManagesState, st.EnableWellKnownSecretMasking, st.EnableSensitiveOutputUpload = !tc.flags, !tc.flags, !tc.flags
+			st.SkipVendorBinaryDownload = tc.flags
+			w.catalog.err = errDown
+			asked := len(w.catalog.vendors)
+			w.store.run.RuntimeConfig = json.RawMessage(`{"yaml":"terragrunt: {use_run_all: true}"}`)
+			w.env.resolved = configapi.Resolved{
+				Hooks: map[string][]string{"before_apply": {"echo changed"}},
+				Elements: []configapi.Element{
+					variable("LIVE", "value-new-xx", false), variable("SECRET", "private-new-xx", true),
+					{Name: "mounted.txt", FileMount: true, Value: secret("file-new-xx")},
+				},
+			}
+			for _, phase := range []kernel.RunState{kernel.RunStatePreparingApply, kernel.RunStatePreparingReplan, kernel.RunStatePreparing} {
+				w.store.run.State = phase
+				later, err := w.handover(t, w.run.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(later.Spec.Tool, first.Spec.Tool) || !reflect.DeepEqual(later.Spec.Terragrunt, first.Spec.Terragrunt) ||
+					!reflect.DeepEqual(later.Spec.Hooks, first.Spec.Hooks) || !reflect.DeepEqual(later.Spec.Stack, first.Spec.Stack) ||
+					!reflect.DeepEqual(later.Spec.RunnerImage, first.Spec.RunnerImage) ||
+					!reflect.DeepEqual(later.Spec.StateBackend, first.Spec.StateBackend) || len(w.catalog.vendors) != asked {
+					t.Fatalf("%s re-resolved configuration: %+v", phase, later.Spec)
+				}
+				if len(later.Spec.Files) != 1 || string(later.Spec.Files[0].Content) != "file-new-xx" {
+					t.Errorf("%s did not reread mounted files: %+v", phase, later.Spec.Files)
+				}
+				var sec sealed
+				if err := json.Unmarshal(later.Secrets.Reveal(), &sec); err != nil || sec.Environment["SECRET"] != "private-new-xx" {
+					t.Errorf("%s did not reread secrets: %+v, %v", phase, sec, err)
+				}
+				found := false
+				for _, v := range later.Spec.Environment {
+					if v.Name == "LIVE" && v.Value != nil && *v.Value == "value-new-xx" {
+						found = true
+					}
+				}
+				if !found {
+					t.Errorf("%s did not reread variables", phase)
+				}
+			}
+			after, _ := json.Marshal(w.store.run.ResolvedConfig)
+			if string(before) != string(after) {
+				t.Fatalf("later handovers rewrote the record:\n%s\n%s", before, after)
+			}
+		})
+	}
+}
+
+func TestUnitHandoverFailedFirstRecordsNothing(t *testing.T) {
+	for name, fail := range map[string]func(*world){
+		"version": func(w *world) { w.catalog.invalid = true },
+		"environment": func(w *world) {
+			w.env.resolved.Elements = []configapi.Element{variable("BAD", "${{ missing }}", false)}
+		},
+		"source":       func(w *world) { w.sources.err = errDown },
+		"token":        func(w *world) { w.tokens.err = errDown },
+		"artifact key": func(w *world) { w.store.keyErr = errDown },
+		"record write": func(w *world) { w.store.recordErr = errDown },
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := newWorld(t)
+			fail(w)
+			if _, err := w.handover(t, w.run.ID); err == nil || w.store.run.ResolvedConfig != nil {
+				t.Fatalf("failed first handover recorded a configuration: %v", err)
 			}
 		})
 	}

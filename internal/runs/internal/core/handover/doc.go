@@ -39,6 +39,13 @@
 // Handover answers a workersapi.Handover, or workersapi.ErrNotOnWorker,
 // or a *kernel.Invalid for a template that fails to render or a version
 // that does not resolve.
+// The first successful specification fixes the merged hooks, project root,
+// named runner image, vendor settings, tool versions and execution flags
+// in a runtimeconfig.Record. Later handovers read that record without
+// resolving versions again; variables and mounted files are read and
+// rendered afresh. The record is committed with the worker's sealed
+// answer and rolled back if handover or sealing fails. An unspecified
+// image remains nil so account and launcher defaults keep their meaning.
 //
 // # Dependencies
 //

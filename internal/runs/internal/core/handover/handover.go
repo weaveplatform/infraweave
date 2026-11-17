@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/surface"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vendorsapi "github.com/weaveplatform/infraweave/internal/vendors/api"
@@ -52,6 +53,9 @@ type Store interface {
 	// Overrides opens run's environment overrides, none for a run
 	// without.
 	Overrides(ctx context.Context, run lifecycle.Run) ([]lifecycle.Override, error)
+	// RecordResolved writes run's first resolved configuration in its
+	// successful specification transaction, while Handed's row lock is held.
+	RecordResolved(ctx context.Context, run lifecycle.Run, record *runtimeconfig.Record) error
 }
 
 // Tokens mints a run's in-run API token; the access domain's Tokens is
@@ -158,6 +162,11 @@ type runtimeConfig struct {
 // run's artifact key. A template renders against the variables as saved,
 // at the time the run entered its state and with draws seeded by the
 // run's ID, so every handover of the run in one state renders alike.
+// Its first successful specification fixes and records hooks, project
+// root, a named runtime/stack image, vendor settings and tool versions.
+// Later handovers reuse those settings and reread variables and files,
+// including rotated secrets. The record commits with the worker's sealed
+// answer, token and artifact key; a failed answer rolls the transaction back.
 //
 // ref: decision 0008 § "The run specification and its secrets"; decision
 // 0024 "Environment interpolation"
@@ -196,7 +205,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		return workersapi.Handover{}, err //nolint:wrapcheck // the configuration domain names it
 	}
 	var rc runtimeConfig
-	if len(r.RuntimeConfig) > 0 {
+	if r.ResolvedConfig == nil && len(r.RuntimeConfig) > 0 {
 		if err := json.Unmarshal(r.RuntimeConfig, &rc); err != nil {
 			return workersapi.Handover{}, fmt.Errorf(
 				"runs: decode run %s's runtime configuration: %w",
@@ -218,13 +227,15 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		EnableWellKnownSecretMasking: st.EnableWellKnownSecretMasking,
 		EnableSensitiveOutputUpload:  st.EnableSensitiveOutputUpload,
 	}
-	tool, err := s.tool(ctx, st)
-	if err != nil {
-		return workersapi.Handover{}, err
-	}
-	tg, err := s.terragrunt(ctx, st, r.RuntimeConfig)
-	if err != nil {
-		return workersapi.Handover{}, err
+	var tool *workersapi.SpecTool
+	var tg *workersapi.SpecTerragrunt
+	if r.ResolvedConfig == nil {
+		if tool, err = s.tool(ctx, st); err != nil {
+			return workersapi.Handover{}, err
+		}
+		if tg, err = s.terragrunt(ctx, st, r.RuntimeConfig); err != nil {
+			return workersapi.Handover{}, err
+		}
 	}
 	spec := workersapi.Spec{
 		Run: workersapi.SpecRun{
@@ -248,7 +259,15 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if r.State == kernel.RunStatePreparingReplan {
 		spec.Targets = r.ReplanTargets
 	}
-	if st.ManagesState {
+	record := r.ResolvedConfig
+	if record == nil {
+		if record, err = runtimeconfig.New(spec, st.ManagesState); err != nil {
+			return workersapi.Handover{}, err //nolint:wrapcheck // the record names the invalid vendor settings
+		}
+	}
+	record.Apply(&spec)
+	stack = spec.Stack
+	if record.Execution.ManagesState {
 		spec.StateBackend = &workersapi.StateBackend{Path: StatePath + r.Stack.String()}
 	}
 	ovs, err := s.store.Overrides(ctx, r)
@@ -277,6 +296,11 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	}
 	sec.APIToken, sec.APITokenExpiresAt = tok.Raw, tok.Expires.Unix()
 	sec.ArtifactKey = key.Reveal()
+	if r.ResolvedConfig == nil {
+		if err := s.store.RecordResolved(ctx, r, record); err != nil {
+			return workersapi.Handover{}, err //nolint:wrapcheck // the store names the record's write
+		}
+	}
 	// A document of strings, byte slices, an integer and a struct of
 	// strings always encodes.
 	doc, _ := json.Marshal(sec) //nolint:gosec // the secrets, held only sealed to the pool

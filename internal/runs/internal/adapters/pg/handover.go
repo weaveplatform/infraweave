@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 )
 
 var _ handover.Store = (*Store)(nil)
@@ -55,6 +56,25 @@ func (s *Store) Handed(ctx context.Context, id kernel.ULID) (lifecycle.Run, erro
 		return lifecycle.Run{}, fmt.Errorf("runs: hand over run %s: %w", id, sql.Unavailable(err))
 	}
 	return r, nil
+}
+
+// RecordResolved writes the first successful handover's record in the
+// specification transaction. Handed's lock serializes handovers; the NULL guard
+// also prevents a later writer from replacing the immutable record.
+func (s *Store) RecordResolved(ctx context.Context, run lifecycle.Run, record *runtimeconfig.Record) error {
+	if !tx.In(ctx) {
+		return lifecycle.ErrNoTransaction
+	}
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs SET resolved_config = $3
+		WHERE account_id = $1 AND id = $2 AND resolved_config IS NULL AND state_version = $4`,
+		run.Account, run.ID, record, run.Version)
+	if err != nil {
+		return fmt.Errorf("runs: record run %s's resolved configuration: %w", run.ID, sql.Unavailable(err))
+	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("%w: run %s's resolved configuration was not written", lifecycle.ErrConflict, run.ID)
+	}
+	return nil
 }
 
 // ArtifactKey is run's artifact key, opened, or, when the run has none

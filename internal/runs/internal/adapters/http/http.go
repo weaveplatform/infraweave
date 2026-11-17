@@ -396,6 +396,7 @@ func runOf(v read.View) api.Run {
 		PromoteBlocker:       sentence(v.Guards.Promote),
 		RetryBlocker:         sentence(v.Guards.Retry),
 		Reviews:              []api.RunReview{},
+		RuntimeConfig:        resolvedOf(r.ResolvedConfig),
 		StackId:              v.Stack.Slug,
 		State:                api.RunState(r.State),
 		Title:                r.Commit.Message,

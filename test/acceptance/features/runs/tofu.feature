@@ -91,6 +91,40 @@ Feature: Runs of an OpenTofu stack end to end
     And no object in the scenario's bucket holds "f1le-s3cr3t", of at least 6 objects
     And no answer of the scenario, log line of A or B, audit entry or event holds "s3cr3t-pl4n"
 
+  @op:run @op:runConfirm @case:success
+  Scenario: A confirmation keeps its recorded hooks and release while rereading variables
+    Given the fixture's previous OpenTofu release is kept as "older"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":".","vendorConfig":{"opentofu":{}},"beforePlan":["echo hook: planned"],"beforeApply":["echo hook: recorded apply","tofu version","echo \"value: $HANDOVER_VALUE\""]},"manageState":true}' through A
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"HANDOVER_VALUE","type":"ENVIRONMENT_VARIABLE","value":"before","writeOnly":false}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    Then the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "UNCONFIRMED" through B
+    And the answer's runtime configuration includes '{"beforePlan":["echo hook: planned"],"beforeApply":["echo hook: recorded apply","tofu version","echo \"value: $HANDOVER_VALUE\""],"terraformVersion":"{opentofu.newest}","terraformWorkflowTool":"OPEN_TOFU","projectRoot":".","runnerImage":"","environment":[],"gitSparseCheckoutPaths":[]}'
+    Given the member key is exchanged through A for token "m"
+    And the member key is space-reader on the space "legacy"
+    When token "m" sends "GET /api/v1/runs/{run}" through A
+    Then it answers 200
+    And the answer's runtime configuration includes '{"beforePlan":["echo hook: planned"],"beforeApply":["echo hook: recorded apply","tofu version","echo \"value: $HANDOVER_VALUE\""],"terraformVersion":"{opentofu.newest}","terraformWorkflowTool":"OPEN_TOFU","projectRoot":".","runnerImage":"","environment":[],"gitSparseCheckoutPaths":[]}'
+    When token "h" sends "PATCH /api/v1/stacks/infra" with '{"beforeApply":["echo hook: edited apply","exit 9"],"terraformVersion":"{older}"}' through B
+    Then it answers 200
+    And token "h" sends "PUT /api/v1/stacks/infra/configs/HANDOVER_VALUE" with '{"type":"ENVIRONMENT_VARIABLE","value":"after","writeOnly":false}' through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs/confirm" with '{"run":"{run}"}' through B
+    Then it answers 200
+    And token "h" eventually reads the run "run" in the state "FINISHED" through A
+    And the answer's runtime configuration includes '{"beforePlan":["echo hook: planned"],"beforeApply":["echo hook: recorded apply","tofu version","echo \"value: $HANDOVER_VALUE\""],"terraformVersion":"{opentofu.newest}","terraformWorkflowTool":"OPEN_TOFU","projectRoot":".","runnerImage":"","environment":[],"gitSparseCheckoutPaths":[]}'
+    And token "h" reads the run "run"'s APPLYING log through A, which holds "hook: recorded apply" and not "hook: edited apply"
+    And token "h" reads the run "run"'s APPLYING log through B, which holds "OpenTofu v{opentofu.newest}" and not "OpenTofu v{older}"
+    And token "h" records the run "run"'s APPLYING release evidence through B
+    And token "h" reads the run "run"'s APPLYING log through A, which holds "value: after" and not "value: before"
+
+  @op:run @op:runTrigger @case:failure
+  Scenario: A first handover that resolves no release leaves no runtime configuration
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Unresolvable","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}},"terraformVersion":"> 9999.0.0"},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks/unresolvable/runs" with '{"commitSha":"{seed}"}' through B
+    Then the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FAILED" through A
+    And the answer leaves out "runtimeConfig"
+
   @op:runDiscard @op:runTrigger @op:runCpuProfileDownloadURL @case:success
   Scenario: A run discarded from UNCONFIRMED ends, and its stack's lock passes to the next run
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}}},"manageState":true}' through B

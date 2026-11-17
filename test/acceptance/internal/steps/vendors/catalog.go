@@ -75,7 +75,22 @@ func (c *catalogSteps) register(sc *godog.ScenarioContext) {
 		c.resolve,
 	)
 	sc.Step(`^the answer is the version "([^"]+)"$`, c.isVersion)
+	sc.Step(`^the fixture's previous (Terraform|OpenTofu) release is kept as "(\w+)"$`, c.keepPrevious)
 	sc.Step(`^the installation switches off the features "([^"]+)"$`, c.switchOff)
+}
+
+// keepPrevious names the stable release immediately before the newest
+// in the same recorded index the scenario checked against the catalogue.
+func (c *catalogSteps) keepPrevious(tool, name string) error {
+	versions, err := c.want(tool, "")
+	if err != nil {
+		return err
+	}
+	if len(versions) < 2 {
+		return fmt.Errorf("%w: %s has no previous stable release", harness.ErrStep, tool)
+	}
+	c.w.IDs[name] = versions[1]
+	return nil
 }
 
 // switchOff switches the comma-separated features off for every server
