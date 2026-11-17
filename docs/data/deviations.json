@@ -1204,6 +1204,106 @@
       "why": "A unit's tool reaches the backend with its run's token, as every run's tool does, so refusing units alone would add a rule with no protection behind it",
       "impact": "Terragrunt dependencies on another stack's outputs work under managed state",
       "source": "[0010 Who may call what](../research/decisions/0010-state-backend.md#who-may-call-what)"
+    },
+    {
+      "id": "DV-120",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Spacelift documents no destroy for a CloudFormation stack; its docs give a task to run before the stack is deleted",
+      "infraweave": "A CloudFormation stack's destroy run, from a destroy task or `stackDelete` with `destroyResources: true`, calls `DeleteStack` and waits until the stack is gone",
+      "why": "Every other vendor's destroy run deletes what it created, and a destroy run that did nothing would be a silent failure",
+      "impact": "Deleting a CloudFormation stack with `destroyResources: true` deletes its CloudFormation stack; without it the CloudFormation stack stays, as in Spacelift",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)",
+      "pending": {
+        "captures": [
+          "C296"
+        ],
+        "settles": "What Spacelift does when a CloudFormation stack is deleted with `destroyResources`"
+      }
+    },
+    {
+      "id": "DV-121",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "`Run.changesV3` and `searchEntityChanges` answer an error for every vendor but Terraform, OpenTofu and Terragrunt, which use `changesV2`",
+      "infraweave": "Every vendor's run records `changes.json`, and `changesV2`, `changesV3` and `searchEntityChanges` read it alike for every vendor",
+      "why": "One read path serves every vendor, and an answer where Spacelift errs breaks no client",
+      "impact": "None: a client that calls `changesV2` for Pulumi, CloudFormation, Kubernetes or Ansible gets the same changes",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-122",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "A Pulumi stack's default runner image is `runner-terraform`, which has no Pulumi CLI, so every Pulumi stack names an image per language",
+      "infraweave": "A Pulumi stack with no image named runs on `infraweave-runner-pulumi`, which carries the Pulumi CLI, Node.js and Python; the launcher's default image follows the stack's vendor, and `launcher.default_runner_image` replaces it for every vendor but Ansible",
+      "why": "A Pulumi stack created without an image would otherwise fail its first run with no `pulumi` command",
+      "impact": "None for a stack that names an image; a stack that names none runs instead of failing",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-123",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "A Terragrunt stack whose tool is `MANUALLY_PROVISIONED` downloads nothing, runs the image's `terragrunt`, and answers both effective versions null",
+      "infraweave": "The launcher still downloads and verifies Terragrunt at `terragruntVersion` and mounts it; only the tool comes from the image, found through `TG_TF_PATH`, and `effectiveVersions` answers the Terragrunt release and a null tool version",
+      "why": "infraweave's runner images carry no Terragrunt, so a manual tool would otherwise need a custom image for Terragrunt alone",
+      "impact": "`effectiveTerragruntVersion` is not null for a `MANUALLY_PROVISIONED` stack; a custom image's own `terragrunt` is shadowed by the mounted one",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-124",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "`terragruntEffectiveVersion` and a Terragrunt stack's `effectiveVersions` pick a compatible pair from Gruntwork's version compatibility table",
+      "infraweave": "Each constraint resolves on its own, against Terragrunt's and the tool's release indexes",
+      "why": "The table is a documentation page rather than data, and current Terragrunt drives every current OpenTofu and Terraform release",
+      "impact": "A constraint that admits a Terragrunt release too old for the resolved tool resolves to it; a stack pins a compatible range",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)"
+    },
+    {
+      "id": "DV-125",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Kubernetes and CloudFormation have no sanitization setting; what their plan policy input holds for a Secret or a parameter is *(unverified)*",
+      "infraweave": "A Kubernetes Secret's `data` and `stringData` values and its last-applied annotation, and every CloudFormation `ParameterValue`, are hashed in the uploaded plan whatever the stack's mode or label",
+      "why": "kubectl's dry runs carry a Secret's values in base64 and in plaintext, and a `NoEcho` parameter is not documented as masked in a change set, so hashing keeps plaintext secrets off the server",
+      "impact": "A plan policy compares a Secret's value or a parameter through `sanitized`",
+      "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)",
+      "pending": {
+        "captures": [
+          "C296",
+          "C297"
+        ],
+        "settles": "What Spacelift's policy input holds for a Kubernetes Secret and a CloudFormation parameter"
+      }
+    },
+    {
+      "id": "DV-126",
+      "group": "Expressions: decision 0024",
+      "spacelift": "Kubernetes resources are labelled `spacelift-stack: <stack slug>`, a slug over 63 characters truncated and suffixed with a hash",
+      "infraweave": "The label is `infraweave-stack: <stack ULID>`",
+      "why": "A ULID fits a label value unchanged, never changes, and is unique across accounts, so two stacks of one slug on one cluster never share a label",
+      "impact": "A cluster moving from Spacelift is relabelled by its first infraweave run; objects carrying only the old label are neither read nor pruned",
+      "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
+    },
+    {
+      "id": "DV-127",
+      "group": "Expressions: decision 0024",
+      "spacelift": "The prune flag is `--prune-allowlist`, and the label `feature:k8s_keep_using_prune_white_list_flag` switches it to `--prune-whitelist` for kubectl below 1.26",
+      "infraweave": "The template's `pruneFlag` is `--prune-whitelist` when the resolved kubectl is below 1.26 and `--prune-allowlist` otherwise; the label has no effect",
+      "why": "Releases below 1.26 have only `--prune-whitelist` and current releases only `--prune-allowlist`, so the release decides",
+      "impact": "None for a stack whose label matched its kubectl; a stack that set the label on a newer kubectl runs instead of failing",
+      "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
+    },
+    {
+      "id": "DV-128",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "Spacelift's Pulumi runs need no `PULUMI_CONFIG_PASSPHRASE` from the stack, so its runner sets one; which is *(unverified)*",
+      "infraweave": "The runner sets no passphrase: a stack on Pulumi's passphrase provider sets `PULUMI_CONFIG_PASSPHRASE` as a write-only variable or `PULUMI_CONFIG_PASSPHRASE_FILE` as a mounted file, and without either Pulumi's own error fails `INITIALIZING`",
+      "why": "A passphrase the runner chose would be the same for every stack and would protect nothing",
+      "impact": "A Pulumi stack moving from Spacelift that relied on the runner's passphrase sets one, and its state's secrets need the passphrase they were encrypted under",
+      "source": "[0008 Rationale](../research/decisions/0008-run-execution-and-worker-protocol.md#rationale)",
+      "pending": {
+        "captures": [
+          "C300"
+        ],
+        "settles": "The passphrase Spacelift's Pulumi runner sets"
+      }
     }
   ]
 }

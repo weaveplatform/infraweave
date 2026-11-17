@@ -1,0 +1,46 @@
+- name: Configure the example host
+  hosts: localhost
+  gather_facts: false
+  vars:
+    app_secret: dummy-app-secret-v1
+    file_version: v1
+  roles:
+    - common
+  tasks:
+    - name: Say hello
+      ansible.builtin.debug:
+        msg: "hello from {{ inventory_hostname }}"
+    - name: Write a file
+      ansible.builtin.copy:
+        dest: /tmp/example/copy.txt
+        content: "copied {{ file_version }}\n"
+        mode: "0644"
+    - name: Render a template
+      ansible.builtin.template:
+        src: config.ini.j2
+        dest: /tmp/example/config.ini
+        mode: "0644"
+    - name: Ensure a line
+      ansible.builtin.lineinfile:
+        path: /tmp/example/lines.txt
+        line: "key=value-{{ file_version }}"
+        create: true
+        mode: "0644"
+    - name: Write a secret file with no_log
+      ansible.builtin.copy:
+        dest: /tmp/example/secret.txt
+        content: "{{ app_secret }}\n"
+        mode: "0600"
+      no_log: true
+    - name: Write a secret file without no_log
+      ansible.builtin.copy:
+        dest: /tmp/example/leaky.txt
+        content: "{{ db_password | default('no-inventory-password') }}\n"
+        mode: "0600"
+    - name: Command without check mode support
+      ansible.builtin.command: echo would-run
+      changed_when: false
+    - name: Skipped task
+      ansible.builtin.debug:
+        msg: never
+      when: false

@@ -1,0 +1,110 @@
+{
+    "kind": "List",
+    "apiVersion": "v1",
+    "metadata": {},
+    "items": [
+        {
+            "apiVersion": "v1",
+            "data": {
+                "greeting": "hello"
+            },
+            "kind": "ConfigMap",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"data\":{\"greeting\":\"hello\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-config\",\"namespace\":\"example\"}}\n"
+                },
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-config",
+                "namespace": "example"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "data": {
+                "note": "removed in v2, so the plan prunes it"
+            },
+            "kind": "ConfigMap",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"data\":{\"note\":\"removed in v2, so the plan prunes it\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-extra\",\"namespace\":\"example\"}}\n"
+                },
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-extra",
+                "namespace": "example"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "data": {
+                "password": "ZHVtbXktcGFzc3dvcmQtdjE="
+            },
+            "kind": "Secret",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"data\":{\"password\":\"ZHVtbXktcGFzc3dvcmQtdjE=\"},\"kind\":\"Secret\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-secret\",\"namespace\":\"example\"},\"stringData\":{\"apiKey\":\"dummy-api-key-v1\"},\"type\":\"Opaque\"}\n"
+                },
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-secret",
+                "namespace": "example"
+            },
+            "stringData": {
+                "apiKey": "dummy-api-key-v1"
+            },
+            "type": "Opaque"
+        },
+        {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"infraweave\",\"infraweave-stack\":\"example\"},\"name\":\"example-app\",\"namespace\":\"example\"},\"spec\":{\"replicas\":0,\"selector\":{\"matchLabels\":{\"app\":\"example-app\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"example-app\"}},\"spec\":{\"containers\":[{\"envFrom\":[{\"configMapRef\":{\"name\":\"example-config\"}}],\"image\":\"registry.example.com/app:1\",\"name\":\"app\"}]}}}}\n"
+                },
+                "labels": {
+                    "app.kubernetes.io/managed-by": "infraweave",
+                    "infraweave-stack": "example"
+                },
+                "name": "example-app",
+                "namespace": "example"
+            },
+            "spec": {
+                "replicas": 0,
+                "selector": {
+                    "matchLabels": {
+                        "app": "example-app"
+                    }
+                },
+                "template": {
+                    "metadata": {
+                        "labels": {
+                            "app": "example-app"
+                        }
+                    },
+                    "spec": {
+                        "containers": [
+                            {
+                                "envFrom": [
+                                    {
+                                        "configMapRef": {
+                                            "name": "example-config"
+                                        }
+                                    }
+                                ],
+                                "image": "registry.example.com/app:1",
+                                "name": "app"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}

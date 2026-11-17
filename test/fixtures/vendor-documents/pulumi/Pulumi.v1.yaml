@@ -1,0 +1,35 @@
+name: example
+runtime: yaml
+description: A program of the random provider whose documents the vendor contract reads
+config:
+  greeting:
+    type: string
+    default: hello
+  apiKey:
+    type: string
+    secret: true
+resources:
+  pet:
+    type: random:RandomPet
+    properties:
+      length: 2
+      prefix: example
+  password:
+    type: random:RandomPassword
+    properties:
+      length: 16
+      special: false
+  keyed:
+    type: random:RandomString
+    properties:
+      length: 8
+      special: false
+      keepers:
+        apiKey: ${apiKey}
+outputs:
+  petName: ${pet.id}
+  greeting: ${greeting}
+  password: ${password.result}
+  wrapped:
+    fn::secret: dummy-secret-output-v1
+  keyedValue: ${keyed.result}

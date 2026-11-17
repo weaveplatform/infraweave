@@ -157,6 +157,8 @@ infraweave/
 │   │   ├── backend/               infraweave_backend.tf and the TF_HTTP_* credentials for a managed-state run (P8b)
 │   │   ├── exec/                  runner: phases, hooks, workspace, log streaming (P9)
 │   │   ├── vendors/               command sets per vendor (P9, P20, P20b)
+│   │   ├── cloudformation/        the CloudFormation driver over the AWS SDK: upload, change sets, events (P20)
+│   │   ├── kubernetes/            the Kubernetes plan document from get and the dry run (P20)
 │   │   ├── initpolicy/            worker-side initialization policy over platform/rego (P14)
 │   │   ├── tools/                 tool binary download, verification and caching (P9)
 │   │   ├── cloudauth/             assumes a cloud integration's role on the worker with the run's OIDC token (P15)
@@ -239,7 +241,8 @@ infraweave/
 │   ├── depguard/                  a module of its own breaking each depguard rule once; make lint-fixtures
 │   ├── fixtures/                  Terraform and OpenTofu projects, Git repositories, policy corpus (P9)
 │   │   ├── captures/C<n>/         meta.yaml, request.graphql, response.json, expect.yaml (report 30 captures; P1c)
-│   │   └── policy-inputs/         policy inputs and decisions Spacelift evaluated, redacted; read by P13's contract test
+│   │   ├── policy-inputs/         policy inputs and decisions Spacelift evaluated, redacted; read by P13's contract test
+│   │   └── vendor-documents/      what Pulumi, kubectl and ansible-core write when driven; read by P20's and P20b's vendors
 │   └── terraform/
 │       ├── <resource>/            provider acceptance configurations, translated from Spacelift's (P24)
 │       ├── cloud/<job>/<cloud>/   the cloud platforms' labs: objectstore-cloud's buckets and identities
@@ -254,8 +257,8 @@ infraweave/
 │   ├── stubgen/
 │   └── dataview/
 ├── deploy/                        decision 0020's packaging and reference deployments (P27)
-│   ├── images/                    image definitions: runner-terraform and runner-opentofu (P9), the other
-│   │                              runners (P20, P20b), the server image (P27)
+│   ├── images/                    image definitions: runner-terraform and runner-opentofu (P9), runner-pulumi
+│   │                              (P20), runner-ansible with its callback plugin (P20b), the server image (P27)
 │   ├── compose/compose.yaml       one infraweave all and one infraweave launcher on Docker
 │   ├── helm/infraweave/           chart for serve and scheduler, one Deployment per process mode
 │   ├── helm/infraweave-workers/   chart for infraweave launcher

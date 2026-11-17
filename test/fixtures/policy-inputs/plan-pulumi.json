@@ -24,7 +24,7 @@
       {
         "new": {
           "custom": true,
-          "id": "00000000-0000-0000-0000-000000000003",
+          "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
           "inputs": {},
           "outputs": {},
           "parent": "",
@@ -46,18 +46,18 @@
             "length": 2
           },
           "outputs": {
-            "id": "00000000-0000-0000-0000-000000000003",
+            "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
             "length": 2,
             "separator": "-"
           },
           "parent": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev",
-          "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::00000000-0000-0000-0000-000000000003",
+          "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::04da6b54-80e4-46f7-96ec-b56ff0331ba9",
           "type": "random:index/randomPet:RandomPet",
           "urn": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet"
         },
         "old": null,
         "op": "create",
-        "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::00000000-0000-0000-0000-000000000003",
+        "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::04da6b54-80e4-46f7-96ec-b56ff0331ba9",
         "type": "random:index/randomPet:RandomPet",
         "urn": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet"
       },
@@ -66,7 +66,7 @@
           "id": "",
           "inputs": {},
           "outputs": {
-            "petName": "00000000-0000-0000-0000-000000000003"
+            "petName": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
           },
           "parent": "",
           "provider": "",
@@ -105,7 +105,7 @@
             "address": "petName",
             "data": {
               "sensitive": false,
-              "value": "\"00000000-0000-0000-0000-000000000003\"",
+              "value": "\"04da6b54-80e4-46f7-96ec-b56ff0331ba9\"",
               "value_hash": -6692195955581253000
             },
             "entity_type": "output",
@@ -123,13 +123,13 @@
             "data": {
               "id": "pet",
               "outputs": {
-                "id": "00000000-0000-0000-0000-000000000003",
+                "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
                 "length": 2,
                 "separator": "-"
               },
               "outputs_hash": -5822274427547654000,
               "parent": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev",
-              "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::00000000-0000-0000-0000-000000000003",
+              "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::04da6b54-80e4-46f7-96ec-b56ff0331ba9",
               "urn": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet"
             },
             "entity_type": "resource",

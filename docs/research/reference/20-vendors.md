@@ -102,7 +102,7 @@ the migration mutations in sections 5 and 6.8 change it (report 07, section 3).
 | `Terraform` | `terraform` | Downloaded per run, verified and mounted read-only at `/bin/terraform` [D] tf-version | `terraform plan` [D] tf-workflow | `terraform apply` of the saved plan file [D] tf-workflow | `public.ecr.aws/spacelift/runner-terraform:latest` [D] docker |
 | `OpenTofu` | `opentofu` | Downloaded per run, verified and mounted; not baked into the image [D] opentofu | `tofu plan` [D] tofu-workflow | `tofu apply` of the saved plan file [D] tofu-workflow | `public.ecr.aws/spacelift/runner-opentofu:latest` [D] opentofu |
 | `Terragrunt` | `terragrunt` | `terragrunt` at the resolved `terragruntVersion`; how that binary reaches the container is not documented *(unverified)* (C185). The underlying OpenTofu or Terraform is downloaded and pointed to by `TG_TFPATH` [D] tg-tool | `terragrunt plan`, or `run-all` [D] tg-run-all | A fresh plan and apply unless `skipReplan` [D] tg-limits [G] | runner-terraform, the default for every vendor except native OpenTofu [D] docker; it carries `terragrunt` v0.93.3 [S] [rt-df] |
-| `Pulumi` | `pulumi` | The runner image; the docs state that Pulumi versions follow the Docker image [D] runtime-config, and `StackConfigVendorPulumi` has only `loginURL` and `stackName` [G] | `pulumi preview --refresh --diff --show-replacement-steps` [D] pulumi | `pulumi up --refresh --diff --show-replacement-steps` [D] pulumi | runner-terraform by the general default [D] docker, which has no Pulumi CLI [S] [rt-df]; the docs tell users to set a `runner-pulumi-<language>` image [D] pulumi-lang |
+| `Pulumi` | `pulumi` | The runner image; the docs state that Pulumi versions follow the Docker image [D] runtime-config, and `StackConfigVendorPulumi` has only `loginURL` and `stackName` [G] | `pulumi preview --refresh --diff --show-replacement-steps` [D] pulumi | `pulumi up --refresh --diff --show-replacement-steps` [D] pulumi, which previews again before it updates ([33](33-vendor-tool-documents.md) section 2.7) | runner-terraform by the general default [D] docker, which has no Pulumi CLI [S] [rt-df]; the docs tell users to set a `runner-pulumi-<language>` image [D] pulumi-lang |
 | `CloudFormation` | `cloudformation` | AWS APIs; no IaC binary | Uploads templates to the template bucket and builds a change set [D] cfn-reference [D] plan-policy | Applies the change and streams stack events [D] cfn-start | runner-terraform, the general default [D] docker |
 | `Kubernetes` | `kubernetes` | `kubectl` downloaded at the chosen `kubectlVersion` [D] create-stack | `kubectl apply --dry-run=server` or `=client` [D] k8s-start | `kubectl apply` then `kubectl rollout status` [D] k8s-workflow | runner-terraform, the general default [D] docker; the getting-started guide asks for a custom image with `kubectl` [D] k8s-start |
 | `Ansible` | `ansible` | The runner image | The playbook in Ansible check mode [D] ansible-reference | The playbook [D] ansible-reference | `public.ecr.aws/spacelift/runner-ansible:latest`, the launcher's default for Ansible runs, set by `SPACELIFT_DEFAULT_ANSIBLE_RUNNER_IMAGE` [D] worker-pools |
@@ -167,10 +167,10 @@ others are null, except `terragrunt`, which is absent for non-Terragrunt stacks
 | Terraform | `terraform` | `checks`, `resource_changes`, `terraform_version` |
 | OpenTofu | `opentofu`, mirrored in `terraform` | `checks`, `resource_changes`, `opentofu_version` |
 | Terragrunt | `terragrunt` | One entry per project with `resource_changes`, `terraform_version`, `checks` |
-| Pulumi | `pulumi` | `steps` from the preview; `op` is one of `same`, `refresh`, `create`, `update`, `delete`, `create-replacement`, `delete-replaced` [D] pulumi |
+| Pulumi | `pulumi` | `steps` from the preview; `op` is one of `same`, `refresh`, `create`, `update`, `delete`, `create-replacement`, `delete-replaced` [D] pulumi, and `replace` too; a step is one of the preview's engine output events, `{op, urn, type, provider, old, new}` ([33](33-vendor-tool-documents.md) section 2.3) |
 | CloudFormation | `cloudformation` | `changes` from the change set |
-| Ansible | `ansible` | Ansible's own output, for example `dark` for unreachable hosts [D] ansible-policies |
-| Kubernetes | `kubernetes` | The vendor's own output |
+| Ansible | `ansible` | Ansible's own output, for example `dark` for unreachable hosts [D] ansible-policies: the play recap, ansible-core's `AggregateStats` without `custom`, plus `playbook` ([33](33-vendor-tool-documents.md) section 4.2) |
+| Kubernetes | `kubernetes` | The vendor's own output; a dry run that prunes writes a stream of JSON values, not one document, so what Spacelift passes is *(unverified)* (C297) ([33](33-vendor-tool-documents.md) section 3.2) |
 
 Since 2026-08-18 `terraform_version` and `terraform_workflow_tool` in policy
 input are null for every vendor except Terraform, including native OpenTofu;
@@ -534,7 +534,7 @@ stacks of other vendors [D] runtime-config.
 | Limitation | Source |
 |---|---|
 | A stack cannot read another stack's state, so Terragrunt external dependencies that read a sibling's state do not work | [D] tg-limits |
-| Explicit stacks without run-all: no consistent way to inject the backend | [D] tg-limits |
+| Explicit stacks without run-all: no consistent way to inject the backend. With run-all, Terragrunt generates the units, and how its generation flags behave on the latest release is *(unverified)* (C304) | [D] tg-limits |
 | Mocked outputs can reach plan policies | [D] tg-limits |
 | `run_cmd` works only with `--terragrunt-quiet` | [D] tg-limits |
 | Resource deletion on stack deletion: the stack page says native Terragrunt does not support it [D] create-stack; the changelog says it was implemented on 2026-02-26 [RN]. Report 07 records the docs statement. The changelog describes the later change, so deletion is probably supported, but this is *(unverified)* (C189). | [D] [RN] |
@@ -579,7 +579,7 @@ The Pulumi page carries a feature-preview notice [D] pulumi.
 
 | Phase | Command | Source |
 |---|---|---|
-| Initializing | `pulumi login <loginURL>`, then `pulumi stack select --create --select <stackName>`; pre-initialization hooks run after these | [D] pulumi |
+| Initializing | `pulumi login <loginURL>`, then `pulumi stack select --create --select <stackName>`; pre-initialization hooks run after these. `--select` is not a flag of `pulumi stack select`, which takes the stack as an argument: `pulumi stack select --create <stackName>` ([33](33-vendor-tool-documents.md) section 2.1) | [D] pulumi |
 | Planning | `pulumi preview --refresh --diff --show-replacement-steps` | [D] pulumi |
 | Applying | `pulumi up --refresh --diff --show-replacement-steps` | [D] pulumi |
 | Destroying | `pulumi destroy`, with `SPACELIFT_PULUMI_CLI_ARGS_destroy` | [I] from the variable name; the docs show `pulumi destroy --non-interactive --yes` only as a task [D] pulumi-lang |
@@ -589,15 +589,17 @@ general rule that `before_init` hooks run first [D] run. The general rule holds:
 a run's `before_init` hooks run before the login and before the stack is
 selected, or created when it does not exist, and `after_init` hooks run after
 both ([32](32-spacelift-console-survey.md) section 16.8), which resolves C190.
-Planning prints `pulumi preview` output and applying `pulumi up` output; the
-destroy command is still inferred (C193).
+Planning prints `pulumi preview --diff`'s output, and applying prints a
+preview and then the update, which is `pulumi up --yes` without
+`--skip-preview` ([33](33-vendor-tool-documents.md) section 2.7); the destroy
+command is still inferred (C295).
 
 | Setting or variable | Behaviour | Source |
 |---|---|---|
 | `loginURL` | State backend: a bucket such as `s3://…` or the Pulumi Service `https://api.pulumi.com` with `PULUMI_ACCESS_TOKEN` | [D] pulumi-lang |
 | `stackName` | The Pulumi stack that namespaces state; independent of the Spacelift stack name | [D] create-stack |
 | `SPACELIFT_PULUMI_CLI_ARGS_preview`, `_up`, `_destroy` | Extra CLI arguments per command | [D] pulumi |
-| Secrets | Pulumi secrets appear as `[secret]`; no further string sanitization is applied to Pulumi plans | [D] pulumi |
+| Secrets | Pulumi secrets appear as `[secret]`; no further string sanitization is applied to Pulumi plans. The engine events and state write a secret as a signature object instead ([33](33-vendor-tool-documents.md) section 2.6) | [D] pulumi |
 | Language toolchains | Set by the image: `runner-pulumi-javascript`, `-golang`, `-python`, `-dotnet`, tagged by Pulumi version such as `v2.15.4` or `latest` | [D] pulumi-lang; [S] [rp-readme] |
 | Dependencies | `before_init` hooks such as `npm install` or `pip install -r requirements.txt`; `before_apply` is needed when the apply phase loses installed state, set through `.spacelift/config.yml`; .NET needs `NUGET_PACKAGES` under `/mnt/workspace` | [D] pulumi-lang |
 
@@ -667,7 +669,7 @@ The built-in workflow, as `workflow.yml` keys [D] k8s-workflow:
 | Planning | `--dry-run=server` when the resources exist, `--dry-run=client` when none do | [D] k8s-start |
 | Applying | Default rollout timeout 10 minutes; `KUBECTL_ROLLOUT_TIMEOUT` changes it | [D] k8s-start |
 | Pruning | `--prune` with the stack label removes resources whose YAML left the repository; at least one YAML file must remain or the run fails | [D] k8s-start |
-| Prune flag | `.PruneWhiteList` emits `--prune-allowlist`; the label `feature:k8s_keep_using_prune_white_list_flag` switches to `--prune-whitelist` for kubectl below 1.26 | [D] k8s-workflow |
+| Prune flag | `.PruneWhiteList` emits `--prune-allowlist`; the label `feature:k8s_keep_using_prune_white_list_flag` switches to `--prune-whitelist` for kubectl below 1.26, a flag current kubectl no longer has ([33](33-vendor-tool-documents.md) section 3.1) | [D] k8s-workflow |
 | Labels | Every resource gets `spacelift-stack: <stack-slug>` and `app.kubernetes.io/managed-by: spacelift`; all operations select on the first. A slug over 63 characters is truncated and suffixed with a hash. | [D] kustomize |
 | Kustomize | Without a `kustomization.yaml`, Spacelift writes one referencing every YAML file under the project root; with one, it only adds a label transformer | [D] kustomize |
 | Namespace | Optional; empty means a multi-namespace stack; the docs advise against leaving it blank because of the privileges needed | [D] create-stack; [D] k8s-start |
@@ -691,7 +693,10 @@ GCP recipes need custom images with their CLIs [D] k8s-auth.
 There is no native Helm support. A `before_plan` hook runs `helm template` into a
 file that a committed `kustomization.yaml` lists; the image must have Helm or a
 `before_init` hook installs it; charts that need the full Helm lifecycle may not
-work [D] helm. Custom resources are supported [D] k8s-crd.
+work [D] helm. How the recipe behaves under infraweave's Kubernetes workflow
+is *(unverified)* (C298). Custom resources are supported [D] k8s-crd; a
+definition and a resource of its kind fail in one apply
+([33](33-vendor-tool-documents.md) section 3.2).
 
 ## 10. Ansible
 
@@ -700,7 +705,7 @@ work [D] helm. Custom resources are supported [D] k8s-crd.
 | Initializing | Installs dependencies with Ansible Galaxy from the first `requirements.yml` or `.yaml` found at the root, `roles/` or `collections/`, or from `SPACELIFT_ANSIBLE_REQUIREMENTS_FILE` | [D] ansible-galaxy |
 | Planning | Runs the playbook in check mode; modules without check-mode support can fail it. `SPACELIFT_SKIP_PLANNING=true` skips the phase. | [D] ansible-reference |
 | Applying | Runs the playbook | [D] ansible-reference |
-| Command | `ansible-playbook` [I] from the CLI-flags reference linking `ansible-playbook` options; the runner image installs `ansible-runner` [S] [ra-df] | |
+| Command | `ansible-playbook <playbook> --check` while planning and the same without `--check` while applying, at verbosity 1, with no `--diff` and no `-i`, as the console's run log shows ([32](32-spacelift-console-survey.md) section 16.8, [33](33-vendor-tool-documents.md) section 4.5); the runner image installs `ansible-runner` [S] [ra-df] | |
 
 | Setting or variable | Behaviour | Source |
 |---|---|---|
@@ -764,7 +769,7 @@ the two; the actual path is *(unverified)* (C191).
 | Smart (`useSmartSanitization`) | Only values Terraform or OpenTofu marks sensitive are hashed; needs Terraform 1.0.1 or later and fails on older versions. On by default for new OpenTofu stacks. | [D] sanitization; [D] opentofu |
 | Disabled | Label `feature:disable_resource_sanitization`; future runs are not sanitized | [D] sanitization |
 | Policy helper | `sanitized(string)` hashes a constant for comparison; needed under default mode, and under smart mode only for sensitive values | [D] sanitization |
-| Scope | Terraform, OpenTofu and Terragrunt have the setting [G]; Pulumi relies on Pulumi's `[secret]` encoding instead [D] pulumi | |
+| Scope | Terraform, OpenTofu and Terragrunt have the setting [G]; Pulumi relies on Pulumi's `[secret]` encoding instead [D] pulumi. Kubernetes has no setting, and a Secret's values reach its dry runs in base64 and in plaintext ([33](33-vendor-tool-documents.md) section 3.4) | |
 | Terragrunt `checks` | Empty unless sanitization is disabled | [D] plan-policy |
 
 Report 09 covers how policies see sanitized values.
@@ -850,22 +855,22 @@ not that it behaves identically [I].
 
 - Neither the Kubernetes nor the CloudFormation page names a runner image; the
   runner-terraform default comes from the general Docker page [D] docker.
-- Pulumi destroy runs `pulumi destroy` [I] from `SPACELIFT_PULUMI_CLI_ARGS_destroy` (C193).
+- Pulumi destroy runs `pulumi destroy` [I] from `SPACELIFT_PULUMI_CLI_ARGS_destroy` (C295).
 - `TERRAFORM_FOSS` stops at Terraform 1.5.7 because later releases are not
   open source [I] from the schema's description of the value and the liftoff
   docs' cutoff.
 - A one-stack `openTofuMigrate` backs the single-stack banner [I] from
   `stackMigrateVendor` being described as Terragrunt-only.
-- CloudFormation apply executes the change set built in planning [I] (C193).
+- CloudFormation apply executes the change set built in planning [I] (C296).
 - Ansible runs `ansible-playbook`, with `--check` while planning and without
   it while applying, as the console's run log shows
-  ([32](32-spacelift-console-survey.md) section 16.8); the CloudFormation and
-  Pulumi destroy commands above stay inferred (C193).
+  ([32](32-spacelift-console-survey.md) section 16.8), which with Pulumi's plan
+  and apply resolves C193; the CloudFormation and Pulumi destroy commands
+  above stay inferred (C295, C296).
 - Terragrunt init runs `terragrunt init` [I] from `TG_CLI_ARGS_init`.
 - `StackMigrateVendorAllResult.left` implies repeated calls [I].
-- Unverified: whether Pulumi login precedes `before_init` hooks; the
-  non-run-all Terragrunt apply behaviour without `skipReplan`; native Terragrunt
-  resource deletion; `OTEL_TRACING`'s minimum version; which API the
+- Unverified: the non-run-all Terragrunt apply behaviour without `skipReplan`;
+  native Terragrunt resource deletion; `OTEL_TRACING`'s minimum version; which API the
   single-stack OpenTofu migration uses; where the Infracost plugin's output
   lands in policy input; how the native Terragrunt vendor provides the
   `terragrunt` binary at the chosen version.

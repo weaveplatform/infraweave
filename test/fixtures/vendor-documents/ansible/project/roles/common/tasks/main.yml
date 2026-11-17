@@ -1,0 +1,5 @@
+- name: Ensure the work directory
+  ansible.builtin.file:
+    path: /tmp/example
+    state: directory
+    mode: "0755"

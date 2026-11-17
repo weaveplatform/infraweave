@@ -281,6 +281,57 @@ Who calls the engine, when, and what the result does to the run of decision
   sanitization mode, so plaintext attribute values never reach the server's policy input
   or its samples.
 
+### Vendor plan documents
+
+Each vendor's `plan.json`
+([0008](0008-run-execution-and-worker-protocol.md#vendors-runs)) is the
+source of its block in plan policy input, and the worker sanitizes it before
+upload. Only the stack's vendor's block is filled, as
+[20 section 2](../reference/20-vendors.md#2-plan-policy-input-per-vendor)
+gives it.
+
+| Vendor | Block | Sanitized |
+|---|---|---|
+| Terraform, OpenTofu | `terraform`, and `opentofu` for OpenTofu, from `show -json` | by the stack's mode |
+| Terragrunt | `terragrunt`, one entry per unit of `plan.json`'s `units`, each with its unit's path, `resource_changes`, `terraform_version` and `checks` | by the stack's mode, unit by unit; `checks` is empty unless sanitization is off |
+| Pulumi | `pulumi`, `{"steps": [...]}` as `plan.json` holds them | every secret signature object becomes the string `"[secret]"`, and nothing is hashed, whatever the mode |
+| CloudFormation | `cloudformation`, `{"parameters": [...], "changes": [...]}` with the API's key names | every `ParameterValue` is hashed, whatever the mode; the change set carries no property values to hash |
+| Kubernetes | `kubernetes`, `{"resources": [...]}` as `plan.json` holds them | each Secret's `data` and `stringData` values, and its `kubectl.kubernetes.io/last-applied-configuration` annotation, are hashed in `before` and `after`, whatever the mode; other values stay as kubectl wrote them |
+| Ansible | `ansible`, `{playbook, processed, ok, changed, dark, failures, skipped, rescued, ignored}` from the recap | nothing to hash: the records hold names, statuses and counts |
+
+- **The modes.** The run specification carries the stack's mode, which the
+  handover decides: `NONE` when the stack has the label
+  `feature:disable_resource_sanitization`, `SMART` when it sets
+  `useSmartSanitization`, else `DEFAULT`. `DEFAULT` hashes every string
+  value of the plan's resources, outputs and variables with `sanitized`'s
+  hash, and leaves the structure a reader needs (addresses, types, names,
+  provider names, actions, modes and versions); `SMART` hashes only the
+  values the plan marks sensitive. The modes apply to the Terraform family
+  alone ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
+- **Pulumi** writes a secret in its event log as a signature object whose
+  `ciphertext` already reads `[secret]`; Spacelift's policy input carries
+  the same steps
+  ([33 section 2.3](../reference/33-vendor-tool-documents.md#23-spacelifts-steps)),
+  so the worker only collapses each object to the string, which is how
+  policies read a Pulumi secret. A value unknown at preview stays Pulumi's
+  sentinel string.
+- **Kubernetes** has no sanitization setting, yet every dry run and `get`
+  carries a Secret's values, in base64 under `data` and in plaintext under
+  `stringData` and in the last-applied annotation
+  ([33 section 3.4](../reference/33-vendor-tool-documents.md#34-secrets)).
+  Hashing them whatever the label keeps plaintext secrets off the server,
+  which is this record's rule for every plan.
+- **CloudFormation** parameter values are hashed because a `NoEcho`
+  parameter's value in a change set is not documented as masked (C303).
+  The change set is created without property values, so no `BeforeValue`
+  or `AfterValue` reaches the plan.
+- **Ansible's** callback writes no module result and no diff
+  ([0008](0008-run-execution-and-worker-protocol.md#vendors-runs)), so its
+  records hold nothing to sanitize.
+- `sanitized(x)` hashes as the worker does for every vendor that hashes, so
+  a policy compares a Kubernetes Secret's value or a CloudFormation
+  parameter the way it compares a Terraform attribute.
+
 ## Rationale
 
 - **A library, not a sidecar or a binary per evaluation.** Login and approval sit on
@@ -313,6 +364,9 @@ Who calls the engine, when, and what the result does to the run of decision
   - `ACCESS` policies are never evaluated (decision 0021 holds their scope).
   - `sanitized` uses infraweave's own truncation of SHA-256, since Spacelift's is
     unverified ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
+  - A Kubernetes Secret's values and a CloudFormation parameter's value are hashed
+    whatever the stack's mode or label; Spacelift has no sanitization setting for either
+    vendor, and what its policy input holds for them is open (C296, C297).
   - Under `GODEBUG=fips140=only`, the MD5 and SHA-1 built-ins are unavailable.
   - Input fields under Spacelift's `spacelift` key sit under `infraweave`, because no
     infraweave name says Spacelift (0001); the importer rewrites imported bodies.
@@ -362,6 +416,11 @@ Who calls the engine, when, and what the result does to the run of decision
   a real Terraform run.
 - A sealing test reads a sample object directly from the object store and asserts that a
   known input value does not appear in it.
+- Each vendor's sanitization tests run over `test/fixtures/vendor-documents`: no dummy
+  secret of the recorded documents survives in a sanitized Pulumi or Kubernetes plan,
+  each signature object reads `"[secret]"`, and the Ansible callback's records of the
+  recorded project hold no module result, diff or dummy secret. `vendors/sanitization.feature` runs
+  a plan policy over each vendor's input and compares through `sanitized`.
 
 ## References
 

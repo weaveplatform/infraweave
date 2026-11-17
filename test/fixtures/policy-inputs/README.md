@@ -46,7 +46,7 @@ links them:
 |---|---|
 | `01H00000000000000000000001` to `…0012` | run, policy, review and other ULIDs, numbered by first appearance |
 | `0000000000000000000000000000000000000001` to `…0007` | commit SHAs |
-| `00000000-0000-0000-0000-000000000001` to `…0003` | UUIDs |
+| `00000000-0000-0000-0000-000000000001` and `…0002` | UUIDs |
 | `account-a`, `user-a`, `user-b`, `owner-a`, `github-id-a` | the account, the login, a commit author's name, the repository owner, the GitHub node ID |
 | `repo-a`, `vcs-url/owner-a/repo-a`, `branch-a` | the repository, its URL and a feature branch |
 | `stack-a`, `stack-b`, `stack-pulumi`, `stack-ansible` | the stacks; `stack-b` depends on `stack-a` |
@@ -59,7 +59,9 @@ are shifted by one constant, so the earliest is 2026-01-01T00:00:00Z and
 order and spacing are kept. The console's JSON viewer rounds nanosecond
 values to double precision, so their last digits are not significant.
 `vcs_integration.created_at` is negative in Spacelift's own documents and is
-kept as sent.
+kept as sent, and so is `04da6b54-80e4-46f7-96ec-b56ff0331ba9` in
+`plan-pulumi.json`, the constant Pulumi's engine writes for a value unknown
+at preview.
 
 Keys keep Spacelift's names, `spacelift` included: decision 0009 maps the
 `spacelift` key to `infraweave` in the input structs, and the contract test

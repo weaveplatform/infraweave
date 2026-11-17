@@ -1,0 +1,21 @@
+- name: A failing play
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Ping
+      ansible.builtin.ping:
+    - name: Fail on purpose
+      ansible.builtin.fail:
+        msg: failing on purpose
+      when: inventory_hostname == 'localhost'
+    - name: Rescue block
+      block:
+        - name: Fail inside block
+          ansible.builtin.command: /bin/false
+      rescue:
+        - name: Rescued
+          ansible.builtin.debug:
+            msg: rescued
+    - name: Ignored failure
+      ansible.builtin.command: /bin/false
+      ignore_errors: true

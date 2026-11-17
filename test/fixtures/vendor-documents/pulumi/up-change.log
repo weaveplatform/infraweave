@@ -1,0 +1,128 @@
+Previewing update (dev):
+~ pulumi:pulumi:Stack: (refresh)
+    [urn=urn:pulumi:dev::example::pulumi:pulumi:Stack::example-dev]
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:dev::example::pulumi:pulumi:Stack::example-dev]
+      random:index/randomPassword:RandomPassword: (same) 🔒
+        [id=none]
+        [urn=urn:pulumi:dev::example::random:index/randomPassword:RandomPassword::password]
+    ++random:index/randomPet:RandomPet: (create-replacement)
+        [id=example-becoming-snail]
+        [urn=urn:pulumi:dev::example::random:index/randomPet:RandomPet::pet]
+      ~ length: 2 => 3
+    + random:index/randomInteger:RandomInteger: (create)
+        [urn=urn:pulumi:dev::example::random:index/randomInteger:RandomInteger::number]
+        max: 100
+        min: 1
+    +-random:index/randomPet:RandomPet: (replace)
+        [id=example-becoming-snail]
+        [urn=urn:pulumi:dev::example::random:index/randomPet:RandomPet::pet]
+      ~ id       : "example-becoming-snail" => [unknown]
+      ~ length   : 2 => 3
+        prefix   : "example"
+        separator: "-"
+    - random:index/randomString:RandomString: (delete)
+        [id=22XVatZl]
+        [urn=urn:pulumi:dev::example::random:index/randomString:RandomString::keyed]
+        keepers: {
+            apiKey: [secret]
+        }
+        length : 8
+        special: false
+    --random:index/randomPet:RandomPet: (delete-replaced)
+        [id=example-becoming-snail]
+        [urn=urn:pulumi:dev::example::random:index/randomPet:RandomPet::pet]
+        length: 2
+        prefix: "example"
+    --outputs:--
+  - keyedValue: "22XVatZl"
+  + number    : [unknown]
+Resources:
+    + 1 to create
+    - 1 to delete
+    +-1 to replace
+    3 changes. 2 unchanged
+Updating (dev):
+~ pulumi:pulumi:Stack: (refresh)
+    [urn=urn:pulumi:dev::example::pulumi:pulumi:Stack::example-dev]
+    --outputs:--
+    greeting  : "hello"
+    keyedValue: "22XVatZl"
+    password  : [secret]
+    petName   : "example-becoming-snail"
+    wrapped   : [secret]
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:dev::example::pulumi:pulumi:Stack::example-dev]
+      random:index/randomPassword:RandomPassword: (same) 🔒
+        [id=none]
+        [urn=urn:pulumi:dev::example::random:index/randomPassword:RandomPassword::password]
+    ++random:index/randomPet:RandomPet: (create-replacement)
+        [id=example-becoming-snail]
+        [urn=urn:pulumi:dev::example::random:index/randomPet:RandomPet::pet]
+      ~ length: 2 => 3
+    + random:index/randomInteger:RandomInteger: (create)
+        [urn=urn:pulumi:dev::example::random:index/randomInteger:RandomInteger::number]
+        max: 100
+        min: 1
+        --outputs:--
+      ~ id       : "example-becoming-snail" => "example-tightly-supreme-escargot"
+        --outputs:--
+        id                      : "90"
+        result                  : 90
+    +-random:index/randomPet:RandomPet: (replace)
+        [id=example-becoming-snail]
+        [urn=urn:pulumi:dev::example::random:index/randomPet:RandomPet::pet]
+      ~ id       : "example-becoming-snail" => "example-tightly-supreme-escargot"
+      ~ length   : 2 => 3
+        prefix   : "example"
+        separator: "-"
+        --outputs:--
+      ~ id       : "example-becoming-snail" => "example-tightly-supreme-escargot"
+    - random:index/randomString:RandomString: (delete)
+        [id=22XVatZl]
+        [urn=urn:pulumi:dev::example::random:index/randomString:RandomString::keyed]
+        keepers: {
+            apiKey: [secret]
+        }
+        length : 8
+        special: false
+    --random:index/randomPet:RandomPet: (delete-replaced)
+        [id=example-becoming-snail]
+        [urn=urn:pulumi:dev::example::random:index/randomPet:RandomPet::pet]
+        length: 2
+        prefix: "example"
+        --outputs:--
+      - id       : "example-becoming-snail"
+      - length   : 2
+      - prefix   : "example"
+      - separator: "-"
+        --outputs:--
+      - id        : "22XVatZl"
+      - keepers   : {
+          - apiKey: [secret]
+        }
+      - length    : 8
+      - lower     : true
+      - minLower  : 0
+      - minNumeric: 0
+      - minSpecial: 0
+      - minUpper  : 0
+      - number    : true
+      - numeric   : true
+      - result    : "22XVatZl"
+      - special   : false
+      - upper     : true
+    --outputs:--
+    greeting  : "hello"
+  - keyedValue: "22XVatZl"
+  + number    : 90
+    password  : [secret]
+  ~ petName   : "example-becoming-snail" => "example-tightly-supreme-escargot"
+    wrapped   : [secret]
+Resources:
+    + 1 created
+    - 1 deleted
+    +-1 replaced
+    3 changes. 2 unchanged
+
+Duration: 1s
