@@ -337,13 +337,14 @@
       "id": "C11",
       "kind": "capture",
       "area": "Platform, API and clients (reports 01 to 06)",
-      "question": "What are scans, the Origin (Cursor) integration, the `BLOB` provider and plugin templates in product terms, and do they exist on self-hosted?",
+      "question": "Do scans and the `BLOB` provider exist as products, and on self-hosted? Spacelift's console on 2026-11-17 shows Origin as Cursor's Git platform and plugin templates as a catalogue of hook bundles, and no scan, discovery or blob storage surface, with unmanaged resources listed as coming soon on self-hosted (report 32)",
       "howToCapture": "Search the KB and changelog; inspect a trial account's UI",
       "blocks": "PD-03",
       "reports": [
         "docs/research/reference/04-platform-api-inventory.md",
         "docs/research/reference/11-vcs-integrations.md",
-        "docs/research/reference/21-resources-scans-search.md"
+        "docs/research/reference/21-resources-scans-search.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -833,11 +834,12 @@
       "id": "C54",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Are the in-product policy templates served from the spacelift-policies-example-library module?",
+      "question": "Are the in-product policy templates served from the spacelift-policies-example-library module? The console's catalogue lists 59 templates on 2026-11-17 against the library's 67 (report 32)",
       "howToCapture": "Compare `searchPolicyTemplates` with the library's 67 templates",
       "blocks": "the template corpus",
       "reports": [
-        "docs/research/reference/09-policies.md"
+        "docs/research/reference/09-policies.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -1088,12 +1090,13 @@
       "id": "C77",
       "kind": "capture",
       "area": "VCS integrations (report 11)",
-      "question": "Which integration field does Spacelift route through a VCS agent: `apiHost` (provider examples) or `userFacingHost` (docs)?",
+      "question": "Which integration field does Spacelift route through a VCS agent: `apiHost` (provider examples) or `userFacingHost` (docs)? The console's integration forms have both host fields and no agent pool field (report 32)",
       "howToCapture": "A VCS agent pool with different values in each field",
       "blocks": "the routing field for private VCS",
       "reports": [
         "docs/research/reference/11-vcs-integrations.md",
-        "docs/research/reference/28-data-model.md"
+        "docs/research/reference/28-data-model.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -1519,11 +1522,12 @@
       "id": "C116",
       "kind": "capture",
       "area": "Spaces, RBAC and identity (report 14)",
-      "question": "What are the slugs and action sets of the built-in roles: Space reader, writer and admin, Worker pool controller and the drift detection role?",
+      "question": "What are the slugs and action sets of the built-in roles? The console on 2026-11-17 lists four system roles, Space reader, Space writer, Space admin and Worker pool controller, and no drift detection role (report 32)",
       "howToCapture": "Query `roles { slug actions isSystem }`",
       "blocks": "seeding system roles",
       "reports": [
-        "docs/research/reference/14-spaces-rbac-and-identity.md"
+        "docs/research/reference/14-spaces-rbac-and-identity.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -1552,12 +1556,14 @@
       "id": "C119",
       "kind": "capture",
       "area": "Spaces, RBAC and identity (report 14)",
-      "question": "How long does a browser session last, and can an account change it?",
+      "question": "How long does a browser session last, and can an account change it? Resolved by the console's session list on 2026-11-17 (report 32): a session signed in through GitHub ends 10 hours after it starts, and no setting changes the lifetime",
       "howToCapture": "Decode `validUntil` or the JWT `exp` of a web session; check account settings",
       "blocks": "parity evidence only: decision [0006](../research/decisions/0006-authentication-and-tokens.md) states infraweave's defaults and makes the session lifetime an organization setting, so the capture records Spacelift's value and nothing waits on it",
       "reports": [
-        "docs/research/reference/14-spaces-rbac-and-identity.md"
-      ]
+        "docs/research/reference/14-spaces-rbac-and-identity.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C120",
@@ -2238,22 +2244,24 @@
       "id": "C181",
       "kind": "capture",
       "area": "Events, notifications and audit (report 19)",
-      "question": "What is the audit webhook's retry schedule, and does `retryOnFailure` govern it, or are deliveries always retried as the docs say?",
+      "question": "What is the audit webhook's retry schedule, and does `retryOnFailure` govern it, or are deliveries always retried as the docs say? The console's audit webhook form has a retry switch whose help promises up to three retries on a 5xx (report 32)",
       "howToCapture": "A failing endpoint with the flag on and off",
       "blocks": "audit delivery guarantees",
       "reports": [
-        "docs/research/reference/19-events-notifications-audit.md"
+        "docs/research/reference/19-events-notifications-audit.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
       "id": "C182",
       "kind": "capture",
       "area": "Events, notifications and audit (report 19)",
-      "question": "Under `includeRuns`, does the audit webhook add run state change events (schema, docs) or annotate audit events (provider), and what shape do they take?",
+      "question": "What shape do run state change events take on the audit webhook under `includeRuns`? The console's help says the switch adds them to the audit events (report 32), settling that they are added rather than annotations",
       "howToCapture": "Capture with the flag on and off",
       "blocks": "the audit stream schema",
       "reports": [
-        "docs/research/reference/19-events-notifications-audit.md"
+        "docs/research/reference/19-events-notifications-audit.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -2381,11 +2389,12 @@
       "id": "C194",
       "kind": "capture",
       "area": "Resources, scans and search (report 21)",
-      "question": "How does a worker pool become discovery-type, as `ScanInput.workerPool` requires?",
+      "question": "How does a worker pool become discovery-type, as `ScanInput.workerPool` requires? The console's worker pool form has no type field (report 32)",
       "howToCapture": "Create a scan against an ordinary private pool and read the error",
       "blocks": "the pool kind and its validation",
       "reports": [
-        "docs/research/reference/21-resources-scans-search.md"
+        "docs/research/reference/21-resources-scans-search.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -3054,11 +3063,12 @@
       "id": "C253",
       "kind": "capture",
       "area": "Other integrations (report 25)",
-      "question": "Which role or action governs plugins, plugin templates and external integrations? No `Action` value names them",
+      "question": "Which role or action governs plugins, plugin templates and external integrations? No `Action` value names them, and the console's custom role form lists none (report 32)",
       "howToCapture": "Try the mutations with a non-admin key; ask Spacelift",
       "blocks": "the permission model",
       "reports": [
-        "docs/research/reference/25-other-integrations.md"
+        "docs/research/reference/25-other-integrations.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     },
     {
@@ -3087,12 +3097,14 @@
       "id": "C256",
       "kind": "capture",
       "area": "Other integrations (report 25)",
-      "question": "Are `aws_sam`, `coverage` and `ssm_parameter_store` global templates on SaaS? The docs list ten plugins; the repository has thirteen",
+      "question": "Are `aws_sam`, `coverage` and `ssm_parameter_store` global templates on SaaS? The docs list ten plugins; the repository has thirteen. Resolved by the console's plugin catalogue on 2026-11-17 (report 32), which lists all thirteen",
       "howToCapture": "Query `pluginTemplates`",
       "blocks": "the global catalogue",
       "reports": [
-        "docs/research/reference/25-other-integrations.md"
-      ]
+        "docs/research/reference/25-other-integrations.md",
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ],
+      "status": "resolved"
     },
     {
       "id": "C257",
@@ -3567,6 +3579,171 @@
       "recheckReports": [
         "docs/research/reference/26-scope-and-tiers.md",
         "docs/research/reference/28-data-model.md"
+      ]
+    },
+    {
+      "id": "C273",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What does a policy's page in the console show of its evaluations, samples and simulation, and which operations does it call?",
+      "howToCapture": "Create a plan policy on a trial account, attach it to a stack, trigger a run, and open the policy's page with the browser's request bodies recorded",
+      "blocks": "P13b's sampling and simulation surfaces and the console's policy page",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C274",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What field does the worker pool form's drift detection run limit reveal, with which bounds and default?",
+      "howToCapture": "Turn the switch on in the worker pool form and read the field and its validation, then read `workerPool` on a pool created with a limit",
+      "blocks": "P16's drift run limits per pool",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C275",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What does a private worker pool's page show, and which operations do its worker list, drain, reset, cycle and configuration download call?",
+      "howToCapture": "Create a private pool from a CSR on a trial account, connect one worker, and open the pool's page with request bodies recorded",
+      "blocks": "P14's pool surfaces and the console's pool page",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C276",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What does an API key's access step offer, and what type and bounds does the expiration field take?",
+      "howToCapture": "Fill the first step of the API key form validly, read the second step without creating, and turn the expiration switch on",
+      "blocks": "decision 0006's `expiresAt` bounds and the console's API key form",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C277",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Which fields and defaults do the module wizard's details, behaviour and availability steps take?",
+      "howToCapture": "Fill the module wizard's source step with a repository and read the next three steps without creating",
+      "blocks": "P17's module settings and sharing",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C278",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What do a stack's settings pages show for scheduled runs, tasks and deletes, drift detection and dependencies, with which bounds and defaults?",
+      "howToCapture": "Create a stack on a trial account and open each settings page",
+      "blocks": "P16's schedule, drift detection and dependency inputs",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C279",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Does `auditTrailRetentionDays` answer 14, as the console's audit log tab is labelled, or 30, as the docs say?",
+      "howToCapture": "Query `auditTrailRetentionDays` on a trial account and compare it with the oldest entry the log lists",
+      "blocks": "the default of decision 0015's `audit.retention`",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C280",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Does `usage` cover 30 days or the 31 the console's runs tab shows, and does its worker aspect follow the billing cycle and count private workers only?",
+      "howToCapture": "Export both usage CSVs from the console and from `usage`, and compare their date ranges and rows",
+      "blocks": "P18b's usage window and worker aspect",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C281",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Which operations feed the dashboard's metrics and DORA tabs: `metrics` and `metricsRange`, or others the schema snapshot lacks?",
+      "howToCapture": "Open each tab with request bodies recorded and match the fields to the reference",
+      "blocks": "P22's `AccountMetrics` and the console's dashboards",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C282",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Does `accountToggleEnforcingMFA` refuse when the account has no SAML or OIDC single sign-on, and with which error?",
+      "howToCapture": "Call it on a trial account that signs in through GitHub only",
+      "blocks": "decision 0006's MFA precondition and its problem",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C283",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What does SAML's dynamic configuration take in place of static metadata, and how often is the metadata read again?",
+      "howToCapture": "Turn the switch on in the SAML form and read its field; ask Spacelift for the refresh interval",
+      "blocks": "P23's SAML provider settings",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C284",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Who provides the Bedrock AI integration listed, disabled, on an account with none of its own, and which model does it name?",
+      "howToCapture": "Read `aiIntegrations` on a fresh trial account",
+      "blocks": "P25's installation-provided integration",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C285",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What bound does the switch limiting the runs one VCS event creates take, and what happens to the runs beyond it?",
+      "howToCapture": "Turn the switch on and read its field; push a commit that touches more stacks than the bound",
+      "blocks": "the bound `accountUpdateVCSEventTriggeredRunsLimit` accepts",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C286",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "What does the stack wizard's step that assigns roles offer: which roles, which spaces, and does it create stack role bindings?",
+      "howToCapture": "Fill the stack wizard's earlier steps validly and read the step without creating",
+      "blocks": "decision 0007's stack bindings and the console's stack wizard",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
+      ]
+    },
+    {
+      "id": "C287",
+      "kind": "capture",
+      "area": "Console survey (report 32)",
+      "question": "Which plans does Spacelift sell, and with which limits? The trial's billing page shows Starter (10 users, 2 public workers), Business, Enterprise and Self-Hosted, and no Free or Starter+",
+      "howToCapture": "Read the public pricing page and `tierFeatures` on a Starter account; ask sales",
+      "blocks": "the tier values of `features.json` and report 26",
+      "reports": [
+        "docs/research/reference/32-spacelift-console-survey.md"
       ]
     }
   ]

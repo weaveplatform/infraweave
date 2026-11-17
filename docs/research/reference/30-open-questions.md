@@ -26,7 +26,7 @@ behind them are in [31](31-review-log.md).
 ## How to use this list
 
 - **Numbering.** Product decisions are `PD-01` to `PD-16`, captures `C1`
-  to `C271` and re-verify triggers `RV-1` to `RV-28`. The prefixes keep
+  to `C287` and re-verify triggers `RV-1` to `RV-28`. The prefixes keep
   them apart from the plan's phases (P1, P1b) and from other registers' IDs.
   IDs are stable: a resolved entry keeps its ID and gains a status.
 - **Reports.** A record's `reports` lists the reports it concerns. The first
@@ -55,7 +55,7 @@ settled, is `resolved`.
 
 ## Captures needed
 
-The captures are the records of kind `capture`, `C1` to `C271`. Each holds
+The captures are the records of kind `capture`, `C1` to `C287`. Each holds
 the question, how to capture the answer and what the answer blocks; its
 `area` groups it with the reports it came from, and its `reports` name the
 report that holds the claim first.

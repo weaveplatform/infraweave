@@ -2115,6 +2115,10 @@ Decisions: [0009](../research/decisions/0009-policy-engine-opa.md), [0008](../re
 
 Embedded OPA evaluates plan, approval, push and trigger policies at the run's
 state points, with receipts committed in the transition they justify.
+Spacelift's console creates approval, push, plan, trigger, notification and
+Intent policies, with an `autoattach:<label>` hint on the form, and its
+plan policy templates read scanner plugins' results from the policy input
+([32](../research/reference/32-spacelift-console-survey.md) section 3).
 
 **Tasks**
 1. `internal/platform/rego`: OPA v1 as a library, `REGO_V0` and `REGO_V1`,
@@ -2139,6 +2143,12 @@ state points, with receipts committed in the transition they justify.
    `TestUnitCombination`. `POST /policies/check`, served by `expressions`
    over the surface `policies` lists in `Surfaces()`, compiles a body
    with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
+   The plan input carries `third_party_metadata.custom.<plugin>`, which
+   P20b's plugins write, and each vendor's block in the shape P20 records
+   in decision 0009. The `sanitized()` built-in hashes with
+   `internal/iac/sanitize`, decision 0009's hash (DV-031), which this phase
+   adds if P20 has not landed and imports otherwise, so the worker and the
+   built-in never differ.
 4. Evaluation points in `internal/runs/internal/core/gates`: approval on
    `QUEUED`, `UNCONFIRMED`, `PENDING_REVIEW` and each `runReview`; plan after
    `PLANNING` and each targeted replan; push in `vcs.evaluate_event`;
@@ -2167,85 +2177,136 @@ state points, with receipts committed in the transition they justify.
 
 ## P13b: Login, task and initialization policies, sampling and simulation
 
-Decisions: [0009](../research/decisions/0009-policy-engine-opa.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
+Decisions: [0009](../research/decisions/0009-policy-engine-opa.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P13, P4b.
 
 The policy types outside the run workflow, the `LOGIN_POLICIES` scheme, and
 the tooling around evaluation: samples, captures, simulation and templates.
+In Spacelift's console exactly one management strategy is in effect,
+identity access management or login policy, the inactive one's settings
+are kept, and login policies are listed on their own settings page; the
+policies page creates only approval, push, plan, trigger, notification and
+Intent policies, and its template catalogue holds 59 templates
+([32](../research/reference/32-spacelift-console-survey.md) section 3).
 
 **Tasks**
-1. Login policies through `internal/access/internal/core/login`:
+1. The scheme: `authorizationScheme` and
+   `accountUpdateAuthorizationScheme` (`MANAGED_USERS` or
+   `LOGIN_POLICIES`), which revokes every session but the caller's and
+   keeps the other scheme's bindings and policies untouched, so switching
+   back restores them.
+2. Login policies through `internal/access/internal/core/login`:
    authorization per account, after the organization has authenticated the
-   member. The account's `LOGIN` policies, evaluated on its top space, admit or refuse
-   the member and compute its roles when it enters the account, at session
-   creation and API key exchange; `session_grants`, `deny_message`
-   aggregation, revocation on change; `authorizationScheme` and
-   `accountUpdateAuthorizationScheme`. The accounts that admit a member are
-   the entries of its account switcher, which is empty when none does.
-   `access` evaluates them through `policiesapi.Evaluator`, a back edge
-   that `internal/app` sets after construction (`SetEvaluator`), adding no
-   import
-   ([declared graph](repo-layout.md#declared-graph)). Feature:
+   member. The account's `LOGIN` policies, evaluated on its top space,
+   admit or refuse the member and compute its roles when it enters the
+   account, at session creation and API key exchange; `session_grants`,
+   `deny_message` aggregation, and revocation of every session but the
+   editor's on any change. A `LOGIN` policy outside the top space answers
+   `422 validation-failed`. The accounts that admit a member are the
+   entries of its account switcher, which is empty when none does. `access`
+   evaluates them through `policiesapi.Evaluator`, a back edge that
+   `internal/app` sets after construction (`SetEvaluator`), adding no
+   import ([declared graph](repo-layout.md#declared-graph)). Features:
    `policy/login.feature`, `authz/login_policy.feature`.
-2. `TASK` and server-side `INITIALIZATION` types, live but deprecated with
-   `Deprecation` headers. Feature: `tiers/deprecation.feature`.
-3. Sampling and captures: `policy_evaluations`, hourly sample budgets in
-   `policy_sample_budgets`, sealed samples in `policy-inputs`;
+3. `TASK` and server-side `INITIALIZATION` types: live, evaluated, and
+   created only through the API, as Spacelift's console does not offer them,
+   each answer carrying a `Deprecation` header; `ACCESS` stays absent
+   (C47). Features: `policy/task.feature`,
+   `policy/initialization.feature`, `tiers/deprecation.feature`, where
+   C52 is awaited.
+4. Sampling and captures: `policy_evaluations`, hourly sample budgets in
+   `policy_sample_budgets`, sealed samples in `policy-inputs`. Operations:
    `policyEvaluationSample`, `policySearchEvaluationRecords`,
    `policySearchEvaluationRecordSuggestions`, `policyInputCaptures`,
-   `policyInputCapture`. Test: a sealing test that finds no input value in
-   the object store.
-4. `policySimulatev2` with no receipt and no sample; `policyTemplate` and
-   `searchPolicyTemplates`, `searchPolicyTemplatesSuggestions` from the MIT
-   example library. Test: `TestUnitPolicyLibrary` runs its 67 templates and
-   61 tests.
+   `policyInputCapture` (C53). Test: a sealing test that finds no input
+   value in the object store. Feature: `policy/sampling.feature`.
+5. Simulation and templates: `policySimulatev2`, with no receipt and no
+   sample; `policyTemplate`, `searchPolicyTemplates` and
+   `searchPolicyTemplatesSuggestions` from the MIT example library at a
+   pinned commit, imported with decision 0009's rewrite of the package and
+   the `spacelift` input paths. Test: `TestUnitPolicyLibrary` runs the
+   library's 67 templates and 61 tests. The console's catalogue of 59
+   (C54) decides whether infraweave serves the whole library or a
+   selection. Feature: `policy/simulation.feature`.
+6. A policy's page in the console reads evaluations, samples and
+   simulation through these operations alone; C273 records which ones
+   Spacelift's page calls.
 
 **Exit criteria**
 - The Policies tag (less its Intent attachments) meets decision 0016's
-  evidence rule.
+  evidence rule: every operation of tasks 1 and 3 to 5 has a
+  `@case:success`, a `@case:denial` and a `@case:failure` scenario.
 - A member whom one account's login policy admits and another's refuses
   enters only the first; a member no account admits gets a session that
-  lists no account.
-- Captures C47, C48, C52, C53 and C54 replay once recorded.
+  lists no account; switching the scheme back restores the bindings.
+- Captures C47, C48, C52, C53, C54 and C273 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P14: Public worker pool, Kubernetes workers and signed runs
 
-Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0009](../research/decisions/0009-policy-engine-opa.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
+Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0009](../research/decisions/0009-policy-engine-opa.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0020](../research/decisions/0020-reference-deployments-and-packaging.md).
 
 **Depends on:** P13.
 
 The optional operator-run public worker pool, Kubernetes workers on the same
-protocol, and the worker-side initialization policy that signed runs rest on.
+protocol, and the worker-side initialization policy that signed runs rest
+on. Spacelift's console shows the public worker pool as a ceiling of
+workers with its busy workers and queue, a pool's queue and users, and
+default runner images per pool kind; it has no Kubernetes surface, so the controller is an
+ordinary pool's client holding an API key with the Worker pool controller
+role ([32](../research/reference/32-spacelift-console-survey.md) section 4).
 
 **Tasks**
-1. Public worker pool in `internal/workers`, on when
-   `publicWorkerPool.enabled` is set: an installation-level pool token from
-   the operator API, the `public-worker-slots` limit, pooled across the
-   organization's accounts and applied in the claim so a run beyond it
-   waits, the image registry allowlist, no
-   priorities and no scheduled or drift runs. Records DV-078. Operations:
-   `publicWorkerPool`, `workerUsage`, `defaultPublicWorkerPoolRunnerImage`,
-   `outgoingIPAddresses`, `workerPoolSearchUsers`,
-   `workerPoolSearchUsersSuggestions`, and `workerPoolSearchSchedulableRuns`
-   and `workerPoolSearchSchedulableRunsSuggestions`, which `runs`' partial
-   serves, since `workers` imports no `runs` package. Feature: `workers/public_pool.feature`.
-2. `internal/agent/executor/kubernetes`: a controller that creates a pod per
-   run and acts as a launcher, with `WorkerPool` and `Worker` resources.
-   Feature: `workers/kubernetes.feature` (`@kubernetes`, k3s).
+1. The public worker pool in `internal/workers`, on when
+   `publicWorkerPool.enabled` is set (decision 0020's chart value): an
+   installation-level pool token from the operator API, the
+   `public-worker-slots` limit, pooled across the organization's accounts
+   and applied in the claim so a run beyond it waits, the image registry
+   allowlist, no priorities and no scheduled or drift runs. Records DV-078.
+   `publicWorkerPool` answers the organization's slots as the pool's
+   ceiling, with its busy workers and schedulable runs from the claim.
+   Operations: `publicWorkerPool`, `workerUsage`,
+   `defaultPublicWorkerPoolRunnerImage`, `outgoingIPAddresses` (the
+   addresses the operator configures for the public worker pool's egress),
+   `workerPoolSearchUsers`, `workerPoolSearchUsersSuggestions`, and
+   `workerPoolSearchSchedulableRuns` and
+   `workerPoolSearchSchedulableRunsSuggestions` with the filters commit,
+   drift detection, prioritized, stack name, state and type, which `runs`'
+   partial serves, since `workers` imports no `runs` package. The served
+   spec already routes these to the generated stub, which answers `501`
+   until this phase. Feature: `workers/public_pool.feature`.
+2. `internal/agent/executor/kubernetes`: a controller that watches
+   `WorkerPool` and `Worker` resources, registers each pool's workers over
+   the worker protocol with the pool's credentials, creates a pod per run
+   from the run's image with the launcher's mounts, and reports the pod's
+   end as the container's. Its API key holds the `worker-pool-controller`
+   system role (decision 0007) and nothing more. The controller ships in
+   `deploy/helm/infraweave-workers` with its CRDs. Feature:
+   `workers/kubernetes.feature` (`@kubernetes`, k3s pinned by digest),
+   where C21 and C67 are awaited.
 3. `internal/agent/initpolicy`: the worker-side initialization policy
-   compiled at start over `internal/platform/rego`, with the `exec`
-   built-in in a short-lived container of the run's image; a `deny` fails
-   the run from `PREPARING`. Feature: `runs/signed.feature` with a
-   signed-run JWT, and `policy/worker_initialization.feature`.
-4. `availableAt` for autoscalers.
+   (`launcher.initialization_policy`) compiled at start over
+   `internal/platform/rego`, with the `exec` built-in in a short-lived
+   container of the run's image; a `deny` fails the run from `PREPARING`.
+   Signed runs: the run token's JWT is in the policy's input, so a policy
+   can admit only runs the server signed. Features: `runs/signed.feature`
+   and `policy/worker_initialization.feature`, where C68 is awaited.
+4. `availableAt` on workers for autoscalers, and the pool's workers, busy
+   workers and queue length on `workerPools`, which the console's pool list
+   shows.
+5. `@case:success`, `@case:denial` and `@case:failure` scenarios for every
+   operation of task 1; the run environment's `ro_` and `wo_` prefixes and
+   mounts follow the plan and apply split (C66), and worker traces and
+   metrics name the vendors that produce them (C69).
 
 **Exit criteria**
 - The Worker Pools operations of task 1 meet decision 0016's evidence rule.
 - With billing on, a run of an organization at its `public-worker-slots`
   waits on the public worker pool, in whichever of its accounts it starts,
   while another organization's run proceeds.
+- A run on k3s through the controller reaches `FINISHED`, and an
+  initialization policy's `deny` fails a run from `PREPARING`.
 - Captures C21, C66, C67, C68 and C69 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -2256,7 +2317,13 @@ Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [001
 **Depends on:** P9.
 
 AWS, Azure and GCP credentials for runs, the OIDC federation token in every
-run and the discovery document cloud providers verify it against.
+run and the discovery document cloud providers verify it against. Spacelift's
+console takes one role ARN per AWS integration with a duration of 15
+minutes up to the role's maximum (1 hour when the server assumes the role),
+an optional region and session tagging; records Azure admin consent as an
+explicit confirmation it does not verify; offers GCP as documentation only;
+and shows the subject template's default
+([32](../research/reference/32-spacelift-console-survey.md) section 5).
 
 **Tasks**
 1. Federation: the `federation` signing key, `GET
@@ -2300,6 +2367,10 @@ run and the discovery document cloud providers verify it against.
    the Entra applications created through the operator-registered
    application in `cloud.azure`, or `installation-unsupported` without one;
    GCP through the OIDC token only. `integrationsCount`.
+   `azureIntegrationConsentConfirm` and `azureIntegrationConsentClear`
+   record and clear an admin's statement that consent was granted, which
+   infraweave stores with its actor and time and never checks against
+   Entra; both are audited.
 5. Feature: `integrations/cloud.feature` (`@postgres`, `@tofu`, `@oidc`) with
    read and write attachments and the external ID suffix per run type.
 
@@ -2337,7 +2408,8 @@ with output references and external dependencies.
    and drift runs start through `runsapi.Runs`
    ([declared graph](repo-layout.md#declared-graph)).
 3. Drift detection: `drift_detection` rows, drift runs at priority levels 6 and 7 on
-   private pools, each pool's drift run limits enforced in the claim,
+   private pools, each pool's drift run limits enforced in the claim
+   (the console's pool form reveals the limit behind a switch, C274),
    reconcile. Operations:
    `stackIntegrationDriftDetectionCreate`,
    `stackIntegrationDriftDetectionUpdate`,
@@ -2366,7 +2438,11 @@ with output references and external dependencies.
 - Drift Detection and the schedule and dependency operations of the Stacks
   tag meet decision 0016's evidence rule.
 - Two instances fire each scheduled time once.
-- Captures C38, C151 and C153 to C168 replay once recorded.
+- Captures C38, C151, C153 to C168, C274 and C278 replay once recorded;
+  C278 records the stack settings pages Spacelift's console shows for
+  schedules, drift detection and dependencies, which the trial could not
+  show without a stack
+  ([32](../research/reference/32-spacelift-console-survey.md) section 19).
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P17: Module registry
@@ -2392,7 +2468,11 @@ Terraform module registry protocol and `terraform login`.
    `moduleAttachableContexts`, `moduleAttachablePolicies`,
    `moduleAttachableVcsIntegrations`, `moduleAttachableWorkerPools`,
    `modulePolicyAttachment`, `moduleAttachableAwsIntegrations`,
-   `moduleAttachableAzureIntegrations`.
+   `moduleAttachableAzureIntegrations`. A module's source takes the
+   fields Spacelift's console asks first: space, provider, repository,
+   branch, project root and sparse checkout paths
+   ([32](../research/reference/32-spacelift-console-survey.md) section 8);
+   `versionYank` is the console's "mark as bad".
 2. Wiring ([domain wiring](#adding-a-domain)): `registry`'s
    graph rule and shared-rule entries, `core-not-adapters` included, its
    place after `cloud` in `domains.go` and the migration order, and its
@@ -2437,40 +2517,70 @@ Terraform module registry protocol and `terraform login`.
 - A module shared with another account of the organization resolves there,
   a share to an account of another organization answers
   `422 validation-failed`, and a revoked share stops new downloads.
-- Captures C129 to C134 replay once recorded.
+- Captures C129 to C134 and C277 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P17b: Provider registry and GPG keys
 
-Decisions: [0014](../research/decisions/0014-module-and-provider-registry.md).
+Decisions: [0014](../research/decisions/0014-module-and-provider-registry.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P17.
 
-Private Terraform providers published from GoReleaser-shaped archives and
-verified with registered GPG keys.
+Private Terraform providers published from GoReleaser-shaped archives,
+signed with the account's registered GPG keys and served through the
+provider registry protocol. Spacelift's console creates a provider and
+registers a key, and leaves every version operation to the API and its
+clients ([32](../research/reference/32-spacelift-console-survey.md)
+section 8), so the version flow is proven through `pkg/sdk` and
+`terraform init`.
 
 **Tasks**
-1. Providers and versions in `internal/registry/internal/core/provider`:
-   `terraformProviders`, `terraformProvider`, `terraformProviderCreate`,
-   `terraformProviderUpdate`, `terraformProviderDelete`,
-   `terraformProviderSetVisibility`, `terraformProviderVersion`,
-   `terraformProviderVersionCreate`, `terraformProviderVersionUpdate`,
-   `terraformProviderVersionDelete`,
-   `terraformProviderVersionRegisterPlatformV2`,
-   `terraformProviderVersionPublish`, `terraformProviderVersionRevoke`,
-   `terraformProviderVersionUploadDocs`, `terraformProviderVersionVerify`,
-   `providers`, `providersInSpace`. Records DV-053.
-2. GPG keys: `gpgKeys`, `gpgKeyCreate`, `gpgKeyUpdate`, `gpgKeyRevoke`.
-   Tests: `TestUnitVerifyProviderVersion`,
-   `TestUnitGPGKeyRejectsPrivateKey`.
-3. Provider protocol: `/registry/providers/v1/...` versions and download
-   metadata, public providers without credentials, and
-   `/registry/files/{token}` in `proxy` mode.
-4. Feature: `registry/providers.feature` (`terraform init` installs a
-   provider signed by a test key; revoking removes it).
+1. Providers in `internal/registry/internal/core/provider`: `type` is the
+   provider's ID, unique in the account and matching `^[a-z0-9]+$`, as the
+   console requires (report 15 says letters only; report 32 shows digits
+   too); a provider belongs to a space and starts private, and only
+   `terraformProviderSetVisibility` makes it public or private again.
+   Operations: `terraformProviders`, `terraformProvider`,
+   `terraformProviderCreate`, `terraformProviderUpdate`,
+   `terraformProviderDelete`, `terraformProviderSetVisibility`,
+   `providers`, `providersInSpace`. Gated by
+   `terraform-provider-registry`. Records DV-053.
+2. Versions with decision 0014's state machine and checksums:
+   `terraformProviderVersion`, `terraformProviderVersionCreate` (presigned
+   `SHA256SUMS` and `SHA256SUMS.sig` uploads bound to their declared
+   checksums), `terraformProviderVersionRegisterPlatformV2` (idempotent per
+   OS and architecture), `terraformProviderVersionPublish` (`409
+   invalid-state` while a file is missing or mismatched),
+   `terraformProviderVersionRevoke`, `terraformProviderVersionDelete`,
+   `terraformProviderVersionUpdate`, `terraformProviderVersionVerify`
+   (`verifiedAt` or `verificationFailure`, never a status change) and
+   `terraformProviderVersionUploadDocs` (decision 0014's path table while
+   C137 is open). Tests: `TestUnitVerifyProviderVersion`,
+   `TestUnitProviderVersionTransitions`, `TestUnitDocsClassification`.
+3. GPG keys, account-wide with no space, managed by account admins only:
+   `gpgKeys`, `gpgKeyCreate` (an armoured private key answers `422
+   validation-failed`; a key already registered answers `409
+   already-exists`), `gpgKeyUpdate` (description only), `gpgKeyRevoke`.
+   Test: `TestUnitGPGKeyRejectsPrivateKey`.
+4. Provider protocol in `internal/registry/internal/adapters/protocol`:
+   `providers.v1` in the discovery document,
+   `/registry/providers/v1/<namespace>/<type>/versions` and the download
+   metadata with `signing_keys`, public providers answered without
+   credentials (C135), and `/registry/files/{token}` in `proxy` mode,
+   described in `api/src/registry/`.
+5. Features: `registry/providers.feature` (`@terraform`, `@tofu`): a
+   provider built and signed with a test key in the scenario is created,
+   versioned, uploaded through `pkg/sdk`, published, installed by
+   `terraform init` and `tofu init` with an API key token, made public and
+   installed without one, revoked and refused afterwards; and
+   `registry/gpg_keys.feature`.
 
 **Exit criteria**
-- Terraform Providers and GPG Keys meet decision 0016's evidence rule.
+- Terraform Providers and GPG Keys meet decision 0016's evidence rule:
+  every operation of tasks 1 to 3 has a `@case:success`, a `@case:denial`
+  and a `@case:failure` scenario.
+- `terraform init` and `tofu init` install a published provider and refuse
+  a revoked version.
 - Captures C135 to C138 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -2525,7 +2635,8 @@ The Flows engine (P18c) adds its own consumer of the same fan-out.
    `dismissNotificationGroup`, `dismissAllNotifications`.
 5. Slack and Teams: `slackAppConfig`, `slackAppConfigSet`,
    `slackAppConfigDelete`, `slackAppManifest`, `slackIntegration`,
-   `slackOauthRedirect`, message editing per run with
+   `slackOauthRedirect`, `isGovSlackAvailable` (whether the
+   installation holds GovSlack app credentials, report 19), message editing per run with
    `last_state_version`; Slack chi fake. Slack channel access rules on
    managed user groups: `managedUserGroupIntegrations`,
    `managedUserGroupIntegration`, `managedUserGroupIntegrationCreate`,
@@ -2577,9 +2688,15 @@ own records, and the metrics and traces operators run infraweave with.
    `auditTrailWebhookSetHeaders`, `auditTrailWebhookDeleteHeaders`,
    `auditTrailRetentionDays`. Test: `TestUnitAuditActionsCoverMutations`.
    Feature: `events/audit.feature` (ordered shipping across a receiver that
-   fails three times).
+   fails three times; `includeRuns` adding run state changes, C182). The
+   console's audit webhook form takes an endpoint, a secret, enable, retry
+   on failure, include runs and headers, and its log tab is labelled 14
+   days against the docs' 30 (C279;
+   [32](../research/reference/32-spacelift-console-survey.md) section 9).
 2. Usage: `usage` and the usage CSV from a trailing 30-day window of run
-   records and P8's `worker_pool_samples`; `runMinutesUsage`; the
+   records and P8's `worker_pool_samples`, private workers only for the
+   worker aspect, run minutes split by private and public workers and
+   grouped by run type or state (C280); `runMinutesUsage`; the
    `worker_usage` event at 60% of the configured limit. The `Organization`
    tag's usage gains the same figures per account, so organization admins
    see run and worker usage across accounts without any account's data.
@@ -2593,7 +2710,8 @@ own records, and the metrics and traces operators run infraweave with.
    Feature: `platform/observability_metrics.feature`. Records DV-060, DV-061.
 4. Traces: OTLP export, sampling, spans for HTTP, pgx, object storage,
    jobs and policy evaluations; trace context carried into runs and the
-   launcher's phase spans. Feature: `platform/observability_tracing.feature`.
+   launcher's phase spans; `runTraceSpans` reads a run's spans. Feature:
+   `platform/observability_tracing.feature`.
    Records DV-063, DV-064.
 5. Run diagnostics from the run's traces: `runWorkerMetrics`, each
    state's, hook's, resource's and provider's duration against the
@@ -2606,7 +2724,7 @@ own records, and the metrics and traces operators run infraweave with.
 - One trace ID spans a run's API request, its job, the launcher's phases and
   the runner's environment.
 - `runWorkerMetrics` meets decision 0016's evidence rule.
-- Captures C180 to C184 replay once recorded.
+- Captures C180 to C184, C279 and C280 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P18c: Flows engine and API
@@ -2753,41 +2871,57 @@ the Go app SDK, and Deploy blocks act on runs, templates and blueprints.
 
 ## P19b: VCS agent pools and other source providers
 
-Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0013](../research/decisions/0013-secrets-at-rest.md).
+Decisions: [0012](../research/decisions/0012-vcs-integration-model.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0013](../research/decisions/0013-secrets-at-rest.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P12b.
 
-VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
-`BLOB`, `ORIGIN` and `INFRAWEAVE` source providers.
+VCS systems the internet cannot reach, through `infraweave vcs-agent`, and
+the `BLOB`, `ORIGIN` and `INFRAWEAVE` source providers. In Spacelift's
+console an agent pool has only a name and a description, no integration
+form names a pool, Origin is Cursor's Git platform, and Repos are Git
+repositories Spacelift hosts, an Enterprise feature
+([32](../research/reference/32-spacelift-console-survey.md) section 11).
 
 **Tasks**
-1. `internal/vcs/internal/adapters/agentgateway`: `vcs_agent_pools`,
-   connections and the `UNLOGGED` `vcs_agent_requests`, the long-poll
-   `POST /vcs-agent/v1/poll` and `/responses/{id}`, routing across replicas
-   on `infraweave_vcs_agent`, `private://` addressing. Operations:
-   `vcsAgentPools`, `vcsAgentPool`, `vcsAgentPoolCreate`,
-   `vcsAgentPoolUpdate`, `vcsAgentPoolDelete`, `vcsAgentPoolReset`.
+1. `internal/vcs/internal/adapters/agentgateway`: `vcs_agent_pools`
+   (name, description, a sealed pool credential shown once at creation and
+   at reset), connections and the `UNLOGGED` `vcs_agent_requests`, the
+   long-poll `POST /vcs-agent/v1/poll` and `/responses/{id}`, routing
+   across replicas on `infraweave_vcs_agent`, and decision 0012's
+   `private://<pool>` addressing in either host field of an integration,
+   which covers both answers to C77, since no form names a pool.
+   Operations: `vcsAgentPools`,
+   `vcsAgentPool`, `vcsAgentPoolCreate`, `vcsAgentPoolUpdate`,
+   `vcsAgentPoolDelete`, `vcsAgentPoolReset`, which ends the old
+   credential's connections at once (C12). Gated by `vcs-agent-pools`.
 2. `internal/kernel/vcsroutes`, each provider's API route table, which
    `vcs` and the agent share; `internal/agent/vcsagent` and
    `infraweave vcs-agent` with the allowlist compiled from it,
-   `--validation` and `--allowed-projects`. Test: `allowlist_test.go`.
-   Feature: `vcs/agent.feature`. Records DV-045, DV-046.
-3. `BLOB` provider: `blobStorageIntegrationCreate`,
+   `--validation` and `--allowed-projects` (C78). Test:
+   `allowlist_test.go`. Feature: `vcs/agent.feature` (`@vcs`): a
+   Bitbucket Data Center fake reachable only from the agent's network
+   serves a stack's source through the pool. Records DV-045, DV-046.
+3. `BLOB` provider, with `x-infraweave-basis: schema-only` since no
+   console surface shows it (C11): `blobStorageIntegrationCreate`,
    `blobStorageIntegration`, `blobStorageIntegrationUpdate`,
-   `blobStorageIntegrationDelete`, with `x-infraweave-basis: schema-only`.
-   `ORIGIN` provider from `vcs.origin`: `originIntegration`,
+   `blobStorageIntegrationDelete`. Feature: `vcs/blob.feature`. `ORIGIN`
+   provider from `vcs.origin`: `originIntegration`,
    `originIntegrationUpdate`, `originIntegrationDelete`,
-   `originIntegrationInstallURL`.
+   `originIntegrationInstallURL`, with a chi fake of Origin's API. Feature:
+   `vcs/origin.feature`.
 4. The Repos tag, the `INFRAWEAVE` source provider (the reference's
-   `SPACELIFT`), stored in object storage:
-   `repos`, `repo`, `repoCreate`, `repoUpdate`, `repoDelete`, `repoCommit`,
-   `repoCommitCreate`, `repoCommits`, `searchRepoCommits`,
+   `SPACELIFT`), stored in object storage under decision 0005's classes:
+   `repos`, `repo`, `repoCreate`, `repoUpdate`, `repoDelete`,
+   `repoCommit`, `repoCommitCreate`, `repoCommits`, `searchRepoCommits`,
    `searchRepoCommitsSuggestions`, `repoFileHistory`, `searchRepoFiles`,
-   `searchRepoFilesSuggestions`, `searchRepos`, `searchReposSuggestions`.
+   `searchRepoFilesSuggestions`, `searchRepos`, `searchReposSuggestions`;
+   a stack on a repo runs from its commit like any other source. Gated by
+   `repos`, whose tier C287 settles. Feature: `vcs/repos.feature`.
 
 **Exit criteria**
 - VCS Agent Pools, Blob Storage, Origin Integration and Repos meet decision
-  0016's evidence rule.
+  0016's evidence rule: every operation of tasks 1, 3 and 4 has a
+  `@case:success`, a `@case:denial` and a `@case:failure` scenario.
 - A request outside the allowlist is refused on every provider, Azure DevOps
   included.
 - Captures C11, C12, C77 and C78 replay once recorded.
@@ -2795,72 +2929,176 @@ VCS systems the internet cannot reach, through `infraweave vcs-agent`, and the
 
 ## P20: Other vendors
 
-Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0004](../research/decisions/0004-repository-architecture.md), [0010](../research/decisions/0010-state-backend.md).
+Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0009](../research/decisions/0009-policy-engine-opa.md), [0010](../research/decisions/0010-state-backend.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0024](../research/decisions/0024-expression-language.md), [0004](../research/decisions/0004-repository-architecture.md).
 
 **Depends on:** P11.
 
-Pulumi, CloudFormation and Kubernetes, each an `iac` package and an agent
-command set behind the same contract, and the rest of Terragrunt, whose
-runs and units P11 delivers.
+Pulumi, CloudFormation and Kubernetes, each an `iac` package with built-in
+command templates and a runner step behind one contract, the rest of
+Terragrunt, whose runs and units P11 delivers, and sanitization for every
+vendor. The decisions were written for the Terraform family, so the first
+task writes each new vendor's contract into them before any vendor's code.
 
 **Tasks**
-1. Terragrunt beyond P11's minimum: smart sanitization,
-   `MANUALLY_PROVISIONED`, `skipReplan` and `skipReplanWhenRunAll`,
-   `prefixResourceNamesWithModuleName`, explicit stacks,
-   `terragruntVersions` and `terragruntEffectiveVersion`, and a Terragrunt
-   run's changes view, outputs and plan policy input.
-2. `internal/iac/pulumi` and the agent command set, following option 5's
-   walkthrough. Feature: `vendors/pulumi.feature`.
-3. `internal/iac/cloudformation` (CDK, SAM, Serverless) and
-   `internal/iac/kubernetes` (Helm, Kustomize, `kubectlVersions`). Features:
-   `vendors/cloudformation.feature`, `vendors/kubernetes.feature`
-   (`@kubernetes`).
-4. Every vendor passes `iactest`; runner images for each in
-   `deploy/images/`; plan sanitization per vendor. Each vendor is an option
-   on its `vendorConfig` member: `vendor-pulumi`, `vendor-cloudformation`
-   and `vendor-kubernetes`, beside P11's `vendor-terragrunt`.
+1. Rewrite the decisions in place where P20 and the decisions or main
+   disagree, before code:
+   - 0008: a section on each vendor's runs (commands per phase, the plan
+     document, outputs); the default runner image per vendor when neither
+     the runtime configuration, the stack nor the account names one, since
+     main answers the Terraform runner image for every vendor, OpenTofu
+     included, while Spacelift's blank default is the vendor's own image
+     ([32](../research/reference/32-spacelift-console-survey.md) section 4);
+     which tools the launcher downloads and how kubectl is verified; and
+     whether Pulumi has a runner image of its own, since "runner images
+     for each" contradicts 0008's three images and report 20 section 11;
+   - 0009: the sanitization contract, applied on the worker before upload
+     for every vendor, with its modes (`useSmartSanitization`, the label
+     `feature:disable_resource_sanitization`) and what each vendor's plan
+     document hashes, and the shape of each vendor's block in the plan
+     policy input, which P13 evaluates;
+   - 0010: state for the vendors that keep their own (Pulumi's backend,
+     CloudFormation in AWS, Kubernetes in the cluster), what `manageState`
+     reads for them, and Terragrunt's explicit stacks, which 0010 fails at
+     `INITIALIZING` today;
+   - 0016: tags and partitions for Pulumi, an AWS fake (moto) and the
+     vendor use of `@kubernetes`, which 0016 describes for workers only, in
+     an `accept-runs` partition already near its timeout; k3s pinned by
+     digest;
+   - 0024: the Kubernetes workflow keys, so `kubernetesWorkflowTool: CUSTOM`
+     has commands to read, and each vendor's built-in templates;
+   - the deviation records for each departure (CloudFormation's destroy on
+     delete, `runChangesV3` answered for every vendor, a
+     `MANUALLY_PROVISIONED` Terragrunt stack, `terragruntEffectiveVersion`
+     without Gruntwork's table, a Pulumi default image) and the rename
+     records for Spacelift's Kubernetes labels. C193 is split so P20 awaits
+     its CloudFormation and Pulumi parts and P20b its Ansible part.
+2. The vendor contract on main: `iactest`'s plan cases become each
+   vendor's own (empty, malformed, another format), with the size bound for
+   any document; `Vendor.ReadOutputs`; the runner reads plans and outputs
+   through the stack's vendor, not through `plan.Parse` directly.
+   `internal/iac/sanitize` holds decision 0009's hash (DV-031), added here
+   or by P13, whichever lands first, the run
+   specification carries the sanitization mode, and the runner sanitizes
+   every vendor's plan document before upload, Terraform and OpenTofu
+   included. P13's `sanitized()` built-in imports the same package.
+   Built-in command templates live in `internal/iac/workflow` beside
+   Terraform's and each vendor's phase map in `internal/agent/vendors`, so
+   every command renders through one quoting path (0024).
+3. Terragrunt beyond P11: `useRunAll: false` runs one unit in the project
+   root, while P11 runs `run --all` whatever the setting and its features
+   set `useRunAll: true` where they need units; `skipReplan` and its
+   deprecated alias `skipReplanWhenRunAll`; `useSmartSanitization`;
+   `prefixResourceNamesWithModuleName`; `MANUALLY_PROVISIONED`; explicit
+   stacks under run-all; and each unit's changes, outputs and plan
+   document. Operations: `terragruntVersions` and
+   `terragruntEffectiveVersion`, from the `vendors` domain's release
+   catalogue. Feature: `vendors/terragrunt.feature`
+   (`@terragrunt`), where C185, C188 and C189 are awaited.
+4. `internal/iac/pulumi`: `loginURL` and `stackName`, login and stack
+   selection placed against `before_init` (C190), preview, up and destroy
+   (C193), structured steps for the changes view and the policy input, and
+   outputs, a secret output keeping no value. Gated by `vendor-pulumi`.
+   Feature: `vendors/pulumi.feature` (`@pulumi`: a program with no provider
+   plugins and a file backend, so the scenario needs no network).
+5. `internal/iac/cloudformation` and a runner driver over the AWS SDK:
+   nested templates packaged to `templateBucket` under the run's ID, a
+   change set named for the run so that `APPLYING` executes exactly what
+   was confirmed, stack events streamed into the log, and outputs read from
+   the stack. CDK, SAM and Serverless are hook recipes, as report 20
+   section 8 describes, not images. Gated by `vendor-cloudformation`.
+   Feature: `vendors/cloudformation.feature` (moto's CloudFormation and
+   S3, plain and nested templates).
+6. `internal/iac/kubernetes`: `namespace` (C32), `kubectlVersion` resolved
+   at each handover, `kubernetesWorkflowTool` `KUBECTL` and `CUSTOM`, a
+   server-side dry run with pruning by label to plan, rollout status after
+   apply, delete by label to destroy, a Secret's values always hashed in
+   the plan document, Kustomize native and Helm through a `helm template`
+   hook. Operation: `kubectlVersions`, from the `vendors` catalogue. Gated by `vendor-kubernetes`.
+   Feature: `vendors/kubernetes.feature` (`@kubernetes`, k3s).
+7. Feature: `vendors/sanitization.feature`, where C192 is awaited: the
+   default and smart modes on Terraform, OpenTofu and Terragrunt plans, the
+   opt-out label, and each new vendor's rule.
 
 **Exit criteria**
 - Pulumi, CloudFormation and Kubernetes each run a tracked run to
-  `FINISHED` in acceptance, and `vendors/terragrunt.feature` covers
-  Terragrunt's P20 settings.
-- Captures C185, C188, C189, C190, C192 and C193 replay once recorded.
+  `FINISHED` in acceptance, and a proposed run, a task and a destroy run;
+  every vendor passes `iactest`.
+- `terragruntVersions`, `terragruntEffectiveVersion` and `kubectlVersions`
+  meet decision 0016's evidence rule, each with a `@case:success`, a
+  `@case:denial` and a `@case:failure` scenario, and
+  `vendors/terragrunt.feature` covers every setting of task 3.
+- No vendor's plan document reaches the object store unsanitized: a
+  scenario per vendor finds no sensitive value in the uploaded plan.
+- Captures C32, C185, C188, C189, C190 and C192, and C193's CloudFormation
+  and Pulumi parts, replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P20b: Ansible, OpenTofu migration and plugins
 
-Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md).
+Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0009](../research/decisions/0009-policy-engine-opa.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0024](../research/decisions/0024-expression-language.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P20.
 
-Ansible with its inventory views, the OpenTofu migration tooling, and plugins
-that run inside runs.
+Ansible with its inventory views, the OpenTofu migration tooling, and
+plugins: parameterised bundles of phase hooks, attached by label, that
+report into the run and, for scanners, into the plan policy input. In
+Spacelift's console the plugin catalogue is where scanning lives: thirteen
+templates, of which Checkov, Terrascan, Trivy, Trufflehog and Wiz scan
+([32](../research/reference/32-spacelift-console-survey.md) section 12).
 
 **Tasks**
-1. `internal/iac/ansible` and its agent command set, the option
-   `vendor-ansible`; inventory records.
-   Operations: `ansibleHosts`, `ansibleHost`,
+1. `internal/iac/ansible`, its built-in command templates in
+   `internal/iac/workflow` and its phase map, the option `vendor-ansible`,
+   the runner image of P20's decision and the launcher's
+   `default_ansible_runner_image`; inventory records from each run's task
+   results. Operations: `ansibleHosts`, `ansibleHost`,
    `ansibleHostSearchAnsibleTaskExecutions`,
    `ansibleHostSearchAnsibleTaskExecutionsSuggestions`,
    `searchAnsibleHosts`, `searchAnsibleHostsSuggestions`, `ansibleTasks`,
    `searchAnsibleTasks`, `searchAnsibleTasksSuggestions`,
-   `hasAnsibleStacks`.
+   `hasAnsibleStacks`. Feature: `vendors/ansible.feature` (`@docker`), where
+   C193's Ansible part and C199 are awaited.
 2. OpenTofu migration: `openTofuFeatures`, `openTofuMigrateSearch`,
    `openTofuMigrateSuggestions`, `openTofuMigrationCounts`,
    `openTofuMigrationQueueSearch`, `openTofuMigrationQueueSearchSuggestions`,
    `openTofuMigrate`, `openTofuMigrationQueueClean`, `stackMigrateVendor`,
-   `stackMigrateVendorAll`.
-3. Plugins with templates from `spacelift-io/plugins` at a pinned commit
-   plus `plugins.catalog_paths`: `pluginTemplates`, `pluginTemplate`,
+   `stackMigrateVendorAll`; a stack moves only between Terraform and
+   OpenTofu at a version each supports, with its state untouched. Feature:
+   `vendors/opentofu_migration.feature` (`@terraform`, `@tofu`), where C186
+   and C187 are awaited.
+3. `internal/plugins` (flat domain), added through the
+   [domain wiring](#adding-a-domain) after `runs` in `domains.go` and the
+   migration order, with edges to `features`, `access`, `configuration`
+   and `runs`, and to `policies` if P13 has landed (P13 adds it
+   otherwise); repo-layout gains it: the global catalogue from `spacelift-io/plugins` at a
+   pinned commit, every one of its thirteen templates included (C256
+   resolved), plus `plugins.catalog_paths`; account templates;
+   installations with parameters substituted at install (C254), sensitive
+   parameters sealed (0013), and managed contexts and policies labelled for
+   auto-attachment (C255). Operations: `pluginTemplates`, `pluginTemplate`,
    `pluginTemplateCreate`, `pluginTemplateDelete`, `plugins`, `plugin`,
    `pluginInstall`, `pluginUpdate`, `pluginDelete`,
-   `runPluginLogsDownloadURL`. Records DV-081.
-4. Features: `vendors/ansible.feature`, `vendors/opentofu_migration.feature`,
-   `vendors/plugins.feature`.
+   `runPluginLogsDownloadURL`. Gated by `plugins`. Records DV-081.
+4. Plugin output in runs: each plugin's Markdown report uploaded with the
+   run and served by `runPluginLogsDownloadURL`, and its structured result
+   placed in the plan policy input under
+   `third_party_metadata.custom.<plugin>` (C191 for Infracost), which P13's
+   plan policies read. Who may manage plugins follows C253; until it is
+   settled, plugins and templates need space admin, as the console's role
+   catalogue offers no plugin action (report 32 section 7).
+5. Features: `vendors/plugins.feature` (`@docker`, `@terraform`): a scanner
+   plugin installed by label runs after planning, its report is
+   downloadable, and a plan policy denies on its result; an account
+   template is created, installed, updated and deleted.
 
 **Exit criteria**
-- Ansible, OpenTofu Migration and Plugins meet decision 0016's evidence rule.
-- Captures C186, C187, C191, C199 and C252 to C256 replay once recorded.
+- Ansible, OpenTofu Migration and Plugins meet decision 0016's evidence
+  rule: every operation of tasks 1 to 3 has a `@case:success`, a
+  `@case:denial` and a `@case:failure` scenario.
+- A plan policy reads a plugin's result from the policy input in
+  acceptance.
+- Captures C186, C187, C191, C193's Ansible part, C199 and C252 to C255
+  replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P21: Blueprints, templates and external integrations
@@ -2897,7 +3135,10 @@ ServiceNow and Backstage integrations that attach to them.
    `templateTemplateVersion`, `templateTemplateVersionByNumber`,
    `templateSearchTemplateVersions`,
    `templateSearchTemplateVersionsSuggestions`, `searchTemplates`,
-   `searchTemplatesSuggestions`.
+   `searchTemplatesSuggestions`. A template is created with its first
+   version's identifier and optional Markdown deployment instructions, as
+   Spacelift's console asks for both
+   ([32](../research/reference/32-spacelift-console-survey.md) section 10).
 4. Deployments that create stacks with dependencies:
    `templateDeploymentCreate`, `templateDeployment`,
    `templateDeploymentUpdate`, `templateDeploymentDelete`,
@@ -2947,7 +3188,12 @@ capability gates.
    entities holding their stacks and runs through those domains' `api/`
    ([declared graph](repo-layout.md#declared-graph)).
 3. `metrics` and `metricsRange` (Spaces tag) for the console's overview,
-   answering `AccountMetrics` (the reference's `SpaceliftMetrics`). Every
+   answering `AccountMetrics` (the reference's `SpaceliftMetrics`): the
+   figures Spacelift's metrics and DORA tabs show (drift detection
+   coverage, stack failures, deployments, managed resources, median run
+   duration, lead time, time to recovery, deployment frequency and change
+   failure rate), whose source operations C281 records
+   ([32](../research/reference/32-spacelift-console-survey.md) section 15). Every
    Search Suggestions operation lands with the search it completes, in
    that search's phase.
 4. Saved filters and UI state: `savedFilters`, `savedFilter`,
@@ -2955,41 +3201,74 @@ capability gates.
    `uiConfigGet`, `uiConfigStore`.
 5. Forms and user guides: `genericFormsList`, `completeGenericForm`,
    `isGenericFormCompleted`, and the 20 User Guide operations from a guide
-   catalogue the operator can extend.
+   catalogue the operator can extend, which back the console's learning
+   tracks and certificates (Spacelift's LaunchPad).
 6. Features: `resources/view.feature`, `api/search_generic.feature`,
    `console/support.feature`.
 
 **Exit criteria**
 - Resources, Saved Filters, UI State, Forms and User Guide meet decision
   0016's evidence rule.
-- Captures C196 to C211 replay once recorded.
+- Captures C196 to C211 and C281 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P22b: Scans
 
-Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0008](../research/decisions/0008-run-execution-and-worker-protocol.md).
+Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P22, P14.
 
-Scans built to the schema's shape: scan configurations and scan runs on
-discovery-type workers, recording discovered resources against managed
-entities.
+The Scans tag built to the schema's shape: scan configurations, scan runs
+on discovery-type pools, coverage and ignored resources, recorded against
+P22's managed entities. Spacelift's console has no scan page, filter or
+setting and lists unmanaged resources as coming soon
+([32](../research/reference/32-spacelift-console-survey.md) section 12), so
+every operation here carries `x-infraweave-basis: schema-only` and its
+scenarios assert infraweave's recorded choice. The scanners users run
+today are plugins (P20b) whose results plan policies read (P13).
 
 **Tasks**
-1. `internal/resources/internal/scans`: scan configurations and runs with
-   `x-infraweave-basis: schema-only`. Operations: `scanCreate`, `scan`,
-   `scanUpdate`, `scanDelete`, `searchScans`, `searchScansSuggestions`,
-   `scanRunTrigger`, `scanRun`, `scanRunCancel`, `scanRunStop`,
-   `scanSearchRuns`, `scanSearchRunsSuggestions`, `scanRunSearchFailures`,
+1. `internal/resources/internal/scans`: scan configurations in `scans`
+   (`account_id`, `id`, `space_id`, `name`, `description`, `labels`,
+   `worker_pool_id`, `provider_configs`), each provider configuration
+   checked against the JSON Schema that `scanProviderSchemas` answers, and
+   an AWS configuration naming an AWS integration, held through
+   `cloudapi`. Operations: `scanCreate`, `scan`, `scanUpdate`,
+   `scanDelete`, `searchScans`, `searchScansSuggestions`,
+   `scanProviderSchemas`. Gated by `scans`.
+2. `awsIntegrationExternalIdForScan`, served by `cloud`: the external ID a
+   scan presents when it assumes the integration's role. Its format is a
+   row this phase adds to decision 0006's external ID table before the
+   operation is served, since a role's trust policy pins it.
+3. Discovery-type pools: whatever makes a pool discovery-type is recorded
+   in decision 0008 before scan runs are served, because the console's
+   pool form offers no such type (C194); a scan naming another pool
+   answers `422 validation-failed`. As a job, a scan run reaches its pool
+   through `runsapi`, so workers claim it on the same path as every other
+   job and the launcher executes it
+   ([declared graph](repo-layout.md#declared-graph)).
+4. Scan runs and results: `scanRunTrigger`, `scanRun`, `scanRunCancel`,
+   `scanRunStop`, `scanLatestRun`, `scanSearchRuns`,
+   `scanSearchRunsSuggestions`, `scanRunSearchFailures`,
    `scanRunSearchFailuresSuggestions`, `scanRunSearchResources`,
-   `scanRunSearchResourcesSuggestions`, `scanProviderSchemas`.
-2. Discovery-type pools; a scan run reaches its pool through `runsapi`,
-   so workers claim it on the same path as every other job and the
-   launcher executes it ([declared graph](repo-layout.md#declared-graph)).
-3. Feature: `resources/scans.feature`.
+   `scanRunSearchResourcesSuggestions`; a discovered resource that matches
+   a managed entity by provider, type and identity is linked to it, and
+   one that matches none counts as unmanaged. Scan resources are kept for
+   `resources.scans.retention` (C195).
+5. Coverage and ignored resources: `scanCoverage`, `scanCoverageGenerate`,
+   `scanResourcesIgnore`, `scanResourcesUnignore`,
+   `scanSearchIgnoredResources`, `scanSearchIgnoredResourcesSuggestions`;
+   an ignored resource leaves the unmanaged count and stays listed as
+   ignored.
+6. Feature: `resources/scans.feature` (`@postgres`, `@docker`), a scan run
+   on a discovery pool that records one managed and one unmanaged
+   resource, coverage before and after ignoring the unmanaged one, and a
+   scan refused on an ordinary pool.
 
 **Exit criteria**
-- Scans meets decision 0016's evidence rule.
+- Scans meets decision 0016's evidence rule: every operation of tasks 1, 2,
+  4 and 5 has a `@case:success`, a `@case:denial` and a `@case:failure`
+  scenario, and each carries `x-infraweave-basis: schema-only`.
 - Captures C194 and C195 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -3002,7 +3281,11 @@ Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [000
 Authentication at the organization: its identity providers, provisioning
 through SCIM, enforced multi-factor authentication with security keys and
 the session lifetime, with explicit linking of one person's identities.
-Each account still authorizes for itself (P13b).
+Each account still authorizes for itself (P13b). Spacelift's console offers
+MFA only once SSO is set up, creates the SCIM client in one click with its
+secret shown once, warns that turning SSO on replaces the existing users
+and group mappings, and shows web sessions ending 10 hours after sign-in
+([32](../research/reference/32-spacelift-console-survey.md) section 6).
 
 **Tasks**
 1. `internal/access/internal/adapters/{oidc,saml}` and
@@ -3015,6 +3298,10 @@ Each account still authorizes for itself (P13b).
    `oidcCreate`, `oidcUpdate`, `oidcDelete`, `oidcSubjectTemplate`,
    `samlSettings`, `samlCreate`, `samlUpdate`, `samlDelete`, `hasSSO`,
    `identityFederationUnlink`, `oauthRedirect`, `oauthToken`, `oauthUser`.
+   SAML takes the NameID formats transient (the default), e-mail address
+   and persistent, static metadata XML or a metadata URL (C283), and claim
+   mappings; OIDC requires the `openid` and `email` scopes and requests
+   `profile` and `groups`.
    Feature: `auth/sso.feature` (`@oidc`, and a SAML IdP served by the
    test). Records DV-110.
 2. IdP groups at login map onto each account's managed user groups (P3b),
@@ -3029,14 +3316,17 @@ Each account still authorizes for itself (P13b).
 4. `internal/access/internal/core/scim`: SCIM v2 users and groups, which
    provision the organization's members, with filters, `PATCH` and
    reconciliation; `scimSettings`,
-   `createOauthClientForSCIM`, `resetOauthClientForSCIM`,
-   `deleteOauthClientForSCIM`; deactivation revokes sessions and personal
-   keys. Feature: `auth/scim.feature`.
+   `createOauthClientForSCIM` (no input; it answers the client ID and the
+   secret once), `resetOauthClientForSCIM`, `deleteOauthClientForSCIM`,
+   with tokens from the client-credentials grant; deactivation revokes
+   sessions and personal keys. Feature: `auth/scim.feature`.
 5. `internal/access/internal/core/mfa`: WebAuthn registration and login,
    `enforceMFA`, `accountToggleEnforcingMFA`, `securityKeys`,
    `securityKeyDelete`, `userSecurityKeyDeleteAll`. MFA enforcement and the
    session lifetime are the organization's and apply in every one of its
-   accounts. Feature: `auth/mfa.feature`.
+   accounts; enforcing MFA needs an OIDC or SAML identity provider in the
+   organization and answers `422 validation-failed` without one (decision
+   0006, C282). Feature: `auth/mfa.feature`.
 
 **Exit criteria**
 - SSO, and the Auth and Sessions and Security Keys operations above, meet
@@ -3047,12 +3337,12 @@ Each account still authorizes for itself (P13b).
 - One sign-in through an organization identity provider reaches every
   account whose login policies admit the member, and none other; two
   unlinked identities hold two seats, and linked ones hold one.
-- Captures C14, C118, C119, C120 and C121 replay once recorded.
+- Captures C14, C118, C120, C121, C282 and C283 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P24: infraweave Terraform provider
 
-Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0018](../research/decisions/0018-flows-runtime.md).
+Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0018](../research/decisions/0018-flows-runtime.md), [0006](../research/decisions/0006-authentication-and-tokens.md).
 
 **Depends on:** P3 to P23, Flows (P18c and P18d) included, and P25, for the
 operations each resource calls.
@@ -3064,12 +3354,15 @@ own acceptance configurations by behaviour. Its source lives in
 checks run is an [open item](#open-items).
 
 **Tasks**
-1. The provider over `pkg/sdk`, imported at a pinned version of this
-   module, with the Terraform plugin framework and protocol 6: every
-   resource and data source record of
+1. The provider over `pkg/sdk`, imported at the latest release of this
+   module and moved by Dependabot, with the Terraform plugin framework and
+   protocol 6: every resource and data source record of
    [capabilities.json](../data/capabilities.json) that is not superseded,
-   named with the `infraweave_` prefix, with import IDs from report 05, and the Flows resources as
-   `infraweave_flows_<name>`. Records DV-002.
+   named with the `infraweave_` prefix, with import IDs from report 05, and
+   the Flows resources as `infraweave_flows_<name>`. Provider
+   configuration: the API endpoint, an API key or a ready token, and
+   exchange before `validUntil` (decision 0006), with the same environment
+   variables as `infraweavectl`. Records DV-002.
 2. `specref provider-parity`: compare `terraform providers schema -json`
    with `api/reference/spacelift/terraform-schema.json`;
    `api/reference/provider-parity.yaml` records each rename, type change and
@@ -3078,10 +3371,17 @@ checks run is an [open item](#open-items).
    Spacelift provider's acceptance configurations, attributed in `NOTICE`.
    `TestAccProvider` builds the provider into a filesystem mirror and runs
    `apply`, `plan -detailed-exitcode`, `import`, `plan` and `destroy`
-   against `infraweave all`, with `@op:` tags naming the operations each
-   resource calls.
-4. A scenario for each behaviour of report 05 section 6 worth copying
-   (eventual consistency, trust relationship retries, write-only values).
+   against `infraweave all` with the latest Terraform and OpenTofu
+   releases, with `@provider:<record id>` and `@op:` tags naming the
+   operations each resource calls, and a scenario per resource where a
+   role without the resource's action gets the provider's `403`
+   diagnostic.
+4. A scenario for each behaviour of report 05 section 6 worth copying:
+   eventual consistency after create, trust relationship retries on AWS
+   and Azure integrations, write-only values (environment variables,
+   secrets) never read back, and the provider's AWS duration default of
+   900 seconds against the console's one hour (C82;
+   [32](../research/reference/32-spacelift-console-survey.md) section 5).
 5. The provider's half of `flows/clients.feature`: apply, an empty plan
    and import of a flow, held to the `terraform-provider-flows` operations
    that the Flows reference, `api/reference/spacelift-flows/`, maps.
@@ -3089,42 +3389,76 @@ checks run is an [open item](#open-items).
 **Exit criteria**
 - Schema parity passes with every difference recorded.
 - Every resource and data source not superseded is `implemented` in report
-  26's terms: its operations are, and its provider scenario passes.
-- Capture C18 replays once recorded.
+  26's terms: its operations are, and its provider scenario passes, with a
+  success, a `403` denial and a failure case.
+- Captures C18 and C82 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P24b: infraweavectl
 
-Decisions: [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0004](../research/decisions/0004-repository-architecture.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0018](../research/decisions/0018-flows-runtime.md).
+Decisions: [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](../research/decisions/0021-capability-scope-and-supersession.md), [0004](../research/decisions/0004-repository-architecture.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0018](../research/decisions/0018-flows-runtime.md), [0019](../research/decisions/0019-ai-provider-boundary.md).
 
 **Depends on:** P24, P25.
 
-`infraweavectl`, infraweave's own CLI, completes over `pkg/sdk`: the
-commands of report 06 section 8, the `flows` group, strict profiles and
-browser login.
+`infraweavectl`, infraweave's own CLI, completes over `pkg/sdk`: every
+capability row of report 06 section 8, the `flows` group, strict profiles,
+browser login and the stdio MCP proxy. Spacelift's console leaves version
+publishing, state download and usage export to the API and its clients
+([32](../research/reference/32-spacelift-console-survey.md) sections 8 and
+9), so the CLI is where those flows are proven end to end.
 
 **Tasks**
 1. `cmd/infraweavectl`, started in P3b, with cobra and viper over
-   `pkg/sdk`; profiles in `$XDG_CONFIG_HOME/infraweave/config.yaml`,
-   refusing two credential methods without
-   `INFRAWEAVE_API_PREFERRED_METHOD`. Records DV-083.
-2. Login: API key, token and the loopback browser flow with
-   `cliConfirmationToken`; the `INFRAWEAVECTL` session channel.
-3. The command tree of decision 0001: `stack`, `module`, `policy`,
-   `provider`, `workerpool`, `blueprint`, `template`, `audit-trail`,
-   `run-external-dependency`, `ai`, `profile`, `registry`, `whoami`,
-   `version` and `api`, with the subcommands report 06 section 8 lists;
-   run log tailing over the run log stream. The `flows` group mirrors
-   `flowctl`, publishing an app version from an image reference and
-   exporting a flow; its half of `flows/clients.feature`.
-4. `infraweavectl mcp`: stdio proxied to `/mcp` with the CLI's credentials
+   `pkg/sdk`: profiles in `$XDG_CONFIG_HOME/infraweave/config.yaml`, mode
+   `0600`, decoded with `UnmarshalExact`, with flag over environment over
+   file; a current profile with a per-process override; two credential
+   methods at once refused unless `INFRAWEAVE_API_PREFERRED_METHOD` picks
+   one. Records DV-083.
+2. Credentials: a ready token, an API key exchanged at `POST /auth/token`
+   and exchanged again before `validUntil`, an OIDC API key minted from the
+   CI provider's token, and the loopback browser login with
+   `cliConfirmationToken`, whose loopback redirect needs no
+   `oauthRedirectAllowedHosts` entry (decision 0006); sessions on the
+   `INFRAWEAVECTL` channel (C22). `profile export-token` and `registry
+   credentials` write `TF_TOKEN_<host>` and `.terraformrc` entries.
+3. Transport and errors: a custom CA bundle, client certificates, the
+   client identification header, the server's version read once to hide
+   commands it cannot serve, exit codes that tell "not signed in" (`401`)
+   from "not allowed" (`403`) and "not found" (`404`), and a problem
+   body's `detail` printed on every refusal.
+4. The command tree of decision 0001, each command naming the operations
+   it calls in its help: `stack` (runs, tasks, local preview through
+   `uploadLocalWorkspace` and `runProposeLocalWorkspace`, lock, enable, sync, outputs, dependencies,
+   `environment`, `state pull` through `stateDownloadUrl`), `module`
+   (versions, local preview, test runs), `provider` (the GoReleaser
+   publishing sequence through `terraformProviderVersionCreate`,
+   `terraformProviderVersionRegisterPlatformV2`,
+   `terraformProviderVersionPublish`, then revoke, delete, verify and
+   upload docs; `gpg-key`), `policy` (samples, evaluation records,
+   `policySimulatev2`), `workerpool` (watch, workers, drain with wait,
+   undrain, cycle), `blueprint`, `template` (deploy), `audit-trail`,
+   `run-external-dependency`, `ai`, `profile` (including `usage-csv` over
+   `usage` with since, until, aspect and grouping; C23), `registry`,
+   `whoami`, `version` and `api` (an arbitrary request and the served
+   OpenAPI document). Run logs stream over the run log stream of P18, with
+   polling when it closes.
+5. The `flows` group mirrors `flowctl`: publishing an app version from an
+   image reference and exporting a flow; its half of
+   `flows/clients.feature`.
+6. `infraweavectl mcp`: stdio proxied to `/mcp` with the CLI's credentials
    and no tools of its own ([0019](../research/decisions/0019-ai-provider-boundary.md)); its scenario joins
    `ai/mcp_server.feature`.
-5. `test/acceptance/features/cli/<area>.feature`, one per row, driving the
-   built binary with `@op:` tags.
+7. `test/acceptance/features/cli/<area>.feature`, one per row of report 06
+   section 8, driving the built binary with `@op:` tags for every operation
+   a command calls, and `@case:success`, `@case:denial` and `@case:failure`
+   scenarios per command group.
 
 **Exit criteria**
-- Every row of report 06 section 8 has a passing `cli/<area>.feature`.
+- Every row of report 06 section 8 has a passing `cli/<area>.feature`
+  with a success, a `403` denial and a failure scenario.
+- A provider version published through `infraweavectl provider` installs
+  with `terraform init`, and `infraweavectl stack state pull` reads the
+  state a run wrote.
 - `make build` cross-compiles `cmd/infraweavectl` for every platform.
 - Captures C22 and C23 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
@@ -3165,7 +3499,15 @@ of its own.
    consent page of P3b's authorization server; live run logs and run state
    over the streams of P18, with polling when a stream closes; the Flows canvas and
    app widgets; Rego, CEL and text template editors backed by the
-   expression and policy check endpoints; the Infra Assistant panel with
+   expression and policy check endpoints; the patterns Spacelift's console
+   uses ([32](../research/reference/32-spacelift-console-survey.md)
+   sections 2 and 15): create drawers and step wizards, list pages with
+   saved views, a filter builder over each search operation's fields and
+   the sort in the URL, a command palette of create actions, navigation and
+   searches, dashboards over `metrics` and `metricsRange`, an account-wide
+   runs explorer, login policies beside the management strategy rather
+   than among the policies, and a stack wizard step that binds roles to the
+   stack (C286); the Infra Assistant panel with
    page context, navigation and confirmation of destructive calls; English
    messages from a catalogue; WCAG 2.2 level AA. Records DV-108.
 4. Quality gate: the blocking `console` job (`tsc --strict`, ESLint with
@@ -3205,8 +3547,12 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
    `aiIntegrationUpdate`, `aiIntegrationDelete`, `aiIntegrationToggle`,
    `availableAIProviders`, `availableAIModels`. Tests:
    `TestUnitAIProviderConformance`, `TestUnitAIRedaction`,
-   `TestUnitAIBudget`. The installation default reports
-   `isInstallationProvided`, and its spend counts against the `ai-budget`
+   `TestUnitAIBudget`. An integration takes a provider, an API key, an
+   optional base URL for a gateway and a space. The installation default
+   reports `isInstallationProvided` and is listed, disabled, before any
+   integration exists, as Spacelift lists its own Bedrock integration
+   (C284; [32](../research/reference/32-spacelift-console-survey.md)
+   section 13), and its spend counts against the `ai-budget`
    limit (USD per 30 days), pooled across the organization's accounts,
    answering `403 limit-reached` beyond it.
    Feature: `ai/integrations.feature` (`@ai`). Records DV-071.
@@ -3241,7 +3587,8 @@ budget, Infra Assistant and run summaries, and the hosted `/mcp` server.
 **Exit criteria**
 - AI Integrations and the AI settings of Account Settings meet decision
   0016's evidence rule.
-- Captures C212, C213, C215, C216, C217 and C225 replay once recorded.
+- Captures C212, C213, C215, C216, C217, C225 and C284 replay once
+  recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P25b: Intent
@@ -3266,7 +3613,10 @@ policies, locks, review and export to a stack.
    `workerPoolSearchIntentProjectsSuggestions`,
    `awsIntegrationIntentProjectAttach`,
    `awsIntegrationIntentProjectDetach`, `policyIntentProjectAttach`,
-   `policyIntentProjectDetach`.
+   `policyIntentProjectDetach`. A project takes a name, description,
+   space, worker pool (the public worker pool when none is named), an
+   optional runner image and labels, as Spacelift's console asks
+   ([32](../research/reference/32-spacelift-console-survey.md) section 13).
 2. Resources and operations with `INTENT` policies and review:
    `intentModuleResources`, `intentPolicyInputSchema`,
    `intentResourceDependencyAdd`, `intentResourceDependencyRemove`,
@@ -3297,41 +3647,58 @@ policies, locks, review and export to a stack.
 
 ## P27: Reference deployments and packaging
 
-Decisions: [0020](../research/decisions/0020-reference-deployments-and-packaging.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0017](../research/decisions/0017-observability-and-health.md), [0004](../research/decisions/0004-repository-architecture.md).
+Decisions: [0020](../research/decisions/0020-reference-deployments-and-packaging.md), [0005](../research/decisions/0005-persistence-postgresql.md), [0017](../research/decisions/0017-observability-and-health.md), [0004](../research/decisions/0004-repository-architecture.md), [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
 **Depends on:** P24c, P25b, P18b.
 
-The release artefacts, the reference deployments and the upgrade and recovery
-rules that make infraweave installable and upgradable.
+The release artefacts, the reference deployments and the upgrade and
+recovery rules that make infraweave installable and upgradable, as
+decision 0020 lists them.
 
 **Tasks**
-1. Release: archives for every platform with `SHA256SUMS`, the distroless
-   server image with the console embedded (the build fails when the
-   embedded directory has no `index.html`), which runs in FIPS 140-3 mode
-   by default so no separate FIPS image ships, runner images,
-   and one image per first-party Flows app version listed in infraweave's
-   first-party app registry, all signed with Sigstore and carrying SLSA
-   provenance and an SPDX SBOM; the release workflow verifies each before
-   it publishes. Records DV-076 and DV-100.
-2. Launcher distribution: `GET /downloads/launcher/<version>/linux-<arch>`
-   and its sums and bundles, from the server image. Records DV-077.
-3. `deploy/helm/infraweave` and `deploy/helm/infraweave-workers`,
-   `deploy/compose/compose.yaml`, `deploy/terraform/modules/<cloud>` for AWS,
-   GCP and Azure with examples, each setting `database.iam_auth` to its
-   cloud's value (`aws`, `gcp`, `azure`) over TLS, and `deploy/check.sh` in
-   the gate.
-   Features: `deploy/compose.feature`, `deploy/helm.feature`
-   (`@kubernetes`). Records DV-075.
-4. Upgrades and recovery: the `upgrade_floor` per stream, mixed-version
-   operation, backup and restore guidance. Feature:
-   `deploy/upgrade.feature`. `debugInfo`, `installationId` (Debug and
-   Infrastructure tags).
+1. Release: archives for every platform of the Makefile's `PLATFORMS` with
+   `SHA256SUMS` and a Sigstore bundle per file; the distroless server image
+   with the console embedded (the build fails when the embedded directory
+   has no `index.html`), which runs in FIPS 140-3 mode by default so no
+   separate FIPS image ships; the runner images under `deploy/images/`, one
+   per vendor image decision 0008 defines after P20 and P20b; one image per
+   first-party Flows app version listed in infraweave's first-party app
+   registry. All are signed with keyless Sigstore from
+   `release-please.yml`, carry SLSA provenance and an SPDX SBOM, and the
+   release workflow verifies each before it publishes. Records DV-076 and
+   DV-100.
+2. Launcher distribution: `GET /downloads/launcher/<version>/linux-<arch>`,
+   its `SHA256SUMS` and Sigstore bundles, served from
+   `/usr/share/infraweave/launcher/` in the server image so an air-gapped
+   install uploads nothing. Records DV-077.
+3. Charts: `deploy/helm/infraweave` (`serve` and `scheduler`, decision
+   0020's values with `values.schema.json` rejecting unknown keys,
+   `publicWorkerPool.enabled`, `migrations.mode`) and
+   `deploy/helm/infraweave-workers` (`infraweave launcher`, and P14's
+   Kubernetes controller with its CRDs), both at `oci://ghcr.io/weaveplatform/charts/`.
+   `deploy/compose/compose.yaml`. `deploy/terraform/modules/<cloud>` for
+   AWS, Google Cloud and Azure with examples, each setting
+   `database.iam_auth` to its cloud's value over TLS and granting each
+   process mode exactly decision 0020's permissions; `deploy/check.sh` in
+   the gate. Features: `deploy/compose.feature`, `deploy/helm.feature`
+   (`@kubernetes`, k3s at its latest release). Records DV-075.
+4. Upgrades and recovery: the `upgrade_floor` per stream, so a skipped
+   major refuses to migrate and names the version to install first;
+   mixed-version operation of N and N-1; the order infrastructure,
+   `migrate up`, server process modes, launchers; backup and restore
+   guidance for PostgreSQL, object storage and the key root. Feature:
+   `deploy/upgrade.feature`. Operations: `debugInfo`, `installationId`
+   (Debug and Infrastructure tags).
 
 **Exit criteria**
 - `deploy/check.sh` passes, a tracked run finishes on the Compose file and on
   the Helm chart, and the previous release and the candidate serve one
   database together.
-- Debug and Infrastructure meet decision 0016's evidence rule.
+- Debug and Infrastructure meet decision 0016's evidence rule: `debugInfo`
+  and `installationId` each have a `@case:success`, a `@case:denial` and a
+  `@case:failure` scenario.
+- Every published artefact verifies with `cosign verify` against the
+  release workflow's identity.
 - Captures C243 to C250 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
@@ -3342,26 +3709,41 @@ Decisions: [0016](../research/decisions/0016-testing-and-acceptance.md), [0021](
 **Depends on:** P27, and an account Spacelift has authorized for captures.
 
 Every behaviour that infraweave tested against its own recorded choice is
-checked against Spacelift where a capture can settle it, and report 26 is
-qualified against the tests.
+checked against Spacelift where a capture can settle it, report 26 is
+qualified against the tests, and the console survey's open items
+([32](../research/reference/32-spacelift-console-survey.md)) are closed.
 
 **Tasks**
-1. Take the captures of report 30 with an authorized account, redact them
-   and check them in under `test/fixtures/captures/C<n>/`; mark each entry
-   resolved in report 30 and change the report's marker.
-2. `TestAccCaptures` replays every `expect.yaml`; a failing expectation is a
-   parity bug, fixed in the owning domain with its deviation row if
-   infraweave keeps its choice.
-3. Amend in place each decision whose behaviour a capture changes, with
-   its deviation row; amend the report 26 cells decision 0021's
-   constraints name (section 7.8's MQTT transport, section 7.7's legacy AWS
-   mutations).
-4. Run the `nightly` suite on the newest PostgreSQL, Terraform and OpenTofu
-   releases and close what it finds.
+1. Take the open captures of report 30 in an account kept for captures and
+   used for nothing else. API captures record the request and the response;
+   console captures (C273 to C287 among them) record the page together with
+   the GraphQL operation names the browser's request bodies carry, then the
+   API exchange of each operation, so every capture replays the same way.
+   Before using any console control, read it, since some act on click
+   rather than opening a form (report 32 section 6.5).
+2. Redact each exchange (account and user names, IDs, tokens, secrets and
+   host names) and check it in under `test/fixtures/captures/C<n>/` with
+   its `expect.yaml`; mark the record resolved in `open-questions.json`,
+   and change each report's *(unverified)* marker for it to **[C]** with
+   the capture's date. A capture no authorized account can take is
+   resolved as unobtainable, its question saying why.
+3. `TestAccCaptures` replays every `expect.yaml` against `infraweave all`;
+   a failing expectation is a parity bug, fixed in the owning domain, or
+   kept as a deviation record with its reason when infraweave keeps its
+   choice.
+4. Amend in place each decision whose behaviour a capture changes, with its
+   deviation record; amend the report 26 cells decision 0021's constraints
+   name (section 7.8's MQTT transport, section 7.7's legacy AWS mutations)
+   and the tier values of `features.json` that C287 settles.
+5. Run the `nightly` suite on the newest PostgreSQL, Terraform, OpenTofu,
+   Terragrunt, Pulumi, kubectl and Ansible releases and close what it
+   finds.
 
 **Exit criteria**
-- Every capture of report 30 is replayed or recorded as unobtainable with
+- Every capture of report 30 is replayed or resolved as unobtainable with
   its reason.
 - `specref parity --states --check` shows no tag or Terraform record of
-  [capabilities.json](../data/capabilities.json) in `missing` or `partial`.
+  [capabilities.json](../data/capabilities.json) in `missing` or `partial`,
+  and every served operation has a `@case:success`, a `@case:denial` and a
+  `@case:failure` scenario.
 - `make gate` passes at 95% in total and 90% per package.
