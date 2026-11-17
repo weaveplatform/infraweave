@@ -154,7 +154,9 @@ func TestUnitFetchArchive(t *testing.T) {
 		reg("deep/er/file.tf", "deep\n", 0o600),
 	), 0)
 	ws := filepath.Join(t.TempDir(), "ws")
-	if err := fetcher().Fetch(ctx, ws, archiveSpec(u.url(), ptr("infra")), nil); err != nil {
+	spec := archiveSpec(u.url(), ptr("infra"))
+	spec.Source.SparsePaths = new([]string{"infra"})
+	if err := fetcher().Fetch(ctx, ws, spec, nil); err != nil {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{

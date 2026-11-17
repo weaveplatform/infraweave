@@ -1,6 +1,7 @@
 package pg_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -181,12 +182,24 @@ func TestAccResolvedConfigurationReadPaths(t *testing.T) {
 	proposed := mustCreate(t, w, kernel.RunTypeProposed, "recorded-proposed")
 	task := mustCreate(t, w, kernel.RunTypeTask, "recorded-task")
 	record := resolvedRecord(t)
+	runtime, err := runtimeconfig.Parse(json.RawMessage(`{"beforePlan":["echo custom"],
+		"environment":[{"key":"TOKEN","value":"secret-never-in-run-read"}],"gitSparseCheckoutPaths":["infra"]}`), "terraform")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Configuration.Environment = runtime.Keys()
+	record.Configuration.GitSparseCheckoutPaths = []string{"infra"}
+	record.Configuration.YAML = record.Configuration.RuntimeYAML()
 	if r, err := s.Run(ctx, api.RunRequestObject{RunId: tracked.ID.String()}); err != nil ||
 		r.(api.Run200JSONResponse).Body.RuntimeConfig != nil {
 		t.Fatalf("an unrecorded run answers configuration: %v", err)
 	}
 	for _, run := range []lifecycle.Run{tracked, proposed, task} {
 		if err := tx.Do(ctx, w.db, tx.Options{}, func(ctx context.Context) error {
+			if _, err := w.db.Exec(ctx, `UPDATE runs SET runtime_config = $3
+				WHERE account_id = $1 AND id = $2`, w.acct, run.ID, runtime.Stored()); err != nil {
+				return err
+			}
 			locked, err := w.store.Handed(ctx, run.ID)
 			if err != nil {
 				return err
@@ -259,6 +272,9 @@ func TestAccResolvedConfigurationReadPaths(t *testing.T) {
 				t.Fatalf("read = %d %s, %v", out.Code, out.Body.String(), err)
 			}
 			var body any
+			if bytes.Contains(out.Body.Bytes(), []byte("secret-never-in-run-read")) {
+				t.Fatal("run read exposed a runtime variable value")
+			}
 			if err := json.Unmarshal(out.Body.Bytes(), &body); err != nil {
 				t.Fatal(err)
 			}
@@ -271,12 +287,19 @@ func TestAccResolvedConfigurationReadPaths(t *testing.T) {
 						found++
 						cfg, exists := node["runtimeConfig"]
 						if tc.refs {
-							if exists {
+							if exists || node["customRuntimeConfig"] != nil {
 								t.Error("search expanded a RunRef")
 							}
 						} else if c, ok := cfg.(map[string]any); !ok || c["projectRoot"] != "live" ||
 							c["terraformVersion"] != "1.17.2" || c["execution"] != nil || c["environment"] == nil {
 							t.Errorf("run record = %#v", cfg)
+						}
+						if !tc.refs {
+							custom, ok := node["customRuntimeConfig"].(map[string]any)
+							if !ok || custom["environment"] == nil || custom["yaml"] == nil ||
+								!reflect.DeepEqual(custom["beforePlan"], []any{"echo custom"}) {
+								t.Errorf("custom configuration missing from full run: %#v", node["customRuntimeConfig"])
+							}
 						}
 					}
 					for _, child := range node {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"slices"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -229,6 +230,10 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 	}
 	if out.Hooks == nil {
 		out.Hooks = map[string][]string{}
+	}
+	if len(spec.Source.SparsePaths) > 0 {
+		paths := slices.Clone(spec.Source.SparsePaths)
+		out.Source.SparsePaths = &paths
 	}
 	if spec.RuntimeConfig != nil {
 		rc := object(spec.RuntimeConfig)

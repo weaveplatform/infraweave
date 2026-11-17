@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
-	"github.com/weaveplatform/infraweave/internal/iac/terragrunt"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -20,8 +21,15 @@ import (
 // tracks none and whose branch head is not known yet.
 var ErrNoCommit = errors.New("runs: the stack tracks no commit")
 
+// RuntimeConfigDenied names the additional action a custom configuration needs.
+type RuntimeConfigDenied struct{ Action accessapi.Action }
+
+func (e *RuntimeConfigDenied) Error() string {
+	return fmt.Sprintf("Triggering with a runtime configuration needs %s.", e.Action)
+}
+
 // Deps are what the trigger reads and writes through, the authorizer a
-// batch decides each stack's actions with, and the objects local
+// batch and custom-runtime trigger decide each stack's actions with, and the objects local
 // workspaces are uploaded to.
 type Deps struct {
 	DB        tx.Beginner
@@ -70,9 +78,12 @@ type Input struct {
 // is used, else its branch head, else ErrNoCommit. A trigger names no
 // branch, so the run is created for the stack's tracked branch whatever
 // its type. The lifecycle refuses a disabled stack and one another caller
-// locked.
+// locked. A custom runtime configuration also needs
+// RUN_TRIGGER_WITH_CUSTOM_RUNTIME_CONFIG on the stack's space and always
+// creates a fresh run; its variables join the sealed run-local overrides.
 //
 // ref: decision 0008 § "Who drives each transition"
+// ref: decision 0007 "Authorization"
 func (s *Service) Trigger(ctx context.Context, p kernel.Principal, slug string, in Input) (read.View, error) {
 	typ := in.Type
 	if typ == "" {
@@ -101,7 +112,7 @@ func (s *Service) Trigger(ctx context.Context, p kernel.Principal, slug string, 
 	}
 	return s.create(ctx, p, slug, in.CommitSHA, lifecycle.NewRun{
 		Type: typ, RuntimeConfig: in.RuntimeConfig, ForceApply: in.ForceApply,
-		Overrides: in.Overrides,
+		Overrides: in.Overrides, AlwaysCreate: len(in.RuntimeConfig) > 0,
 	})
 }
 
@@ -121,9 +132,13 @@ func (s *Service) Task(ctx context.Context, p kernel.Principal, slug string, t k
 
 // create creates n's run as p on p's account's stack slug, on the commit
 // sha, in one transaction, and answers its view.
-func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha string, n lifecycle.NewRun) (read.View, error) {
+func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha string, original lifecycle.NewRun) (read.View, error) {
 	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+		// A serialization retry must parse the original API form and seal its
+		// original values, rather than reparsing a previous attempt's record.
+		n := original
+		n.Overrides = slices.Clone(original.Overrides)
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 		if err != nil {
 			return err //nolint:wrapcheck // the stacks domain names the read
@@ -132,9 +147,22 @@ func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha stri
 		if err != nil {
 			return err //nolint:wrapcheck // as above
 		}
-		if settings.Vendor == terragrunt.Kind {
-			if _, err := terragrunt.RuntimeRunAll(n.RuntimeConfig); err != nil {
-				return err //nolint:wrapcheck // names the runtime configuration's field
+		if len(n.RuntimeConfig) > 0 {
+			const action = accessapi.ActionRunTriggerWithCustomRuntimeConfig
+			allowed, err := s.d.Authz.Authorize(ctx, p, action, st.Space)
+			if err != nil {
+				return err //nolint:wrapcheck // the authorizer names the decision
+			}
+			if !allowed {
+				return &RuntimeConfigDenied{Action: action}
+			}
+			configuration, err := runtimeconfig.Parse(n.RuntimeConfig, settings.Vendor)
+			if err != nil {
+				return err //nolint:wrapcheck // the parser names each refused setting
+			}
+			n.RuntimeConfig = configuration.Stored()
+			for _, v := range configuration.Environment {
+				n.Overrides = append(n.Overrides, lifecycle.Override{Name: v.Key, Value: v.Value})
 			}
 		}
 		if n.Commit, err = s.commit(ctx, p.AccountID, settings, sha, "/commitSha"); err != nil {

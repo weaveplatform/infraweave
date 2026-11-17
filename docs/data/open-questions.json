@@ -4052,6 +4052,17 @@
         "docs/research/reference/13-configuration.md",
         "docs/research/reference/32-spacelift-console-survey.md"
       ]
+    },
+    {
+      "id": "C311",
+      "kind": "capture",
+      "area": "Runtime configuration (report 07)",
+      "question": "Does Run.customRuntimeConfig, or runtimeConfig, answer the values of variables a trigger's custom runtime configuration gave?",
+      "howToCapture": "A trigger with a custom runtime configuration setting one variable, then a read of the run",
+      "blocks": "what infraweave's run reads answer of a custom runtime configuration's variables",
+      "reports": [
+        "docs/research/reference/07-stack-model.md"
+      ]
     }
   ]
 }

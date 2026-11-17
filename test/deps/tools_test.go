@@ -34,7 +34,7 @@ func TestUnitToolsPinned(t *testing.T) {
 		}
 	}
 	sum := regexp.MustCompile(`^[0-9a-f]{64}$`)
-	for _, tool := range []Tool{Terraform, OpenTofu, Terragrunt} {
+	for _, tool := range []Tool{Terraform, OpenTofu, TerraformPrevious, OpenTofuPrevious, Terragrunt} {
 		if tool.Signature == "" {
 			t.Errorf("%s names no signature of its SHA256SUMS", tool.Name)
 		}

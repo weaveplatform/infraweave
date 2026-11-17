@@ -14,10 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -25,8 +31,10 @@ import (
 // triggerer is a trigger service of w's, with w's sources bound when
 // bound is set.
 func (w *world) triggerer(bound bool) *trigger.Service {
+	authz := w.access()
+	authz.held = append(slices.Clone(authz.held), accessapi.ActionRunTriggerWithCustomRuntimeConfig)
 	s := trigger.New(trigger.Deps{
-		DB: w.db, Stacks: w.stacks, Lifecycle: w.lc, Views: w.reader(w.access()),
+		DB: w.db, Stacks: w.stacks, Authz: authz, Lifecycle: w.lc, Views: w.reader(authz),
 	})
 	if bound {
 		s.BindSources(w.sources)
@@ -187,6 +195,137 @@ func TestAccTrigger(t *testing.T) {
 		CommitSHA: "named",
 	}); !errors.Is(err, lifecycle.ErrDisabled) {
 		t.Errorf("a disabled stack = %v, want ErrDisabled", err)
+	}
+}
+
+func TestAccTriggerRuntimeConfiguration(t *testing.T) {
+	w := newWorld(t)
+	s := w.triggerer(true)
+	st := w.stacks.settings[w.stack]
+	st.Vendor = "terraform"
+	st.TrackedCommit = &stacksapi.Commit{Hash: "tracked"}
+	w.stacks.settings[w.stack] = st
+	plain, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{
+		`{}`,
+		`{"beforePlan":["echo custom"],"environment":[{"key":"TOKEN","value":"runtime-secret"}]}`,
+		`{"yaml":"before_plan: [echo custom]\nenvironment: {TOKEN: runtime-secret}\n"}`,
+	} {
+		first, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(raw)})
+		if err != nil || first.Run.ID == plain.Run.ID {
+			t.Fatalf("custom configuration creates a fresh tracked run: %s, %v", first.Run.ID, err)
+		}
+		second, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(raw)})
+		if err != nil || first.Run.ID == second.Run.ID {
+			t.Fatalf("repeated custom configuration creates a fresh run: %s, %v", second.Run.ID, err)
+		}
+		var stored, sealed []byte
+		if err := w.db.QueryRow(t.Context(), `SELECT runtime_config, env_overrides_sealed FROM runs
+			WHERE account_id = $1 AND id = $2`, w.acct, first.Run.ID).Scan(&stored, &sealed); err != nil ||
+			bytes.Contains(stored, []byte("runtime-secret")) || bytes.Contains(sealed, []byte("runtime-secret")) {
+			t.Fatalf("stored custom configuration %s, sealed %x, %v", stored, sealed, err)
+		}
+		in, err := runtimeconfig.Read(stored)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ovs, err := w.store.Overrides(t.Context(), first.Run)
+		if err != nil || len(ovs) != len(in.Environment) {
+			t.Fatalf("sealed variables: %+v, %v", ovs, err)
+		}
+		if raw != `{}` && (len(ovs) != 1 || ovs[0].Name != "TOKEN" || ovs[0].Value != "runtime-secret" ||
+			len(in.Environment) != 1 || in.Environment[0].Value != "" || sealed == nil) {
+			t.Fatalf("runtime values not separated from typed config: %+v, %+v", in, ovs)
+		}
+	}
+	if again, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{}); err != nil || again.Run.ID != plain.Run.ID {
+		t.Fatalf("plain trigger retains active-run reuse: %s, %v", again.Run.ID, err)
+	}
+	var before, after int
+	if err := w.db.QueryRow(t.Context(), `SELECT count(*) FROM runs WHERE account_id = $1`, w.acct).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{
+		`{"beforePlan":"wrong"}`, `{"yaml":"unknown: value"}`,
+		`{"environment":[{"key":"TF_APPEND_USER_AGENT","value":"bad"}]}`,
+	} {
+		if _, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(raw)}); err == nil {
+			t.Fatalf("invalid configuration %s accepted", raw)
+		}
+	}
+	authz := w.access()
+	denied := trigger.New(trigger.Deps{DB: w.db, Stacks: w.stacks, Authz: authz, Lifecycle: w.lc, Views: w.reader(authz)})
+	if _, err := denied.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: json.RawMessage(`{}`)}); err == nil {
+		t.Fatal("custom permission refusal missing")
+	} else if refusal, ok := errors.AsType[*trigger.RuntimeConfigDenied](err); !ok ||
+		refusal.Action != accessapi.ActionRunTriggerWithCustomRuntimeConfig {
+		t.Fatalf("custom permission refusal: %v", err)
+	}
+	if err := w.db.QueryRow(t.Context(), `SELECT count(*) FROM runs WHERE account_id = $1`, w.acct).Scan(&after); err != nil || before != after {
+		t.Fatalf("refused configurations created a run: %d -> %d, %v", before, after, err)
+	}
+}
+
+type retryTriggerDB struct {
+	tx.Beginner
+	code     string
+	attempts int
+}
+
+func (db *retryTriggerDB) BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error) {
+	t, err := db.Beginner.BeginTx(ctx, opts)
+	db.attempts++
+	if err == nil && db.attempts == 1 {
+		return retryTriggerTx{Tx: t, code: db.code}, nil
+	}
+	return t, err
+}
+
+type retryTriggerTx struct {
+	pgx.Tx
+	code string
+}
+
+func (t retryTriggerTx) Commit(ctx context.Context) error {
+	if err := t.Rollback(ctx); err != nil {
+		return err
+	}
+	return &pgconn.PgError{Code: t.code, Message: "retry the trigger"}
+}
+
+func TestAccTriggerRuntimeRetry(t *testing.T) {
+	for _, code := range []string{"40001", "40P01"} {
+		t.Run(code, func(t *testing.T) {
+			w := newWorld(t)
+			st := w.stacks.settings[w.stack]
+			st.Vendor, st.TrackedCommit = "terraform", &stacksapi.Commit{Hash: "tracked"}
+			w.stacks.settings[w.stack] = st
+			authz := w.access()
+			authz.held = append(slices.Clone(authz.held), accessapi.ActionRunTriggerWithCustomRuntimeConfig)
+			db := &retryTriggerDB{Beginner: w.db, code: code}
+			s := trigger.New(trigger.Deps{DB: db, Stacks: w.stacks, Authz: authz, Lifecycle: w.lc, Views: w.reader(authz)})
+			raw := json.RawMessage(`{"beforePlan":["echo custom"],"environment":[{"key":"TOKEN","value":"retry-secret"}]}`)
+			v, err := s.Trigger(t.Context(), w.alice(), "network", trigger.Input{RuntimeConfig: raw})
+			if err != nil || db.attempts != 2 {
+				t.Fatalf("retried custom trigger: %s, attempts %d, %v", v.Run.ID, db.attempts, err)
+			}
+			ovs, err := w.store.Overrides(t.Context(), v.Run)
+			if err != nil || !slices.Equal(ovs, []lifecycle.Override{{Name: "TOKEN", Value: "retry-secret"}}) {
+				t.Fatalf("retry changed/duplicated sealed variables: %+v, %v", ovs, err)
+			}
+			stored, err := runtimeconfig.Read(v.Run.RuntimeConfig)
+			if err != nil || !slices.Equal(stored.Hooks["before_plan"], []string{"echo custom"}) ||
+				bytes.Contains(v.Run.RuntimeConfig, []byte("retry-secret")) {
+				t.Fatalf("retry changed canonical configuration: %+v, %v", stored, err)
+			}
+			var count int
+			if err := w.db.QueryRow(t.Context(), `SELECT count(*) FROM runs WHERE account_id = $1`, w.acct).Scan(&count); err != nil || count != 1 {
+				t.Fatalf("retried trigger left %d runs, %v", count, err)
+			}
+		})
 	}
 }
 

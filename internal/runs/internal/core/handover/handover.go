@@ -1,7 +1,6 @@
 package handover
 
 import (
-	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -148,13 +147,6 @@ type sourceCredential struct {
 	Token    string `json:"token"`
 }
 
-// runtimeConfig is what a handover reads of a trigger's runtime
-// configuration itself; the runner applies the rest.
-type runtimeConfig struct {
-	RunnerImage *string `json:"runnerImage"`
-	ProjectRoot *string `json:"projectRoot"`
-}
-
 // Handover builds run's specification, as workersapi.Scheduler's Handover
 // says, in the transaction ctx carries. It opens the stack's environment,
 // renders each variable's ${{ … }} templates against the environment
@@ -201,19 +193,21 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the access domain names the read
 	}
-	resolved, err := s.env.Resolve(ctx, r.Account, r.Stack)
+	rc, err := runtimeconfig.Read(r.RuntimeConfig)
+	if err != nil {
+		return workersapi.Handover{}, err //nolint:wrapcheck // the typed configuration names the read
+	}
+	var resolved configapi.Resolved
+	if r.ResolvedConfig == nil {
+		if err := rc.ApplySettings(&st); err != nil {
+			return workersapi.Handover{}, err //nolint:wrapcheck // the configuration names the refused setting
+		}
+		resolved, err = s.env.ResolveWithHooks(ctx, r.Account, r.Stack, rc.Hooks)
+	} else {
+		resolved, err = s.env.Resolve(ctx, r.Account, r.Stack)
+	}
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the configuration domain names it
-	}
-	var rc runtimeConfig
-	if r.ResolvedConfig == nil && len(r.RuntimeConfig) > 0 {
-		if err := json.Unmarshal(r.RuntimeConfig, &rc); err != nil {
-			return workersapi.Handover{}, fmt.Errorf(
-				"runs: decode run %s's runtime configuration: %w",
-				r.ID,
-				err,
-			)
-		}
 	}
 	stack := workersapi.SpecStack{
 		Slug:                         st.Slug,
@@ -222,7 +216,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		Labels:                       nonNil(labels[r.Stack]),
 		Repository:                   st.Repository,
 		Branch:                       st.Branch,
-		ProjectRoot:                  cmp.Or(rc.ProjectRoot, st.ProjectRoot),
+		ProjectRoot:                  st.ProjectRoot,
 		Vendor:                       st.Vendor,
 		VendorConfig:                 st.VendorConfig,
 		EnableWellKnownSecretMasking: st.EnableWellKnownSecretMasking,
@@ -231,10 +225,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	var tool *workersapi.SpecTool
 	var tg *workersapi.SpecTerragrunt
 	if r.ResolvedConfig == nil {
-		if tool, err = s.tool(ctx, st); err != nil {
-			return workersapi.Handover{}, err
-		}
-		if tg, err = s.terragrunt(ctx, st, r.RuntimeConfig); err != nil {
+		if tool, tg, err = s.runtimeTools(ctx, st, rc); err != nil {
 			return workersapi.Handover{}, err
 		}
 	}
@@ -250,12 +241,15 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 			AuthorName: r.Commit.AuthorName, AuthorLogin: r.Commit.AuthorLogin,
 			Timestamp: r.Commit.Timestamp,
 		},
-		RuntimeConfig: r.RuntimeConfig,
-		RunnerImage:   cmp.Or(rc.RunnerImage, st.RunnerImage),
-		Tool:          tool,
-		Terragrunt:    tg,
-		Task:          r.Task,
-		Hooks:         resolved.Hooks,
+		RunnerImage: st.RunnerImage,
+		Source:      workersapi.SpecSource{SparsePaths: slices.Clone(st.GitSparseCheckoutPaths)},
+		Tool:        tool,
+		Terragrunt:  tg,
+		Task:        r.Task,
+		Hooks:       resolved.Hooks,
+	}
+	if len(r.RuntimeConfig) > 0 {
+		spec.RuntimeConfig, _ = json.Marshal(rc.Public())
 	}
 	if r.State == kernel.RunStatePreparingReplan {
 		spec.Targets = r.ReplanTargets
@@ -310,6 +304,29 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	}, nil
 }
 
+// runtimeTools resolves first-handover tools and names custom constraints in
+// both field errors and Detail, which the launcher reports in its failure note.
+func (s *Service) runtimeTools(ctx context.Context, st stacksapi.Settings, in runtimeconfig.Input) (*workersapi.SpecTool, *workersapi.SpecTerragrunt, error) {
+	tool, err := s.tool(ctx, st)
+	if err != nil {
+		return nil, nil, runtimeToolError(err, in.OwnsToolVersion())
+	}
+	tg, err := s.terragrunt(ctx, st)
+	if err != nil {
+		return nil, nil, runtimeToolError(err, in.Terragrunt != nil)
+	}
+	return tool, tg, nil
+}
+
+func runtimeToolError(err error, owned bool) error {
+	if inv, ok := errors.AsType[*kernel.Invalid](err); ok && owned {
+		out := at(inv, "/runtimeConfig/yaml")
+		out.Detail = "/runtimeConfig/yaml: " + out.Detail
+		return out
+	}
+	return err
+}
+
 // source names r's source in spec and seals its credential in sec: a
 // local preview's uploaded archive, which a signed GET reads with no
 // credential, or the commit of the stack's repository.
@@ -324,7 +341,7 @@ func (s *Service) source(ctx context.Context, r lifecycle.Run, spec *workersapi.
 		if err != nil {
 			return err //nolint:wrapcheck // blobs names the object
 		}
-		spec.Source = workersapi.SpecSource{Kind: workersapi.SourceArchive, URL: signed.URL}
+		spec.Source.Kind, spec.Source.URL = workersapi.SourceArchive, signed.URL
 		return nil
 	}
 	if s.sources == nil {
@@ -334,7 +351,7 @@ func (s *Service) source(ctx context.Context, r lifecycle.Run, spec *workersapi.
 	if err != nil {
 		return err //nolint:wrapcheck // the vcs domain names the source
 	}
-	spec.Source = workersapi.SpecSource{Kind: workersapi.SourceGit, URL: src.URL}
+	spec.Source.Kind, spec.Source.URL = workersapi.SourceGit, src.URL
 	if c := src.Credential; c != nil {
 		spec.Source.Narrowed = c.Narrowed
 		sec.SourceCredential = &sourceCredential{Username: c.Username, Token: string(c.Token)}
@@ -370,10 +387,7 @@ const terragruntPointer = "/vendorConfig/terragrunt/terragruntVersion"
 //
 // ref: decision 0008 § "The run specification and its secrets"
 func (s *Service) tool(ctx context.Context, st stacksapi.Settings) (*workersapi.SpecTool, error) {
-	vendor := st.Vendor
-	if vendor == string(vendorsapi.Terragrunt) {
-		vendor = terragrunt.Read(st.VendorConfig).Driven()
-	}
+	vendor := runtimeconfig.DrivenVendor(st)
 	t, ok := tools[vendor]
 	if !ok {
 		return nil, nil //nolint:nilnil // a vendor that mounts no tool
@@ -398,22 +412,15 @@ func (s *Service) tool(ctx context.Context, st stacksapi.Settings) (*workersapi.
 // when st sets none, which the catalogue lists without alpha, beta or
 // release-candidate builds. A release that does not resolve is a
 // *kernel.Invalid naming terragruntVersion, as tool's names its setting.
-// RunAll is the runtime block's mode when present, else the stack's.
+// The first handover has already applied the trigger's typed vendor block.
 //
 // ref: decision 0008 § "The run specification and its secrets"
-func (s *Service) terragrunt(ctx context.Context, st stacksapi.Settings, runtime json.RawMessage) (*workersapi.SpecTerragrunt, error) {
+func (s *Service) terragrunt(ctx context.Context, st stacksapi.Settings) (*workersapi.SpecTerragrunt, error) {
 	if st.Vendor != string(vendorsapi.Terragrunt) {
 		return nil, nil //nolint:nilnil // a vendor that mounts no Terragrunt
 	}
 	settings := terragrunt.Read(st.VendorConfig)
 	mode := settings.UseRunAll
-	override, err := terragrunt.RuntimeRunAll(runtime)
-	if err != nil {
-		return nil, err //nolint:wrapcheck // names the runtime configuration's field
-	}
-	if override != nil {
-		mode = *override
-	}
 	constraints := settings.TerragruntVersion
 	if constraints != nil && strings.TrimSpace(*constraints) == "" {
 		constraints = nil

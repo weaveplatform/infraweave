@@ -253,6 +253,9 @@ func input(body *api.RunTriggerRequest) (trigger.Input, error) {
 //
 // ref: decision 0003 § "Problem types"
 func runError(err error, slug, run string) error {
+	if denied, ok := errors.AsType[*trigger.RuntimeConfigDenied](err); ok {
+		return forbidden(denied.Action, denied.Error())
+	}
 	if l, ok := errors.AsType[*lifecycle.Locked](err); ok {
 		p := problem.ResourceLocked.New(
 			fmt.Sprintf("The stack is locked by %s; only its holder creates runs on it.", l.By))
@@ -397,6 +400,7 @@ func runOf(v read.View) api.Run {
 		RetryBlocker:         sentence(v.Guards.Retry),
 		Reviews:              []api.RunReview{},
 		RuntimeConfig:        resolvedOf(r.ResolvedConfig),
+		CustomRuntimeConfig:  customOf(r.RuntimeConfig),
 		StackId:              v.Stack.Slug,
 		State:                api.RunState(r.State),
 		Title:                r.Commit.Message,

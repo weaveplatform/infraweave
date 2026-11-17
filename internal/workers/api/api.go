@@ -154,12 +154,14 @@ const (
 // SpecSource is where a Spec's worker fetches the run's source: Kind, and
 // URL, which needs the credential in the secrets where one is sealed.
 // Narrowed is whether that credential reads the stack's repository alone.
+// SparsePaths narrows Git checkout; archives are always extracted whole.
 //
 // ref: decision 0008 § "The run specification and its secrets"
 type SpecSource struct {
-	Kind     string
-	URL      string
-	Narrowed bool
+	Kind        string
+	URL         string
+	Narrowed    bool
+	SparsePaths []string
 }
 
 // SpecTool is the infrastructure tool a Spec's launcher mounts: Name, the

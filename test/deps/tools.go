@@ -67,6 +67,32 @@ var OpenTofu = Tool{
 	},
 }
 
+// TerraformPrevious is the recorded catalogue's preceding stable release,
+// used when a runtime configuration selects a different actual binary.
+var TerraformPrevious = Tool{
+	Name:      "terraform",
+	Version:   "1.6.6",
+	Download:  "https://releases.hashicorp.com/terraform/%s/",
+	Signature: ".sig",
+	SHA256: map[string]string{
+		"terraform_1.6.6_linux_amd64.zip": "d117883fd98b960c5d0f012b0d4b21801e1aea985e26949c2d1ebb39af074f00",
+		"terraform_1.6.6_linux_arm64.zip": "4066567f4ba031036d9b14c1edb85399aac1cfd6bbec89cdd8c26199adb2793b",
+	},
+}
+
+// OpenTofuPrevious is the recorded catalogue's preceding stable OpenTofu
+// release. deps-refresh moves both previous pins with the catalogue.
+var OpenTofuPrevious = Tool{
+	Name:      "tofu",
+	Version:   "1.6.3",
+	Download:  "https://github.com/opentofu/opentofu/releases/download/v%s/",
+	Signature: ".gpgsig",
+	SHA256: map[string]string{
+		"tofu_1.6.3_linux_amd64.zip": "7069cf8b59b91d09bfe6fceb1a0a4f3e01473ea634dc83da56ac7f4d210b89ce",
+		"tofu_1.6.3_linux_arm64.zip": "ac71ea31163a7c667b0e1cde2a5276b90aa25f57b03274e3162d7cab615559b4",
+	},
+}
+
 // Terragrunt serves @terragrunt, from its GitHub releases, whose builds
 // are bare binaries listed in one SHA256SUMS.
 var Terragrunt = Tool{

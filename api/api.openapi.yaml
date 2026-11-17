@@ -26921,6 +26921,7 @@ components:
           type: integer
         customRuntimeConfig:
           $ref: '#/components/schemas/RuntimeConfig'
+          description: The trigger's custom runtime configuration, absent when none was given. Variable values are never answered.
         delta:
           $ref: '#/components/schemas/Delta'
         dependsOn:
@@ -27787,6 +27788,8 @@ components:
           $ref: '#/components/schemas/RunType'
         runtimeConfig:
           $ref: '#/components/schemas/RuntimeConfigInput'
+          description: >-
+            Needs RUN_TRIGGER_WITH_CUSTOM_RUNTIME_CONFIG on the stack's space. Takes individual fields or one stack's YAML settings: hook lists, environment, project_root, runner_image, terraform_version, opentofu_version, terraform_workflow_tool, git_sparse_checkout_paths, opentofu and terragrunt. Variable values are never answered by run reads.
       type: object
       x-graphql-args-of: runTrigger
     RunType:
@@ -27981,6 +27984,8 @@ components:
       description: |-
         The configuration a run used, fixed when it was first handed to a
         worker. Later handovers use the same hooks, settings and tool versions.
+        Variable values are never answered. YAML describes the supported
+        runtime-file keys; other vendor execution flags remain in the JSON view.
       properties:
         afterApply:
           description: List of after-apply scripts.
@@ -28164,7 +28169,7 @@ components:
           nullable: true
           type: array
         gitSparseCheckoutPaths:
-          description: List of paths for git sparse checkout.
+          description: List of paths for git sparse checkout. An empty list uses the stack's paths.
           items:
             type: string
           nullable: true
@@ -28179,7 +28184,7 @@ components:
           type: string
         yaml:
           description: |-
-            Runtime configuration in YAML format.
+            One stack's settings in runtime configuration YAML format.
             The yaml property, or the other properties must be set, but not both.
           nullable: true
           type: string

@@ -852,7 +852,7 @@ components:
           type: object
           additionalProperties: true
           description: >-
-            The runtime configuration the run's trigger gave, which overrides the stack's hooks, environment and checkout for this run. Absent when the trigger gave none.
+            The trigger's configuration for reference, with variable values redacted. The specification's own hooks, environment, tools and source fields already apply it; the runner reads those fields. Absent when the trigger gave none.
         runnerImage:
           type: string
           description: >-
@@ -1047,6 +1047,12 @@ components:
           type: boolean
           description: >-
             Whether the credential reads the stack's repository alone and expires when the run ends, rather than being the integration's own token.
+        sparsePaths:
+          type: array
+          items:
+            type: string
+          description: >-
+            Directories included in a Git checkout, relative to its root. Absent for a full checkout. Archives are always extracted whole.
     RunSpecSourceCredential:
       description: >-
         The HTTPS credential that reads the run's source, which the worker presents to source.url. Absent when the repository needs none.
