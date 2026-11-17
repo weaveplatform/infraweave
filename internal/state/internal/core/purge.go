@@ -39,7 +39,7 @@ func (s *Service) LostOnMove(context.Context, stacksapi.StackMove) ([]string, er
 // write under the stack's hold commits before the delete locks the stack,
 // and none can hold it after, so the purge finds every row.
 //
-// ref: decision 0010 § "Rollback and retention"
+// ref: decision 0010 § "Rollback, searches and retention"
 func (s *Service) Deleting(ctx context.Context, st stacksapi.Stack) error {
 	_, err := s.jobs.EnqueueTx(ctx, PurgeKind, purge{Account: st.Account.ULID, Stack: st.ID},
 		queue.UniqueKey(st.ID.String()), queue.Account(st.Account.ULID))
