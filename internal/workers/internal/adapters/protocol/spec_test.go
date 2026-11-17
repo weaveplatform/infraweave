@@ -46,7 +46,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 	run := kernel.NewULID()
 	at := time.Unix(1_800_000_000, 0)
 	root, image, login, value, mode := "infra", "ghcr.io/acme/runner", "alice", "eu", "600"
-	doc := []byte(`{"environment":{"TOKEN":"s3cret"}}`)
+	doc := []byte(`{"environment":{"TOKEN":"s3cret"},"files":{"key.pem":"AP9BCgA="}}`)
 	f.svc.BindScheduler(&scheduler{handover: workersapi.Handover{
 		Account: f.store.pool.Account, Pool: f.store.pool.ID, Secrets: crypt.NewValue(doc),
 		Spec: workersapi.Spec{
@@ -90,6 +90,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			Files: []workersapi.File{
 				{Path: "a.tf", Checksum: "x", Content: []byte("terraform {}")},
 				{Path: "key.pem", Mode: &mode, Checksum: "y", WriteOnly: true},
+				{Path: "binary.bin", Checksum: "z", Content: []byte{0, 0xff, 'A', '\n', 0}},
 			},
 		},
 	}})
@@ -161,6 +162,9 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 				"fileMode":  "600",
 				"checksum":  "y",
 				"writeOnly": true,
+			},
+			map[string]any{
+				"path": "binary.bin", "checksum": "z", "writeOnly": false, "content": "AP9BCgA=",
 			},
 		},
 	}

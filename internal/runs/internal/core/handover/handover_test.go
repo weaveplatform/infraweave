@@ -389,10 +389,10 @@ func TestUnitHandover(t *testing.T) {
 				false),
 			variable("TF_VAR_infraweave_stack_id", "mine", false),
 			{Name: "EMPTY"},
-			{Name: "main.tf", FileMount: true, Checksum: "x", Value: secret("terraform {}")},
+			{Name: "main.tf", FileMount: true, Checksum: "x", Value: secret("dGVycmFmb3JtIHt9")},
 			{
 				Name: "key.pem", FileMount: true, WriteOnly: true, FileMode: &mode, Checksum: "y",
-				Value: secret("PRIVATE"),
+				Value: secret("UFJJVkFURQ=="),
 			},
 		},
 		Hooks: map[string][]string{"before_init": {"echo hi"}},
@@ -1082,7 +1082,7 @@ func TestUnitHandoverReplaysResolvedConfiguration(t *testing.T) {
 				Hooks: map[string][]string{"before_plan": {"echo planned"}, "before_apply": {"echo original"}},
 				Elements: []configapi.Element{
 					variable("LIVE", "value-old-xx", false), variable("SECRET", "private-old-xx", true),
-					{Name: "mounted.txt", FileMount: true, Value: secret("file-old-xx")},
+					{Name: "mounted.txt", FileMount: true, Value: secret("ZmlsZS1vbGQteHg=")},
 				},
 			}
 			first, err := w.handover(t, w.run.ID)
@@ -1106,7 +1106,7 @@ func TestUnitHandoverReplaysResolvedConfiguration(t *testing.T) {
 				Hooks: map[string][]string{"before_apply": {"echo changed"}},
 				Elements: []configapi.Element{
 					variable("LIVE", "value-new-xx", false), variable("SECRET", "private-new-xx", true),
-					{Name: "mounted.txt", FileMount: true, Value: secret("file-new-xx")},
+					{Name: "mounted.txt", FileMount: true, Value: secret("ZmlsZS1uZXcteHg=")},
 				},
 			}
 			for _, phase := range []kernel.RunState{kernel.RunStatePreparingApply, kernel.RunStatePreparingReplan, kernel.RunStatePreparing} {

@@ -185,6 +185,14 @@ jobs:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
         run: make accept FIPS=1
 
+      - name: Upload failed-scenario evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: accept-evidence-fips-only
+          path: test/acceptance/out
+          retention-days: 7
+
       - name: Report the mode
         run: |
           GOFIPS140=certified go build -o /tmp/infraweave ./cmd/infraweave
