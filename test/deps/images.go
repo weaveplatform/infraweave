@@ -67,7 +67,7 @@ const (
 	// only on paid tiers; the job reads the pin from this line.
 	//
 	// ref: decision 0016
-	ImageGitLabCE = "gitlab/gitlab-ce:19.5.5-ce.0@sha256:392e6bd5bf118ae520e4038261a5ae39aea05de0d2299a162b4c822a9684cf9b"
+	ImageGitLabCE = "gitlab/gitlab-ce:19.5.6-ce.0@sha256:0f93f5fdb28a5ae0f2713ef5d40d9438615b8b21a42841a2fe7bd56813934e0b"
 	// ImageSpaceliftRunnerTerraform is Spacelift's public Terraform runner
 	// image, a weekly rebuild of a release, which a stack names as its
 	// runner image to show that an image meeting the runner image contract

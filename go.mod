@@ -17,10 +17,10 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.3
 	github.com/ProtonMail/go-crypto v1.5.2
 	github.com/aws/aws-sdk-go-v2 v1.48.0
-	github.com/aws/aws-sdk-go-v2/config v1.33.18
-	github.com/aws/aws-sdk-go-v2/credentials v1.21.0
+	github.com/aws/aws-sdk-go-v2/config v1.33.19
+	github.com/aws/aws-sdk-go-v2/credentials v1.21.1
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.7.12
-	github.com/aws/aws-sdk-go-v2/service/kms v1.62.6
+	github.com/aws/aws-sdk-go-v2/service/kms v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
 	github.com/bradleyfalzon/ghinstallation/v2 v2.19.0
 	github.com/containerd/errdefs v1.0.0
@@ -79,11 +79,11 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.62.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.62.0 // indirect
 	github.com/Microsoft/go-winio v0.6.4 // indirect
-	github.com/agext/levenshtein v1.2.1 // indirect
+	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/alexflint/go-arg v1.6.1 // indirect
 	github.com/alexflint/go-scalar v1.2.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/apache/arrow-go/v18 v18.8.0 // indirect
+	github.com/apache/arrow-go/v18 v18.9.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v17 v17.0.1 // indirect
@@ -146,7 +146,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.3 // indirect
+	github.com/jackc/puddle/v2 v2.2.4 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.2 // indirect
@@ -175,7 +175,7 @@ require (
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/sergi/go-diff v1.4.0 // indirect
+	github.com/sergi/go-diff v1.4.5 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.10 // indirect
 	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/skeema/knownhosts v1.3.3 // indirect
@@ -208,12 +208,12 @@ require (
 	golang.org/x/mod v0.43.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
-	golang.org/x/telemetry v0.0.0-20261111153349-cdaf7e97dd7b // indirect
+	golang.org/x/telemetry v0.0.0-20261116191925-e77a43154acb // indirect
 	golang.org/x/text v0.44.0 // indirect
 	golang.org/x/tools v0.52.1-0.20261106145633-d407941a339a // indirect
 	golang.org/x/vuln v1.9.0 // indirect
-	google.golang.org/genproto v0.0.0-20261110000943-09e21b237f2c // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20261110000943-09e21b237f2c // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261110000943-09e21b237f2c // indirect
+	google.golang.org/genproto v0.0.0-20261116203732-fd2c7689a808 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20261116203732-fd2c7689a808 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261116203732-fd2c7689a808 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
