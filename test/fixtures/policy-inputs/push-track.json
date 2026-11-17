@@ -1,0 +1,65 @@
+{
+  "in_progress": [],
+  "pull_request": null,
+  "push": {
+    "affected_files": [
+      "main.tf"
+    ],
+    "affected_stacks_count": 1,
+    "author": "user-a",
+    "branch": "main",
+    "created_at": 1767235238000000000,
+    "hash": "0000000000000000000000000000000000000001",
+    "message": "tracked run 2",
+    "tag": ""
+  },
+  "stack": {
+    "additional_project_globs": [],
+    "administrative": false,
+    "autodeploy": false,
+    "branch": "main",
+    "id": "stack-a",
+    "labels": [],
+    "locked_by": null,
+    "name": "stack-a",
+    "namespace": "owner-a",
+    "project_root": "",
+    "repository": "repo-a",
+    "roles": [],
+    "space": {
+      "id": "root",
+      "labels": [],
+      "name": "root"
+    },
+    "state": "NONE",
+    "terraform_version": null,
+    "terraform_workflow_tool": null,
+    "tracked_commit": {
+      "author": "user-b",
+      "branch": "main",
+      "created_at": 1767225600000000000,
+      "hash": "0000000000000000000000000000000000000006",
+      "message": "change root main.tf",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000006"
+    },
+    "worker_pool": {
+      "public": true
+    }
+  },
+  "vcs_integration": {
+    "created_at": -6795364578871345000,
+    "description": "Managed GitHub VCS integration",
+    "id": "managed-github-vcs-integration",
+    "is_default": true,
+    "labels": [],
+    "name": "GitHub",
+    "provider": "GITHUB",
+    "space": {
+      "id": "root",
+      "labels": [],
+      "name": "root"
+    },
+    "updated_at": -6795364578871345000
+  }
+}

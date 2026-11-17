@@ -305,7 +305,11 @@ Rules:
 The documents disagree on wording only: "lowest values go first" and "evaluated
 starting with the lowest priority" read as ordering, while the migration page
 states the effect, that a lower number takes precedence. The schema has no
-description to settle it [G].
+description to settle it [G]. The console does: of two directly attached
+contexts that set one variable, the one at priority 0 wins over the one at 2,
+a directly attached context wins over an auto-attached one, and the stack's
+environment view lists only the winning value with the context it comes from
+([32](32-spacelift-console-survey.md) section 17.1).
 
 ### 5.4 Auto-attachment
 
@@ -321,7 +325,10 @@ description to settle it [G].
 What `priority` an auto-attached attachment reports, and whether the
 `autoattach:*` reach into child spaces depends on their inheritance toggle (as
 the spaces page says for policies,
-[D](https://docs.spacelift.io/concepts/spaces)), are *(unverified)* (C99).
+[D](https://docs.spacelift.io/concepts/spaces)), are *(unverified)* (C99). The
+console gives an auto-attached context no priority field, and its hooks view
+marks one with a reverse-alphabetical label where a directly attached
+context shows its number ([32](32-spacelift-console-survey.md) section 17.1).
 
 ### 5.5 Hook order with contexts
 
@@ -339,7 +346,10 @@ after it. The docs' worked example, with auto-attached `context_a` and
 `context_b`, `context_c` at priority 0 and `context_d` at priority 5, runs
 `c, d, b, a, stack` before and `stack, a, b, d, c` after. Within a list, hooks
 run in the order shown, and context hooks can only be edited from the context
-[D](https://docs.spacelift.io/concepts/stack/stack-settings). Hook execution
+[D](https://docs.spacelift.io/concepts/stack/stack-settings). Runs in the
+console follow this order with two directly attached contexts and with one
+direct and one auto-attached
+([32](32-spacelift-console-survey.md) section 17.1). Hook execution
 semantics (`&&` chaining, `;`, failure behaviour, `after_run` and
 `TF_VAR_spacelift_final_run_state`) are in report 08.
 
@@ -407,7 +417,17 @@ and spacelift-worker-image at their pinned commits finds only launcher and
 worker-pool variables (`SPACELIFT_TOKEN`, `SPACELIFT_POOL_PRIVATE_KEY`,
 `SPACELIFT_METADATA_*` and similar, report 10), and no run-time variable the
 docs omit [S]. The runner side that injects the variables is closed source, so
-this list cannot be checked for completeness *(unverified)* (C100).
+the list cannot be checked from source. A tracked run on the public worker
+pool has 17 `TF_VAR_spacelift_*` variables, the table's less
+`final_run_state` (an `after_run` variable) plus
+`TF_VAR_spacelift_graphql_endpoint`, and six `SPACELIFT_*` variables:
+`SPACELIFT_API_TOKEN`, `SPACELIFT_OIDC_TOKEN`,
+`SPACELIFT_MAX_REQUESTS_BURST`, `SPACELIFT_MAX_REQUESTS_PER_SECOND`,
+`SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED` and
+`SPACELIFT_VENDOR_BINARY_CACHED`, beside `TF_IN_AUTOMATION`,
+`TF_APPEND_USER_AGENT`, `TG_TF_REGISTRY_TOKEN` and OpenTelemetry's trace
+variables ([32](32-spacelift-console-survey.md) section 17.2), which resolves
+C100. The stack's environment view lists the 17 and the API and OIDC tokens.
 
 ### 6.3 Overriding a computed value
 
@@ -449,8 +469,8 @@ ranks 1 and 2 drop out for it
 |---|---|---|
 | Runtime file version | Version 2 puts the file above stack settings. Version 1 put stack settings above `stack_defaults` [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration). That page says `version` defaults to `1`; the YAML reference says `version` is optional and ignored [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration/runtime-yaml-reference) | Contradictory; which applies to a file without `version` is *(unverified)* (C27) |
 | No stack block | When the file has no block for the stack, the page lists the stack's settings first and `stack_defaults` second [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration) | Read literally, that reverses rank 2 and 3 for such stacks *(unverified)* (C28) |
-| Hooks from the runtime file | The file's hooks "can override" stack hooks [D](https://docs.spacelift.io/concepts/stack/stack-settings) | Whether they replace or extend stack hooks, and what happens to context hooks, is *(unverified)* (C29) |
-| Computed values | A stack variable overrides a computed one [D](https://docs.spacelift.io/concepts/configuration/environment) | Where computed values rank against contexts is *(unverified)* (C101) |
+| Hooks from the runtime file | The file's hooks "can override" stack hooks [D](https://docs.spacelift.io/concepts/stack/stack-settings) | Whether they replace or extend stack hooks, and what happens to context hooks, is *(unverified)* (C29); without a runtime file, a run's recorded configuration holds context and stack hooks merged in execution order ([32](32-spacelift-console-survey.md) section 17.1) |
+| Computed values | A stack variable overrides a computed one [D](https://docs.spacelift.io/concepts/configuration/environment) | Where computed values rank against contexts is *(unverified)* (C101); the console refuses a stack variable whose name an attached context already sets, so its form cannot create the conflict ([32](32-spacelift-console-survey.md) section 17.1) |
 | Stack dependency inputs | Not placed in any order | *(unverified)* (C101) |
 | Launcher-forwarded variables | Not placed in any order | *(unverified)* (C101) |
 | Per-run overrides | `runTrigger(runtimeConfig: RuntimeConfigInput)` carries either a `yaml` document or the fields `environment` (`[EnvVarInput!]`), `projectRoot`, `runnerImage`, `gitSparseCheckoutPaths` and the eleven hook lists, not both; `proposeWithOverrides` and `runProposeLocalWorkspace` carry `environmentVarsOverrides` [G]; spacectl exposes `--env-var-override` and `--tf-env-var-override`, the latter adding a `TF_` prefix [S](https://github.com/spacelift-io/spacectl/blob/6bf167cb62a6/internal/cmd/stack/local_preview.go#L150-L172) | Their rank is undocumented; that they win over every stored source is *(unverified)* (C102) [I] from their purpose |

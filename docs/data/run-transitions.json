@@ -42,8 +42,8 @@
       "from": "QUEUED",
       "to": "FAILED",
       "runTypes": "all",
-      "cause": "An approval policy `reject` rule fires: the rules section says the run fails at once [D], while the review walkthrough on the same page describes **Reject** as canceling the run [D], so `CANCELED` is possible and the target is *(unverified)*; an external dependency is marked `FAILED` [D]",
-      "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies)",
+      "cause": "An approval policy `reject` rule fires: the rules section says the run fails at once [D], while the review walkthrough on the same page describes **Reject** as canceling the run [D]; Spacelift's console fails a run rejected in `QUEUED` at once, with the note \"Run rejected by approval policies\" (report 32, C40); an external dependency is marked `FAILED` [D]",
+      "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules), [external dependencies](https://docs.spacelift.io/concepts/policy/push-policy/run-external-dependencies); the console, report 32 section 16.2",
       "source": "report 08"
     },
     {
@@ -122,8 +122,8 @@
       "runTypes": [
         "TASK"
       ],
-      "cause": "Initialization succeeds. With `skipInitialization` the vendor initialization does not run; whether the run then still passes through `INITIALIZING` or goes from `PREPARING` straight to `PERFORMING` is *(unverified)*",
-      "evidence": "[D] [task](https://docs.spacelift.io/concepts/run/task#skipping-initialization); [G] `taskCreate`",
+      "cause": "Initialization succeeds. With `skipInitialization` the vendor initialization does not run; the run still passes through `INITIALIZING`, which only logs that initialization is skipped (report 32, C42)",
+      "evidence": "[D] [task](https://docs.spacelift.io/concepts/run/task#skipping-initialization); [G] `taskCreate`; the console, report 32 section 17.4",
       "source": "report 08"
     },
     {
@@ -244,7 +244,7 @@
       "runTypes": [
         "PROPOSED"
       ],
-      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5)",
+      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5), and the console fails a run rejected in `QUEUED` (T5); C291 rejects in `PENDING_REVIEW`",
       "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
       "source": "report 08"
     },
@@ -277,8 +277,8 @@
       "runTypes": [
         "TRACKED"
       ],
-      "cause": "A user discards (`runDiscard`, `runDiscardAll`); seven days without change; the 30-day rule",
-      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [G] `runDiscard`",
+      "cause": "A user discards (`runDiscard`, `runDiscardAll`); a newer run's push policy `cancel` rule, after which the history notes \"canceled by push policy in favor of run <id>\" and the stack's state is `DISCARDED` (report 32, C37); seven days without change; the 30-day rule",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [G] `runDiscard`; the console, report 32 section 16.2",
       "source": "report 08"
     },
     {
@@ -299,7 +299,7 @@
       "runTypes": [
         "TRACKED"
       ],
-      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5)",
+      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5), and the console fails a run rejected in `QUEUED` (T5); C291 rejects in `UNCONFIRMED`",
       "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
       "source": "report 08"
     },

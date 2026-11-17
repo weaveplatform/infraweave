@@ -1,0 +1,247 @@
+{
+  "run": {
+    "based_on_local_workspace": false,
+    "branch": "main",
+    "changes": [
+      {
+        "action": "added",
+        "entity": {
+          "address": "output.root",
+          "data": {
+            "sensitive": false,
+            "value": "\"root-4\"",
+            "value_hash": 3421179922532534300
+          },
+          "entity_type": "output",
+          "entity_vendor": "opentofu",
+          "name": "root",
+          "type": "output"
+        },
+        "moved": false,
+        "phase": "apply"
+      },
+      {
+        "action": "added",
+        "entity": {
+          "address": "terraform_data.root",
+          "data": {
+            "address": "terraform_data.root",
+            "mode": "managed",
+            "module": "root_module",
+            "provider": "terraform.io/builtin/terraform",
+            "tainted": false,
+            "values": {
+              "id": "00000000-0000-0000-0000-000000000001",
+              "input": "root-4",
+              "output": "root-4",
+              "triggers_replace": null
+            },
+            "values_hash": 2263971231049797000
+          },
+          "entity_type": "resource",
+          "entity_vendor": "opentofu",
+          "name": "root",
+          "type": "terraform_data"
+        },
+        "moved": false,
+        "phase": "apply"
+      },
+      {
+        "action": "added",
+        "entity": {
+          "address": "output.root",
+          "data": {
+            "sensitive": false,
+            "value": "null",
+            "value_hash": -6284781860667378000
+          },
+          "entity_type": "output",
+          "entity_vendor": "opentofu",
+          "name": "root",
+          "type": "output"
+        },
+        "moved": false,
+        "phase": "plan"
+      },
+      {
+        "action": "added",
+        "entity": {
+          "address": "terraform_data.root",
+          "data": {
+            "address": "terraform_data.root",
+            "mode": "managed",
+            "module": "",
+            "provider": "terraform.io/builtin/terraform",
+            "tainted": false,
+            "values": {
+              "input": "root-4",
+              "triggers_replace": null
+            },
+            "values_hash": -2828264181320857600
+          },
+          "entity_type": "resource",
+          "entity_vendor": "opentofu",
+          "name": "root",
+          "type": "terraform_data"
+        },
+        "moved": false,
+        "phase": "plan"
+      }
+    ],
+    "command": "",
+    "commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767235540000000000,
+      "exist_on_tracked_branch": true,
+      "hash": "0000000000000000000000000000000000000003",
+      "message": "tracked run 4",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000003"
+    },
+    "created_at": 1767235544097468000,
+    "creator_session": {
+      "admin": "",
+      "creator_ip": "",
+      "idp_subject": "",
+      "login": "",
+      "machine": true,
+      "name": "",
+      "teams": []
+    },
+    "drift_detection": false,
+    "flags": [
+      "plan-flag"
+    ],
+    "force_apply_mode": "DISABLED",
+    "id": "01H00000000000000000000005",
+    "priority": "normal",
+    "promoted": false,
+    "runtime_config": {
+      "after_apply": [],
+      "after_destroy": [],
+      "after_init": [],
+      "after_perform": [],
+      "after_plan": [],
+      "after_run": [],
+      "before_apply": [],
+      "before_destroy": [],
+      "before_init": [],
+      "before_perform": [],
+      "before_plan": [],
+      "environment": {},
+      "git_sparse_checkout_paths": [],
+      "project_root": "",
+      "runner_image": "public.ecr.aws/spacelift/runner-opentofu:latest",
+      "terraform_version": null
+    },
+    "state": "FINISHED",
+    "states_history": [
+      {
+        "new_state": "CONFIRMED",
+        "username": "user-a"
+      },
+      {
+        "new_state": "QUEUED"
+      },
+      {
+        "new_state": "UNCONFIRMED",
+        "note": "Autodeploy is off"
+      },
+      {
+        "new_state": "FINISHED"
+      },
+      {
+        "new_state": "READY"
+      },
+      {
+        "new_state": "PLANNING"
+      },
+      {
+        "new_state": "PREPARING"
+      },
+      {
+        "new_state": "INITIALIZING"
+      },
+      {
+        "new_state": "APPLYING"
+      },
+      {
+        "new_state": "PREPARING_APPLY"
+      }
+    ],
+    "trigger": null,
+    "triggered_by": null,
+    "type": "TRACKED",
+    "updated_at": 1767235731186482000,
+    "user_provided_metadata": []
+  },
+  "stack": {
+    "additional_project_globs": [],
+    "administrative": false,
+    "autodeploy": false,
+    "branch": "main",
+    "id": "stack-a",
+    "labels": [],
+    "locked_by": null,
+    "name": "stack-a",
+    "namespace": "owner-a",
+    "project_root": "",
+    "repository": "repo-a",
+    "roles": [],
+    "space": null,
+    "state": "FINISHED",
+    "terraform_version": null,
+    "terraform_workflow_tool": null,
+    "tracked_commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767235540000000000,
+      "hash": "0000000000000000000000000000000000000003",
+      "message": "tracked run 4",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000003"
+    },
+    "worker_pool": {
+      "public": true
+    }
+  },
+  "stacks": [
+    {
+      "additional_project_globs": [],
+      "administrative": false,
+      "autodeploy": false,
+      "branch": "main",
+      "id": "stack-b",
+      "labels": [],
+      "locked_by": null,
+      "name": "stack-b",
+      "namespace": "owner-a",
+      "project_root": "sub",
+      "queued_runs": 0,
+      "repository": "repo-a",
+      "roles": [],
+      "space": null,
+      "state": "NONE",
+      "terraform_version": null,
+      "terraform_workflow_tool": null,
+      "tracked_commit": {
+        "author": "user-b",
+        "branch": "main",
+        "created_at": 1767225600000000000,
+        "hash": "0000000000000000000000000000000000000006",
+        "message": "change root main.tf",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000006"
+      }
+    }
+  ],
+  "workflow": [
+    {
+      "id": "01H00000000000000000000005",
+      "stack_id": "stack-a",
+      "state": "FINISHED",
+      "type": "TRACKED"
+    }
+  ]
+}

@@ -150,8 +150,11 @@ has three policy-related values, `ACCESS_POLICIES`, `NOTIFICATION_POLICIES` and
   `RunPolicyReceipt.engineType` records the engine each evaluation used [G].
 - The provider documents `engine_type` as defaulting to `REGO_V0`, optional and
   computed [S] [`resource_policy.go#L112-L120`](https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_policy.go#L112-L120).
-  The API's own default when the field is omitted is not stated in the schema, so
-  that it is `REGO_V0` is *(unverified)* (C49).
+  The API's own default when the field is omitted is not stated in the schema. The
+  console's editor opens every new policy on Rego V1
+  ([32](32-spacelift-console-survey.md) section 16.1), so a policy created there is
+  `REGO_V1` unless its author switches; the API's default for an omitted field stays
+  *(unverified)* (C49).
 - The UI's editor has a version selector and a policy can switch versions at any
   time [D] policy, [RN 2025-11-07].
 - `policyRuntime { openPolicyAgentVersion }` returns the OPA version Spacelift runs
@@ -288,12 +291,21 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
   records each note against the decision [D] approval, [D] contract.
 - `approve` must be definable for a run to progress; `reject` is optional. A reject
   fails the run at once [D] approval; report 08 finds the same page's walkthrough
-  describing it as canceling, so the target state is *(unverified)* (C40).
+  describing it as canceling. The console settles it: a reject in `QUEUED` moves the
+  run to `FAILED` at once with the note "Run rejected by approval policies"
+  ([32](32-spacelift-console-survey.md) section 16.2), which resolves C40.
+- The policy is evaluated when a run enters `QUEUED`, before it starts, and again on
+  entering `UNCONFIRMED`; proposed runs are gated as well as tracked ones. Reviews are
+  grouped by the run state in which they were made, so an approval given in `QUEUED`
+  sits in `reviews.older` and does not satisfy the `UNCONFIRMED` evaluation, and
+  `reviews.current` and `reviews.older` are objects of `approvals` and `rejections`
+  ([32](32-spacelift-console-survey.md) section 16.2).
 - Across policies, a proposed run in `PENDING_REVIEW` finishes only once every
   attached approval policy approves [D]
-  <https://docs.spacelift.io/concepts/run/proposed>. That a single reject from any one
-  policy fails the run regardless of the others is *(unverified)* (C41), though it follows
-  the "denial wins" rule in section 2.4 [I].
+  <https://docs.spacelift.io/concepts/run/proposed>. A single reject from any one
+  policy fails the run regardless of the others, as the "denial wins" rule in section 2.4
+  implies: with one policy approving and another rejecting, the aggregate is a reject and
+  the run fails ([32](32-spacelift-console-survey.md) section 16.2), which resolves C41.
 - Reviews come from `runReview(stack, run, decision, note)`, with `RunReviewDecision`
   `APPROVE` or `REJECT`, stored as `RunReview` with the run state and `stateVersion`
   at review time [G]. Reviewers need write or admin on the stack. Only a reviewer's
@@ -342,6 +354,9 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
 - Deduplication: a push and its pull request event can both produce an actionable
   result. Runs are deduplicated per stack on the key (commit SHA, run type); the first
   event wins, which is why the surviving run often lacks `pull_request_id` [D] push.
+- A push policy whose rules match nothing ignores the push, and the commit is listed
+  among the stack's ignored runs with the policy named
+  ([32](32-spacelift-console-survey.md) section 16.2).
 - If no push policy is attached, the default behaviour is a built-in policy that
   tracks pushes to the tracked branch that touch the project root or an additional
   project glob, proposes for every affected push or pull request (a push to the
@@ -395,7 +410,11 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
 ### 3.8 Trigger
 
 - Evaluated when a stack-blocking run, meaning a tracked run or a task, reaches
-  `FINISHED`, `CANCELED`, `DISCARDED`, `STOPPED` or `FAILED` [D] trigger.
+  `FINISHED`, `CANCELED`, `DISCARDED`, `STOPPED` or `FAILED` [D] trigger. The
+  console's samples show it evaluated for a run a push policy discarded and for a run
+  an approval policy rejected, and a triggered run queued on the named stack's own
+  tracked commit with `triggered_by` set to `policy/<stack>/<run>` and `trigger`
+  null ([32](32-spacelift-console-survey.md) section 16.3).
 - `trigger` names stack IDs to start tracked runs on. Triggered runs evaluate trigger
   policies again when they end, so retry policies must guard against loops [D] trigger.
 - A workflow is the first run plus every run it caused directly or indirectly; the
@@ -420,6 +439,9 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
   policy [D] notification.
 - No matching rule means nothing is sent. Error notifications reach the inbox by
   default even with no policy [D] notification.
+- A policy is evaluated on every state change of every run in its space, and the
+  console's attach drawer does not offer the type
+  ([32](32-spacelift-console-survey.md) section 16.3).
 - Route item shapes [D] notification, [D] contract:
 
   | Rule | Item fields (required marked *) | Notes |
@@ -455,6 +477,30 @@ source. Field lists below are extracted from the contract by script
 (top-level keys, then the keys of each object); meanings are ours. The contract
 covers nine types: `ACCESS`, `APPROVAL`, `GIT_PUSH`, `INTENT`, `LOGIN`,
 `NOTIFICATION`, `PLAN`, `TASK`, `TRIGGER` [D] contract.
+
+Eighteen documents that Spacelift evaluated on 2026-11-17, push, approval, plan
+(OpenTofu, Pulumi and Ansible), trigger and notification inputs and three
+simulated decisions, are checked in, redacted with every key kept, as
+[`test/fixtures/policy-inputs`](../../../test/fixtures/policy-inputs/README.md);
+[32 section 16](32-spacelift-console-survey.md#16-driven-policies-runs-and-the-registry)
+says which run produced each. Where they differ from the contract's lists or the
+docs' samples:
+
+- `reviews.current` and `reviews.older` are objects holding `approvals` and
+  `rejections`, not arrays; each review carries `author_roles`, `identity` and a
+  `session` whose `admin` is a boolean.
+- A push-created run's `creator_session.admin` is the empty string, its other
+  fields empty, with `machine` true.
+- `stack` has no `autoretry` key, and `terraform_workflow_tool` and
+  `terraform_version` are null on an OpenTofu stack whose version is set.
+- A pull request event's push input has no `vcs_integration` key; a branch push's
+  has one.
+- The trigger input's `stack.space` is null, and its `stacks[]` entries have no
+  `worker_pool`.
+- `runtime_config.environment` holds none of the variables that stack dependency
+  output references set.
+- A Pulumi plan input replaces values unknown at preview with a UUID; Ansible
+  changes carry host, playbook, role and task, with no address.
 
 ### 4.1 Shared objects
 
@@ -522,7 +568,7 @@ the edges [D] contract:
 | `GIT_PUSH` | `push`, `pull_request`, `in_progress`, `vcs_integration`, `stack` or `module` | `push`: `affected_files`, `affected_stacks_count`, `author`, `branch`, `commits[]` (oldest first, each a `commit` plus its own `affected_files`), `created_at`, `hash`, `message`, `tag`. `pull_request`: `action`, `action_initiator`, `affected_stacks_count`, `approved`, `author`, `base`, `closed`, `comment`, `diff`, `draft`, `head`, `head_owner`, `id`, `labels`, `mergeable`, `title`, `undiverged`. `vcs_integration`: `id`, `name`, `description`, `provider`, `is_default`, `labels`, `space`, `created_at`, `updated_at` [D] contract. `push` is null on a PR event; `pull_request` is null on a plain push [D] push |
 | `PLAN` | `spacelift`* (`commit`, `request.timestamp_ns`, `run`, `previous_run`, `stack`, `module`), one vendor block, `third_party_metadata` (`custom`, `infracost`) | `previous_run` is absent on the stack's first evaluation [D] plan |
 | `TASK` | `request`* (`command`, `remote_ip`, `timestamp_ns`), `session`*, `stack` or `module` | Module tasks get `module` instead of `stack` [D] task |
-| `TRIGGER` | `run`, `stack`, `stacks[]`, `workflow[]` (`id`, `stack_id`, `state`, `type`); or `module` (with `version`) and `stacks[]` | `stack` is the finished run's stack and `stacks` lists every stack in the account, in the same shape [D] trigger; the contract adds `queued_runs` (an integer) to each `stacks[]` entry [D] contract; what it counts, and whether module-version events carry it, is *(unverified)* (C55). `version`: `commit`, `created_at`, `id`, `latest`, `number`, `state`, `test_runs` [D] contract |
+| `TRIGGER` | `run`, `stack`, `stacks[]`, `workflow[]` (`id`, `stack_id`, `state`, `type`); or `module` (with `version`) and `stacks[]` | `stack` is the finished run's stack and `stacks` lists every stack in the account, in the same shape [D] trigger; the contract adds `queued_runs` (an integer) to each `stacks[]` entry [D] contract, and a sampled input carries it on every entry, 0 for each stack with no queued run, with no `worker_pool` on the entries and `stack.space` null ([32](32-spacelift-console-survey.md) section 16.3); whether module-version events carry it is *(unverified)* (C55). `version`: `commit`, `created_at`, `id`, `latest`, `number`, `state`, `test_runs` [D] contract |
 | `NOTIFICATION` | `account`* (`name`), `webhook_endpoints`* (`id`, `labels`), plus the object of the event that fired (the contract gates each with `if`/`then`) | `run_updated` (`run`, `stack`, `state`, `note`, `username`, `timing[]` of `state` and `duration` in ns, `urls.run`, `plan_policy_decision` (`deny`, `warn`), `policy_receipts`); `internal_error` (`error`, `message`, `severity`); `module_version` (`module`, `version`); `worker_usage` (contracted limit, percentile, concurrency, burst budget and cycle fields) [D] contract |
 | `INTENT` | `resource`* (`resource_id`, `provider`, `provider_version`, `resource_type`, `operation`, `current_state`, `proposed_state`), `reviews` (`allow[]`, `deny[]`) | `current_state` is null on create, `proposed_state` null on delete [D] intent |
 | `INITIALIZATION` | not in the contract | From the migration table: `commit`, `run`, `stack`, `request.timestamp_ns` [D] migrate-approval |
@@ -568,7 +614,11 @@ the edges [D] contract:
 - The docs name push, approval, plan and trigger as the types that touch a run and
   so can set flags [D] policy; the contract defines `flag` on all nine types
   [D] contract. What a flag set by a type with no run (login, access, notification,
-  intent) does is *(unverified)* (C50).
+  intent) does is *(unverified)* (C50). Sampled inputs show a plan policy's flag
+  absent from its own evaluation's `run.flags`, present in the same run's later
+  approval, trigger and notification inputs and in the next run's `previous_run`, and
+  absent from runs a trigger policy creates
+  ([32](32-spacelift-console-survey.md) section 16.2).
 - Policies of the same type do not see each other's flags; flags pass between
   types [D] policy. They appear in the UI, which makes them useful for debugging
   [D] policy.
@@ -582,7 +632,9 @@ the edges [D] contract:
   [D] contract.
 - Within one evaluation, resets apply first and new flags second [D] flag-reset.
 - Policies without a `PolicyULID` (older policies) can set flags but not reset any
-  [D] flag-reset. How a policy gets a ULID is *(unverified)* (C51).
+  [D] flag-reset. Every policy created in the console has a ULID, and its decision carries
+  `reset_flag` ([32](32-spacelift-console-survey.md) section 16.1); how an older
+  policy gets one is *(unverified)* (C51).
 - Supported on push, approval, plan and trigger [D] flag-reset. During targeted
   replans, plan and approval policies run several times in one run, and reset lets the
   flags follow the current plan [D] flag-reset; report 08 owns targeted replan.
@@ -652,7 +704,11 @@ Report 06 owns spacectl.
 - The example library is packaged as a Go module whose `Templates()` embeds every
   `examples/**/<name>.yml` with its sibling `.rego`, and validates name, type and body
   [S] [`templates.go`](https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc8/templates.go).
-  That the in-product templates are served from this module is *(unverified)* (C54)
+  The console's catalogue lists 59 templates. The 50 on its first page are all
+  library templates, and the library templates missing from them are its six login
+  templates and nine others, as many as the entries left unread
+  ([32](32-spacelift-console-survey.md) section 16.1). That the in-product templates
+  are served from this module, less its login templates, is *(unverified)* (C54)
   [I, from the matching fields `name`, `type`, `description`, `labels`, `body`].
 
 ## 7. Attaching policies
@@ -954,14 +1010,9 @@ comment quoted in 2.1].
 
 - The server stores and returns the current names of the three alias types [I, from
   the provider's diff-suppress logic].
-- Reviews are grouped by the run state in which they were made, so an approval given
-  in `QUEUED` does not satisfy the `UNCONFIRMED` evaluation [I, from the
-  `reviews.current`/`older` input shape].
-- A single `reject` from one of several approval policies fails the run
-  *(unverified)* (C41).
 - Whether `ACCESS` policies are still evaluated after 2026-05-30 *(unverified)* (C47).
 - The API's default engine when `engineType` is omitted *(unverified)* (C49); the provider
-  documents `REGO_V0`.
+  documents `REGO_V0`, and the console's editor opens on `REGO_V1`.
 - What a flag set by a login, access, notification or intent policy does
   *(unverified)* (C50).
 - How a policy acquires the `PolicyULID` needed to reset flags *(unverified)* (C51).
@@ -970,11 +1021,10 @@ comment quoted in 2.1].
 - That in-product templates come from the example library module *(unverified)* (C54).
 - What `force` on `policyDelete` overrides *(unverified)* (C9).
 - Which policy types `WORKFLOW_POLICIES` gates *(unverified)* (C48).
-- Whether an approval policy `reject` fails or cancels the run *(unverified)* (C40).
-- What `queued_runs` counts on each trigger policy `stacks[]` entry, and whether
-  module-version events carry it *(unverified)* (C55).
+- Whether module-version trigger events carry `queued_runs` *(unverified)* (C55).
 - The unit of `Policy.createdAt` and `updatedAt` *(unverified)* (C56).
-- Which OPA version evaluates policies in Spacelift SaaS *(unverified)* (C57).
+- Which OPA version evaluates policies in Spacelift SaaS *(unverified)* (C57); the
+  console's policy pages do not show it.
 - The INITIALIZATION evaluation sits between `QUEUED`/`READY` and `INITIALIZING`
   [I, from "before they start"].
 

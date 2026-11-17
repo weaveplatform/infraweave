@@ -1,0 +1,285 @@
+{
+  "ansible": null,
+  "cloudformation": null,
+  "kubernetes": null,
+  "opentofu": {
+    "checks": [],
+    "opentofu_version": "1.13.9",
+    "resource_changes": [
+      {
+        "address": "terraform_data.sub",
+        "change": {
+          "actions": [
+            "update"
+          ],
+          "after": {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "input": "sub-v2:root-8",
+            "triggers_replace": null
+          },
+          "after_sensitive": {},
+          "after_unknown": {
+            "output": true
+          },
+          "before": {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "input": "sub-v2:root-7",
+            "output": "sub-v2:root-7",
+            "triggers_replace": null
+          },
+          "before_sensitive": {}
+        },
+        "mode": "managed",
+        "name": "sub",
+        "provider_name": "terraform.io/builtin/terraform",
+        "type": "terraform_data"
+      }
+    ]
+  },
+  "pulumi": null,
+  "spacelift": {
+    "commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767236599000000000,
+      "exist_on_tracked_branch": true,
+      "hash": "0000000000000000000000000000000000000005",
+      "message": "dependency test, sub reads from_a",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000005"
+    },
+    "previous_run": {
+      "based_on_local_workspace": false,
+      "branch": "main",
+      "command": "",
+      "commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767236599000000000,
+        "exist_on_tracked_branch": true,
+        "hash": "0000000000000000000000000000000000000005",
+        "message": "dependency test, sub reads from_a",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000005"
+      },
+      "created_at": 1767236603063819000,
+      "creator_session": {
+        "admin": "",
+        "creator_ip": "",
+        "idp_subject": "",
+        "login": "",
+        "machine": true,
+        "name": "",
+        "teams": []
+      },
+      "drift_detection": false,
+      "flags": [
+        "plan-flag"
+      ],
+      "force_apply_mode": "DISABLED",
+      "id": "01H00000000000000000000007",
+      "promoted": false,
+      "runtime_config": {
+        "after_apply": [],
+        "after_destroy": [],
+        "after_init": [],
+        "after_perform": [],
+        "after_plan": [],
+        "after_run": [],
+        "before_apply": [],
+        "before_destroy": [],
+        "before_init": [],
+        "before_perform": [],
+        "before_plan": [],
+        "environment": {},
+        "git_sparse_checkout_paths": [],
+        "project_root": "sub",
+        "runner_image": "public.ecr.aws/spacelift/runner-opentofu:latest",
+        "terraform_version": null
+      },
+      "state": "FINISHED",
+      "trigger": null,
+      "triggered_by": null,
+      "type": "TRACKED",
+      "updated_at": 1767236705635541000,
+      "user_provided_metadata": []
+    },
+    "request": {
+      "timestamp_ns": 1767236962897732400
+    },
+    "run": {
+      "based_on_local_workspace": false,
+      "branch": "main",
+      "changes": [
+        {
+          "action": "changed",
+          "entity": {
+            "address": "output.sub",
+            "data": {
+              "sensitive": false,
+              "value": "null",
+              "value_hash": -6284781860667378000
+            },
+            "entity_type": "output",
+            "entity_vendor": "opentofu",
+            "name": "sub",
+            "type": "output"
+          },
+          "moved": false,
+          "phase": "plan"
+        },
+        {
+          "action": "changed",
+          "entity": {
+            "address": "terraform_data.sub",
+            "data": {
+              "address": "terraform_data.sub",
+              "mode": "managed",
+              "module": "",
+              "provider": "terraform.io/builtin/terraform",
+              "tainted": false,
+              "values": {
+                "id": "00000000-0000-0000-0000-000000000002",
+                "input": "sub-v2:root-8",
+                "triggers_replace": null
+              },
+              "values_hash": -5870055598468666000
+            },
+            "entity_type": "resource",
+            "entity_vendor": "opentofu",
+            "name": "sub",
+            "type": "terraform_data"
+          },
+          "moved": false,
+          "phase": "plan"
+        }
+      ],
+      "command": "",
+      "commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767236599000000000,
+        "exist_on_tracked_branch": true,
+        "hash": "0000000000000000000000000000000000000005",
+        "message": "dependency test, sub reads from_a",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000005"
+      },
+      "created_at": 1767236775747714000,
+      "creator_session": {
+        "admin": "",
+        "creator_ip": "",
+        "idp_subject": "",
+        "login": "",
+        "machine": true,
+        "name": "",
+        "teams": []
+      },
+      "drift_detection": false,
+      "flags": [],
+      "force_apply_mode": "DISABLED",
+      "id": "01H00000000000000000000008",
+      "promoted": false,
+      "runtime_config": {
+        "after_apply": [],
+        "after_destroy": [],
+        "after_init": [],
+        "after_perform": [],
+        "after_plan": [],
+        "after_run": [],
+        "before_apply": [],
+        "before_destroy": [],
+        "before_init": [],
+        "before_perform": [],
+        "before_plan": [],
+        "environment": {},
+        "git_sparse_checkout_paths": [],
+        "project_root": "sub",
+        "runner_image": "public.ecr.aws/spacelift/runner-opentofu:latest",
+        "terraform_version": null
+      },
+      "state": "PLANNING",
+      "trigger": {
+        "run": {
+          "id": "01H00000000000000000000009"
+        },
+        "stack": {
+          "id": "stack-a"
+        }
+      },
+      "triggered_by": "dependencies/stack-a",
+      "type": "TRACKED",
+      "updated_at": 1767236962382391000,
+      "user_provided_metadata": []
+    },
+    "stack": {
+      "additional_project_globs": [],
+      "administrative": false,
+      "autodeploy": false,
+      "branch": "main",
+      "id": "stack-b",
+      "labels": [],
+      "locked_by": null,
+      "name": "stack-b",
+      "namespace": "owner-a",
+      "project_root": "sub",
+      "repository": "repo-a",
+      "roles": [],
+      "space": {
+        "id": "root",
+        "labels": [],
+        "name": "root"
+      },
+      "state": "PLANNING",
+      "terraform_version": null,
+      "terraform_workflow_tool": null,
+      "tracked_commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767236599000000000,
+        "hash": "0000000000000000000000000000000000000005",
+        "message": "dependency test, sub reads from_a",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000005"
+      },
+      "worker_pool": {
+        "public": true
+      }
+    }
+  },
+  "terraform": {
+    "checks": [],
+    "resource_changes": [
+      {
+        "address": "terraform_data.sub",
+        "change": {
+          "actions": [
+            "update"
+          ],
+          "after": {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "input": "sub-v2:root-8",
+            "triggers_replace": null
+          },
+          "after_sensitive": {},
+          "after_unknown": {
+            "output": true
+          },
+          "before": {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "input": "sub-v2:root-7",
+            "output": "sub-v2:root-7",
+            "triggers_replace": null
+          },
+          "before_sensitive": {}
+        },
+        "mode": "managed",
+        "name": "sub",
+        "provider_name": "terraform.io/builtin/terraform",
+        "type": "terraform_data"
+      }
+    ],
+    "terraform_version": "1.13.9"
+  },
+  "third_party_metadata": {}
+}

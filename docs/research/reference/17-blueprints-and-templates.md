@@ -293,8 +293,10 @@ blueprint schema.
 | `stacks` | list of stack | no (schema) | At most 5 items; each must have `key` |
 
 The blueprint schema requires neither `stack` nor `stacks` and does not forbid
-both [D] blueprint schema; whether the service rejects a body with neither or
-with both is *(unverified)* (C140).
+both [D] blueprint schema. The schema the console's blueprint page serves
+requires exactly one of them, and the page will not publish a body that fails
+it ([32](32-spacelift-console-survey.md) section 16.7); whether the API itself
+rejects such a body is *(unverified)* (C140).
 
 ### 5.2 Inputs and input types
 
@@ -313,8 +315,10 @@ blueprint schema. The schema has four input shapes:
 | `select` | `SELECT` | `type` and `options` required | `options`: list of strings, at least 1 | none in the schema |
 | none | `AVAILABLE_SPACES` | Shows the list of spaces the user may use in the UI [G] | | |
 
-`AVAILABLE_SPACES` exists only in the GraphQL enum; neither JSON schema
-accepts it as a YAML `type`, so how a body declares it is *(unverified)* (C141).
+`AVAILABLE_SPACES` is in the GraphQL enum, and neither JSON schema in the docs
+accepts it as a YAML `type`. The template schema the console serves does, as
+`available_spaces` among the text types; the blueprint schema it serves does not
+([32](32-spacelift-console-survey.md) section 17.6), which resolves C141.
 The template docs list `type` as required for every input [D] tconfig, while
 the template schema, like the blueprint schema, lets the text shape omit it
 [D] tconfig schema; the schema wins.
@@ -345,8 +349,10 @@ The GraphQL `BlueprintInputValidations` carries the same rules in camel case
 `notEqual`, `step`), with the numeric bounds typed `Float` and `step` `Int`
 [G]. The template docs add `required` for `boolean` and `select` inputs [D]
 tconfig, which the template JSON schema does not allow (the boolean and select
-shapes have no `validations` key) [D] tconfig schema; which one the service
-enforces is *(unverified)* (C142).
+shapes have no `validations` key) [D] tconfig schema; the template schema the
+console serves gives `boolean` and `select` a `validations` object holding
+`required` alone ([32](32-spacelift-console-survey.md) section 17.6), which
+resolves C142.
 
 ### 5.3 Stack
 
@@ -729,7 +735,12 @@ and delete in `IN_PROGRESS`, `UNCONFIRMED` and `DESTROYING` [D] workbench
 [D] deployments. The end-user page omits `DISCARDED` [D] deployments.
 
 The state is derived from the stacks' states [G]; the derivation rule is
-*(unverified)* (C150). `UNCONFIRMED` matches a tracked run that stopped for
+*(unverified)* (C150). With one stack, the console shows a deployment in
+progress while the stack's first run plans, unconfirmed while it waits for
+the creator's confirmation, and success, its label for `FINISHED`, once it
+applies; deleting the deployment shows it as deleting while a destroy run
+removes the stack and its resources, with no choice to keep them
+([32](32-spacelift-console-survey.md) section 17.6). `UNCONFIRMED` matches a tracked run that stopped for
 confirmation [I] from the run state `UNCONFIRMED` (report 08). The provider
 waits while the state is `NONE`, `IN_PROGRESS` or `DESTROYING` and treats
 `FINISHED` and `UNCONFIRMED` as settled [S]
@@ -961,9 +972,8 @@ REST routes are report 04.
   semantics, `compatibleVersions`, `keepOldValue`, input checksums,
   `skipStackDeletion`, `TemplateDeploymentUpgradeInput` with no operation
   using it.
-- Unverified: a blueprint body with neither or both of `stack` and `stacks`;
-  `AVAILABLE_SPACES` in YAML; `validations` on boolean and select
-  inputs; the template stack limit; GCP attachments; whether
+- Unverified: whether the API refuses a blueprint body with neither or both
+  of `stack` and `stacks`; the template stack limit; GCP attachments; whether
   `BlueprintWithGroup*` remain supported; duplicate version numbers;
   deployments from deprecated versions; secret input values on read; test
   deployment differences; the state derivation; allowed actions in `NONE`,

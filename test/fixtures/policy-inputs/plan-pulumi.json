@@ -1,0 +1,249 @@
+{
+  "ansible": null,
+  "cloudformation": null,
+  "kubernetes": null,
+  "opentofu": null,
+  "pulumi": {
+    "steps": [
+      {
+        "new": {
+          "id": "",
+          "inputs": {},
+          "outputs": {},
+          "parent": "",
+          "provider": "",
+          "type": "pulumi:pulumi:Stack",
+          "urn": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev"
+        },
+        "old": null,
+        "op": "create",
+        "provider": "",
+        "type": "pulumi:pulumi:Stack",
+        "urn": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev"
+      },
+      {
+        "new": {
+          "custom": true,
+          "id": "00000000-0000-0000-0000-000000000003",
+          "inputs": {},
+          "outputs": {},
+          "parent": "",
+          "provider": "",
+          "type": "pulumi:providers:random",
+          "urn": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default"
+        },
+        "old": null,
+        "op": "create",
+        "provider": "",
+        "type": "pulumi:providers:random",
+        "urn": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default"
+      },
+      {
+        "new": {
+          "custom": true,
+          "id": "",
+          "inputs": {
+            "length": 2
+          },
+          "outputs": {
+            "id": "00000000-0000-0000-0000-000000000003",
+            "length": 2,
+            "separator": "-"
+          },
+          "parent": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev",
+          "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::00000000-0000-0000-0000-000000000003",
+          "type": "random:index/randomPet:RandomPet",
+          "urn": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet"
+        },
+        "old": null,
+        "op": "create",
+        "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::00000000-0000-0000-0000-000000000003",
+        "type": "random:index/randomPet:RandomPet",
+        "urn": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet"
+      },
+      {
+        "new": {
+          "id": "",
+          "inputs": {},
+          "outputs": {
+            "petName": "00000000-0000-0000-0000-000000000003"
+          },
+          "parent": "",
+          "provider": "",
+          "type": "pulumi:pulumi:Stack",
+          "urn": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev"
+        },
+        "old": null,
+        "op": "create",
+        "provider": "",
+        "type": "pulumi:pulumi:Stack",
+        "urn": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev"
+      }
+    ]
+  },
+  "spacelift": {
+    "commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767237841000000000,
+      "exist_on_tracked_branch": true,
+      "hash": "0000000000000000000000000000000000000004",
+      "message": "add pulumi and ansible programs [ignore]",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000004"
+    },
+    "request": {
+      "timestamp_ns": 1767238201323791400
+    },
+    "run": {
+      "based_on_local_workspace": false,
+      "branch": "main",
+      "changes": [
+        {
+          "action": "added",
+          "entity": {
+            "address": "petName",
+            "data": {
+              "sensitive": false,
+              "value": "\"00000000-0000-0000-0000-000000000003\"",
+              "value_hash": -6692195955581253000
+            },
+            "entity_type": "output",
+            "entity_vendor": "pulumi",
+            "name": "petName",
+            "type": "output"
+          },
+          "moved": false,
+          "phase": "plan"
+        },
+        {
+          "action": "added",
+          "entity": {
+            "address": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet",
+            "data": {
+              "id": "pet",
+              "outputs": {
+                "id": "00000000-0000-0000-0000-000000000003",
+                "length": 2,
+                "separator": "-"
+              },
+              "outputs_hash": -5822274427547654000,
+              "parent": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev",
+              "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::00000000-0000-0000-0000-000000000003",
+              "urn": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet"
+            },
+            "entity_type": "resource",
+            "entity_vendor": "pulumi",
+            "name": "pet",
+            "type": "random:index/randomPet:RandomPet"
+          },
+          "moved": false,
+          "phase": "plan"
+        }
+      ],
+      "command": "",
+      "commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767237841000000000,
+        "exist_on_tracked_branch": true,
+        "hash": "0000000000000000000000000000000000000004",
+        "message": "add pulumi and ansible programs [ignore]",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000004"
+      },
+      "created_at": 1767238171144674000,
+      "creator_session": {
+        "admin": true,
+        "creator_ip": "192.0.2.1",
+        "identity": {
+          "federations": {
+            "github-oauth": {
+              "id": "github-id-a",
+              "username": "user-a"
+            }
+          },
+          "ulid": "01H00000000000000000000002"
+        },
+        "idp_subject": "github-id-a",
+        "login": "user-a",
+        "machine": false,
+        "name": "user-a",
+        "teams": null
+      },
+      "drift_detection": false,
+      "flags": [],
+      "force_apply_mode": "DISABLED",
+      "id": "01H00000000000000000000010",
+      "promoted": false,
+      "runtime_config": {
+        "after_apply": [],
+        "after_destroy": [],
+        "after_init": [
+          "echo after-init; pulumi whoami -v || true; pulumi stack ls || true"
+        ],
+        "after_perform": [],
+        "after_plan": [],
+        "after_run": [],
+        "before_apply": [
+          "echo before-apply"
+        ],
+        "before_destroy": [],
+        "before_init": [
+          "echo before-init; pulumi whoami -v || true"
+        ],
+        "before_perform": [],
+        "before_plan": [
+          "echo before-plan"
+        ],
+        "environment": {},
+        "git_sparse_checkout_paths": [],
+        "project_root": "pulumi",
+        "runner_image": "public.ecr.aws/spacelift/runner-pulumi-javascript:latest",
+        "terraform_version": null
+      },
+      "state": "PLANNING",
+      "trigger": null,
+      "triggered_by": "user-a",
+      "type": "TRACKED",
+      "updated_at": 1767238200881666000,
+      "user_provided_metadata": []
+    },
+    "stack": {
+      "additional_project_globs": [],
+      "administrative": false,
+      "autodeploy": false,
+      "branch": "main",
+      "id": "stack-pulumi",
+      "labels": [],
+      "locked_by": null,
+      "name": "stack-pulumi",
+      "namespace": "owner-a",
+      "project_root": "pulumi",
+      "repository": "repo-a",
+      "roles": [],
+      "space": {
+        "id": "root",
+        "labels": [],
+        "name": "root"
+      },
+      "state": "PLANNING",
+      "terraform_version": null,
+      "terraform_workflow_tool": null,
+      "tracked_commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767237841000000000,
+        "hash": "0000000000000000000000000000000000000004",
+        "message": "add pulumi and ansible programs [ignore]",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000004"
+      },
+      "worker_pool": {
+        "public": true
+      }
+    }
+  },
+  "terraform": null,
+  "third_party_metadata": {}
+}

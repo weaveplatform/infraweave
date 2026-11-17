@@ -585,8 +585,12 @@ The Pulumi page carries a feature-preview notice [D] pulumi.
 | Destroying | `pulumi destroy`, with `SPACELIFT_PULUMI_CLI_ARGS_destroy` | [I] from the variable name; the docs show `pulumi destroy --non-interactive --yes` only as a task [D] pulumi-lang |
 
 The docs order (Pulumi login before pre-initialization hooks) differs from the
-general rule that `before_init` hooks run first [D] run; which order the worker
-uses is *(unverified)* (C190).
+general rule that `before_init` hooks run first [D] run. The general rule holds:
+a run's `before_init` hooks run before the login and before the stack is
+selected, or created when it does not exist, and `after_init` hooks run after
+both ([32](32-spacelift-console-survey.md) section 16.8), which resolves C190.
+Planning prints `pulumi preview` output and applying `pulumi up` output; the
+destroy command is still inferred (C193).
 
 | Setting or variable | Behaviour | Source |
 |---|---|---|
@@ -853,7 +857,10 @@ not that it behaves identically [I].
 - A one-stack `openTofuMigrate` backs the single-stack banner [I] from
   `stackMigrateVendor` being described as Terragrunt-only.
 - CloudFormation apply executes the change set built in planning [I] (C193).
-- Ansible runs `ansible-playbook` [I] (C193).
+- Ansible runs `ansible-playbook`, with `--check` while planning and without
+  it while applying, as the console's run log shows
+  ([32](32-spacelift-console-survey.md) section 16.8); the CloudFormation and
+  Pulumi destroy commands above stay inferred (C193).
 - Terragrunt init runs `terragrunt init` [I] from `TG_CLI_ARGS_init`.
 - `StackMigrateVendorAllResult.left` implies repeated calls [I].
 - Unverified: whether Pulumi login precedes `before_init` hooks; the

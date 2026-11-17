@@ -1,0 +1,161 @@
+{
+  "ansible": {
+    "changed": {
+      "localhost": 1
+    },
+    "dark": {},
+    "failures": {},
+    "ignored": {},
+    "ok": {
+      "localhost": 2
+    },
+    "playbook": "playbook.yml",
+    "processed": {
+      "localhost": 1
+    },
+    "rescued": {},
+    "skipped": {}
+  },
+  "cloudformation": null,
+  "kubernetes": null,
+  "opentofu": null,
+  "pulumi": null,
+  "spacelift": {
+    "commit": {
+      "author": "user-a",
+      "branch": "main",
+      "created_at": 1767237841000000000,
+      "exist_on_tracked_branch": true,
+      "hash": "0000000000000000000000000000000000000004",
+      "message": "add pulumi and ansible programs [ignore]",
+      "tag": "",
+      "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000004"
+    },
+    "request": {
+      "timestamp_ns": 1767238532475754000
+    },
+    "run": {
+      "based_on_local_workspace": false,
+      "branch": "main",
+      "changes": [
+        {
+          "action": "changed",
+          "entity": {
+            "host_name": "localhost",
+            "playbook_name": "playbook.yml",
+            "role_name": "",
+            "task_action": "ansible.builtin.copy",
+            "task_name": "Write a file"
+          },
+          "phase": "plan"
+        },
+        {
+          "action": "ok",
+          "entity": {
+            "host_name": "localhost",
+            "playbook_name": "playbook.yml",
+            "role_name": "",
+            "task_action": "ansible.builtin.debug",
+            "task_name": "Say hello"
+          },
+          "phase": "plan"
+        }
+      ],
+      "command": "",
+      "commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767237841000000000,
+        "exist_on_tracked_branch": true,
+        "hash": "0000000000000000000000000000000000000004",
+        "message": "add pulumi and ansible programs [ignore]",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000004"
+      },
+      "created_at": 1767238497770347000,
+      "creator_session": {
+        "admin": true,
+        "creator_ip": "192.0.2.1",
+        "identity": {
+          "federations": {
+            "github-oauth": {
+              "id": "github-id-a",
+              "username": "user-a"
+            }
+          },
+          "ulid": "01H00000000000000000000002"
+        },
+        "idp_subject": "github-id-a",
+        "login": "user-a",
+        "machine": false,
+        "name": "user-a",
+        "teams": null
+      },
+      "drift_detection": false,
+      "flags": [],
+      "force_apply_mode": "DISABLED",
+      "id": "01H00000000000000000000006",
+      "promoted": false,
+      "runtime_config": {
+        "after_apply": [],
+        "after_destroy": [],
+        "after_init": [],
+        "after_perform": [],
+        "after_plan": [],
+        "after_run": [],
+        "before_apply": [],
+        "before_destroy": [],
+        "before_init": [],
+        "before_perform": [],
+        "before_plan": [],
+        "environment": {},
+        "git_sparse_checkout_paths": [],
+        "project_root": "ansible",
+        "runner_image": "public.ecr.aws/spacelift/runner-ansible:latest",
+        "terraform_version": null
+      },
+      "state": "PLANNING",
+      "trigger": null,
+      "triggered_by": "user-a",
+      "type": "TRACKED",
+      "updated_at": 1767238525497288000,
+      "user_provided_metadata": []
+    },
+    "stack": {
+      "additional_project_globs": [],
+      "administrative": false,
+      "autodeploy": false,
+      "branch": "main",
+      "id": "stack-ansible",
+      "labels": [],
+      "locked_by": null,
+      "name": "stack-ansible",
+      "namespace": "owner-a",
+      "project_root": "ansible",
+      "repository": "repo-a",
+      "roles": [],
+      "space": {
+        "id": "root",
+        "labels": [],
+        "name": "root"
+      },
+      "state": "PLANNING",
+      "terraform_version": null,
+      "terraform_workflow_tool": null,
+      "tracked_commit": {
+        "author": "user-a",
+        "branch": "main",
+        "created_at": 1767237841000000000,
+        "hash": "0000000000000000000000000000000000000004",
+        "message": "add pulumi and ansible programs [ignore]",
+        "tag": "",
+        "url": "vcs-url/owner-a/repo-a/commit/0000000000000000000000000000000000000004"
+      },
+      "worker_pool": {
+        "public": true
+      }
+    }
+  },
+  "terraform": null,
+  "third_party_metadata": {}
+}

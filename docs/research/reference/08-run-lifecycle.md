@@ -192,16 +192,20 @@ source. The state diagram above draws T1 to T43 only.
 Three edges rest on inference rather than a statement: T14, T30 and T32,
 each with its basis in its record. T5, T24 and T29 give an approval policy
 `reject` as `FAILED`, while the approval page's walkthrough describes
-**Reject** as canceling the run, so their target is *(unverified)*. T13
-leaves open whether a task with `skipInitialization` still passes through
-`INITIALIZING`, and T14 whether a destroy run plans and waits for
-confirmation first.
+**Reject** as canceling the run; the console shows a reject in `QUEUED`
+failing the run ([32](32-spacelift-console-survey.md) section 16.2), which
+resolves C40; T24 and T29 rest on the same rule until C291 rejects in
+`PENDING_REVIEW` and `UNCONFIRMED`. A
+task with `skipInitialization` still passes through `INITIALIZING` (T13),
+which only logs that initialization is skipped
+([32](32-spacelift-console-survey.md) section 17.4), which resolves C42. T14
+leaves open whether a destroy run plans and waits for confirmation first.
 
 Transitions the sources imply but do not pin to a target state:
 
 | Situation | Likely target | Status |
 |---|---|---|
-| A push policy `cancel` rule names a run that is awaiting confirmation (`in_progress` includes unconfirmed runs) | `CANCELED` or `DISCARDED` | *(unverified)* (C37) |
+| A push policy `cancel` rule names a run that is awaiting confirmation (`in_progress` includes unconfirmed runs) | `DISCARDED`, with the note "canceled by push policy in favor of run <id>" (T27) | Observed in the console ([32](32-spacelift-console-survey.md) section 16.2); resolves C37 |
 | `runKill` sends SIGKILL to a run in progress | `FAILED` or `STOPPED` | *(unverified)* (C36) |
 | The launcher kills a job that produced no logs for `SPACELIFT_LAUNCHER_LOGS_TIMEOUT` (default 7 minutes) or ran past `SPACELIFT_LAUNCHER_RUN_TIMEOUT` (default 70 minutes) ([worker pools](https://docs.spacelift.io/concepts/worker-pools)) [D] | `FAILED` | *(unverified)* (C39) |
 | A worker abandons a run mid-plan; the 30-day rule then fails it ([run](https://docs.spacelift.io/concepts/run#automatic-termination)) [D] | `FAILED` | Documented for the 30-day sweep only |
@@ -363,7 +367,7 @@ Plugins also run at phase boundaries such as `before_init`, `after_plan` and
 | Targeted replan | `runTargetedReplan(stack, run, targets)` | `UNCONFIRMED` | `REPLAN_REQUESTED` | Replan targeted run | Business tier and above [D]. The schema and Bruno say it sets the state to `PENDING_PLAN`, a value that does not exist in `RunState` [G] [B] |
 | Stop | `runStop(stack, run, note, state)` | In progress: `INITIALIZING`, `PLANNING` | `STOPPED`; the worker may ignore the signal | Stop run / Stop blocking run | `CONFIRMED` and `PERFORMING` cannot be stopped [D]; the purpose of the optional `state` argument is *(unverified)* (C36) |
 | Kill | `runKill(stack, run, note, state)` | In progress, after a stop that did not end the process | SIGKILL to the process | Kill run / Kill blocking run | [G] [B]; resulting state *(unverified)* (C36) |
-| Retry | `runRetry(stack, run)` | A finished run (`Run.canRetry`, `Run.retryBlocker`) | Returns a `Run` | Retry run / Retry blocking run | Schema and Bruno say "a PR run"; spacectl calls it "Retry a failed run" [S]; whether it creates a new run or reuses the ID is *(unverified)* (C10); a retry never triggers dependent stacks [D] |
+| Retry | `runRetry(stack, run)` | A finished run (`Run.canRetry`, `Run.retryBlocker`) | Returns a `Run` | Retry run / Retry blocking run | Schema and Bruno say "a PR run"; spacectl calls it "Retry a failed run" [S]; it creates a new run on the same commit with the retried run's runtime configuration, offered on failed and discarded tracked runs but not finished ones ([32](32-spacelift-console-survey.md) section 17.3), which resolves C10; a retry never triggers dependent stacks [D] |
 | Promote | `runPromote(stack, run)` | A `PROPOSED` run on a commit newer than the stack's current commit, with promotion allowed (`Run.canPromote`, `Run.promoteBlocker`) [G] [D] | A new `TRACKED` run on the same commit | Promote run | Section 7 |
 | Prioritize | `runPrioritySet(stack, run, preset)` | Non-terminal, private pool | `priorityPreset` changes | Prioritize run | Section 4 |
 | Comment | `runComment(stack, run, body)` | Any | A `RunComment` (Markdown body, username, timestamp) | Comment on run | Comments on the run in Spacelift, not on the PR [G] |
@@ -594,16 +598,9 @@ and `finished` [G].
 - *(unverified)* (C35) Whether `TESTING` runs take the module's lock.
 - *(unverified)* (C36) The state a killed run ends in; what the `state` argument of
   `runStop` and `runKill` does.
-- *(unverified)* (C37) The state a push policy `cancel` leaves an unconfirmed run in.
 - *(unverified)* (C38) Whether a failed upstream run cancels or skips downstream
   runs; the dependencies page says both.
-- *(unverified)* (C10) Whether `runRetry` creates a new run, and which run types it
-  accepts beyond "PR runs".
 - *(unverified)* (C39) The state a launcher timeout (logs or run) produces.
-- *(unverified)* (C40) Whether an approval policy `reject` fails or cancels the
-  run; the approval policy page says both (T5, T24, T29).
-- *(unverified)* (C42) Whether a task with `skipInitialization` passes through
-  `INITIALIZING` (T13).
 - *(unverified)* (C43) Whether a drift detection run on a pool with drift runs
   disabled is created directly in `FAILED`, and whether runs over the drift
   limit become `SKIPPED` or are not created.

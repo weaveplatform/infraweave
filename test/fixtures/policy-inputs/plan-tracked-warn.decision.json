@@ -1,0 +1,12 @@
+{
+  "deny": [],
+  "flag": [
+    "plan-flag"
+  ],
+  "info": [],
+  "reset_flag": [],
+  "sample": true,
+  "warn": [
+    "warn: 1 resource(s) affected"
+  ]
+}

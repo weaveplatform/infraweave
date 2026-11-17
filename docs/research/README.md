@@ -85,7 +85,7 @@ exclusion is recorded with its evidence.
 | [29-data-model-inventory.md](reference/29-data-model-inventory.md) | Generated from the introspection snapshot: how to read the register [`graphql-inventory.json`](../data/graphql-inventory.json) of every type, field and enum value, and its counts | Written |
 | [30-open-questions.md](reference/30-open-questions.md) | How to use and resolve the open questions; the product decisions, captures needed and re-verify triggers are in [`open-questions.json`](../data/open-questions.json) | Written |
 | [31-review-log.md](reference/31-review-log.md) | What each fact-check pass found and changed | Written |
-| [32-spacelift-console-survey.md](reference/32-spacelift-console-survey.md) | Spacelift's web console read page by page on 2026-11-17: fields, defaults, bounds and tier gates, compared with plan phases P13 to P28 | Written |
+| [32-spacelift-console-survey.md](reference/32-spacelift-console-survey.md) | Spacelift's web console read page by page on 2026-11-17, then driven: fields, defaults, bounds and tier gates; runs, policy inputs and audit entries; compared with plan phases P13 to P28 and with main | Written |
 | [glossary.md](reference/glossary.md) | Terms used across the set | Written |
 | [architecture-options/](architecture-options/README.md) | Five repository architecture options, their comparison and a recommendation | Written |
 | [decisions/](decisions/README.md) | Decision records, with their index | 0001 to 0003 Accepted; 0004 to 0022 Proposed |
