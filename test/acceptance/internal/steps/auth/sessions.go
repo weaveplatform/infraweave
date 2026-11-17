@@ -259,7 +259,7 @@ func (a *authSteps) memberSession(ctx context.Context) error {
 		INSERT INTO sessions (organization_id, account_id, id, channel, actor_kind, actor_id,
 				member_id, login, name, email, ip_address, expires_at, idle_expires_at)
 			VALUES ('%[1]s', '%[3]s', '%[4]s', 'WEB', 'user', '%[2]s', '%[2]s', 'alice', 'Alice',
-				'alice@example.com', '192.0.2.44', now() + interval '1 day', now() + interval '1 hour');`,
+				'alice@example.com', '192.0.2.44', now() + interval '10 hours', now() + interval '10 hours');`,
 		harness.UUIDOf(
 			harness.Home.Org,
 		),

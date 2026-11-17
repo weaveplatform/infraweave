@@ -20,9 +20,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cucumber/godog"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 	"github.com/weaveplatform/infraweave/test/deps"
@@ -70,6 +72,10 @@ func (b *browserSteps) register(sc *godog.ScenarioContext) {
 		b.endedRefused,
 	)
 	sc.Step(`^the viewer through ([AB]) in the browser answers (\d+)$`, b.viewerAnswers)
+	sc.Step(`^the browser's session lasts 10 hours from its sign-in and 10 hours idle$`, b.sessionLifetime)
+	sc.Step(`^(\d+ hours?) pass(?:es)? for the browser's session$`, b.ageSession)
+	sc.Step(`^the browser's expired session is refused through ([AB]) within a second$`, b.expiredRefused)
+
 	sc.Step(`^the trail of "([a-z-]+)" holds the break-glass sign-ins "([^"]+)"$`, b.trail)
 	sc.Step(
 		`^the home account's member has a browser session, admitted to (home alone|home and sibling)$`,
@@ -194,6 +200,79 @@ func (b *browserSteps) holdsCookie() error {
 		return fmt.Errorf("%w: Set-Cookie %+v", harness.ErrStep, c)
 	}
 	return nil
+}
+
+// sessionLifetime checks the default cookie and the stored sign-in's two
+// limits, together with the expiry the viewer serves.
+func (b *browserSteps) sessionLifetime(ctx context.Context) error {
+	cookie := b.w.Jar.SetCookie()
+	if cookie == nil || cookie.MaxAge != 36000 {
+		return fmt.Errorf("%w: session cookie %+v, want Max-Age=36000", harness.ErrStep, cookie)
+	}
+	hash := sha256.Sum256([]byte(cookie.Value))
+	var created, expires, idle time.Time
+	if err := b.w.Row(ctx, `SELECT created_at, expires_at, idle_expires_at
+		FROM sessions WHERE secret_hash = $1`, []any{hash[:]}, &created, &expires, &idle); err != nil {
+		return err //nolint:wrapcheck // names the query
+	}
+	if expires.Sub(created) != 10*time.Hour || idle.Sub(created) != 10*time.Hour {
+		return fmt.Errorf("%w: session lasts %s absolute and %s idle, want 10h each",
+			harness.ErrStep, expires.Sub(created), idle.Sub(created))
+	}
+	r, err := b.w.BrowserDo(ctx, "B", http.MethodGet, "/api/v1/viewer", "", nil)
+	if err != nil {
+		return err
+	}
+	var viewer browserUser
+	if err := json.Unmarshal(r.Body, &viewer); err != nil || r.Status != http.StatusOK ||
+		viewer.ValidUntil != expires.Unix() {
+		return fmt.Errorf("%w: viewer answered %d %s, want validUntil %d",
+			harness.ErrStep, r.Status, r.Body, expires.Unix())
+	}
+	return nil
+}
+
+// ageSession moves a session's timestamps instead of waiting for the server's
+// timer. Invalidating its caches makes every replica read the aged limits.
+//
+// ref: decision 0016
+func (b *browserSteps) ageSession(ctx context.Context, span string) error {
+	secret, ok := b.w.Jar.Session()
+	if !ok {
+		return fmt.Errorf("%w: no browser session to age", harness.ErrStep)
+	}
+	hash := sha256.Sum256([]byte(secret))
+	var id kernel.ULID
+	if err := b.w.Row(ctx, `
+		UPDATE sessions SET created_at = created_at - $2::interval,
+			last_seen_at = last_seen_at - $2::interval,
+			idle_expires_at = idle_expires_at - $2::interval,
+			expires_at = expires_at - $2::interval
+		WHERE secret_hash = $1 RETURNING id`,
+		[]any{hash[:], span}, &id); err != nil {
+		return err //nolint:wrapcheck // names the query
+	}
+	var notified string
+	if err := b.w.Row(ctx, `SELECT pg_notify('infraweave_invalidate', $1)`,
+		[]any{"session:" + id.String()}, &notified); err != nil {
+		return err //nolint:wrapcheck // names the query
+	}
+	return nil
+}
+
+// expiredRefused allows the same invalidation bound as a cross-replica
+// revocation, and checks the problem as well as the status.
+func (b *browserSteps) expiredRefused(ctx context.Context, replica string) error {
+	ctx, cancel := context.WithTimeout(ctx, revocationWithin)
+	defer cancel()
+	return deps.Eventually(ctx, "the expired browser session to fail at "+replica,
+		func(ctx context.Context) (bool, error) {
+			r, err := b.w.BrowserDo(ctx, replica, http.MethodGet, "/api/v1/viewer", "", nil)
+			if err != nil {
+				return false, err
+			}
+			return harness.IsProblem(r, "viewer", "401", "unauthenticated") == nil, nil
+		})
 }
 
 type browserUser struct {
@@ -395,8 +474,8 @@ func (b *browserSteps) memberSession(ctx context.Context, admitted string) error
 		INSERT INTO sessions (organization_id, account_id, id, channel, actor_kind, actor_id,
 				member_id, login, name, email, expires_at, idle_expires_at, secret_hash)
 			VALUES ('%[1]s', '%[3]s', '%[4]s', 'WEB', 'user', '%[2]s', '%[2]s', 'alice', 'Alice',
-				'alice@example.com', date_trunc('second', now()) + interval '1 day',
-				now() + interval '12 hours', '\x%[5]s');
+				'alice@example.com', date_trunc('second', now()) + interval '10 hours',
+				now() + interval '10 hours', '\x%[5]s');
 		INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin,
 				created_by)
 			SELECT '%[3]s', gen_random_uuid(), 'user', '%[2]s', id, '%[3]s', 'binding', 'acceptance'
@@ -436,7 +515,7 @@ func (b *browserSteps) unadmitted(ctx context.Context) error {
 		INSERT INTO sessions (organization_id, id, channel, actor_kind, actor_id, member_id,
 				login, name, email, expires_at, idle_expires_at, secret_hash)
 			VALUES ('%[1]s', '%[3]s', 'WEB', 'user', '%[2]s', '%[2]s', 'bob', 'Bob',
-				'bob@example.com', now() + interval '1 day', now() + interval '12 hours', '\x%[4]s');`,
+				'bob@example.com', now() + interval '10 hours', now() + interval '10 hours', '\x%[4]s');`,
 		harness.UUIDOf(
 			harness.Home.Org,
 		),

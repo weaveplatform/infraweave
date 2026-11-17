@@ -30,7 +30,7 @@
 // oauth_code.ttl (an hour, 30 days and a minute), the worker protocol's
 // auth.tokens.worker.ttl, run.ttl and run_api.ttl (an hour, 24 hours and
 // 3 hours), auth.run_api_token.issuer, auth.session's
-// idle_timeout and max_age (12 hours and 7 days), and the signing
+// idle_timeout and max_age (10 hours each), and the signing
 // backend, rotation and kms_keys, and auth.oidc_api_keys' allowed_issuers
 // and ca_file, and auth.operator.keys, each a ULID and the lower-case hex
 // SHA-256 of its secret, which Validate checks; New reads ca_file and fails when it

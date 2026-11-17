@@ -45,8 +45,8 @@ var (
 const (
 	publicURL = "http://infraweave.test"
 	audience  = publicURL + "/api/v1"
-	idle      = 12 * time.Hour
-	maxAge    = 7 * 24 * time.Hour
+	idle      = 4 * time.Hour
+	maxAge    = 10 * time.Hour
 )
 
 // store is the ports and tokens in memory; a token is its kind, session
