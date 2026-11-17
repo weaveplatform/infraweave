@@ -1,0 +1,22 @@
+{
+  "errors": [
+    {
+      "message": "`if` keyword is required before rule body",
+      "code": "rego_parse_error",
+      "location": {
+        "file": "check/v0only.rego",
+        "row": 3,
+        "col": 1
+      }
+    },
+    {
+      "message": "`contains` keyword is required for partial set rules",
+      "code": "rego_parse_error",
+      "location": {
+        "file": "check/v0only.rego",
+        "row": 3,
+        "col": 1
+      }
+    }
+  ]
+}

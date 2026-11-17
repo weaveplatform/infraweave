@@ -1,0 +1,24 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "deny": [],
+            "flag": [
+              "plan-flag"
+            ],
+            "resources": [],
+            "sample": true,
+            "warn": []
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

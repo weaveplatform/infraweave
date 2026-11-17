@@ -1,0 +1,8 @@
+Version: 1.22.4
+Build Commit: ba39415db4b3c90cd68942a74b3cc2223ec2b23c-dirty
+Build Timestamp: 2026-11-12T10:00:27Z
+Build Hostname:
+Go Version: go1.27.4
+Platform: linux/arm64
+Rego Version: v1
+WebAssembly: available

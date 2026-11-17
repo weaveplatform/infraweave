@@ -1,0 +1,51 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "deny": [],
+            "flag": [
+              "plan-flag"
+            ],
+            "resources": [
+              {
+                "action": "added",
+                "entity": {
+                  "address": "terraform_data.root",
+                  "data": {
+                    "address": "terraform_data.root",
+                    "mode": "managed",
+                    "module": "",
+                    "provider": "terraform.io/builtin/terraform",
+                    "tainted": false,
+                    "values": {
+                      "input": "root-2",
+                      "triggers_replace": null
+                    },
+                    "values_hash": -2692552708809503000
+                  },
+                  "entity_type": "resource",
+                  "entity_vendor": "opentofu",
+                  "name": "root",
+                  "type": "terraform_data"
+                },
+                "moved": false,
+                "phase": "plan"
+              }
+            ],
+            "sample": true,
+            "warn": [
+              "warn: 1 resource(s) affected"
+            ]
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

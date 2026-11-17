@@ -1,0 +1,68 @@
+$ terragrunt run --all --no-stack-generate -- plan -input=false
+(no "Generating unit" line on standard error)
+
+$ ls .terragrunt-stack/network .terragrunt-stack/app
+.terragrunt-stack/app:
+infraweave_marker.tf
+main.tf
+terragrunt.hcl
+
+.terragrunt-stack/network:
+infraweave_marker.tf
+main.tf
+terragrunt.hcl
+terragrunt.values.hcl
+
+$ terragrunt run --all -- plan -input=false
+11:27:25.673 INFO   Generating unit app from ./terragrunt.stack.hcl
+11:27:25.674 INFO   Generating unit network from ./terragrunt.stack.hcl
+
+$ ls .terragrunt-stack/network .terragrunt-stack/app
+.terragrunt-stack/app:
+infraweave_marker.tf
+main.tf
+terragrunt.hcl
+
+.terragrunt-stack/network:
+infraweave_marker.tf
+main.tf
+terragrunt.hcl
+terragrunt.values.hcl
+
+$ terragrunt stack generate
+11:27:26.059 INFO   Generating unit network from ./terragrunt.stack.hcl
+11:27:26.059 INFO   Generating unit app from ./terragrunt.stack.hcl
+
+$ ls .terragrunt-stack/network .terragrunt-stack/app
+.terragrunt-stack/app:
+infraweave_marker.tf
+main.tf
+terragrunt.hcl
+
+.terragrunt-stack/network:
+infraweave_marker.tf
+main.tf
+terragrunt.hcl
+terragrunt.values.hcl
+
+$ terragrunt run --all --no-stack-generate -- plan -input=false
+(no "Generating unit" line on standard error)
+
+$ tail -1 .terragrunt-stack/network/main.tf
+# edited after generation
+
+$ terragrunt run --all -- plan -input=false
+11:28:07.871 INFO   Generating unit network from ./terragrunt.stack.hcl
+11:28:07.871 INFO   Generating unit app from ./terragrunt.stack.hcl
+
+$ tail -1 .terragrunt-stack/network/main.tf; ls -a .terragrunt-stack/network
+}
+.
+..
+.terragrunt-cache
+.terragrunt-stack-manifest
+infraweave_marker.tf
+main.tf
+terragrunt.hcl
+terragrunt.values.hcl
+

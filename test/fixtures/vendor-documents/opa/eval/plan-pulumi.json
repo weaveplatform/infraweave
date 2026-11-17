@@ -1,0 +1,51 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "deny": [],
+            "flag": [
+              "plan-flag"
+            ],
+            "resources": [
+              {
+                "action": "added",
+                "entity": {
+                  "address": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet",
+                  "data": {
+                    "id": "pet",
+                    "outputs": {
+                      "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+                      "length": 2,
+                      "separator": "-"
+                    },
+                    "outputs_hash": -5822274427547654000,
+                    "parent": "urn:pulumi:dev::stack-pulumi::pulumi:pulumi:Stack::stack-pulumi-dev",
+                    "provider": "urn:pulumi:dev::stack-pulumi::pulumi:providers:random::default::04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+                    "urn": "urn:pulumi:dev::stack-pulumi::random:index/randomPet:RandomPet::pet"
+                  },
+                  "entity_type": "resource",
+                  "entity_vendor": "pulumi",
+                  "name": "pet",
+                  "type": "random:index/randomPet:RandomPet"
+                },
+                "moved": false,
+                "phase": "plan"
+              }
+            ],
+            "sample": true,
+            "warn": [
+              "warn: 1 resource(s) affected"
+            ]
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

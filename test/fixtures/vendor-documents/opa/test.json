@@ -1,0 +1,33 @@
+[
+  {
+    "location": {
+      "file": "tests/plan_test.rego",
+      "row": 13,
+      "col": 1
+    },
+    "package": "data.spacelift_test",
+    "name": "test_fails_on_purpose",
+    "fail": true,
+    "duration": 4435166
+  },
+  {
+    "location": {
+      "file": "tests/plan_test.rego",
+      "row": 9,
+      "col": 1
+    },
+    "package": "data.spacelift_test",
+    "name": "test_denies_a_proposed_run",
+    "duration": 4155833
+  },
+  {
+    "location": {
+      "file": "tests/plan_test.rego",
+      "row": 5,
+      "col": 1
+    },
+    "package": "data.spacelift_test",
+    "name": "test_warns_on_a_change",
+    "duration": 5704584
+  }
+]

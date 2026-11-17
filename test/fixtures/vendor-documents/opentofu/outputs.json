@@ -1,0 +1,36 @@
+{
+  "api_key": {
+    "sensitive": true,
+    "type": "string",
+    "value": "dummy-api-key-v1"
+  },
+  "file_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "1c543461ae86903302dfe07aeed4df7991392bac"
+  },
+  "name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "eager-krill"
+  },
+  "nested": {
+    "sensitive": true,
+    "type": [
+      "object",
+      {
+        "marked": "string",
+        "plain": "string"
+      }
+    ],
+    "value": {
+      "marked": "dummy-nested-v1",
+      "plain": "visible"
+    }
+  },
+  "password": {
+    "sensitive": true,
+    "type": "string",
+    "value": "7WMxUTlS9YrwZdzZ"
+  }
+}

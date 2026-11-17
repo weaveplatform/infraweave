@@ -1,0 +1,31 @@
+{
+  "errors": [
+    {
+      "message": "rule data.spacelift.sample produced conflicting values:\n  true at check/conflict.rego:3\n  false at check/conflict.rego:5",
+      "code": "eval_conflict_error",
+      "location": {
+        "file": "check/conflict.rego",
+        "row": 5,
+        "col": 1
+      },
+      "stack_trace": [
+        {
+          "query_id": 2,
+          "location": {
+            "file": "check/conflict.rego",
+            "row": 5,
+            "col": 20
+          }
+        },
+        {
+          "query_id": 0,
+          "location": {
+            "file": "",
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

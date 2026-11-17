@@ -1,0 +1,13 @@
+{
+  "errors": [
+    {
+      "message": "undefined function undefined_helper",
+      "code": "rego_type_error",
+      "location": {
+        "file": "check/undefined.rego",
+        "row": 4,
+        "col": 9
+      }
+    }
+  ]
+}

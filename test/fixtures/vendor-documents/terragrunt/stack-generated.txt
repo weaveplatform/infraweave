@@ -1,0 +1,8 @@
+./.terragrunt-stack/app/.terragrunt-stack-manifest
+./.terragrunt-stack/app/main.tf
+./.terragrunt-stack/app/terragrunt.hcl
+./.terragrunt-stack/network/.terragrunt-stack-manifest
+./.terragrunt-stack/network/main.tf
+./.terragrunt-stack/network/terragrunt.hcl
+./.terragrunt-stack/network/terragrunt.values.hcl
+./terragrunt.stack.hcl

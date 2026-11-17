@@ -1,0 +1,26 @@
+[
+  {
+    "type": "unit",
+    "path": "network",
+    "include": {
+      "root": "root.hcl"
+    },
+    "reading": [
+      "root.hcl"
+    ]
+  },
+  {
+    "type": "unit",
+    "path": "app",
+    "include": {
+      "root": "root.hcl"
+    },
+    "dependencies": [
+      "network"
+    ],
+    "reading": [
+      "root.hcl",
+      "../modules/app/main.tf"
+    ]
+  }
+]

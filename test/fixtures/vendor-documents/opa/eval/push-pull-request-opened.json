@@ -1,0 +1,20 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "cancel": [],
+            "propose": true,
+            "sample": true
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

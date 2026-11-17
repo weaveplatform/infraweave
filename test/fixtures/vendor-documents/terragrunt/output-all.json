@@ -1,0 +1,19 @@
+{
+  "network_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "ecf2beef-6c31-240f-b8a4-542e13cb6aa0"
+  },
+  "password": {
+    "sensitive": true,
+    "type": "string",
+    "value": "5gKa6XKRbNYgQ0qt"
+  }
+}
+{
+  "app_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "ab7cff69-09af-3888-c182-c5b1570fa568"
+  }
+}
