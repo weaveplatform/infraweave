@@ -87,8 +87,12 @@ stacks:
 
 func TestUnitRepositoryFileRefusals(t *testing.T) {
 	for _, tc := range []struct{ text, path string }{
-		{"[", FilePath}, {"{}\n---\n{}", FilePath}, {"version: 2", "version"}, {"version: '3'", "version"},
-		{"stacks: []", "stacks"}, {"stack_defaults: []", "stack_defaults"},
+		{"[", FilePath},
+		{"{}\n---\n{}", FilePath},
+		{"version: 2", "version"},
+		{"version: '3'", "version"},
+		{"stacks: []", "stacks"},
+		{"stack_defaults: []", "stack_defaults"},
 		{"stacks: {infra: {before_plan: x}}", "stacks.infra.before_plan"},
 		{"stacks: {infra: {project_root: ../out}}", "stacks.infra.project_root"},
 		{"stacks: {infra: {environment: {TOKEN: true}}}", "stacks.infra.environment.TOKEN"},
@@ -170,5 +174,27 @@ func TestUnitRepositoryAliasedEnvironmentKey(t *testing.T) {
 	f := ParseFile([]byte("stack_defaults: {&env environment: {BASE: base}}\nstacks: {infra: {*env: {TOKEN: &s "+secret+"}, before_plan: [*s]}}"), "infra", "terraform", "warn")
 	if f.Refusal == nil || strings.Contains(f.Refusal.Error(), secret) || strings.Contains(f.YAML, secret) {
 		t.Fatalf("aliased environment key bypassed origin collection: refusal=%v, leaked=%t", f.Refusal, strings.Contains(f.YAML, secret))
+	}
+}
+
+func TestUnitRepositoryEnvironmentKeyPath(t *testing.T) {
+	for _, name := range []string{"A B", "A must B", "A must be B"} {
+		f := ParseFile([]byte("stacks: {infra: {environment: {'"+name+"': true}}}"), "infra", "terraform", "warn")
+		if f.Refusal == nil || f.Refusal.Path != "stacks.infra.environment."+name {
+			t.Fatalf("environment key path lost its name: %v", f.Refusal)
+		}
+	}
+	f := ParseFile([]byte("stacks: {infra: {environment: {Z: true, A: true}}}"), "infra", "terraform", "warn")
+	if f.Refusal == nil || f.Refusal.Path != "stacks.infra.environment.A" {
+		t.Fatalf("first environment refusal is not deterministic: %v", f.Refusal)
+	}
+}
+
+func TestUnitRepositoryIndexedKeyPath(t *testing.T) {
+	for _, key := range []string{"git_sparse_checkout_paths", "before_plan"} {
+		f := ParseFile([]byte("stacks: {infra: {"+key+": [true]}}"), "infra", "terraform", "warn")
+		if f.Refusal == nil || f.Refusal.Path != "stacks.infra."+key+"[0]" {
+			t.Fatalf("indexed key lost path: %v", f.Refusal)
+		}
 	}
 }

@@ -66,3 +66,15 @@ func TestUnitExecRuntimeRefusal(t *testing.T) {
 		})
 	}
 }
+
+func TestUnitExecEmptyRuntimeRefusal(t *testing.T) {
+	w := newWorld(t)
+	w.h.Spec.Refusal = new("")
+	w.h.Spec.Hooks = map[string][]string{"before_init": {hook("before")}, "after_run": {hook("final")}}
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	if events := w.events(); len(events) != 2 || !strings.HasPrefix(events[1], "INITIALIZING failed 4") || len(w.traced()) != 0 {
+		t.Fatalf("empty non-nil refusal lost presence: %v trace %v", events, w.traced())
+	}
+}

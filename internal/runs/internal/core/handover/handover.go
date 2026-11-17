@@ -199,53 +199,12 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the access domain names the read
 	}
-	rc, err := runtimeconfig.Read(r.RuntimeConfig)
-	if err != nil {
-		return workersapi.Handover{}, err //nolint:wrapcheck // the typed configuration names the read
-	}
-	custom := rc
-	var repository runtimeconfig.File
-	var hasFile bool
-	var resolved configapi.Resolved
-	if r.ResolvedConfig == nil {
-		repository, hasFile, err = s.repositoryConfig(ctx, r, labels[r.Stack], st.Slug, st.Vendor)
-		if err != nil {
-			return workersapi.Handover{}, err
-		}
-		if hasFile {
-			rc = runtimeconfig.Overlay(repository.Settings(st), custom)
-		}
-		if repository.Refusal != nil {
-			rc = runtimeconfig.Input{}
-		}
-		if err := rc.ApplySettings(&st); err != nil {
-			return workersapi.Handover{}, err //nolint:wrapcheck // the configuration names the refused setting
-		}
-		resolved, err = s.env.ResolveWithHooks(ctx, r.Account, r.Stack, rc.Hooks)
-	} else {
-		resolved, err = s.env.Resolve(ctx, r.Account, r.Stack)
-	}
-	if err != nil {
-		return workersapi.Handover{}, err //nolint:wrapcheck // the configuration domain names it
-	}
-	ovs, err := s.store.Overrides(ctx, r)
+	runtime, err := s.resolveRuntime(ctx, r, &st, labels[r.Stack])
 	if err != nil {
 		return workersapi.Handover{}, err
 	}
-	var fileVariables []runtimeconfig.Variable
-	if r.ResolvedConfig == nil && hasFile && repository.Refusal == nil {
-		fileVariables = repository.Variables(resolved.Elements)
-		if len(fileVariables) > 0 {
-			joined := make([]lifecycle.Override, 0, len(fileVariables)+len(ovs))
-			for _, v := range fileVariables {
-				joined = append(joined, lifecycle.Override{Name: v.Key, Value: v.Value})
-			}
-			ovs = append(joined, ovs...)
-			if err := s.store.SetOverrides(ctx, r, ovs); err != nil {
-				return workersapi.Handover{}, err
-			}
-		}
-	}
+	rc, custom, repository, hasFile := runtime.Effective, runtime.Custom, runtime.Repository, runtime.HasFile
+	resolved, ovs, fileVariables := runtime.Environment, runtime.Overrides, runtime.Variables
 	stack := workersapi.SpecStack{
 		Slug:                         st.Slug,
 		Name:                         st.Name,

@@ -26,7 +26,11 @@ stacks:
     project_root: file-root
     diagnostic: retained
 `)
-	w.store.run.RuntimeConfig = storedRuntime(t, "terraform", json.RawMessage(`{"projectRoot":"custom-root","beforePlan":["custom-hook"],"environment":[{"key":"LEVEL","value":"custom"}]}`))
+	w.store.run.RuntimeConfig = storedRuntime(
+		t,
+		"terraform",
+		json.RawMessage(`{"projectRoot":"custom-root","beforePlan":["custom-hook"],"environment":[{"key":"LEVEL","value":"custom"}]}`),
+	)
 	w.store.overrides = []lifecycle.Override{{Name: "LEVEL", Value: "custom"}}
 	w.env.resolved.Elements = []configapi.Element{variable("LEVEL", "stack", false), variable("FILE_SECRET", "stack-secret", true)}
 	h, err := w.firstHandover(t, w.run.ID)

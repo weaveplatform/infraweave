@@ -17,9 +17,11 @@ func TestUnitFileSettingsPrecedence(t *testing.T) {
 		ProjectRoot: &root, RunnerImage: &image, TerraformVersion: &version,
 		WorkflowTool: &workflow, GitSparseCheckoutPaths: &paths,
 	}
-	st := stacksapi.Settings{ProjectRoot: new("stack-root"), RunnerImage: new("stack-image"),
+	st := stacksapi.Settings{
+		ProjectRoot: new("stack-root"), RunnerImage: new("stack-image"),
 		TerraformVersion: new("stack-version"), GitSparseCheckoutPaths: []string{"stack"},
-		Hooks: map[string][]string{"before_plan": {"stack"}}, VendorConfig: json.RawMessage(`{"workflowTool":"TERRAFORM_FOSS"}`)}
+		Hooks: map[string][]string{"before_plan": {"stack"}}, VendorConfig: json.RawMessage(`{"workflowTool":"TERRAFORM_FOSS"}`),
+	}
 	for _, v := range []string{"1", "2"} {
 		f := File{Version: v, Defaults: defaults}
 		got := f.Settings(st)

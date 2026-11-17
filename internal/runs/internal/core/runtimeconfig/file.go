@@ -65,8 +65,10 @@ func ParseFile(data []byte, slug, vendor, unknownKeys string) File {
 		}
 		entries = originalMapping(node, map[*yaml.Node]bool{})
 	}
-	known := map[string]bool{"version": true, "stack_defaults": true, "stacks": true,
-		"module_version": true, "test_defaults": true, "tests": true}
+	known := map[string]bool{
+		"version": true, "stack_defaults": true, "stacks": true,
+		"module_version": true, "test_defaults": true, "tests": true,
+	}
 	projection := map[string]*yaml.Node{}
 	for _, key := range slices.Sorted(maps.Keys(fields)) {
 		if !known[key] {
@@ -178,8 +180,16 @@ func fileInput(node *yaml.Node, prefix, vendor string, origins map[*yaml.Node]bo
 			if err := checkSettingOrigin(value, key, origins); err != nil {
 				return Input{}, fileError(err, prefix+"."+key)
 			}
-		} else if _, err := mapping(value, prefix+".environment"); err != nil {
-			return Input{}, fileError(err, prefix+".environment")
+		} else {
+			if _, err := mapping(value, prefix+".environment"); err != nil {
+				return Input{}, fileError(err, prefix+".environment")
+			}
+			environment := originalMapping(value, map[*yaml.Node]bool{})
+			for _, name := range slices.Sorted(maps.Keys(environment)) {
+				if _, err := stringValue(environment[name], "environment."+name); err != nil {
+					return Input{}, fileError(err, prefix+".environment."+name)
+				}
+			}
 		}
 		filtered.Content = append(filtered.Content, scalar(key), publicNode(value, nil))
 	}
@@ -191,7 +201,9 @@ func fileInput(node *yaml.Node, prefix, vendor string, origins map[*yaml.Node]bo
 		if inv, ok := errors.AsType[*kernel.Invalid](err); ok && len(inv.Errors) > 0 {
 			key, _, _ := strings.Cut(inv.Errors[0].Message, " ")
 			key = strings.TrimSuffix(key, ":")
-			if runtimeKey(strings.Split(key, ".")[0]) || strings.HasPrefix(key, "before_") || strings.HasPrefix(key, "after_") {
+			root, _, _ := strings.Cut(key, ".")
+			root, _, _ = strings.Cut(root, "[")
+			if runtimeKey(root) {
 				refusal.Path += "." + key
 			}
 		}
