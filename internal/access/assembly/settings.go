@@ -34,10 +34,12 @@ const (
 	defaultWorkerTTL = time.Hour
 	defaultRunTTL    = 24 * time.Hour
 	defaultRunAPITTL = 3 * time.Hour
-	// A browser session's limits: idle and absolute.
+	// A browser session's limits: idle and absolute. At the defaults both
+	// fall together; idle_timeout ends a session first only when an operator
+	// sets it below max_age.
 	// ref: decision 0006 § "Token kinds"
-	defaultIdleTimeout = 12 * time.Hour
-	defaultMaxAge      = 7 * 24 * time.Hour
+	defaultIdleTimeout = 10 * time.Hour
+	defaultMaxAge      = 10 * time.Hour
 )
 
 // ErrConfig reports an auth setting the domain could not run with.

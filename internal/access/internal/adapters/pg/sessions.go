@@ -49,9 +49,13 @@ func (s *Store) CreateSession(ctx context.Context, ss session.Session) error {
 	return nil
 }
 
-// insertSession inserts ss in the caller's transaction.
+// insertSession inserts ss in the caller's transaction, preserving the
+// issuance time used to calculate its lifetime. An unset time uses now().
 func insertSession(ctx context.Context, q tx.Querier, ss session.Session) error {
-	var idle *time.Time
+	var idle, created *time.Time
+	if !ss.CreatedAt.IsZero() {
+		created = &ss.CreatedAt
+	}
 	if !ss.IdleExpiresAt.IsZero() {
 		idle = &ss.IdleExpiresAt
 	}
@@ -59,13 +63,14 @@ func insertSession(ctx context.Context, q tx.Querier, ss session.Session) error 
 		INSERT INTO sessions (organization_id, account_id, id, channel, actor_kind,
 			actor_id, member_id, login, name, email, admin, teams, scopes, ip_address,
 			expires_at, idle_expires_at, secret_hash, parent_session_id, oauth_client_id,
-			oauth_resource)
+			oauth_resource, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-			NULLIF($14, '')::inet, $15, $16, $17, $18, NULLIF($19, ''), NULLIF($20, ''))`,
+			NULLIF($14, '')::inet, $15, $16, $17, $18, NULLIF($19, ''), NULLIF($20, ''),
+			coalesce($21, now()))`,
 		ss.OrganizationID, ss.AccountID, ss.ID, ss.Channel, ss.ActorKind, ss.ActorID,
 		ss.MemberID, ss.Login, ss.Name, ss.Email, ss.Admin, nonNil(ss.Teams),
 		nonNil(ss.Scopes), ss.IPAddress, ss.ExpiresAt, idle, ss.SecretHash,
-		ss.ParentID, ss.ClientID, ss.Resource); err != nil {
+		ss.ParentID, ss.ClientID, ss.Resource, created); err != nil {
 		return fmt.Errorf("access: insert session: %w", sql.Unavailable(err))
 	}
 	return nil

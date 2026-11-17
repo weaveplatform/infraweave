@@ -269,8 +269,8 @@ To bootstrap an installation:
 | `auth.tokens.run.ttl` | | `INFRAWEAVE_AUTH_TOKENS_RUN_TTL` | `24h`: the most a run token lasts; the worker protocol accepts it only while its run is with a worker; must be positive |
 | `auth.tokens.run_api.ttl` | | `INFRAWEAVE_AUTH_TOKENS_RUN_API_TTL` | `3h`: an in-run API token's lifetime; it authenticates only while its run is planning, applying or performing; must be positive |
 | `auth.run_api_token.issuer` | | `INFRAWEAVE_AUTH_RUN_API_TOKEN_ISSUER` | `server.public_url`: the `iss` of in-run API tokens |
-| `auth.session.idle_timeout` | | `INFRAWEAVE_AUTH_SESSION_IDLE_TIMEOUT` | `12h`: how long a browser session lasts without a request; must be positive |
-| `auth.session.max_age` | | `INFRAWEAVE_AUTH_SESSION_MAX_AGE` | `168h`: a browser session's absolute lifetime, which its CLI tokens share; must be positive |
+| `auth.session.idle_timeout` | | `INFRAWEAVE_AUTH_SESSION_IDLE_TIMEOUT` | `10h`: how long a browser session lasts without a request; must be positive |
+| `auth.session.max_age` | | `INFRAWEAVE_AUTH_SESSION_MAX_AGE` | `10h`: a browser session's absolute lifetime, which its CLI tokens share; must be positive |
 | `auth.signing.backend` | | `INFRAWEAVE_AUTH_SIGNING_BACKEND` | `local`: signing keys generated in process and sealed under the keyring; `kms` signs through the KMS keys of `auth.signing.kms_keys`, whose private halves never enter infraweave |
 | `auth.signing.rotation` | | `INFRAWEAVE_AUTH_SIGNING_ROTATION` | `automatic`: the daily `authn.keys.rotate` task replaces each local signing key every 90 days, and moves to a KMS key added to `auth.signing.kms_keys`; `manual` never replaces one, and is refused with `kms` |
 | `auth.oidc_api_keys.allowed_issuers` | | `INFRAWEAVE_AUTH_OIDC_API_KEYS_ALLOWED_ISSUERS` (comma-separated) | none: an OIDC API key may name any `https` issuer; when set, only these, at creation and at every exchange |

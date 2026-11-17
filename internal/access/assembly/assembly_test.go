@@ -37,8 +37,8 @@ func TestUnitAssembly(t *testing.T) {
 		d.WorkerAuthenticator() == nil || d.StateAuthenticator() == nil {
 		t.Error("no authenticator")
 	}
-	if s := DefaultSettings().Session; s.IdleTimeout != 12*time.Hour || s.MaxAge != 7*24*time.Hour {
-		t.Errorf("session defaults = %+v, want 12h idle and 7 days", s)
+	if s := DefaultSettings().Session; s.IdleTimeout != 10*time.Hour || s.MaxAge != 10*time.Hour {
+		t.Errorf("session defaults = %+v, want 10h idle and absolute", s)
 	}
 	if tk := DefaultSettings().Tokens; tk.OAuthAccess.TTL != time.Hour ||
 		tk.OAuthRefresh.TTL != 30*24*time.Hour || tk.OAuthCode.TTL != time.Minute {

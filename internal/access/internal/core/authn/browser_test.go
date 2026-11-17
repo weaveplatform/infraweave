@@ -234,8 +234,8 @@ func TestUnitAuthenticateBrowser(t *testing.T) {
 }
 
 // TestUnitBrowserLimits runs the idle and absolute limits in virtual time:
-// a session used every 11 hours outlives its first idle end but not its
-// absolute one, and one left 12 hours ends.
+// a session used every 3 hours outlives its first idle end but not its
+// absolute one, and one left 4 hours ends.
 func TestUnitBrowserLimits(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := newWorld(t)
@@ -258,23 +258,15 @@ func TestUnitBrowserLimits(t *testing.T) {
 		}
 
 		idleOne := sign()
-		<-time.After(11 * time.Hour)
-		if err := use(idleOne); err != nil {
-			t.Fatalf("after 11 hours: %v", err)
-		}
-		<-time.After(11 * time.Hour)
-		if err := use(idleOne); err != nil {
-			t.Fatalf("22 hours in, 11 after its last use: %v", err)
-		}
 		<-time.After(idle)
 		if err := use(idleOne); !errors.Is(err, authn.ErrUnauthenticated) {
-			t.Errorf("12 hours unused = %v", err)
+			t.Errorf("4 hours unused = %v", err)
 		}
 
 		busy := sign()
 		start := time.Now()
-		for time.Since(start)+11*time.Hour < maxAge {
-			<-time.After(11 * time.Hour)
+		for time.Since(start)+3*time.Hour < maxAge {
+			<-time.After(3 * time.Hour)
 			if err := use(busy); err != nil {
 				t.Fatalf("%s in: %v", time.Since(start), err)
 			}

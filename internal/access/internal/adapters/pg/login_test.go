@@ -26,12 +26,13 @@ func TestAccBrowserSessions(t *testing.T) {
 	secret, hash := session.NewSecret()
 	web := x.webSession(later)
 	web.SecretHash = hash
+	web.CreatedAt = later.Add(-10 * time.Hour)
 	if err := x.s.CreateSession(ctx, web); err != nil {
 		t.Fatal(err)
 	}
 	got, err := x.s.SessionBySecret(ctx, session.HashSecret(secret))
 	if err != nil || got.ID != web.ID || string(got.SecretHash) != string(hash) ||
-		!got.ParentID.IsZero() {
+		!got.ParentID.IsZero() || !got.CreatedAt.Equal(web.CreatedAt) {
 		t.Errorf("SessionBySecret = %+v, %v", got, err)
 	}
 	other, _ := session.NewSecret()

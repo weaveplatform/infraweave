@@ -21,10 +21,22 @@ Feature: Break-glass sign-in and browser sessions
   Scenario: The break-glass admin signs in as an organization admin in no account
     When the browser signs in to "initech" as "admin" with the password "correct horse" through A
     Then the browser holds the session cookie, HttpOnly, Secure, SameSite=Lax and Path=/
+    And the browser's session lasts 10 hours from its sign-in and 10 hours idle
     And the viewer through B in the browser is the organization admin "admin", with no token
     And "GET /api/v1/sessions" through B in the browser without an Origin answers a 401 problem "unauthenticated"
     And "GET /api/v1/id" through A in the browser without an Origin answers a 401 problem "unauthenticated"
     And the browser's account switcher through A lists no account
+
+  @op:viewer @case:denial
+  Scenario: A browser session ends 10 hours after sign-in however recently used, and after 10 hours unused
+    When the browser signs in to "initech" as "admin" with the password "correct horse" through A
+    And 9 hours pass for the browser's session
+    Then the viewer through B in the browser answers 200
+    When 1 hour passes for the browser's session
+    Then the browser's expired session is refused through B within a second
+    When the browser signs in to "initech" as "admin" with the password "correct horse" through A
+    And 10 hours pass for the browser's session
+    Then the browser's expired session is refused through A within a second
 
   @case:denial
   Scenario: A wrong login or password, or no credential, answers one 401
