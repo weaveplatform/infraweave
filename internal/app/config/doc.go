@@ -24,6 +24,8 @@
 // worker.samples.retention, the workers domain's assembly Settings; Run holds run.lost_after,
 // run.preparing_timeout_default and run.timers.*, the runs domain's assembly Settings, and
 // Load rejects a run.lost_after no greater than worker.offline_after;
+// Runs holds runs.runtime_config.unknown_keys, warn by default or reject,
+// without changing the singular run.* scheduling settings;
 // State holds state.max_size and state.noncurrent_retention, the state
 // domain's assembly Settings, where a retention of 0 keeps every version.
 // Defaults are what an empty configuration

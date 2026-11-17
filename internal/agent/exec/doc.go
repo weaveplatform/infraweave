@@ -6,7 +6,10 @@
 // report whose answer is lost is sent again with the same body, and one
 // refused with 409 ends the runner with no further report.
 //
-// Before its first phase the runner checks the project root under the
+// At the start of INITIALIZING the runner prints repository configuration
+// notices. A refusal fails that phase before setup, hooks or commands,
+// including a task that skips initialization.
+// Before its first executable phase the runner checks the project root under the
 // workspace's source/ checkout, then writes the specification's mounted
 // files under the workspace. A file under source/ replaces the checkout's.
 // It reads the project root's

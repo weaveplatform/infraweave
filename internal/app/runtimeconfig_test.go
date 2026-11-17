@@ -17,7 +17,7 @@ import (
 // the pool certificate to seal the answer. Neither write survives; a
 // retry records the settings it resolves then, with its sealed answer.
 func TestAccRunConfigurationCommitsWithSpec(t *testing.T) {
-	w := newClaimWorld(t)
+	w := newRunSpecWorld(t)
 	pool, _ := w.certified(t)
 	run := w.run(t, w.acct, pool,
 		runSpec{kernel.RunTypeTracked, kernel.RunPriorityNormal, false}, time.Now())

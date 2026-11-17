@@ -116,21 +116,22 @@ type Objects interface {
 // when nil, the run settings, and LogRetention,
 // objectstore.retention.run-logs.
 type Deps struct {
-	DB           queue.DB
-	Keys         pg.Sealer
-	Objects      Objects
-	Spaces       accessapi.Spaces
-	Accounts     accessapi.Accounts
-	Authz        accessapi.Authorizer
-	Tokens       handover.Tokens
-	Stacks       stacksapi.Stacks
-	Environment  configapi.Environment
-	Catalog      vendorsapi.Catalog
-	Events       lifecycle.Events
-	Jobs         schedule.Queue
-	Now          func() time.Time
-	Settings     Settings
-	LogRetention time.Duration
+	DB              queue.DB
+	Keys            pg.Sealer
+	Objects         Objects
+	Spaces          accessapi.Spaces
+	Accounts        accessapi.Accounts
+	Authz           accessapi.Authorizer
+	Tokens          handover.Tokens
+	Stacks          stacksapi.Stacks
+	Environment     configapi.Environment
+	Catalog         vendorsapi.Catalog
+	Events          lifecycle.Events
+	Jobs            schedule.Queue
+	Now             func() time.Time
+	Settings        Settings
+	RuntimeSettings RuntimeSettings
+	LogRetention    time.Duration
 }
 
 // Domain is the runs domain, constructed once per process.
@@ -172,6 +173,7 @@ func New(d Deps) *Domain {
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
 			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog, Objects: d.Objects,
+			UnknownKeys: d.RuntimeSettings.RuntimeConfig.UnknownKeys,
 		}),
 		reports: report.New(report.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,

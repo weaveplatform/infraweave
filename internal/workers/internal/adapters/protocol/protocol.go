@@ -196,6 +196,7 @@ func (s Server) WorkerRunSpec(ctx context.Context, req gen.WorkerRunSpecRequestO
 func runSpec(spec worker.RunSpec) gen.RunSpec {
 	r, st, c := spec.Run, spec.Stack, spec.Commit
 	out := gen.RunSpec{
+		Refusal: spec.Refusal,
 		Run: gen.RunSpecRun{
 			Account:        r.Account.String(),
 			Id:             r.ID.String(),
@@ -230,6 +231,10 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 	}
 	if out.Hooks == nil {
 		out.Hooks = map[string][]string{}
+	}
+	if len(spec.Notices) > 0 {
+		notices := slices.Clone(spec.Notices)
+		out.Notices = &notices
 	}
 	if len(spec.Source.SparsePaths) > 0 {
 		paths := slices.Clone(spec.Source.SparsePaths)

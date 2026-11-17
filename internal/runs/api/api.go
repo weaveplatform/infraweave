@@ -2,15 +2,26 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
+// SourceFileLimit bounds repository files read for a run's configuration.
+const SourceFileLimit = 1 << 20
+
+// ErrFileTooLarge is a repository file exceeding SourceFileLimit. It is a
+// configuration refusal, rather than a provider outage.
+var ErrFileTooLarge = errors.New("runs: repository file exceeds 1 MiB")
+
 // RunSources is what a run's handover and its end ask of the vcs domain,
 // a back edge internal/app binds after it constructs that domain.
 type RunSources interface {
+	// File reads path at commit from acct's stack's repository. False means
+	// no such file; ErrFileTooLarge means it exceeds SourceFileLimit.
+	File(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, commit, path string) ([]byte, bool, error)
 	// Source is where acct's run fetches commit of stack from, with the
 	// credential it fetches with, minted for the run alone where the
 	// provider narrows one. It joins the transaction ctx carries, so a

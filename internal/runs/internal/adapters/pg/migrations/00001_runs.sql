@@ -36,7 +36,7 @@
 -- keyring, made the first time the run's specification is handed over;
 -- the runner seals the run's artifacts with it.
 -- env_overrides_sealed holds a proposed run's environment variable overrides
--- or a trigger's runtime configuration variables: a JSON array of {name, value},
+-- or a trigger's or repository file's runtime variables: a JSON array of {name, value},
 -- sealed by the keyring as they may hold secrets. A plain trigger alone may
 -- reuse an equal active run; custom configuration always creates another.
 -- command and skip_initialization are a task's: the command it performs,

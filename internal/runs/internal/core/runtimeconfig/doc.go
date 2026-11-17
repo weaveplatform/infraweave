@@ -4,7 +4,11 @@
 // resolved settings without variables, files, identity or credentials;
 // Apply restores them for later handovers. Hook lists are copied so a later
 // stack edit or specification cannot mutate the record. The configuration's
-// YAML contains the public settings alone.
+// YAML contains the public settings, or the repository's selected source
+// projection with redacted environment origins and retained unknown diagnostics.
+// ParseFile bounds one repository document, extracts defaults and the matching
+// entry, and reports typed key paths and unknown-key notices. Settings and
+// Variables apply versioned stack precedence without reconstructing setter intent.
 //
 // ref: decision 0008 "The run specification and its secrets"
 //

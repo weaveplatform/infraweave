@@ -319,9 +319,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   that the public shape cannot express. Shared resolved releases and
   Terragrunt's mode have one authoritative place in `configuration`.
   Reads expose that configuration alone, absent before the first successful
-  handover. Its environment lists the trigger's variable keys with empty
+  handover. Its environment lists the runtime configuration's variable keys with empty
   values, and its sparse paths are those the checkout uses. Its YAML contains
-  only supported runtime-file keys, with environment values empty; other
+  supported runtime-file keys, with environment values empty, or the repository
+  file's selected source projection described below; other
   vendor flags remain in JSON and the private execution settings. An
   unspecified runtime/stack runner image is recorded as an
   empty string and replayed as absent: account and launcher defaults are
@@ -368,6 +369,38 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   YAML without their values. `runs.runtime_config` stores the typed input,
   never the original YAML or variable values. C311 captures what Spacelift
   answers; infraweave never answers a trigger's variable values.
+
+  The first handover also reads `.infraweave/config.yml` at the run's commit,
+  from the repository root, bounded at 1 MiB. The label
+  `feature:ignore_runtime_config` skips it; a local preview reads no file and
+  reports that its source is an archive. Provider errors fail the handover.
+  Module keys are ignored for stack runs. The file's `version` is the string
+  `"1"` (the default) or `"2"`. Strongest first: custom trigger input, the
+  matching `stacks.<slug>` entry, then defaults and stack settings in version
+  2, or stack settings and defaults in version 1. Each supplied entry key
+  replaces its default value, including whole maps and lists; an absent key
+  retains the default. Version 1 uses observable persisted stack presence:
+  an empty own hook phase has no retained explicit-presence flag. File
+  variables use this selected-map precedence, stay unrendered, preserve a
+  stored name's write-only status, and are sealed with custom/proposal
+  overrides in the first successful handover transaction. Later handovers
+  and retries use that record and sealed values without rereading the file.
+
+  Known file keys are typed strictly. A refusal names the key's path and is
+  carried in the specification, alongside notices; at the start of
+  `INITIALIZING` the runner logs both with `infraweave: .infraweave/config.yml:`.
+  A refusal fails that phase before setup, hooks, commands or skip handling,
+  using the stack's settings alone until then. Unknown keys warn by default;
+  `runs.runtime_config.unknown_keys: reject` makes them fatal. The record
+  retains notices and refusal for replay. Its YAML is the selected entry,
+  else defaults, normalized without comments or external aliases and with
+  environment origins redacted, including losing or unrelated environment
+  anchors. Unknown diagnostic fields are retained: selected entry, then
+  defaults, then root, keeping one value per key and every original-path
+  notice. They never become execution settings. Sensitive environment
+  origins cannot be reused in known execution settings; environment-only
+  aliases and independent identical literals remain valid. Cycles or
+  excessive alias expansion are typed refusals.
 
 - **The clear part and the sealed part.** The specification answers the run
   token's own run alone. Its clear part carries everything but secrets. A
@@ -1483,6 +1516,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `run.preparing_timeout_default` (15m), `run.timers.pickup_proposed` (48h),
   `run.timers.pickup_blocking` (168h), `run.timers.unconfirmed` (168h),
   `run.timers.confirmed` (168h), `run.timers.max_age` (720h),
+  `runs.runtime_config.unknown_keys` (`warn`, or `reject`),
   `worker.public_pool.allowed_registries`.
 - **Launcher:** `launcher.token`, `launcher.private_key`, `launcher.poll_timeout`
   (60s), `launcher.run_timeout` (70m), `launcher.log_timeout` (7m),

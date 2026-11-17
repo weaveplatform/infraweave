@@ -48,6 +48,10 @@ func TestUnitDomain(t *testing.T) {
 // to the zero commit.
 type sources struct{}
 
+func (sources) File(context.Context, kernel.AccountID, kernel.ULID, string, string) ([]byte, bool, error) {
+	return nil, false, nil
+}
+
 func (sources) Source(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, string) (runsapi.Source, error) {
 	return runsapi.Source{}, nil
 }

@@ -295,9 +295,10 @@ reads them, as the `Idempotency-Key`'s length is.
   - `api/strictness.feature`: each rejected cron form and timezone in the table
     answers `422` with the field's pointer; with `ZONEINFO` pointing at an empty
     directory, an IANA name such as `Europe/London` still resolves, from the
-    embedded `time/tzdata`; a run whose
-    `.infraweave/config.yml` has an unknown key logs a warning and finishes, and
-    fails under `unknown_keys: reject`.
+    embedded `time/tzdata`.
+  - `runs/runtime_config.feature`: a run whose `.infraweave/config.yml` has an
+    unknown key logs a warning and finishes, and fails in `INITIALIZING`
+    before hooks under `runs.runtime_config.unknown_keys: reject`.
 - `internal/cron` table tests (0011) cover the grammar; this record's features
   only check that the API surfaces its errors.
 

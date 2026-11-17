@@ -46,6 +46,13 @@
 // rendered afresh. The record is committed with the worker's sealed
 // answer and rolled back if handover or sealing fails. An unspecified
 // image remains nil so account and launcher defaults keep their meaning.
+// The first handover reads .infraweave/config.yml at the run's commit,
+// unless its label ignores it or its source is a local archive. Versioned
+// defaults and the matching entry merge beneath custom trigger input.
+// Repository variables join the sealed overrides atomically with the record;
+// the record's source YAML redacts their origins and retains unknown diagnostic
+// fields. Notices and typed refusals are replayed for the runner to report
+// before INITIALIZING can execute a hook or command.
 //
 // # Dependencies
 //

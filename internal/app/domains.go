@@ -143,20 +143,21 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
 	runs := runsassembly.New(runsassembly.Deps{
-		DB:           db.Primary(),
-		Keys:         keys,
-		Objects:      objects,
-		Spaces:       access.Spaces(),
-		Accounts:     access.Accounts(),
-		Authz:        access.Authorizer(),
-		Tokens:       access.Tokens(),
-		Stacks:       stacks.Stacks(),
-		Environment:  configuration.Environment(),
-		Catalog:      vendors.Catalog(),
-		Events:       events,
-		Jobs:         queue.New(db.Primary()),
-		Settings:     c.Run,
-		LogRetention: c.ObjectStore.Retention.RunLogs,
+		DB:              db.Primary(),
+		Keys:            keys,
+		Objects:         objects,
+		Spaces:          access.Spaces(),
+		Accounts:        access.Accounts(),
+		Authz:           access.Authorizer(),
+		Tokens:          access.Tokens(),
+		Stacks:          stacks.Stacks(),
+		Environment:     configuration.Environment(),
+		Catalog:         vendors.Catalog(),
+		Events:          events,
+		Jobs:            queue.New(db.Primary()),
+		Settings:        c.Run,
+		RuntimeSettings: c.Runs,
+		LogRetention:    c.ObjectStore.Retention.RunLogs,
 	})
 	stacks.GuardStacks(runs.StackGuard())
 	access.ResolveSubjects(runsassembly.Entity, runs.SpaceOf())

@@ -335,11 +335,8 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 		rep.Event, rep.Details, rep.Delta = wire.Stopped, &detail, nil
 		return rep
 	}
-	if !r.ready {
-		r.prepare(ctx)
-	}
-	if r.failure != "" {
-		return fail(r.failure)
+	if detail, refused := r.preparePhase(ctx, state); refused {
+		return fail(detail)
 	}
 	if state == wire.WorkerStateINITIALIZING {
 		r.announce()

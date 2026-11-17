@@ -58,6 +58,14 @@ func (s *store) Overrides(context.Context, lifecycle.Run) ([]lifecycle.Override,
 	return s.overrides, s.overrideErr
 }
 
+func (s *store) SetOverrides(_ context.Context, _ lifecycle.Run, values []lifecycle.Override) error {
+	if s.overrideErr != nil {
+		return s.overrideErr
+	}
+	s.overrides = slices.Clone(values)
+	return nil
+}
+
 func (s *store) Handed(_ context.Context, id kernel.ULID) (lifecycle.Run, error) {
 	if s.err != nil {
 		return lifecycle.Run{}, s.err
@@ -187,9 +195,17 @@ func (c *catalog) Effective(_ context.Context, v vendorsapi.Vendor, constraints 
 // sources answers every run's source with src, recording each commit it
 // is asked for, or fails with err.
 type sources struct {
-	src   runsapi.Source
-	asked []string
-	err   error
+	src       runsapi.Source
+	asked     []string
+	err       error
+	file      []byte
+	fileErr   error
+	fileAsked []string
+}
+
+func (s *sources) File(_ context.Context, _ kernel.AccountID, _ kernel.ULID, commit, path string) ([]byte, bool, error) {
+	s.fileAsked = append(s.fileAsked, commit+" "+path)
+	return s.file, s.file != nil, s.fileErr
 }
 
 func (s *sources) Source(_ context.Context, _ kernel.AccountID, _, _ kernel.ULID, commit string) (runsapi.Source, error) {

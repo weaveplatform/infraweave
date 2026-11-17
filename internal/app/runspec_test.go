@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -18,7 +20,46 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
+
+// The three specification tests share a real Git server. Claim-only tests
+// need no repository; TestMain closes this lazy dependency after the suite.
+var runSpecDependencies deps.Dependencies
+
+func newRunSpecWorld(t *testing.T) *claimWorld {
+	t.Helper()
+	if err := deps.DockerReachable(t.Context()); err != nil {
+		if os.Getenv(sqltest.RequireDocker) != "1" {
+			t.Skipf("Gitea: %v (set %s=1 to fail instead)", err, sqltest.RequireDocker)
+		}
+		t.Fatalf("Gitea: %v", err)
+	}
+	g, err := runSpecDependencies.Gitea(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := config.Defaults()
+	c.VCS.CAFile = g.CAFile
+	w := newClaimWorldConfig(t, c)
+	name := "run-spec-" + strconv.FormatInt(runSpecDependencies.Serial(), 10)
+	commit, err := g.CreateRepository(t.Context(), name, map[string]string{"main.tf": "terraform {}\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.commit = commit
+	for _, stack := range w.stacks {
+		w.exec(t, `UPDATE stacks SET provider = 'GIT', repository = $3, repository_url = $4
+			WHERE account_id = $1 AND id = $2`, w.acct, stack, name, g.CloneURL(name))
+	}
+	// A missing config is a successful source read. In particular, the sealing
+	// rollback test must reach its broken certificate rather than fail in VCS.
+	if _, found, err := w.d.VCS.RunSources().File(t.Context(), w.acct, w.stacks["one"], commit, ".infraweave/config.yml"); err != nil || found {
+		t.Fatalf("the real commit's absent runtime configuration: found=%t, %v", found, err)
+	}
+	return w
+}
 
 // TestAccRunSpec checks the run specification as the server wires the
 // runs, workers, configuration and access domains. A worker's claim of a
@@ -34,7 +75,7 @@ import (
 // Another run's specification answers the token 401, and the run once it
 // leaves its worker 409.
 func TestAccRunSpec(t *testing.T) {
-	w := newClaimWorld(t)
+	w := newRunSpecWorld(t)
 	ctx := t.Context()
 	pool, key := w.certified(t)
 	for _, v := range []api.ConfigInput{

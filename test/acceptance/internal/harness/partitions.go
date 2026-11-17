@@ -57,11 +57,12 @@ var Partitions = []Partition{
 
 // Tags that place no scenario: @op:, @case: and @provider: name what a
 // scenario evidences (specref parity --states), @lab: names the provider
-// whose lab a @vcs-lab scenario reaches, and @quarantine marks one that
-// is known to be unreliable.
+// whose lab a @vcs-lab scenario reaches, @quarantine marks one that is known
+// to be unreliable, and @runtime-config-reject sets the scenario's server
+// policy without introducing a dependency.
 var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
-const quarantine = "@quarantine"
+var exemptTags = []string{"@quarantine", "@runtime-config-reject"}
 
 // placing is every partition in the order Place tries them: the labs,
 // then the pull request's.
@@ -69,7 +70,7 @@ func placing() []Partition { return append(slices.Clone(Labs), Partitions...) }
 
 // Exempt reports whether tag places no scenario in a partition.
 func Exempt(tag string) bool {
-	return tag == quarantine || slices.ContainsFunc(exemptPrefixes, func(p string) bool {
+	return slices.Contains(exemptTags, tag) || slices.ContainsFunc(exemptPrefixes, func(p string) bool {
 		return strings.HasPrefix(tag, p)
 	})
 }

@@ -22,6 +22,16 @@ type runSteps struct {
 }
 
 func (r *runSteps) register(sc *godog.ScenarioContext) {
+	sc.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
+		for _, tag := range scenario.Tags {
+			if tag.Name == "@runtime-config-reject" {
+				r.w.Settings["runs"] = map[string]any{
+					"runtime_config": map[string]any{"unknown_keys": "reject"},
+				}
+			}
+		}
+		return ctx, nil
+	})
 	sc.Step(
 		`^token "(\w+)" eventually reads the run "(\w+)" in the state "([A-Z_]+)" through ([AB])$`,
 		r.eventually,
@@ -39,6 +49,9 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^neither the answer nor a server's log names "([^"]+)"$`, r.unnamed)
 	sc.Step(`^the answer's runtime configuration includes '([^']*)'$`, r.runtimeConfiguration)
 	sc.Step(`^the answer's custom runtime configuration includes '([^']*)'$`, r.customRuntimeConfiguration)
+	sc.Step(`^the answer's repository runtime configuration includes '([^']*)'$`, r.fileRuntimeConfiguration)
+	sc.Step(`^the answer's runtime configuration YAML is '([^']*)'$`, r.runtimeYAML)
+	sc.Step(`^token "(\w+)" records the run "(\w+)"'s repository refusal evidence through ([AB])$`, r.fileRefusalEvidence)
 	sc.Step(`^the answer has no recorded runtime configuration$`, r.noRuntimeConfiguration)
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s APPLYING release evidence through ([AB])$`, r.releaseEvidence)
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s retry planning evidence through ([AB])$`, r.retryEvidence)

@@ -58,13 +58,18 @@ type holdWorld struct {
 
 func newHoldWorld(t *testing.T) holdWorld {
 	t.Helper()
+	return newHoldWorldConfig(t, config.Defaults())
+}
+
+func newHoldWorldConfig(t *testing.T, c config.Config) holdWorld {
+	t.Helper()
 	ctx := t.Context()
 	db := sqltest.Open(t)
 	q := db.Primary()
 	keys := testKeyring(t, q)
 	b := testObjects(t, q, keys)
 	d, err := newDomains(
-		config.Defaults(),
+		c,
 		db,
 		keys,
 		b.Objects,

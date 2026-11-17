@@ -149,6 +149,10 @@ func (f *fakeSources) Resolve(_ context.Context, _ kernel.AccountID, _ kernel.UL
 	return stacksapi.Commit{}, stacksapi.ErrRefNotFound
 }
 
+func (*fakeSources) File(context.Context, kernel.AccountID, kernel.ULID, string, string) ([]byte, bool, error) {
+	return nil, false, nil
+}
+
 func (*fakeSources) Source(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, string) (runsapi.Source, error) {
 	return runsapi.Source{}, nil
 }
