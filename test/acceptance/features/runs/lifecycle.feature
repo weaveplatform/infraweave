@@ -11,10 +11,11 @@ Feature: Every run type, action and timer through the run lifecycle
   waits in UNCONFIRMED until confirmed, and on an autodeploy stack applies
   straight from PLANNING; a task performs in PERFORMING, and one that
   skips initialization still passes through INITIALIZING, running no init
-  (C42); a destroy run on a deleted stack goes from INITIALIZING straight
-  to DESTROYING (C34); a targeted replan loops back to UNCONFIRMED, and
-  one whose handover stalls in PREPARING_REPLAN fails on the preparing
-  timeout (C44); a stop ends the run STOPPED, and a kill FAILED with the
+  command or hook and logging the skip (C42); a destroy run on a deleted
+  stack goes from INITIALIZING straight to DESTROYING (C34); a targeted
+  replan loops back to UNCONFIRMED, and one whose handover stalls in
+  PREPARING_REPLAN fails on the preparing timeout (C44); a stop ends the
+  run STOPPED, and a kill FAILED with the
   note "killed" (C36); and a launcher's no-log timeout fails the run with
   the note "no log output" (C39). A killed launcher's worker turns OFFLINE
   and keeps its run, which its restart resumes, and a worker unseen for
@@ -91,8 +92,8 @@ Feature: Every run type, action and timer through the run lifecycle
     And the run "run" wrote 1 state version
 
   @op:taskCreate @case:success
-  Scenario: A task performs in PERFORMING, and one that skips initialization passes through INITIALIZING with no init
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{}}},"manageState":true}' through B
+  Scenario: A task performs in PERFORMING, and one that skips initialization logs the skip and runs no init hook or command
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{}},"beforeInit":["echo hook: before init"],"afterInit":["echo hook: after init"]},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "FINISHED" through B
@@ -103,13 +104,17 @@ Feature: Every run type, action and timer through the run lifecycle
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FINISHED"
     And the outbox holds the run "task"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FINISHED"
     And token "h" reads the run "task"'s PERFORMING log through A, which holds "name: one" and not "Error"
+    And token "h" reads the run "task"'s INITIALIZING log through A, which holds "hook: before init" and not "Error"
+    And token "h" reads the run "task"'s INITIALIZING log through B, which holds "hook: after init" and not "Error"
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"echo skipped","skipInitialization":true}' through B
     Then it answers 201
     And the answer's id names "skipped"
     And token "h" eventually reads the run "skipped" in the state "FINISHED" through A
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FINISHED"
     And the outbox holds the run "skipped"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FINISHED"
-    And token "h" reads the run "skipped"'s INITIALIZING log through B, which holds "infraweave: working on commit" and not "Initializing the backend"
+    And token "h" reads the run "skipped"'s INITIALIZING log through B, which holds "infraweave: initialization is skipped" and not "Initializing the backend"
+    And token "h" reads the run "skipped"'s INITIALIZING log through A, which holds "infraweave: initialization is skipped" and not "hook: before init"
+    And token "h" reads the run "skipped"'s INITIALIZING log through B, which holds "infraweave: initialization is skipped" and not "hook: after init"
     And the run "skipped" wrote 0 state versions
 
   @op:stackDelete @case:success

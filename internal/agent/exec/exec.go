@@ -300,9 +300,12 @@ func (r *run) report(ctx context.Context, rep wire.RunReport) (wire.NextStep, er
 // It answers the report of how the phase ended at version; planning's
 // success carries the plan's delta, once its results are saved. The
 // phase's CPU profile, when the run profiles, is uploaded before the
-// report whatever the phase's end.
+// report whatever the phase's end. A task that skips initialization runs
+// neither its commands nor its hooks, even in a fresh session, and logs
+// the skip in INITIALIZING.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
+// ref: decision 0008 § "skipInitialization"
 func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) wire.RunReport {
 	r.begin(state)
 	defer r.finish()
@@ -346,7 +349,7 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	case errors.Is(err, errNoTask):
 		return fail("The run's specification names no task to perform.")
 	}
-	reinit := !r.initialized && state != wire.WorkerStateINITIALIZING
+	reinit := !r.initialized && state != wire.WorkerStateINITIALIZING && !r.skipsInit()
 	var init []step
 	if err == nil && reinit {
 		init, err = r.commands(ctx, wire.WorkerStateINITIALIZING)
@@ -355,15 +358,7 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 		return fail("The workflow's commands cannot be rendered: " +
 			strings.TrimSuffix(err.Error(), ".") + ".")
 	}
-	lists := [][]step{{{
-		text: "export TF_VAR_infraweave_run_state=" + quote(string(state)),
-		what: "Setting TF_VAR_infraweave_run_state",
-	}}}
-	if reinit {
-		lists = append(lists, r.hooks("before_init"), init, r.hooks("after_init"))
-	}
-	name := hookPhases[state]
-	lists = append(lists, r.hooks("before_"+name), commands)
+	lists, after := r.phaseSteps(state, commands, init, reinit)
 	if d := r.steps(ctx, lists...); d != "" || r.halted() {
 		return end(d)
 	}
@@ -394,7 +389,7 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 			return fail("The outputs' JSON could not be read: " + err.Error())
 		}
 	}
-	if d := r.steps(ctx, r.hooks("after_"+name)); d != "" || r.halted() {
+	if d := r.steps(ctx, after); d != "" || r.halted() {
 		return end(d)
 	}
 	switch {
@@ -410,6 +405,24 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	return rep
 }
 
+// phaseSteps groups the state's export, session initialization and phase
+// hooks and commands, keeping the after-hooks for after outputs are read.
+func (r *run) phaseSteps(state wire.WorkerState, commands, init []step, reinit bool) ([][]step, []step) {
+	lists := [][]step{{{
+		text: "export TF_VAR_infraweave_run_state=" + quote(string(state)),
+		what: "Setting TF_VAR_infraweave_run_state",
+	}}}
+	if reinit {
+		lists = append(lists, r.hooks("before_init"), init, r.hooks("after_init"))
+	}
+	if state == wire.WorkerStateINITIALIZING && r.skipsInit() {
+		_, _ = fmt.Fprintln(r.log, "infraweave: initialization is skipped")
+		return lists, nil
+	}
+	name := hookPhases[state]
+	return append(lists, r.hooks("before_"+name), commands), r.hooks("after_" + name)
+}
+
 // hookPhases names each state's hooks: before_<name> and after_<name>,
 // as the specification keys them.
 var hookPhases = map[wire.WorkerState]string{
@@ -423,11 +436,17 @@ var hookPhases = map[wire.WorkerState]string{
 // errNoTask marks a PERFORMING phase whose specification names no task.
 var errNoTask = errors.New("the specification names no task")
 
+// skipsInit reports whether the task omits initialization's commands and
+// hooks, including when it resumes in a fresh session.
+func (r *run) skipsInit() bool {
+	return r.h.Spec.Task != nil && r.h.Spec.Task.SkipInitialization
+}
+
 // commands are the steps of state's phase: for PERFORMING, the task's
 // command, which sh -c runs so that neither an exit nor a cd in it ends
 // or moves the session the after_perform hooks run in; none for
-// INITIALIZING when the task skips initialization, whose hooks still
-// run; and for every other phase its workflow's commands, rendered now.
+// INITIALIZING when the task skips initialization, whose hooks are also
+// omitted; and for every other phase its workflow's commands, rendered now.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func (r *run) commands(ctx context.Context, state wire.WorkerState) ([]step, error) {
@@ -440,7 +459,7 @@ func (r *run) commands(ctx context.Context, state wire.WorkerState) ([]step, err
 			text: Shell + " -c " + quote(task.Command), what: "The task's command",
 			command: taskCommand,
 		}}, nil
-	case state == wire.WorkerStateINITIALIZING && task != nil && task.SkipInitialization:
+	case state == wire.WorkerStateINITIALIZING && r.skipsInit():
 		return nil, nil
 	}
 	commands, err := r.workflow.Commands(ctx, state, r.options)
