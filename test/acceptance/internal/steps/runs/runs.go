@@ -39,6 +39,7 @@ func (r *runSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^neither the answer nor a server's log names "([^"]+)"$`, r.unnamed)
 	sc.Step(`^the answer's runtime configuration includes '([^']*)'$`, r.runtimeConfiguration)
 	sc.Step(`^token "(\w+)" records the run "(\w+)"'s APPLYING release evidence through ([AB])$`, r.releaseEvidence)
+	sc.Step(`^token "(\w+)" records the run "(\w+)"'s retry planning evidence through ([AB])$`, r.retryEvidence)
 }
 
 // comments checks the bodies of the last answer's comments, a run's,

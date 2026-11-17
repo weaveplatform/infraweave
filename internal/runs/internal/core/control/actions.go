@@ -111,8 +111,9 @@ func (s *Service) DiscardAll(ctx context.Context, p kernel.Principal, slug, note
 }
 
 // Retry creates a run of the type of p's run raw of stack slug on its
-// commit, with its runtime configuration, force-apply mode and
-// environment variable overrides, and answers it: T1, through the
+// commit, with the configuration it recorded at its first handover,
+// runtime input, force-apply mode and environment variable overrides,
+// and answers it: T1, through the
 // lifecycle, which answers the run of the stack, type and commit that has
 // not ended in its place when the retried run has no overrides. A retry
 // never triggers dependants. A run read.RetryBlocker blocks, or whose
@@ -123,7 +124,12 @@ func (s *Service) DiscardAll(ctx context.Context, p kernel.Principal, slug, note
 // ref: decision 0008 § "The state machine is the authority"
 func (s *Service) Retry(ctx context.Context, p kernel.Principal, slug, raw string) (read.View, error) {
 	return s.act(ctx, p, slug, raw, func(ctx context.Context, st stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
-		if why := read.RetryBlocker(r); why != "" {
+		// The tracked commit cannot change between the guard and creation.
+		settings, err := s.d.Stacks.LockForRun(ctx, p.AccountID, st.ID)
+		if err != nil {
+			return r, err //nolint:wrapcheck // the stacks domain names the read
+		}
+		if why := read.RetryBlocker(r, settings); why != "" {
 			return r, &Refused{Run: r.ID, State: r.State, Needs: why}
 		}
 		if r.Type == kernel.RunTypeTracked {
@@ -144,7 +150,7 @@ func (s *Service) Retry(ctx context.Context, p kernel.Principal, slug, raw strin
 		}
 		run, _, err := s.d.Lifecycle.Create(ctx, lifecycle.NewRun{
 			Account: p.AccountID, Stack: st.ID, Type: r.Type, Commit: r.Commit,
-			Actor: lifecycle.ActorOf(p), RuntimeConfig: r.RuntimeConfig,
+			Actor: lifecycle.ActorOf(p), RuntimeConfig: r.RuntimeConfig, Resolved: r.ResolvedConfig,
 			ForceApply: r.ForceApply, Overrides: ovs, Note: "retry of " + r.ID.String(),
 		})
 		return run, err //nolint:wrapcheck // the lifecycle names the refusal

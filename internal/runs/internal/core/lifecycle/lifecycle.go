@@ -129,7 +129,8 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // RuntimeConfig is the runtime configuration its trigger gave, nil for
 // none, and ForceApply SINGLE or CASCADE when it applies with no changes.
 // ResolvedConfig is the configuration its first successful handover fixed,
-// nil until then; later handovers reuse it without retaining variable values.
+// or a retry inherited, nil until one exists; later handovers reuse it
+// without retaining variable values.
 // LocalWorkspace is the uploads store's key of the local workspace a run
 // proposed from one previews instead of a commit of the repository, empty
 // for a run on a commit. WorkerPool is the stack's
@@ -383,6 +384,9 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 // detection starts it, its runtime configuration and force-apply mode,
 // the local workspace it previews, the environment overrides of a
 // proposed run, a TASK run's task, and a note for its first transition.
+// Resolved is a retry's inherited first-handover record, nil when the
+// retried run ended before it recorded one. Variables and mounted files
+// are read afresh at handover rather than inherited in this record.
 type NewRun struct {
 	Account        kernel.AccountID
 	Stack          kernel.ULID
@@ -392,6 +396,7 @@ type NewRun struct {
 	Priority       kernel.RunPriority
 	DriftDetection bool
 	RuntimeConfig  json.RawMessage
+	Resolved       *runtimeconfig.Record
 	ForceApply     string
 	LocalWorkspace string
 	Overrides      []Override
@@ -462,7 +467,8 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 		Account: n.Account, ID: kernel.NewULID(), Stack: n.Stack, Type: n.Type,
 		State: kernel.RunStateQueued, Version: 1, StateChangedAt: now, Commit: n.Commit,
 		TriggeredBy: n.Actor.Login, Priority: priority, DriftDetection: n.DriftDetection,
-		RuntimeConfig: n.RuntimeConfig, ForceApply: n.ForceApply, LocalWorkspace: n.LocalWorkspace,
+		RuntimeConfig: n.RuntimeConfig, ResolvedConfig: n.Resolved,
+		ForceApply: n.ForceApply, LocalWorkspace: n.LocalWorkspace,
 		WorkerPool: st.WorkerPool, Task: n.Task, CreatedAt: now, UpdatedAt: now,
 	}
 	step := Step{

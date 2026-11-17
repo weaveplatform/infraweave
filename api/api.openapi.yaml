@@ -14941,7 +14941,7 @@ paths:
   /stacks/{stackId}/runs/{runId}/retry:
     post:
       description: >-
-        Retry a proposed or tracked Run that has ended: a run of its type is queued on its commit, with its runtime configuration and environment variable overrides. Retrying a tracked run also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. The answer is the new run.
+        Retry a proposed or tracked Run that ended other than in FINISHED: a new run of its type is queued on its commit with the configuration it recorded at its first handover and its environment variable overrides. Variables and mounted files are read afresh. A tracked run's commit must still be its stack's tracked commit, and its retry also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not; a run whose commit its stack's repository no longer has is refused. A run that ended before recording configuration resolves it afresh. An existing unended run of the same type and commit is answered instead when the retry has no variable overrides.
       operationId: runRetry
       x-infraweave-feature: runs
       parameters:
@@ -26888,7 +26888,10 @@ components:
           description: Checks if a proposed run can be promoted to a tracked one.
           type: boolean
         canRetry:
-          description: Checks if a run can be retried.
+          description: |-
+            Whether a proposed or tracked run may be retried on its commit
+            with its recorded configuration. False for a run in FINISHED
+            or a tracked run whose stack has moved to another commit.
           type: boolean
         command:
           description: Command - only useful for Tasks.
@@ -27000,7 +27003,9 @@ components:
           nullable: true
           type: string
         retryBlocker:
-          description: Reason why the run cannot be retried.
+          description: |-
+            Why the run cannot retry, including a run in FINISHED or a
+            tracked run no longer on its stack's tracked commit.
           nullable: true
           type: string
         reviews:
@@ -27010,7 +27015,7 @@ components:
           type: array
         runtimeConfig:
           $ref: '#/components/schemas/RuntimeConfig'
-          description: The configuration fixed when the run was first handed to a worker. Absent until that handover succeeds.
+          description: The configuration fixed at the run's first successful handover, or inherited from the retried run. Absent until a record exists.
         stackId:
           description: The ID (slug) of the Stack this Run belongs to.
           type: string

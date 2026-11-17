@@ -2065,12 +2065,16 @@ paths:
   /stacks/{stackId}/runs/{runId}/retry:
     post:
       description: >-
-        Retry a proposed or tracked Run that has ended: a run of its type is
-        queued on its commit, with its runtime configuration and environment
-        variable overrides. Retrying a tracked run also needs
-        RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether and why not;
-        a run whose commit its stack's repository no longer has is refused.
-        The answer is the new run.
+        Retry a proposed or tracked Run that ended other than in FINISHED:
+        a new run of its type is queued on its commit with the configuration
+        it recorded at its first handover and its environment variable
+        overrides. Variables and mounted files are read afresh. A tracked
+        run's commit must still be its stack's tracked commit, and its retry
+        also needs RUN_RETRY_BLOCKING. canRetry and retryBlocker say whether
+        and why not; a run whose commit its stack's repository no longer
+        has is refused. A run that ended before recording configuration
+        resolves it afresh. An existing unended run of the same type and
+        commit is answered instead when the retry has no variable overrides.
       operationId: runRetry
       x-infraweave-feature: runs
       parameters:

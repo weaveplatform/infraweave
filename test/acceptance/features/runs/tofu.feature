@@ -33,8 +33,9 @@ Feature: Runs of an OpenTofu stack end to end
   reads its own stack and space. A run of a stack that enables CPU
   profiling uploads its planning's profile, whose samples each name the
   workflow command they come from; a stack that does not has none. The
-  release indexes serve the recorded fixtures; the home key is
-  space-admin on the account's top space.
+  release indexes serve the recorded fixtures. A failed proposed run
+  retries with its recorded hooks even after the stack changes them. The
+  home key is space-admin on the account's top space.
   Stacks live in legacy, keep their state in infraweave and run on the
   pool; the repository's configuration has terraform_data resources and
   outputs alone, so no provider is downloaded.
@@ -58,6 +59,26 @@ Feature: Runs of an OpenTofu stack end to end
     And the launchers started from now on set the run request limits to 17 per second and a burst of 170
     And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
+
+  @op:runTrigger @op:runRetry @case:success
+  Scenario: A failed OpenTofu run retries its recorded hooks after the stack changes
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"opentofu":{}},"beforePlan":["echo hook: old","exit 1"]},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's runtime configuration includes '{"beforePlan":["echo hook: old","exit 1"],"terraformVersion":"{opentofu.newest}","terraformWorkflowTool":"OPEN_TOFU"}'
+    Given token "h" sends "PATCH /api/v1/stacks/infra" with '{"beforePlan":["echo hook: new"]}' through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/retry" through B
+    Then it answers 200
+    And the answer's type is '"PROPOSED"'
+    And the answer's commits is '["{seed}"]'
+    And the answer's last state transition's note is "retry of {run}"
+    And the answer's runtime configuration includes '{"beforePlan":["echo hook: old","exit 1"],"terraformVersion":"{opentofu.newest}","terraformWorkflowTool":"OPEN_TOFU"}'
+    And the answer's id names "retry"
+    And token "h" eventually reads the run "retry" in the state "FAILED" through A
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
+    And token "h" reads the run "retry"'s PLANNING log through B, which holds "hook: old" and not "hook: new"
+    And token "h" records the run "retry"'s retry planning evidence through A
 
   @op:runTrigger @op:runConfirm @op:runLogs @op:runChangesV3 @case:success
   Scenario: A tracked run plans, waits for confirmation with its workspace saved, and applies once confirmed

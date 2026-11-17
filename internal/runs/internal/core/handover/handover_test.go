@@ -1077,6 +1077,43 @@ func TestUnitHandoverTerragruntRunAll(t *testing.T) {
 	}
 }
 
+// TestUnitHandoverInheritedConfiguration starts a new run with another
+// run's record, so its first handover uses the inherited hooks and
+// release without resolving the stack's changed configuration.
+func TestUnitHandoverInheritedConfiguration(t *testing.T) {
+	original := newWorld(t)
+	original.env.resolved.Hooks = map[string][]string{"before_plan": {"echo original", "exit 1"}}
+	first, err := original.handover(t, original.run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retry := newWorld(t)
+	retry.store.run.ResolvedConfig = original.store.run.ResolvedConfig
+	retry.store.recordErr, retry.catalog.err = errDown, errDown
+	retry.stacks.settings.ProjectRoot = new("changed-root")
+	retry.stacks.settings.RunnerImage = new("runner:changed")
+	retry.stacks.settings.TerraformVersion = new("no-matching-release")
+	retry.env.resolved.Hooks = map[string][]string{"before_plan": {"echo changed"}}
+	retry.env.resolved.Elements = []configapi.Element{variable("LIVE", "fresh", false)}
+	got, err := retry.handover(t, retry.run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Spec.Run.ID != retry.run.ID || got.Spec.Run.ID == first.Spec.Run.ID ||
+		!reflect.DeepEqual(got.Spec.Hooks, first.Spec.Hooks) || !reflect.DeepEqual(got.Spec.Tool, first.Spec.Tool) ||
+		!reflect.DeepEqual(got.Spec.Stack.ProjectRoot, first.Spec.Stack.ProjectRoot) ||
+		!reflect.DeepEqual(got.Spec.RunnerImage, first.Spec.RunnerImage) || len(retry.catalog.vendors) != 0 {
+		t.Fatalf("inherited handover re-resolves configuration: %+v", got.Spec)
+	}
+	found := false
+	for _, v := range got.Spec.Environment {
+		found = found || v.Name == "LIVE" && v.Value != nil && *v.Value == "fresh"
+	}
+	if !found {
+		t.Error("inherited handover does not read the current variables")
+	}
+}
+
 func TestUnitHandoverReplaysResolvedConfiguration(t *testing.T) {
 	for _, tc := range []struct {
 		name, vendor, settings string
