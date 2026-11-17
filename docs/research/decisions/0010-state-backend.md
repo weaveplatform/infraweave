@@ -79,8 +79,11 @@ behind the controls every API surface shares, and depart from them only where de
   with `--no-stack-generate`, so the units keep their backend files. Without run-all a
   `terragrunt.stack.hcl` under the project root fails initialization with a note saying
   that explicit stacks need `useRunAll`, as Spacelift supports them only under run-all
-  ([20 section 6.6](../reference/20-vendors.md#66-limitations)). Whether those flags
-  behave so on the latest Terragrunt is C304.
+  ([20 section 6.6](../reference/20-vendors.md#66-limitations)). Terragrunt behaves so:
+  `stack generate` writes every unit, and a file written into a generated unit survives
+  any later command, while `--no-stack-generate` also keeps the generated code from being
+  rewritten between phases
+  ([33 section 7.3](../reference/33-vendor-tool-documents.md#73-explicit-stacks)).
 - **Which stacks manage state.** A stack manages state when created with `manageState`.
   For a Terragrunt stack, `useStateManagement` decides when it is set and `manageState`
   when it is null, as the Terraform provider documents
@@ -89,7 +92,7 @@ behind the controls every API surface shares, and depart from them only where de
   `terragrunt.use_state_management` in a run's runtime configuration changes nothing.
 - **Vendors with state of their own.** Pulumi keeps state in the backend its `loginURL`
   names, CloudFormation in AWS and Kubernetes in the cluster, and Ansible's state is its
-  hosts ([33 section 6](../reference/33-vendor-tool-documents.md#6-what-each-contract-takes)).
+  hosts ([33 section 9](../reference/33-vendor-tool-documents.md#9-what-each-contract-takes)).
   Their stacks accept `manageState` and ignore it, since the Terraform provider sends it
   for every stack, and answer `managesStateFile: false`. Their runs carry no
   `stateBackend`, and state import, external access and the state URLs answer them as
@@ -263,12 +266,15 @@ Any other username, or a password that is neither, answers `401`.
    returns an error; see [0013](0013-secrets-at-rest.md#fips-140-3)), so the header is
    accepted and ignored. TLS protects the body in transit and the recorded SHA-256 protects
    it at rest.
-3. The body must be a JSON object, scanned as it streams. A body with `version`, `serial`
-   and `lineage` is a plain state and those are recorded. A body without `serial` and
-   `lineage`, as OpenTofu's client-side encryption produces, is stored as
-   `client_encrypted` and never parsed again
-   ([16 section 9](../reference/16-state-management.md#9-opentofu-state-encryption)). Any
-   other body answers `400`. A body refused for its `Content-MD5` or its JSON has its
+3. The body must be a JSON object, scanned as it streams. A body with `encrypted_data`
+   and `encryption_version` is OpenTofu's client-side encryption envelope: it is stored as
+   `client_encrypted`, its `serial` and `lineage` recorded when it carries them, as
+   OpenTofu writes both in the clear beside the ciphertext and no `version`
+   ([33 section 6.6](../reference/33-vendor-tool-documents.md#66-opentofu-state-encryption)), and it is never parsed
+   further ([16 section 9](../reference/16-state-management.md#9-opentofu-state-encryption)).
+   Any other body with `version`, `serial` and `lineage` is a plain state and those are
+   recorded. Any other body answers `400`. A run reads its plan and outputs through the
+   tool, which holds the key, so they are the same under encryption. A body refused for its `Content-MD5` or its JSON has its
    object deleted.
 4. When the SHA-256 equals the current version's, no version is added and the object is
    deleted: a run with no changes creates none
@@ -337,7 +343,7 @@ does (decision [0003](0003-api-conventions.md)).
   | It is a JSON state with `version` 4, or a client-encrypted envelope | `422`, reason `rule` | `422`, reason `rule` |
 
   - A client-encrypted envelope is a JSON object with `encrypted_data` and
-    `encryption_version` and neither `serial` nor `lineage`, as OpenTofu's state
+    `encryption_version`, with or without `serial` and `lineage`, as OpenTofu's state
     encryption writes it. A plain state is checked for `version` 4 at import alone; a
     run's write takes any plain state.
   - **At creation**, `stackCreate` decides the first two checks itself, in its
@@ -593,7 +599,8 @@ unlock) are ordinary REST operations and answer the problem details of decision
   allowed for an exclusive-lock caller with an audit entry and refused with `403` for any
   other; `Content-MD5` mismatch answering `400`, and the same request accepted under
   `GODEBUG=fips140=only` with the body's SHA-256 recorded; no `Content-MD5` on reads; the
-  size limit; identical writes adding no version; client-encrypted bodies; token expiry for
+  size limit; identical writes adding no version; client-encrypted bodies, the envelope in
+  `test/fixtures/vendor-documents/opentofu/state-encrypted.json` among them; token expiry for
   the upload and download URLs.
 - Store contract tests against PostgreSQL and every object store driver of decision 0005 (decision 0016): versions,
   current pointer, orphan collection through `pending` `blob_objects` rows, retention.

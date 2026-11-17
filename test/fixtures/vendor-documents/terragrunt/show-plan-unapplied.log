@@ -1,0 +1,47 @@
+11:27:22.977 INFO   The following units will be run, starting with dependencies and then their dependents:
+.
+╰── network
+    ╰── app
+11:27:23.050 ERROR  Run failed: error occurred:
+
+* resolving dependency "network" outputs: /work/live/network/terragrunt.hcl is a dependency of /work/live/app/terragrunt.hcl but detected no outputs. Either the target module has not been applied yet, or the module has no outputs.
+
+  If this dependency is accessed before the outputs are ready (which can happen during the planning phase of an unapplied stack), consider using mock_outputs:
+
+  dependency "network" {
+      config_path = "../network"
+
+      mock_outputs = {
+          network_output = "mock-network-output"
+      }
+  }
+
+  For more info, see:
+  https://docs.terragrunt.com/features/stacks/#unapplied-dependency-and-mock-outputs
+
+  If you do not require outputs from your dependency, consider using the dependencies block instead:
+  https://docs.terragrunt.com/reference/config-blocks-and-attributes/#dependencies
+
+
+11:27:23.050 INFO   TIP (debugging-docs): For help troubleshooting errors, visit https://docs.terragrunt.com/troubleshooting/debugging
+11:27:23.050 ERROR  error occurred:
+
+* resolving dependency "network" outputs: /work/live/network/terragrunt.hcl is a dependency of /work/live/app/terragrunt.hcl but detected no outputs. Either the target module has not been applied yet, or the module has no outputs.
+
+  If this dependency is accessed before the outputs are ready (which can happen during the planning phase of an unapplied stack), consider using mock_outputs:
+
+  dependency "network" {
+      config_path = "../network"
+
+      mock_outputs = {
+          network_output = "mock-network-output"
+      }
+  }
+
+  For more info, see:
+  https://docs.terragrunt.com/features/stacks/#unapplied-dependency-and-mock-outputs
+
+  If you do not require outputs from your dependency, consider using the dependencies block instead:
+  https://docs.terragrunt.com/reference/config-blocks-and-attributes/#dependencies
+
+

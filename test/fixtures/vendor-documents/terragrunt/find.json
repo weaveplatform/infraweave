@@ -1,0 +1,10 @@
+[
+  {
+    "type": "unit",
+    "path": "app"
+  },
+  {
+    "type": "unit",
+    "path": "network"
+  }
+]

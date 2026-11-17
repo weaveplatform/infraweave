@@ -1,0 +1,385 @@
+{
+  "version": 4,
+  "terraform_version": "1.17.2",
+  "serial": 10,
+  "lineage": "e62061fe-dee2-09d2-79b5-0bc717b5be13",
+  "outputs": {
+    "api_key": {
+      "value": "dummy-api-key-v1",
+      "type": "string",
+      "sensitive": true
+    },
+    "file_id": {
+      "value": "420001e86e7565a730599f064e906ff22bf15858",
+      "type": "string"
+    },
+    "name": {
+      "value": "simple-snail",
+      "type": "string"
+    },
+    "nested": {
+      "value": {
+        "marked": "dummy-nested-v1",
+        "plain": "visible"
+      },
+      "type": [
+        "object",
+        {
+          "marked": "string",
+          "plain": "string"
+        }
+      ],
+      "sensitive": true
+    },
+    "password": {
+      "value": "OwDSF3UeyCC1mII1",
+      "type": "string",
+      "sensitive": true
+    }
+  },
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "local_file",
+      "name": "rendered",
+      "provider": "provider[\"registry.terraform.io/hashicorp/local\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "content": "name=simple-snail\n",
+            "content_base64": null,
+            "content_base64sha256": "7/9UYf+pdfAbE/L4V3Rwgh/I+mihih1rv+QA4KP+Aok=",
+            "content_base64sha512": "1rQVfP7T+0MTd64/PgK0YAJHh6X7mFsdKOqfEyD05nAYfLqbC5q4YR91TrIpzk/+J2zulJ0Uafc+c/AbEE9mkQ==",
+            "content_md5": "d423659e2128c893fdd47091288a77fc",
+            "content_sha1": "420001e86e7565a730599f064e906ff22bf15858",
+            "content_sha256": "efff5461ffa975f01b13f2f8577470821fc8fa68a18a1d6bbfe400e0a3fe0289",
+            "content_sha512": "d6b4157cfed3fb431377ae3f3e02b460024787a5fb985b1d28ea9f1320f4e670187cba9b0b9ab8611f754eb229ce4ffe276cee949d1469f73e73f01b104f6691",
+            "directory_permission": "0777",
+            "file_permission": "0777",
+            "filename": "./out/rendered.txt",
+            "id": "420001e86e7565a730599f064e906ff22bf15858",
+            "sensitive_content": null,
+            "source": null
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "sensitive_content"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "dependencies": [
+            "random_pet.name"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "local_sensitive_file",
+      "name": "secret",
+      "provider": "provider[\"registry.terraform.io/hashicorp/local\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "content": "api_key=dummy-api-key-v1\n",
+            "content_base64": null,
+            "content_base64sha256": "6qEgzr4p21ayIIPajkNwmI3zHRXk6kOI9dl8PbgZIqE=",
+            "content_base64sha512": "5WaQzxQFbQnV/8YPzhwPIWdYh1Ly6uflLHl3cKGK1CndxwZQok7UcA+px3w8gSed5iMP44EBFLxO+dqUCABuRQ==",
+            "content_md5": "6ace89d02df31b2222c196e7b35d8655",
+            "content_sha1": "e6f727e3e5934e11ee5bda746382cc4e94850dcd",
+            "content_sha256": "eaa120cebe29db56b22083da8e4370988df31d15e4ea4388f5d97c3db81922a1",
+            "content_sha512": "e56690cf14056d09d5ffc60fce1c0f2167588752f2eae7e52c797770a18ad429ddc70650a24ed4700fa9c77c3c81279de6230fe3810114bc4ef9da9408006e45",
+            "directory_permission": "0700",
+            "file_permission": "0700",
+            "filename": "./out/secret.txt",
+            "id": "e6f727e3e5934e11ee5bda746382cc4e94850dcd",
+            "source": null
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "content"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "content_base64"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "random_password",
+      "name": "db",
+      "provider": "provider[\"registry.terraform.io/hashicorp/random\"]",
+      "instances": [
+        {
+          "schema_version": 3,
+          "attributes": {
+            "bcrypt_hash": "$2a$10$vSlCIAxSk/t7HjxWntE/WO8RqMPg.yFPSrfANEH6pcpFpQq.b7WOK",
+            "id": "none",
+            "keepers": null,
+            "length": 16,
+            "lower": true,
+            "min_lower": 0,
+            "min_numeric": 0,
+            "min_special": 0,
+            "min_upper": 0,
+            "number": true,
+            "numeric": true,
+            "override_special": null,
+            "result": "OwDSF3UeyCC1mII1",
+            "special": false,
+            "upper": true
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "bcrypt_hash"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "result"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "random_pet",
+      "name": "name",
+      "provider": "provider[\"registry.terraform.io/hashicorp/random\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "simple-snail",
+            "keepers": null,
+            "length": 2,
+            "prefix": null,
+            "separator": "-"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "config",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "453bbb04-f298-0fc6-97bd-4312b94e5b08",
+            "input": {
+              "value": {
+                "api_key": "dummy-api-key-v1",
+                "marked": "dummy-marked-v1",
+                "name": "simple-snail",
+                "plain": "visible-v1"
+              },
+              "type": [
+                "object",
+                {
+                  "api_key": "string",
+                  "marked": "string",
+                  "name": "string",
+                  "plain": "string"
+                }
+              ]
+            },
+            "output": {
+              "value": {
+                "api_key": "dummy-api-key-v1",
+                "marked": "dummy-marked-v1",
+                "name": "simple-snail",
+                "plain": "visible-v1"
+              },
+              "type": [
+                "object",
+                {
+                  "api_key": "string",
+                  "marked": "string",
+                  "name": "string",
+                  "plain": "string"
+                }
+              ]
+            },
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "input"
+              },
+              {
+                "type": "get_attr",
+                "value": "api_key"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "input"
+              },
+              {
+                "type": "get_attr",
+                "value": "marked"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "dependencies": [
+            "random_pet.name"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "dropped",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "a2c81e21-45e8-34de-11d7-4d6823f5a6fe",
+            "input": {
+              "value": "deleted",
+              "type": "string"
+            },
+            "output": {
+              "value": "deleted",
+              "type": "string"
+            },
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "forget",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "46fb3f73-eab2-93f0-f861-0de5a9256076",
+            "input": {
+              "value": "kept-outside",
+              "type": "string"
+            },
+            "output": {
+              "value": "kept-outside",
+              "type": "string"
+            },
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "old",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "82e5737a-598b-2102-482d-c2cdfade0389",
+            "input": {
+              "value": "moves",
+              "type": "string"
+            },
+            "output": {
+              "value": "moves",
+              "type": "string"
+            },
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "uses_ephemeral",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "52f9beab-d78c-b877-0048-78eefabe671f",
+            "input": {
+              "value": "runs-a-provisioner",
+              "type": "string"
+            },
+            "output": {
+              "value": "runs-a-provisioner",
+              "type": "string"
+            },
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "dependencies": [
+            "ephemeral.random_password.session"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": [
+    {
+      "object_kind": "check",
+      "config_addr": "check.api_key_rotated",
+      "status": "fail",
+      "objects": [
+        {
+          "object_addr": "check.api_key_rotated",
+          "status": "fail",
+          "failure_messages": [
+            "The API key is still the first one."
+          ]
+        }
+      ]
+    }
+  ]
+}
+

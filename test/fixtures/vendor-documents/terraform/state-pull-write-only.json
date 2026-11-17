@@ -1,0 +1,102 @@
+{
+  "version": 4,
+  "terraform_version": "1.17.2",
+  "serial": 3,
+  "lineage": "b98a08b8-f025-10c2-186f-9fb9ccf4aaa8",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "stored_plain",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "5dce6344-aa2d-68ef-1bcc-55c6e014b31b",
+            "input": null,
+            "output": null,
+            "store": {
+              "input": null,
+              "output": {
+                "value": "dummy-write-only-plain",
+                "type": "string"
+              },
+              "replace": null,
+              "sensitive": null,
+              "sensitive_output": null,
+              "version": {
+                "value": 1,
+                "type": "number"
+              }
+            },
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "store"
+              },
+              {
+                "type": "get_attr",
+                "value": "sensitive_output"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "stored_secret",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "a5473c47-a826-bf07-51d9-c5f394180cde",
+            "input": null,
+            "output": null,
+            "store": {
+              "input": null,
+              "output": null,
+              "replace": null,
+              "sensitive": true,
+              "sensitive_output": {
+                "value": "JhPFGxXr1srLv3k2oVR0",
+                "type": "string"
+              },
+              "version": {
+                "value": 1,
+                "type": "number"
+              }
+            },
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "store"
+              },
+              {
+                "type": "get_attr",
+                "value": "sensitive_output"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "dependencies": [
+            "ephemeral.random_password.session"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}
+

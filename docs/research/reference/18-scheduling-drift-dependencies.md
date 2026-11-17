@@ -309,7 +309,7 @@ A data source of the same name reads it [S].
 | Over the limit | Further drift detection runs are skipped until running ones complete; no queue builds up | [D] drift. Whether they end `SKIPPED` or are never created is *(unverified)* (C43) |
 | Disabled on the pool | Drift detection runs are not executed; failed runs with an explanatory note are created as a record; new schedules cannot be created for stacks on that pool | [D] drift. How "disabled" maps onto `driftDetectionRunLimit` (for example `0`) is *(unverified)* (C60). Whether such a run is created directly in `FAILED` is *(unverified)* (C43) |
 | No drift | The proposed run finishes; nothing else happens; it is visible in the account runs list filtered by drift detection | [D] drift |
-| Drift, `reconcile = false` | Drifted resources are marked in the stack and account resources views | [D] drift; `ManagedEntity.drifted` (Unix time) [G]; report 21 |
+| Drift, `reconcile = false` | Drifted resources are marked in the stack and account resources views; whether from the plan's `resource_drift`, its `resource_changes` or both is *(unverified)* (C307) | [D] drift; `ManagedEntity.drifted` (Unix time) [G]; report 21 |
 | Drift, `reconcile = true` | A tracked reconciliation run is triggered, unless the stack's head commit changed during detection | [D] drift |
 | Reconciliation run | Behaves as a manually triggered tracked run: obeys autodeploy (else stops in `UNCONFIRMED`), plan policy `warn` stops it in `UNCONFIRMED`, trigger policies see it | [D] drift; report 08, report 09 |
 | Stack flag | `Stack.isDrifted` is true while any entity is drifted; `Stack.driftDetectedBy` holds the detecting run's ULID | [G] |

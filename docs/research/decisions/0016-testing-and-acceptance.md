@@ -631,7 +631,7 @@ coverage it would contribute is not waived.
   and outputs, a proposed run, a task and, but for Ansible, a destroy run;
   and `sanitization.feature`, each vendor's plan policy input compared
   through `sanitized`. `TestAccCaptures` skips C32, C185, C188, C189, C192,
-  C295, C296, C297, C299, C300 and C304 as awaited against them and
+  C295, C296, C297, C299 and C300 as awaited against them and
   `vendors/terragrunt.feature`.
 - `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
   `TestUnitWriteRefusals` and `TestUnitParseStress`

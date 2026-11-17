@@ -1,0 +1,10 @@
+{"time":"2026-11-17UTC11:27:24Z", "level":"stdout", "working-dir":"network", "tf-path":"tofu", "tf-command-args":["plan","-input=false","-out=tfplan.tfplan","-no-color"], "msg":"terraform_data.network: Refreshing state... [id=ecf2beef-6c31-240f-b8a4-542e13cb6aa0]\n"}
+{"time":"2026-11-17UTC11:27:24Z", "level":"stdout", "working-dir":"network", "tf-path":"tofu", "tf-command-args":["plan","-input=false","-out=tfplan.tfplan","-no-color"], "msg":"random_password.db: Refreshing state... [id=none]\n"}
+{"time":"2026-11-17UTC11:27:24Z", "level":"stdout", "working-dir":"network", "tf-path":"tofu", "tf-command-args":["plan","-input=false","-out=tfplan.tfplan","-no-color"], "msg":"\nNo changes. Your infrastructure matches the configuration.\n"}
+{"time":"2026-11-17UTC11:27:24Z", "level":"stdout", "working-dir":"app", "tf-path":"tofu", "tf-command-args":["plan","-input=false","-out=tfplan.tfplan","-no-color"], "msg":"terraform_data.app: Refreshing state... [id=ab7cff69-09af-3888-c182-c5b1570fa568]\n"}
+{"time":"2026-11-17UTC11:27:24Z", "level":"stdout", "working-dir":"app", "tf-path":"tofu", "tf-command-args":["plan","-input=false","-out=tfplan.tfplan","-no-color"], "msg":"\nNo changes. Your infrastructure matches the configuration.\n"}
+
+❯❯ Run Summary  2 units  250ms
+   ────────────────────────────
+   Succeeded    2
+

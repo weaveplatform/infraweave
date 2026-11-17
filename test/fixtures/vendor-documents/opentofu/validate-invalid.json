@@ -1,0 +1,61 @@
+{
+  "format_version": "1.0",
+  "valid": false,
+  "error_count": 2,
+  "warning_count": 0,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "summary": "Ephemeral value used in non-ephemeral context",
+      "detail": "Attribute \".input\" is referencing an ephemeral value but ephemeral values can be referenced only by other ephemeral attributes or by write-only ones.",
+      "address": "terraform_data.leaks",
+      "range": {
+        "filename": "main.tf",
+        "start": {
+          "line": 7,
+          "column": 11,
+          "byte": 116
+        },
+        "end": {
+          "line": 7,
+          "column": 28,
+          "byte": 133
+        }
+      },
+      "snippet": {
+        "context": "resource \"terraform_data\" \"leaks\"",
+        "code": "  input = var.session_token",
+        "start_line": 7,
+        "highlight_start_offset": 10,
+        "highlight_end_offset": 27,
+        "values": []
+      }
+    },
+    {
+      "severity": "error",
+      "summary": "Reference to undeclared resource",
+      "detail": "There is no managed resource \"terraform_data\" \"absent\" definition in the root module.",
+      "range": {
+        "filename": "main.tf",
+        "start": {
+          "line": 11,
+          "column": 11,
+          "byte": 166
+        },
+        "end": {
+          "line": 11,
+          "column": 32,
+          "byte": 187
+        }
+      },
+      "snippet": {
+        "context": "output \"missing\"",
+        "code": "  value = terraform_data.absent.id",
+        "start_line": 11,
+        "highlight_start_offset": 10,
+        "highlight_end_offset": 31,
+        "values": []
+      }
+    }
+  ]
+}

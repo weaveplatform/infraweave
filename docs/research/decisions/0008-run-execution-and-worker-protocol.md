@@ -418,7 +418,12 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   or `module.app["a"].aws_instance.web[0]`; the runner still quotes each
   as one shell word, since a quoted key may hold any character. The
   runner fills the workflow template's `targets` from them, so the
-  replan's plan command passes one `-target` for each. An OpenTofu stack's
+  replan's plan command passes one `-target` for each. The tool plans each
+  target with what it depends on, and Terraform's plan reads
+  `complete: false`; a target that leaves out a resource a pending `moved`
+  block moves fails the plan with the tool's error, which names the
+  `-target` to add
+  ([33 section 6.3](../reference/33-vendor-tool-documents.md#63-drift-refresh-only-targeted-and-destroy-plans)). An OpenTofu stack's
   `enableCPUProfiling` is in the clear part beside the tool.
 - **The state backend.** For a stack that manages state, the clear part
   names `stateBackend.path`, `/state/v1/stacks/<stack ULID>`, and a stack
@@ -534,7 +539,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `TG_JSON_OUT_DIR`, the variable of `--json-out-dir`, naming a directory
   of the runner's temporary directory for that command alone, and saves
   each unit's plan as `tfplan.tfplan` (`planFileName`), the name
-  Terragrunt reads to write the plan's JSON. After planning the runner
+  Terragrunt reads to write the plan's JSON, which it writes as
+  `<unit path>/tfplan.json` under that directory, the unit's `show -json`
+  ([33 section 7.2](../reference/33-vendor-tool-documents.md#72-plans-outputs-and-render)). After planning the runner
   reads each unit's plan from that directory and reports their summed
   `delta`, failing on a plan that does not parse, naming its unit, or on
   none. Terragrunt approves `apply` and `destroy` itself. Without
@@ -548,7 +555,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   JSON, and `changes.json` with each change's unit in a field of its own,
   so no reader splits an address; the plan policy input's `terragrunt`
   block has one entry per unit. Its outputs are each unit's `output -json`,
-  named `<unit>/<output>`.
+  named `<unit>/<output>`, read with `terragrunt run -- output -json` in
+  each unit's directory, since `run --all` writes the units' documents one
+  after another with no unit's name
+  ([33 section 7.2](../reference/33-vendor-tool-documents.md#72-plans-outputs-and-render)).
 - **After planning** the runner uploads two sealed artifacts: `plan.json`,
   the tool's `show -json` of the plan, and `changes.json`, the changes
   `internal/iac` parses from it, which the server reads for the run's
@@ -576,6 +586,16 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
 
   The run keeps its delta for its changes view. A `failed` or `stopped`
   report of `PLANNING` is taken as in any state.
+- **The Terraform family's plan** is `show -json` of the saved plan, format
+  version 1.x, whose members and change kinds
+  [33 section 6.2](../reference/33-vendor-tool-documents.md#62-the-plan-document) records for Terraform and
+  OpenTofu alike; OpenTofu writes no `applyable` or `complete`. A drift run
+  plans as any proposed run does, never `-refresh-only`, whose plan has no
+  `resource_changes`: its plan holds `resource_drift`, each resource changed
+  outside the tool as the refresh found it, beside the `resource_changes`
+  that repair it
+  ([33 section 6.3](../reference/33-vendor-tool-documents.md#63-drift-refresh-only-targeted-and-destroy-plans)),
+  and `internal/iac` reads both.
 
 ### Vendors' runs
 

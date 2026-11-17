@@ -1,0 +1,22 @@
+$ tofu show -json
+╷
+│ Error: failed to load state: Unsupported state file format: This state file is encrypted and can not be read without an encryption configuration
+│
+│
+╵
+
+$ tofu state pull
+╷
+│ Error: Failed to refresh state: Unsupported state file format: This state file is encrypted and can not be read without an encryption configuration
+│
+│
+╵
+
+$ tofu show -json enc.tfplan
+╷
+│ Error: Couldn't show local plan
+│
+│ Plan read error: the given plan file is encrypted and requires a valid
+│ encryption configuration to decrypt
+╵
+

@@ -1,0 +1,22 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "cancel": [
+              "01H00000000000000000000003"
+            ],
+            "sample": true,
+            "track": true
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

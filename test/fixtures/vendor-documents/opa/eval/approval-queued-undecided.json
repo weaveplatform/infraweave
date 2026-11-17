@@ -1,0 +1,18 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "sample": true
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

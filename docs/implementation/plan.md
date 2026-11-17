@@ -2158,7 +2158,16 @@ in as `test/fixtures/policy-inputs`
    path, maps `spacelift` to `infraweave`, and fails on a key with no field
    or a JSON type that differs; `TestUnitCombination`. `POST /policies/check`, served by `expressions`
    over the surface `policies` lists in `Surfaces()`, compiles a body
-   with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)).
+   with the preamble and returns diagnostics with ranges ([0024](../research/decisions/0024-expression-language.md)),
+   each from OPA's location by decision 0009's rule, since OPA's errors
+   name a point ([33 section 8.2](../research/reference/33-vendor-tool-documents.md#82-diagnostics)).
+   `TestUnitRecordedDecisions` evaluates the policies of
+   `test/fixtures/vendor-documents/opa/policies`, renamed to
+   `package infraweave` as the importer renames them, against every
+   input of `test/fixtures/policy-inputs`, and compares each decision with
+   OPA's result there plus the type's defaults, and with the recorded
+   `*.decision.json` where one exists
+   ([33 section 8.1](../research/reference/33-vendor-tool-documents.md#81-results)).
    The plan input carries `third_party_metadata.custom.<plugin>`, which
    P20b's plugins write, and each vendor's block in the shape decision
    0009 records. The `sanitized()` built-in hashes with
@@ -2208,7 +2217,11 @@ in as `test/fixtures/policy-inputs`
    `feature:disable_resource_sanitization` to opt out); and the runner
    sanitizes the Terraform, OpenTofu and Terragrunt plan documents before
    upload, so the plan policy's input and the stored plan hold hashes, never
-   sensitive values. A Terragrunt stack accepts `useSmartSanitization: true`.
+   sensitive values: every marked path, each sensitive variable's value and
+   every `constant_value`, by decision 0009's rule, over the recorded plans
+   of `test/fixtures/vendor-documents/{terraform,opentofu,terragrunt}`
+   ([33 section 6.5](../research/reference/33-vendor-tool-documents.md#65-secrets-sensitive-ephemeral-and-write-only-values)).
+   A Terragrunt stack accepts `useSmartSanitization: true`.
    Feature: `vendors/sanitization.feature`, where C192 is awaited: the
    default and smart modes on each of the three vendors, and the opt-out
    label.
@@ -2216,7 +2229,8 @@ in as `test/fixtures/policy-inputs`
 **Exit criteria**
 - No Terraform, OpenTofu or Terragrunt plan document reaches the object
   store unsanitized: a scenario per vendor finds no sensitive value in the
-  uploaded plan.
+  uploaded plan, and no dummy secret of the recorded plans in
+  `test/fixtures/vendor-documents` survives either mode.
 - Option 5's walkthrough holds against Gitea: a push opens a proposed run, a
   plan policy warns, and the check and pull request comment appear.
 - The operations of task 2 and task 4 meet decision 0016's evidence rule.
@@ -2482,7 +2496,13 @@ from the moment its upstream run is created
    private pools, each pool's drift run limits enforced in the claim
    (the console's pool form reveals the limit behind a switch, C274); one
    or more cron expressions and a timezone; reconcile and ignore state,
-   both off by default. Operations:
+   both off by default. A drift run plans as a proposed run does, and
+   `internal/iac/plan` reads its plan's `resource_drift`, each resource
+   changed outside the tool, beside `resource_changes`; a refresh-only
+   plan, which has no `resource_changes`, is never run
+   ([33 section 6.3](../research/reference/33-vendor-tool-documents.md#63-drift-refresh-only-targeted-and-destroy-plans)).
+   Its `iactest` cases read `plan-drift.json` and `plan-refresh-only.json`
+   of `test/fixtures/vendor-documents/{terraform,opentofu}`. Operations:
    `stackIntegrationDriftDetectionCreate`,
    `stackIntegrationDriftDetectionUpdate`,
    `stackIntegrationDriftDetectionDelete`.
@@ -2526,7 +2546,7 @@ from the moment its upstream run is created
 - Drift Detection and the schedule and dependency operations of the Stacks
   tag meet decision 0016's evidence rule.
 - Two instances fire each scheduled time once.
-- Captures C38, C151, C153 to C168, C274, C288 and C290 replay once
+- Captures C38, C151, C153 to C168, C274, C288, C290 and C307 replay once
   recorded; C278, the stack pages Spacelift's console shows for schedules,
   drift detection and dependencies, is settled
   ([32](../research/reference/32-spacelift-console-survey.md) section 16.5).
@@ -2611,7 +2631,12 @@ that need no confirmation
    `runsapi`, which carry the module's configuration elements, since `runs`
    cannot read `registry`: `QUEUED`, `INITIALIZING`, `PLANNING`, `APPLYING`,
    `DESTROYING`, `FINISHED`, with no confirmation and no plan policy;
-   negative cases included.
+   negative cases included. A test case runs the module's code through
+   plan, apply and destroy, as Spacelift's do; the tools' own `test -json`
+   stream, `test_run` statuses and a closing `test_summary`, is recorded
+   in `test/fixtures/vendor-documents/{terraform,opentofu}/test.jsonl`
+   ([33 section 6.7](../research/reference/33-vendor-tool-documents.md#67-validation-and-tests)) for a step that
+   runs a module's `*.tftest.hcl`.
 6. Features: `registry/protocol.feature`, `registry/modules.feature`
    (`@vcs`, `@terraform`, `@tofu`): a bump creates a version and runs its
    test case, a push without one creates none, a reused number is refused.
@@ -3061,7 +3086,8 @@ image and tool.
 
 **Tasks**
 1. The vendors' contracts in decisions 0008, 0009, 0010, 0016 and 0024,
-   from what Pulumi, kubectl and ansible-core write when driven and from
+   from what Terraform, OpenTofu, Terragrunt, Pulumi, kubectl and
+   ansible-core write when driven, what Open Policy Agent answers, and
    AWS's CloudFormation reference
    ([33](../research/reference/33-vendor-tool-documents.md)), with the
    deviation records DV-120 to DV-128 and the rename records RN-43 and
@@ -3106,13 +3132,14 @@ image and tool.
    latest Terragrunt release the default version and managed state off by
    default, as Spacelift's wizard has them; explicit stacks under run-all
    through `terragrunt stack generate` and `--no-stack-generate`, refused
-   without run-all (C304); each unit's changes with the unit in a field of
+   without run-all, as Terragrunt behaves
+   ([33 section 7.3](../research/reference/33-vendor-tool-documents.md#73-explicit-stacks)); each unit's changes with the unit in a field of
    its own, its outputs named `<unit>/<output>` and `plan.json` as
    `{"units": [...]}`, which the plan policy input's `terragrunt` block
    reads. Operations: `terragruntVersions` and `terragruntEffectiveVersion`,
    from the `vendors` domain's release catalogue, each constraint resolved
    on its own (DV-124). Feature: `vendors/terragrunt.feature`
-   (`@terragrunt`), where C185, C188, C189 and C304 are awaited.
+   (`@terragrunt`), where C185, C188 and C189 are awaited.
 5. Pulumi: `internal/iac/pulumi` with `loginURL` and `stackName`, and its
    phase map: `before_init` hooks, then `pulumi login` and
    `pulumi stack select --create`, then `after_init` hooks (C190 settled);

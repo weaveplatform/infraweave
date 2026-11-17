@@ -1,0 +1,21 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "sample": true,
+            "trigger": [
+              "stack-b"
+            ]
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

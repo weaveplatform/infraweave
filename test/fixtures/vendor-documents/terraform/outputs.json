@@ -1,0 +1,36 @@
+{
+  "api_key": {
+    "sensitive": true,
+    "type": "string",
+    "value": "dummy-api-key-v1"
+  },
+  "file_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "420001e86e7565a730599f064e906ff22bf15858"
+  },
+  "name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "simple-snail"
+  },
+  "nested": {
+    "sensitive": true,
+    "type": [
+      "object",
+      {
+        "marked": "string",
+        "plain": "string"
+      }
+    ],
+    "value": {
+      "marked": "dummy-nested-v1",
+      "plain": "visible"
+    }
+  },
+  "password": {
+    "sensitive": true,
+    "type": "string",
+    "value": "OwDSF3UeyCC1mII1"
+  }
+}

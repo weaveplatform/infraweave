@@ -1,0 +1,25 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "inbox": [
+              {
+                "body": "The run on stack-a is FINISHED.",
+                "severity": "INFO",
+                "title": "Run FINISHED"
+              }
+            ],
+            "sample": true
+          },
+          "text": "data.spacelift",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

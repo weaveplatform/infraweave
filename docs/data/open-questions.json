@@ -3972,11 +3972,47 @@
       "id": "C304",
       "kind": "capture",
       "area": "Vendors (report 20)",
-      "question": "Does `terragrunt stack generate` at the project root generate every unit of its `terragrunt.stack.hcl` under `.terragrunt-stack`, and does `--no-stack-generate` keep a later `run --all` from generating them again over files written in between?",
+      "question": "Does `terragrunt stack generate` at the project root generate every unit of its `terragrunt.stack.hcl` under `.terragrunt-stack`, and does `--no-stack-generate` keep a later `run --all` from generating them again over files written in between? Resolved on 2026-11-17 by Terragrunt 1.2.2's own run (report 33): `stack generate` at the project root writes every unit under `.terragrunt-stack/<path>`; `run --all` without `--no-stack-generate` generates them again, rewriting the files it generated and keeping any other, and with the flag generates nothing, so a file written into a generated unit survives either way",
       "howToCapture": "Run the latest Terragrunt on a `terragrunt.stack.hcl` of two units, write a file into each generated unit, then run `terragrunt run --all --no-stack-generate -- plan`",
       "blocks": "explicit stacks in decision 0010",
       "reports": [
-        "docs/research/reference/20-vendors.md"
+        "docs/research/reference/20-vendors.md",
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "C305",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "How do OpenTofu's plan and state show a write-only attribute: `null` in both, as Terraform's `terraform_data.store.input` reads, with a literal for it as a `constant_value` in the plan's `configuration`?",
+      "howToCapture": "Run the latest OpenTofu with an official provider whose schema marks an attribute `write_only` in `tofu providers schema -json`, and record `show -json` of a plan and `state pull`",
+      "blocks": "OpenTofu's write-only rule in decision 0009's sanitization",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C306",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "Which members of a Terraform or OpenTofu resource change does Spacelift's `terraform` block keep (`action_reason`, `replace_paths`, `previous_address`, `importing`, `index`, `module_address`), and how does a value marked sensitive read there under default and smart sanitization?",
+      "howToCapture": "On Spacelift, plan a replacement, a move, an import, a counted resource in a module and a sensitive attribute under each sanitization mode, and read each run's plan policy input",
+      "blocks": "the `terraform` block's members and the Terraform family's sanitization in decision 0009",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md"
+      ]
+    },
+    {
+      "id": "C307",
+      "kind": "capture",
+      "area": "Vendor documents (report 33)",
+      "question": "Which resources does Spacelift mark drifted from a drift detection run's plan: those under `resource_drift`, those under `resource_changes`, or both?",
+      "howToCapture": "Run drift detection on a stack with a resource changed outside the tool and one whose code changed, and read the drifted entities of the resources view",
+      "blocks": "the drifted resources P16 marks",
+      "reports": [
+        "docs/research/reference/33-vendor-tool-documents.md",
+        "docs/research/reference/18-scheduling-drift-dependencies.md"
       ]
     }
   ]

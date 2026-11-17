@@ -1,0 +1,14 @@
+[
+  {
+    "type": "stack",
+    "path": "."
+  },
+  {
+    "type": "unit",
+    "path": ".terragrunt-stack/app"
+  },
+  {
+    "type": "unit",
+    "path": ".terragrunt-stack/network"
+  }
+]

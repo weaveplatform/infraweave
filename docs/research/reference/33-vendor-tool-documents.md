@@ -1,12 +1,14 @@
 # 33: The vendors' own documents
 
-Checked against: Pulumi CLI v3.276.0, k3s and kubectl v1.37.2+k3s1 and ansible-core 2.22.0, each run locally in Docker from its official image on 2026-11-17 with no credentials and no cloud, their documents kept in [`test/fixtures/vendor-documents`](../../../test/fixtures/vendor-documents/README.md); AWS CloudFormation's API reference (API version 2010-05-15), its user guide and the CloudFormation CLI's resource schema reference, read 2026-11-17; Spacelift's Pulumi and Ansible runs and policy inputs of 2026-11-17 ([32](32-spacelift-console-survey.md) section 16.8, [`test/fixtures/policy-inputs`](../../../test/fixtures/policy-inputs/README.md)); report [20](20-vendors.md) at commit `c4787489`.
+Checked against: Terraform 1.17.2, OpenTofu 1.13.9 with the `random` 3.9.1 and `local` 2.9.1 providers, Terragrunt 1.2.2, OPA 1.22.4, Pulumi CLI v3.276.0, k3s and kubectl v1.37.2+k3s1 and ansible-core 2.22.0, each run locally in Docker from its official image on 2026-11-17 with no credentials and no cloud, their documents kept in [`test/fixtures/vendor-documents`](../../../test/fixtures/vendor-documents/README.md); AWS CloudFormation's API reference (API version 2010-05-15), its user guide and the CloudFormation CLI's resource schema reference, read 2026-11-17; Spacelift's Pulumi and Ansible runs and policy inputs of 2026-11-17 ([32](32-spacelift-console-survey.md) section 16.8, [`test/fixtures/policy-inputs`](../../../test/fixtures/policy-inputs/README.md)); report [20](20-vendors.md) at commit `c4787489`.
 
 Research baseline: **2026-11-17**.
 
-Report [20](20-vendors.md) records how Spacelift drives Pulumi,
-CloudFormation, Kubernetes and Ansible. This report records what each tool
-itself writes when it is driven that way: the commands per phase and their
+Report [20](20-vendors.md) records how Spacelift drives each vendor's
+tool, and report [09](09-policies.md) how it evaluates policies. This
+report records what each tool itself writes when it is driven that way,
+Terraform, OpenTofu and Terragrunt included, and what Open Policy Agent
+answers for the recorded policy inputs: the commands per phase and their
 exit codes, the plan document a runner can read, the outputs, where state
 lives, how a secret appears in each document, what sanitization has to
 hash, and the block each vendor gives the plan policy input. Each tool ran
@@ -17,7 +19,7 @@ from AWS's published reference instead. Decisions
 [0010](../decisions/0010-state-backend.md),
 [0016](../decisions/0016-testing-and-acceptance.md) and
 [0024](../decisions/0024-expression-language.md) state each vendor's
-contract from these findings, and P20 and P20b of the
+contract from these findings, and P13, P16, P17, P20 and P20b of the
 [implementation plan](../../implementation/plan.md) build it.
 
 | Label | Means |
@@ -54,6 +56,10 @@ contract from these findings, and P20 and P20b of the
 | Kubernetes | k3s and kubectl v1.37.2+k3s1, kustomize v5.8.1 | `rancher/k3s` at the release tag `v1.37.2-k3s1` |
 | Ansible | ansible-core 2.22.0, Python 3.15.2, Jinja 3.1.6 | `python`, Debian 13, with `pip install ansible-core` |
 | CloudFormation | API version 2010-05-15 | none |
+| Terraform | 1.17.2, providers `hashicorp/random` 3.9.1 and `hashicorp/local` 2.9.1 from its registry | `hashicorp/terraform` at `1.17.2`, Alpine |
+| OpenTofu | 1.13.9, the same providers from its registry | `ghcr.io/opentofu/opentofu` at `1.13.9`, Alpine |
+| Terragrunt | 1.2.2, `terragrunt_linux_arm64` checked against the release's `SHA256SUMS`, whose signature Gruntwork's key verifies | the OpenTofu image |
+| Open Policy Agent | 1.22.4, Rego v1 by default | `openpolicyagent/opa` at `1.22.4` |
 
 The fixtures' README names each image's digest. `rancher/k3s:latest`
 resolves to v1.34.1+k3s1, built 2025-09-22, more than a year behind the
@@ -491,7 +497,369 @@ Spacelift's CloudFormation runs are unread: which calls they make, what
 their policy block holds and what deleting a stack with resources does are
 *(unverified)* (C296).
 
-## 6. What each contract takes
+## 6. Terraform and OpenTofu
+
+Both tools ran one project, `terraform/project` [T], through the same
+commands; `opentofu/` holds OpenTofu's documents under the same names. The
+project holds a pet, a password, a `terraform_data` whose input mixes a
+plain string, a sensitive variable and a `sensitive()` value, a
+`local_file` and a `local_sensitive_file`, an ephemeral `random_password`
+and an ephemeral variable that a provisioner reads, a child module with an
+ephemeral output, a `check` block, and five outputs, three of them
+sensitive. `main.tf.v2` replaces the pet, adds an integer, changes the
+sensitive values, and adds a `moved`, a `removed` and an `import` block.
+Variables arrive as `TF_VAR_*`, never on the command line.
+
+### 6.1 Commands per phase
+
+| Phase | Command | Document |
+|---|---|---|
+| `INITIALIZING` | `init -input=false` | none |
+| `PLANNING` | `plan -input=false -out=<plan>`, then `show -json <plan>` | the plan document [T] `terraform/plan-create.json`; with `-json`, the plan's own output is the machine-readable UI stream [T] `terraform/plan-create.ui.jsonl` |
+| `APPLYING` | `apply -input=false <plan>`, then `output -json` | the outputs [T] `terraform/outputs.json`; with `-json`, the UI stream [T] `terraform/apply-create.ui.jsonl` |
+| `DESTROYING` | `plan -destroy -out=<plan>` and `apply <plan>` | [T] `terraform/plan-destroy.json`, `terraform/apply-destroy.ui.jsonl` |
+| A drift run | the same plan as `PLANNING` | [T] `terraform/plan-drift.json` |
+| A targeted replan | `plan -target=<address> -out=<plan>` | [T] `terraform/plan-target.json` |
+| A module's test case | `test -json` | [T] `terraform/test.jsonl` |
+| Checking code | `validate -json` | [T] `terraform/validate-invalid.json` |
+
+`plan -json -out=<plan>` writes the saved plan and the UI stream in one
+run. A plan with changes, or with none, exits 0 without
+`-detailed-exitcode`; a failed `check` is a warning, not an error.
+
+### 6.2 The plan document
+
+`show -json` of a saved plan is format version `1.2` in both tools, with
+`terraform_version`, `variables`, `planned_values`, `resource_changes`,
+`output_changes`, `prior_state`, `configuration`, `relevant_attributes`,
+`checks`, `timestamp` and `errored`; Terraform adds `applyable` and
+`complete` [T]. Each `resource_changes` entry has `address`, `mode`,
+`type`, `name`, `provider_name` and `change`, whose `actions`, `before`,
+`after`, `after_unknown`, `before_sensitive` and `after_sensitive` are
+always present. What else a change carries depends on its kind
+[T] `terraform/plan-change.json`:
+
+| Change | Shape |
+|---|---|
+| Create, update, delete | `actions` `["create"]`, `["update"]`, `["delete"]`; a delete of a resource gone from the code has `action_reason` `delete_because_no_resource_config` |
+| Replace | `actions` `["delete","create"]`, `action_reason` `replace_because_cannot_update` and `change.replace_paths`, the attributes that force it |
+| `removed` with `destroy = false` | `actions` `["forget"]`, `action_reason` `delete_because_no_resource_config` |
+| `import` | `actions` `["no-op"]` with `change.importing.id`; with `-generate-config-out`, `change.generated_config` holds the code written to the file [T] `terraform/generated.tf` |
+| `moved` | the new address with `previous_address` and `actions` `["no-op"]` |
+
+`output_changes` gives each output `actions`, `before`, `after`,
+`after_unknown`, `before_sensitive` and `after_sensitive`. `checks` lists
+each `check` block as `{address, status, instances}`, `status` `pass`,
+`fail` or `unknown`, with each failed instance's `problems[].message`.
+
+### 6.3 Drift, refresh-only, targeted and destroy plans
+
+A `local_file` edited outside the tool is removed from state when it
+refreshes, since the provider compares the file's checksum with its ID.
+
+- **A plan** after the edit has `resource_drift`, the file with `actions`
+  `["delete"]` and its last state in `before`, and `resource_changes`, a
+  `create` that writes it again; `output_changes` shows the file's ID
+  output becoming unknown [T] `terraform/plan-drift.json`. Spacelift's
+  drift detection runs this plan, as a proposed run
+  ([18](18-scheduling-drift-dependencies.md) section 3).
+- **A refresh-only plan** has `resource_drift` and `output_changes` and no
+  `resource_changes` member at all; its `change_summary` counts nothing
+  [T] `terraform/plan-refresh-only.json`, `terraform/plan-refresh-only.ui.jsonl`.
+  A reader that counts `resource_changes` finds no drift in it.
+- **A targeted plan** plans the target and what it depends on: targeting
+  `terraform_data.config` replaces the pet it reads. Terraform marks it
+  `complete: false`; OpenTofu writes no `complete`. Each `check` reads
+  `unknown` [T] `terraform/plan-target.json`. While a `moved` block is
+  pending, a target that leaves the moved resource out fails with
+  "Moved resource instances excluded by targeting", naming the `-target`
+  to add [T] `terraform/plan-target-moved.ui.jsonl`.
+- **OpenTofu's `-exclude`** leaves out the resource and everything that
+  depends on it [T] `opentofu/plan-exclude.json`.
+- **A destroy plan** deletes every resource and every output
+  [T] `terraform/plan-destroy.json`.
+
+### 6.4 Outputs and state
+
+- **`output -json`** gives each output `{sensitive, type, value}`, a
+  sensitive one's value in plaintext [T] `terraform/outputs.json`. The UI
+  stream's `outputs` message leaves a sensitive output's value out
+  [T] `terraform/apply-create.ui.jsonl`.
+- **`state pull`** writes state version 4: `terraform_version`, `serial`,
+  `lineage`, `outputs` with `sensitive`, `resources[].instances[]` with
+  `attributes` and `sensitive_attributes`, a list of attribute paths
+  (`[{"type": "get_attr", "value": "result"}]`), and `check_results`
+  [T] `terraform/state-pull.json`. Terraform's instances add
+  `identity_schema_version`.
+- **`show -json`** of state gives `values.outputs` and
+  `values.root_module.resources[]`, each with `values` and a
+  `sensitive_values` tree [T] `terraform/state.json`.
+
+### 6.5 Secrets: sensitive, ephemeral and write-only values
+
+Every sensitive value sits in plaintext beside a marker; the two tools
+put them at the same paths [L]:
+
+| Document | Where the plaintext is | Marker |
+|---|---|---|
+| `show -json` of a plan | `variables.<name>.value` | the variable's `sensitive: true` in `configuration.root_module.variables` |
+| | `before` and `after` of `resource_changes[]` and `resource_drift[]` | `before_sensitive` and `after_sensitive`, `false` or a tree of `true` leaves |
+| | `planned_values` and `prior_state` resources' `values` | each resource's `sensitive_values` tree |
+| | `output_changes.<name>` and `planned_values.outputs` | `before_sensitive`, `after_sensitive`, `sensitive` |
+| `output -json` | `<name>.value` | `sensitive` |
+| `state pull` | `outputs.<name>.value`, `resources[].instances[].attributes` | `sensitive`, `sensitive_attributes` |
+| `show -json` of state | `values` | `sensitive_values`, `sensitive` |
+
+A provider's sensitive attribute (`random_password.result`,
+`local_sensitive_file.content`), a sensitive variable and `sensitive()`
+are marked alike. The UI streams carry no attribute value: a diagnostic's
+`snippet.values` leaves a sensitive variable out, though `snippet.code` is
+the source line as written [T] `terraform/plan-create.ui.jsonl`.
+
+- **Ephemeral values** appear in no document: neither the ephemeral
+  resource, nor the ephemeral variable's value, nor the module's ephemeral
+  output [L]. The UI stream reports the resource's open and close, as
+  `ephemeral_op_start` and `ephemeral_op_complete` with `hook.action` in
+  Terraform and `ephemeral_action_started` and `ephemeral_action_complete`
+  with `hook.Msg` in OpenTofu. Assigning an ephemeral value to an attribute
+  that is not write-only fails `validate`, in both tools
+  [T] `terraform/validate-invalid.json`.
+- **Write-only attributes.** Neither `random` 3.9.1 nor `local` 2.9.1
+  declares one: no attribute in their schemas has `write_only` [L].
+  Terraform 1.17.2's built-in `terraform_data` has a `store` block whose
+  `input` is write-only and copied into `store.output`, or into
+  `store.sensitive_output` when `sensitive` is set
+  ([`resource_data.go`](https://github.com/hashicorp/terraform/blob/v1.17.2/internal/builtin/providers/terraform/resource_data.go)).
+  `store.input` reads `null` in the plan and in state; the copy sits in
+  state in plaintext, `sensitive_output` listed in `sensitive_attributes`;
+  a literal assigned to `input` shows in the plan's `configuration` as a
+  `constant_value` [T] `terraform/plan-write-only.json`,
+  `terraform/state-pull-write-only.json`. OpenTofu 1.13.9's
+  `terraform_data` has no `store` block, so its write-only shape is C305.
+
+### 6.6 OpenTofu state encryption
+
+With `TF_ENCRYPTION` naming a PBKDF2 key provider and AES-GCM for state
+and plan, both enforced [T] `opentofu/encryption.hcl` (a dummy passphrase):
+
+- **The state an `http` backend receives** is
+  `{serial, lineage, meta, encrypted_data, encryption_version}`: `serial`
+  and `lineage` in the clear, `meta` naming the key provider with its salt,
+  iterations, hash and key length in base64 JSON, `encryption_version`
+  `v0`, and no `version` [T] `opentofu/state-encrypted.json`, the body a
+  state server recorded from OpenTofu's `POST`. The local state file is the
+  same envelope [L].
+- **With the key**, `state pull`, `show -json` and `output -json` write
+  plaintext, as without encryption [T] `opentofu/state-pull-encrypted.json`.
+  **Without it**, each fails ("This state file is encrypted and can not be
+  read without an encryption configuration"), and so does a plan, at its
+  state lock [T] `opentofu/encrypted-read-errors.txt`.
+- **The saved plan** is the same kind of JSON envelope, not a zip archive,
+  and `show -json` of it needs the key [L].
+
+So a run reads plans and outputs through the tool, with the key, as
+without encryption; a server holding the state can read its `serial` and
+`lineage` and nothing else.
+
+### 6.7 Validation and tests
+
+- **`validate -json`** answers `{format_version, valid, error_count,
+  warning_count, diagnostics}`; each diagnostic has `severity`, `summary`,
+  `detail`, a `range` with `filename`, `start` and `end`, each
+  `{line, column, byte}`, and a `snippet` [T] `terraform/validate-invalid.json`.
+- **`test -json`** writes the UI stream: `test_abstract` naming each file's
+  runs, `test_run` with `{path, run, status}`, a `diagnostic` for a failed
+  assertion, `test_file` with the file's `status`, and `test_summary` with
+  `{status, passed, failed, errored, skipped}`. A failed assertion exits 1
+  [T] `terraform/test.jsonl`. Terraform also writes `test_file` and
+  `test_run` messages with `progress` (`starting`, `complete`, `teardown`)
+  and `elapsed`, and `snippet.test_assertion_expr`; OpenTofu writes the
+  final status alone and a `diagnostic.difference`.
+
+### 6.8 Where the two tools differ
+
+| | Terraform 1.17.2 | OpenTofu 1.13.9 |
+|---|---|---|
+| `version -json` | `format_version`, `terraform_outdated` | neither |
+| Plan document | `applyable`, `complete` | neither; `relevant_attributes` absent when empty |
+| `configuration` | variables and outputs without `ephemeral` or `required` | each variable's `ephemeral` and `required`, each output's `ephemeral` |
+| State instances | `identity_schema_version` | none |
+| UI stream `version` | `{terraform, ui: "1.3"}` | `{tofu, ui: "1.2"}` |
+| `change_summary` | `add`, `change`, `import`, `remove`, `action_invocation`, `action_fail`; a forget counted nowhere | `add`, `change`, `import`, `remove`, `forget` |
+| Ephemeral resource messages | `ephemeral_op_start`, `ephemeral_op_complete`, `hook.action` | `ephemeral_action_started`, `ephemeral_action_complete`, `hook.Msg` |
+| `test -json` | `progress` messages, `test_assertion_expr` | final statuses, `difference` |
+| Only in one tool | `terraform_data.store`; provider actions, such as `local`'s `local_command` | `-exclude`; state and plan encryption |
+
+### 6.9 Compared with the parser's fixtures and Spacelift
+
+- **`internal/iac/plan/testdata`**, which `make iac-fixtures` records with
+  the same releases, holds a plan of every change type with a data source
+  read at apply, a plan with no change and one changing an output. The
+  documents here add what those lack: sensitive markers, ephemeral and
+  write-only values, `check` results, drift and refresh-only plans,
+  targeted, excluded and destroy plans, outputs and state, tests and
+  OpenTofu's encryption.
+- **Spacelift's blocks.** On an OpenTofu stack the plan policy input
+  carries `terraform` and `opentofu` side by side, each
+  `{checks, resource_changes, terraform_version}` with `opentofu_version`
+  in `opentofu`'s; each change has `address`, `mode`, `name`,
+  `provider_name`, `type` and `change` with `actions`, `before`, `after`,
+  `after_unknown`, `before_sensitive` and `after_sensitive` [C]
+  `plan-tracked-warn.json`, `plan-dependency-run.json`,
+  `plan-trigger-policy-run.json`. Nothing of `variables`, `output_changes`,
+  `resource_drift`, `prior_state`, `planned_values`, `configuration` or
+  `relevant_attributes` reaches them. The captured changes are creates and
+  updates of `terraform_data`, so whether Spacelift keeps `action_reason`,
+  `replace_paths`, `previous_address`, `importing`, `index` and
+  `module_address` is C306. Their strings are plain: the stacks used smart
+  sanitization, on by default, and marked nothing sensitive; how a marked
+  value reads in the block is C192 and C306.
+- **Main's parser** reads `actions`, `previous_address`, `importing`,
+  `prior_state`'s resources and `output_changes`' actions; it reads no
+  value, so the markers do not concern it, and no `resource_drift`, so a
+  refresh-only plan parses to no change.
+
+## 7. Terragrunt
+
+Terragrunt 1.2.2 drove OpenTofu 1.13.9 (`TG_TF_PATH=tofu`) in
+`terragrunt/project` [T]: `live/` holds two units, `network` with its code
+in place and `app`, which sources `modules/app` and reads `network`'s
+outputs through a `dependency` block with mocked outputs for `plan` and
+`validate`; `stack/` holds a `terragrunt.stack.hcl` of two units from a
+catalog.
+
+### 7.1 Discovery
+
+- **`find --json`** lists each unit as `{type, path}`, sorted by path
+  [T] `terragrunt/find.json`; with `--dag --dependencies --include
+  --reading`, dependencies come first and each entry adds its `include`
+  files, `dependencies` and the files it reads, a sourced module's among
+  them [T] `terragrunt/find-dag.json`.
+- **`list --long --dependencies`** is a text table, and `dag graph` a DOT
+  graph [T] `terragrunt/list-long.txt`, `terragrunt/dag-graph.dot`.
+
+### 7.2 Plans, outputs and render
+
+- **Plans.** `run --all -- plan -input=false -out=tfplan.tfplan` with
+  `TG_JSON_OUT_DIR` writes `<dir>/<unit path>/tfplan.json` per unit, each
+  the unit's `show -json` [T] `terragrunt/json-out/network/tfplan.json`,
+  `terragrunt/json-out/app/tfplan.json`. Its `variables` hold the unit's
+  Terragrunt `inputs` in plaintext, a sensitive one included, and the
+  dependency's mocked outputs while it has none.
+- **`run --all -- show -json tfplan.tfplan`** fails for a unit whose
+  dependency has no outputs yet, when the mocks do not allow `show`
+  [T] `terragrunt/show-plan-unapplied.log`; the JSON directory needs no
+  dependency outputs.
+- **Logs.** Terragrunt prefixes the tool's human output with the time,
+  the stream and the unit; `--log-format json` writes one object per line,
+  `{time, level, working-dir, tf-path, tf-command-args, msg}`
+  [T] `terragrunt/plan-log-format-json.jsonl`.
+- **`run --all -- output -json`** writes one JSON document per unit,
+  dependencies first, with no unit name [T] `terragrunt/output-all.json`;
+  `run -- output -json` in a unit's directory writes that unit's alone [L].
+- **`apply` and `destroy`** under `run --all` run without a prompt;
+  `run --help` says Terragrunt appends `-auto-approve` to them unless
+  `--no-auto-approve` is set [L].
+- **`render --json`** writes a unit's resolved configuration, its
+  `inputs` in plaintext with a dependency's outputs, mocked when it has
+  none; `render --all --json` writes one document per unit
+  [T] `terragrunt/render-app.json`, `terragrunt/render-all.json`. Rendering
+  initializes the dependency to read its outputs.
+- **Copies.** Terragrunt copies each unit into its `.terragrunt-cache`
+  before running the tool, a unit without a `source` included [L].
+
+### 7.3 Explicit stacks
+
+- Before generation, `find --json` lists the stack alone, `{type: "stack",
+  path: "."}` [T] `terragrunt/stack-find-before.json`.
+- `stack generate` writes each unit under `.terragrunt-stack/<path>`, with
+  its code, a `terragrunt.values.hcl` for its `values` and a
+  `.terragrunt-stack-manifest` of the files it wrote; `find --json` then
+  lists the units as `.terragrunt-stack/<path>`
+  [T] `terragrunt/stack-generated.txt`, `terragrunt/stack-find-after.json`.
+- `run --all` regenerates the units first, rewriting the files the
+  manifest lists, so an edit to a generated file is lost, and keeping any
+  other file. With `--no-stack-generate` it generates nothing and the edit
+  stays [T] `terragrunt/stack-regeneration.txt`. A file the runner writes
+  into each generated unit survives either way; `--no-stack-generate` also
+  keeps every phase on the same generated code. This settles C304.
+
+### 7.4 Compared with P11 and decision 0010
+
+- `find --json` finds the units P11's unit discovery finds: directories
+  holding `terragrunt.hcl`, never under `.terragrunt-cache`.
+- The plan through `TG_JSON_OUT_DIR` and `tfplan.tfplan`, and the backend
+  file carried into the cache, are what decision
+  [0008](../decisions/0008-run-execution-and-worker-protocol.md) and
+  [0010](../decisions/0010-state-backend.md) specify; the generate-then-skip
+  sequence for explicit stacks is 0010's.
+- Each unit's plan holds Terragrunt's inputs under `variables`, so
+  sanitizing a Terragrunt plan covers `variables` unit by unit, as for
+  Terraform.
+
+## 8. Open Policy Agent
+
+OPA 1.22.4 evaluated a minimal `package spacelift` policy per type
+[T] `opa/policies/` against every input in
+[`test/fixtures/policy-inputs`](../../../test/fixtures/policy-inputs/README.md),
+and `plan-proposed-deny.json`, `plan-tracked-warn.json` edited to a
+proposed run whose commit asks for a deny [T] `opa/inputs/`. infraweave
+embeds OPA as a Go library
+([0009](../decisions/0009-policy-engine-opa.md)); the CLI's JSON is read
+here for the library types it prints, not as a contract.
+
+### 8.1 Results
+
+- **`eval --format json`** prints a `rego.ResultSet`:
+  `{"result": [{"expressions": [{"value", "text", "location"}]}]}`, the
+  value being `data.spacelift` [T] `opa/eval/`.
+- **Against the recorded decisions**
+  ([`*.decision.json`](../../../test/fixtures/policy-inputs/README.md)):
+  every key OPA returns equals the recorded one. OPA returns only what the
+  policy defines: a set rule is `[]` when nothing matches, a boolean rule
+  that is not true is absent, `info` and `reset_flag` are absent from the
+  plan result, and sixteen of the push decision's nineteen keys are absent
+  from the push result. A helper rule, such as the plan policy's
+  `resources`, comes back beside the decision's keys
+  [T] `opa/eval/plan-tracked-warn.json`, `opa/eval/push-cancel.json`.
+  Spacelift's decision is the type's every key, defaults filled.
+
+### 8.2 Diagnostics
+
+- **`check --format json`** writes `{"errors": [...]}` to standard error and
+  exits 1. Each error has `message`, `code` (`rego_parse_error`,
+  `rego_type_error`), `location` `{file, row, col}` and, for a parse error,
+  `details` `{line, idx}` [T] `opa/check-broken.json`,
+  `opa/check-undefined.json`. Parsing stops at the first syntax error.
+- **The location is a point,** not a range. The library's `ast.Location`
+  also holds the source `Text` and its byte `Offset`, which its JSON
+  leaves out
+  ([`location.go`](https://github.com/open-policy-agent/opa/blob/v1.22.4/v1/ast/location/location.go)),
+  so a range is the location's offset to the end of its text.
+- **An evaluation error** goes to standard output with exit 2, in the same
+  `errors` shape: a complete rule with two values is
+  `eval_conflict_error`, with a `stack_trace` [T] `opa/eval-conflict.json`.
+
+### 8.3 Rego v0 and v1
+
+OPA 1.22.4 parses Rego v1 by default [T] `opa/version.txt`.
+
+- A v0 rule, `deny[msg] { ... }`, fails under v1 with "`if` keyword is
+  required before rule body" and "`contains` keyword is required for
+  partial set rules", and passes under `--v0-compatible`
+  [T] `opa/check-v0only.json`.
+- A v1 rule, `deny contains msg if { ... }`, fails under `--v0-compatible`
+  with three "var cannot be used for rule name" errors that name the
+  `future.keywords` import, and passes under v1
+  [T] `opa/check-v1only-v0-compatible.json`.
+
+### 8.4 Tests
+
+`test --format json` writes an array of `{location, package, name,
+duration}`, with `fail: true` on a failed test alone, and exits 2 when one
+fails [T] `opa/test.json`.
+
+## 9. What each contract takes
 
 | | Pulumi | Kubernetes | Ansible | CloudFormation |
 |---|---|---|---|---|
@@ -502,6 +870,19 @@ their policy block holds and what deleting a stack with resources does are
 | Sanitization | collapse each signature object to `"[secret]"`; hash nothing | hash each Secret's `data` and `stringData` values and its last-applied annotation | keep names and counts; drop results and diffs | hash each parameter value; request no property values |
 | Plan policy block | `pulumi.steps`, one per output event, `{op, urn, type, provider, old, new}` | `kubernetes.resources`, the sanitized plan document (C297) | `ansible`: the recap without `custom`, plus `playbook` | `cloudformation.changes`, the API's changes |
 
+| | Terraform and OpenTofu | Terragrunt |
+|---|---|---|
+| Plan document | `show -json` of the saved plan; a drift run's `resource_drift` beside its `resource_changes` | each unit's `show -json`, from `TG_JSON_OUT_DIR` |
+| Outputs | `output -json`, a sensitive value in plaintext beside `sensitive: true` | `output -json` in each unit |
+| State | infraweave's backend; under OpenTofu's encryption, an envelope whose `serial` and `lineage` alone are readable | a workspace per unit, generated units included |
+| A secret | plaintext beside a marker in plans, outputs and state; ephemeral values nowhere; a write-only attribute `null`, its stored copy in state | as Terraform's, and Terragrunt's `inputs` in each plan's `variables` and in `render` |
+| Sanitization | by the stack's mode, at every marked path, each sensitive variable and every `constant_value` | the same, unit by unit |
+| Plan policy block | `terraform`, and `opentofu` on OpenTofu: `{resource_changes, checks, terraform_version}` or `opentofu_version` | `terragrunt`, an entry per unit |
+
+Open Policy Agent answers only the rules a policy defines, helper rules
+included, and errors as a point; the engine's own result and ranges
+complete them ([0009](../decisions/0009-policy-engine-opa.md#preamble-package-and-save-time-validation)).
+
 The decisions name where each lives: commands, documents, images and tools
 in [0008](../decisions/0008-run-execution-and-worker-protocol.md#vendors-runs),
 sanitization and the blocks in [0009](../decisions/0009-policy-engine-opa.md#vendor-plan-documents),
@@ -509,7 +890,7 @@ state in [0010](../decisions/0010-state-backend.md#how-a-run-reaches-it),
 acceptance in [0016](../decisions/0016-testing-and-acceptance.md#acceptance-harness)
 and templates in [0024](../decisions/0024-expression-language.md#workflow-command-templates).
 
-## 7. Open
+## 10. Open
 
 - Spacelift's Pulumi destroy (C295), CloudFormation runs (C296) and
   Kubernetes runs (C297).
@@ -522,19 +903,33 @@ and templates in [0024](../decisions/0024-expression-language.md#workflow-comman
   empty change set (C303).
 - How Spacelift's `Delta` counts a replacement stays C198; Pulumi's own
   summary counts it once.
+- OpenTofu's write-only attributes in a plan and in state, which needs a
+  provider that declares one (C305).
+- Which members of a Terraform change Spacelift's `terraform` block keeps,
+  and how a value marked sensitive reads there under each sanitization
+  mode (C306, with C192).
+- Which resources Spacelift marks drifted from a drift run's plan:
+  `resource_drift`, `resource_changes` or both (C307).
 
 ## Sources
 
-- The tools, run in Docker on 2026-11-17 on arm64: `pulumi/pulumi-base`,
-  `rancher/k3s` at `v1.37.2-k3s1` and `python` with ansible-core from PyPI,
-  with the `random` provider plugin from Pulumi's GitHub releases. The
+- The tools, run in Docker on 2026-11-17 on arm64: `hashicorp/terraform`
+  at `1.17.2`, `ghcr.io/opentofu/opentofu` at `1.13.9`,
+  `openpolicyagent/opa` at `1.22.4`, Terragrunt's `v1.2.2` release binary
+  from GitHub, `pulumi/pulumi-base`, `rancher/k3s` at `v1.37.2-k3s1` and
+  `python` with ansible-core from PyPI, with the `random` and `local`
+  providers from the Terraform and OpenTofu registries and the `random`
+  provider plugin from Pulumi's GitHub releases. The
   documents kept are
   [`test/fixtures/vendor-documents`](../../../test/fixtures/vendor-documents/README.md),
   with each image's digest.
 - AWS's reference, read 2026-11-17: the pages under the short names above.
+- Source read 2026-11-17: Terraform's `terraform_data` schema at
+  `v1.17.2` and OPA's `ast.Location` at `v1.22.4`, linked where cited.
 - Spacelift's console on 2026-11-17: [32](32-spacelift-console-survey.md)
   section 16.8 and
   [`test/fixtures/policy-inputs`](../../../test/fixtures/policy-inputs/README.md)
-  (`plan-pulumi.json`, `plan-ansible.json`).
+  (`plan-pulumi.json`, `plan-ansible.json`, the Terraform family's plan
+  inputs and every `*.decision.json`).
 - Report [20](20-vendors.md) and the open-questions register,
   [`open-questions.json`](../../data/open-questions.json).

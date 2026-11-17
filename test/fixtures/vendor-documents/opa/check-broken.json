@@ -1,0 +1,17 @@
+{
+  "errors": [
+    {
+      "message": "unexpected } token: expected \",\" or \")\"",
+      "code": "rego_parse_error",
+      "location": {
+        "file": "check/broken.rego",
+        "row": 5,
+        "col": 1
+      },
+      "details": {
+        "line": "}",
+        "idx": 0
+      }
+    }
+  ]
+}

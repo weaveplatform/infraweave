@@ -1,0 +1,3 @@
+inputs = {
+  cidr = values.cidr
+}

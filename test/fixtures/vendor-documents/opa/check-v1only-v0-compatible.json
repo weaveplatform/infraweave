@@ -1,0 +1,31 @@
+{
+  "errors": [
+    {
+      "message": "var cannot be used for rule name (hint: `import future.keywords.contains` for `p contains x` rules)",
+      "code": "rego_parse_error",
+      "location": {
+        "file": "check/v1only.rego",
+        "row": 3,
+        "col": 1
+      }
+    },
+    {
+      "message": "var cannot be used for rule name (hint: `import future.keywords.contains` for `p contains x` rules)",
+      "code": "rego_parse_error",
+      "location": {
+        "file": "check/v1only.rego",
+        "row": 3,
+        "col": 6
+      }
+    },
+    {
+      "message": "var cannot be used for rule name (hint: `import future.keywords.if` for `p if { ... }` rules)",
+      "code": "rego_parse_error",
+      "location": {
+        "file": "check/v1only.rego",
+        "row": 3,
+        "col": 15
+      }
+    }
+  ]
+}
