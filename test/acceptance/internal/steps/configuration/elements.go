@@ -18,11 +18,17 @@ import (
 
 // configSteps read the config elements an answer carries.
 type configSteps struct {
-	w *harness.World
+	w            *harness.World
+	runtimeViews map[string][]runtimeSource
 }
 
 func (c *configSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's config lists the elements "([^"]*)"$`, c.lists)
+	sc.Step(`^the stack "([^"]+)" in the answer lists runtime elements "([^"]*)"$`, c.runtimeLists)
+	sc.Step(`^the stack "([^"]+)" in the answer has runtime sources:$`, c.runtimeSources)
+	sc.Step(`^the stack "([^"]+)" in the answer keeps its runtime configuration as "(\w+)"$`, c.keepRuntime)
+	sc.Step(`^the stack "([^"]+)" in the answer has the runtime configuration "(\w+)"$`, c.sameRuntime)
+	sc.Step(`^the stack "([^"]+)" in the answer lists only stored config elements "([^"]*)"$`, c.storedLists)
 	sc.Step(
 		`^the stack "([^"]+)" read through ([AB]) with token "(\w+)" eventually attaches the contexts "([^"]*)"$`,
 		c.attaches,

@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/iac/workflow"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/mask"
 )
 
@@ -409,7 +410,7 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 // hooks and commands, keeping the after-hooks for after outputs are read.
 func (r *run) phaseSteps(state wire.WorkerState, commands, init []step, reinit bool) ([][]step, []step) {
 	lists := [][]step{{{
-		text: "export TF_VAR_infraweave_run_state=" + quote(string(state)),
+		text: "export " + kernel.RunStateVariable + "=" + quote(string(state)),
 		what: "Setting TF_VAR_infraweave_run_state",
 	}}}
 	if reinit {

@@ -320,14 +320,18 @@ type StackMove struct {
 // StackConfiguration is what the stack view reads of the configuration
 // domain, which is constructed after stacks and implements it: the
 // contexts attached to each of the account's stacks, by priority, and
-// each stack's own config elements, by ID, keyed by stack ID, with a
-// stack that has none absent. The stacks domain declares it, so the back
+// each stack's own config elements and resolved runtime configuration,
+// by ID, keyed by stack ID. A stack with no stored elements still has
+// computed runtime elements. The stacks domain declares it, so the back
 // edge internal/app binds after construction adds no import.
 //
 // ref: decision 0004
 type StackConfiguration interface {
 	AttachedContexts(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]AttachedContext, error)
 	Config(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]ConfigElement, error)
+	// RuntimeConfig reads the stored-source winners and computed fallback
+	// elements, by ID, for all stacks in one batch.
+	RuntimeConfig(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]ConfigElementWithSource, error)
 }
 
 // StackStatus is what the stack view reads of the runs domain, which is
@@ -401,6 +405,16 @@ type ConfigElement struct {
 	Description string
 	FileMode    *string
 	CreatedAt   time.Time
+}
+
+// ConfigElementWithSource is a stored winner with its context attachment,
+// or an infraweave computed fallback when Runtime is set. A computed
+// element has no value or creation time; its checksum and description are
+// empty. The actual run token and phase state are injected at execution.
+type ConfigElementWithSource struct {
+	ConfigElement
+	Context *AttachedContext
+	Runtime bool
 }
 
 // ChangedKind is the outbox event a stack's write appends in its

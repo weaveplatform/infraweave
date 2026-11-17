@@ -1,5 +1,5 @@
 @postgres
-Feature: A stack's own config elements
+Feature: A stack's own config elements and resolved environment
   A stack holds its own config elements, environment variables and
   mounted files, beside those of the contexts it attaches. An element is
   added by its ID, or created and replaced at its own path, and a value
@@ -16,6 +16,10 @@ Feature: A stack's own config elements
   not exist. The home key is space-admin on the account's top space; the
   member key holds only the bindings a scenario gives it. Team inherits
   from acme; stack infra lives in legacy and stack hidden in team.
+  Its runtimeConfig lists the winning stored sources with their context
+  attachments and the computed run metadata without a value. Its config
+  keeps only its own elements. Direct, list and search reads share this
+  resolved view.
 
   Background:
     Given two infraweave servers, A and B, on one database
@@ -228,3 +232,82 @@ Feature: A stack's own config elements
     When token "h" sends "POST /api/v1/contexts/shared/configs" with '{"id":"BAD","type":"ENVIRONMENT_VARIABLE","value":"${{ env.FROM_A_STACK","writeOnly":false}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/value" from 1:1 to 1:4
+
+  @op:stack @op:stacks @op:searchStacks @case:success
+  Scenario: Direct, list and search reads share the winning sources and computed run metadata
+    Given token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through A
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"TOKEN","type":"ENVIRONMENT_VARIABLE","value":"runtime-view-s3cret","writeOnly":true}' through B
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"a.txt","type":"FILE_MOUNT","value":"YQ==","writeOnly":false,"fileMode":"600","description":"mounted"}' through A
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"TF_VAR_infraweave_run_type","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through B
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"CTX_ONLY","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false},{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}]}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":1}' through B
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Automatic","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"AUTO","type":"ENVIRONMENT_VARIABLE","value":"automatic","writeOnly":false}]}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "shared, auto:automatic"
+    When token "h" sends "GET /api/v1/stacks/infra" through A
+    Then it answers 200
+    And the stack "infra" in the answer lists runtime elements "AUTO, CTX_ONLY, INFRAWEAVE_API_TOKEN, LEVEL, TF_VAR_infraweave_account_name, TF_VAR_infraweave_api_endpoint, TF_VAR_infraweave_commit_branch, TF_VAR_infraweave_commit_sha, TF_VAR_infraweave_local_preview, TF_VAR_infraweave_project_root, TF_VAR_infraweave_repository, TF_VAR_infraweave_run_id, TF_VAR_infraweave_run_state, TF_VAR_infraweave_run_trigger, TF_VAR_infraweave_run_type, TF_VAR_infraweave_space_id, TF_VAR_infraweave_stack_branch, TF_VAR_infraweave_stack_id, TF_VAR_infraweave_stack_labels, TF_VAR_infraweave_stack_labels_list, TF_VAR_infraweave_workspace_root, TOKEN, a.txt"
+    And the stack "infra" in the answer has runtime sources:
+      | AUTO | {"value":"automatic","runtime":false,"writeOnly":false} | auto:automatic |
+      | CTX_ONLY | {"value":"context","runtime":false,"writeOnly":false} | shared |
+      | INFRAWEAVE_API_TOKEN | {"value":null,"runtime":true,"writeOnly":true,"category":"INFRAWEAVE_ENVIRONMENT"} | computed |
+      | LEVEL | {"value":"stack","runtime":false,"writeOnly":false} | stack |
+      | TF_VAR_infraweave_run_type | {"value":"stack","runtime":false,"category":null} | stack |
+      | TOKEN | {"value":null,"runtime":false,"writeOnly":true} | stack |
+      | a.txt | {"value":"YQ==","fileMode":"600","description":"mounted","runtime":false} | stack |
+    And the stack "infra" in the answer lists only stored config elements "LEVEL, TF_VAR_infraweave_run_type, TOKEN, a.txt"
+    And the stack "infra" in the answer keeps its runtime configuration as "resolved"
+    And the answer leaves out "runtime-view-s3cret"
+    When token "h" sends "GET /api/v1/stacks" through B
+    Then the stack "infra" in the answer has the runtime configuration "resolved"
+    When token "h" sends "POST /api/v1/stacks/search" with '{}' through A
+    Then the stack "infra" in the answer has the runtime configuration "resolved"
+    When token "h" sends "DELETE /api/v1/stacks/infra/configs/LEVEL" through B
+    Then it answers 200
+    When token "h" sends "GET /api/v1/stacks/infra" through A
+    Then the stack "infra" in the answer has runtime sources:
+      | LEVEL | {"value":"context","runtime":false,"writeOnly":false} | shared |
+    And the stack "infra" in the answer lists only stored config elements "TF_VAR_infraweave_run_type, TOKEN, a.txt"
+    And no answer of the scenario, log line of A or B, audit entry or event holds "runtime-view-s3cret"
+
+  @op:stack @op:stacks @op:searchStacks @op:stackConfigAdd @case:denial
+  Scenario: A reader sees the same source view without secrets, changes none and sees no hidden stack
+    Given token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through A
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"TOKEN","type":"ENVIRONMENT_VARIABLE","value":"runtime-view-s3cret","writeOnly":true}' through B
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"a.txt","type":"FILE_MOUNT","value":"YQ==","writeOnly":false,"fileMode":"600","description":"mounted"}' through A
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"TF_VAR_infraweave_run_type","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through B
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"CTX_ONLY","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false},{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}]}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":1}' through B
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Automatic","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"AUTO","type":"ENVIRONMENT_VARIABLE","value":"automatic","writeOnly":false}]}' through A
+    And token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
+    And the stack "infra" read through A with token "h" eventually attaches the contexts "shared, auto:automatic"
+    When token "h" sends "GET /api/v1/stacks/infra" through A
+    Then the stack "infra" in the answer keeps its runtime configuration as "resolved"
+    Given the member key is space-reader on the space "legacy"
+    When token "m" sends "GET /api/v1/stacks/infra" through B
+    Then the stack "infra" in the answer has the runtime configuration "resolved"
+    And the answer leaves out "runtime-view-s3cret"
+    When token "m" sends "GET /api/v1/stacks" through A
+    Then the stack "infra" in the answer has the runtime configuration "resolved"
+    And the answer lists the stacks "infra"
+    When token "m" sends "POST /api/v1/stacks/search" with '{}' through B
+    Then the stack "infra" in the answer has the runtime configuration "resolved"
+    And the answer leaves out "hidden"
+    When token "m" sends "POST /api/v1/stacks/infra/configs" with '{"id":"NEW","type":"ENVIRONMENT_VARIABLE","value":"changed","writeOnly":false}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"STACK_ADD_CONFIG"'
+    When token "m" sends "GET /api/v1/stacks/infra" through B
+    Then the stack "infra" in the answer has the runtime configuration "resolved"
+    When token "m" sends "GET /api/v1/stacks/hidden" through A
+    Then it answers a 404 problem "not-found"
+    And no answer of the scenario, log line of A or B, audit entry or event holds "runtime-view-s3cret"
+
+  @op:stack @case:failure
+  Scenario: Unknown stacks and stacks held by another account expose no runtime configuration
+    Given the sibling key is exchanged through A for token "s"
+    And token "s" sends "POST /api/v1/stacks" with '{"input":{"name":"Foreign","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    Then it answers 201
+    When token "h" sends "GET /api/v1/stacks/foreign" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/stacks/unknown" through B
+    Then it answers a 404 problem "not-found"

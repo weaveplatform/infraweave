@@ -174,10 +174,13 @@ func TestAccServiceHoldFind(t *testing.T) {
 type configuration struct {
 	contexts map[kernel.ULID][]stacksapi.AttachedContext
 	config   map[kernel.ULID][]stacksapi.ConfigElement
+	runtime  map[kernel.ULID][]stacksapi.ConfigElementWithSource
 	err      error
 	// configErr fails Config alone.
-	configErr error
-	asked     [][]kernel.ULID
+	configErr    error
+	runtimeErr   error
+	asked        [][]kernel.ULID
+	runtimeAsked [][]kernel.ULID
 }
 
 func (c *configuration) AttachedContexts(_ context.Context, _ kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.AttachedContext, error) {
@@ -190,6 +193,14 @@ func (c *configuration) Config(context.Context, kernel.AccountID, []kernel.ULID)
 		return nil, c.configErr
 	}
 	return c.config, c.err
+}
+
+func (c *configuration) RuntimeConfig(_ context.Context, _ kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.ConfigElementWithSource, error) {
+	c.runtimeAsked = append(c.runtimeAsked, stacks)
+	if c.runtimeErr != nil {
+		return nil, c.runtimeErr
+	}
+	return c.runtime, c.err
 }
 
 // TestAccHandlersConfiguration checks that a stack's view shows the
@@ -220,7 +231,7 @@ func TestAccHandlersConfiguration(t *testing.T) {
 		return got.(api.Stack200JSONResponse).Body, nil
 	}
 	if v, err := read(); err != nil || v.AttachedContexts == nil || len(v.AttachedContexts) != 0 ||
-		v.Config == nil || len(v.Config) != 0 {
+		v.Config == nil || len(v.Config) != 0 || v.RuntimeConfig == nil || len(v.RuntimeConfig) != 0 {
 		t.Errorf("an unbound stack view: contexts %v, config %v, %v",
 			v.AttachedContexts, v.Config, err)
 	}
@@ -251,6 +262,12 @@ func TestAccHandlersConfiguration(t *testing.T) {
 		}},
 		config: map[kernel.ULID][]stacksapi.ConfigElement{infra.ID: {region, token}},
 	}
+	c.runtime = map[kernel.ULID][]stacksapi.ConfigElementWithSource{infra.ID: {
+		{ConfigElement: region},
+		{ConfigElement: token},
+		{ConfigElement: file, Context: &c.contexts[infra.ID][0]},
+		{ConfigElement: stacksapi.ConfigElement{ID: kernel.APITokenVariable, WriteOnly: true}, Runtime: true},
+	}}
 	s.BindConfiguration(c)
 	v, err := read()
 	if err != nil {
@@ -280,19 +297,44 @@ func TestAccHandlersConfiguration(t *testing.T) {
 	if !reflect.DeepEqual(v.Config, want) {
 		t.Errorf("config %+v, want %+v", v.Config, want)
 	}
+	wantRuntime := []api.ConfigElementWithSource{
+		{Element: want[0]},
+		{Element: want[1]},
+		{Element: got.Config[0], Context: &got},
+		{Element: api.ConfigElement{Id: kernel.APITokenVariable, Type: api.ENVIRONMENTVARIABLE, Runtime: true, Category: new(api.INFRAWEAVEENVIRONMENT), WriteOnly: true}},
+	}
+	if !reflect.DeepEqual(v.RuntimeConfig, wantRuntime) {
+		t.Errorf("runtime config %+v, want %+v", v.RuntimeConfig, wantRuntime)
+	}
 
 	listed, err := handed.Stacks(admin, api.StacksRequestObject{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	items := listed.(api.Stacks200JSONResponse).Body.Items
-	if len(items) != 2 || len(c.asked) != 2 || len(c.asked[1]) != 2 {
+	if len(items) != 2 || len(c.asked) != 2 || len(c.asked[1]) != 2 || len(c.runtimeAsked) != 2 || len(c.runtimeAsked[1]) != 2 {
 		t.Fatalf("listed %d stacks, asking %v", len(items), c.asked)
 	}
 	for _, v := range items {
+		if v.Id == infra.Slug && !reflect.DeepEqual(v.RuntimeConfig, wantRuntime) {
+			t.Errorf("listed runtime config %+v", v.RuntimeConfig)
+		}
 		if v.Id == other.Slug && (v.AttachedContexts == nil || len(v.AttachedContexts) != 0 ||
 			v.Config == nil || len(v.Config) != 0) {
 			t.Errorf("a stack with no configuration: %v, %v", v.AttachedContexts, v.Config)
+		}
+	}
+	searched, err := handed.SearchStacks(admin, api.SearchStacksRequestObject{Body: &api.SearchInput{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	edges := searched.(api.SearchStacks200JSONResponse).Body.Edges
+	if len(edges) != 2 || len(c.runtimeAsked) != 3 || len(c.runtimeAsked[2]) != 2 {
+		t.Fatalf("searched %d stacks, runtime batches %v", len(edges), c.runtimeAsked)
+	}
+	for _, e := range edges {
+		if e.Node.Id == infra.Slug && !reflect.DeepEqual(e.Node.RuntimeConfig, wantRuntime) {
+			t.Errorf("searched runtime config %+v", e.Node.RuntimeConfig)
 		}
 	}
 
@@ -303,5 +345,12 @@ func TestAccHandlersConfiguration(t *testing.T) {
 	c.err, c.configErr = nil, errors.New("config down")
 	if _, err := read(); !errors.Is(err, c.configErr) {
 		t.Errorf("a view whose config elements fail = %v", err)
+	}
+	c.configErr, c.runtimeErr = nil, errors.New("runtime config down")
+	if _, err := read(); !errors.Is(err, c.runtimeErr) {
+		t.Errorf("a view whose runtime config fails = %v", err)
+	}
+	if _, err := handed.SearchStacks(admin, api.SearchStacksRequestObject{Body: &api.SearchInput{}}); !errors.Is(err, c.runtimeErr) {
+		t.Errorf("a search whose runtime config fails = %v", err)
 	}
 }

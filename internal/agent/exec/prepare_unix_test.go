@@ -9,8 +9,29 @@ import (
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 )
+
+// TestUnitComputedEnvironmentNames checks the runner's names against the
+// shared view and observes their actual values in an initialization hook.
+func TestUnitComputedEnvironmentNames(t *testing.T) {
+	names := []string{kernel.APIEndpointVariable, kernel.RunStateVariable, kernel.APITokenVariable}
+	for _, name := range names {
+		if !slices.Contains(kernel.ComputedEnvironmentNames(), name) {
+			t.Errorf("runner variable %s is absent from the computed view", name)
+		}
+	}
+	w := newWorld(t)
+	w.h.Endpoint = "https://relay/worker/v1"
+	w.h.Spec.Hooks["before_init"] = []string{hook("computed", names...)}
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(w.traced(), "computed https://relay/api/v1 INITIALIZING api-token") {
+		t.Errorf("computed values in phase: %q", w.traced())
+	}
+}
 
 func TestUnitExecRunEnvironment(t *testing.T) {
 	for _, c := range []struct {

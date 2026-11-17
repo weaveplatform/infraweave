@@ -85,12 +85,20 @@ func (s Server) SearchStacks(ctx context.Context, req api.SearchStacksRequestObj
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read; a refusal is answered as it is
 	}
+	all := make([]core.Stack, 0, len(res.Edges))
+	for _, e := range res.Edges {
+		all = append(all, e.Node)
+	}
+	views, err := s.views(ctx, p, all...)
+	if err != nil {
+		return nil, err
+	}
 	out := api.SearchStacksOutput{
 		Edges: make([]api.StackConnection, 0, len(res.Edges)), PageInfo: apisearch.PageInfo(res),
 	}
-	for _, e := range res.Edges {
+	for i, e := range res.Edges {
 		out.Edges = append(out.Edges, api.StackConnection{
-			Cursor: e.Cursor, Node: api.StackRef{Id: e.Node.Slug},
+			Cursor: e.Cursor, Node: views[i],
 		})
 	}
 	return api.SearchStacks200JSONResponse{Body: out}, nil
@@ -363,8 +371,8 @@ func (s Server) view(ctx context.Context, p kernel.Principal, st core.Stack) (ap
 
 // views are all as p sees them: the actions p holds in each one's space,
 // whether p has starred it, its space by slug, its attached contexts and
-// config elements, the run blocking it, its outputs and whether its state
-// is rolled back, read for all at once, and a Terragrunt stack's
+// own and resolved config elements, the run blocking it, its outputs and
+// whether its state is rolled back, read for all at once, and a Terragrunt stack's
 // effective versions, each vendor and constraint resolved once.
 func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack) ([]api.Stack, error) {
 	out := make([]api.Stack, 0, len(all))
@@ -398,6 +406,10 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
+	runtime, err := s.edges.config.RuntimeConfig(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // as above
+	}
 	blockers, err := s.edges.status.Blockers(ctx, p.AccountID, ids)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the runs domain names the read
@@ -427,6 +439,7 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 			v.AttachedContexts = append(v.AttachedContexts, contextView(c))
 		}
 		v.Config = elementViews(config[st.ID])
+		v.RuntimeConfig = runtimeViews(runtime[st.ID])
 		v.Outputs = outputViews(outputs[st.ID])
 		v.IsStateRollback = rolledBack[st.ID]
 		if b, ok := blockers[st.ID]; ok {

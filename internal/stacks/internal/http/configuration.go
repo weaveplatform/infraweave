@@ -38,6 +38,10 @@ func (unbound) Config(context.Context, kernel.AccountID, []kernel.ULID) (map[ker
 	return map[kernel.ULID][]stacksapi.ConfigElement{}, nil
 }
 
+func (unbound) RuntimeConfig(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]stacksapi.ConfigElementWithSource, error) {
+	return map[kernel.ULID][]stacksapi.ConfigElementWithSource{}, nil
+}
+
 // edges holds the server's back edges. Every copy of a Server shares
 // one, so a binding made after the server was handed out reaches it.
 type edges struct {
@@ -96,22 +100,39 @@ func outputViews(outs []stacksapi.Output) []api.StackOutput {
 func elementViews(es []stacksapi.ConfigElement) []api.ConfigElement {
 	out := make([]api.ConfigElement, 0, len(es))
 	for _, e := range es {
-		v := api.ConfigElement{
-			Id:          e.ID,
-			Type:        api.ENVIRONMENTVARIABLE,
-			Checksum:    e.Checksum,
-			Description: e.Description,
-			FileMode:    e.FileMode,
-			WriteOnly:   e.WriteOnly,
-		}
-		if e.FileMount {
-			v.Type = api.FILEMOUNT
-		}
-		if !e.WriteOnly {
-			v.Value = e.Value
-		}
-		if !e.CreatedAt.IsZero() {
-			v.CreatedAt = new(unix(e.CreatedAt.Unix()))
+		out = append(out, elementView(e))
+	}
+	return out
+}
+
+func elementView(e stacksapi.ConfigElement) api.ConfigElement {
+	v := api.ConfigElement{
+		Id: e.ID, Type: api.ENVIRONMENTVARIABLE, Checksum: e.Checksum,
+		Description: e.Description, FileMode: e.FileMode, WriteOnly: e.WriteOnly,
+	}
+	if e.FileMount {
+		v.Type = api.FILEMOUNT
+	}
+	if !e.WriteOnly {
+		v.Value = e.Value
+	}
+	if !e.CreatedAt.IsZero() {
+		v.CreatedAt = new(unix(e.CreatedAt.Unix()))
+	}
+	return v
+}
+
+func runtimeViews(es []stacksapi.ConfigElementWithSource) []api.ConfigElementWithSource {
+	out := make([]api.ConfigElementWithSource, 0, len(es))
+	for _, e := range es {
+		v := api.ConfigElementWithSource{Element: elementView(e.ConfigElement)}
+		if e.Runtime {
+			v.Element = api.ConfigElement{
+				Id: e.ID, Type: api.ENVIRONMENTVARIABLE, Runtime: true,
+				WriteOnly: e.WriteOnly, Category: new(api.INFRAWEAVEENVIRONMENT),
+			}
+		} else if e.Context != nil {
+			v.Context = new(contextView(*e.Context))
 		}
 		out = append(out, v)
 	}
