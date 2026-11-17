@@ -14,6 +14,11 @@
 // and adds one, with who imported it and when or who rolled it back from
 // which version, pointing the workspace at it, and purges a stack's or an
 // account's rows a batch at a time, versions first and workspaces last.
+// For retention it reads a batch of the versions, across every account,
+// that are not current and that a newer version of their workspace
+// replaced more than the retention before the database's clock, and
+// deletes those of them that are still not current, answering their
+// objects' keys.
 // It reads a workspace by its ID with the lock that holds it, locks a
 // stack's workspace rows in name order for a release, and searches and
 // suggests workspaces over the scope's stacks, which a query binds as

@@ -113,7 +113,8 @@ CREATE TABLE managed_state_versions (
 );
 
 -- A stack's version search lists a workspace's versions by when they were
--- written; the index also serves the foreign key to the workspace.
+-- written, and retention looks up the versions written after each one;
+-- the index also serves the foreign key to the workspace.
 CREATE INDEX managed_state_versions_search
     ON managed_state_versions (account_id, stack_id, workspace, created_at);
 

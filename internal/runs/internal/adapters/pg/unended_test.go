@@ -13,7 +13,9 @@ import (
 // TestAccStoreUnended reads a stack's runs that have not ended, oldest
 // first, with their types and states: a run of every type in a state that
 // has not ended, and none in a terminal state, another stack's or another
-// account's.
+// account's. Of a set of runs, it answers those of the account that have
+// not ended, on any stack, in the order of their IDs, and none of another
+// account's or of an ID no run has.
 func TestAccStoreUnended(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -37,8 +39,8 @@ func TestAccStoreUnended(t *testing.T) {
 			want = append(want, r)
 		}
 	}
-	insert(acct, kernel.NewULID(), kernel.RunTypeTracked, kernel.RunStateQueued)
-	insert(kernel.NewAccountID(), stack, kernel.RunTypeTracked, kernel.RunStateQueued)
+	elsewhere := insert(acct, kernel.NewULID(), kernel.RunTypeTracked, kernel.RunStateQueued)
+	theirs := insert(kernel.NewAccountID(), stack, kernel.RunTypeTracked, kernel.RunStateQueued)
 
 	got, err := s.Unended(ctx, acct, stack)
 	if err != nil || !slices.Equal(got, want) {
@@ -48,8 +50,27 @@ func TestAccStoreUnended(t *testing.T) {
 		t.Errorf("Unended of a stack with no runs = %+v, %v", got, err)
 	}
 
+	var ids, wantIDs []kernel.ULID
+	for _, st := range kernel.RunStates() {
+		r := insert(acct, stack, kernel.RunTypeTracked, st)
+		ids = append(ids, r.ID)
+		if !st.Terminal() {
+			wantIDs = append(wantIDs, r.ID)
+		}
+	}
+	wantIDs = append(wantIDs, elsewhere.ID)
+	slices.SortFunc(wantIDs, func(a, b kernel.ULID) int { return slices.Compare(a[:], b[:]) })
+	slices.Reverse(ids)
+	ids = append(ids, elsewhere.ID, theirs.ID, kernel.NewULID())
+	if got, err := s.NotEnded(ctx, acct, ids); err != nil || !slices.Equal(got, wantIDs) {
+		t.Errorf("NotEnded = %v, %v; want %v", got, err, wantIDs)
+	}
+
 	db.Close()
 	if _, err := s.Unended(context.Background(), acct, stack); err == nil {
 		t.Error("Unended on a closed pool succeeded")
+	}
+	if _, err := s.NotEnded(context.Background(), acct, ids); err == nil {
+		t.Error("NotEnded on a closed pool succeeded")
 	}
 }

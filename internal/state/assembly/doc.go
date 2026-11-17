@@ -5,7 +5,12 @@
 // to the API listener under /state/v1, which decides a run's request on
 // its own stack through the runs domain's StateAccess and any other read
 // through the access domain's StateReader, and bounds a version by
-// Settings.MaxSize, state.max_size. API is the domain's partial of the
+// Settings.MaxSize, state.max_size. Cron is its periodic task, Retention,
+// state.retention, which deletes daily each version a newer one replaced
+// more than Settings.NoncurrentRetention, state.noncurrent_retention,
+// ago, keeping every version under 0, a workspace's current version and
+// those of the runs the runs domain's RunEnds answers have not ended, and
+// logs how many it deleted. API is the domain's partial of the
 // API's strict server, StateAPI, which embeds two: stateUploadUrl and
 // stateDownloadUrl, which sign URLs under the installation's keyring,
 // absolute under server.public_url and lasting
@@ -36,13 +41,14 @@
 //
 // None of its own: the domain reaches PostgreSQL, the stacks domain, the
 // access domain's decisions, the runs domain, the states store's objects
-// and the job queue through Deps, and serves HTTP through the routes it
-// adds and its partial of the API.
+// and the job queue through Deps, serves HTTP through the routes it adds
+// and its partial of the API, and logs each retention pass that deleted
+// versions to the logger Cron is given.
 //
 // # Dependencies
 //
 // It imports accessapi, runsapi, stacksapi, stateapi, the domain's
-// backend, core, http, pg, signed and urls packages, chi,
+// backend, core, http, pg, signed and urls packages, chi, platform/cron,
 // platform/outbox, platform/queue, platform/sql/integrity,
 // platform/sql/migrate and platform/tx. Only internal/app imports it.
 package assembly

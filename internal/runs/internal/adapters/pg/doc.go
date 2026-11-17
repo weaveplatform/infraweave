@@ -12,8 +12,8 @@
 // reads a run's account, stack and state by its ID alone without locking
 // its row, for the state access its token asks, reads a stack's runs
 // that have not ended with their types and states, for the state
-// domain's import, and purges a deleted account's rows a batch a
-// statement.
+// domain's import, and which of an account's runs have not ended, for its
+// retention, and purges a deleted account's rows a batch a statement.
 // It is also the lifecycle's store: it locks a run's row, moves a run and
 // records its transition, inserts a run, seals a proposed run's environment
 // variable overrides to its row in env_overrides_sealed, finds a stack's

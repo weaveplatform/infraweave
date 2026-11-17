@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -158,6 +159,14 @@ func (m *mem) Version(_ context.Context, _ kernel.AccountID, id kernel.ULID) (Ve
 
 func (m *mem) Purge(context.Context, kernel.AccountID, *kernel.ULID, int) ([]string, bool, error) {
 	return nil, true, m.failing("Purge")
+}
+
+func (m *mem) Expired(context.Context, Expired, time.Duration, int) ([]Expired, error) {
+	return nil, m.failing("Expired")
+}
+
+func (m *mem) DeleteVersions(context.Context, kernel.AccountID, []kernel.ULID) ([]string, error) {
+	return nil, m.failing("DeleteVersions")
 }
 
 // lockOf is a lock of run with id in mode, whose LockInfo names id.

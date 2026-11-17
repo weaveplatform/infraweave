@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -129,10 +131,13 @@ func errOf(v reflect.Value) error {
 	return v.Interface().(error) //nolint:forcetypeassert // the method answers an error
 }
 
-// TestUnitSettings checks that a state version is bounded at 512 MiB by
-// default, and that a bound that is not positive is refused.
+// TestUnitSettings checks that a state version is bounded at 512 MiB and
+// kept 2160 hours once it is no longer current by default, that a bound
+// that is not positive and a negative retention are refused, and that a
+// retention of 0, which keeps every version, is not.
 func TestUnitSettings(t *testing.T) {
-	if d := DefaultSettings(); d.MaxSize != 512<<20 || d.Validate() != nil {
+	if d := DefaultSettings(); d.MaxSize != 512<<20 || d.NoncurrentRetention != 2160*time.Hour ||
+		d.Validate() != nil {
 		t.Errorf("defaults %+v: %v", d, d.Validate())
 	}
 	for _, size := range []int64{0, -1} {
@@ -140,6 +145,32 @@ func TestUnitSettings(t *testing.T) {
 			!strings.Contains(err.Error(), "state.max_size") {
 			t.Errorf("max_size %d: %v", size, err)
 		}
+	}
+	if err := (Settings{MaxSize: 1, NoncurrentRetention: -time.Second}).Validate(); !errors.Is(err,
+		ErrConfig) || !strings.Contains(err.Error(), "state.noncurrent_retention") {
+		t.Errorf("a negative retention: %v", err)
+	}
+	if err := (Settings{MaxSize: 1}).Validate(); err != nil {
+		t.Errorf("a retention of 0: %v", err)
+	}
+}
+
+// TestUnitCron checks that the domain's periodic task is state.retention,
+// daily on the maintenance queue under Ignore, so a slow pass never
+// overlaps the next, and that a pass under a retention of 0 deletes
+// nothing and succeeds.
+func TestUnitCron(t *testing.T) {
+	tasks := New(Deps{}).Cron(slog.New(slog.DiscardHandler))
+	if len(tasks) != 1 {
+		t.Fatalf("Cron = %+v, want state.retention alone", tasks)
+	}
+	k := tasks[0].Kind
+	if k.Name != "state.retention" || k.Queue != queue.Maintenance || k.Policy != queue.Ignore ||
+		tasks[0].Every != 24*time.Hour || Retention.Name != k.Name {
+		t.Errorf("the task is %+v every %s", k, tasks[0].Every)
+	}
+	if err := tasks[0].Handler(t.Context(), queue.Job{}); err != nil {
+		t.Errorf("a pass that keeps every version = %v", err)
 	}
 }
 

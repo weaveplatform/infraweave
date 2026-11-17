@@ -81,7 +81,7 @@ type Config struct {
 	// ref: decision 0008
 	Run runsassembly.Settings `mapstructure:"run"`
 	// State is the state domain's: the largest state version a write may
-	// carry.
+	// carry, and how long a version is kept once a newer one replaces it.
 	//
 	// ref: decision 0010
 	State stateassembly.Settings `mapstructure:"state"`

@@ -32,6 +32,9 @@ type Store interface {
 	// Unended reads acct's stack's runs that have not ended, oldest
 	// first, with their types and states, in the context's transaction.
 	Unended(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]runsapi.UnendedRun, error)
+	// NotEnded reads those of acct's runs that have not ended, in the
+	// order of their IDs, in the context's transaction.
+	NotEnded(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) ([]kernel.ULID, error)
 }
 
 // Run is a run as Access reads it: TriggeredBy is the login or trigger
@@ -45,7 +48,8 @@ type Run struct {
 
 // Service is the runs domain's core: the stacksapi.StackStatus the stack
 // view reads, the stacksapi.StackGuard a stack's move and delete ask, and
-// the runsapi.StateAccess and runsapi.StackRuns the state domain asks.
+// the runsapi.StateAccess, runsapi.StackRuns and runsapi.RunEnds the state
+// domain asks.
 type Service struct{ store Store }
 
 // New returns the service over store.
@@ -138,4 +142,13 @@ func (s *Service) Access(ctx context.Context, run, stack kernel.ULID) (runsapi.S
 // with their types and states.
 func (s *Service) Unended(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]runsapi.UnendedRun, error) {
 	return s.store.Unended(ctx, acct, stack) //nolint:wrapcheck // the store names the read
+}
+
+// NotEnded answers those of acct's runs that have not ended, in the order
+// of their IDs, reading nothing for no runs.
+func (s *Service) NotEnded(ctx context.Context, acct kernel.AccountID, runs []kernel.ULID) ([]kernel.ULID, error) {
+	if len(runs) == 0 {
+		return nil, nil
+	}
+	return s.store.NotEnded(ctx, acct, runs) //nolint:wrapcheck // the store names the read
 }

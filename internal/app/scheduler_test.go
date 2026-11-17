@@ -78,7 +78,8 @@ func runModeWith(t *testing.T, observer *sql.DB, m Mode, edit func(*config.Confi
 
 // TestAccSchedulerModeStarts checks that the scheduler mode registers the
 // platform's periodic tasks, events.prune, the access domain's
-// authn.keys.rotate, the workers domain's worker.reap and worker.sample
+// authn.keys.rotate, the state domain's state.retention, the workers
+// domain's worker.reap and worker.sample
 // and the runs domain's run.timers, runs them through its workers, the
 // workers and runs domains' on the scheduler queue, and stops the ticker
 // before the workers; and that serve runs neither.
@@ -87,8 +88,9 @@ func TestAccSchedulerModeStarts(t *testing.T) {
 	out, _, stop := runMode(t, observer, ModeScheduler)
 	if n := rows(t, observer, `SELECT count(*) FROM periodic_tasks
 WHERE (name, interval) IN (('queue.prune', interval '10 minutes'), ('idempotency.purge', interval '1 hour'),
-    ('events.prune', interval '10 minutes'), ('authn.keys.rotate', interval '1 day'))`); n != 4 {
-		t.Errorf("%d of the periodic tasks registered, want 4", n)
+    ('events.prune', interval '10 minutes'), ('authn.keys.rotate', interval '1 day'),
+    ('state.retention', interval '1 day'))`); n != 5 {
+		t.Errorf("%d of the periodic tasks registered, want 5", n)
 	}
 	if n := rows(t, observer, `SELECT count(*) FROM periodic_tasks
 WHERE (name, interval) IN (('worker.reap', interval '30 seconds'),
@@ -101,8 +103,8 @@ WHERE (name, interval) IN (('worker.reap', interval '30 seconds'),
 	// Each is due once registered, so the first ticks run them.
 	until(t, "the tasks to run", func() bool {
 		return rows(t, observer, `SELECT count(*) FROM jobs
-WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune', 'authn.keys.rotate')
-    AND queue = 'maintenance' AND state = 'succeeded'`) == 4 &&
+WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune', 'authn.keys.rotate',
+    'state.retention') AND queue = 'maintenance' AND state = 'succeeded'`) == 5 &&
 			rows(t, observer, `SELECT count(DISTINCT kind) FROM jobs
 WHERE kind IN ('worker.reap', 'worker.sample', 'run.timers') AND queue = 'scheduler'
     AND state = 'succeeded'`) == 3

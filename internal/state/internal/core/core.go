@@ -79,6 +79,17 @@ type Store interface {
 	// workspace goes before a row that names it. It answers the object
 	// keys of the versions it deleted, and true once none was left.
 	Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID, batch int) ([]string, bool, error)
+	// Expired reads up to batch of the versions retention may delete,
+	// with the run that wrote each, in the order of their accounts and
+	// IDs and after the version after names when its ID is set: each a
+	// version that is not its workspace's current version and that a
+	// newer version of its workspace replaced more than retention before
+	// the database's clock.
+	Expired(ctx context.Context, after Expired, retention time.Duration, batch int) ([]Expired, error)
+	// DeleteVersions deletes those of acct's versions ids that are not
+	// their workspace's current version, and answers the object keys of
+	// the versions it deleted.
+	DeleteVersions(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) ([]string, error)
 	// WorkspaceByID reads acct's workspace id with whether a lock is
 	// held on it and by whose run; false when acct lacks it.
 	WorkspaceByID(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Workspace, bool, error)
@@ -153,29 +164,35 @@ type Jobs interface {
 // workspace search reads; Authz, which names the spaces a caller may
 // read; Objects, which hold each version's object; Jobs, which enqueues a
 // deleted stack's purge; Runs, which lists the runs under way on a stack
-// an import or a rollback writes; and Now, the clock an import's time is
-// read from, time.Now when nil.
+// an import or a rollback writes; Ends, which tells retention the runs
+// that have not ended; Retention, state.noncurrent_retention, how long a
+// version is kept once a newer one replaces it, 0 for ever; and Now, the
+// clock an import's time is read from, time.Now when nil.
 type Deps struct {
-	DB      tx.Beginner
-	Store   Store
-	Stacks  Stacks
-	Authz   Authorizer
-	Objects Objects
-	Jobs    Jobs
-	Runs    runsapi.StackRuns
-	Now     func() time.Time
+	DB        tx.Beginner
+	Store     Store
+	Stacks    Stacks
+	Authz     Authorizer
+	Objects   Objects
+	Jobs      Jobs
+	Runs      runsapi.StackRuns
+	Ends      runsapi.RunEnds
+	Retention time.Duration
+	Now       func() time.Time
 }
 
 // Service is the state domain's core.
 type Service struct {
-	db      tx.Beginner
-	store   Store
-	stacks  Stacks
-	authz   Authorizer
-	objects Objects
-	jobs    Jobs
-	runs    runsapi.StackRuns
-	now     func() time.Time
+	db        tx.Beginner
+	store     Store
+	stacks    Stacks
+	authz     Authorizer
+	objects   Objects
+	jobs      Jobs
+	runs      runsapi.StackRuns
+	ends      runsapi.RunEnds
+	retention time.Duration
+	now       func() time.Time
 }
 
 // New returns the service over d.
@@ -186,7 +203,7 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		db: d.DB, store: d.Store, stacks: d.Stacks, authz: d.Authz, objects: d.Objects,
-		jobs: d.Jobs, runs: d.Runs, now: now,
+		jobs: d.Jobs, runs: d.Runs, ends: d.Ends, retention: d.Retention, now: now,
 	}
 }
 

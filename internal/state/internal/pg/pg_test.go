@@ -453,6 +453,12 @@ func TestAccStoreUnavailable(t *testing.T) {
 	if _, _, err := s.Purge(ctx, at.Account, nil, 1); err == nil {
 		t.Error("Purge on a closed pool succeeded")
 	}
+	if _, err := s.Expired(ctx, core.Expired{}, time.Hour, 1); err == nil {
+		t.Error("Expired on a closed pool succeeded")
+	}
+	if _, err := s.DeleteVersions(ctx, at.Account, []kernel.ULID{kernel.NewULID()}); err == nil {
+		t.Error("DeleteVersions on a closed pool succeeded")
+	}
 	if _, _, err := s.Current(ctx, at); err == nil {
 		t.Error("Current on a closed pool succeeded")
 	}

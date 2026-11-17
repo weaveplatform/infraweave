@@ -18,8 +18,9 @@ import (
 // on the maintenance queue.
 var PurgeKind = queue.Kind{Name: "state.purge", Queue: queue.Maintenance, Policy: queue.Ignore}
 
-// PurgeBatch is how many rows one statement of Purge deletes, so no
-// transaction holds a stack's or an account's every version at once.
+// PurgeBatch is how many rows one statement of Purge, or of Retain,
+// deletes, so no transaction holds a stack's or an account's every
+// version at once.
 const PurgeBatch = 500
 
 // purge is a PurgeKind job's payload.
@@ -57,17 +58,28 @@ func (s *Service) Purged(ctx context.Context, j queue.Job) error {
 }
 
 // Purge deletes acct's state, of stack alone when it is set, PurgeBatch
-// rows a statement, each in a transaction of its own that hands each
-// deleted version's object to Objects, so the object goes once the row
-// that names it has. A purge stopped part way finishes when it runs
-// again.
+// rows a statement, in batches. A purge stopped part way finishes when it
+// runs again.
 func (s *Service) Purge(ctx context.Context, acct kernel.AccountID, stack *kernel.ULID) error {
+	return s.batches(ctx, func(ctx context.Context) ([]string, bool, error) {
+		return s.store.Purge(ctx, acct, stack, PurgeBatch) //nolint:wrapcheck // the store names the purge
+	})
+}
+
+// batches runs batch again and again, each time in a transaction of its
+// own that hands the object of each version the batch deleted, by the
+// key it answers, to Objects, until a batch answers that it was the last
+// or fails. The object goes once the transaction that deleted the row
+// naming it commits, and stays when it rolls back, so a pass stopped part
+// way leaves no row without its object, only objects whose rows are gone
+// that blob.delete removes.
+func (s *Service) batches(ctx context.Context, batch func(ctx context.Context) ([]string, bool, error)) error {
 	for {
 		var done bool
 		err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
-			keys, last, err := s.store.Purge(ctx, acct, stack, PurgeBatch)
+			keys, last, err := batch(ctx)
 			if err != nil {
-				return err //nolint:wrapcheck // the store names the purge
+				return err
 			}
 			done = last
 			for _, k := range keys {

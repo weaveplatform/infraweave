@@ -33,7 +33,10 @@
 // import the audit trail records. The rollback steps search a stack's
 // state versions, keep one's ID for a rollback to name, and check the
 // version a rollback answers and makes current, resealed apart from its
-// target, and the rollback the audit trail records.
+// target, and the rollback the audit trail records. The retention steps
+// move time on for a stack's versions by moving their creation back, and
+// check which versions state.retention deleted, row, record and object,
+// and which it kept.
 //
 // ref: decision 0008
 // ref: decision 0010
@@ -46,7 +49,8 @@
 // daemon, reads the scenario's database through SQL and its bucket in
 // RustFS through S3, and writes each run's workspace under the
 // scenario's directory; the import steps read the versions, uploads and
-// audit trail entries an import or a rollback writes through SQL. A failed scenario
+// audit trail entries an import or a rollback writes through SQL, and the
+// retention steps age a stack's versions there. A failed scenario
 // leaves the relay's calls and each tool's output beside the servers'
 // evidence. It sends a signed URL's request and a backend request of its
 // own with net/http, recording its answer for the answer steps.
