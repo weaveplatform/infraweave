@@ -47,6 +47,7 @@ Feature: Runs queue on their stack
     And the answer's type is '"TRACKED"'
     And the answer's stackId is '"infra"'
     And the answer's commits is '["{seed}"]'
+    And the answer leaves out "runtimeConfig"
     And the answer's id names "tracked"
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"TRACKED"}' through B
     Then it answers 200

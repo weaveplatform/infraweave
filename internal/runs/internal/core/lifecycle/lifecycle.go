@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -127,6 +128,8 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // state_version; TriggeredBy is the login or trigger that created it;
 // RuntimeConfig is the runtime configuration its trigger gave, nil for
 // none, and ForceApply SINGLE or CASCADE when it applies with no changes.
+// ResolvedConfig is the configuration its first successful handover fixed,
+// nil until then; later handovers reuse it without retaining variable values.
 // LocalWorkspace is the uploads store's key of the local workspace a run
 // proposed from one previews instead of a commit of the repository, empty
 // for a run on a commit. WorkerPool is the stack's
@@ -152,6 +155,7 @@ type Run struct {
 	Priority       kernel.RunPriority
 	DriftDetection bool
 	RuntimeConfig  json.RawMessage
+	ResolvedConfig *runtimeconfig.Record
 	ForceApply     string
 	LocalWorkspace string
 	WorkerPool     *kernel.ULID

@@ -13,7 +13,12 @@
 -- the login or the trigger that created it; priority is low, normal or
 -- high; runtime_config is the runtime configuration its trigger gave,
 -- which overrides the stack's, and force_apply_mode SINGLE or CASCADE when
--- it applies with no changes. local_workspace is the key, in the uploads
+-- it applies with no changes. resolved_config is the immutable envelope of its public
+-- runtime configuration and private execution settings, written at its first
+-- successful specification transaction, with its token, key and sealed
+-- answer. The earlier claim is separate. It holds no variables,
+-- mounted files, identity or credentials; NULL until that handover succeeds.
+-- local_workspace is the key, in the uploads
 -- store, of the local workspace a run proposed from one previews instead
 -- of a commit of the repository, NULL for a run on a commit. delta
 -- is its plan's delta, {add, change, delete, import, move, forget,
@@ -60,6 +65,7 @@ CREATE TABLE runs (
     priority         text        NOT NULL DEFAULT 'normal',
     drift_detection  boolean     NOT NULL DEFAULT false,
     runtime_config   jsonb,
+    resolved_config  jsonb,
     force_apply_mode text,
     local_workspace  text,
     delta            jsonb,

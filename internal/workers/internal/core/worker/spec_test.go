@@ -93,6 +93,15 @@ func TestUnitWorkerRunSpec(t *testing.T) {
 		got.RunnerImage == nil || *got.RunnerImage != own {
 		t.Errorf("with the stack's image = %v, %v", got.RunnerImage, err)
 	}
+	// An unnamed recorded image is handed over as nil, so replay keeps
+	// the account fallback rather than an empty image suppressing it.
+	sch.handover.Spec.RunnerImage = nil
+	next := "ghcr.io/acme/next-default"
+	f.store.images = images.Images{Private: &next}
+	if got, err := f.svc.Spec(t.Context(), accessapi.Bearer{ID: run}, run); err != nil ||
+		got.RunnerImage == nil || *got.RunnerImage != next || sch.handover.Spec.RunnerImage != nil {
+		t.Errorf("with an unnamed replayed image = %v, %v", got.RunnerImage, err)
+	}
 	handed := len(sch.handed)
 	if _, err := f.svc.Spec(t.Context(), accessapi.Bearer{ID: kernel.NewULID()},
 		run); !errors.Is(err, worker.ErrUnauthenticated) || len(sch.handed) != handed {

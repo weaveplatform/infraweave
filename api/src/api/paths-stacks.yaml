@@ -2472,6 +2472,7 @@ components:
           type: array
         runtimeConfig:
           $ref: '#/components/schemas/RuntimeConfig'
+          description: The configuration fixed when the run was first handed to a worker. Absent until that handover succeeds.
         stackId:
           description: The ID (slug) of the Stack this Run belongs to.
           type: string
@@ -3088,8 +3089,8 @@ components:
       x-graphql-type: RunWorkerOutcomeCategory
     RuntimeConfig:
       description: |-
-        RuntimeConfig is the runtime configuration pulled from GitHub for each
-        Run separately.
+        The configuration a run used, fixed when it was first handed to a
+        worker. Later handovers use the same hooks, settings and tool versions.
       properties:
         afterApply:
           description: List of after-apply scripts.

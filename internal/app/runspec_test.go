@@ -28,9 +28,9 @@ import (
 // write-only variable and one whose template reads it by name alone, and
 // their values, the in-run API token and the artifact key sealed to the
 // pool's certificate's key for that state version, the same key on every
-// fetch, the state backend's path exactly when the stack manages its
-// state, and the catalogue's newest Terraform, or the newest its
-// constraint allows, which a constraint no release meets refuses with 422.
+// fetch, and the state backend and catalogue release fixed at the first
+// handover. Later changes to the stack's constraint or managed-state flag
+// leave that configuration unchanged, even when no release now matches.
 // Another run's specification answers the token 401, and the run once it
 // leaves its worker 409.
 func TestAccRunSpec(t *testing.T) {
@@ -57,6 +57,8 @@ func TestAccRunSpec(t *testing.T) {
 	if claimed(t, p) != run {
 		t.Fatalf("the claim took %+v, want %s", p.a, run)
 	}
+	stack := w.stacks["one"]
+	w.exec(t, `UPDATE stacks SET manages_state = true WHERE id = $1`, stack)
 
 	c := config.Defaults().Server
 	h := API(discard(), c, memory(c), w.d, Platform{}, Blobs{})
@@ -121,20 +123,19 @@ func TestAccRunSpec(t *testing.T) {
 	}) || spec.Source.Kind != workerapi.Git {
 		t.Errorf("tool %+v, source %+v", spec.Tool, spec.Source)
 	}
-	stack := w.stacks["one"]
 	w.exec(t, `UPDATE stacks SET terraform_version = '~> 1.9.0' WHERE id = $1`, stack)
-	if spec, _ := open(); spec.Tool == nil || spec.Tool.Version != "1.9.8" {
-		t.Errorf("a stack's constraint mounts %+v", spec.Tool)
+	if spec, _ := open(); spec.Tool == nil || spec.Tool.Version != "1.14.2" {
+		t.Errorf("a changed stack constraint replaced the recorded tool %+v", spec.Tool)
 	}
 	w.exec(t, `UPDATE stacks SET terraform_version = '~> 0.1.0' WHERE id = $1`, stack)
-	if rec := get(run); rec.Code != http.StatusUnprocessableEntity ||
-		!bytes.Contains(rec.Body.Bytes(), []byte(`"pointer":"/terraformVersion"`)) {
-		t.Errorf("a constraint no release meets = %d %s", rec.Code, rec.Body)
+	if spec, _ := open(); spec.Tool == nil || spec.Tool.Version != "1.14.2" {
+		t.Errorf("an unmatched current constraint replaced the recorded tool %+v", spec.Tool)
 	}
 	w.exec(t, `UPDATE stacks SET terraform_version = NULL WHERE id = $1`, stack)
 	w.exec(t, `UPDATE stacks SET manages_state = false WHERE id = $1`, stack)
-	if spec, _ := open(); spec.StateBackend != nil {
-		t.Errorf("a stack without managed state has the backend %+v", spec.StateBackend)
+	if spec, _ := open(); spec.StateBackend == nil ||
+		spec.StateBackend.Path != "/state/v1/stacks/"+stack.String() {
+		t.Errorf("a changed stack setting replaced the recorded backend %+v", spec.StateBackend)
 	}
 	w.exec(t, `UPDATE stacks SET manages_state = true WHERE id = $1`, stack)
 	if spec, _ := open(); spec.StateBackend == nil ||

@@ -6525,8 +6525,8 @@ type Run struct {
 	// CreatedAt Unix timestamp representing Run creation.
 	CreatedAt int32 `json:"createdAt"`
 
-	// CustomRuntimeConfig RuntimeConfig is the runtime configuration pulled from GitHub for each
-	// Run separately.
+	// CustomRuntimeConfig The configuration a run used, fixed when it was first handed to a
+	// worker. Later handovers use the same hooks, settings and tool versions.
 	CustomRuntimeConfig *RuntimeConfig `json:"customRuntimeConfig,omitempty"`
 
 	// Delta Delta is the number of resources affected by a Run in various ways.
@@ -6600,8 +6600,8 @@ type Run struct {
 	// Reviews List of reviews for this run.
 	Reviews []RunReview `json:"reviews"`
 
-	// RuntimeConfig RuntimeConfig is the runtime configuration pulled from GitHub for each
-	// Run separately.
+	// RuntimeConfig The configuration a run used, fixed when it was first handed to a
+	// worker. Later handovers use the same hooks, settings and tool versions.
 	RuntimeConfig *RuntimeConfig `json:"runtimeConfig,omitempty"`
 
 	// StackId The ID (slug) of the Stack this Run belongs to.
@@ -7112,8 +7112,8 @@ type RunsScheduledForTerminationTile struct {
 	TotalCount int32 `json:"totalCount"`
 }
 
-// RuntimeConfig RuntimeConfig is the runtime configuration pulled from GitHub for each
-// Run separately.
+// RuntimeConfig The configuration a run used, fixed when it was first handed to a
+// worker. Later handovers use the same hooks, settings and tool versions.
 type RuntimeConfig struct {
 	// AfterApply List of after-apply scripts.
 	AfterApply []string `json:"afterApply"`
@@ -7299,8 +7299,8 @@ type ScheduledRun struct {
 	// Either timestampSchedule or cronSchedule must not be empty.
 	CronSchedule *[]string `json:"cronSchedule,omitempty"`
 
-	// CustomRuntimeConfig RuntimeConfig is the runtime configuration pulled from GitHub for each
-	// Run separately.
+	// CustomRuntimeConfig The configuration a run used, fixed when it was first handed to a
+	// worker. Later handovers use the same hooks, settings and tool versions.
 	CustomRuntimeConfig *RuntimeConfig `json:"customRuntimeConfig,omitempty"`
 
 	// Id Globally unique schedule identifier.
