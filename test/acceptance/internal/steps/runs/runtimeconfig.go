@@ -25,6 +25,20 @@ func (r *runSteps) customRuntimeConfiguration(want string) error {
 	return r.configurationFields("customRuntimeConfig", want)
 }
 
+// noRuntimeConfiguration checks the member itself: a failure note may
+// legitimately name its input's /runtimeConfig/yaml setting.
+func (r *runSteps) noRuntimeConfiguration() error {
+	var run map[string]json.RawMessage
+	last := r.w.Last()
+	if last.Status != http.StatusOK || json.Unmarshal(last.Body, &run) != nil || run == nil {
+		return fmt.Errorf("%w: no run answer: %d", harness.ErrStep, last.Status)
+	}
+	if _, exists := run["runtimeConfig"]; exists {
+		return fmt.Errorf("%w: the run has a recorded runtime configuration", harness.ErrStep)
+	}
+	return nil
+}
+
 func (r *runSteps) configurationFields(field, want string) error {
 	var run map[string]json.RawMessage
 	var got map[string]json.RawMessage
