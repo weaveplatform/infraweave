@@ -534,7 +534,7 @@ stacks of other vendors [D] runtime-config.
 | Limitation | Source |
 |---|---|
 | A stack cannot read another stack's state, so Terragrunt external dependencies that read a sibling's state do not work | [D] tg-limits |
-| Explicit stacks without run-all: no consistent way to inject the backend. With run-all, Terragrunt generates the units, and how its generation flags behave on the latest release is *(unverified)* (C304) | [D] tg-limits |
+| Explicit stacks without run-all: no consistent way to inject the backend. With run-all, Terragrunt generates the units; `run --all` generates them again unless `--no-stack-generate` is set, keeping files it did not generate ([33](33-vendor-tool-documents.md) section 7.3, C304) | [D] tg-limits |
 | Mocked outputs can reach plan policies | [D] tg-limits |
 | `run_cmd` works only with `--terragrunt-quiet` | [D] tg-limits |
 | Resource deletion on stack deletion: the stack page says native Terragrunt does not support it [D] create-stack; the changelog says it was implemented on 2026-02-26 [RN]. Report 07 records the docs statement. The changelog describes the later change, so deletion is probably supported, but this is *(unverified)* (C189). | [D] [RN] |

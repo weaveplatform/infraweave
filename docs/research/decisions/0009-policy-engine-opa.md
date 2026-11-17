@@ -52,6 +52,10 @@ Report 27 compares the ways other tools run Rego
 
 - A create that omits `engineType` stores `REGO_V1`. An update that omits it keeps the
   stored value.
+- Each setting refuses the other's syntax with the parser's own message: a v0 rule
+  without `if` and `contains` under `REGO_V1`, and a v1 rule under `REGO_V0` without the
+  `future.keywords` import the message names
+  ([33 section 8.3](../reference/33-vendor-tool-documents.md#83-rego-v0-and-v1)).
 - Rego v2 is not offered until OPA releases it; any other engine value fails the schema's
   `enum` and answers `400`, problem `invalid-request` (decision
   [0022](0022-api-errors-and-update-semantics.md)).
@@ -69,9 +73,16 @@ Report 27 compares the ways other tools run Rego
   The preamble is compiled beside the user's module, each parsed under its own Rego
   version. A body that redefines a preamble rule with another kind (a boolean `deny` on a
   plan policy, a second `default allow`) fails compilation, and the save answers `422`,
-  problem `validation-failed`, with OPA's error and line in the `errors` member.
+  problem `validation-failed`, with OPA's error and line in the `errors` member. OPA
+  locates an error at a point, its file, row and column; the range a diagnostic gives runs
+  from the location's byte `Offset` over its `Text`, which `ast.Location` holds and its
+  JSON leaves out ([33 section 8.2](../reference/33-vendor-tool-documents.md#82-diagnostics)).
 - **The query** is `data.infraweave.result`. The engine reads only the rules of the type
-  from the result; anything else the policy defines is ignored.
+  from the result; anything else the policy defines is ignored. OPA answers only the rules
+  a policy defines, a set rule as `[]` when nothing matches and a boolean rule absent unless
+  true, with helper rules beside them
+  ([33 section 8.1](../reference/33-vendor-tool-documents.md#81-results)), so the preamble's defaults are what give every
+  decision Spacelift's full set of keys, as the recorded decisions hold.
 - **Save-time compile.** Create, update and simulate compile the body with the preamble,
   the capability set and the custom built-ins before anything is stored, so a policy
   that would fail at evaluation time is never saved.
@@ -292,7 +303,7 @@ gives it.
 
 | Vendor | Block | Sanitized |
 |---|---|---|
-| Terraform, OpenTofu | `terraform`, and `opentofu` for OpenTofu, from `show -json` | by the stack's mode |
+| Terraform, OpenTofu | `terraform`, and `opentofu` for OpenTofu: `{resource_changes, checks, terraform_version}`, `opentofu_version` in `opentofu`, from `show -json`, each change as the tool writes it | by the stack's mode, at the paths below |
 | Terragrunt | `terragrunt`, one entry per unit of `plan.json`'s `units`, each with its unit's path, `resource_changes`, `terraform_version` and `checks` | by the stack's mode, unit by unit; `checks` is empty unless sanitization is off |
 | Pulumi | `pulumi`, `{"steps": [...]}` as `plan.json` holds them | every secret signature object becomes the string `"[secret]"`, and nothing is hashed, whatever the mode |
 | CloudFormation | `cloudformation`, `{"parameters": [...], "changes": [...]}` with the API's key names | every `ParameterValue` is hashed, whatever the mode; the change set carries no property values to hash |
@@ -308,6 +319,35 @@ gives it.
   provider names, actions, modes and versions); `SMART` hashes only the
   values the plan marks sensitive. The modes apply to the Terraform family
   alone ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
+- **Terraform and OpenTofu** write every sensitive value in plaintext beside
+  a marker, at the same paths in both tools
+  ([33 section 6.5](../reference/33-vendor-tool-documents.md#65-secrets-sensitive-ephemeral-and-write-only-values)).
+  `SMART` hashes the value at each marked path of `plan.json`: under
+  `before_sensitive` and `after_sensitive` in `resource_changes`,
+  `resource_drift` and `output_changes`, under each resource's
+  `sensitive_values` in `planned_values` and `prior_state`, and each output
+  marked `sensitive`; the value under `variables` of each variable that
+  `configuration` declares `sensitive`; and every `constant_value` in
+  `configuration`, where a literal for a write-only attribute shows
+  unmarked. `DEFAULT` hashes every string value of those members. An
+  ephemeral value reaches no document, and a write-only attribute reads
+  `null`, so neither needs a rule. A Terragrunt unit's plan is sanitized
+  the same way; its `variables` hold Terragrunt's `inputs`
+  ([33 section 7.2](../reference/33-vendor-tool-documents.md#72-plans-outputs-and-render)).
+- **The `terraform` block** holds `resource_changes`, `checks` and the
+  version, the three members Spacelift's captured blocks hold
+  ([33 section 6.9](../reference/33-vendor-tool-documents.md#69-compared-with-the-parsers-fixtures-and-spacelift));
+  `variables`, `output_changes`, `resource_drift`, `prior_state`,
+  `planned_values` and `configuration` stay in `plan.json`. A change keeps
+  every member the tool writes, `action_reason`, `replace_paths`,
+  `previous_address` and `importing` among them; which of those Spacelift
+  keeps is C306.
+- **State** carries the same values, marked by `sensitive_attributes` and
+  `sensitive_values`, and a write-only attribute's stored copy in
+  plaintext ([33 section 6.4](../reference/33-vendor-tool-documents.md#64-outputs-and-state)). The backend
+  stores it as the tool writes it, sealed
+  ([0013](0013-secrets-at-rest.md)), and nothing read from it reaches a
+  policy input.
 - **Pulumi** writes a secret in its event log as a signature object whose
   `ciphertext` already reads `[secret]`; Spacelift's policy input carries
   the same steps
