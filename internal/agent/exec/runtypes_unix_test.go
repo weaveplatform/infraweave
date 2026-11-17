@@ -3,9 +3,12 @@
 package exec_test
 
 import (
+	"context"
+	"log/slog"
 	"strings"
 	"testing"
 
+	"github.com/weaveplatform/infraweave/internal/agent/exec"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/mask"
 )
@@ -28,6 +31,7 @@ func TestUnitExecTask(t *testing.T) {
 		hook("task", "TF_VAR_infraweave_run_state", "SEEN") + `; exit 0`}
 	w.h.Spec.Hooks = map[string][]string{
 		"before_init": {hook("before_init", "TF_VAR_infraweave_run_type")},
+		"after_init":  {hook("after_init")},
 		"before_perform": {
 			hook("before_perform", "TF_VAR_infraweave_run_state"),
 			"export SEEN=seen",
@@ -44,6 +48,7 @@ func TestUnitExecTask(t *testing.T) {
 	equal(t, "trace", w.traced(), []string{
 		"before_init TASK",
 		"init -input=false -lock-timeout=5m0s",
+		"after_init",
 		"before_perform PERFORMING",
 		"output -json",
 		"task PERFORMING seen",
@@ -57,24 +62,60 @@ func TestUnitExecTask(t *testing.T) {
 	}
 }
 
-// TestUnitExecTaskSkipsInitialization initializes a task that skips it
-// with the init hooks alone, and performs it in the same session.
+// taskPhase resumes directly in PERFORMING when the worker first answers
+// a fresh runner, so the task executes in a session with no initialization.
+type taskPhase struct{ *worker }
+
+func (p taskPhase) Report(ctx context.Context, token, run string, r wire.RunReport) (wire.NextStep, error) {
+	step, err := p.worker.Report(ctx, token, run, r)
+	if err == nil && r.Event == wire.Started {
+		step.State = string(wire.WorkerStatePERFORMING)
+	}
+	return step, err
+}
+
+// TestUnitExecTaskSkipsInitialization runs neither init hook nor command,
+// in the same session or when a fresh session starts with PERFORMING.
 func TestUnitExecTaskSkipsInitialization(t *testing.T) {
-	w := newWorld(t)
-	w.w.then = map[wire.WorkerState]string{wire.WorkerStateINITIALIZING: "PERFORMING"}
-	w.h.Spec.Run.Type = wire.TASK
-	w.h.Spec.Task = &wire.RunSpecTask{Command: hook("task", "SEEN"), SkipInitialization: true}
-	w.h.Spec.Hooks = map[string][]string{
-		"before_init": {hook("before_init", "TF_VAR_infraweave_run_state"), "export SEEN=seen"},
-		"after_init":  {hook("after_init")},
+	for _, tt := range []struct {
+		name    string
+		resumed bool
+	}{
+		{name: "same session"},
+		{name: "resumed session", resumed: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			w := newWorld(t)
+			w.w.then = map[wire.WorkerState]string{wire.WorkerStateINITIALIZING: "PERFORMING"}
+			w.h.Spec.Run.Type = wire.TASK
+			w.h.Spec.Task = &wire.RunSpecTask{
+				Command: hook("task", "TF_VAR_infraweave_run_state"), SkipInitialization: true,
+			}
+			w.h.Spec.Hooks = map[string][]string{
+				"before_init": {hook("before_init", "TF_VAR_infraweave_run_state")},
+				"after_init":  {hook("after_init")},
+			}
+			var reports exec.Reporter = w.w
+			wantReports := []string{
+				"INITIALIZING started 3", "INITIALIZING succeeded 4", "PERFORMING succeeded 5",
+			}
+			if tt.resumed {
+				reports = taskPhase{w.w}
+				wantReports = []string{"INITIALIZING started 3", "PERFORMING succeeded 4"}
+			}
+			if err := exec.Run(t.Context(), w.h, exec.Deps{
+				Reports: reports, Logs: w.w, Uploads: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
+				Workspace: w.workspace, Environ: w.environ,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			equal(t, "reports", w.events(), wantReports)
+			equal(t, "trace", w.traced(), []string{"task PERFORMING"})
+			if !tt.resumed && !strings.Contains(w.out.String(), "infraweave: initialization is skipped\n") {
+				t.Errorf("skip log: %s", w.out.String())
+			}
+		})
 	}
-	if err := w.run(); err != nil {
-		t.Fatal(err)
-	}
-	equal(t, "reports", w.events(), []string{
-		"INITIALIZING started 3", "INITIALIZING succeeded 4", "PERFORMING succeeded 5",
-	})
-	equal(t, "trace", w.traced(), []string{"before_init INITIALIZING", "after_init", "task seen"})
 }
 
 // TestUnitExecDestroys destroys a destroy run's resources after
