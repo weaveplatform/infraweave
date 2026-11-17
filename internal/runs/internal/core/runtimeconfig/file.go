@@ -39,6 +39,15 @@ func ParseFile(data []byte, slug, vendor, unknownKeys string) File {
 		out.Refusal = refusal
 		return out
 	}
+	origins := fileOrigins(root)
+	if sensitiveMappingKey(root, origins, map[*yaml.Node]bool{}) {
+		out.Refusal = &FileError{FilePath, kernel.ReasonRule, "a mapping key shares an environment value's YAML origin"}
+		return out
+	}
+	if _, err := mapping(root, FilePath); err != nil {
+		out.Refusal = fileError(err, FilePath)
+		return out
+	}
 	fields := originalMapping(root, map[*yaml.Node]bool{})
 	if node := fields["version"]; node != nil {
 		version, err := stringValue(node, "version")
@@ -56,7 +65,6 @@ func ParseFile(data []byte, slug, vendor, unknownKeys string) File {
 		}
 		entries = originalMapping(node, map[*yaml.Node]bool{})
 	}
-	origins := fileOrigins(root)
 	known := map[string]bool{"version": true, "stack_defaults": true, "stacks": true,
 		"module_version": true, "test_defaults": true, "tests": true}
 	projection := map[string]*yaml.Node{}
@@ -66,13 +74,11 @@ func ParseFile(data []byte, slug, vendor, unknownKeys string) File {
 			projection[key] = fields[key]
 		}
 	}
+	defaultsDiagnostic := map[string]*yaml.Node{}
 	if node := fields["stack_defaults"]; node != nil {
 		out.Defaults, out.Refusal = fileInput(node, "stack_defaults", vendor, origins, &out.Notices)
-		for key, value := range originalMapping(node, map[*yaml.Node]bool{}) {
-			if !runtimeKey(key) {
-				projection[key] = value
-			}
-		}
+		defaultsDiagnostic = diagnosticFields(node)
+		maps.Copy(projection, defaultsDiagnostic)
 	}
 	selected := fields["stack_defaults"]
 	if node := entries[slug]; node != nil {
@@ -85,6 +91,12 @@ func ParseFile(data []byte, slug, vendor, unknownKeys string) File {
 	}
 	if selected != nil {
 		for key, value := range originalMapping(selected, map[*yaml.Node]bool{}) {
+			if (key == "opentofu" || key == "terragrunt") && defaultsDiagnostic[key] != nil && unalias(value).Kind == yaml.MappingNode {
+				combined := originalMapping(defaultsDiagnostic[key], map[*yaml.Node]bool{})
+				maps.Copy(combined, originalMapping(value, map[*yaml.Node]bool{}))
+				projection[key] = nodeMapping(combined)
+				continue
+			}
 			projection[key] = value
 		}
 	}
@@ -97,6 +109,63 @@ func ParseFile(data []byte, slug, vendor, unknownKeys string) File {
 	slices.Sort(out.Notices)
 	if out.Refusal == nil && unknownKeys == "reject" && len(out.Notices) > 0 {
 		out.Refusal = &FileError{strings.TrimPrefix(out.Notices[0], "unknown key "), kernel.ReasonUnknownField, "unknown key"}
+	}
+	return out
+}
+
+// A shared key cannot be named in a notice without disclosing its environment
+// value. Refuse it before map conversion drops key-node provenance, including
+// malformed environment containers that another entry aliases for diagnostics.
+func sensitiveMappingKey(node *yaml.Node, origins, seen map[*yaml.Node]bool) bool {
+	node = unalias(node)
+	if node == nil || seen[node] {
+		return false
+	}
+	seen[node] = true
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i < len(node.Content); i += 2 {
+			if origins[unalias(node.Content[i])] {
+				return true
+			}
+		}
+	}
+	for _, child := range node.Content {
+		if sensitiveMappingKey(child, origins, seen) {
+			return true
+		}
+	}
+	return false
+}
+
+// diagnosticFields keeps unknown defaults without importing their known
+// execution settings into a selected entry's source projection.
+func diagnosticFields(node *yaml.Node) map[string]*yaml.Node {
+	out := map[string]*yaml.Node{}
+	for key, value := range originalMapping(node, map[*yaml.Node]bool{}) {
+		if !runtimeKey(key) {
+			out[key] = value
+			continue
+		}
+		if key != "opentofu" && key != "terragrunt" || unalias(value).Kind != yaml.MappingNode {
+			continue
+		}
+		unknown := map[string]*yaml.Node{}
+		for field, child := range originalMapping(value, map[*yaml.Node]bool{}) {
+			if !slices.Contains(blockKeys(key), field) {
+				unknown[field] = child
+			}
+		}
+		if len(unknown) > 0 {
+			out[key] = nodeMapping(unknown)
+		}
+	}
+	return out
+}
+
+func nodeMapping(fields map[string]*yaml.Node) *yaml.Node {
+	out := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	for _, key := range slices.Sorted(maps.Keys(fields)) {
+		out.Content = append(out.Content, scalar(key), fields[key])
 	}
 	return out
 }
@@ -166,10 +235,7 @@ func fileBlock(node *yaml.Node, prefix, kind string, origins map[*yaml.Node]bool
 	if _, err := mapping(node, prefix); err != nil {
 		return nil, fileError(err, prefix)
 	}
-	allowed := []string{"version", "workflow_tool"}
-	if kind == "terragrunt" {
-		allowed = []string{"terragrunt_tool", "terragrunt_version", "terraform_version", "use_run_all", "use_smart_sanitization", "use_state_management"}
-	}
+	allowed := blockKeys(kind)
 	out := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	fields := originalMapping(node, map[*yaml.Node]bool{})
 	for _, key := range slices.Sorted(maps.Keys(fields)) {
@@ -183,6 +249,13 @@ func fileBlock(node *yaml.Node, prefix, kind string, origins map[*yaml.Node]bool
 		out.Content = append(out.Content, scalar(key), publicNode(fields[key], nil))
 	}
 	return out, nil
+}
+
+func blockKeys(kind string) []string {
+	if kind == "terragrunt" {
+		return []string{"terragrunt_tool", "terragrunt_version", "terraform_version", "use_run_all", "use_smart_sanitization", "use_state_management"}
+	}
+	return []string{"version", "workflow_tool"}
 }
 
 func scalar(value string) *yaml.Node {
@@ -271,8 +344,8 @@ func fileDocument(data []byte) (*yaml.Node, *FileError) {
 	if !visit(root, 0) {
 		return nil, &FileError{FilePath, kernel.ReasonRule, "contains cyclic or excessive YAML expansion"}
 	}
-	if _, err := mapping(root, FilePath); err != nil {
-		return nil, fileError(err, FilePath)
+	if root.Kind != yaml.MappingNode {
+		return nil, &FileError{FilePath, kernel.ReasonFormat, "must be a YAML mapping"}
 	}
 	return root, nil
 }

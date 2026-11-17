@@ -45,6 +45,9 @@ func (f File) Settings(st stacksapi.Settings) Input {
 		}
 		var vendor map[string]json.RawMessage
 		_ = json.Unmarshal(st.VendorConfig, &vendor) // stored settings were validated
+		if _, present := vendor["version"]; present {
+			lower.TerraformVersion, lower.OpenTofuVersion = nil, nil
+		}
 		if len(vendor) > 0 {
 			lower.OpenTofu, lower.Terragrunt = nil, nil
 		}

@@ -106,6 +106,20 @@ A request that needs PostgreSQL while it is unreachable answers
 `503 service-unavailable` with `Retry-After: 2`, which `pkg/sdk` retries;
 any other unexpected failure answers `500`.
 
+Repository runtime configuration comes from `.infraweave/config.yml` at the
+run's commit. Unknown keys warn by default; an installation can refuse them
+before initialization hooks by setting this in the server's configuration:
+
+```yaml
+runs:
+  runtime_config:
+    unknown_keys: reject
+```
+
+The accepted policies are `warn` and `reject`. The environment equivalent is
+`INFRAWEAVE_RUNS_RUNTIME_CONFIG_UNKNOWN_KEYS`. Wrong-typed known keys fail
+`INITIALIZING` under either policy, with the key's path in the log.
+
 Every route but `POST /auth/token` takes a bearer token or a browser
 session's cookie
 ([decision 0006](docs/research/decisions/0006-authentication-and-tokens.md)).

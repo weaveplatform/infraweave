@@ -288,6 +288,11 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if len(r.RuntimeConfig) > 0 {
 		spec.RuntimeConfig, _ = json.Marshal(custom.Public())
 	}
+	spec.Notices = slices.Clone(repository.Notices)
+	if repository.Refusal != nil {
+		note := repository.Refusal.Error()
+		spec.Refusal = &note
+	}
 	if r.State == kernel.RunStatePreparingReplan {
 		spec.Targets = r.ReplanTargets
 	}
@@ -296,14 +301,12 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		if record, err = runtimeconfig.New(spec, st.ManagesState); err != nil {
 			return workersapi.Handover{}, err //nolint:wrapcheck // the record names the invalid vendor settings
 		}
-		record.Configuration.Environment = runtimeKeys(fileVariables, custom.Environment)
 		if hasFile {
+			record.Configuration.Environment = runtimeKeys(fileVariables, custom.Environment)
+			if repository.Refusal != nil {
+				record.Configuration.Environment = []runtimeconfig.Variable{}
+			}
 			record.Configuration.YAML = repository.YAML
-		}
-		record.Execution.Notices = slices.Clone(repository.Notices)
-		if repository.Refusal != nil {
-			note := repository.Refusal.Error()
-			record.Execution.Refusal = &note
 		}
 	}
 	record.Apply(&spec)

@@ -7181,7 +7181,7 @@ type RuntimeConfig struct {
 	TerraformWorkflowTool TerraformWorkflowTool    `json:"terraformWorkflowTool"`
 	Terragrunt            *TerragruntRuntimeConfig `json:"terragrunt,omitempty"`
 
-	// Yaml runtime configuration in YAML format
+	// Yaml Runtime configuration in YAML format, with variable values empty. For a repository configuration file this is the selected stack entry, or its defaults when no entry exists. Unknown fields from that entry, the defaults and the file root remain as diagnostic source data, with the selected entry taking precedence. These diagnostic fields do not change the run's execution settings.
 	Yaml string `json:"yaml"`
 }
 

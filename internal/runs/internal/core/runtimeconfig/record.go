@@ -126,12 +126,17 @@ func New(spec workersapi.Spec, managesState bool) (*Record, error) {
 		c.RunnerImage = *spec.RunnerImage
 	}
 	e := Execution{
-		Vendor: spec.Stack.Vendor, VendorConfig: bytes.Clone(spec.Stack.VendorConfig),
+		Notices: slices.Clone(spec.Notices),
+		Vendor:  spec.Stack.Vendor, VendorConfig: bytes.Clone(spec.Stack.VendorConfig),
 		EnableWellKnownSecretMasking: spec.Stack.EnableWellKnownSecretMasking,
 		EnableSensitiveOutputUpload:  spec.Stack.EnableSensitiveOutputUpload,
 		ManagesState:                 managesState,
 		ProjectRootSpecified:         spec.Stack.ProjectRoot != nil,
 		RunnerImageSpecified:         spec.RunnerImage != nil,
+	}
+	if spec.Refusal != nil {
+		refusal := *spec.Refusal
+		e.Refusal = &refusal
 	}
 	if spec.Tool != nil {
 		c.TerraformVersion = spec.Tool.Version

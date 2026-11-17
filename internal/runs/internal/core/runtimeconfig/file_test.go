@@ -69,6 +69,22 @@ stacks:
 	}
 }
 
+func TestUnitRepositoryNestedUnknownProjection(t *testing.T) {
+	f := ParseFile([]byte(`opentofu: {root_unknown: root}
+stack_defaults:
+  opentofu: {version: '1.6.3', default_unknown: defaults, same: defaults}
+stacks:
+  infra:
+    opentofu: {entry_unknown: entry, same: selected}
+`), "infra", "opentofu", "warn")
+	var doc map[string]map[string]any
+	if err := yaml.Unmarshal([]byte(f.YAML), &doc); err != nil || f.Refusal != nil || len(f.Notices) != 5 ||
+		doc["opentofu"]["same"] != "selected" || doc["opentofu"]["default_unknown"] != "defaults" ||
+		doc["opentofu"]["root_unknown"] != nil || doc["opentofu"]["version"] != nil || f.Entry.OpenTofu.Version != nil {
+		t.Fatalf("nested diagnostic projection changed source/typed precedence: %s; %v; %v", f.YAML, f.Refusal, err)
+	}
+}
+
 func TestUnitRepositoryFileRefusals(t *testing.T) {
 	for _, tc := range []struct{ text, path string }{
 		{"[", FilePath}, {"{}\n---\n{}", FilePath}, {"version: 2", "version"}, {"version: '3'", "version"},
@@ -124,5 +140,35 @@ func TestUnitRepositoryAliasRedaction(t *testing.T) {
 	f = ParseFile([]byte("stack_defaults: {environment: {TOKEN: 'identical'}}\nstacks: {infra: {unknown: identical}}"), "infra", "terraform", "warn")
 	if f.Refusal != nil || !strings.Contains(f.YAML, "identical") {
 		t.Fatalf("independent literal was redacted: %+v", f)
+	}
+}
+
+func TestUnitRepositorySensitiveKeyOrigins(t *testing.T) {
+	const secret = "file-key-origin-secret"
+	for _, text := range []string{
+		"&s " + secret + ": kept\nstack_defaults: {environment: {TOKEN: *s}}",
+		"&s " + secret + ": kept\n" + secret + ": duplicate\nstack_defaults: {environment: {TOKEN: *s}}",
+		"stack_defaults: {&s " + secret + ": kept, environment: {TOKEN: *s}}",
+		"stacks: {infra: {&s " + secret + ": kept, environment: {TOKEN: *s}}}",
+		"stacks: {other: {&s " + secret + ": kept}, infra: {environment: {TOKEN: *s}}}",
+		"stack_defaults: {environment: {TOKEN: &s {" + secret + ": kept}}}\nstacks: {infra: *s}",
+	} {
+		f := ParseFile([]byte(text), "infra", "terraform", "warn")
+		if f.Refusal == nil || f.Refusal.Path != FilePath || strings.Contains(f.Refusal.Error(), secret) ||
+			strings.Contains(f.YAML, secret) || len(f.Notices) != 0 {
+			t.Fatalf("sensitive mapping key entered diagnostics: refusal=%v notices=%v", f.Refusal, f.Notices)
+		}
+	}
+	f := ParseFile([]byte("stacks: {&s "+secret+": {environment: {TOKEN: *s}}}"), secret, "terraform", "warn")
+	if f.Refusal == nil || f.Refusal.Path != FilePath || strings.Contains(f.Refusal.Error(), secret) || len(f.Notices) != 0 {
+		t.Fatalf("sensitive stack-entry key entered a path: %v", f.Refusal)
+	}
+}
+
+func TestUnitRepositoryAliasedEnvironmentKey(t *testing.T) {
+	const secret = "runtime-key-alias-secret"
+	f := ParseFile([]byte("stack_defaults: {&env environment: {BASE: base}}\nstacks: {infra: {*env: {TOKEN: &s "+secret+"}, before_plan: [*s]}}"), "infra", "terraform", "warn")
+	if f.Refusal == nil || strings.Contains(f.Refusal.Error(), secret) || strings.Contains(f.YAML, secret) {
+		t.Fatalf("aliased environment key bypassed origin collection: refusal=%v, leaked=%t", f.Refusal, strings.Contains(f.YAML, secret))
 	}
 }

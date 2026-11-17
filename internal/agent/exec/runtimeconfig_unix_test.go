@@ -3,11 +3,36 @@
 package exec_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
+
+func TestUnitExecRuntimeNotices(t *testing.T) {
+	for _, skip := range []bool{false, true} {
+		t.Run(map[bool]string{false: "normal", true: "skip init"}[skip], func(t *testing.T) {
+			w := newWorld(t)
+			notices := []string{"unknown key stacks.infra.befor_plan"}
+			w.h.Spec.Notices = &notices
+			w.h.Spec.Run.Type = wire.TASK
+			w.h.Spec.Task = &wire.RunSpecTask{Command: hook("task", "TF_VAR_infraweave_run_state"), SkipInitialization: skip}
+			w.h.Spec.Hooks = map[string][]string{"before_init": {hook("before")}}
+			w.w.then = map[wire.WorkerState]string{wire.WorkerStateINITIALIZING: "PERFORMING"}
+			if err := w.run(); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Count(w.out.String(), "infraweave: .infraweave/config.yml: "+notices[0]) != 1 ||
+				!slices.Contains(w.traced(), "task PERFORMING") || slices.Contains(w.traced(), "before") == skip {
+				t.Fatalf("notice changed execution: trace %v, log %s", w.traced(), w.out.String())
+			}
+			if skip && !strings.Contains(w.out.String(), "initialization is skipped") {
+				t.Fatal("skip log missing after notice")
+			}
+		})
+	}
+}
 
 func TestUnitExecRuntimeRefusal(t *testing.T) {
 	for _, skip := range []bool{false, true} {

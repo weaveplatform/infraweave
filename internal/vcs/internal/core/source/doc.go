@@ -23,8 +23,10 @@
 // its handler, revokes each kept token through its integration and
 // forgets it; a token whose integration was deleted is forgotten and
 // expires alone. Runs is the Service as the runs domain's
-// runsapi.RunSources: a run's source URL with its credential, and the
-// credential's release.
+// runsapi.RunSources: a run's source URL with its credential, the
+// credential's release, and bounded file reads at its immutable commit.
+// File uses the stack's integration without minting a worker token;
+// a missing file is distinct from a provider failure or an oversized file.
 //
 // ref: decision 0012 § "Source access for runs"
 //

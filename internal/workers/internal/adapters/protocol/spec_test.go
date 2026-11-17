@@ -46,10 +46,12 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 	run := kernel.NewULID()
 	at := time.Unix(1_800_000_000, 0)
 	root, image, login, value, mode := "infra", "ghcr.io/acme/runner", "alice", "eu", "600"
+	refusal := "stacks.infra.before_plan: must be a list"
 	doc := []byte(`{"environment":{"TOKEN":"s3cret"},"files":{"key.pem":"AP9BCgA="}}`)
 	f.svc.BindScheduler(&scheduler{handover: workersapi.Handover{
 		Account: f.store.pool.Account, Pool: f.store.pool.ID, Secrets: crypt.NewValue(doc),
 		Spec: workersapi.Spec{
+			Notices: []string{"unknown key stacks.infra.befor_plan"}, Refusal: &refusal,
 			Run: workersapi.SpecRun{
 				Account:      f.store.pool.Account,
 				ID:           run,
@@ -114,6 +116,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 	}
 	delete(body, "sealed")
 	want := map[string]any{
+		"notices": []any{"unknown key stacks.infra.befor_plan"}, "refusal": refusal,
 		"run": map[string]any{
 			"account":        f.store.pool.Account.String(),
 			"id":             run.String(),
