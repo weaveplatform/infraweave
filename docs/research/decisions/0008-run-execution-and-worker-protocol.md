@@ -334,10 +334,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   - a name the stack does not set is set in the clear.
 
   No override names a variable infraweave sets for the run,
-  `TF_VAR_infraweave_*` or `INFRAWEAVE_*`, and names follow a context's
-  rules. A proposal with overrides creates a run each time, since no other
-  run shares them, and one without them never answers a run that has
-  them.
+  `TF_VAR_infraweave_*`, `INFRAWEAVE_*` or `TF_APPEND_USER_AGENT`, and names
+  follow a context's rules. A proposal with overrides creates a run each
+  time, since no other run shares them, and one without them never answers
+  a run that has them.
 - **The runner image** is the run's runtime configuration's, else the
   stack's, else the account's default for private pools, else the
   launcher's default for the stack's vendor (see "Runner images").
@@ -449,24 +449,37 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   named `INFRAWEAVE_*`, and the Terraform metadata variables
   `TF_VAR_infraweave_*`, where Spacelift's are `SPACELIFT_*` and
   `TF_VAR_spacelift_*` (0001's rename table), with the same suffixes and
-  values. Configuration reads list them under the `ConfigElementCategory`
-  value `INFRAWEAVE_ENVIRONMENT`. The server puts the `TF_VAR_infraweave_*`
+  values except where the rename register records another. Configuration
+  reads list them under the `ConfigElementCategory` value
+  `INFRAWEAVE_ENVIRONMENT`. The server puts the `TF_VAR_infraweave_*`
   variables it knows at handover in the clear part, unless the stack sets a
   variable of the same name: `account_name`, `commit_branch`, `commit_sha`,
   `local_preview`, `project_root`, `repository`, `run_id`, `run_trigger`,
   `run_type`, `space_id`, `stack_branch`, `stack_id`, `stack_labels`,
   `stack_labels_list` (the labels as an HCL list) and `workspace_root`
   (`/mnt/workspace`). The runner sets `run_state`, which changes with each
-  phase, and the launcher sets `INFRAWEAVE_API_TOKEN` from the sealed part.
-  Spacelift's runs also carry `TF_VAR_spacelift_graphql_endpoint`, the API's
-  URL, and `SPACELIFT_MAX_REQUESTS_BURST`,
-  `SPACELIFT_MAX_REQUESTS_PER_SECOND`,
-  `SPACELIFT_SENSITIVE_OUTPUT_UPLOAD_ENABLED` and
-  `SPACELIFT_VENDOR_BINARY_CACHED`
-  ([32 section 17.2](../reference/32-spacelift-console-survey.md#172-the-run-environment));
-  infraweave sets `TF_VAR_infraweave_graphql_endpoint` to its API's base URL,
-  since the variable names the endpoint a run's provider calls, and the four
-  others under `INFRAWEAVE_` from the launcher's settings.
+  phase, and `TF_VAR_infraweave_api_endpoint`, the REST API's base URL,
+  derived from the worker endpoint its launcher reaches, keeping any relay
+  prefix or private address. The variable names the API a run's provider
+  calls, so RN-45 maps Spacelift's endpoint name to `api_endpoint`.
+  The launcher's settings reach every phase through the handoff:
+  `INFRAWEAVE_MAX_REQUESTS_PER_SECOND` and `INFRAWEAVE_MAX_REQUESTS_BURST`
+  are positive integers, defaulting to 10 and 100, the server's standard
+  rate class; C308 captures Spacelift's values. The runner sets
+  `INFRAWEAVE_SENSITIVE_OUTPUT_UPLOAD_ENABLED` to the launcher's
+  `sensitive_output_upload`, and `INFRAWEAVE_VENDOR_BINARY_CACHED` to true
+  when the launcher mounts the tool from its cache (`tool.download`), false
+  when the image's binary runs; C309 captures the cache flag's meaning.
+  The runner also sets `TF_APPEND_USER_AGENT` to
+  `infraweave/<runner version>`; C310 captures Spacelift's value. A stack
+  variable of any of these names replaces the default. The launcher hands
+  `INFRAWEAVE_API_TOKEN` over from the sealed part, and the runner sets it
+  after the stack's variables so none replaces it. These match the observed
+  names in [32 section 17.2](../reference/32-spacelift-console-survey.md#172-the-run-environment).
+  P15 adds `INFRAWEAVE_OIDC_TOKEN`; P17 adds `TG_TF_REGISTRY_TOKEN` with
+  the module registry's in-run credential, which
+  [0014](0014-module-and-provider-registry.md) has the runner write into
+  `~/.terraformrc`; P18b adds the trace context.
 
 - **Secrets are sealed to the pool.** The server opens the sealed values
   ([0013](0013-secrets-at-rest.md)) and seals the secret part of the
@@ -1385,6 +1398,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
   (60s), `launcher.run_timeout` (70m), `launcher.log_timeout` (7m),
   `launcher.cache_dir`, `launcher.metadata`, `launcher.admin_listen` (`:9091`),
   `launcher.state_lock_timeout` (5m),
+  `launcher.max_requests_per_second` (10), `launcher.max_requests_burst` (100),
   `launcher.log.*`, `launcher.default_runner_image` (unset),
   `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
   `launcher.mask_envs`, `launcher.whitelist_envs`,

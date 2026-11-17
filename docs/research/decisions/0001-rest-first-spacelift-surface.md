@@ -100,7 +100,8 @@ records; a `schema` member limits the record to that schema's property or
 enum value. A `concept` record names a reference concept in words. The
 records that own the renamed behaviour are 0006 (the AWS account ID, the
 session channel, the token file), 0007 (admins and the top space), 0008
-(run variables and the config element category), 0009 (the policy input),
+(run variables, the API endpoint's RN-45 and the config element category),
+0009 (the policy input),
 0010 and 0012 (environment variables, the `INFRAWEAVE` provider, the
 comment command), 0017 (metrics), 0018 (Flows), 0019 (AI), 0022 and 0024
 (repository files).

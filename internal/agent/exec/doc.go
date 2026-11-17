@@ -12,10 +12,13 @@
 // tool is CUSTOM must, and checks every template of it, or of the tool's
 // built-in workflow, failing the phase with the key at fault; it writes
 // the managed state backend's file at the project root, and builds the
-// phase environment: the container's, the
-// specification's variables with their write-only values opened, the
-// in-run API token, the backend's credentials, TF_IN_AUTOMATION and
-// TF_INPUT.
+// phase environment: the container's, the tool's automation switches,
+// TF_APPEND_USER_AGENT, TF_VAR_infraweave_api_endpoint derived from the
+// worker endpoint, and the launcher's API rate, sensitive-output and
+// binary-cache settings. The specification's variables follow, with
+// their write-only values opened, so a stack variable replaces one of
+// those defaults. The in-run API token and backend's credentials come
+// last, where no stack variable replaces them.
 //
 // A Terragrunt stack's run, whose specification names terragrunt, runs
 // Terragrunt's built-in workflow, each command through terragrunt run

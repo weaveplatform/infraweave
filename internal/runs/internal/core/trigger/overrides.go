@@ -62,6 +62,9 @@ func CheckOverrides(ovs []lifecycle.Override) error {
 }
 
 func isReserved(name string) bool {
+	if name == "TF_APPEND_USER_AGENT" {
+		return true
+	}
 	for _, p := range reserved {
 		if strings.HasPrefix(name, p) {
 			return true

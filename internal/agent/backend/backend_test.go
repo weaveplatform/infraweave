@@ -179,3 +179,35 @@ func TestUnitAddress(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitAPIAddress(t *testing.T) {
+	for _, c := range []struct{ name, endpoint, want string }{
+		{"relay", "https://relay:8443/worker/v1", "https://relay:8443/api/v1"},
+		{"prefix", "https://relay/p/worker/v1", "https://relay/p/api/v1"},
+		{"escaped prefix", "https://relay/in%20fra/worker/v1", "https://relay/in%20fra/api/v1"},
+		{"private", "http://10.0.0.7:8080/worker/v1", "http://10.0.0.7:8080/api/v1"},
+		{"IPv6", "https://[fd00::7]:8443/worker/v1", "https://[fd00::7]:8443/api/v1"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got, err := backend.APIAddress(c.endpoint); got != c.want || err != nil {
+				t.Errorf("APIAddress(%q) = %q, %v; want %q", c.endpoint, got, err, c.want)
+			}
+		})
+	}
+	for name, endpoint := range map[string]string{
+		"invalid URL": "https://relay:port/worker/v1",
+		"scheme":      "ftp://relay/worker/v1",
+		"host":        "https:///worker/v1",
+		"user info":   "https://user:password@relay/worker/v1",
+		"query":       "https://relay/worker/v1?x=1",
+		"empty query": "https://relay/worker/v1?",
+		"fragment":    "https://relay/worker/v1#x",
+		"other API":   "https://relay/api/v1",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := backend.APIAddress(endpoint); !errors.Is(err, backend.ErrAddress) {
+				t.Errorf("APIAddress(%q) = %v", endpoint, err)
+			}
+		})
+	}
+}

@@ -5,8 +5,10 @@
 // backend URL, and answers the phase environment's credentials: Username
 // and the run token, which no file in the workspace holds. Address joins
 // the backend's path to the server URL the launcher reaches, keeping a
-// relay's or a private address's host and port. Code that declares its
-// own backend fails initialization, since the tool refuses two.
+// relay's or a private address's host, port and prefix. APIAddress applies
+// the same URL checks to resolve the REST API's base URL for run clients.
+// Code that declares its own backend fails initialization, since the tool
+// refuses two.
 //
 // A Terragrunt stack's run with runAll writes File into each of its Units:
 // each directory under the project root with a terragrunt.hcl, found as

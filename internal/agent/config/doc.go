@@ -4,7 +4,9 @@
 // private key, the poll's hold, the default runner image, the cache
 // directory, the state lock's wait, the run timeout and the no-log
 // timeout, the variables whose values runs mask, whether runs may keep
-// their sensitive outputs' values, the worker's metadata, the admin
+// their sensitive outputs' values, the max_requests_per_second and
+// max_requests_burst API rate settings exposed to run clients (10 and
+// 100 by default, both positive), the worker's metadata, the admin
 // listener's address, the launcher.log.* settings of
 // platform/observe, and the run containers' launcher.docker.* network,
 // runtime and runner binary. Defaults are what

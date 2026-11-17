@@ -201,23 +201,28 @@ func TestUnitTriggerRefusals(t *testing.T) {
 		}
 	}
 	sha := "abc"
-	_, err = s.ProposeWithOverrides(ctx, api.ProposeWithOverridesRequestObject{
-		Body: &api.ProposeWithOverridesRequest{
-			CommitSha:                &sha,
-			EnvironmentVarsOverrides: &[]api.EnvironmentVariable{{Key: "INFRAWEAVE_X", Value: "1"}},
-		},
-	})
-	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
-		t.Errorf("a refused override = %v", err)
-	}
-	_, err = s.RunProposeLocalWorkspace(ctx, api.RunProposeLocalWorkspaceRequestObject{
-		Body: &api.RunProposeLocalWorkspaceRequest{
-			Workspace:                "upload",
-			EnvironmentVarsOverrides: &[]api.EnvironmentVariable{{Key: "A=B", Value: "1"}},
-		},
-	})
-	if _, ok := errors.AsType[*kernel.Invalid](err); !ok {
-		t.Errorf("a refused override of a local workspace = %v", err)
+	for _, name := range []string{
+		"INFRAWEAVE_X", "A=B", "TF_APPEND_USER_AGENT", "TF_VAR_infraweave_api_endpoint",
+		"INFRAWEAVE_MAX_REQUESTS_PER_SECOND", "INFRAWEAVE_MAX_REQUESTS_BURST",
+		"INFRAWEAVE_SENSITIVE_OUTPUT_UPLOAD_ENABLED", "INFRAWEAVE_VENDOR_BINARY_CACHED",
+	} {
+		t.Run(name, func(t *testing.T) {
+			ovs := &[]api.EnvironmentVariable{{Key: name, Value: "1"}}
+			_, err := s.ProposeWithOverrides(ctx, api.ProposeWithOverridesRequestObject{
+				Body: &api.ProposeWithOverridesRequest{CommitSha: &sha, EnvironmentVarsOverrides: ovs},
+			})
+			if inv, ok := errors.AsType[*kernel.Invalid](err); !ok ||
+				inv.Errors[0].Pointer != "/environmentVarsOverrides/0/key" {
+				t.Errorf("a refused override = %v", err)
+			}
+			_, err = s.RunProposeLocalWorkspace(ctx, api.RunProposeLocalWorkspaceRequestObject{
+				Body: &api.RunProposeLocalWorkspaceRequest{Workspace: "upload", EnvironmentVarsOverrides: ovs},
+			})
+			if inv, ok := errors.AsType[*kernel.Invalid](err); !ok ||
+				inv.Errors[0].Pointer != "/environmentVarsOverrides/0/key" {
+				t.Errorf("a refused override of a local workspace = %v", err)
+			}
+		})
 	}
 }
 

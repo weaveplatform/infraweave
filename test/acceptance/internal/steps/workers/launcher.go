@@ -57,6 +57,10 @@ type launcherSteps struct {
 	// download altered, through tamperer, a mirror of the suite's.
 	tampered string
 	tamperer *httptest.Server
+	// Request limits override the launcher defaults when the scenario
+	// needs to prove their propagation into a run.
+	maxRequestsPerSecond int
+	maxRequestsBurst     int
 }
 
 // launcher is one launcher of the scenario: its process, the directory
@@ -74,6 +78,8 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)
+	sc.Step(`^the launchers started from now on set the run request limits to (\d+) per second and a burst of (\d+)$`,
+		func(rate, burst int) { l.maxRequestsPerSecond, l.maxRequestsBurst = rate, burst })
 	sc.Step(
 		`^token "(\w+)" starts the launcher "(\w+)" of the pool "(\w+)" with the key of "(\w+)"`+
 			`(, which keeps sensitive outputs' values,)?(?:, whose no-log timeout is (\d+s),)? through ([AB])$`,
@@ -181,6 +187,10 @@ func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, 
 	}
 	if ca := w.CAFile(); ca != "" {
 		settings["ca_file"] = ca
+	}
+	if l.maxRequestsPerSecond != 0 {
+		settings["max_requests_per_second"] = l.maxRequestsPerSecond
+		settings["max_requests_burst"] = l.maxRequestsBurst
 	}
 	if keeps != "" {
 		settings["sensitive_output_upload"] = true

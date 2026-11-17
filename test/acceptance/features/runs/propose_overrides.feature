@@ -97,6 +97,15 @@ Feature: A proposed run sets environment variables over its stack's
 
   @op:proposeWithOverrides @case:failure
   Scenario: An override of a variable infraweave sets, with no name, with = or given twice, an unknown commit and a value left out are refused
+    When token "h" sends "POST /api/v1/stacks/infra/proposed-runs" with '{"environmentVarsOverrides":[{"key":"TF_VAR_infraweave_api_endpoint","value":"forged"}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"
+    When token "h" sends "POST /api/v1/stacks/infra/proposed-runs" with '{"environmentVarsOverrides":[{"key":"INFRAWEAVE_MAX_REQUESTS_BURST","value":"forged"}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"
+    When token "h" sends "POST /api/v1/stacks/infra/proposed-runs" with '{"environmentVarsOverrides":[{"key":"TF_APPEND_USER_AGENT","value":"forged"}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"
     When token "h" sends "POST /api/v1/stacks/infra/proposed-runs" with '{"environmentVarsOverrides":[{"key":"INFRAWEAVE_API_TOKEN","value":"forged"}]}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"

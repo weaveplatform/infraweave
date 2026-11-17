@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/backend"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/iac/workflow"
+	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
 )
 
 // Errors of a run the runner cannot prepare.
@@ -91,7 +92,9 @@ func (r *run) setUp(ctx context.Context) string {
 	if err != nil {
 		return fmt.Sprintf("The state backend cannot be configured: %v.", err)
 	}
-	r.env = r.environment(creds)
+	if r.env, err = r.environment(creds); err != nil {
+		return fmt.Sprintf("The run environment cannot be configured: %v.", err)
+	}
 	masked := make([][]byte, 0, len(r.h.MaskEnvs))
 	for _, name := range r.h.MaskEnvs {
 		masked = append(masked, []byte(lookup(r.env, name)))
@@ -204,17 +207,30 @@ func readFile(dir, name string, limit int64) ([]byte, error) {
 
 // environment is the phase environment: the container's, the tool's
 // automation switches, for a Terragrunt run the tool Terragrunt drives
-// and Terragrunt's own switch, the specification's variables with the
+// and Terragrunt's own switch, the runner's user agent and API endpoint,
+// the launcher's run settings, the specification's variables with the
 // write-only values opened, then the in-run API token and the state
 // backend's credentials, which no variable of the stack overrides.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
-func (r *run) environment(creds []string) []string {
+func (r *run) environment(creds []string) ([]string, error) {
+	api, err := backend.APIAddress(r.h.Endpoint)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // setUp names the environment and Address names the URL
+	}
 	env := slices.Clone(r.d.Environ)
 	env = append(env, "TF_IN_AUTOMATION=1", "TF_INPUT=0")
 	if r.terragrunt() {
 		env = append(env, "TG_TF_PATH="+r.toolPath(), "TG_NON_INTERACTIVE=true")
 	}
+	env = append(env,
+		"TF_APPEND_USER_AGENT=infraweave/"+buildinfo.Version(),
+		"TF_VAR_infraweave_api_endpoint="+api,
+		"INFRAWEAVE_MAX_REQUESTS_PER_SECOND="+strconv.Itoa(r.h.MaxRequestsPerSecond),
+		"INFRAWEAVE_MAX_REQUESTS_BURST="+strconv.Itoa(r.h.MaxRequestsBurst),
+		"INFRAWEAVE_SENSITIVE_OUTPUT_UPLOAD_ENABLED="+strconv.FormatBool(r.h.SensitiveOutputUpload),
+		"INFRAWEAVE_VENDOR_BINARY_CACHED="+strconv.FormatBool(r.h.Spec.Tool.Download),
+	)
 	for _, v := range r.h.Spec.Environment {
 		switch {
 		case v.WriteOnly:
@@ -226,7 +242,7 @@ func (r *run) environment(creds []string) []string {
 	if t := r.h.Secrets.ApiToken; t != "" {
 		env = append(env, "INFRAWEAVE_API_TOKEN="+t)
 	}
-	return append(env, creds...)
+	return append(env, creds...), nil
 }
 
 // terragrunt reports whether the run is a Terragrunt stack's, whose

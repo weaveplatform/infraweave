@@ -102,6 +102,15 @@ Feature: A run previews an uploaded local workspace
 
   @op:uploadLocalWorkspace @op:runProposeLocalWorkspace @case:failure
   Scenario: A declaration outside the bounds, an upload that is not the stack's, was never put or does not exist, and an override of a variable infraweave sets are refused
+    When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"environmentVarsOverrides":[{"key":"TF_VAR_infraweave_api_endpoint","value":"forged"}],"workspace":"01HZX4Y9Q2W8E5R7T3V6K1M0PA"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"environmentVarsOverrides":[{"key":"INFRAWEAVE_MAX_REQUESTS_BURST","value":"forged"}],"workspace":"01HZX4Y9Q2W8E5R7T3V6K1M0PA"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/propose-local-workspace" with '{"environmentVarsOverrides":[{"key":"TF_APPEND_USER_AGENT","value":"forged"}],"workspace":"01HZX4Y9Q2W8E5R7T3V6K1M0PA"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/environmentVarsOverrides/0/key" as "rule"
     When token "h" sends "POST /api/v1/stacks/infra/local-workspace-uploads" with '{"size":0,"sha256":"{ws.sha256}"}' through A
     Then it answers a 400 problem "invalid-request"
     When token "h" sends "POST /api/v1/stacks/infra/local-workspace-uploads" with '{"size":2147483649,"sha256":"{ws.sha256}"}' through B
