@@ -3078,7 +3078,7 @@ paths:
       x-rest-style: action
   /azure-dev-ops-webhooks-endpoint:
     get:
-      description: Endpoint for incoming Azure DevOps webhooks.
+      description: Webhook URL of the account's default Azure DevOps integration. Requires admin access to its space.
       operationId: azureDevOpsWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
       x-infraweave-action: SPACE_ADMIN
@@ -3862,7 +3862,7 @@ paths:
       x-rest-style: action
   /bitbucket-cloud-webhooks-endpoint:
     get:
-      description: Endpoint for incoming Bitbucket Cloud webhooks.
+      description: Webhook URL of the account's default Bitbucket Cloud integration. Requires admin access to its space.
       operationId: bitbucketCloudWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
       x-infraweave-action: SPACE_ADMIN
@@ -4292,7 +4292,7 @@ paths:
       x-rest-style: action
   /bitbucket-datacenter-webhooks-endpoint:
     get:
-      description: Endpoint for incoming Bitbucket Datacenter webhooks.
+      description: Webhook URL of the account's default Bitbucket Data Center integration. Requires admin access to its space.
       operationId: bitbucketDatacenterWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
       x-infraweave-action: SPACE_ADMIN
@@ -5945,7 +5945,7 @@ paths:
       x-rest-style: action
   /github-enterprise-webhooks-endpoint:
     get:
-      description: The webhooks endpoint to use in your GitHub Enterprise App
+      description: Webhook URL of the named GitHub App integration, or the account's default when id is omitted. Requires admin access to its space.
       operationId: githubEnterpriseWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
       x-infraweave-action: SPACE_ADMIN
@@ -6468,7 +6468,7 @@ paths:
       x-rest-style: action
   /gitlab-webhooks-endpoint:
     get:
-      description: Endpoint for incoming Gitlab webhooks.
+      description: Webhook URL of the account's default GitLab integration. Requires admin access to its space.
       operationId: gitlabWebhooksEndpoint
       x-infraweave-feature: vcs-integrations
       x-infraweave-action: SPACE_ADMIN

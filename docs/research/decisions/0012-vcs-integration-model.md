@@ -50,14 +50,15 @@ not provider names.
 | `Source` | `ResolveRef`, `AffectedFiles(base, head)`, `ReadFile(ref, path)` (for `.infraweave/config.yml`), `SourceCredential(run)` | all |
 | `Browse` | `Repositories`, `Branches` | all |
 | `Checks` | `SetIndividual`, `SetAggregated` | all but raw Git |
-| `Comments` | `PostPlan(pr, run, body)`, `Upsert(pr, dedupKey, body)` | all but raw Git |
+| `Comments` | `Upsert(pr, dedupKey, body)` | all but raw Git |
 | `Deployments` | `Report(stack, run, state)` | GitHub, GitLab |
 | `Tester` | `Test()` returning `CONNECTION`, `PERMISSIONS`, `WEBHOOK`, `GITHUB_APP_EVENTS` checks | all but raw Git |
 
 - **Normalized events.** `Parse` turns a delivery into zero or more
   `vcs.Event` values: `push`, `tag`, `pull_request` (with the `action` values
   of the push policy input), `comment`, `check_action` (GitHub's **Preview**
-  and **Deploy**), `repository_renamed`. Each carries the repository
+  and **Deploy**), `repository_renamed`, `owner_renamed` and installation
+  state changes. Each carries the repository
   (namespace and name), branch or tag, head SHA, author and, for pull requests,
   the provider-specific `approved`, `mergeable`, `undiverged` and `head_owner`
   values defined in [11 section 13](../reference/11-vcs-integrations.md#13-push-policy-interplay).
@@ -212,7 +213,12 @@ The handler does, in order:
 account-default integration URL; `githubEnterpriseWebhooksEndpoint?id=`
 can name one integration instead. With none it answers `404 not-found`.
 The integration's `SPACE_ADMIN` action decides access in its space, the
-default's being the top space. The URL and secret are not reader data.
+default's being the top space. The four default-only schemas have no
+integration selector, so their subject is the account's top space.
+GitHub's optional `id` resolves the named integration's own space, falling
+back to the top space only when omitted. These are space-action checks,
+not a separate account-admin or operator requirement. The URL and secret
+are not reader data.
 
 **Rotation (D4).** All five providers have a regenerate operation,
 including `azureDevOpsRepoIntegrationRegenerateWebhookSecret`. In one
@@ -511,7 +517,7 @@ ref: [plan, P19b](../../implementation/plan.md#p19b-vcs-agent-pools-and-other-so
   the reason a released agent might ship without one: an allowlist that falls
   behind the server breaks integrations. Capture C78 decides only whether this
   is also a departure from the released Spacelift agent.
-- **Departures from Spacelift**, for the deviations register: an
+- **Departures from Spacelift**, for the deviations register: a
   per-account GitHub App; per-integration webhook URLs; previous-secret
   window and Azure DevOps rotation; delivery listing and reverified replay;
   checks updated in place; full push diff; pull request events creating no
