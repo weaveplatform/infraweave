@@ -24,9 +24,7 @@ import (
 // whose histories hold the commit of any run on one of them.
 // Sparse paths check out those directories alone; an empty list checks
 // out the whole commit.
-func (f *Fetcher) git(
-	ctx context.Context, dir, url, commit string, paths []string, cred *wire.RunSpecSourceCredential,
-) error {
+func (f *Fetcher) git(ctx context.Context, dir, url, commit string, paths []string, cred *wire.RunSpecSourceCredential) error {
 	if !plumbing.IsHash(commit) {
 		return fmt.Errorf("%w: %q", ErrCommit, commit)
 	}
